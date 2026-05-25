@@ -1,0 +1,533 @@
+[
+  {
+    "id": "meal_chicken_rice_bowl",
+    "title": "Chicken Rice Bowl",
+    "subtitle": "Balanced high-protein performance meal",
+    "imageName": "meal-chicken",
+    "type": "highProtein",
+    "calories": 550,
+    "protein": 40,
+    "carbs": 52,
+    "fats": 16,
+    "benefits": [
+      "High protein",
+      "Supports muscle growth",
+      "Balanced energy"
+    ],
+    "ingredients": [
+      { "name": "Chicken breast", "amount": "160 g" },
+      { "name": "Jasmine rice", "amount": "1 cup" },
+      { "name": "Broccoli", "amount": "1 cup" },
+      { "name": "Olive oil", "amount": "1 tbsp" }
+    ],
+    "suggestedTime": "13:00"
+  },
+  {
+    "id": "meal_oatmeal_berries",
+    "title": "Banana Oats Bowl",
+    "subtitle": "Best 60–90 min before activity",
+    "imageName": "meal-oatmeal",
+    "type": "preWorkout",
+    "calories": 430,
+    "protein": 18,
+    "carbs": 68,
+    "fats": 12,
+    "benefits": [
+      "Sustained energy",
+      "Easy to digest",
+      "Rich in complex carbs"
+    ],
+    "ingredients": [
+      { "name": "Oats", "amount": "1 cup" },
+      { "name": "Banana", "amount": "1" },
+      { "name": "Blueberries", "amount": "1/2 cup" },
+      { "name": "Greek yogurt", "amount": "100 g" }
+    ],
+    "suggestedTime": "16:30"
+  },
+  {
+    "id": "meal_salmon_quinoa",
+    "title": "Salmon & Quinoa Bowl",
+    "subtitle": "Perfect for post-workout recovery",
+    "imageName": "meal-salmon",
+    "type": "recovery",
+    "calories": 650,
+    "protein": 42,
+    "carbs": 58,
+    "fats": 22,
+    "benefits": [
+      "Muscle recovery",
+      "High in omega-3",
+      "Reduces inflammation"
+    ],
+    "ingredients": [
+      { "name": "Salmon", "amount": "150 g" },
+      { "name": "Quinoa", "amount": "1 cup" },
+      { "name": "Avocado", "amount": "1/2" },
+      { "name": "Cherry tomatoes", "amount": "1/2 cup" }
+    ],
+    "suggestedTime": "20:00"
+  },
+  {
+    "id": "meal_protein_shake",
+    "title": "Protein Shake",
+    "subtitle": "Fast recovery and muscle support",
+    "imageName": "meal-shake",
+    "type": "highProtein",
+    "calories": 350,
+    "protein": 36,
+    "carbs": 24,
+    "fats": 8,
+    "benefits": [
+      "Fast absorption",
+      "Muscle recovery",
+      "Convenient after workouts"
+    ],
+    "ingredients": [
+      { "name": "Whey protein", "amount": "1 scoop" },
+      { "name": "Banana", "amount": "1" },
+      { "name": "Almond milk", "amount": "300 ml" },
+      { "name": "Peanut butter", "amount": "1 tbsp" }
+    ],
+    "suggestedTime": "18:00"
+  },
+  {
+      "id": "meal_fried_eggs_spinach_hollandaise",
+      "title": "Fried Eggs with Spinach",
+      "subtitle": "Classic savory breakfast with creamy hollandaise and greens",
+      "imageName": "meal-eggs-spinach",
+      "type": "balanced",
+      "calories": 470,
+      "protein": 24,
+      "carbs": 28,
+      "fats": 30,
+      "benefits": [
+        "Rich in healthy fats",
+        "Good source of protein",
+        "Contains iron and vitamins from spinach"
+      ],
+      "ingredients": [
+        { "name": "Eggs", "amount": "2" },
+        { "name": "Wholegrain rye bread", "amount": "2 slices" },
+        { "name": "Spinach", "amount": "100 g" },
+        { "name": "Heavy cream 30%", "amount": "20 ml" },
+        { "name": "Hollandaise sauce", "amount": "35 g" },
+        { "name": "Red onion", "amount": "20 g" },
+        { "name": "Garlic", "amount": "1 clove" },
+        { "name": "Olive oil", "amount": "1 tsp" },
+        { "name": "Rapeseed oil", "amount": "1 tsp" },
+        { "name": "Nutmeg", "amount": "pinch" },
+        { "name": "Black pepper", "amount": "to taste" }
+      ],
+      "suggestedTime": "08:00"
+    },
+    {
+      "id": "meal_apple_coconut_millet_porridge",
+      "title": "Millet Porridge",
+      "subtitle": "Creamy sweet breakfast with fruit and crunchy walnuts",
+      "imageName": "meal-millet-porridge",
+      "type": "balanced",
+      "calories": 510,
+      "protein": 14,
+      "carbs": 62,
+      "fats": 23,
+      "benefits": [
+        "Long-lasting energy",
+        "Rich in fiber",
+        "Natural sweetness from fruits"
+      ],
+      "ingredients": [
+        { "name": "Milk 2%", "amount": "220 ml" },
+        { "name": "Millet flakes", "amount": "55 g" },
+        { "name": "Rhubarb", "amount": "60 g" },
+        { "name": "Coconut cream", "amount": "40 ml" },
+        { "name": "Roasted apples", "amount": "70 g" },
+        { "name": "Coconut flakes", "amount": "12 g" },
+        { "name": "Raisins", "amount": "15 g" },
+        { "name": "Honey", "amount": "1 tsp" },
+        { "name": "Walnuts", "amount": "18 g" },
+        { "name": "Vanilla", "amount": "pinch" },
+        { "name": "Butter", "amount": "5 g" }
+      ],
+      "suggestedTime": "08:00"
+    },
+    {
+        "id": "meal_milk_sponge_protein_sandwich",
+        "title": "Sandwich with Raspberry",
+        "subtitle": "Sweet high-protein breakfast with cottage cheese and berries",
+        "imageName": "meal-milk-sandwich",
+        "type": "highProtein",
+        "calories": 430,
+        "protein": 31,
+        "carbs": 42,
+        "fats": 16,
+        "benefits": [
+          "High protein",
+          "Sweet breakfast option",
+          "Supports muscle recovery"
+        ],
+        "ingredients": [
+          { "name": "Eggs", "amount": "2" },
+          { "name": "Xylitol", "amount": "15 g" },
+          { "name": "Cherries", "amount": "50 g" },
+          { "name": "Semi-fat cottage cheese", "amount": "80 g" },
+          { "name": "Cream cheese", "amount": "50 g" },
+          { "name": "Wheat flour", "amount": "35 g" },
+          { "name": "Milk 2%", "amount": "40 ml" },
+          { "name": "Baking powder", "amount": "3 g" },
+          { "name": "Raspberry whey protein", "amount": "15 g" },
+          { "name": "Mascarpone", "amount": "20 g" },
+          { "name": "Raspberries", "amount": "40 g" },
+          { "name": "Almond flakes", "amount": "8 g" }
+        ],
+        "suggestedTime": "08:00"
+      },
+      {
+        "id": "meal_bao_pulled_pork_teriyaki",
+        "title": "Teriyaki Pulled Pork",
+        "subtitle": "Savory protein-rich breakfast with Asian-style flavor",
+        "imageName": "meal-bao-pork",
+        "type": "balanced",
+        "calories": 520,
+        "protein": 30,
+        "carbs": 55,
+        "fats": 20,
+        "benefits": [
+          "Protein-rich",
+          "Long-lasting energy",
+          "Savory breakfast option"
+        ],
+        "ingredients": [
+          { "name": "Steamed bao buns", "amount": "2 small" },
+          { "name": "Pulled pork shoulder", "amount": "110 g" },
+          { "name": "Red cabbage", "amount": "80 g" },
+          { "name": "Carrot", "amount": "40 g" },
+          { "name": "Teriyaki sauce", "amount": "20 g" },
+          { "name": "Natural yogurt", "amount": "25 g" },
+          { "name": "Mayonnaise", "amount": "10 g" },
+          { "name": "Lemon juice", "amount": "1 tsp" },
+          { "name": "Hoisin sauce", "amount": "10 g" },
+          { "name": "Soy sauce", "amount": "1 tsp" },
+          { "name": "Honey", "amount": "1 tsp" },
+          { "name": "Sriracha", "amount": "to taste" }
+        ],
+        "suggestedTime": "08:00"
+      },
+      {
+        "id": "meal_tuna_egg_paste_graham_roll",
+        "title": "Tuna and Egg Paste",
+        "subtitle": "Classic high-protein breakfast with fish, egg and vegetables",
+        "imageName": "meal-tuna-egg",
+        "type": "highProtein",
+        "calories": 510,
+        "protein": 38,
+        "carbs": 43,
+        "fats": 21,
+        "benefits": [
+          "High protein",
+          "Rich in omega-3 fats",
+          "Filling breakfast"
+        ],
+        "ingredients": [
+          { "name": "Graham roll", "amount": "1" },
+          { "name": "Tuna in oil", "amount": "70 g" },
+          { "name": "Eggs", "amount": "1" },
+          { "name": "Lean curd cheese", "amount": "60 g" },
+          { "name": "Natural yogurt", "amount": "25 g" },
+          { "name": "Mayonnaise", "amount": "10 g" },
+          { "name": "Village ham", "amount": "30 g" },
+          { "name": "Cucumber", "amount": "60 g" },
+          { "name": "Bell pepper", "amount": "60 g" },
+          { "name": "Lettuce", "amount": "30 g" },
+          { "name": "Feta cheese", "amount": "25 g" },
+          { "name": "Black olives", "amount": "15 g" }
+        ],
+        "suggestedTime": "08:00"
+      },
+      {
+        "id": "meal_goat_cheese_sundried_tomato_paste",
+        "title": "Goat Cheese",
+        "subtitle": "Creamy savory breakfast with whole-grain bread",
+        "imageName": "meal-goat-cheese",
+        "type": "balanced",
+        "calories": 440,
+        "protein": 25,
+        "carbs": 45,
+        "fats": 18,
+        "benefits": [
+          "Balanced macros",
+          "Good source of calcium",
+          "Whole-grain energy"
+        ],
+        "ingredients": [
+          { "name": "Rye bread", "amount": "2 slices" },
+          { "name": "Semi-fat cottage cheese", "amount": "90 g" },
+          { "name": "Goat cream cheese", "amount": "40 g" },
+          { "name": "Natural yogurt", "amount": "30 g" },
+          { "name": "Sun-dried tomatoes in oil", "amount": "25 g" },
+          { "name": "White radish", "amount": "50 g" },
+          { "name": "Tomato", "amount": "80 g" },
+          { "name": "Sunflower seeds", "amount": "10 g" },
+          { "name": "Chives", "amount": "5 g" },
+          { "name": "Black pepper", "amount": "to taste" }
+        ],
+        "suggestedTime": "08:00"
+      },
+      {
+        "id": "meal_savory_granola_cottage_cheese",
+        "title": "Savory Granola",
+        "subtitle": "Crunchy high-protein breakfast with oats, seeds and vegetables",
+        "imageName": "meal-savory-granola",
+        "type": "balanced",
+        "calories": 460,
+        "protein": 29,
+        "carbs": 39,
+        "fats": 21,
+        "benefits": [
+          "High protein",
+          "Rich in fiber",
+          "Crunchy and filling"
+        ],
+        "ingredients": [
+          { "name": "Cottage cheese", "amount": "180 g" },
+          { "name": "Cucumber", "amount": "80 g" },
+          { "name": "Oat flakes", "amount": "35 g" },
+          { "name": "Red bell pepper", "amount": "40 g" },
+          { "name": "Green bell pepper", "amount": "40 g" },
+          { "name": "Yellow bell pepper", "amount": "40 g" },
+          { "name": "Chives", "amount": "8 g" },
+          { "name": "Sunflower seeds", "amount": "10 g" },
+          { "name": "Almond flakes", "amount": "8 g" },
+          { "name": "Blue poppy seeds", "amount": "5 g" },
+          { "name": "Olive oil", "amount": "1 tsp" },
+          { "name": "Dried herbs", "amount": "to taste" }
+        ],
+        "suggestedTime": "08:00"
+      },
+      {
+          "id": "meal_bangkok_chicken_quinoa",
+          "title": "Bangkok Chicken",
+          "subtitle": "Asian-inspired high-protein meal with creamy coconut and peanut flavors",
+          "imageName": "meal-bangkok-chicken",
+          "type": "highProtein",
+          "calories": 610,
+          "protein": 42,
+          "carbs": 48,
+          "fats": 27,
+          "benefits": [
+            "High protein",
+            "Rich in healthy fats",
+            "Balanced post-workout meal"
+          ],
+          "ingredients": [
+            { "name": "Chicken breast", "amount": "170 g" },
+            { "name": "White quinoa", "amount": "70 g" },
+            { "name": "Green beans", "amount": "80 g" },
+            { "name": "Yellow beans", "amount": "80 g" },
+            { "name": "Coconut cream", "amount": "40 ml" },
+            { "name": "Peanut butter", "amount": "18 g" },
+            { "name": "Peanuts", "amount": "10 g" },
+            { "name": "Sesame oil", "amount": "1 tsp" },
+            { "name": "White sesame seeds", "amount": "5 g" },
+            { "name": "Soy sauce", "amount": "1 tbsp" },
+            { "name": "Fish sauce", "amount": "1 tsp" },
+            { "name": "Tamarind paste", "amount": "10 g" },
+            { "name": "Honey", "amount": "1 tsp" },
+            { "name": "Garlic", "amount": "1 clove" },
+            { "name": "Chives", "amount": "5 g" }
+          ],
+          "suggestedTime": "13:00"
+        },
+        {
+          "id": "meal_beef_cutlets_turmeric_rice",
+          "title": "Beef Cutlets",
+          "subtitle": "Comforting protein-rich lunch with fragrant rice and vegetables",
+          "imageName": "meal-beef-cutlets",
+          "type": "highProtein",
+          "calories": 640,
+          "protein": 39,
+          "carbs": 56,
+          "fats": 26,
+          "benefits": [
+            "Rich in protein",
+            "Contains fiber and vegetables",
+            "Long-lasting satiety"
+          ],
+          "ingredients": [
+            { "name": "Ground beef roast", "amount": "120 g" },
+            { "name": "Ground pork", "amount": "60 g" },
+            { "name": "Parboiled rice", "amount": "75 g" },
+            { "name": "Mixed bell peppers", "amount": "90 g" },
+            { "name": "Broccoli", "amount": "60 g" },
+            { "name": "Romanesco cauliflower", "amount": "50 g" },
+            { "name": "Brussels sprouts", "amount": "50 g" },
+            { "name": "Green peas", "amount": "40 g" },
+            { "name": "Carrot", "amount": "40 g" },
+            { "name": "Red onion", "amount": "25 g" },
+            { "name": "Turmeric", "amount": "1 tsp" },
+            { "name": "Balsamic vinegar", "amount": "1 tsp" },
+            { "name": "Rapeseed oil", "amount": "1 tbsp" },
+            { "name": "Garlic", "amount": "1 clove" }
+          ],
+          "suggestedTime": "13:00"
+        },
+        {
+          "id": "meal_cavatappi_chicken_meatballs",
+          "title": "Cavatappi Pasta",
+          "subtitle": "Italian-style comfort meal with tender poultry meatballs",
+          "imageName": "meal-cavatappi-meatballs",
+          "type": "balanced",
+          "calories": 590,
+          "protein": 36,
+          "carbs": 63,
+          "fats": 20,
+          "benefits": [
+            "Balanced carbohydrates and protein",
+            "Comforting meal",
+            "Good for recovery days"
+          ],
+          "ingredients": [
+            { "name": "Cavatappi pasta", "amount": "80 g" },
+            { "name": "Ground chicken thigh", "amount": "140 g" },
+            { "name": "Tomato", "amount": "80 g" },
+            { "name": "Tomato pulp", "amount": "100 g" },
+            { "name": "Zucchini", "amount": "60 g" },
+            { "name": "Carrot", "amount": "60 g" },
+            { "name": "Onion", "amount": "30 g" },
+            { "name": "Olive oil", "amount": "1 tbsp" },
+            { "name": "Milk 2%", "amount": "30 ml" },
+            { "name": "Breadcrumbs", "amount": "15 g" },
+            { "name": "Black olives", "amount": "15 g" },
+            { "name": "Raisins", "amount": "10 g" },
+            { "name": "Garlic", "amount": "1 clove" }
+          ],
+          "suggestedTime": "14:00"
+        },
+        {
+          "id": "meal_turkey_mushroom_potato",
+          "title": "Turkey Breast",
+          "subtitle": "Classic hearty dinner with lean turkey and creamy potatoes",
+          "imageName": "meal-turkey-mushroom",
+          "type": "highProtein",
+          "calories": 570,
+          "protein": 44,
+          "carbs": 42,
+          "fats": 24,
+          "benefits": [
+            "Lean protein source",
+            "Rich and filling",
+            "Balanced comfort meal"
+          ],
+          "ingredients": [
+            { "name": "Turkey breast", "amount": "180 g" },
+            { "name": "Potatoes", "amount": "220 g" },
+            { "name": "Red cabbage", "amount": "90 g" },
+            { "name": "Apple", "amount": "40 g" },
+            { "name": "Mushrooms", "amount": "60 g" },
+            { "name": "Parmesan cheese", "amount": "12 g" },
+            { "name": "Milk 2%", "amount": "40 ml" },
+            { "name": "Butter", "amount": "10 g" },
+            { "name": "Natural yogurt", "amount": "30 g" },
+            { "name": "Cream 12%", "amount": "15 ml" },
+            { "name": "Horseradish", "amount": "1 tsp" },
+            { "name": "Shallot", "amount": "20 g" },
+            { "name": "Garlic", "amount": "1 clove" }
+          ],
+          "suggestedTime": "18:00"
+        },
+        {
+            "id": "meal_braised_chicken_drumsticks_asparagus",
+            "title": "Braised Chicken",
+            "subtitle": "Comforting high-protein dinner with herbs and roasted vegetables",
+            "imageName": "meal-chicken-asparagus",
+            "type": "highProtein",
+            "calories": 590,
+            "protein": 43,
+            "carbs": 39,
+            "fats": 28,
+            "benefits": [
+              "High protein",
+              "Rich in micronutrients",
+              "Balanced recovery meal"
+            ],
+            "ingredients": [
+              { "name": "Chicken thigh meat", "amount": "190 g" },
+              { "name": "Potatoes", "amount": "220 g" },
+              { "name": "Green asparagus", "amount": "120 g" },
+              { "name": "Lactose-free natural yogurt", "amount": "70 g" },
+              { "name": "Butter", "amount": "8 g" },
+              { "name": "Rapeseed oil", "amount": "1 tbsp" },
+              { "name": "Fresh dill", "amount": "10 g" },
+              { "name": "Garlic", "amount": "1 clove" },
+              { "name": "Parsley", "amount": "5 g" },
+              { "name": "Lemon zest", "amount": "1 tsp" },
+              { "name": "Wine vinegar", "amount": "1 tsp" },
+              { "name": "Dried garlic", "amount": "pinch" }
+            ],
+            "suggestedTime": "18:00"
+          },
+          {
+            "id": "meal_pork_bbq_groats",
+            "title": "Pork Steaks",
+            "subtitle": "Savory comfort meal with smoky-sweet BBQ flavors",
+            "imageName": "meal-pork-bbq",
+            "type": "balanced",
+            "calories": 670,
+            "protein": 41,
+            "carbs": 58,
+            "fats": 30,
+            "benefits": [
+              "Rich in protein",
+              "Long-lasting energy",
+              "Balanced carbs and fats"
+            ],
+            "ingredients": [
+              { "name": "Pork loin", "amount": "180 g" },
+              { "name": "Buckwheat groats", "amount": "45 g" },
+              { "name": "Pearl barley", "amount": "45 g" },
+              { "name": "Carrot", "amount": "120 g" },
+              { "name": "Plum preserves", "amount": "25 g" },
+              { "name": "Tomato ketchup", "amount": "20 g" },
+              { "name": "Onion", "amount": "40 g" },
+              { "name": "Butter", "amount": "8 g" },
+              { "name": "Peach in syrup", "amount": "25 g" },
+              { "name": "Honey", "amount": "1 tsp" },
+              { "name": "Rapeseed oil", "amount": "1 tbsp" },
+              { "name": "Apple cider vinegar", "amount": "1 tsp" },
+              { "name": "Lemon juice", "amount": "1 tsp" }
+            ],
+            "suggestedTime": "13:00"
+          },
+          {
+            "id": "meal_soba_duck_blackbean",
+            "title": "Soba Noodles",
+            "subtitle": "Fusion-style noodle bowl with duck and Mediterranean accents",
+            "imageName": "meal-soba-duck",
+            "type": "highProtein",
+            "calories": 620,
+            "protein": 40,
+            "carbs": 54,
+            "fats": 25,
+            "benefits": [
+              "High protein",
+              "Rich in fiber",
+              "Balanced Asian-inspired meal"
+            ],
+            "ingredients": [
+              { "name": "Buckwheat soba noodles", "amount": "80 g" },
+              { "name": "Skinless duck breast", "amount": "150 g" },
+              { "name": "Broccoli", "amount": "100 g" },
+              { "name": "Black beans", "amount": "80 g" },
+              { "name": "Tomatoes", "amount": "80 g" },
+              { "name": "Tomato pulp", "amount": "100 g" },
+              { "name": "Feta cheese", "amount": "35 g" },
+              { "name": "Olive oil", "amount": "1 tbsp" },
+              { "name": "Rapeseed oil", "amount": "1 tsp" },
+              { "name": "Onion", "amount": "30 g" },
+              { "name": "Garlic", "amount": "1 clove" },
+              { "name": "Gluten-free soy sauce", "amount": "1 tbsp" },
+              { "name": "Dried basil", "amount": "1 tsp" }
+            ],
+            "suggestedTime": "14:00"
+          }
+]
