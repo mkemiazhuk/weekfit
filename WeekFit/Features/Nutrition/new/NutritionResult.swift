@@ -33,6 +33,7 @@ struct NutritionGoals {
     var protein: Double
     var carbs: Double
     var fats: Double
+    var fiber: Double
     var waterLiters: Double
 }
 
@@ -40,6 +41,7 @@ struct DailyNutritionMetrics {
     var protein: Double
     var carbs: Double
     var fats: Double
+    var fiber: Double
     var calories: Double
     var waterLiters: Double
     var activeCalories: Double

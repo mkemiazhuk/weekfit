@@ -12,11 +12,12 @@ struct WeekFitApp: App {
 
     @StateObject private var appSession = AppSessionState()
     @StateObject private var healthManager = HealthManager()
-    @StateObject private var nutritionViewModel = NutritionViewModel() // Наш синглтон
+    @StateObject private var nutritionViewModel = NutritionViewModel()
+    @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
 
     @State private var backgroundEnteredAt: Date?
 
-    private let refreshThreshold: TimeInterval = 10 * 60
+    private let refreshThreshold: TimeInterval = 4 * 60
 
     init() {
         UNUserNotificationCenter.current().delegate =
@@ -28,29 +29,41 @@ struct WeekFitApp: App {
             ContentView()
                 .environmentObject(appSession)
                 .environmentObject(healthManager)
-                // ИСПРАВЛЕНО: Теперь вью-модель проброшена в самый корень дерева View!
                 .environmentObject(nutritionViewModel)
+                .environmentObject(activityCoordinator)
+                .onAppear {
+                    activityCoordinator.start()
+                }
+                .onChange(of: scenePhase) {
+                    handleScenePhaseChange()
+                }
         }
         .modelContainer(for: PlannedActivity.self)
-        .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .background:
-                backgroundEnteredAt = Date()
+    }
 
-            case .active:
-                let shouldReset =
-                    backgroundEnteredAt.map {
-                        Date().timeIntervalSince($0) > refreshThreshold ||
-                        !Calendar.current.isDate($0, inSameDayAs: Date())
-                    } ?? false
+    private func handleScenePhaseChange() {
+        switch scenePhase {
 
-                if shouldReset {
-                    appSession.triggerReturnToToday()
-                }
+        case .background:
+            backgroundEnteredAt = Date()
 
-            default:
-                break
+        case .active:
+            activityCoordinator.refresh()
+
+            let shouldReset =
+                backgroundEnteredAt.map {
+                    Date().timeIntervalSince($0) > refreshThreshold ||
+                    !Calendar.current.isDate($0, inSameDayAs: Date())
+                } ?? false
+
+            if shouldReset {
+                appSession.triggerReturnToToday()
             }
+
+            backgroundEnteredAt = nil
+
+        default:
+            break
         }
     }
 }

@@ -2,6 +2,92 @@ import Foundation
 import HealthKit
 internal import Combine
 
+struct ActivityMetricsSnapshot: Hashable {
+    let activeCalories: Double
+    let steps: Int
+    let exerciseMinutes: Int
+
+    let sleepMinutes: Int
+    let timeInBedMinutes: Int
+    let awakeMinutes: Int
+    let awakeningsCount: Int
+
+    let distanceKm: Double
+    let standHours: Int
+    let vo2Max: Double
+
+    let deepSleepMinutes: Int
+    let remSleepMinutes: Int
+    let coreSleepMinutes: Int
+
+    let restingHeartRate: Double
+    let hrvSDNN: Double
+
+    var sleepHours: Double {
+        Double(sleepMinutes) / 60.0
+    }
+
+    var recoveryBreakdown: RecoveryScoreBreakdown {
+        RecoveryScoreEngine.calculate(
+            sleepMinutes: sleepMinutes,
+            timeInBedMinutes: timeInBedMinutes,
+            awakeMinutes: awakeMinutes,
+            awakeningsCount: awakeningsCount,
+            deepSleepMinutes: deepSleepMinutes,
+            remSleepMinutes: remSleepMinutes,
+            hrvSDNN: hrvSDNN,
+            restingHeartRate: restingHeartRate
+        )
+    }
+
+    var recoveryPercent: Int {
+        recoveryBreakdown.total
+    }
+
+    static let empty = ActivityMetricsSnapshot(
+        activeCalories: 0,
+        steps: 0,
+        exerciseMinutes: 0,
+        sleepMinutes: 0,
+        timeInBedMinutes: 0,
+        awakeMinutes: 0,
+        awakeningsCount: 0,
+        distanceKm: 0,
+        standHours: 0,
+        vo2Max: 0,
+        deepSleepMinutes: 0,
+        remSleepMinutes: 0,
+        coreSleepMinutes: 0,
+        restingHeartRate: 0,
+        hrvSDNN: 0
+    )
+}
+
+
+struct RecoverySleepSnapshot: Hashable {
+    let sleepMinutes: Int
+    let timeInBedMinutes: Int
+    let awakeMinutes: Int
+    let awakeningsCount: Int
+    let deepSleepMinutes: Int
+    let remSleepMinutes: Int
+    let coreSleepMinutes: Int
+    let bedStart: Date?
+    let wakeTime: Date?
+
+    static let empty = RecoverySleepSnapshot(
+        sleepMinutes: 0,
+        timeInBedMinutes: 0,
+        awakeMinutes: 0,
+        awakeningsCount: 0,
+        deepSleepMinutes: 0,
+        remSleepMinutes: 0,
+        coreSleepMinutes: 0,
+        bedStart: nil,
+        wakeTime: nil
+    )
+}
+
 @MainActor
 final class HealthManager: ObservableObject {
 
@@ -11,12 +97,18 @@ final class HealthManager: ObservableObject {
     @Published var steps: Int = 0
     @Published var exerciseMinutes: Int = 0
     @Published var sleepMinutes: Int = 0
+    @Published var distanceKm: Double = 0
     
     @Published var standHours: Int = 0
     @Published var cardioFitnessVO2: Double = 0
 
     @Published var deepSleepMinutes: Int = 0
     @Published var remSleepMinutes: Int = 0
+    @Published var coreSleepMinutes: Int = 0
+    @Published var timeInBedMinutes: Int = 0
+    @Published var awakeMinutes: Int = 0
+    @Published var awakeningsCount: Int = 0
+    @Published var recoveryBreakdown: RecoveryScoreBreakdown = .empty
     @Published var restingHeartRate: Double = 0
     @Published var hrvSDNN: Double = 0
 
@@ -29,6 +121,7 @@ final class HealthManager: ObservableObject {
     @Published var protein: Double = 0
     @Published var carbs: Double = 0
     @Published var fats: Double = 0
+    @Published var fiber: Double = 0
     @Published var calories: Double = 0
     @Published var waterLiters: Double = 0
     @Published var sleepHours: Double = 0
@@ -37,10 +130,85 @@ final class HealthManager: ObservableObject {
     @Published var heightCm: Double = 0
     @Published var age: Int = 0
     @Published var biologicalSex: BiologicalSex = .unknown
+    
+    @Published var isRecoveryLoading: Bool = false
 
     private let healthStore = HKHealthStore()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
+    
+    
+    func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
+        max(
+            ActivityGoalEngine.calculate(
+                weightKg: weight,
+                heightCm: heightCm,
+                age: age,
+                sex: biologicalSex,
+                recoveryPercent: metrics.recoveryPercent,
+                sleepHours: metrics.sleepHours,
+                vo2Max: metrics.vo2Max
+            ),
+            1
+        )
+    }
+    
+    func readActivityMetrics(for date: Date) async -> ActivityMetricsSnapshot {
+        guard isHealthAccessRequested else {
+            return .empty
+        }
 
+        async let calories = readDaySum(.activeEnergyBurned, unit: .kilocalorie(), for: date)
+        async let stepsCount = readDaySum(.stepCount, unit: .count(), for: date)
+        async let distanceMeters = readDaySum(.distanceWalkingRunning, unit: .meter(), for: date)
+        async let exercise = readDaySum(.appleExerciseTime, unit: .minute(), for: date)
+        async let sleepSnapshot = readRecoverySleepSnapshot(for: date)
+        async let stand = readStandHours(for: date)
+        async let vo2 = readLatestQuantity(.vo2Max, unit: HKUnit(from: "ml/kg*min"))
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
+
+        async let hrv = readLatestQuantity(
+            .heartRateVariabilitySDNN,
+            unit: .secondUnit(with: .milli),
+            start: sleepStart,
+            end: sleepEnd
+        )
+
+        async let rhr = readLatestQuantity(
+            .restingHeartRate,
+            unit: .count().unitDivided(by: .minute()),
+            start: sleepStart,
+            end: sleepEnd
+        )
+
+        let loadedSleepSnapshot = await sleepSnapshot
+
+        return ActivityMetricsSnapshot(
+            activeCalories: await calories,
+            steps: Int(await stepsCount),
+            exerciseMinutes: Int(await exercise),
+
+            sleepMinutes: loadedSleepSnapshot.sleepMinutes,
+            timeInBedMinutes: loadedSleepSnapshot.timeInBedMinutes,
+            awakeMinutes: loadedSleepSnapshot.awakeMinutes,
+            awakeningsCount: loadedSleepSnapshot.awakeningsCount,
+
+            distanceKm: await distanceMeters / 1000.0,
+            standHours: await stand,
+            vo2Max: await vo2,
+
+            deepSleepMinutes: loadedSleepSnapshot.deepSleepMinutes,
+            remSleepMinutes: loadedSleepSnapshot.remSleepMinutes,
+            coreSleepMinutes: loadedSleepSnapshot.coreSleepMinutes,
+
+            restingHeartRate: await rhr,
+            hrvSDNN: await hrv
+        )
+    }
+    
     var isHealthAccessRequested: Bool {
         UserDefaults.standard.bool(forKey: healthAccessRequestedKey)
     }
@@ -52,19 +220,19 @@ final class HealthManager: ObservableObject {
         guard HKHealthStore.isHealthDataAvailable() else {
             isHealthAccessGranted = false
             resetHealthDependentValues()
-            print("❌ Health data is not available")
+//            print("❌ Health data is not available")
             return
         }
 
         guard let readTypes = makeReadTypes() else {
             isHealthAccessGranted = false
             resetHealthDependentValues()
-            print("❌ Failed to create HealthKit types")
+//            print("❌ Failed to create HealthKit types")
             return
         }
 
         do {
-            print("🟡 Requesting HealthKit authorization...")
+//            print("🟡 Requesting HealthKit authorization...")
 
             try await healthStore.requestAuthorization(
                 toShare: [],
@@ -74,7 +242,7 @@ final class HealthManager: ObservableObject {
             UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
             isHealthAccessGranted = self.isAuthorized
 
-            print("✅ HealthKit authorization request completed. Granted: \(isHealthAccessGranted)")
+//            print("✅ HealthKit authorization request completed. Granted: \(isHealthAccessGranted)")
 
             try? await Task.sleep(nanoseconds: 800_000_000)
 
@@ -91,7 +259,7 @@ final class HealthManager: ObservableObject {
         } catch {
             isHealthAccessGranted = false
             resetHealthDependentValues()
-            print("❌ HealthKit authorization failed:", error.localizedDescription)
+//            print("❌ HealthKit authorization failed:", error.localizedDescription)
         }
     }
     
@@ -160,12 +328,14 @@ final class HealthManager: ObservableObject {
         guard
             let activeCalories = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
             let steps = HKObjectType.quantityType(forIdentifier: .stepCount),
+            let distance = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning),
             let exercise = HKObjectType.quantityType(forIdentifier: .appleExerciseTime),
             let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate),
             let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis),
             let protein = HKObjectType.quantityType(forIdentifier: .dietaryProtein),
             let carbs = HKObjectType.quantityType(forIdentifier: .dietaryCarbohydrates),
             let fats = HKObjectType.quantityType(forIdentifier: .dietaryFatTotal),
+            let dietaryFiber = HKObjectType.quantityType(forIdentifier: .dietaryFiber),
             let foodCalories = HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed),
             let water = HKObjectType.quantityType(forIdentifier: .dietaryWater),
             let weight = HKObjectType.quantityType(forIdentifier: .bodyMass),
@@ -183,8 +353,8 @@ final class HealthManager: ObservableObject {
         let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth)
 
         var types: Set<HKObjectType> = [
-            activeCalories, steps, exercise, heartRate, sleep,
-            protein, carbs, fats, foodCalories, water, weight, height,
+            activeCalories, steps, distance, exercise, heartRate, sleep,
+            protein, carbs, fats, dietaryFiber, foodCalories, water, weight, height,
             hrv, restingHR, stand, vo2Max,
             HKObjectType.workoutType()
         ]
@@ -208,74 +378,57 @@ final class HealthManager: ObservableObject {
         let loadedHeight = await heightMeters * 100
         let loadedWeight = await weightKg
 
-        heightCm = loadedHeight > 0 ? loadedHeight : 178.0 // Справедливый базовый фолбэк вместо 0
-        weight = loadedWeight > 0 ? loadedWeight : 75.0
+        heightCm = loadedHeight
+        weight = loadedWeight
         age = readAge()
         biologicalSex = readBiologicalSex()
     }
 
-    // MARK: - Исправленный метод в HealthManager.swift
-    // MARK: - Исправленный метод в HealthManager.swift
     func loadHeaderMetrics(for date: Date = Date()) async {
         guard isHealthAccessGranted else {
             resetHeaderValues()
             return
         }
 
-        // Асинхронно читаем чистые данные из HealthKit
         async let calories = readDaySum(.activeEnergyBurned, unit: .kilocalorie(), for: date)
         async let stepsCount = readDaySum(.stepCount, unit: .count(), for: date)
+        async let distanceMeters = readDaySum(.distanceWalkingRunning, unit: .meter(), for: date)
         async let exercise = readDaySum(.appleExerciseTime, unit: .minute(), for: date)
-        async let sleep = readSleepMinutes(for: date)
-        
+        async let sleepSnapshot = readRecoverySleepSnapshot(for: date)
         async let stand = readStandHours(for: date)
         async let vo2 = readLatestQuantity(.vo2Max, unit: HKUnit(from: "ml/kg*min"))
 
-        // Получаем чистые значения из асинхронного контекста
         let hkCalories = await calories
         let hkSteps = Int(await stepsCount)
+        let hkDistanceKm = await distanceMeters / 1000.0
         let hkExercise = Int(await exercise)
-        let hkSleep = await sleep
+        let loadedSleepSnapshot = await sleepSnapshot
         let hkStand = await stand
         let hkVo2 = await vo2
 
-        // ПРИНУДИТЕЛЬНО И ОБЯЗАТЕЛЬНО присваиваем на MainActor, чтобы SwiftUI зафиксировал изменения
         self.activeCalories = hkCalories
         self.steps = hkSteps
+        self.distanceKm = hkDistanceKm
         self.exerciseMinutes = hkExercise
-        self.sleepMinutes = hkSleep
-        self.standHours = hkStand // <-- Теперь это значение железно долетит до интерфейса!
-        
+
+        self.sleepMinutes = loadedSleepSnapshot.sleepMinutes
+        self.timeInBedMinutes = loadedSleepSnapshot.timeInBedMinutes
+        self.awakeMinutes = loadedSleepSnapshot.awakeMinutes
+        self.awakeningsCount = loadedSleepSnapshot.awakeningsCount
+        self.deepSleepMinutes = loadedSleepSnapshot.deepSleepMinutes
+        self.remSleepMinutes = loadedSleepSnapshot.remSleepMinutes
+        self.coreSleepMinutes = loadedSleepSnapshot.coreSleepMinutes
+
+        self.standHours = hkStand
         self.sleepHours = Double(self.sleepMinutes) / 60.0
-        self.cardioFitnessVO2 = hkVo2 > 0 ? hkVo2 : 48.5
+        self.cardioFitnessVO2 = hkVo2
+        
+        self.isRecoveryLoading = true
+        defer { self.isRecoveryLoading = false }
 
-        calculateHeaderMetrics()
         await loadPremiumRecoveryMetrics(for: date)
+        calculateHeaderMetrics()
     }
-
-//    func loadPremiumRecoveryMetrics(for date: Date) async {
-//        guard isHealthAccessGranted else { return }
-//        
-//        let hrv = await readLatestQuantity(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli))
-//        let rhr = await readLatestQuantity(.restingHeartRate, unit: .count().unitDivided(by: .minute()))
-//        let sleepDetails = await readSleepPhases(for: date)
-//        
-//        let isTargetToday = Calendar.current.isDateInToday(date)
-//        let currentHour = Calendar.current.component(.hour, from: Date())
-//        let isEarlyNightTime = currentHour >= 0 && currentHour < 5
-//
-//        self.hrvSDNN = hrv > 0 ? hrv : 64.0
-//        self.restingHeartRate = rhr > 0 ? rhr : 56.0
-//
-//        // ИСПРАВЛЕНО: Защита фаз глубокого сна от ложных дневных заглушек ночью
-//        if isTargetToday && isEarlyNightTime {
-//            self.deepSleepMinutes = sleepDetails.deep
-//            self.remSleepMinutes = sleepDetails.rem
-//        } else {
-//            self.deepSleepMinutes = sleepDetails.deep > 0 ? sleepDetails.deep : 112
-//            self.remSleepMinutes = sleepDetails.rem > 0 ? sleepDetails.rem : 95
-//        }
-//    }
     
     // Внутри HealthManager.swift — замени старое свойство на этот метод:
     func checkReadAuthorizationStatus() async -> Bool {
@@ -308,6 +461,7 @@ final class HealthManager: ObservableObject {
             protein = fallback.protein
             carbs = fallback.carbs
             fats = fallback.fats
+            fiber = fallback.fiber
             calories = fallback.calories
             waterLiters = plannedWaterIntake(from: plannedActivities, for: date)
             sleepHours = 0
@@ -317,27 +471,31 @@ final class HealthManager: ObservableObject {
         async let healthProtein = readDaySum(.dietaryProtein, unit: .gram(), for: date)
         async let healthCarbs = readDaySum(.dietaryCarbohydrates, unit: .gram(), for: date)
         async let healthFats = readDaySum(.dietaryFatTotal, unit: .gram(), for: date)
+        async let healthFiber = readDaySum(.dietaryFiber, unit: .gram(), for: date)
         async let healthCalories = readDaySum(.dietaryEnergyConsumed, unit: .kilocalorie(), for: date)
         async let healthWaterMl = readDaySum(.dietaryWater, unit: .literUnit(with: .milli), for: date)
 
         let hkProtein = await healthProtein
         let hkCarbs = await healthCarbs
         let hkFats = await healthFats
+        let hkFiber = await healthFiber
         let hkCalories = await healthCalories
         let hkWaterLiters = await healthWaterMl / 1000.0
 
-        let hasHealthFood = hkProtein > 0 || hkCarbs > 0 || hkFats > 0 || hkCalories > 0
+        let hasHealthFood = hkProtein > 0 || hkCarbs > 0 || hkFats > 0 || hkFiber > 0 || hkCalories > 0
 
         if hasHealthFood {
             protein = hkProtein
             carbs = hkCarbs
             fats = hkFats
+            fiber = hkFiber
             calories = hkCalories
         } else {
             let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
             protein = fallback.protein
             carbs = fallback.carbs
             fats = fallback.fats
+            fiber = fallback.fiber
             calories = fallback.calories
         }
 
@@ -346,32 +504,43 @@ final class HealthManager: ObservableObject {
         sleepHours = Double(sleepMinutes) / 60.0
     }
 
-    // MARK: - Продвинутая загрузка фаз сна и стресса
+    // MARK: - Recovery HRV / RHR
     func loadPremiumRecoveryMetrics(for date: Date) async {
         guard isHealthAccessGranted else { return }
-        
-        let hrv = await readLatestQuantity(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli))
-        let rhr = await readLatestQuantity(.restingHeartRate, unit: .count().unitDivided(by: .minute()))
-        let sleepDetails = await readSleepPhases(for: date)
-        
-        let isTargetToday = Calendar.current.isDateInToday(date)
-        let currentHour = Calendar.current.component(.hour, from: Date())
-        
-        // 🌙 ИСПРАВЛЕНО: Безопасное циркадное окно с 00:00 до 05:00 утра
-        let isEarlyNightTime = currentHour >= 0 && currentHour < 5
 
-        self.hrvSDNN = hrv > 0 ? hrv : 64.0
-        self.restingHeartRate = rhr > 0 ? rhr : 56.0
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
 
-        if isTargetToday && isEarlyNightTime {
-            // Глубокой ночью отдаем только честный, "живой" HealthKit (нули, пока юзер спит)
-            self.deepSleepMinutes = sleepDetails.deep
-            self.remSleepMinutes = sleepDetails.rem
-        } else {
-            // Красивые симуляционные заглушки включаются строго в дневное время
-            self.deepSleepMinutes = sleepDetails.deep > 0 ? sleepDetails.deep : 112
-            self.remSleepMinutes = sleepDetails.rem > 0 ? sleepDetails.rem : 95
-        }
+        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
+
+        async let hrv = readLatestQuantity(
+            .heartRateVariabilitySDNN,
+            unit: .secondUnit(with: .milli),
+            start: sleepStart,
+            end: sleepEnd
+        )
+
+        async let rhr = readLatestQuantity(
+            .restingHeartRate,
+            unit: .count().unitDivided(by: .minute()),
+            start: sleepStart,
+            end: sleepEnd
+        )
+
+        self.hrvSDNN = await hrv
+        self.restingHeartRate = await rhr
+
+        self.recoveryBreakdown = RecoveryScoreEngine.calculate(
+            sleepMinutes: self.sleepMinutes,
+            timeInBedMinutes: self.timeInBedMinutes,
+            awakeMinutes: self.awakeMinutes,
+            awakeningsCount: self.awakeningsCount,
+            deepSleepMinutes: self.deepSleepMinutes,
+            remSleepMinutes: self.remSleepMinutes,
+            hrvSDNN: self.hrvSDNN,
+            restingHeartRate: self.restingHeartRate
+        )
     }
 
     private func readStandHours(for date: Date) async -> Int {
@@ -415,38 +584,73 @@ final class HealthManager: ObservableObject {
     }
 
     private func readSleepPhases(for date: Date) async -> (deep: Int, rem: Int) {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return (0, 0) }
-        
+
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
+            return (0, 0)
+        }
+
         let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: date)
-        
-        // ИСПРАВЛЕНО: Отрезаем вчерашний день. Ищем строго внутри текущих суток (от 00:00 до 12:00 дня)!
+
+        let sleepStart =
+            calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+
+        let sleepEnd =
+            calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart
+
         let predicate = HKQuery.predicateForSamples(
-            withStart: dayStart,
-            end: calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart,
-            options: .strictStartDate
+            withStart: sleepStart,
+            end: sleepEnd,
+            options: []
         )
-        
+
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+
                 let sleepSamples = samples as? [HKCategorySample] ?? []
+
+                let appleSamples = sleepSamples.filter {
+                    $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
+                }
+
                 var deepMin = 0
                 var remMin = 0
-                
-                for sample in sleepSamples {
-                    let minutes = Int(sample.endDate.timeIntervalSince(sample.startDate) / 60)
-                    if sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue {
+
+                for sample in appleSamples {
+
+                    let minutes = Int(
+                        sample.endDate.timeIntervalSince(sample.startDate) / 60
+                    )
+
+                    switch sample.value {
+
+                    case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
                         deepMin += minutes
-                    } else if sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue {
+
+                    case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
                         remMin += minutes
+
+                    default:
+                        break
                     }
                 }
-                continuation.resume(returning: (deepMin, remMin))
+
+                continuation.resume(returning: (
+                    deep: deepMin,
+                    rem: remMin
+                ))
             }
+
             self.healthStore.execute(query)
         }
     }
-
+    
     private func resetHealthDependentValues() {
         resetProfileValues()
         resetHeaderValues()
@@ -454,6 +658,7 @@ final class HealthManager: ObservableObject {
         protein = 0
         carbs = 0
         fats = 0
+        fiber = 0
         calories = 0
         waterLiters = 0
         sleepHours = 0
@@ -469,6 +674,7 @@ final class HealthManager: ObservableObject {
     private func resetHeaderValues() {
         activeCalories = 0
         steps = 0
+        distanceKm = 0
         exerciseMinutes = 0
         sleepMinutes = 0
         sleepHours = 0
@@ -478,6 +684,11 @@ final class HealthManager: ObservableObject {
 
         deepSleepMinutes = 0
         remSleepMinutes = 0
+        coreSleepMinutes = 0
+        timeInBedMinutes = 0
+        awakeMinutes = 0
+        awakeningsCount = 0
+        recoveryBreakdown = .empty
         restingHeartRate = 0
         hrvSDNN = 0
 
@@ -513,21 +724,50 @@ final class HealthManager: ObservableObject {
 
     private func readLatestQuantity(
         _ identifier: HKQuantityTypeIdentifier,
-        unit: HKUnit
+        unit: HKUnit,
+        start: Date? = nil,
+        end: Date? = nil
     ) async -> Double {
-        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return 0 }
-        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else {
+            return 0
+        }
+
+        let predicate: NSPredicate?
+
+        if let start, let end {
+            predicate = HKQuery.predicateForSamples(
+                withStart: start,
+                end: end,
+                options: []
+            )
+        } else {
+            predicate = nil
+        }
+
+        let sort = NSSortDescriptor(
+            key: HKSampleSortIdentifierEndDate,
+            ascending: false
+        )
 
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: [sort]) { _, samples, error in
-                if error != nil {
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: [sort]
+            ) { _, samples, error in
+
+                guard error == nil else {
                     continuation.resume(returning: 0)
                     return
                 }
+
                 let sample = samples?.first as? HKQuantitySample
                 let value = sample?.quantity.doubleValue(for: unit) ?? 0
+
                 continuation.resume(returning: value)
             }
+
             self.healthStore.execute(query)
         }
     }
@@ -558,40 +798,261 @@ final class HealthManager: ObservableObject {
         }
     }
 
-    private func readSleepMinutes(for date: Date) async -> Int {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return 0 }
+    private func readRecoverySleepSnapshot(for date: Date) async -> RecoverySleepSnapshot {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
+            return .empty
+        }
 
         let calendar = Calendar.current
         let dayStart = calendar.startOfDay(for: date)
-        
-        // ИСПРАВЛЕНО: Изменили границы поиска общего сна, убрав жесткий сдвиг на прошлые сутки!
-        let sleepStart = dayStart
-        let sleepEnd = calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart
+        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
 
-        let predicate = HKQuery.predicateForSamples(withStart: sleepStart, end: sleepEnd, options: .strictStartDate)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: sleepStart,
+            end: sleepEnd,
+            options: []
+        )
+
+        let sort = NSSortDescriptor(
+            key: HKSampleSortIdentifierStartDate,
+            ascending: true
+        )
 
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
-                if error != nil {
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, error in
+                guard error == nil else {
+                    continuation.resume(returning: .empty)
+                    return
+                }
+
+                let allSamples = samples as? [HKCategorySample] ?? []
+                let appleSamples = allSamples.filter {
+                    $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
+                }
+
+                let inBedSamples = appleSamples.filter {
+                    $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue
+                }
+
+                let awakeSamples = appleSamples.filter {
+                    $0.value == HKCategoryValueSleepAnalysis.awake.rawValue
+                }
+
+                let asleepSamples = appleSamples.filter {
+                    Self.isAnyAsleepValue($0.value)
+                }
+
+                let deepSamples = appleSamples.filter {
+                    if #available(iOS 16.0, *) {
+                        return $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue
+                    }
+                    return false
+                }
+
+                let remSamples = appleSamples.filter {
+                    if #available(iOS 16.0, *) {
+                        return $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                    }
+                    return false
+                }
+
+                let coreSamples = appleSamples.filter {
+                    if #available(iOS 16.0, *) {
+                        return $0.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue
+                    }
+                    return false
+                }
+
+                guard let session = Self.primarySleepSession(
+                    inBedSamples: inBedSamples,
+                    asleepSamples: asleepSamples
+                ) else {
+                    continuation.resume(returning: .empty)
+                    return
+                }
+
+                let sessionStart = session.start
+                let sessionEnd = session.end
+
+                let filteredAsleep = Self.overlappingSamples(asleepSamples, start: sessionStart, end: sessionEnd)
+                let filteredAwake = Self.overlappingSamples(awakeSamples, start: sessionStart, end: sessionEnd)
+                let filteredDeep = Self.overlappingSamples(deepSamples, start: sessionStart, end: sessionEnd)
+                let filteredREM = Self.overlappingSamples(remSamples, start: sessionStart, end: sessionEnd)
+                let filteredCore = Self.overlappingSamples(coreSamples, start: sessionStart, end: sessionEnd)
+
+                let timeInBed = Int(sessionEnd.timeIntervalSince(sessionStart) / 60)
+
+                let deep = Self.clippedMinutes(filteredDeep, start: sessionStart, end: sessionEnd)
+                let rem = Self.clippedMinutes(filteredREM, start: sessionStart, end: sessionEnd)
+                let core = Self.clippedMinutes(filteredCore, start: sessionStart, end: sessionEnd)
+
+                let stagedAsleep = deep + rem + core
+                let rawAsleep = Self.clippedMinutes(filteredAsleep, start: sessionStart, end: sessionEnd)
+                let sleepMinutes = min(stagedAsleep > 0 ? stagedAsleep : rawAsleep, timeInBed)
+
+                let rawAwake = Self.clippedMinutes(filteredAwake, start: sessionStart, end: sessionEnd)
+                let awakeMinutes = min(max(rawAwake, timeInBed - sleepMinutes), timeInBed)
+
+                continuation.resume(
+                    returning: RecoverySleepSnapshot(
+                        sleepMinutes: sleepMinutes,
+                        timeInBedMinutes: timeInBed,
+                        awakeMinutes: awakeMinutes,
+                        awakeningsCount: filteredAwake.count,
+                        deepSleepMinutes: deep,
+                        remSleepMinutes: rem,
+                        coreSleepMinutes: core,
+                        bedStart: sessionStart,
+                        wakeTime: sessionEnd
+                    )
+                )
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private static func isAnyAsleepValue(_ value: Int) -> Bool {
+        if value == HKCategoryValueSleepAnalysis.asleep.rawValue {
+            return true
+        }
+
+        if #available(iOS 16.0, *) {
+            return value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                || value == HKCategoryValueSleepAnalysis.asleepCore.rawValue
+                || value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue
+                || value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
+        }
+
+        return false
+    }
+
+    private static func primarySleepSession(
+        inBedSamples: [HKCategorySample],
+        asleepSamples: [HKCategorySample]
+    ) -> DateInterval? {
+        let source = !inBedSamples.isEmpty ? inBedSamples : asleepSamples
+        guard !source.isEmpty else { return nil }
+
+        let sorted = source.sorted { $0.startDate < $1.startDate }
+        var sessions: [DateInterval] = []
+
+        for sample in sorted {
+            let interval = DateInterval(start: sample.startDate, end: sample.endDate)
+
+            guard let last = sessions.last else {
+                sessions.append(interval)
+                continue
+            }
+
+            let gap = interval.start.timeIntervalSince(last.end)
+
+            if gap <= 90 * 60 {
+                sessions.removeLast()
+                sessions.append(
+                    DateInterval(
+                        start: min(last.start, interval.start),
+                        end: max(last.end, interval.end)
+                    )
+                )
+            } else {
+                sessions.append(interval)
+            }
+        }
+
+        return sessions.max { $0.duration < $1.duration }
+    }
+
+    private static func overlappingSamples(
+        _ samples: [HKCategorySample],
+        start: Date,
+        end: Date
+    ) -> [HKCategorySample] {
+        samples.filter { $0.startDate < end && $0.endDate > start }
+    }
+
+    private static func clippedMinutes(
+        _ samples: [HKCategorySample],
+        start: Date,
+        end: Date
+    ) -> Int {
+        let seconds = samples.reduce(0.0) { result, sample in
+            let clippedStart = max(sample.startDate, start)
+            let clippedEnd = min(sample.endDate, end)
+
+            guard clippedEnd > clippedStart else { return result }
+            return result + clippedEnd.timeIntervalSince(clippedStart)
+        }
+
+        return Int(seconds / 60)
+    }
+
+    private func readSleepMinutes(for date: Date) async -> Int {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
+            return 0
+        }
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+
+        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+        let sleepEnd = calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: sleepStart,
+            end: sleepEnd,
+            options: []
+        )
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+
+                guard error == nil else {
                     continuation.resume(returning: 0)
                     return
                 }
 
                 let sleepSamples = samples as? [HKCategorySample] ?? []
-                let asleepSamples = sleepSamples.filter { sample in
-                    let value = sample.value
-                    return value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue ||
-                           value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
-                           value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
-                           value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
-                }
 
-                let intervals = asleepSamples.map { ($0.startDate, $0.endDate) }.sorted { $0.0 < $1.0 }
+                let appleAsleepSamples = sleepSamples
+                    .filter { sample in
+                        sample.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
+                    }
+                    .filter { sample in
+                        switch sample.value {
+                        case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                             HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                             HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                             HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+                            return true
+                        default:
+                            return false
+                        }
+                    }
+
+                let intervals = appleAsleepSamples
+                    .map { ($0.startDate, $0.endDate) }
+                    .sorted { $0.0 < $1.0 }
+
                 var mergedIntervals: [(Date, Date)] = []
 
                 for interval in intervals {
                     if let last = mergedIntervals.last, interval.0 <= last.1 {
-                        mergedIntervals[mergedIntervals.count - 1] = (last.0, max(last.1, interval.1))
+                        mergedIntervals[mergedIntervals.count - 1] = (
+                            last.0,
+                            max(last.1, interval.1)
+                        )
                     } else {
                         mergedIntervals.append(interval)
                     }
@@ -600,8 +1061,10 @@ final class HealthManager: ObservableObject {
                 let totalSeconds = mergedIntervals.reduce(0.0) { total, interval in
                     total + interval.1.timeIntervalSince(interval.0)
                 }
+
                 continuation.resume(returning: Int(totalSeconds / 60))
             }
+
             self.healthStore.execute(query)
         }
     }
@@ -622,6 +1085,7 @@ final class HealthManager: ObservableObject {
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
         var totalFats: Double = 0
+        var totalFiber: Double = 0
         var totalCalories: Double = 0
 
         for activity in completedMealActivities {
@@ -629,17 +1093,19 @@ final class HealthManager: ObservableObject {
                 totalProtein += Double(matchedMeal.protein)
                 totalCarbs += Double(matchedMeal.carbs)
                 totalFats += Double(matchedMeal.fats)
+                totalFiber += Double(matchedMeal.fiber)
                 totalCalories += Double(matchedMeal.calories)
             } else {
                 totalProtein += Double(activity.protein)
                 totalCarbs += Double(activity.carbs)
                 totalFats += Double(activity.fats)
+                totalFiber += Double(activity.fiber)
                 totalCalories += Double(activity.calories)
             }
         }
 
         return DailyNutritionMetrics(
-            protein: totalProtein, carbs: totalCarbs, fats: totalFats, calories: totalCalories,
+            protein: totalProtein, carbs: totalCarbs, fats: totalFats, fiber: totalFiber, calories: totalCalories,
             waterLiters: 0, activeCalories: activeCalories, sleepHours: Double(sleepMinutes) / 60.0, weightKg: weight
         )
     }
@@ -699,67 +1165,52 @@ final class HealthManager: ObservableObject {
 
     private func calculateHeaderMetrics() {
         let sleepHours = Double(sleepMinutes) / 60.0
-        let readyFromSleep: Double
 
         if sleepMinutes == 0 {
-            readyFromSleep = 0.0
+            readyScore = 0.0
         } else if sleepHours < 4.0 {
-            readyFromSleep = 3.0
+            readyScore = 3.0
         } else if sleepHours < 5.0 {
-            readyFromSleep = 4.5
+            readyScore = 4.5
         } else if sleepHours < 6.0 {
-            readyFromSleep = 5.8
+            readyScore = 5.8
         } else if sleepHours < 7.0 {
-            readyFromSleep = 6.8
+            readyScore = 6.8
         } else if sleepHours < 8.0 {
-            readyFromSleep = 8.0
+            readyScore = 8.0
         } else {
-            readyFromSleep = 9.0
+            readyScore = 9.0
         }
 
-        readyScore = (readyFromSleep * 10.0).rounded() / 10.0
+        energyStatus = {
+            if readyScore >= 8.0 { return "High" }
+            if readyScore >= 6.5 { return "Good" }
+            if readyScore >= 4.5 { return "Low" }
+            if readyScore > 0 { return "Rest" }
+            return "—"
+        }()
 
-        if readyScore >= 8.0 {
-            energyStatus = "High"
-        } else if readyScore >= 6.5 {
-            energyStatus = "Good"
-        } else if readyScore >= 4.5 {
-            energyStatus = "Low"
-        } else {
-            energyStatus = "Rest"
-        }
+        sleepText = sleepMinutes > 0
+            ? "\(sleepMinutes / 60)h \(sleepMinutes % 60)m"
+            : "—"
 
-        // 🧠 УМНЫЙ АПГРЕЙД UX RECOVERY:
-        // Интегрируем вариабельность (hrvSDNN) и пульс покоя (restingHeartRate) для точной оценки готовности
-        if hrvSDNN > 75.0 && restingHeartRate < 60.0 {
-            // Идеальный баланс вегетативной системы (кейс с твоего скриншота!)
+        let recovery = recoveryPercent
+
+        if recovery >= 85 {
             recoveryStatus = "Ready"
-        } else if sleepHours >= 7.5 && hrvSDNN >= 50.0 {
-            recoveryStatus = "Optimal"
-        } else if sleepHours >= 6.0 && hrvSDNN >= 40.0 {
+        } else if recovery >= 70 {
+            recoveryStatus = "Good"
+        } else if recovery >= 50 {
             recoveryStatus = "Ok"
-        } else {
+        } else if recovery > 0 {
             recoveryStatus = "Need Rest"
-        }
-
-        if sleepMinutes > 0 {
-            sleepText = "\(sleepMinutes / 60)h \(sleepMinutes % 60)m"
         } else {
-            sleepText = "—"
+            recoveryStatus = "—"
         }
-
-        // 🎯 УБИРАЕМ КОНФЛИКТ: Статус должен хвалить пользователя, если кольцо заполнено на 92%!
-        let totalRecoveryPercentage = readyScore * 10.0 // переводим из шкалы 0-10 в 0-100%
-        
-        if totalRecoveryPercentage >= 85.0 || (hrvSDNN > 70.0 && restingHeartRate < 62.0) {
-            self.recoveryStatus = "Ready" // Для 92% теперь железно будет гореть Ready зеленого цвета!
-        } else if totalRecoveryPercentage >= 70.0 {
-            self.recoveryStatus = "Good"
-        } else if totalRecoveryPercentage >= 50.0 {
-            self.recoveryStatus = "Ok"
-        } else {
-            self.recoveryStatus = "Need Rest"
-        }
+    }
+    
+    var recoveryPercent: Int {
+        recoveryBreakdown.total
     }
     
     @MainActor
@@ -769,6 +1220,86 @@ final class HealthManager: ObservableObject {
     ) async {
         guard isHealthAccessRequested else { return }
         await loadHealthData(for: date, plannedActivities: plannedActivities)
+    }
+
+    func loadWorkoutSamples(for date: Date) async -> [HKWorkout] {
+        let workoutType = HKObjectType.workoutType()
+
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+
+        return await withCheckedContinuation { continuation in
+            let sort = NSSortDescriptor(
+                key: HKSampleSortIdentifierStartDate,
+                ascending: true
+            )
+
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, _ in
+                continuation.resume(returning: samples as? [HKWorkout] ?? [])
+            }
+
+            healthStore.execute(query)
+        }
+    }
+    
+    func loadHourlyActiveCalories(for date: Date) async -> [Double] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            return Array(repeating: 0, count: 24)
+        }
+
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.isDateInToday(date)
+            ? Date()
+            : (calendar.date(byAdding: .day, value: 1, to: start) ?? date)
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+
+        var interval = DateComponents()
+        interval.hour = 1
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum,
+                anchorDate: start,
+                intervalComponents: interval
+            )
+
+            query.initialResultsHandler = { _, collection, _ in
+                var values = Array(repeating: 0.0, count: 24)
+
+                collection?.enumerateStatistics(from: start, to: end) { statistics, _ in
+                    let hour = calendar.component(.hour, from: statistics.startDate)
+                    let value = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+
+                    if hour >= 0 && hour < 24 {
+                        values[hour] = value
+                    }
+                }
+
+                continuation.resume(returning: values)
+            }
+
+            healthStore.execute(query)
+        }
     }
 }
 

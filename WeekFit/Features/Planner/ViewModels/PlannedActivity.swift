@@ -5,6 +5,8 @@ import SwiftUI
 @Model
 final class PlannedActivity {
     @Attribute(.unique) var id: String
+    
+    var healthKitWorkoutUUID: String?
 
     var date: Date
     var type: String
@@ -21,12 +23,17 @@ final class PlannedActivity {
     var protein: Int = 0
     var carbs: Int = 0
     var fats: Int = 0
+    var fiber: Int = 0
 
     var isCompleted: Bool = false
     var isSkipped: Bool = false
+    var source: String = "planner"
+    
+    var actualDurationMinutes: Int?
 
     init(
         id: String = UUID().uuidString,
+        healthKitWorkoutUUID: String? = nil,
         date: Date,
         type: String,
         title: String,
@@ -40,10 +47,13 @@ final class PlannedActivity {
         protein: Int = 0,
         carbs: Int = 0,
         fats: Int = 0,
+        fiber: Int = 0,
         isCompleted: Bool = false,
-        isSkipped: Bool = false
+        isSkipped: Bool = false,
+        source: String = "planner"
     ) {
         self.id = id
+        self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.date = date
         self.type = type
         self.title = title
@@ -57,8 +67,10 @@ final class PlannedActivity {
         self.protein = protein
         self.carbs = carbs
         self.fats = fats
+        self.fiber = fiber
         self.isCompleted = isCompleted
         self.isSkipped = isSkipped
+        self.source = source
     }
 }
 
@@ -77,7 +89,17 @@ struct DisplayActivity: Identifiable {
     let color: Color
     let calories: Int
     let isWater: Bool
-    let totalWaterVolume: Double? // Для агрегированной воды
+    let totalWaterVolume: Double?
     let isCompleted: Bool
-    let originalActivities: [PlannedActivity] // Храним оригиналы на случай удаления
+    let originalActivities: [PlannedActivity]
+}
+
+extension PlannedActivity {
+    var effectiveDurationMinutes: Int {
+        if isCompleted, let actualDurationMinutes, actualDurationMinutes > 0 {
+            return actualDurationMinutes
+        }
+
+        return durationMinutes
+    }
 }

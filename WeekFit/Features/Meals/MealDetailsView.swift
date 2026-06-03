@@ -3,25 +3,26 @@ import SwiftData
 
 struct MealDetailsView: View {
 
-    let meal: Meals
-    
-    // MARK: - UX-Контексты детализации
+    @State var meal: Meals
+
+    // MARK: - UX contexts
     var isQuickLogMode: Bool = false
     var onMealLogged: (() -> Void)? = nil
+    var onMealUpdated: ((Meals) -> Void)? = nil
+    var onMealSavedAndClose: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    private let background = WeekFitTheme.background
-    private let cardBackground = WeekFitTheme.cardBackground
-    private let cardSecondary = WeekFitTheme.cardSecondary
-    private let elevatedCard = WeekFitTheme.elevatedCard
+    @State private var showMealBuilder = false
 
+    private let background = WeekFitTheme.backgroundColor
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
-    private let textTertiary = WeekFitTheme.tertiaryText
-
+    private let cardBackground = WeekFitTheme.cardBackground
+    private let elevatedCard = WeekFitTheme.elevatedCard
     private let softShadow = WeekFitTheme.cardShadow
+    private let accent = WeekFitTheme.meal
 
     private var automatedCurrentSlotTitle: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -33,80 +34,87 @@ struct MealDetailsView: View {
         }
     }
 
+    private var ingredientsSummary: String {
+        let names = meal.ingredients.map { $0.name }
+        guard !names.isEmpty else { return meal.subtitle }
+
+        if names.count <= 4 {
+            return names.joined(separator: " • ")
+        }
+
+        return names.prefix(3).joined(separator: " • ") + " +\(names.count - 3)"
+    }
+
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             background.ignoresSafeArea()
             ambientBackground
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    heroImage
+            VStack(spacing: 12) {
+                header
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
 
-                    VStack(alignment: .leading, spacing: 18) {
-                        titleBlock
-                        whyBlock
-                        benefitsBlock
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        mealPreviewCard
+
+                        nutritionSummary
+
                         ingredientsBlock
-                        stepsBlock
-                        actionButtons
+
+                        if !meal.generatedSteps.isEmpty {
+                            stepsBlock
+                        }
                     }
-                    .padding(20)
-                    .background {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        elevatedCard.opacity(0.96),
-                                        cardBackground.opacity(0.98)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.white.opacity(0.045), lineWidth: 1)
-                    }
-                    .shadow(color: softShadow.opacity(0.68), radius: 14, y: 7)
-                    .offset(y: -14)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 118)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, isQuickLogMode ? 118 : 30)
                 }
             }
-
-            topButtons
         }
         .preferredColorScheme(.dark)
+        .safeAreaInset(edge: .bottom) {
+            if isQuickLogMode {
+                quickLogButton
+            }
+        }
+        .fullScreenCover(isPresented: $showMealBuilder) {
+            MealBuilderView(
+                editingMeal: meal,
+                onSave: { updatedMeal in
+                    applyUpdatedMeal(updatedMeal)
+                    try? modelContext.save()
+                    onMealUpdated?(meal)
+                    onMealSavedAndClose?()
+                },
+                onCancel: {
+                    showMealBuilder = false
+                }
+            )
+        }
     }
 
     private var ambientBackground: some View {
         ZStack {
             RadialGradient(
-                colors: [
-                    meal.color.opacity(0.075),
-                    Color.clear
-                ],
+                colors: [accent.opacity(0.045), .clear],
                 center: .topTrailing,
-                startRadius: 30,
+                startRadius: 40,
                 endRadius: 340
             )
 
             RadialGradient(
-                colors: [
-                    WeekFitTheme.meal.opacity(0.045),
-                    Color.clear
-                ],
+                colors: [WeekFitTheme.orange.opacity(0.025), .clear],
                 center: .bottomLeading,
-                startRadius: 70,
+                startRadius: 80,
                 endRadius: 380
             )
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.012),
-                    Color.clear,
-                    Color.black.opacity(0.13)
+                    Color.white.opacity(0.010),
+                    .clear,
+                    Color.black.opacity(0.15)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -116,177 +124,211 @@ struct MealDetailsView: View {
         .allowsHitTesting(false)
     }
 
-    private var heroImage: some View {
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                dismiss()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.045))
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                        }
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .foregroundStyle(textPrimary.opacity(0.92))
+                }
+                .frame(width: 38, height: 38)
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Meal Details")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.75)
+                    .lineLimit(1)
+
+                Text("Review ingredients, nutrition and preparation.")
+                    .font(.system(size: 13.2, weight: .semibold))
+                    .foregroundStyle(textSecondary.opacity(0.76))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer(minLength: 8)
+
+            if !isQuickLogMode {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showMealBuilder = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.045))
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                            }
+
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(textPrimary.opacity(0.86))
+                    }
+                    .frame(width: 38, height: 38)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    private var mealPreviewCard: some View {
+        VStack(spacing: 8) {
+            plateImageStack
+                .frame(maxWidth: .infinity)
+                .frame(height: 176)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(meal.title)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.42)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.78)
+
+                Text(ingredientsSummary)
+                    .font(.system(size: 12.4, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.76))
+                    .lineLimit(2)
+                    .lineSpacing(1.6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 13)
+        .padding(.top, 8)
+        .padding(.bottom, 13)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            elevatedCard.opacity(0.96),
+                            cardBackground.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(alignment: .topLeading) {
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.060),
+                            Color.white.opacity(0.014),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+        }
+        .shadow(color: softShadow.opacity(0.66), radius: 14, y: 7)
+    }
+
+    private var plateImageStack: some View {
         ZStack {
             if let items = meal.builderImageItems, !items.isEmpty {
-                customMealHero(items)
+                builtMealPreview(items)
             } else if UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
                     .resizable()
-                    .scaledToFill()
-                    .overlay {
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.02),
-                                Color.black.opacity(0.26)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-            } else {
-                LinearGradient(
-                    colors: [
-                        meal.color.opacity(0.16),
-                        meal.color.opacity(0.065),
-                        cardBackground.opacity(0.96)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-
-                Image(systemName: "fork.knife.circle.fill")
-                    .font(.system(size: 58, weight: .semibold))
-                    .foregroundStyle(meal.color.opacity(0.90))
-            }
-        }
-        .frame(height: 248)
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: 30,
-                bottomTrailingRadius: 30,
-                topTrailingRadius: 0,
-                style: .continuous
-            )
-        )
-        .clipped()
-        .ignoresSafeArea(edges: .top)
-    }
-
-    private func customMealHero(_ items: [MealBuilderImageItem]) -> some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    meal.color.opacity(0.13),
-                    cardBackground.opacity(0.96)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Image("plate-dark")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 224, height: 224)
-                .shadow(color: .black.opacity(0.24), radius: 16, y: 10)
-
-            ForEach(items.sorted(by: { $0.zIndex < $1.zIndex })) { item in
-                Image(item.imageName)
-                    .resizable()
                     .scaledToFit()
-                    .frame(width: CGFloat(item.visualSize) * 1.06)
-                    .offset(
-                        x: CGFloat(item.offsetX) * 0.92,
-                        y: CGFloat(item.offsetY) * 0.92 - 2
-                    )
-                    .rotationEffect(.degrees(Double(item.rotation)))
-                    .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
-                    .zIndex(Double(item.zIndex))
+                    .frame(width: 220, height: 220)
+                    .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+            } else {
+                emptyPlateState
             }
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.0),
-                    Color.black.opacity(0.20)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
         }
     }
 
-    private var topButtons: some View {
-        HStack {
-            topCircleButton(icon: "chevron.left", color: textPrimary) {
-                dismiss()
-            }
-
-            Spacer()
-
-            topCircleButton(icon: "heart.fill", color: meal.color) { }
-        }
-        .padding(.horizontal, 22)
-        .padding(.top, 16)
+    private func builtMealPreview(_ items: [MealBuilderImageItem]) -> some View {
+        BuiltMealPlateView(
+            items: items,
+            plateSize: 220,
+            itemScale: 1.00,
+            offsetScale: 0.82,
+            plateOpacity: 1.00,
+            shadowOpacity: 0.22
+        )
+        .scaleEffect(1.04)
+        .offset(y: -6)
     }
 
-    private func topCircleButton(
-        icon: String,
-        color: Color,
-        action: @escaping () -> Void
+    private var emptyPlateState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "fork.knife.circle")
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(textSecondary.opacity(0.72))
+
+            Text("Saved meal")
+                .font(.system(size: 12.2, weight: .semibold, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.80))
+        }
+    }
+
+    private var nutritionSummary: some View {
+        HStack(spacing: 8) {
+            nutritionTile("Calories", "\(meal.calories)", "kcal", isPrimary: true)
+            nutritionTile("Protein", "\(meal.protein)", "g")
+            nutritionTile("Carbs", "\(meal.carbs)", "g")
+            nutritionTile("Fats", "\(meal.fats)", "g")
+        }
+    }
+
+    private func nutritionTile(
+        _ title: String,
+        _ value: String,
+        _ unit: String,
+        isPrimary: Bool = false
     ) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(color.opacity(0.92))
-                .frame(width: 40, height: 40)
-                .background {
-                    Circle()
-                        .fill(Color.black.opacity(0.24))
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .overlay {
-                    Circle()
-                        .stroke(Color.white.opacity(0.095), lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
-    }
+        VStack(spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold, design: .rounded))
+                    .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
 
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            Text(meal.title)
-                .font(.system(size: 25, weight: .bold))
-                .foregroundStyle(textPrimary)
-                .tracking(-0.45)
-                .lineLimit(2)
-                .minimumScaleFactor(0.78)
-
-            HStack(spacing: 7) {
-                tag(meal.slotTitle, color: meal.color)
-                tag(meal.displayType, color: WeekFitTheme.meal)
+                Text(unit)
+                    .font(.system(size: 9.4, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
 
-            HStack(spacing: 7) {
-                macroMetric("\(meal.calories)", "kcal", color: WeekFitMacroColor.calories)
-                macroMetric("\(meal.protein)g", "Protein", color: WeekFitMacroColor.protein)
-                macroMetric("\(meal.carbs)g", "Carbs", color: WeekFitMacroColor.carbs)
-                macroMetric("\(meal.fats)g", "Fat", color: WeekFitMacroColor.fats)
-            }
+            Text(title)
+                .font(.system(size: 9.4, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.74))
+                .lineLimit(1)
         }
-    }
-
-    private var whyBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionTitle("Why this meal?")
-
-            Text(meal.subtitle)
-                .font(.system(size: 13.2, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.78))
-                .lineSpacing(2.2)
-                .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+        .frame(height: 46)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(isPrimary ? accent.opacity(0.052) : Color.white.opacity(0.030))
         }
-    }
-
-    private var benefitsBlock: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("Benefits")
-
-            FlowLayout(spacing: 7) {
-                ForEach(meal.benefits, id: \.self) { benefit in
-                    tag(benefit, color: meal.color)
-                }
-            }
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(isPrimary ? accent.opacity(0.17) : Color.white.opacity(0.038), lineWidth: 1)
         }
     }
 
@@ -298,8 +340,8 @@ struct MealDetailsView: View {
                 Spacer()
 
                 Text("1 serving")
-                    .font(.system(size: 12.4, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.74))
+                    .font(.system(size: 12.4, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.70))
             }
 
             VStack(spacing: 0) {
@@ -332,7 +374,7 @@ struct MealDetailsView: View {
                 .frame(width: 34, height: 34)
 
             Text(item.name)
-                .font(.system(size: 14.2, weight: .semibold))
+                .font(.system(size: 14.2, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.94))
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
@@ -340,7 +382,7 @@ struct MealDetailsView: View {
             Spacer(minLength: 8)
 
             Text(item.amount)
-                .font(.system(size: 13.4, weight: .medium))
+                .font(.system(size: 13.4, weight: .medium, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.76))
                 .lineLimit(1)
         }
@@ -350,7 +392,7 @@ struct MealDetailsView: View {
     private func ingredientImage(for item: MealsIngredient, index: Int) -> some View {
         ZStack {
             Circle()
-                .fill(meal.color.opacity(0.10))
+                .fill(Color.white.opacity(0.045))
 
             if let imageName = ingredientImageName(index: index) {
                 Image(imageName)
@@ -367,7 +409,7 @@ struct MealDetailsView: View {
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 14.5, weight: .semibold))
-                    .foregroundStyle(meal.color.opacity(0.90))
+                    .foregroundStyle(textSecondary.opacity(0.72))
             }
         }
     }
@@ -380,14 +422,14 @@ struct MealDetailsView: View {
                 ForEach(Array(meal.generatedSteps.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .top, spacing: 10) {
                         Text("\(index + 1)")
-                            .font(.system(size: 11.4, weight: .bold))
+                            .font(.system(size: 11.4, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary.opacity(0.90))
                             .frame(width: 22, height: 22)
                             .background(Color.white.opacity(0.052))
                             .clipShape(Circle())
 
                         Text(step)
-                            .font(.system(size: 13.4, weight: .medium))
+                            .font(.system(size: 13.4, weight: .medium, design: .rounded))
                             .foregroundStyle(textPrimary.opacity(0.78))
                             .lineSpacing(2.6)
                             .fixedSize(horizontal: false, vertical: true)
@@ -397,30 +439,56 @@ struct MealDetailsView: View {
         }
     }
 
-    private var actionButtons: some View {
-        HStack(spacing: 9) {
-            if !isQuickLogMode {
-                detailButton("Swap", icon: "arrow.left.arrow.right", primary: false) { }
-            }
-            
-            let dynamicButtonTitle = isQuickLogMode ? "Log for \(automatedCurrentSlotTitle)" : "Add"
-            
-            detailButton(dynamicButtonTitle, icon: "plus.circle.fill", primary: true) {
+    private var quickLogButton: some View {
+        VStack(spacing: 0) {
+            Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 executeDetailsLogBlock()
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .bold))
+
+                    Text("Log for \(automatedCurrentSlotTitle)")
+                        .font(.system(size: 14.2, weight: .bold, design: .rounded))
+                        .tracking(-0.08)
+                }
+                .foregroundStyle(.black.opacity(0.84))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background {
+                    Capsule()
+                        .fill(accent.opacity(0.92))
+                        .shadow(color: accent.opacity(0.18), radius: 10, y: 4)
+                }
             }
-            
-            if !isQuickLogMode {
-                detailButton("Edit", icon: "pencil", primary: false) { }
-            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 84)
         }
-        .padding(.top, 2)
+        .background {
+            bottomFadeGradient
+        }
+    }
+
+    private var bottomFadeGradient: some View {
+        LinearGradient(
+            colors: [
+                background.opacity(0),
+                background.opacity(0.62),
+                background.opacity(0.96),
+                background
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
     }
 
     private func executeDetailsLogBlock() {
         let now = Date()
-        
-        // 1. Рассчитываем время для этого приема пищи на сегодня
+
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: now)
         let parts = meal.displayTime.split(separator: ":")
@@ -428,7 +496,6 @@ struct MealDetailsView: View {
         components.minute = Int(parts.dropFirst().first ?? "00") ?? 0
         let mealTargetDate = calendar.date(from: components) ?? now
 
-        // 2. Создаем активность для SwiftData
         let activity = PlannedActivity(
             date: mealTargetDate,
             type: PlannerType.meal.title,
@@ -444,21 +511,12 @@ struct MealDetailsView: View {
             carbs: meal.carbs,
             fats: meal.fats
         )
-        
-        // 🧠 УМНАЯ UX-ПРОВЕРКА:
-        // Если активирован Quick Log ИЛИ если время этого приема пищи на сегодня УЖЕ прошло (например, сейчас 16:00, а мы добавляем обед, который должен был быть в 13:00)
-        // то сразу помечаем как выполненное!
-        if isQuickLogMode || mealTargetDate < now {
-            activity.isCompleted = true
-        } else {
-            activity.isCompleted = false
-        }
-        
-        // 3. Сохраняем в базу данных
+
+        activity.isCompleted = isQuickLogMode || mealTargetDate < now
+
         modelContext.insert(activity)
         try? modelContext.save()
-        
-        // 4. Закрываем экраны
+
         if isQuickLogMode {
             onMealLogged?()
         } else {
@@ -466,70 +524,26 @@ struct MealDetailsView: View {
         }
     }
 
+    private func applyUpdatedMeal(_ updatedMeal: Meals) {
+        meal.title = updatedMeal.title
+        meal.subtitle = updatedMeal.subtitle
+        meal.imageName = updatedMeal.imageName
+        meal.type = updatedMeal.type
+        meal.calories = updatedMeal.calories
+        meal.protein = updatedMeal.protein
+        meal.carbs = updatedMeal.carbs
+        meal.fats = updatedMeal.fats
+        meal.benefits = updatedMeal.benefits
+        meal.ingredients = updatedMeal.ingredients
+        meal.suggestedTime = updatedMeal.suggestedTime
+        meal.builderImageItems = updatedMeal.builderImageItems
+    }
+
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 17.4, weight: .bold))
+            .font(.system(size: 17.0, weight: .bold, design: .rounded))
             .foregroundStyle(textPrimary)
-            .tracking(-0.28)
-    }
-
-    private func tag(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.system(size: 11.1, weight: .bold))
-            .foregroundStyle(color.opacity(0.90))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5.5)
-            .background(color.opacity(0.092))
-            .clipShape(Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(color.opacity(0.095), lineWidth: 1)
-            }
-    }
-
-    private func macroMetric(_ value: String, _ label: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(size: 12.6, weight: .bold))
-                .foregroundStyle(textPrimary.opacity(0.94))
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-
-            Text(label)
-                .font(.system(size: 8.8, weight: .bold))
-                .foregroundStyle(color.opacity(0.90))
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(color.opacity(0.088))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(color.opacity(0.08), lineWidth: 1)
-        }
-    }
-
-    private func detailButton(_ title: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13.2, weight: .bold))
-                .foregroundStyle(primary ? .black.opacity(0.82) : textPrimary.opacity(0.90))
-                .frame(maxWidth: .infinity)
-                .frame(height: 43)
-                .background {
-                    Capsule()
-                        .fill(primary ? meal.color.opacity(0.90) : Color.white.opacity(0.052))
-                }
-                .overlay {
-                    Capsule()
-                        .stroke(primary ? meal.color.opacity(0.13) : Color.white.opacity(0.055), lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
+            .tracking(-0.25)
     }
 
     private func ingredientImageName(index: Int) -> String? {
@@ -546,7 +560,10 @@ struct MealDetailsView: View {
             ("turkey", "ingredient-turkey"), ("beef", "ingredient-beef"), ("salmon", "ingredient-salmon"),
             ("shrimp", "ingredient-shrimp"), ("whitefish", "ingredient-white-fish"), ("broccoli", "ingredient-broccoli"),
             ("spinach", "ingredient-spinach"), ("tomatoes", "ingredient-tomatoes"), ("tomato", "ingredient-tomatoes"),
-            ("avocado", "ingredient-avocado"), ("oliveoil", "ingredient-olive-oil"), ("onion", "ingredient-red-onion")
+            ("avocado", "ingredient-avocado"), ("oliveoil", "ingredient-olive-oil"), ("onion", "ingredient-red-onion"),
+            ("cucumber", "ingredient-cucumber"), ("toast", "ingredient-toast"), ("cheese", "ingredient-cottage-cheese"),
+            ("honey", "ingredient-honey"), ("banana", "ingredient-banana"), ("apple", "ingredient-apple"),
+            ("milk", "ingredient-milk"), ("tea", "ingredient-tea"), ("coffee", "ingredient-coffee")
         ]
         return map.first { key.contains(normalize($0.0)) }?.1
     }

@@ -77,8 +77,9 @@ enum PlannerType: CaseIterable {
             return [
                 PlannerOption(title: "Upper Body", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-strength"),
                 PlannerOption(title: "Running", subtitle: "Cardio", icon: "figure.run", imageName: "workout-running"),
-                PlannerOption(title: "Yoga", subtitle: "Mobility", icon: "figure.yoga", imageName: "workout-yoga"),
-                PlannerOption(title: "Cycling", subtitle: "Endurance", icon: "figure.outdoor.cycle", imageName: "workout-cycling")
+                PlannerOption(title: "Cycling", subtitle: "Endurance", icon: "figure.outdoor.cycle", imageName: "workout-cycling"),
+                PlannerOption(title: "Tennis", subtitle: "Endurance", icon: "figure.tennis", imageName: "workout-tennis"),
+                PlannerOption(title: "Squash", subtitle: "High Intensity", icon: "figure.tennis", imageName: "workout-squash")
             ]
 
         case .recovery:
@@ -86,6 +87,7 @@ enum PlannerType: CaseIterable {
                 PlannerOption(title: "Stretching", subtitle: "Mobility", icon: "figure.cooldown", imageName: "recovery-stretch"),
                 PlannerOption(title: "Walk", subtitle: "Light recovery", icon: "figure.walk", imageName: "recovery-walk"),
                 PlannerOption(title: "Sauna", subtitle: "Relax", icon: "flame.fill", imageName: "recovery-sauna"),
+                PlannerOption(title: "Yoga", subtitle: "Mobility", icon: "figure.yoga", imageName: "recovery-yoga"),
                 PlannerOption(title: "Breathing", subtitle: "Calm", icon: "wind", imageName: "recovery-breathing")
             ]
 
@@ -108,6 +110,25 @@ enum PlannerType: CaseIterable {
         case .hydration: "drop.fill"
         case .antiInflammatory: "leaf.fill"
         case .balanced: "chart.pie.fill"
+        }
+    }
+}
+
+extension PlannerType {
+
+    var colorComponents: (red: Double, green: Double, blue: Double) {
+        switch self {
+        case .meal:
+            return (0.50, 0.74, 0.54)
+
+        case .workout:
+            return (0.46, 0.72, 0.82)
+
+        case .recovery:
+            return (0.66, 0.58, 0.86)
+
+        case .habit:
+            return (0.82, 0.60, 0.36)
         }
     }
 }

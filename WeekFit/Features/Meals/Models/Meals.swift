@@ -1,0 +1,329 @@
+import Foundation
+import SwiftUI
+
+enum MealsType: String, Codable, CaseIterable, Identifiable {
+    case preWorkout
+    case recovery
+    case highProtein
+    case sleepSupport
+    case hydration
+    case antiInflammatory
+    case balanced
+
+    var id: String { rawValue }
+}
+
+struct Meals: Identifiable, Codable, Equatable {
+
+    let id: String
+
+    var title: String
+    var subtitle: String
+    var imageName: String
+
+    var type: MealsType
+
+    var calories: Int
+    var protein: Int
+    var carbs: Int
+    var fats: Int
+
+    // NEW
+    var fiber: Int
+
+    var benefits: [String]
+    var ingredients: [MealsIngredient]
+
+    var suggestedTime: String?
+    var builderImageItems: [MealBuilderImageItem]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case subtitle
+        case imageName
+        case type
+        case calories
+        case protein
+        case carbs
+        case fats
+        case fiber
+        case benefits
+        case ingredients
+        case suggestedTime
+        case builderImageItems
+    }
+
+    init(
+        id: String,
+        title: String,
+        subtitle: String,
+        imageName: String,
+        type: MealsType,
+        calories: Int,
+        protein: Int,
+        carbs: Int,
+        fats: Int,
+        fiber: Int = 0,
+        benefits: [String],
+        ingredients: [MealsIngredient],
+        suggestedTime: String? = nil,
+        builderImageItems: [MealBuilderImageItem]? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.imageName = imageName
+        self.type = type
+        self.calories = calories
+        self.protein = protein
+        self.carbs = carbs
+        self.fats = fats
+        self.fiber = fiber
+        self.benefits = benefits
+        self.ingredients = ingredients
+        self.suggestedTime = suggestedTime
+        self.builderImageItems = builderImageItems
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+
+        title = try container.decode(String.self, forKey: .title)
+
+        subtitle = try container.decodeIfPresent(
+            String.self,
+            forKey: .subtitle
+        ) ?? ""
+
+        imageName = try container.decodeIfPresent(
+            String.self,
+            forKey: .imageName
+        ) ?? ""
+
+        type = try container.decodeIfPresent(
+            MealsType.self,
+            forKey: .type
+        ) ?? .balanced
+
+        calories = try container.decodeIfPresent(
+            Int.self,
+            forKey: .calories
+        ) ?? 0
+
+        protein = try container.decodeIfPresent(
+            Int.self,
+            forKey: .protein
+        ) ?? 0
+
+        carbs = try container.decodeIfPresent(
+            Int.self,
+            forKey: .carbs
+        ) ?? 0
+
+        fats = try container.decodeIfPresent(
+            Int.self,
+            forKey: .fats
+        ) ?? 0
+
+        // Backward compatibility with old meals.json
+        fiber = try container.decodeIfPresent(
+            Int.self,
+            forKey: .fiber
+        ) ?? 0
+
+        benefits = try container.decodeIfPresent(
+            [String].self,
+            forKey: .benefits
+        ) ?? []
+
+        ingredients = try container.decodeIfPresent(
+            [MealsIngredient].self,
+            forKey: .ingredients
+        ) ?? []
+
+        suggestedTime = try container.decodeIfPresent(
+            String.self,
+            forKey: .suggestedTime
+        )
+
+        builderImageItems = try container.decodeIfPresent(
+            [MealBuilderImageItem].self,
+            forKey: .builderImageItems
+        )
+    }
+}
+
+struct MealsIngredient: Codable, Equatable {
+    let name: String
+    let amount: String
+}
+
+struct MealBuilderImageItem: Codable, Equatable, Identifiable {
+    let id: String
+    let imageName: String
+    let visualSize: Int
+    let visualDensity: CGFloat
+    let supportsStandalonePresentation: Bool
+    let offsetX: Int
+    let offsetY: Int
+    let rotation: Int
+    let zIndex: Int
+    let grams: Int
+}
+
+extension Meals {
+
+    var displayTime: String {
+        suggestedTime ?? "12:00"
+    }
+
+    var displayType: String {
+        type.title
+    }
+
+    var tag: String {
+        benefits.first ?? type.title
+    }
+
+    var shortTitle: String {
+        title.components(separatedBy: ",").first ?? title
+    }
+
+    var color: Color {
+        type.color
+    }
+
+    var slot: WeekFitMealSlot {
+
+        let time = displayTime
+
+        let hour = Int(time.prefix(2)) ?? 12
+        let minutes = Int(time.dropFirst(3).prefix(2)) ?? 0
+
+        let totalMinutes = hour * 60 + minutes
+
+        switch totalMinutes {
+
+        case 6 * 60...(10 * 60 + 30):
+            return .breakfast
+
+        case 11 * 60...(14 * 60 + 30):
+            return .lunch
+
+        case 15 * 60...(17 * 60 + 30):
+            return .snack
+
+        default:
+            return .dinner
+        }
+    }
+
+    var slotTitle: String {
+        slot.title
+    }
+
+    var generatedSteps: [String] {
+
+        let ingredientNames = ingredients
+            .prefix(4)
+            .map { ingredient in
+                ingredient.name
+            }
+            .joined(separator: ", ")
+
+        return [
+            "Prepare all ingredients: \(ingredientNames).",
+            "Cook or assemble the main protein and base components.",
+            "Add vegetables, toppings and dressing if included.",
+            "Serve fresh and adjust seasoning to taste."
+        ]
+    }
+}
+
+extension MealsType {
+
+    var title: String {
+
+        switch self {
+
+        case .preWorkout:
+            return "Pre-Workout"
+
+        case .recovery:
+            return "Recovery"
+
+        case .highProtein:
+            return "High Protein"
+
+        case .sleepSupport:
+            return "Sleep Support"
+
+        case .hydration:
+            return "Hydration"
+
+        case .antiInflammatory:
+            return "Anti-Inflammatory"
+
+        case .balanced:
+            return "Balanced"
+        }
+    }
+
+    var color: Color {
+
+        switch self {
+
+        case .preWorkout:
+            return Color(
+                red: 0.93,
+                green: 0.63,
+                blue: 0.30
+            )
+
+        case .recovery:
+            return Color(
+                red: 0.45,
+                green: 0.72,
+                blue: 0.56
+            )
+
+        case .highProtein:
+            return Color(
+                red: 0.58,
+                green: 0.68,
+                blue: 0.82
+            )
+
+        case .sleepSupport:
+            return Color(
+                red: 0.52,
+                green: 0.47,
+                blue: 0.78
+            )
+
+        case .hydration:
+            return Color(
+                red: 0.42,
+                green: 0.68,
+                blue: 0.86
+            )
+
+        case .antiInflammatory:
+            return Color(
+                red: 0.50,
+                green: 0.70,
+                blue: 0.48
+            )
+
+        case .balanced:
+            return Color(
+                red: 0.55,
+                green: 0.68,
+                blue: 0.62
+            )
+        }
+    }
+}

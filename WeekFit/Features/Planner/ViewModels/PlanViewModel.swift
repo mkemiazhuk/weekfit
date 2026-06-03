@@ -21,10 +21,10 @@ final class PlanViewModel: ObservableObject {
 
     @Published var selectedType: PlannerType = .meal
     @Published var selectedItem: PlannerOption = PlannerType.meal.options[0]
-    @Published var selectedDuration = 30
+    @Published var selectedDuration = 15
 
     @Published var showCustomDuration = false
-    @Published var customDuration = 30
+    @Published var customDuration = 15
     @Published var editingActivity: PlannedActivity?
 
     @Published var showTimeConflictAlert = false
@@ -63,6 +63,30 @@ final class PlanViewModel: ObservableObject {
 
     var currentOptions: [PlannerOption] {
         selectedType == .meal ? mealPlannerOptions : selectedType.options
+    }
+    
+    func selectType(_ type: PlannerType) {
+        selectedType = type
+        selectedItem = type.options[0]
+
+        applyDefaultDurationForSelectedItem()
+    }
+    
+    func applyDefaultDurationForSelectedItem() {
+        let title = selectedItem.title.lowercased()
+
+        if selectedType == .meal {
+            selectedDuration = 15
+            customDuration = 15
+            showCustomDuration = false
+            return
+        }
+
+        if title.contains("sleep") || title.contains("bedtime") {
+            selectedDuration = 480
+            customDuration = 480
+            showCustomDuration = false
+        }
     }
 
     var selectedMealForPlanner: Meals? {
@@ -186,11 +210,46 @@ final class PlanViewModel: ObservableObject {
         dateForTimelinePosition(yPosition(for: date))
     }
 
-    func nextAvailableSlot() -> Date {
-        let nowRounded = roundedToNext15Minutes(Date())
-        let minSlot = calendar.date(bySettingHour: timelineStartHour, minute: 0, second: 0, of: selectedDate) ?? selectedDate
+    func nextAvailableSlot(from activities: [PlannedActivity]) -> Date {
+        let startOfDay = calendar.startOfDay(for: selectedDate)
 
-        return max(calendar.isDateInToday(selectedDate) ? nowRounded : minSlot, minSlot)
+        let timelineStart = calendar.date(
+            byAdding: .hour,
+            value: timelineStartHour,
+            to: startOfDay
+        ) ?? selectedDate
+
+        let timelineEnd = calendar.date(
+            byAdding: .hour,
+            value: timelineEndHour,
+            to: startOfDay
+        ) ?? selectedDate
+
+        let firstCandidate = calendar.isDateInToday(selectedDate)
+            ? max(roundedToNext15Minutes(Date()), timelineStart)
+            : timelineStart
+
+        let duration = selectedType == .meal ? 15 : max(selectedDuration, timelineMinimumDurationMinutes)
+
+        var candidate = clampedTimelineDate(firstCandidate)
+
+        while candidate < timelineEnd {
+            if !hasTimeConflict(
+                newStart: candidate,
+                durationMinutes: duration,
+                activities: activities
+            ) {
+                return candidate
+            }
+
+            candidate = calendar.date(
+                byAdding: .minute,
+                value: timelineMinuteStep,
+                to: candidate
+            ) ?? candidate
+        }
+
+        return firstCandidate
     }
 
     func hasTimeConflict(
@@ -223,8 +282,8 @@ final class PlanViewModel: ObservableObject {
         selectedMealID = firstMeal?.id
         selectedItem = firstMeal.map { plannerOption(for: $0) } ?? PlannerType.meal.options[0]
 
-        selectedDuration = 30
-        customDuration = 30 // Синхронизируем кастомную длительность
+        selectedDuration = 15
+        customDuration = 15
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
@@ -298,6 +357,7 @@ final class PlanViewModel: ObservableObject {
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
+        let finalDuration = selectedType == .meal ? 15 : selectedDuration
         let meal = selectedType == .meal ? selectedMealForPlanner : nil
 
         if let editingActivity {
@@ -334,7 +394,7 @@ final class PlanViewModel: ObservableObject {
                 // 🎯 ФИКС 4: Новые активности тоже сохраняем в нижнем регистре типа ("workout", "meal")
                 type: selectedType.title.lowercased(),
                 title: selectedItem.title,
-                durationMinutes: selectedDuration,
+                durationMinutes: finalDuration,
                 icon: selectedType.icon,
                 imageName: selectedItem.imageName,
                 colorRed: selectedType.colorComponents.red,

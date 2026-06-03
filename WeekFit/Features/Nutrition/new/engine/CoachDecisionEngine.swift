@@ -96,13 +96,13 @@ private extension CoachDecisionEngine {
     ) -> PrimaryStrategy {
 
         // 🚀 ДОБАВЛЯЕМ ЛОГ В ДВИЖОК:
-        print("""
-        🤖 [ENGINE EVALUATION]
-        - energyCoverage: \(brain.current.energyCoverage)
-        - carbsProgress: \(brain.current.carbsProgress)
-        - fuel state: \(brain.fuel)
-        - strain state: \(brain.strain)
-        """)
+//        print("""
+//        🤖 [ENGINE EVALUATION]
+//        - energyCoverage: \(brain.current.energyCoverage)
+//        - carbsProgress: \(brain.current.carbsProgress)
+//        - fuel state: \(brain.fuel)
+//        - strain state: \(brain.strain)
+//        """)
 
 
         let isHighStrain = brain.strain == .high || brain.strain == .veryHigh

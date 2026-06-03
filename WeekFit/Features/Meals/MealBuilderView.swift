@@ -2,63 +2,139 @@ import SwiftUI
 
 struct MealBuilderView: View {
 
+    let editingMeal: Meals?
     let onSave: (Meals) -> Void
+    let onCancel: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedIngredients: [SelectedBuilderIngredient] = []
 
-    private let background = WeekFitTheme.background
+    @State private var selectedIngredients: [SelectedBuilderIngredient] = []
+    @State private var didPrefill = false
+    @State private var focusedIngredientID: String?
+    @State private var focusedCategory: MealIngredientCategory?
+    @State private var focusScrollToken = 0
+
+    @State private var flyingIngredient: MealBuilderIngredient?
+    @State private var flyingStartFrame: CGRect = .zero
+    @State private var flyingProgressValue: CGFloat = 0
+    @State private var plateFrame: CGRect = .zero
+    @State private var hiddenFlyingIngredientID: String?
+
+    init(
+        editingMeal: Meals? = nil,
+        onSave: @escaping (Meals) -> Void,
+        onCancel: (() -> Void)? = nil
+    ) {
+        self.editingMeal = editingMeal
+        self.onSave = onSave
+        self.onCancel = onCancel
+    }
+
+    private var isEditMode: Bool {
+        editingMeal != nil
+    }
+    
+    private var hasUnsavedChanges: Bool {
+
+        guard let editingMeal else {
+            return !selectedIngredients.isEmpty
+        }
+
+        let current = selectedIngredients
+            .sorted { $0.ingredient.id < $1.ingredient.id }
+            .map { "\($0.ingredient.id):\($0.grams)" }
+
+        let original = (editingMeal.builderImageItems ?? [])
+            .sorted { $0.id < $1.id }
+            .map { "\($0.id):\($0.grams)" }
+
+        return current != original
+    }
+
+    private let background = WeekFitTheme.backgroundColor
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let cardBackground = WeekFitTheme.cardBackground
     private let elevatedCard = WeekFitTheme.elevatedCard
     private let accent = WeekFitTheme.meal
 
-    private let ingredients = MealBuilderDemoData.ingredients
-
-    private var sortedSelectedIngredients: [SelectedBuilderIngredient] {
-        selectedIngredients.sorted { $0.ingredient.zIndex < $1.ingredient.zIndex }
+    private let ingredients = MealBuilderDemoData.ingredients.filter {
+        $0.category != .drinks
     }
 
     private var totalCalories: Int { selectedIngredients.reduce(0) { $0 + $1.calories } }
     private var totalProtein: Int { selectedIngredients.reduce(0) { $0 + $1.protein } }
     private var totalCarbs: Int { selectedIngredients.reduce(0) { $0 + $1.carbs } }
     private var totalFats: Int { selectedIngredients.reduce(0) { $0 + $1.fats } }
+    private var totalFiber: Int { selectedIngredients.reduce(0) { $0 + $1.fiber } }
+
+    private var builderPreviewItems: [MealBuilderImageItem] {
+        selectedIngredients
+            .filter { $0.ingredient.id != hiddenFlyingIngredientID }
+            .map { selected in
+                let ingredient = selected.ingredient
+
+                return MealBuilderImageItem(
+                    id: ingredient.id,
+                    imageName: ingredient.imageName,
+                    visualSize: ingredient.visualSize,
+                    visualDensity: ingredient.visualDensity,
+                    supportsStandalonePresentation: ingredient.supportsStandalonePresentation,
+                    offsetX: ingredient.offsetX,
+                    offsetY: ingredient.offsetY,
+                    rotation: ingredient.rotation,
+                    zIndex: ingredient.zIndex,
+                    grams: selected.grams
+                )
+            }
+    }
 
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
             ambientBackground
-            
-            // Главный жесткий VStack вместо сквозного ScrollView
+
             VStack(spacing: 12) {
-                // 📌 ЭЛЕМЕНТЫ ЖЕСТКО ЗАКРЕПЛЕНЫ СВЕРХУ
                 header
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                
+
                 platePreview
                     .padding(.horizontal, 16)
-                
+
                 nutritionSummary
                     .padding(.horizontal, 16)
-                
+
                 buildProgress
                     .padding(.horizontal, 16)
-                
-                // 🔄 СКРОЛЛИТСЯ ТОЛЬКО ЭТА СЕКЦИЯ ИНГРЕДИЕНТОВ
-                ScrollView(showsIndicators: false) {
-                    ingredientSections
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 126) // Запас под кнопку сохранения
+
+                ScrollViewReader { verticalProxy in
+                    ScrollView(showsIndicators: false) {
+                        ingredientSections
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 32)
+                    }
+                    .onChange(of: focusScrollToken) { _, _ in
+                        guard let focusedCategory else { return }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                                verticalProxy.scrollTo(focusedCategory.title, anchor: .center)
+                            }
+                        }
+                    }
                 }
             }
+
+            flyingIngredientOverlay
         }
         .preferredColorScheme(.dark)
-        .safeAreaInset(edge: .bottom) {
-            saveButton
+        .onAppear {
+            prefillIfNeeded()
         }
     }
+    
+    
 
     private var ambientBackground: some View {
         ZStack {
@@ -93,6 +169,8 @@ struct MealBuilderView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onCancel?()
                 dismiss()
             } label: {
                 ZStack {
@@ -112,22 +190,127 @@ struct MealBuilderView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Build Meal")
+                Text(isEditMode ? "Edit Meal" : "Build Meal")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.75)
                     .lineLimit(1)
 
-                Text("Choose ingredients, tap +/- to adjust portions.")
+                Text(isEditMode ? "Adjust ingredients and save changes." : "Choose ingredients, tap +/- to adjust portions.")
                     .font(.system(size: 13.2, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.76))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
 
-            Spacer()
+            Button {
+                saveMeal()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.14),
+                                    Color.white.opacity(0.09)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    hasUnsavedChanges ? accent.opacity(0.18) : Color.white.opacity(0.065),
+                                    lineWidth: 1
+                                )
+                        }
+
+                    Image(systemName: hasUnsavedChanges ? "checkmark" : "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(
+                            hasUnsavedChanges
+                            ? accent.opacity(0.85)
+                            : textSecondary.opacity(0.42)
+                        )
+                }
+                .frame(width: 38, height: 38)
+            }
+            .buttonStyle(.plain)
+            .disabled(!hasUnsavedChanges)
+            .scaleEffect(hasUnsavedChanges ? 1.0 : 0.96)
+            .animation(.spring(response: 0.25, dampingFraction: 0.82), value: hasUnsavedChanges)
         }
         .padding(.bottom, 2)
+    }
+
+    private var flyingIngredientOverlay: some View {
+        ZStack {
+            if let flyingIngredient {
+                let start = CGPoint(x: flyingStartFrame.midX, y: flyingStartFrame.midY)
+                let end = flyingLandingPoint(for: flyingIngredient)
+                let current = flyingPoint(from: start, to: end, progress: flyingProgressValue)
+
+                Image(flyingIngredient.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: finalPlateItemSize(for: flyingIngredient))
+                    .position(current)
+                    .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
+                    .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+    
+    private func flyingPoint(
+        from start: CGPoint,
+        to end: CGPoint,
+        progress: CGFloat
+    ) -> CGPoint {
+        let t = min(max(progress, 0), 1)
+
+        let eased = 1 - pow(1 - t, 2.2)
+
+        let x = start.x + (end.x - start.x) * eased
+        let y = start.y + (end.y - start.y) * eased
+
+        let arc = sin(t * .pi) * 34
+
+        return CGPoint(
+            x: x,
+            y: y - arc
+        )
+    }
+    
+    
+    
+    private func flyingLandingPoint(for ingredient: MealBuilderIngredient) -> CGPoint {
+        let centerX = plateFrame.midX
+        let centerY = plateFrame.midY - 6
+
+        let x = centerX + CGFloat(ingredient.offsetX) * 0.82
+        let y = centerY + CGFloat(ingredient.offsetY) * 0.82 - 2
+
+        return CGPoint(x: x, y: y)
+    }
+    
+    private func finalPlateItemSize(for ingredient: MealBuilderIngredient) -> CGFloat {
+        let itemScale: CGFloat = 1.00
+        let baseWidth = CGFloat(ingredient.visualSize) * 1.12 * itemScale
+
+        let ratio = CGFloat(ingredient.defaultGrams) / 100
+        let normalized = log2(max(ratio, 0.45))
+
+        let gramScale = min(
+            max(
+                0.94 + normalized * ingredient.visualDensity * 0.14,
+                0.78
+            ),
+            1.34
+        )
+
+        return baseWidth * gramScale
     }
 
     private var platePreview: some View {
@@ -176,69 +359,106 @@ struct MealBuilderView: View {
 
     private var plateImageStack: some View {
         ZStack {
-            Ellipse()
-                .fill(Color.black.opacity(0.22))
-                .frame(width: 218, height: 54)
-                .blur(radius: 16)
-                .offset(y: 72)
-
-            Image("plate-dark")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 220, height: 220)
-                .scaleEffect(1.04)
+            if builderPreviewItems.isEmpty {
+                emptyDrinkOrPlateState
+            } else {
+                BuiltMealPlateView(
+                    items: builderPreviewItems,
+                    plateSize: 220,
+                    itemScale: 1.00,
+                    offsetScale: 0.82,
+                    plateOpacity: 1.00,
+                    shadowOpacity: 0.22
+                )
                 .offset(y: -6)
-                .shadow(color: Color.black.opacity(0.30), radius: 17, y: 11)
-
-            ForEach(sortedSelectedIngredients) { selected in
-                selectedIngredientImage(selected)
             }
-
-            RadialGradient(
-                colors: [.white.opacity(0.07), .clear],
-                center: .top,
-                startRadius: 8,
-                endRadius: 170
-            )
-            .blendMode(.screen)
-            .allowsHitTesting(false)
-
-            if selectedIngredients.isEmpty {
-                emptyPlateState
+        }
+        .background {
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear {
+                        plateFrame = geo.frame(in: .global)
+                    }
+                    .onChange(of: builderPreviewItems.count) { _, _ in
+                        plateFrame = geo.frame(in: .global)
+                    }
             }
         }
     }
 
-    private func selectedIngredientImage(_ selected: SelectedBuilderIngredient) -> some View {
-        let ingredient = selected.ingredient
+    private func flyIngredient(
+        _ ingredient: MealBuilderIngredient,
+        from frame: CGRect
+    ) {
+        let duration: Double = 0.54
 
-        return Image(ingredient.imageName)
-            .resizable()
-            .scaledToFit()
-            .scaleEffect(ingredientScaleFactor(for: selected))
-            .frame(width: CGFloat(ingredient.visualSize) * 1.12)
-            .offset(
-                x: CGFloat(ingredient.offsetX) * 0.88,
-                y: CGFloat(ingredient.offsetY) * 0.88 - 8
-            )
-            .rotationEffect(.degrees(Double(ingredient.rotation)))
-            .shadow(color: Color.black.opacity(0.22), radius: 8, y: 5)
-            .zIndex(Double(ingredient.zIndex))
-            .transition(.scale(scale: 0.94).combined(with: .opacity))
+        hiddenFlyingIngredientID = ingredient.id
+        flyingIngredient = ingredient
+        flyingStartFrame = frame
+        flyingProgressValue = 0
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+            addIngredientWithoutPulse(ingredient)
+        }
+
+        withAnimation(.linear(duration: duration)) {
+            flyingProgressValue = 1
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+
+            withTransaction(transaction) {
+                hiddenFlyingIngredientID = nil
+                flyingIngredient = nil
+                flyingProgressValue = 0
+            }
+        }
     }
     
-    private func ingredientScaleFactor(for selected: SelectedBuilderIngredient) -> CGFloat {
-        let ratio = CGFloat(selected.grams) / CGFloat(selected.ingredient.defaultGrams)
-        return 1.0 + (ratio - 1.0) * 0.25
+    private func addIngredientWithoutPulse(_ ingredient: MealBuilderIngredient) {
+        if ingredient.category == .drinks {
+            selectedIngredients.removeAll()
+        } else {
+            selectedIngredients.removeAll {
+                $0.ingredient.category == .drinks
+            }
+        }
+
+        if ingredient.category == .base {
+            selectedIngredients.removeAll {
+                $0.ingredient.category == .base
+            }
+        }
+
+        let selected = SelectedBuilderIngredient(
+            ingredient: ingredient,
+            grams: ingredient.defaultGrams
+        )
+
+        selectedIngredients.append(selected)
     }
 
-    private var emptyPlateState: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 28, weight: .light))
+    private var selectedDrinks: [SelectedBuilderIngredient] {
+        selectedIngredients.filter { $0.ingredient.category == .drinks }
+    }
+
+    private func amountText(_ selected: SelectedBuilderIngredient) -> String {
+        let unit = selected.ingredient.category == .drinks ? "ml" : "g"
+        return "\(selected.grams)\(unit)"
+    }
+
+    private var emptyDrinkOrPlateState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: selectedDrinks.isEmpty ? "fork.knife.circle" : "cup.and.saucer.fill")
+                .font(.system(size: 30, weight: .light))
                 .foregroundStyle(textSecondary.opacity(0.72))
 
-            Text("Start with a base")
+            Text(selectedDrinks.isEmpty ? "Start with a base" : "Drinks selected")
                 .font(.system(size: 12.2, weight: .semibold))
                 .foregroundStyle(textSecondary.opacity(0.80))
         }
@@ -246,26 +466,30 @@ struct MealBuilderView: View {
     }
 
     private var selectedIngredientsRow: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(mealTitle)
-                .font(.system(size: 17.4, weight: .bold))
-                .foregroundStyle(textPrimary)
-                .tracking(-0.28)
-                .lineLimit(1)
-
-            if selectedIngredients.isEmpty {
-                Text("Pick ingredients below to compose your meal.")
-                    .font(.system(size: 12.2, weight: .medium))
-                    .foregroundStyle(textSecondary.opacity(0.76))
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(mealTitle)
+                    .font(.system(size: 17.4, weight: .bold))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.28)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            } else {
-                Text(selectedIngredients.map { "\($0.ingredient.title) (\($0.grams)g)" }.joined(separator: " + "))
-                    .font(.system(size: 12.2, weight: .medium))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.74)
+
+                if selectedIngredients.isEmpty {
+                    Text("Pick ingredients below to compose your meal.")
+                        .font(.system(size: 12.2, weight: .medium))
+                        .foregroundStyle(textSecondary.opacity(0.76))
+                        .lineLimit(1)
+                } else {
+                    Text(selectedIngredients.map { "\($0.ingredient.title) (\(amountText($0)))" }.joined(separator: " + "))
+                        .font(.system(size: 12.2, weight: .medium))
+                        .foregroundStyle(textSecondary.opacity(0.76))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.74)
+                }
             }
+
+            Spacer()
+
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -347,7 +571,7 @@ struct MealBuilderView: View {
 
     private var ingredientSections: some View {
         VStack(spacing: 10) {
-            ForEach(MealIngredientCategory.allCases) { category in
+            ForEach(MealIngredientCategory.allCases.filter { $0 != .drinks }) { category in
                 ingredientSection(category)
             }
         }
@@ -370,14 +594,27 @@ struct MealBuilderView: View {
                     .foregroundStyle(textSecondary.opacity(0.68))
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(items) { ingredient in
-                        ingredientCard(ingredient)
+            ScrollViewReader { horizontalProxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(items) { ingredient in
+                            ingredientCard(ingredient)
+                                .id(ingredient.id)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.trailing, 2)
+                }
+                .onChange(of: focusScrollToken) { _, _ in
+                    guard focusedCategory == category else { return }
+                    guard let focusedIngredientID else { return }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                            horizontalProxy.scrollTo(focusedIngredientID, anchor: .center)
+                        }
                     }
                 }
-                .padding(.horizontal, 2)
-                .padding(.trailing, 2)
             }
         }
         .padding(.horizontal, 11)
@@ -391,6 +628,7 @@ struct MealBuilderView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(Color.white.opacity(0.040), lineWidth: 1)
         }
+        .id(category.title)
     }
 
     private func ingredientCard(_ ingredient: MealBuilderIngredient) -> some View {
@@ -398,16 +636,26 @@ struct MealBuilderView: View {
         let isSelected = selectedInstance != nil
 
         return VStack(spacing: 6) {
-            Button {
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.85)) {
-                    toggle(ingredient)
+            GeometryReader { geo in
+                Button {
+                    let frame = geo.frame(in: .global)
+
+                    if isSelected {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.85)) {
+                            toggle(ingredient)
+                        }
+                    } else {
+                        flyIngredient(ingredient, from: frame)
+                    }
+
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    ingredientCardContent(ingredient: ingredient, isSelected: isSelected)
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            } label: {
-                ingredientCardContent(ingredient: ingredient, isSelected: isSelected)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-            
+            .frame(width: 76, height: 68)
+
             if let selected = selectedInstance {
                 HStack(spacing: 0) {
                     Button {
@@ -420,13 +668,13 @@ struct MealBuilderView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
-                    
+
                     Text("\(selected.grams)")
                         .font(.system(size: 9.5, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .frame(width: 26)
                         .lineLimit(1)
-                    
+
                     Button {
                         adjustGrams(for: ingredient, increment: true)
                     } label: {
@@ -448,7 +696,7 @@ struct MealBuilderView: View {
                 }
                 .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             } else {
-                Text("\(ingredient.defaultGrams)g")
+                Text("\(ingredient.defaultGrams)\(ingredient.category == .drinks ? "ml" : "g")")
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.5))
                     .frame(height: 20)
@@ -493,70 +741,28 @@ struct MealBuilderView: View {
             }
     }
 
-    private var saveButton: some View {
-        VStack(spacing: 0) {
-            Button {
-                saveMeal()
-            } label: {
-                HStack(spacing: 9) {
-                    Image(systemName: canSave ? "checkmark.circle.fill" : "plus")
-                        .font(.system(size: 14, weight: .bold))
-
-                    Text(canSave ? "Save Meal" : "Choose base or protein")
-                        .font(.system(size: 14.2, weight: .bold))
-                        .tracking(-0.08)
-                }
-                .foregroundStyle(canSave ? .black.opacity(0.82) : textSecondary.opacity(0.46))
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background {
-                    Capsule()
-                        .fill(canSave ? accent.opacity(0.92) : Color.white.opacity(0.045))
-                }
-                .overlay {
-                    Capsule()
-                        .stroke(canSave ? accent.opacity(0.16) : Color.white.opacity(0.055), lineWidth: 1)
-                }
-                .shadow(color: accent.opacity(canSave ? 0.09 : 0), radius: 12, y: 5)
-            }
-            .buttonStyle(.plain)
-            .disabled(!canSave)
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 10)
-        }
-        .background {
-            bottomFadeBackground
-        }
-    }
-
-    private var bottomFadeBackground: some View {
-        LinearGradient(
-            colors: [
-                background.opacity(0),
-                background.opacity(0.62),
-                background.opacity(0.96),
-                background
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
-    }
-
     private var canSave: Bool {
-        selectedIngredients.contains { $0.ingredient.category == .base } ||
-        selectedIngredients.contains { $0.ingredient.category == .protein }
+        !selectedIngredients.isEmpty
     }
 
     private var mealTitle: String {
         let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.title
         let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.title
+        let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.title
+        let extra = selectedIngredients.first { $0.ingredient.category == .extras }?.ingredient.title
+        let drinks = selectedIngredients.first { $0.ingredient.category == .drinks }?.ingredient.title
 
         if let protein, let base { return "\(protein) \(base)" }
+        if let base, let extra { return "\(extra) \(base)" }
+        if let vegetable, let protein { return "\(protein) \(vegetable)" }
+
         if let base { return base }
         if let protein { return protein }
-        return "Your meal"
+        if let vegetable { return vegetable }
+        if let extra { return extra }
+        if let drinks { return drinks }
+
+        return editingMeal?.title ?? "Your meal"
     }
 
     private func toggle(_ ingredient: MealBuilderIngredient) {
@@ -565,8 +771,18 @@ struct MealBuilderView: View {
             return
         }
 
+        if ingredient.category == .drinks {
+            selectedIngredients.removeAll()
+        } else {
+            selectedIngredients.removeAll {
+                $0.ingredient.category == .drinks
+            }
+        }
+
         if ingredient.category == .base {
-            selectedIngredients.removeAll { $0.ingredient.category == .base }
+            selectedIngredients.removeAll {
+                $0.ingredient.category == .base
+            }
         }
 
         let selected = SelectedBuilderIngredient(
@@ -579,10 +795,10 @@ struct MealBuilderView: View {
 
     private func adjustGrams(for ingredient: MealBuilderIngredient, increment: Bool) {
         guard let index = selectedIngredients.firstIndex(where: { $0.ingredient.id == ingredient.id }) else { return }
-        
+
         let currentGrams = selectedIngredients[index].grams
         let step = ingredient.category == .extras ? 10 : 50
-        
+
         withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
             if increment {
                 selectedIngredients[index].grams = min(currentGrams + step, 1000)
@@ -595,6 +811,7 @@ struct MealBuilderView: View {
                 }
             }
         }
+
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
     }
 
@@ -602,58 +819,100 @@ struct MealBuilderView: View {
         let mealIngredients = makeMealIngredients()
         let builderImageItems = makeBuilderImageItems()
         let subtitle = makeSubtitle()
-        let mealId = "custom_meal_\(UUID().uuidString)"
 
         let meal = Meals(
-            id: mealId,
+            id: editingMeal?.id ?? "custom_meal_\(UUID().uuidString)",
             title: mealTitle,
             subtitle: subtitle,
-            imageName: "plate-dark",
-            type: .balanced,
+            imageName: editingMeal?.imageName ?? "plate-dark",
+            type: editingMeal?.type ?? .balanced,
             calories: totalCalories,
             protein: totalProtein,
             carbs: totalCarbs,
             fats: totalFats,
-            benefits: makeBenefits(),
+            fiber: totalFiber,
+            benefits: editingMeal?.benefits ?? makeBenefits(),
             ingredients: mealIngredients,
-            suggestedTime: currentSuggestedTime,
+            suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
             builderImageItems: builderImageItems
         )
 
         onSave(meal)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        dismiss()
+
+        if !isEditMode {
+            dismiss()
+        }
+    }
+
+    private func prefillIfNeeded() {
+        guard !didPrefill else { return }
+        guard let editingMeal else { return }
+
+        didPrefill = true
+
+        if let imageItems = editingMeal.builderImageItems, !imageItems.isEmpty {
+            let restored = imageItems.compactMap { item -> SelectedBuilderIngredient? in
+                guard let ingredient = ingredients.first(where: { $0.id == item.id }) else {
+                    return nil
+                }
+
+                return SelectedBuilderIngredient(
+                    ingredient: ingredient,
+                    grams: item.grams
+                )
+            }
+
+            if !restored.isEmpty {
+                selectedIngredients = restored
+                let target = restored.first?.ingredient
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                    focusedCategory = target?.category
+                    focusedIngredientID = target?.id
+                    focusScrollToken += 1
+                }
+                return
+            }
+        }
+
+        let restoredFromIngredients = editingMeal.ingredients.compactMap { mealIngredient -> SelectedBuilderIngredient? in
+            guard let ingredient = ingredients.first(where: {
+                normalize($0.title) == normalize(mealIngredient.name)
+            }) else {
+                return nil
+            }
+
+            return SelectedBuilderIngredient(
+                ingredient: ingredient,
+                grams: parseAmount(mealIngredient.amount) ?? ingredient.defaultGrams
+            )
+        }
+
+        selectedIngredients = restoredFromIngredients
+        let target = restoredFromIngredients.first?.ingredient
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+            focusedCategory = target?.category
+            focusedIngredientID = target?.id
+            focusScrollToken += 1
+        }
     }
 
     private func makeMealIngredients() -> [MealsIngredient] {
         selectedIngredients.map { selected in
             MealsIngredient(
                 name: selected.ingredient.title,
-                amount: "\(selected.grams)g"
+                amount: amountText(selected)
             )
         }
     }
 
     private func makeBuilderImageItems() -> [MealBuilderImageItem] {
-        selectedIngredients.map { selected in
-            let ingredient = selected.ingredient
-
-            return MealBuilderImageItem(
-                id: ingredient.id,
-                imageName: ingredient.imageName,
-                visualSize: ingredient.visualSize,
-                offsetX: ingredient.offsetX,
-                offsetY: ingredient.offsetY,
-                rotation: ingredient.rotation,
-                zIndex: ingredient.zIndex,
-                grams: selected.grams
-            )
-        }
+        builderPreviewItems
     }
 
     private func makeSubtitle() -> String {
         selectedIngredients
-            .map { "\($0.ingredient.title) (\($0.grams)g)" }
+            .map { "\($0.ingredient.title) (\(amountText($0)))" }
             .joined(separator: " + ")
     }
 
@@ -667,6 +926,7 @@ struct MealBuilderView: View {
 
     private var currentSuggestedTime: String {
         let hour = Calendar.current.component(.hour, from: Date())
+
         switch hour {
         case 6...10:  return "08:30"
         case 11...14: return "13:00"
@@ -679,13 +939,32 @@ struct MealBuilderView: View {
         switch category {
         case .base:
             return selectedIngredients.contains { $0.ingredient.category == .base } ? "1 selected" : "choose one"
+
         case .protein:
             return selectedIngredients.contains { $0.ingredient.category == .protein } ? "added" : "add protein"
+
         case .vegetables:
             let count = selectedIngredients.filter { $0.ingredient.category == .vegetables }.count
             return count > 0 ? "\(count) added" : "add more"
+
         case .extras:
             return selectedIngredients.contains { $0.ingredient.category == .extras } ? "added" : "optional"
+
+        case .drinks:
+            return selectedIngredients.contains { $0.ingredient.category == .drinks } ? "added" : "optional"
         }
+    }
+
+    private func parseAmount(_ value: String) -> Int? {
+        let digits = value.filter { $0.isNumber }
+        return Int(digits)
+    }
+
+    private func normalize(_ value: String) -> String {
+        value
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: "_", with: "")
     }
 }

@@ -1,0 +1,861 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -scheme WeekFit -destination "platform=iOS Simulator,id=322F4B66-A53E-4C78-945F-88C491E5751A" "-only-testing:WeekFitTests"
+
+2026-05-25 10:57:34.193 xcodebuild[53457:1694847] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (3 targets)
+    Target 'WeekFitUITests' in project 'WeekFit'
+        ➜ Explicit dependency on target 'WeekFit' in project 'WeekFit'
+    Target 'WeekFitTests' in project 'WeekFit'
+        ➜ Explicit dependency on target 'WeekFit' in project 'WeekFit'
+    Target 'WeekFit' in project 'WeekFit' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/maxk/Dev/WeekFit/WeekFit/Resources/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+Build description signature: 757d833c3592b56b8cdde6af45ee97db
+Build description path: /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/XCBuildData/757d833c3592b56b8cdde6af45ee97db.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache
+    cd /Users/maxk/Dev/WeekFit/WeekFit.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -o /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache
+
+WriteAuxiliaryFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.LinkFileList (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    write-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.LinkFileList
+
+WriteAuxiliaryFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    write-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList
+
+WriteAuxiliaryFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-OutputFileMap.json (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    write-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftConstValuesFileList (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    write-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftConstValuesFileList
+
+GenerateAssetSymbols /Users/maxk/Dev/WeekFit/WeekFit/Resources/Assets.xcassets (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/maxk/Dev/WeekFit/WeekFit/Resources/Assets.xcassets --compile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_dependencies --output-partial-info-plist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 26.4 --platform iphonesimulator --bundle-identifier com.weekfit.app --generate-swift-asset-symbols /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+LinkAssetCatalog /Users/maxk/Dev/WeekFit/WeekFit/Resources/Assets.xcassets (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-linkAssetCatalog --thinned /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_output/thinned --thinned-dependencies /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_generated_info.plist_unthinned --output /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app --plist-output /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_generated_info.plist
+note: Emplaced /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/AppIcon60x60@2x.png (in target 'WeekFit' from project 'WeekFit')
+note: Emplaced /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Assets.car (in target 'WeekFit' from project 'WeekFit')
+note: Emplaced /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/AppIcon76x76@2x~ipad.png (in target 'WeekFit' from project 'WeekFit')
+
+ProcessInfoPlistFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Info.plist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/empty-WeekFit.plist (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-infoPlistUtility /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/empty-WeekFit.plist -producttype com.apple.product-type.application -genpkginfo /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/assetcatalog_generated_info.plist -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Info.plist
+
+SwiftDriver WeekFit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFit -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ ProfileViewModel.swift,\ EditUserProfileView.swift,\ EmailLoginSheet.swift,\ HealthAccessView.swift,\ HelpSupportView.swift,\ LoginView.swift,\ NotificationSettingsView.swift,\ PrivacySettingsView.swift,\ ProfileView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/ProfileViewModel.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/EditUserProfileView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/EmailLoginSheet.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/HealthAccessView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/HelpSupportView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/LoginView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/NotificationSettingsView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/PrivacySettingsView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/ProfileView.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/ProfileViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/ProfileViewModel.swift:16:38: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context
+    init(service: ProfileServicing = ProfileService()) {
+                                     ^
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift:14:13: note: calls to initializer 'init()' from outside of its actor context are implicitly asynchronous
+final class ProfileService: ProfileServicing {
+            ^
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift:14:13: note: main actor isolation inferred from conformance to protocol 'ProfileServicing'
+final class ProfileService: ProfileServicing {
+            ^
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/EditUserProfileView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/EmailLoginSheet.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/HealthAccessView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/HelpSupportView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/LoginView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/NotificationSettingsView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/PrivacySettingsView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/ProfileView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ AppDelegate.swift,\ AppSessionState.swift,\ WeekFitApp.swift,\ WeekFitBottomBar.swift,\ WeekFitHeroHeader.swift,\ ProfileModels.swift,\ AuthService.swift,\ ProfileService.swift,\ AuthViewModel.swift /Users/maxk/Dev/WeekFit/WeekFit/App/AppDelegate.swift /Users/maxk/Dev/WeekFit/WeekFit/App/AppSessionState.swift /Users/maxk/Dev/WeekFit/WeekFit/App/WeekFitApp.swift /Users/maxk/Dev/WeekFit/WeekFit/Components/WeekFitBottomBar.swift /Users/maxk/Dev/WeekFit/WeekFit/Components/WeekFitHeroHeader.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Models/ProfileModels.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/AuthService.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/AuthViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/App/AppDelegate.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/App/AppSessionState.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/App/WeekFitApp.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Components/WeekFitBottomBar.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Components/WeekFitHeroHeader.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Models/ProfileModels.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/AuthService.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/AuthViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ WeekFit (in target 'WeekFit' from project 'WeekFit')
+
+EmitSwiftModule normal arm64 (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/ViewModels/ProfileViewModel.swift:16:38: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context
+    init(service: ProfileServicing = ProfileService()) {
+                                     ^
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift:14:13: note: calls to initializer 'init()' from outside of its actor context are implicitly asynchronous
+final class ProfileService: ProfileServicing {
+            ^
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Services/ProfileService.swift:14:13: note: main actor isolation inferred from conformance to protocol 'ProfileServicing'
+final class ProfileService: ProfileServicing {
+            ^
+
+SwiftCompile normal arm64 Compiling\ TermsPrivacyView.swift,\ AICoachEngine.swift,\ PremiumActivityStartCard.swift,\ PremiumActivityStartSheet.swift,\ PremiumMealStartSheet.swift,\ TodayView.swift,\ FlowLayout.swift,\ MealBuilderDemoData.swift,\ MealBuilderView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/TermsPrivacyView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/AICoachEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumActivityStartCard.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumActivityStartSheet.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumMealStartSheet.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/TodayView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/FlowLayout.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealBuilderDemoData.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealBuilderView.swift (in target 'WeekFit' from project 'WeekFit')
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Auth/Views/TermsPrivacyView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/AICoachEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/AICoachEngine.swift:216:13: warning: code after 'return' will never be executed
+            if activity.type.lowercased() == "workout" {
+            ^
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumActivityStartCard.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumActivityStartSheet.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/PremiumMealStartSheet.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/TodayView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/TodayView.swift:301:41: warning: 'main' was deprecated in iOS 26.0: Use a UIScreen instance found through context instead (i.e, view.window.windowScene.screen), or for properties like UIScreen.scale with trait equivalents, use a traitCollection found through context.
+                .padding(.top, UIScreen.main.bounds.height > 800 ? 14 : 5)
+                                        ^
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Home/Views/TodayView.swift:318:13: warning: initialization of immutable value 'greeting' was never used; consider replacing with assignment to '_' or removing it
+        let greeting = timeOfDayGreeting
+        ~~~~^~~~~~~~
+        _
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/FlowLayout.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealBuilderDemoData.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealBuilderView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ PlanViewModel.swift,\ TimelineLayoutEngine.swift,\ PlanRow.swift,\ PlanView.swift,\ PlanWeekView.swift,\ ActivityConfirmationState.swift,\ ActivityNotificationConstants.swift,\ ActivityNotificationService.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/PlanViewModel.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/TimelineLayoutEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanRow.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanWeekView.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityConfirmationState.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityNotificationConstants.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityNotificationService.swift (in target 'WeekFit' from project 'WeekFit')
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/PlanViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/TimelineLayoutEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanRow.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift:162:16: warning: value 'nextUpcomingActivity' was defined but never used; consider replacing with boolean test
+        if let nextUpcomingActivity {
+           ~~~~^
+                                    != nil
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift:1114:25: warning: immutable value 'isCompact' was never used; consider replacing with '_' or removing it
+                    let isCompact: Bool = layoutItem.columnCount > 1 && !isDragging
+                        ^~~~~~~~~
+                        _
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift:1121:25: warning: immutable value 'isConflict' was never used; consider replacing with '_' or removing it
+                    let isConflict: Bool = {
+                        ^~~~~~~~~~
+                        _
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanView.swift:3270:20: warning: value 'lastWater' was defined but never used; consider replacing with boolean test
+            if let lastWater = waterActivities.last {
+               ~~~~^~~~~~~~~~~~
+                                                    != nil
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanWeekView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Views/PlanWeekView.swift:201:16: warning: value 'nextUpcomingActivity' was defined but never used; consider replacing with boolean test
+        if let nextUpcomingActivity {
+           ~~~~^
+                                    != nil
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityConfirmationState.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityNotificationConstants.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/ActivityNotificationService.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ HealthManager.swift,\ MealsService.swift,\ NotificationActionHandler.swift,\ WeekFitMealActionBackground.swift,\ WeekFitStyle.swift,\ WeekFitTheme.swift,\ ContentView.swift,\ GeneratedAssetSymbols.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/HealthManager.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/MealsService.swift /Users/maxk/Dev/WeekFit/WeekFit/Services/NotificationActionHandler.swift /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitMealActionBackground.swift /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitStyle.swift /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitTheme.swift /Users/maxk/Dev/WeekFit/WeekFit/ContentView.swift /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/HealthManager.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/MealsService.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Services/NotificationActionHandler.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitMealActionBackground.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitStyle.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Theme/WeekFitTheme.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/ContentView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ CoachInsightFactory.swift,\ FastFuelSuggestionService.swift,\ HumanBrain.swift,\ NutritionCoreEngine.swift,\ NutritionDataProcessor.swift,\ NutritionGoalEngine.swift,\ NutritionScoreEngine.swift,\ NutritionViewModel.swift,\ ActivityStatusEvaluator.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachInsightFactory.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/FastFuelSuggestionService.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/HumanBrain.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionCoreEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionDataProcessor.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionGoalEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionScoreEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionViewModel.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/ActivityStatusEvaluator.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachInsightFactory.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/FastFuelSuggestionService.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/HumanBrain.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionCoreEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionDataProcessor.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionGoalEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionScoreEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/NutritionViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/ActivityStatusEvaluator.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ ExpertCoachView.swift,\ NutritionResult.swift,\ UserNutritionProfile.swift,\ NutritionRepository.swift,\ PlanCategory.swift,\ PlanItem.swift,\ PlannerType.swift,\ PlannedActivity.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/ExpertCoachView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/NutritionResult.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/UserNutritionProfile.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/NutritionRepository.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlanCategory.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlanItem.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlannerType.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/PlannedActivity.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/ExpertCoachView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/NutritionResult.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/UserNutritionProfile.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/NutritionRepository.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlanCategory.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlanItem.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/Models/PlannerType.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Planner/ViewModels/PlannedActivity.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ MealCardRow.swift,\ MealDetailsView.swift,\ Meals.swift,\ MealsView.swift,\ WeekFitMealSlot.swift,\ CoachEngineV2.swift,\ ExpertCoachViewV2.swift,\ CoachCopy.swift,\ CoachDecisionEngine.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealCardRow.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealDetailsView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/Meals.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealsView.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/WeekFitMealSlot.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/CoachEngine/CoachEngineV2.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/CoachEngine/ExpertCoachViewV2.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachCopy.swift /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachDecisionEngine.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealCardRow.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealDetailsView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/Meals.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealsView.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/MealsView.swift:389:13: warning: initialization of immutable value 'accent' was never used; consider replacing with assignment to '_' or removing it
+        let accent = tab == .suggested ? suggestedAccent : (isSelected ? Color.white : WeekFitTheme.meal)
+        ~~~~^~~~~~
+        _
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Meals/WeekFitMealSlot.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/CoachEngine/CoachEngineV2.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/CoachEngine/ExpertCoachViewV2.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachCopy.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFit/Features/Nutrition/new/engine/CoachDecisionEngine.swift (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppDelegate.swift, AppSessionState.swift, WeekFitApp.swift, WeekFitBottomBar.swift, WeekFitHeroHeader.swift, ProfileModels.swift, AuthService.swift, ProfileService.swift, AuthViewModel.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for WeekFit (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriver\ Compilation\ Requirements WeekFit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFit -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+Copy /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.abi.json (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.abi.json /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftsourceinfo (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftsourceinfo /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriver WeekFitTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFitTests -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling HealthManager.swift, MealsService.swift, NotificationActionHandler.swift, WeekFitMealActionBackground.swift, WeekFitStyle.swift, WeekFitTheme.swift, ContentView.swift, GeneratedAssetSymbols.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ExpertCoachView.swift, NutritionResult.swift, UserNutritionProfile.swift, NutritionRepository.swift, PlanCategory.swift, PlanItem.swift, PlannerType.swift, PlannedActivity.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ WeekFitTests (in target 'WeekFitTests' from project 'WeekFit')
+
+EmitSwiftModule normal arm64 (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ HumanBrainEvaluatorXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainEvaluatorXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainEvaluatorXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainEvaluatorXCTests.swift:34:9: warning: main actor-isolated conformance of 'HumanBrain.FuelState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(fuel, .overfueled)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainEvaluatorXCTests.swift:64:9: warning: main actor-isolated conformance of 'HumanBrain.FuelState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertNotEqual(fuel, .overfueled)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainEvaluatorXCTests.swift:86:9: warning: main actor-isolated conformance of 'HumanBrain.StrainState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.strain, .veryHigh)
+        ^
+
+SwiftCompile normal arm64 Compiling\ CoachMetricsBuilder.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Support/CoachMetricsBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Support/CoachMetricsBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftCompile normal arm64 Compiling\ CoachInsightFactoryXCTests.swift,\ HealthKitEdgeCaseXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachInsightFactoryXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachInsightFactoryXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachInsightFactoryXCTests.swift:30:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(decision.primaryStrategy, PrimaryStrategy.prepareWorkout)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachInsightFactoryXCTests.swift:116:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(decision.primaryStrategy, PrimaryStrategy.maintain)
+        ^
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:9:9: warning: main actor-isolated conformance of 'HumanBrain.SleepState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.sleep, .unknown)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:14:9: warning: main actor-isolated conformance of 'HumanBrain.StrainState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.strain, .low)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:31:9: warning: main actor-isolated conformance of 'HumanBrain.SleepState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.sleep, .veryShort)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:32:25: warning: main actor-isolated conformance of 'HumanBrain.StrainState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        if brain.strain == .high || brain.strain == .veryHigh {
+                        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:32:50: warning: main actor-isolated conformance of 'HumanBrain.StrainState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        if brain.strain == .high || brain.strain == .veryHigh {
+                                                 ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:33:13: warning: main actor-isolated conformance of 'HumanBrain.RecoveryState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+            XCTAssertEqual(brain.recovery, .compromised)
+            ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HealthKitEdgeCaseXCTests.swift:60:9: warning: main actor-isolated conformance of 'HumanBrain.ReadinessState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.readiness, .low)
+        ^
+
+SwiftDriverJobDiscovery normal arm64 Compiling CoachInsightFactory.swift, FastFuelSuggestionService.swift, HumanBrain.swift, NutritionCoreEngine.swift, NutritionDataProcessor.swift, NutritionGoalEngine.swift, NutritionScoreEngine.swift, NutritionViewModel.swift, ActivityStatusEvaluator.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftCompile normal arm64 Compiling\ HumanBrainBuildXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainBuildXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainBuildXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainBuildXCTests.swift:31:13: warning: variable 'completed' was never mutated; consider changing to 'let' constant
+        var completed = PlannedActivityBuilder.upcomingWorkout(title: "Done", hoursFromNow: 1, now: now)
+        ~~~ ^
+        let
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainBuildXCTests.swift:58:9: warning: main actor-isolated conformance of 'HumanBrain.StrainState' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.strain, .veryHigh)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/HumanBrainBuildXCTests.swift:77:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, PrimaryStrategy.prepareWorkout)
+        ^
+
+SwiftDriverJobDiscovery normal arm64 Compiling CoachMetricsBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 Compiling\ PlannedActivityBuilder.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Support/PlannedActivityBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Support/PlannedActivityBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling HumanBrainEvaluatorXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 Compiling\ NutritionCoreEngineXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/NutritionCoreEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/NutritionCoreEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for WeekFitTests (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftDriver\ Compilation\ Requirements WeekFitTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFitTests -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling PlannedActivityBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 Compiling\ CoachCopyXCTests.swift,\ CoachDecisionEngineXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachCopyXCTests.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachCopyXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachCopyXCTests.swift:39:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(decision.primaryStrategy, .prepareWorkout)
+        ^
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:10:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .overload)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:15:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .overload)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:20:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertNotEqual(brain.testDecision.primaryStrategy, .overload)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:25:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .overload)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:30:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .maintain)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:35:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .prepareWorkout)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:45:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .rehydrate)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:50:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .addProtein)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:55:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .overload)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:60:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .supercompensation)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:65:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .protectRecovery)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:70:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .protectRecovery)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:75:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .refuel)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:85:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .prepareWorkout)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:97:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .refuel)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:108:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .addProtein)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:119:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .rehydrate)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:130:9: warning: main actor-isolated conformance of 'PrimaryStrategy' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertEqual(brain.testDecision.primaryStrategy, .maintain)
+        ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:188:42: warning: main actor-isolated conformance of 'CoachSuppression' to 'Hashable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertTrue(brain.testDecision.suppressedActions.contains(.fastCarbs))
+                                         ^
+/Users/maxk/Dev/WeekFit/WeekFitTests/Coach/CoachDecisionEngineXCTests.swift:188:60: warning: main actor-isolated conformance of 'CoachSuppression' to 'Hashable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+        XCTAssertTrue(brain.testDecision.suppressedActions.contains(.fastCarbs))
+                                                           ^
+
+SwiftDriverJobDiscovery normal arm64 Compiling HumanBrainBuildXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 Compiling\ HumanBrainStateBuilder.swift /Users/maxk/Dev/WeekFit/WeekFitTests/Support/HumanBrainStateBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftCompile normal arm64 /Users/maxk/Dev/WeekFit/WeekFitTests/Support/HumanBrainStateBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+
+Copy /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitTests.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.abi.json (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.abi.json /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitTests.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftsourceinfo (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftsourceinfo /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling CoachInsightFactoryXCTests.swift, HealthKitEdgeCaseXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling NutritionCoreEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling HumanBrainStateBuilder.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CoachCopyXCTests.swift, CoachDecisionEngineXCTests.swift (in target 'WeekFitTests' from project 'WeekFit')
+
+SwiftDriver\ Compilation WeekFitTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFitTests -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling ProfileViewModel.swift, EditUserProfileView.swift, EmailLoginSheet.swift, HealthAccessView.swift, HelpSupportView.swift, LoginView.swift, NotificationSettingsView.swift, PrivacySettingsView.swift, ProfileView.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling TermsPrivacyView.swift, AICoachEngine.swift, PremiumActivityStartCard.swift, PremiumActivityStartSheet.swift, PremiumMealStartSheet.swift, TodayView.swift, FlowLayout.swift, MealBuilderDemoData.swift, MealBuilderView.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling MealCardRow.swift, MealDetailsView.swift, Meals.swift, MealsView.swift, WeekFitMealSlot.swift, CoachEngineV2.swift, ExpertCoachViewV2.swift, CoachCopy.swift, CoachDecisionEngine.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PlanViewModel.swift, TimelineLayoutEngine.swift, PlanRow.swift, PlanView.swift, PlanWeekView.swift, ActivityConfirmationState.swift, ActivityNotificationConstants.swift, ActivityNotificationService.swift (in target 'WeekFit' from project 'WeekFit')
+
+SwiftDriver\ Compilation WeekFit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name WeekFit -Onone @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios26.4-simulator -g -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.5-23F73-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/maxk/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_const_extract_protocols.json -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-generated-files.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-own-target-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-all-target-headers.hmap -Xcc -iquote -Xcc /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-project-headers.hmap -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources-normal/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources/arm64 -Xcc -I/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-Swift.h -working-directory /Users/maxk/Dev/WeekFit -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib normal (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.4-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -filelist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.LinkFileList -install_name @rpath/WeekFit.debug.dylib -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.swiftmodule @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-ExecutorLinkFileList-normal-arm64.txt (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    construct-stub-executor-link-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'WeekFit' from project 'WeekFit')
+
+Ld /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit normal (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.4-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -F/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -debug_variant -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit-ExecutorLinkFileList-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.app-Simulated.xcent.der /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit
+
+CopySwiftLibs /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Frameworks --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/SystemExtensions --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name WeekFit --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F42 --platform-family iOS --deployment-target 26.4 --bundle-identifier com.weekfit.app --output /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app --target-triple arm64-apple-ios26.4-simulator --binary-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit --dependency-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit_dependency_info.dat --stringsdata-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftFileList --metadata-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.DependencyMetadataFileList --static-metadata-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.DependencyStaticMetadataFileList --swift-const-vals-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/WeekFit.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-25 10:58:00.250 appintentsmetadataprocessor[53618:1696213] Starting appintentsmetadataprocessor export
+2026-05-25 10:58:00.256 appintentsmetadataprocessor[53618:1696213] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+AppIntentsSSUTraining (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Info.plist --temp-dir-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/ssu --bundle-id com.weekfit.app --product-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app --extracted-metadata-path /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Metadata.appintents --metadata-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.DependencyMetadataFileList --source-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/Info.plist --archive-ssu-assets
+2026-05-25 10:58:00.284 appintentsnltrainingprocessor[53619:1696214] Parsing options for appintentsnltrainingprocessor
+2026-05-25 10:58:00.285 appintentsnltrainingprocessor[53619:1696214] Starting AppIntents SSU YAML Generation
+2026-05-25 10:58:00.287 appintentsnltrainingprocessor[53619:1696214] No AppShortcuts found - Skipping.
+
+ProcessInfoPlistFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/Info.plist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/empty-WeekFitTests.plist (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-infoPlistUtility /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/empty-WeekFitTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/Info.plist
+
+Ld /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/WeekFitTests normal (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.4-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -filelist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.LinkFileList -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -bundle_loader /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit -Xlinker -object_path_lto -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.swiftmodule @/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/WeekFitTests
+
+CopySwiftLibs /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/WeekFitTests --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/Frameworks --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/PlugIns --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/SystemExtensions --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name WeekFitTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F42 --platform-family iOS --deployment-target 26.4 --bundle-identifier max-k.WeekFitTests --output /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest --target-triple arm64-apple-ios26.4-simulator --binary-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest/WeekFitTests --dependency-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests_dependency_info.dat --stringsdata-file /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.SwiftFileList --metadata-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests.DependencyMetadataFileList --static-metadata-file-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/WeekFitTests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitTests.build/Objects-normal/arm64/WeekFitTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-25 10:58:00.589 appintentsmetadataprocessor[53628:1696244] Starting appintentsmetadataprocessor export
+2026-05-25 10:58:00.591 appintentsmetadataprocessor[53628:1696244] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest (in target 'WeekFitTests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/PlugIns/WeekFitTests.xctest
+
+CodeSign /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/WeekFit.debug.dylib
+
+CodeSign /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/__preview.dylib (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/__preview.dylib
+/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app/__preview.dylib: replacing existing signature
+
+CodeSign /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --entitlements /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/WeekFit.app.xcent --timestamp\=none --generate-entitlement-der /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app
+
+Validate /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app (in target 'WeekFit' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-validationUtility /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFit.app -shallow-bundle -infoplist-subpath Info.plist
+
+ProcessInfoPlistFile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/Info.plist /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitUITests.build/empty-WeekFitUITests.plist (in target 'WeekFitUITests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-infoPlistUtility /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitUITests.build/empty-WeekFitUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/Info.plist
+
+CopySwiftLibs /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest (in target 'WeekFitUITests' from project 'WeekFit')
+    cd /Users/maxk/Dev/WeekFit
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/WeekFitUITests --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/Frameworks --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/PlugIns --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/SystemExtensions --scan-folder /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Products/Debug-iphonesimulator/WeekFitUITests-Runner.app/PlugIns/WeekFitUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFitUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+note: Removed stale file '/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/InsightsView.o'
+
+note: Removed stale file '/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/InsightsView.stringsdata'
+
+note: Removed stale file '/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Build/Intermediates.noindex/WeekFit.build/Debug-iphonesimulator/WeekFit.build/Objects-normal/arm64/InsightsView.swiftconstvalues'
+
+2026-05-25 11:04:11.060 xcodebuild[53457:1694847] [MT] IDETestOperationsObserverDebug: 369.420 elapsed -- Testing started completed.
+2026-05-25 11:04:11.060 xcodebuild[53457:1694847] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-05-25 11:04:11.060 xcodebuild[53457:1694847] [MT] IDETestOperationsObserverDebug: 369.420 sec, +369.420 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/maxk/Library/Developer/Xcode/DerivedData/WeekFit-dytnqqpscmssdbcnzccfqhkbnjbe/Logs/Test/Test-WeekFit-2026.05.25_10-57-34-+0200.xcresult
+
+Failing tests:
+	CoachCopyXCTests.testSummary_overloadWithHydrationSolved_mentionsNoMoreFood()
+	CoachInsightFactoryXCTests.testLateNightFatLossInsight()
+	HealthKitEdgeCaseXCTests.testReadiness_lowWhenVulnerableWithWorkoutSoonAndDepletedFuel()
+
+** TEST FAILED **
+
+Testing started
+Test suite 'CoachCopyXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'CoachCopyXCTests.testFastingSummary_workoutSoonMorning()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.013 seconds)
+Test case 'CoachCopyXCTests.testHeadline_fastingMorningBaseline()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachCopyXCTests.testHeadline_overload()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.002 seconds)
+Test case 'CoachCopyXCTests.testHeadline_supercompensation()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachCopyXCTests.testShortInsight_prepareWorkout()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachCopyXCTests.testSummary_overloadWithHydrationSolved_mentionsNoMoreFood()' failed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.057 seconds)
+Test suite 'NutritionCoreEngineXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'NutritionCoreEngineXCTests.testCalculate_decisionMatchesInsightFactory()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.020 seconds)
+Test case 'NutritionCoreEngineXCTests.testCalculate_overloadDay_statusAndInsightsAlign()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'NutritionCoreEngineXCTests.testCalculate_returnsFullFrontendPayload()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (2.952 seconds)
+Test suite 'CoachInsightFactoryXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'CoachInsightFactoryXCTests.testFatBalanceInsight_whenFatsVeryHigh()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testInsights_maxFourAfterPrioritization()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.075 seconds)
+Test case 'CoachInsightFactoryXCTests.testInsights_neverEmpty_fallbackExists()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testLateNightFatLossInsight()' failed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.005 seconds)
+Test case 'CoachInsightFactoryXCTests.testMaintain_withElectrolytes_showsMineralsNotWater()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testOverload_removesConflictingAddProteinAndCarbs()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testPostWorkoutInsight_afterHighStrainSession()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.005 seconds)
+Test case 'CoachInsightFactoryXCTests.testPrepareWorkoutInsight_usesNextWorkoutTitle()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testPrimaryInsight_overload_hasStopEatingAction()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.002 seconds)
+Test case 'CoachInsightFactoryXCTests.testPrimaryInsight_supercompensation_protectRecovery()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (1.222 seconds)
+Test case 'CoachInsightFactoryXCTests.testRehydrateInsight_suppressedWhenHydrationAdviceBlocked()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachInsightFactoryXCTests.testScheduleInsight_whenMissedItems()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test suite 'HealthKitEdgeCaseXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'HealthKitEdgeCaseXCTests.testMissingActiveCalories_evaluatesLowStrainWithoutWorkouts()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HealthKitEdgeCaseXCTests.testMissingHealthKit_noFood_maintainOrRehydrateNotCrash()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HealthKitEdgeCaseXCTests.testMissingSleep_evaluatesAsUnknown()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HealthKitEdgeCaseXCTests.testReadiness_lowWhenVulnerableWithWorkoutSoonAndDepletedFuel()' failed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.009 seconds)
+Test case 'HealthKitEdgeCaseXCTests.testShortSleep_withHighStrain_compromisedRecovery()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HealthKitEdgeCaseXCTests.testZeroWeightProfile_stillBuildsGoals()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.000 seconds)
+Test suite 'HumanBrainBuildXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'HumanBrainBuildXCTests.testFuture_hasWorkoutSoon_false_whenWorkoutFarAway()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainBuildXCTests.testFuture_hasWorkoutSoon_whenWorkoutWithinTwoAndHalfHours()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainBuildXCTests.testFuture_ignoresCompletedOrSkippedWorkouts()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainBuildXCTests.testHasAnyFoodLogged_fromMacros()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.034 seconds)
+Test case 'HumanBrainBuildXCTests.testIntegration_prepareWorkoutDecision_withUpcomingWorkoutAndLowFuel()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainBuildXCTests.testPast_completedWorkoutsIncreaseStrain()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainBuildXCTests.testPast_missedItemsCount_whenEventEndedWithoutStatus()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test suite 'HumanBrainEvaluatorXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'HumanBrainEvaluatorXCTests.testBuild_marksVeryHighStrain_fromActiveCalories()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainEvaluatorXCTests.testEnergyThresholds_higherWhenStrainAndWorkoutSoon()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.033 seconds)
+Test case 'HumanBrainEvaluatorXCTests.testExpectedHydrationProgress_increasesThroughDay()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainEvaluatorXCTests.testExpectedNutritionProgress_increasesThroughDay()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainEvaluatorXCTests.testFuel_notOverfueled_fromHighEnergyCoverageAlone()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'HumanBrainEvaluatorXCTests.testFuel_overfueled_onlyFromAbsoluteCalorieOrCarbProgress()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test suite 'CoachDecisionEngineXCTests' started on 'Clone 1 of iPhone 17 - WeekFit (54431)'
+Test case 'CoachDecisionEngineXCTests.testAddProtein_eveningLowProtein()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testAddProtein_whenNoFoodAfternoonAndLowProtein()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.011 seconds)
+Test case 'CoachDecisionEngineXCTests.testHydrationAlreadySolved_whenCompletedOrExcessive()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testMaintain_whenBalancedDay()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.060 seconds)
+Test case 'CoachDecisionEngineXCTests.testMorningBaseline_whenNoFoodBeforeNoon()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testNeedsElectrolytes_whenWaterVeryHigh()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testNotOverload_whenHighStrainAndModerateEnergyCoverage()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.023 seconds)
+Test case 'CoachDecisionEngineXCTests.testOverload_whenCaloriesExceedNormalStrainLimit()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testOverload_whenCarbsSeverelyOverflown()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testOverload_whenExtremeEnergyCoverageBeforeSupercompensation()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testOverload_whenHighStrainAndEnergyAboveHighStrainLimit()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.000 seconds)
+Test case 'CoachDecisionEngineXCTests.testOverloadSecondaryPriorities_recoveryAndSleep()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.007 seconds)
+Test case 'CoachDecisionEngineXCTests.testPrepareWorkout_whenNoFoodAndWorkoutSoon()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testPrepareWorkout_whenUnderfueledBeforeSession()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testProtectRecovery_whenReadinessCompromised()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.025 seconds)
+Test case 'CoachDecisionEngineXCTests.testProtectRecovery_whenRecoveryCompromised()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testRefuel_eveningHighStrainLightFuel()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testRefuel_whenSeverelyUnderfueledOnHighStrain()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testRefuelSecondaryPriorities_includeProteinAndCarbs()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.000 seconds)
+Test case 'CoachDecisionEngineXCTests.testRehydrate_whenHydrationBehindAndMacrosOnTrack()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.096 seconds)
+Test case 'CoachDecisionEngineXCTests.testRehydrate_whenNoFoodAndDepletedHydrationAfternoon()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testSupercompensation_whenStrainVeryHigh()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.000 seconds)
+Test case 'CoachDecisionEngineXCTests.testSupercompensationSecondaryPriorities()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.031 seconds)
+Test case 'CoachDecisionEngineXCTests.testSuppressesFastCarbs_whenEnergyOverload()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)
+Test case 'CoachDecisionEngineXCTests.testSuppressesHeavyFoodLateNightUnlessSupercompensation()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.045 seconds)
+Test case 'CoachDecisionEngineXCTests.testSuppressesWorkoutPush_whenRecoveryCompromisedOrVeryHighStrain()' passed on 'Clone 1 of iPhone 17 - WeekFit (54431)' (0.001 seconds)

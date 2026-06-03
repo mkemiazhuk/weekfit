@@ -2,18 +2,21 @@ import SwiftUI
 import SwiftData
 
 struct PremiumActivityStartSheet: View {
+
     let background: Color
     let cardBackground: Color
     let textSecondary: Color
+
     @Binding var isPresented: Bool
     @Binding var refreshID: UUID
 
     @Environment(\.modelContext) private var modelContext
+
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var allPlannedActivities: [PlannedActivity]
 
     @State private var currentSubTab: String = "Workout"
-    
+
     @Namespace private var tabNamespace
 
     private var activeLiveActivity: PlannedActivity? {
@@ -23,12 +26,13 @@ struct PremiumActivityStartSheet: View {
         return allPlannedActivities.first { activity in
             guard !activity.isCompleted,
                   !activity.isSkipped,
-                  calendar.isDate(activity.date, inSameDayAs: now)
+                  calendar.isDate(activity.date, inSameDayAs: now),
+                  isTrackableLiveActivity(activity)
             else { return false }
 
             let endLimit = calendar.date(
                 byAdding: .minute,
-                value: activity.durationMinutes,
+                value: max(activity.durationMinutes, 1),
                 to: activity.date
             ) ?? activity.date
 
@@ -36,169 +40,305 @@ struct PremiumActivityStartSheet: View {
         }
     }
 
+    private var selectedPlannerType: PlannerType {
+        currentSubTab == "Workout" ? .workout : .recovery
+    }
+
+    private var selectedAccent: Color {
+        currentSubTab == "Workout"
+            ? Color(red: 0.46, green: 0.72, blue: 0.82)
+            : Color(red: 0.66, green: 0.58, blue: 0.86)
+    }
+
+    private var selectedAccentComponents: (red: Double, green: Double, blue: Double) {
+        currentSubTab == "Workout"
+            ? (0.46, 0.72, 0.82)
+            : (0.66, 0.58, 0.86)
+    }
+
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
 
+//            ambientGlow
+
             VStack(spacing: 0) {
-                sheetHeader
-                    .padding(.horizontal, 16)
-                    .padding(.top, 18)
-                    .padding(.bottom, 14)
+//                grabber
+//                    .padding(.top, 8)
+
+                PremiumBottomSheetHeader(
+                    title: activeLiveActivity != nil
+                        ? "Active Session"
+                        : "Start Activity",
+
+                    subtitle: activeLiveActivity != nil
+                        ? "Finish current session before starting another"
+                        : "Choose what fits your body right now"
+                ) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    isPresented = false
+                }
 
                 if let liveItem = activeLiveActivity {
                     liveSessionCard(liveItem)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 18)
                         .padding(.bottom, 14)
                 }
 
                 segmentedControl
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 8)
+
+                contextLine
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
 
                 activityOptionsList
             }
         }
     }
 
-    // Final design spec adjustments for absolute symmetry
+    private var grabber: some View {
+        Capsule()
+            .fill(.white.opacity(0.18))
+            .frame(width: 42, height: 4)
+    }
+
+    private var ambientGlow: some View {
+        VStack {
+            Circle()
+                .fill(selectedAccent.opacity(0.12))
+                .frame(width: 260, height: 260)
+                .blur(radius: 70)
+                .offset(y: -110)
+
+            Spacer()
+        }
+        .allowsHitTesting(false)
+    }
+
     private var sheetHeader: some View {
         ZStack {
-            Text(activeLiveActivity != nil ? "Active Tracker" : "Start Activity")
-                .font(.system(size: 16.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.95))
+            VStack(spacing: 3) {
+                Text(activeLiveActivity != nil ? "Active Session" : "Start Activity")
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.96))
+
+                Text(activeLiveActivity != nil ? "Finish current session before starting another" : "Choose what fits your body right now")
+                    .font(.system(size: 11.8, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.38))
+                    .lineLimit(1)
+            }
 
             HStack {
                 Spacer()
 
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     isPresented = false
                 } label: {
-                    Text("Close")
-                        .font(.system(size: 13.0, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.70))
-                        .frame(width: 68, height: 30) // Optimized for a refined, slim profile
-                        .background(Capsule().fill(.white.opacity(0.05)))
-                        .overlay(Capsule().stroke(.white.opacity(0.04), lineWidth: 1))
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .frame(width: 34, height: 34)
+                        .background(
+                            Circle()
+                                .fill(.white.opacity(0.055))
+                        )
+                        .overlay {
+                            Circle()
+                                .stroke(.white.opacity(0.055), lineWidth: 1)
+                        }
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 16) // 🎯 Aligns perfectly with standard content card margins
             }
         }
-        .frame(height: 46)
+        .frame(height: 48)
     }
-    
+
     private var segmentedControl: some View {
         HStack(spacing: 0) {
             segmentButton("Workout")
             segmentButton("Recovery")
         }
         .padding(3)
-        .frame(height: 38) // Слегка увеличили высоту для лучшего тап-таргета (HIG)
+        .frame(height: 38)
         .background(
             Capsule()
-                .fill(.white.opacity(0.04)) // Сделали общую подложку еще более воздушной
+                .fill(.white.opacity(0.036))
         )
-        .overlay(
+        .overlay {
             Capsule()
-                .stroke(.white.opacity(0.03), lineWidth: 1)
-        )
+                .stroke(.white.opacity(0.040), lineWidth: 1)
+        }
     }
 
     private func segmentButton(_ title: String) -> some View {
         let isSelected = currentSubTab == title
 
         return Button {
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) { // Чуть ускорили отклик тапа
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.88)) {
                 currentSubTab = title
             }
         } label: {
             Text(title)
-                .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold)) // Выбранный текст делаем .bold
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.45)) // Увеличили контраст между состояниями
+                .font(.system(size: 13.4, weight: isSelected ? .bold : .semibold, design: .rounded))
+                .foregroundStyle(isSelected ? .white.opacity(0.96) : .white.opacity(0.42))
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity)
                 .background {
                     if isSelected {
                         Capsule()
-                            // Используем нативный системный блюр вместо тяжелой заливки
-                            .fill(.ultraThinMaterial)
-                            .overlay(
+                            .fill(.white.opacity(0.105))
+                            .overlay {
                                 Capsule()
-                                    // Мягкое внутреннее свечение для выделения активной вкладки
-                                    .stroke(.white.opacity(0.08), lineWidth: 1)
-                            )
-                            // Добавляем ультра-легкую белую альфу, чтобы на темных обложках таб не терялся
-                            .background(Capsule().fill(.white.opacity(0.05)))
-                            .matchedGeometryEffect(id: "activeTab", in: tabNamespace) // Если используешь Namespace для плавного переезда плашки
+                                    .stroke(.white.opacity(0.075), lineWidth: 1)
+                            }
+                            .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
                     }
                 }
         }
         .buttonStyle(.plain)
     }
 
+    private var contextLine: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(selectedAccent.opacity(0.78))
+                .frame(width: 5, height: 5)
+
+            Text(currentSubTab == "Workout" ? "Quick start training sessions" : "Low-friction recovery options")
+                .font(.system(size: 11.8, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.42))
+
+            Spacer()
+        }
+    }
+
     private var activityOptionsList: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 12) {
-                let options = currentSubTab == "Workout"
-                    ? PlannerType.workout.options
-                    : PlannerType.recovery.options
-
-                let systemIcon = currentSubTab == "Workout"
-                    ? PlannerType.workout.icon
-                    : PlannerType.recovery.icon
-
-                let baseAccentColor = currentSubTab == "Workout"
-                    ? Color(red: 0.46, green: 0.72, blue: 0.82)
-                    : Color(red: 0.66, green: 0.58, blue: 0.86)
-
-                let visualAccentColor = baseAccentColor.opacity(0.82)
-
-                ForEach(options, id: \.title) { option in
+            VStack(spacing: 10) {
+                ForEach(selectedPlannerType.options, id: \.title) { option in
                     let isBlocked = activeLiveActivity != nil
+                    let duration = defaultDuration(for: option, type: selectedPlannerType)
 
                     PremiumActivityStartCard(
                         title: option.title,
                         subtitle: option.subtitle,
-                        systemIcon: systemIcon,
                         imageName: option.imageName,
-                        accentColor: visualAccentColor,
+                        systemIcon: selectedPlannerType.icon,
+                        accentColor: selectedAccent,
                         cardBackground: cardBackground,
                         textSecondary: textSecondary,
-                        durationMinutes: 60,
-                        plannerType: currentSubTab == "Workout" ? .workout : .recovery,
+                        durationMinutes: duration,
+                        plannerType: selectedPlannerType,
+                        badge: smartBadge(for: option, type: selectedPlannerType),
                         hasConflict: isBlocked
                     ) {
-                        let newActivity = PlannedActivity(
-                            id: UUID().uuidString,
-                            date: Date(),
-                            type: currentSubTab == "Workout" ? "workout" : "recovery",
-                            title: option.title,
-                            durationMinutes: 60,
-                            icon: systemIcon,
-                            imageName: option.imageName,
-                            colorRed: currentSubTab == "Workout" ? 0.46 : 0.66,
-                            colorGreen: currentSubTab == "Workout" ? 0.72 : 0.58,
-                            colorBlue: currentSubTab == "Workout" ? 0.82 : 0.86,
-                            calories: 0,
-                            protein: 0,
-                            carbs: 0,
-                            fats: 0,
-                            isCompleted: false,
-                            isSkipped: false
-                        )
-
-                        modelContext.insert(newActivity)
-                        try? modelContext.save()
-
-                        isPresented = false
-                        refreshID = UUID()
+                        start(option: option, duration: duration)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 18)
+            .padding(.top, 2)
+            .padding(.bottom, 24)
         }
+    }
+
+    private func start(option: PlannerOption, duration: Int) {
+        guard activeLiveActivity == nil else {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            return
+        }
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        let components = selectedAccentComponents
+
+        let newActivity = PlannedActivity(
+            id: UUID().uuidString,
+            date: Date(),
+            type: selectedPlannerType.title.lowercased(),
+            title: option.title,
+            durationMinutes: duration,
+            icon: selectedPlannerType.icon,
+            imageName: option.imageName,
+            colorRed: components.red,
+            colorGreen: components.green,
+            colorBlue: components.blue,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fats: 0,
+            isCompleted: false,
+            isSkipped: false,
+            source: "today"
+        )
+
+        modelContext.insert(newActivity)
+        try? modelContext.save()
+
+        isPresented = false
+        refreshID = UUID()
+    }
+
+    private func isTrackableLiveActivity(_ activity: PlannedActivity) -> Bool {
+        let type = activity.type.lowercased()
+        return type == "workout" || type == "recovery"
+    }
+
+    private func defaultDuration(for option: PlannerOption, type: PlannerType) -> Int {
+        let title = option.title.lowercased()
+
+        if title.contains("sleep") || title.contains("bedtime") {
+            return 480
+        }
+
+        if title.contains("breath") || title.contains("breathing") {
+            return 10
+        }
+
+        if title.contains("stretch") || title.contains("mobility") {
+            return 20
+        }
+
+        if title.contains("sauna") {
+            return 20
+        }
+
+        if type == .recovery {
+            return 20
+        }
+
+        return 60
+    }
+
+    private func smartBadge(for option: PlannerOption, type: PlannerType) -> String? {
+        let title = option.title.lowercased()
+
+        if title.contains("sleep") || title.contains("bedtime") {
+            return "EVENING"
+        }
+
+        if title.contains("yoga") || title.contains("stretch") || title.contains("mobility") {
+            return "LOW IMPACT"
+        }
+
+        if title.contains("breath") {
+            return "RESET"
+        }
+
+        if title.contains("run") || title.contains("cycling") || title.contains("cardio") {
+            return "CARDIO"
+        }
+
+        if title.contains("upper") || title.contains("strength") || title.contains("body") {
+            return "STRENGTH"
+        }
+
+        return type == .recovery ? "RECOVERY" : nil
     }
 
     private func liveSessionCard(_ liveItem: PlannedActivity) -> some View {
@@ -206,115 +346,86 @@ struct PremiumActivityStartSheet: View {
             ? Color(red: 0.46, green: 0.72, blue: 0.82)
             : Color(red: 0.66, green: 0.58, blue: 0.86)
 
-        return VStack(spacing: 7) {
-            HStack {
-                HStack(spacing: 7) {
+        return HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(accentColor.opacity(0.15))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: liveItem.icon.isEmpty ? "figure.run" : liveItem.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(accentColor.opacity(0.95))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     Circle()
                         .fill(accentColor)
-                        .frame(width: 6, height: 6)
+                        .frame(width: 5, height: 5)
                         .phaseAnimator([0.35, 1.0]) { content, phase in
                             content.opacity(phase)
                         } animation: { _ in
-                            .easeInOut(duration: 0.85)
+                            .easeInOut(duration: 0.9)
                         }
 
-                    Text("LIVE SESSION")
+                    Text("LIVE NOW")
                         .font(.system(size: 9.4, weight: .bold))
-                        .tracking(0.55)
-                        .foregroundStyle(accentColor.opacity(0.95))
+                        .tracking(0.5)
+                        .foregroundStyle(accentColor.opacity(0.92))
                 }
 
-                Spacer()
+                Text(liveItem.title)
+                    .font(.system(size: 15.2, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.96))
+                    .lineLimit(1)
+
+                liveProgressText(startedAt: liveItem.date, maxMinutes: liveItem.durationMinutes)
             }
 
-            HStack(alignment: .center, spacing: 11) {
-                Image(systemName: liveItem.icon)
-                    .font(.system(size: 15.5, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.96))
-                    .frame(width: 36, height: 36)
-                    .background(
-                        Circle()
-                            .fill(.white.opacity(0.055))
-                    )
+            Spacer(minLength: 8)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(liveItem.title)
-                        .font(.system(size: 15.6, weight: .bold)) // Чуть уплотнили для уверенного веса в хабе
-                        .foregroundStyle(.white.opacity(0.97))
-                        .lineLimit(1)
+            VStack(alignment: .trailing, spacing: 6) {
+                liveTimer(startedAt: liveItem.date)
 
-                    // 🎯 ОБНОВЛЕНО: Динамический индикатор цвета категории + лаконичное автовыключение
-                    HStack(spacing: 4) {
-                        Text("Active now")
-                            .font(.system(size: 11.2, weight: .semibold))
-                            .foregroundStyle(liveItem.type.lowercased() == "workout"
-                                             ? Color(red: 0.46, green: 0.72, blue: 0.82)
-                                             : Color(red: 0.66, green: 0.58, blue: 0.86))
-                    }
-                    .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    liveTimer(startedAt: liveItem.date)
-
-                    liveProgressText(
-                        startedAt: liveItem.date,
-                        maxMinutes: liveItem.durationMinutes
-                    )
-
-                    Button {
-                        stopLiveSession(liveItem)
-                    } label: {
-                        HStack(spacing: 5) {
-                            Text("Stop")
-                                .font(.system(size: 11.8, weight: .bold))
-
-                            Image(systemName: "stop.fill")
-                                .font(.system(size: 6.8, weight: .bold))
-                        }
-                        .foregroundStyle(.white.opacity(0.94))
-                        .padding(.horizontal, 13)
-                        .frame(height: 28)
+                Button {
+                    stopLiveSession(liveItem)
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .frame(width: 32, height: 32)
                         .background(
-                            Capsule()
-                                .fill(Color.red.opacity(0.72))
+                            Circle()
+                                .fill(Color.red.opacity(0.68))
                         )
-                        .shadow(
-                            color: Color.red.opacity(0.14),
-                            radius: 5,
-                            y: 2
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 3)
+                        .shadow(color: Color.red.opacity(0.16), radius: 8, y: 3)
                 }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            accentColor.opacity(0.09),
-                            Color.white.opacity(0.018),
-                            Color.white.opacity(0.009)
+                            accentColor.opacity(0.105),
+                            .white.opacity(0.026),
+                            .white.opacity(0.012)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(
                     LinearGradient(
                         colors: [
                             accentColor.opacity(0.28),
-                            .white.opacity(0.05),
+                            .white.opacity(0.055),
                             .clear
                         ],
                         startPoint: .topLeading,
@@ -322,12 +433,8 @@ struct PremiumActivityStartSheet: View {
                     ),
                     lineWidth: 1
                 )
-        )
-        .shadow(
-            color: accentColor.opacity(0.07),
-            radius: 10,
-            y: 3
-        )
+        }
+        .shadow(color: accentColor.opacity(0.07), radius: 14, y: 5)
     }
 
     private func liveTimer(startedAt: Date) -> some View {
@@ -338,24 +445,22 @@ struct PremiumActivityStartSheet: View {
             let timeText = String(format: "%02d:%02d", minutes, seconds)
 
             Text(timeText)
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.97))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .frame(width: 86, alignment: .trailing)
+                .foregroundStyle(.white.opacity(0.96))
+                .frame(width: 82, alignment: .trailing)
         }
     }
 
     private func liveProgressText(startedAt: Date, maxMinutes: Int) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = max(0, Int(context.date.timeIntervalSince(startedAt)))
-            let elapsedMinutes = min(elapsed / 60, maxMinutes)
+            let elapsedMinutes = min(elapsed / 60, max(maxMinutes, 1))
 
             Text("\(elapsedMinutes) / \(maxMinutes) min")
-                .font(.system(size: 10.4, weight: .semibold))
+                .font(.system(size: 10.6, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.40))
+                .foregroundStyle(.white.opacity(0.38))
                 .lineLimit(1)
         }
     }
@@ -363,13 +468,14 @@ struct PremiumActivityStartSheet: View {
     private func stopLiveSession(_ activity: PlannedActivity) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-        withAnimation(.spring()) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             activity.isCompleted = true
 
             let passedMinutes = Int(Date().timeIntervalSince(activity.date) / 60)
-            activity.durationMinutes = max(1, min(passedMinutes, 60))
+            activity.durationMinutes = max(1, min(passedMinutes, max(activity.durationMinutes, 1)))
 
             try? modelContext.save()
+
             refreshID = UUID()
             isPresented = false
         }

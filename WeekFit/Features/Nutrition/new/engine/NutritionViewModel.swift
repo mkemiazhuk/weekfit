@@ -67,7 +67,7 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.carbs = 0.0
             updatedMetrics.fats = 0.0
             updatedMetrics.waterLiters = 0.0
-            print("🌙 [Circadian Shield] Deep night block activated. Enforcing pristine zeros for the new calendar day.")
+//            print("🌙 [Circadian Shield] Deep night block activated. Enforcing pristine zeros for the new calendar day.")
         } else {
             let waterLogsCount = plannedActivities.filter { $0.imageName == "hydration" && $0.isCompleted }.count
             updatedMetrics.waterLiters = (Double(waterLogsCount) * 0.25) + manualWaterLiters

@@ -27,27 +27,33 @@ final class DynamicMacroAdjuster {
         let activeFactor: Double
         
         switch goal {
-        case .fatLoss:  activeFactor = 0.5
-        case .maintenance:        activeFactor = 0.8
-        case .muscleGain:         activeFactor = 1.0
+        case .fatLoss:      activeFactor = 0.5
+        case .maintenance:  activeFactor = 0.8
+        case .muscleGain:   activeFactor = 1.0
         }
         
         let dynamicTDEE = bmr + (activeCalories * activeFactor)
         let targetCalories: Double
         
         switch goal {
-        case .fatLoss:  targetCalories = max(dynamicTDEE * 0.85, bmr)
-        case .maintenance:        targetCalories = dynamicTDEE
-        case .muscleGain:         targetCalories = dynamicTDEE * 1.10
+        case .fatLoss:      targetCalories = max(dynamicTDEE * 0.85, bmr)
+        case .maintenance:  targetCalories = dynamicTDEE
+        case .muscleGain:   targetCalories = dynamicTDEE * 1.10
         }
         
         let proteinMultiplier: Double
         let fatRatio: Double
         
         switch goal {
-        case .fatLoss:  proteinMultiplier = 1.8; fatRatio = 0.30
-        case .maintenance:        proteinMultiplier = 1.6; fatRatio = 0.28
-        case .muscleGain:         proteinMultiplier = 2.0; fatRatio = 0.25
+        case .fatLoss:
+            proteinMultiplier = 1.8
+            fatRatio = 0.30
+        case .maintenance:
+            proteinMultiplier = 1.6
+            fatRatio = 0.28
+        case .muscleGain:
+            proteinMultiplier = 2.0
+            fatRatio = 0.25
         }
         
         let proteinGoal = safeWeight * proteinMultiplier
@@ -58,6 +64,7 @@ final class DynamicMacroAdjuster {
         let remainingCalories = max(targetCalories - proteinCalories - fatCalories, 0.0)
         let carbsGoal = remainingCalories / 4.0
         
+        let fiberGoal = min(max((targetCalories / 1000.0) * 14.0, 25.0), 45.0)
         let waterGoal = safeWeight * 0.035 + (activeCalories / 1000.0) * 0.7
         
         return NutritionGoals(
@@ -65,41 +72,55 @@ final class DynamicMacroAdjuster {
             protein: proteinGoal,
             carbs: carbsGoal,
             fats: fatsGoal,
+            fiber: fiberGoal,
             waterLiters: waterGoal
         )
     }
 }
 
 final class TimeAdaptiveScoringEngine {
-    func applyTimeSmoothing(to goals: NutritionGoals, currentHour: Int = Calendar.current.component(.hour, from: Date())) -> NutritionGoals {
+    func applyTimeSmoothing(
+        to goals: NutritionGoals,
+        currentHour: Int = Calendar.current.component(.hour, from: Date())
+    ) -> NutritionGoals {
         let factor: Double
+        
         switch currentHour {
         case 0..<10:  factor = 0.45
         case 10..<16: factor = 0.70
         default:      factor = 1.00
         }
+        
         return NutritionGoals(
             calories: goals.calories * factor,
             protein: goals.protein * factor,
             carbs: goals.carbs * factor,
             fats: goals.fats * factor,
+            fiber: goals.fiber * factor,
             waterLiters: goals.waterLiters * factor
         )
     }
     
     func calculateFinalScore(metrics: DailyNutritionMetrics, smoothedGoals: NutritionGoals) -> Double {
-        let rawScore = evaluateComponent(metrics.protein, target: smoothedGoals.protein) * 0.35 +
-                      evaluateComponent(metrics.waterLiters, target: smoothedGoals.waterLiters) * 0.20 +
-                      evaluateComponent(metrics.calories, target: smoothedGoals.calories) * 0.20 +
-                      evaluateComponent(metrics.carbs, target: smoothedGoals.carbs) * 0.15 +
-                      evaluateComponent(metrics.fats, target: smoothedGoals.fats) * 0.10
+        let rawScore =
+            evaluateComponent(metrics.protein, target: smoothedGoals.protein) * 0.30 +
+            evaluateComponent(metrics.waterLiters, target: smoothedGoals.waterLiters) * 0.20 +
+            evaluateComponent(metrics.calories, target: smoothedGoals.calories) * 0.20 +
+            evaluateComponent(metrics.carbs, target: smoothedGoals.carbs) * 0.15 +
+            evaluateComponent(metrics.fats, target: smoothedGoals.fats) * 0.10 +
+            evaluateComponent(metrics.fiber, target: smoothedGoals.fiber) * 0.05
+        
         return min(max(rawScore, 0.0), 100.0)
     }
     
     private func evaluateComponent(_ value: Double, target: Double) -> Double {
         guard target > 0.0 else { return 0.0 }
         let ratio = value / target
-        if ratio <= 1.05 { return min(ratio * 100.0, 100.0) }
+        
+        if ratio <= 1.05 {
+            return min(ratio * 100.0, 100.0)
+        }
+        
         return max(100.0 - (ratio - 1.05) * 450.0, 0.0)
     }
 }

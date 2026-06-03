@@ -319,11 +319,18 @@ private extension FastFuelSuggestionService {
         switch decision.primaryStrategy {
         case .prepareWorkout:
             if !decision.suppressedActions.contains(.fastCarbs) {
-                tagScores[.fastCarb, default: 0] += 95
+                tagScores[.fastCarb, default: 0] += 220
+                tagScores[.complexCarb, default: 0] += 110
             }
-            tagScores[.hydration, default: 0] += 45
-            tagScores[.healthyFat, default: 0] -= 50
-            tagScores[.slowProtein, default: 0] -= 20
+
+            tagScores[.hydration, default: 0] += 75
+            tagScores[.electrolytes, default: 0] += 80
+
+            tagScores[.healthyFat, default: 0] -= 120
+            tagScores[.slowProtein, default: 0] -= 60
+            tagScores[.fastProtein, default: 0] -= 45
+            tagScores[.fermented, default: 0] -= 55
+            tagScores[.activeRecovery, default: 0] -= 999
 
         case .rehydrate:
             if decision.needsElectrolytesInsteadOfWater {
