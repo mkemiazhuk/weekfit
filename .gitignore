@@ -22,4 +22,5 @@ Package.resolved
 .DS_Store
 
 # Secrets
-.env
+.env.derived-data/
+.derived-data/

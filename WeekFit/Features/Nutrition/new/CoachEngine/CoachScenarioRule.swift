@@ -254,7 +254,7 @@ private extension CoachScenarioRuleEngine {
         if loadedDay {
             return CoachScenarioRule(
                 stateLabel: "PREPARE",
-                title: "Keep \(name.lowercased()) controlled",
+                title: "Keep \(name.lowercased()) easy",
                 message: loadedDayMessage(
                     dayContext: dayContext,
                     recoveryContext: recoveryContext,
@@ -280,7 +280,7 @@ private extension CoachScenarioRuleEngine {
             return CoachScenarioRule(
                 stateLabel: "PREPARE",
                 title: "Get ready for \(name.lowercased())",
-                message: "The session starts soon. Start below target effort and build only after the first block feels controlled.",
+                message: "The session starts soon. Start below target effort and build only after the first block feels easy.",
                 supportFocus: performanceFocus(
                     scenario: scenario,
                     loadedDay: false,
@@ -302,7 +302,7 @@ private extension CoachScenarioRuleEngine {
             title: hard ? "Prepare for a hard session" : "Prepare smoothly",
             message: hard
                 ? "This session can create real training stress. Build into it gradually and keep quality higher than intensity."
-                : "A short warm-up and controlled start should be enough for this session.",
+                : "A short warm-up and easy start should be enough for this session.",
             supportFocus: performanceFocus(
                 scenario: scenario,
                 loadedDay: false,
@@ -338,7 +338,7 @@ private extension CoachScenarioRuleEngine {
             if loadedDay {
                 return CoachScenarioRule(
                     stateLabel: "IN SESSION",
-                    title: "Keep rallies controlled",
+                    title: "Keep rallies steady",
                     message: "\(trainingProgressLine(dayContext)) Play with control and avoid turning every rally into a maximal effort.",
                     supportFocus: [
                         "Stay below max effort",
@@ -359,8 +359,8 @@ private extension CoachScenarioRuleEngine {
                 stateLabel: "IN SESSION",
                 title: hard ? "Control court intensity" : "Keep rallies smooth",
                 message: hard
-                    ? "Keep the effort controlled and save the highest intensity for key points, not every rally."
-                    : "Move smoothly, keep breathing controlled and avoid rushing the pace early.",
+                    ? "Keep the effort repeatable and save the highest intensity for key points, not every rally."
+                    : "Move smoothly, keep breathing steady and avoid rushing the pace early.",
                 supportFocus: hard
                     ? [
                         "Stay below max effort",
@@ -383,7 +383,7 @@ private extension CoachScenarioRuleEngine {
         if loadedDay {
             return CoachScenarioRule(
                 stateLabel: "IN SESSION",
-                title: "Keep output controlled",
+                title: "Keep output steady",
                 message: "\(trainingProgressLine(dayContext)) Make this a clean execution session, not a test of your limit.",
                 supportFocus: [
                     "Leave 1–2 reps in reserve",
@@ -404,7 +404,7 @@ private extension CoachScenarioRuleEngine {
             stateLabel: "IN SESSION",
             title: hard ? "Control the hard work" : "Keep the session steady",
             message: hard
-                ? "Stay controlled before fatigue builds. Quality reps matter more than forcing intensity."
+                ? "Stay repeatable before fatigue builds. Quality reps matter more than forcing intensity."
                 : "Stay steady and keep the session under control.",
             supportFocus: hard
                 ? [
@@ -554,7 +554,7 @@ private extension CoachScenarioRuleEngine {
         if loadedDay {
             return CoachScenarioRule(
                 stateLabel: "PREPARE",
-                title: "Keep endurance controlled",
+                title: "Keep endurance easy",
                 message: loadedDayMessage(
                     dayContext: dayContext,
                     recoveryContext: recoveryContext,
@@ -579,7 +579,7 @@ private extension CoachScenarioRuleEngine {
             return CoachScenarioRule(
                 stateLabel: "PREPARE",
                 title: "Start endurance easy",
-                message: "\(name) starts soon. Keep the first 10 minutes controlled before deciding whether to build effort.",
+                message: "\(name) starts soon. Keep the first 10 minutes easy before deciding whether to build effort.",
                 supportFocus: enduranceFocus(
                     scenario: scenario,
                     loadedDay: false
@@ -599,7 +599,7 @@ private extension CoachScenarioRuleEngine {
             title: long || hard ? "Prepare for endurance" : "Prepare smoothly",
             message: long || hard
                 ? "This session will feel better if you build gradually and keep the effort sustainable."
-                : "A controlled start is enough. Let the session settle before increasing pace.",
+                : "An easy start is enough. Let the session settle before increasing pace.",
             supportFocus: enduranceFocus(
                 scenario: scenario,
                 loadedDay: false
@@ -652,7 +652,7 @@ private extension CoachScenarioRuleEngine {
             supportFocus: long || hard
                 ? [
                     "Hold steady effort",
-                    "Keep breathing controlled",
+                    "Keep breathing steady",
                     "Check effort every 10 min"
                 ]
                 : [
@@ -1005,7 +1005,7 @@ private extension CoachScenarioRuleEngine {
 
         return CoachScenarioRule(
             stateLabel: "PREPARE",
-            title: "Keep heat controlled",
+            title: "Keep heat conservative",
             message: late
                 ? "Use heat as recovery support tonight. Keep the session comfortable so it does not disturb sleep."
                 : "Keep the heat session moderate. The goal is relaxation and recovery, not endurance.",
@@ -1034,7 +1034,7 @@ private extension CoachScenarioRuleEngine {
         CoachScenarioRule(
             stateLabel: "IN SESSION",
             title: "Stay moderate",
-            message: "Heat should feel controlled. End the session early if it starts to feel draining.",
+            message: "Heat should feel comfortable. End the session early if it starts to feel draining.",
             supportFocus: [
                 "Keep it moderate",
                 "Notice dizziness",
@@ -1177,7 +1177,7 @@ private extension CoachScenarioRuleEngine {
 
         return [
             "Warm up 5–10 min",
-            "Start controlled",
+            "Start easy",
             "Keep form clean"
         ]
     }

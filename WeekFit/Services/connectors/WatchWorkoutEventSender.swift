@@ -79,6 +79,10 @@ final class WatchWorkoutEventSender: NSObject {
             return
         }
 
+        guard session.isPaired, session.isWatchAppInstalled else {
+            return
+        }
+
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil)
         }

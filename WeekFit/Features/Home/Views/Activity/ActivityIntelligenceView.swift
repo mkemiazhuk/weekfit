@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import HealthKit
+import CoreLocation
 internal import Combine
 
 struct ActivityHistoricalPoint: Identifiable, Hashable {
@@ -16,13 +17,57 @@ struct ActivityTimelinePoint: Identifiable, Hashable {
     let activeCalories: Double
 }
 
+struct ActivitySessionDetailSnapshot: Hashable {
+    let title: String
+    let activityType: HKWorkoutActivityType
+    let startDate: Date
+    let endDate: Date
+    let durationMinutes: Int
+    let workoutDurationSeconds: TimeInterval
+    let elapsedDurationSeconds: TimeInterval
+    let source: String?
+    let icon: String
+    let color: Color
+    let activeCalories: Double?
+    let distanceKm: Double?
+    let averageHeartRate: Double?
+    let maxHeartRate: Double?
+    let heartRateSamples: [WorkoutHeartRateSample]
+    let routePoints: [WorkoutRoutePoint]
+    let elevationGain: Double?
+    let steps: Int?
+    let cadence: Double?
+
+    var averageSpeedKmh: Double? {
+        guard let distanceKm, distanceKm > 0, workoutDurationSeconds > 0 else {
+            return nil
+        }
+
+        return distanceKm / (workoutDurationSeconds / 3600.0)
+    }
+
+    var averagePaceMinutesPerKm: Double? {
+        guard let distanceKm, distanceKm > 0, workoutDurationSeconds > 0 else {
+            return nil
+        }
+
+        return (workoutDurationSeconds / 60.0) / distanceKm
+    }
+
+    var shouldShowElapsedTime: Bool {
+        elapsedDurationSeconds > workoutDurationSeconds + 60
+    }
+}
+
 struct ActivitySessionSnapshot: Identifiable, Hashable {
     let id = UUID()
+    let workoutID: UUID?
     let title: String
     let startDate: Date
     let durationMinutes: Int
     let icon: String
     let color: Color
+    let detail: ActivitySessionDetailSnapshot?
 }
 
 struct ActivityDaySnapshot: Identifiable, Hashable {
@@ -66,6 +111,7 @@ struct ActivityIntelligenceView: View {
     let plannedActivities: [PlannedActivity]
 
     @StateObject private var viewModel = ActivityIntelligenceViewModel()
+    @State private var selectedSession: ActivitySessionSnapshot?
     @Environment(\.dismiss) private var dismiss
 
     private var snapshot: ActivityDaySnapshot {
@@ -80,12 +126,13 @@ struct ActivityIntelligenceView: View {
             VStack(spacing: 0) {
                 header
 
-                ActivityDayPicker(
-                    selectedDate: viewModel.selectedDate,
-                    snapshots: viewModel.weekSnapshots
-                ) { snapshot in
-                    select(snapshot)
-                }
+                HealthDetailsWeekPicker(
+                    selectedDate: Binding(
+                        get: { viewModel.selectedDate },
+                        set: { select($0) }
+                    ),
+                    accentColor: ActivityStyle.activityColor
+                )
                 .padding(.horizontal, 18)
                 .padding(.top, 9)
                 .padding(.bottom, 8)
@@ -98,7 +145,9 @@ struct ActivityIntelligenceView: View {
                             selectedSnapshot: snapshot,
                             weekSnapshots: viewModel.weekSnapshots
                         )
-                        SessionsCard(sessions: snapshot.sessions)
+                        SessionsCard(sessions: snapshot.sessions) { session in
+                            selectedSession = session
+                        }
                     }
                     .padding(.horizontal, 18)
                     .padding(.top, 5)
@@ -113,6 +162,12 @@ struct ActivityIntelligenceView: View {
         }
         .navigationBarBackButtonHidden(true)
         .preferredColorScheme(.dark)
+        .fullScreenCover(item: $selectedSession) { session in
+            ActivitySessionDetailView(
+                session: session,
+                healthManager: healthManager
+            )
+        }
         .task {
             await viewModel.load(
                 selectedDate: selectedDate,
@@ -140,7 +195,7 @@ struct ActivityIntelligenceView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Activity Details")
+                Text(WeekFitLocalizedString("activity.activityDetails"))
                     .font(.system(size: 27, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -166,69 +221,16 @@ struct ActivityIntelligenceView: View {
         }
     }
 
-    private func select(_ snapshot: ActivityDaySnapshot) {
+    private func select(_ date: Date) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
         Task {
-            await viewModel.select(
-                snapshot,
+            await viewModel.load(
+                selectedDate: date,
                 healthManager: healthManager,
                 plannedActivities: plannedActivities
             )
         }
-    }
-}
-
-// MARK: - Day Picker
-
-private struct ActivityDayPicker: View {
-    let selectedDate: Date
-    let snapshots: [ActivityDaySnapshot]
-    let onSelect: (ActivityDaySnapshot) -> Void
-
-    private let calendar = Calendar.current
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(snapshots) { snapshot in
-                dayCell(snapshot)
-            }
-        }
-    }
-
-    private func dayCell(_ snapshot: ActivityDaySnapshot) -> some View {
-        let isSelected = calendar.isDate(snapshot.date, inSameDayAs: selectedDate)
-
-        return Button {
-            onSelect(snapshot)
-        } label: {
-            VStack(spacing: 6) {
-                Text(snapshot.date.formatted(.dateTime.weekday(.narrow)))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.40))
-
-                Text(snapshot.date.formatted(.dateTime.day()))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(isSelected ? .black : .white.opacity(0.68))
-                    .frame(width: 28, height: 28)
-                    .background {
-                        Circle()
-                            .fill(isSelected ? ActivityStyle.activityColor : Color.white.opacity(0.055))
-                    }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
-            .background {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(isSelected ? ActivityStyle.activityColor.opacity(0.11) : Color.white.opacity(0.022))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .stroke(isSelected ? ActivityStyle.activityColor.opacity(0.22) : Color.white.opacity(0.04), lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -246,18 +248,18 @@ private struct ActivityHeroCard: View {
             activityRing
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("ACTIVITY SCORE")
+                Text(WeekFitLocalizedString("activity.activityScore"))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.8)
                     .foregroundStyle(ActivityStyle.activityColor)
 
-                Text(statusText)
+                Text(WeekFitLocalizedString(statusText))
                     .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
 
-                Text(insightText)
+                Text(WeekFitLocalizedString(insightText))
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(2)
@@ -300,7 +302,7 @@ private struct ActivityHeroCard: View {
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("score")
+                Text("activity.score")
                     .font(.system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.40))
             }
@@ -311,38 +313,47 @@ private struct ActivityHeroCard: View {
     private var statusText: String {
         switch snapshot.activityPercent {
         case 100...:
-            return "Target achieved"
+            return WeekFitLocalizedString("activity.targetAchieved")
         case 80..<100:
-            return "Almost there"
+            return WeekFitLocalizedString("activity.almostThere")
         case 45..<80:
-            return "Active day"
+            return WeekFitLocalizedString("activity.activeDay")
         case 20..<45:
-            return "Lightly active"
+            return WeekFitLocalizedString("activity.lightlyActive")
         case 1..<20:
-            return "Low activity"
+            return WeekFitLocalizedString("activity.lowActivity")
         default:
-            return "No activity yet"
+            return WeekFitLocalizedString("activity.noActivityYet")
         }
     }
 
     private var insightText: String {
         if snapshot.activityGoal <= 0 {
-            return "Activity data is shown from Apple Health when available."
+            return WeekFitLocalizedString("activity.activityDataIsShownFromAppleHealthWhenAvailable")
         }
 
         switch snapshot.activityPercent {
         case 100...:
-            return "You reached today's movement target with \(snapshot.activeCalories.formatted()) active kcal."
+            return String(
+                format: WeekFitLocalizedString("activity.youReachedTodaySMovementTargetWithActiveKcal"),
+                snapshot.activeCalories.formatted()
+            )
         case 80..<100:
-            return "You are close to your target. A short walk may complete the day."
+            return WeekFitLocalizedString("activity.youAreCloseToYourTargetAShortWalk")
         case 45..<80:
-            return "Good movement volume today. Keep activity steady through the day."
+            return WeekFitLocalizedString("activity.goodMovementVolumeTodayKeepActivitySteadyThroughThe")
         case 20..<45:
-            return "\(snapshot.activeCalories.formatted()) active kcal completed so far. There is room to build."
+            return String(
+                format: WeekFitLocalizedString("activity.activeKcalCompletedSoFarThereIsRoomTo"),
+                snapshot.activeCalories.formatted()
+            )
         case 1..<20:
-            return "Only \(snapshot.activityPercent)% of your daily movement target has been completed so far."
+            return String(
+                format: WeekFitLocalizedString("activity.onlyLldOfYourDailyMovementTargetHasBeen"),
+                snapshot.activityPercent
+            )
         default:
-            return "No meaningful movement has been recorded yet today."
+            return WeekFitLocalizedString("activity.noMeaningfulMovementHasBeenRecordedYetToday")
         }
     }
 }
@@ -372,18 +383,18 @@ private struct ActivityTimelineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            SectionLabel("ACTIVITY TIMELINE")
+            SectionLabel(WeekFitLocalizedString("activity.activityTimeline"))
 
             HStack(spacing: 10) {
                 activityMetric(
-                    title: "Peak",
+                    title: WeekFitLocalizedString("activity.metric.peak"),
                     value: peakText,
                     icon: "chart.bar.fill",
                     color: ActivityStyle.activityColor
                 )
 
                 activityMetric(
-                    title: "Active kcal",
+                    title: WeekFitLocalizedString("activity.metric.activeKcal"),
                     value: "\(peakCalories)",
                     icon: "flame.fill",
                     color: ActivityStyle.green
@@ -450,7 +461,7 @@ private struct ActivityTimelineCard: View {
             }
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(title)
+                Text(WeekFitLocalizedString(title))
                     .font(.system(size: ActivityTypography.metricSecondary, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(1)
@@ -550,19 +561,19 @@ private struct WeeklyContextCard: View {
 
     private var weekDeltaText: String {
         if isEarlyToday {
-            return "Day is still early"
+            return WeekFitLocalizedString("activity.comparison.dayEarly")
         }
 
         return deltaText(
             current: selectedSnapshot.activeCalories,
             baseline: weekAverage,
-            label: "week average"
+            label: WeekFitLocalizedString("activity.comparison.weekAverage")
         )
     }
     
     private var typicalDeltaText: String? {
         if isEarlyToday {
-            return "Weekly comparison will be more useful later today"
+            return WeekFitLocalizedString("activity.comparison.weeklyLater")
         }
 
         guard hasTypicalBaseline else { return nil }
@@ -570,7 +581,7 @@ private struct WeeklyContextCard: View {
         return deltaText(
             current: selectedSnapshot.activeCalories,
             baseline: typicalSameWeekdayAverage,
-            label: "typical \(weekdayName)"
+            label: String(format: WeekFitLocalizedString("activity.comparison.typicalWeekdayFormat"), weekdayName)
         )
     }
     
@@ -592,7 +603,7 @@ private struct WeeklyContextCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            SectionLabel("THIS WEEK")
+            SectionLabel(WeekFitLocalizedString("activity.thisWeek"))
 
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 7) {
@@ -603,7 +614,7 @@ private struct WeeklyContextCard: View {
                         .minimumScaleFactor(0.76)
 
                     if let typicalDeltaText {
-                        Text(typicalDeltaText)
+                    Text(typicalDeltaText)
                             .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                             .foregroundStyle(.white.opacity(0.48))
                             .lineLimit(1)
@@ -666,18 +677,18 @@ private struct WeeklyContextCard: View {
         baseline: Int,
         label: String
     ) -> String {
-        guard baseline > 0 else { return "No baseline yet" }
+        guard baseline > 0 else { return WeekFitLocalizedString("activity.comparison.noBaseline") }
 
         let ratio = Double(current) / Double(max(baseline, 1))
         let delta = Int(abs((ratio - 1.0) * 100.0).rounded())
 
         if delta == 0 {
-            return "In line with \(label)"
+            return String(format: WeekFitLocalizedString("activity.comparison.inLineFormat"), label)
         }
 
         return ratio >= 1.0
-            ? "↑ \(delta)% vs \(label)"
-            : "↓ \(delta)% vs \(label)"
+            ? String(format: WeekFitLocalizedString("activity.comparison.aboveFormat"), delta, label)
+            : String(format: WeekFitLocalizedString("activity.comparison.belowFormat"), delta, label)
     }
 
     private func shortWeekday(for date: Date) -> String {
@@ -708,16 +719,17 @@ private struct WeeklyContextItem: Identifiable {
 
 private struct SessionsCard: View {
     let sessions: [ActivitySessionSnapshot]
+    let onSelect: (ActivitySessionSnapshot) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                SectionLabel("ACTIVITY LOG")
+                SectionLabel(WeekFitLocalizedString("activity.activityLog"))
 
                 Spacer()
 
                 if !sessions.isEmpty {
-                    Text("\(sessions.count) sessions")
+                    Text(String(format: WeekFitLocalizedString("activity.sessions.countFormat"), sessions.count))
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -728,7 +740,9 @@ private struct SessionsCard: View {
             } else {
                 VStack(spacing: 9) {
                     ForEach(sessions) { session in
-                        SessionRow(session: session)
+                        SessionRow(session: session) {
+                            onSelect(session)
+                        }
                     }
                 }
             }
@@ -741,40 +755,1269 @@ private struct SessionsCard: View {
 
 private struct SessionRow: View {
     let session: ActivitySessionSnapshot
+    let onTap: () -> Void
 
-    private var endDate: Date {
-        Calendar.current.date(byAdding: .minute, value: session.durationMinutes, to: session.startDate) ?? session.startDate
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        } label: {
+            HStack(spacing: 11) {
+                CircleIcon(systemName: session.icon, color: session.color, size: 34)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(session.title)
+                        .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.92))
+
+                    Text(session.timeRange)
+                        .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.46))
+                }
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    Text(DurationFormatter.fullMinutes(session.durationMinutes))
+                        .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.86))
+                        .monospacedDigit()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: ActivityTypography.helperText, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.24))
+                }
+            }
+        }
+        .padding(12)
+        .innerActivityCard(cornerRadius: 15)
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Session Detail
+
+private struct ActivitySessionDetailView: View {
+    let session: ActivitySessionSnapshot
+    @ObservedObject var healthManager: HealthManager
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var loadedDetail: ActivitySessionDetailSnapshot?
+    @State private var isHeartRateLoading = false
+    @State private var isRouteLoading = false
+    @State private var remainingSupplementalLoads = 0
+
+    private var detail: ActivitySessionDetailSnapshot? {
+        loadedDetail ?? session.detail
     }
 
-    private var timeRange: String {
-        let start = session.startDate.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    private var heartRateSamples: [WorkoutHeartRateSample] {
+        detail?.heartRateSamples ?? []
+    }
+
+    private var routePoints: [WorkoutRoutePoint] {
+        detail?.routePoints ?? []
+    }
+
+    private var sessionDurationSeconds: TimeInterval {
+        detail?.workoutDurationSeconds ?? Double(session.durationMinutes * 60)
+    }
+
+    private var sessionDurationMinutes: Double {
+        max(sessionDurationSeconds / 60.0, 1)
+    }
+
+    private var heartRateChartPoints: [HeartRateChartPoint] {
+        let samples = downsampleHeartRateSamples(heartRateSamples, maximumCount: 220)
+        let startDate = detail?.startDate ?? session.startDate
+        let elapsedSeconds = max(detail?.elapsedDurationSeconds ?? session.endDate.timeIntervalSince(session.startDate), 1)
+
+        return samples.map {
+            let elapsedOffset = max(0, min($0.timestamp.timeIntervalSince(startDate), elapsedSeconds))
+            let workoutMinute = elapsedOffset / elapsedSeconds * sessionDurationMinutes
+
+            return HeartRateChartPoint(
+                timestamp: $0.timestamp,
+                minute: workoutMinute,
+                beatsPerMinute: $0.beatsPerMinute
+            )
+        }
+    }
+
+    private var relativeMinuteMarks: [Double] {
+        let duration = sessionDurationMinutes
+        return [0, 0.25, 0.5, 0.75, 1.0].map {
+            (duration * $0).rounded()
+        }
+    }
+
+    private var heartRateVisibleDomain: ClosedRange<Double> {
+        let values = heartRateSamples.map(\.beatsPerMinute)
+        guard let minValue = values.min(), let maxValue = values.max() else {
+            return 60...180
+        }
+
+        let lowerZoneBoundary = allHeartRateThresholds.last(where: { $0 <= minValue }) ?? minValue
+        let upperZoneBoundary = allHeartRateThresholds.first(where: { $0 >= maxValue }) ?? maxValue
+        var lower = max(40, floor(min(minValue, lowerZoneBoundary) / 10) * 10 - 10)
+        var upper = min(220, ceil(max(maxValue, upperZoneBoundary) / 10) * 10 + 10)
+
+        if upper - lower < 40 {
+            let midpoint = (upper + lower) / 2
+            lower = max(40, midpoint - 20)
+            upper = min(220, midpoint + 20)
+        }
+
+        return lower...upper
+    }
+
+    private var heartRateZoneDefinitions: [HeartRateZoneDefinition] {
+        [
+            HeartRateZoneDefinition(
+                title: WeekFitLocalizedString("activity.heartRate.zone1"),
+                lowerBound: 40,
+                upperBound: 120,
+                color: ActivityStyle.blue
+            ),
+            HeartRateZoneDefinition(
+                title: WeekFitLocalizedString("activity.heartRate.zone2"),
+                lowerBound: 120,
+                upperBound: 140,
+                color: ActivityStyle.green
+            ),
+            HeartRateZoneDefinition(
+                title: WeekFitLocalizedString("activity.heartRate.zone3"),
+                lowerBound: 140,
+                upperBound: 160,
+                color: ActivityStyle.yellow
+            ),
+            HeartRateZoneDefinition(
+                title: WeekFitLocalizedString("activity.heartRate.zone4"),
+                lowerBound: 160,
+                upperBound: 180,
+                color: ActivityStyle.orange
+            ),
+            HeartRateZoneDefinition(
+                title: WeekFitLocalizedString("activity.heartRate.zone5"),
+                lowerBound: 180,
+                upperBound: 220,
+                color: ActivityStyle.red
+            )
+        ]
+    }
+
+    private var allHeartRateThresholds: [Double] {
+        heartRateZoneDefinitions
+            .dropFirst()
+            .map(\.lowerBound)
+    }
+
+    private var heartRateThresholds: [Double] {
+        allHeartRateThresholds
+            .filter { heartRateVisibleDomain.contains($0) }
+    }
+
+    private var heartRateYAxisValues: [Double] {
+        let values = heartRateThresholds + [
+            heartRateVisibleDomain.lowerBound,
+            heartRateVisibleDomain.upperBound
+        ]
+
+        return Array(Set(values.map { ($0 / 10).rounded() * 10 })).sorted()
+    }
+
+    private var heartRateLineSegments: [HeartRateLineSegment] {
+        guard let first = heartRateChartPoints.first else { return [] }
+
+        var segments: [HeartRateLineSegment] = []
+        var currentZone = heartRateZone(for: first.beatsPerMinute)
+        var currentPoints: [HeartRateChartPoint] = [first]
+
+        for point in heartRateChartPoints.dropFirst() {
+            let zone = heartRateZone(for: point.beatsPerMinute)
+
+            if zone.id != currentZone.id {
+                currentPoints.append(point)
+                segments.append(
+                    HeartRateLineSegment(
+                        zone: currentZone,
+                        points: currentPoints
+                    )
+                )
+                currentZone = zone
+                currentPoints = [point]
+            } else {
+                currentPoints.append(point)
+            }
+        }
+
+        if currentPoints.count > 1 {
+            segments.append(
+                HeartRateLineSegment(
+                    zone: currentZone,
+                    points: currentPoints
+                )
+            )
+        }
+
+        return segments
+    }
+
+    private func heartRateZone(for beatsPerMinute: Double) -> HeartRateZoneDefinition {
+        heartRateZoneDefinitions.first { zone in
+            beatsPerMinute >= zone.lowerBound && beatsPerMinute < zone.upperBound
+        } ?? heartRateZoneDefinitions.last!
+    }
+
+    var body: some View {
+        ZStack {
+            ActivityStyle.screenBackground
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                header
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 9) {
+                        sessionHeroCard
+                        metricsCard
+
+                        if isHeartRateLoading || !heartRateSamples.isEmpty {
+                            heartRateCard
+                        }
+
+                        if isRouteLoading || routePoints.count > 1 {
+                            routeCard
+                        }
+
+                        footer
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 5)
+                    .padding(.bottom, 36)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .task(id: session.id) {
+            await loadSupplementalDetails()
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 13) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .overlay {
+                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 11)
+        .background {
+            ActivityStyle.screenBackground.ignoresSafeArea(edges: .top)
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+        }
+    }
+
+    private var sessionHeroCard: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(session.color.opacity(0.12))
+                    .frame(width: 108, height: 108)
+
+                Circle()
+                    .stroke(session.color.opacity(0.90), lineWidth: 2)
+                    .frame(width: 108, height: 108)
+
+                Image(systemName: session.icon)
+                    .font(.system(size: 43, weight: .semibold))
+                    .foregroundStyle(session.color)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(session.title)
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text(activityDateText)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.56))
+                    .lineLimit(1)
+
+                Text(detailTimeRange)
+                    .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.84)
+
+                HStack(spacing: 5) {
+                    Image(systemName: "applewatch")
+                        .font(.system(size: 11, weight: .bold))
+
+                    Text(syncedText)
+                        .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                }
+                .foregroundStyle(.white.opacity(0.58))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background {
+                    Capsule()
+                        .fill(Color.white.opacity(0.045))
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+    }
+
+    private var activityDateText: String {
+        session.startDate.formatted(.dateTime.weekday(.wide).month(.wide).day())
+    }
+
+    private var syncedText: String {
+        let source = detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")
+        return String(format: WeekFitLocalizedString("activity.syncedFrom"), source)
+    }
+
+    private var detailTimeRange: String {
+        let startDate = detail?.startDate ?? session.startDate
+        let endDate = detail?.endDate ?? session.endDate
+        let start = startDate.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
         let end = endDate.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
         return "\(start) – \(end)"
     }
 
-    var body: some View {
-        HStack(spacing: 11) {
-            CircleIcon(systemName: session.icon, color: session.color, size: 34)
+    private var metricsCard: some View {
+        LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.flexible(), spacing: 0),
+                count: metricsColumnCount
+            ),
+            spacing: 0
+        ) {
+            ForEach(metricItems) { item in
+                SessionMetricGridCell(item: item)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .activityCard(glow: session.color.opacity(0.035))
+    }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(session.title)
-                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+    private var heartRateCard: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack {
+                SectionLabel(WeekFitLocalizedString("activity.heartRate"))
 
-                Text(timeRange)
-                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.46))
+                Spacer()
+
+                HStack(spacing: 10) {
+                    if let averageHeartRate = detail?.averageHeartRate {
+                        Text(String(format: WeekFitLocalizedString("activity.heartRate.averageFormat"), Int(averageHeartRate.rounded())))
+                    }
+
+                    if let maxHeartRate = detail?.maxHeartRate {
+                        Text(String(format: WeekFitLocalizedString("activity.heartRate.maxFormat"), Int(maxHeartRate.rounded())))
+                    }
+                }
+                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.52))
+                .monospacedDigit()
             }
 
-            Spacer()
+            if isHeartRateLoading && heartRateSamples.isEmpty {
+                SessionDetailSkeletonLine(color: ActivityStyle.red)
+                    .frame(height: 118)
+                    .innerActivityCard(cornerRadius: 15)
+            } else {
+                Chart {
+                    ForEach(heartRateThresholds, id: \.self) { threshold in
+                        RuleMark(y: .value("Threshold", threshold))
+                            .foregroundStyle(heartRateZone(for: threshold).color.opacity(0.14))
+                            .lineStyle(StrokeStyle(lineWidth: 0.65, dash: [3, 5]))
+                    }
 
-            Text(DurationFormatter.fullMinutes(session.durationMinutes))
-                .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.86))
+                    ForEach(heartRateLineSegments) { segment in
+                        ForEach(segment.points) { sample in
+                            LineMark(
+                                x: .value("Minute", sample.minute),
+                                y: .value("BPM", sample.beatsPerMinute),
+                                series: .value("Zone Segment", segment.id.uuidString)
+                            )
+                            .interpolationMethod(.catmullRom)
+                            .foregroundStyle(segment.zone.color)
+                            .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                        }
+                    }
+                }
+                .chartXScale(domain: 0...max(sessionDurationMinutes, 1))
+                .chartYScale(domain: heartRateVisibleDomain)
+                .chartXAxis {
+                    AxisMarks(values: relativeMinuteMarks) { value in
+                        AxisValueLabel {
+                            if let minute = value.as(Double.self) {
+                                Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), Int(minute.rounded())))
+                                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.38))
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(values: heartRateYAxisValues) { value in
+                        AxisGridLine().foregroundStyle(Color.white.opacity(0.055))
+                        AxisValueLabel {
+                            if let number = value.as(Double.self) {
+                                Text("\(Int(number))")
+                                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.38))
+                            }
+                        }
+                    }
+                }
+                .frame(height: 164)
+                .transaction {
+                    $0.animation = nil
+                }
+            }
+
+            VStack(spacing: 7) {
+                ForEach(heartRateZones) { zone in
+                    HeartRateZoneLegendRow(zone: zone)
+                }
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .activityCard(glow: ActivityStyle.red.opacity(0.035))
+    }
+
+    private var routeCard: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            SectionLabel("activity.route")
+
+            HStack(spacing: 12) {
+                if isRouteLoading && routePoints.isEmpty {
+                    SessionDetailSkeletonLine(color: session.color)
+                        .frame(height: 112)
+                        .frame(maxWidth: .infinity)
+                        .innerActivityCard(cornerRadius: 15)
+                } else {
+                    RoutePreviewView(points: routePoints, color: session.color)
+                        .frame(height: 112)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        .innerActivityCard(cornerRadius: 15)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    if let elevationGain = detail?.elevationGain {
+                        routeMetric(
+                            title: "activity.metric.elevation",
+                            value: MetricFormatter.elevation(elevationGain),
+                            icon: "mountain.2.fill",
+                            color: ActivityStyle.amber
+                        )
+                    }
+
+                    if let distanceKm = detail?.distanceKm {
+                        routeMetric(
+                            title: "activity.metric.distance",
+                            value: MetricFormatter.distance(distanceKm),
+                            icon: "mappin.and.ellipse",
+                            color: ActivityStyle.blue
+                        )
+                    }
+                }
+                .frame(width: 112, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .activityCard(glow: session.color.opacity(0.035))
+    }
+
+    private var timeInZonesCard: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            SectionLabel("activity.timeInZones")
+
+            HStack(spacing: 14) {
+                ZoneDonutView(zones: heartRateZones)
+                    .frame(width: 96, height: 96)
+
+                VStack(spacing: 7) {
+                    ForEach(heartRateZones) { zone in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(zone.color)
+                                .frame(width: 8, height: 8)
+
+                            Text(zone.title)
+                                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.72))
+                                .frame(width: 42, alignment: .leading)
+                                .lineLimit(1)
+
+                            GeometryReader { proxy in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.065))
+
+                                    Capsule()
+                                        .fill(zone.color)
+                                        .frame(width: proxy.size.width * CGFloat(zone.percentage) / 100)
+                                }
+                            }
+                            .frame(height: 7)
+
+                            Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
+                                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.70))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(width: 58, alignment: .trailing)
+                                .monospacedDigit()
+
+                            Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
+                                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.44))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(width: 34, alignment: .trailing)
+                                .monospacedDigit()
+                        }
+                        .frame(height: 16)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .activityCard(glow: ActivityStyle.red.opacity(0.025))
+    }
+
+    private var footer: some View {
+        Text(String(format: WeekFitLocalizedString("activity.dataFrom"), detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")))
+            .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+            .foregroundStyle(.white.opacity(0.38))
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 3)
+    }
+
+    private var metricItems: [SessionMetricItem] {
+        var items: [SessionMetricItem] = [
+            SessionMetricItem(
+                title: detail?.shouldShowElapsedTime == true
+                    ? "activity.metric.workoutTime"
+                    : "activity.metric.duration",
+                value: MetricFormatter.durationValue(sessionDurationSeconds),
+                unit: MetricFormatter.durationUnit(sessionDurationSeconds),
+                icon: "clock",
+                color: ActivityStyle.activityColor
+            )
+        ]
+
+        if let detail, detail.shouldShowElapsedTime {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.elapsedTime",
+                    value: MetricFormatter.durationValue(detail.elapsedDurationSeconds),
+                    unit: MetricFormatter.durationUnit(detail.elapsedDurationSeconds),
+                    icon: "timer",
+                    color: ActivityStyle.teal
+                )
+            )
+        }
+
+        if let distanceKm = detail?.distanceKm {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.distance",
+                    value: MetricFormatter.compactDistance(distanceKm),
+                    unit: WeekFitLocalizedString("common.unit.kilometer"),
+                    icon: "mappin.circle.fill",
+                    color: ActivityStyle.green
+                )
+            )
+        }
+
+        if let activeCalories = detail?.activeCalories {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.activeCalories",
+                    value: "\(Int(activeCalories.rounded()))",
+                    unit: WeekFitLocalizedString("common.unit.kcal"),
+                    icon: "flame.fill",
+                    color: ActivityStyle.amber
+                )
+            )
+        }
+
+        if let averageHeartRate = detail?.averageHeartRate {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.avgHeartRate",
+                    value: "\(Int(averageHeartRate.rounded()))",
+                    unit: WeekFitLocalizedString("common.unit.bpm"),
+                    icon: "heart.fill",
+                    color: ActivityStyle.red
+                )
+            )
+        }
+
+        if let speed = detail?.averageSpeedKmh {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.avgSpeed",
+                    value: MetricFormatter.compactSpeed(speed),
+                    unit: WeekFitLocalizedString("common.unit.kilometerPerHour"),
+                    icon: "speedometer",
+                    color: ActivityStyle.green
+                )
+            )
+        }
+
+        if let maxSpeedKmh {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.maxSpeed",
+                    value: MetricFormatter.compactSpeed(maxSpeedKmh),
+                    unit: WeekFitLocalizedString("common.unit.kilometerPerHour"),
+                    icon: "speedometer",
+                    color: ActivityStyle.green
+                )
+            )
+        }
+
+        if let elevationGain = detail?.elevationGain {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.elevationGain",
+                    value: "\(Int(elevationGain.rounded()))",
+                    unit: WeekFitLocalizedString("common.unit.meter"),
+                    icon: "mountain.2.fill",
+                    color: ActivityStyle.activityColor
+                )
+            )
+        }
+
+        if let cadence = detail?.cadence {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.avgCadence",
+                    value: "\(Int(cadence.rounded()))",
+                    unit: WeekFitLocalizedString("common.unit.rpm"),
+                    icon: "chart.bar.xaxis",
+                    color: ActivityStyle.purple
+                )
+            )
+        }
+
+        if let steps = detail?.steps, items.count < 8 {
+            items.append(
+                SessionMetricItem(
+                    title: "activity.metric.steps",
+                    value: MetricFormatter.compactSteps(steps),
+                    unit: "",
+                    icon: "shoeprints.fill",
+                    color: ActivityStyle.blue
+                )
+            )
+        }
+
+        return items
+    }
+
+    private var metricsColumnCount: Int {
+        let count = metricItems.count
+
+        if count >= 7 {
+            return 4
+        }
+
+        if count >= 4 {
+            return 3
+        }
+
+        return max(count, 1)
+    }
+
+    private var maxSpeedKmh: Double? {
+        guard routePoints.count > 1 else { return nil }
+
+        let speeds = zip(routePoints, routePoints.dropFirst()).compactMap { start, end -> Double? in
+            let interval = end.timestamp.timeIntervalSince(start.timestamp)
+            guard interval > 0, interval <= 120 else { return nil }
+
+            let distance = RoutePreviewView.distance(from: start, to: end)
+            let speed = distance / interval * 3.6
+            return speed.isFinite && speed > 0 ? speed : nil
+        }
+
+        return speeds.max()
+    }
+
+    private func routeMetric(
+        title: String,
+        value: String,
+        icon: String,
+        color: Color
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(WeekFitLocalizedString(title))
+                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.46))
+
+                Text(value)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    private var heartRateZones: [HeartRateZoneSummary] {
+        let zoneSeconds = heartRateZoneDefinitions.map { definition in
+            (definition, secondsInZone { definition.contains($0) })
+        }
+        let rawTotalSeconds = zoneSeconds.map(\.1).reduce(0, +)
+        let scale = rawTotalSeconds > sessionDurationSeconds && rawTotalSeconds > 0
+            ? sessionDurationSeconds / rawTotalSeconds
+            : 1
+        let durationForPercentage = max(sessionDurationSeconds, 1)
+
+        return zoneSeconds.map { definition, seconds in
+            let cappedSeconds = seconds * scale
+
+            return HeartRateZoneSummary(
+                title: definition.title,
+                range: definition.range,
+                color: definition.color,
+                minutes: Int(cappedSeconds / 60.0),
+                percentage: min(100, Int((cappedSeconds / durationForPercentage * 100.0).rounded()))
+            )
+        }
+    }
+
+    private func secondsInZone(_ contains: (Double) -> Bool) -> TimeInterval {
+        guard heartRateSamples.count > 1 else { return 0 }
+
+        let startDate = detail?.startDate ?? session.startDate
+        let endDate = detail?.endDate ?? session.endDate
+
+        return zip(heartRateSamples, heartRateSamples.dropFirst()).reduce(0.0) { total, pair in
+            guard contains(pair.0.beatsPerMinute) else { return total }
+
+            let intervalStart = max(pair.0.timestamp, startDate)
+            let intervalEnd = min(pair.1.timestamp, endDate)
+            let interval = intervalEnd.timeIntervalSince(intervalStart)
+
+            return total + max(0, min(interval, 60))
+        }
+    }
+
+    private func loadSupplementalDetails() async {
+        guard let workoutID = session.workoutID else { return }
+
+        if let cached = ActivitySessionDetailCache.detail(for: workoutID) {
+            loadedDetail = cached
+            return
+        }
+
+        let baseDetail = detail
+        let activityType = baseDetail?.activityType ?? .other
+        let start = baseDetail?.startDate ?? session.startDate
+        let end = baseDetail?.endDate ?? session.endDate
+
+        isHeartRateLoading = true
+        isRouteLoading = true
+        remainingSupplementalLoads = 3
+
+        Task {
+            let metrics = await healthManager.loadWorkoutSupplementalMetrics(
+                for: workoutID,
+                start: start,
+                end: end,
+                activityType: activityType
+            )
+
+            await MainActor.run {
+                if let metrics {
+                    mergeSupplementalDetails(metrics)
+                }
+
+                finishSupplementalLoad(for: workoutID)
+            }
+        }
+
+        Task {
+            let heartRate = await healthManager.loadWorkoutHeartRateDetails(
+                start: start,
+                end: end
+            )
+
+            await MainActor.run {
+                isHeartRateLoading = false
+
+                if !heartRate.heartRateSamples.isEmpty {
+                    mergeSupplementalDetails(heartRate)
+                }
+
+                finishSupplementalLoad(for: workoutID)
+            }
+        }
+
+        Task {
+            let route = await healthManager.loadWorkoutRouteDetails(
+                for: workoutID,
+                start: start,
+                end: end
+            )
+
+            await MainActor.run {
+                isRouteLoading = false
+
+                if let route, route.routePoints.count > 1 {
+                    mergeSupplementalDetails(route)
+                }
+
+                finishSupplementalLoad(for: workoutID)
+            }
+        }
+    }
+
+    private func mergeSupplementalDetails(_ supplemental: WorkoutHealthDetailSnapshot) {
+        let base = detail
+
+        loadedDetail = ActivitySessionDetailSnapshot(
+            title: base?.title ?? session.title,
+            activityType: base?.activityType ?? .other,
+            startDate: base?.startDate ?? session.startDate,
+            endDate: base?.endDate ?? session.endDate,
+            durationMinutes: base?.durationMinutes ?? session.durationMinutes,
+            workoutDurationSeconds: base?.workoutDurationSeconds ?? Double(session.durationMinutes * 60),
+            elapsedDurationSeconds: base?.elapsedDurationSeconds ?? session.endDate.timeIntervalSince(session.startDate),
+            source: supplemental.source ?? base?.source,
+            icon: base?.icon ?? session.icon,
+            color: base?.color ?? session.color,
+            activeCalories: supplemental.activeCalories ?? base?.activeCalories,
+            distanceKm: supplemental.distanceKm ?? base?.distanceKm,
+            averageHeartRate: supplemental.averageHeartRate ?? base?.averageHeartRate,
+            maxHeartRate: supplemental.maxHeartRate ?? base?.maxHeartRate,
+            heartRateSamples: supplemental.heartRateSamples.isEmpty
+                ? (base?.heartRateSamples ?? [])
+                : supplemental.heartRateSamples,
+            routePoints: supplemental.routePoints.isEmpty
+                ? (base?.routePoints ?? [])
+                : supplemental.routePoints,
+            elevationGain: supplemental.elevationGain ?? base?.elevationGain,
+            steps: supplemental.steps ?? base?.steps,
+            cadence: supplemental.cadence ?? base?.cadence
+        )
+    }
+
+    private func finishSupplementalLoad(for workoutID: UUID) {
+        remainingSupplementalLoads = max(remainingSupplementalLoads - 1, 0)
+
+        if remainingSupplementalLoads == 0, let loadedDetail {
+            ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
+        }
+    }
+}
+
+private struct HeartRateZoneDefinition: Identifiable, Hashable {
+    var id: String { title }
+
+    let title: String
+    let lowerBound: Double
+    let upperBound: Double
+    let color: Color
+
+    var range: String {
+        if lowerBound <= 40 {
+            return String(format: WeekFitLocalizedString("common.unit.bpmLessThanFormat"), Int(upperBound))
+        }
+
+        if upperBound >= 220 {
+            return String(format: WeekFitLocalizedString("common.unit.bpmPlusFormat"), Int(lowerBound))
+        }
+
+        return String(format: WeekFitLocalizedString("common.unit.bpmRangeFormat"), Int(lowerBound), Int(upperBound - 1))
+    }
+
+    func contains(_ beatsPerMinute: Double) -> Bool {
+        beatsPerMinute >= lowerBound && beatsPerMinute < upperBound
+    }
+}
+
+@MainActor
+private enum ActivitySessionDetailCache {
+    private static var details: [UUID: ActivitySessionDetailSnapshot] = [:]
+
+    static func detail(for workoutID: UUID) -> ActivitySessionDetailSnapshot? {
+        details[workoutID]
+    }
+
+    static func store(_ detail: ActivitySessionDetailSnapshot, for workoutID: UUID) {
+        details[workoutID] = detail
+    }
+}
+
+private struct HeartRateZoneSummary: Identifiable {
+    var id: String { title }
+
+    let title: String
+    let range: String
+    let color: Color
+    let minutes: Int
+    let percentage: Int
+}
+
+private struct HeartRateZoneLegendRow: View {
+    let zone: HeartRateZoneSummary
+
+    private var isActive: Bool {
+        zone.minutes > 0 || zone.percentage > 0
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(zone.color)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(WeekFitLocalizedString(zone.title))
+                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(isActive ? 0.74 : 0.44))
+                    .lineLimit(1)
+
+                Text(zone.range)
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(isActive ? 0.42 : 0.28))
+                    .lineLimit(1)
+            }
+            .frame(width: 70, alignment: .leading)
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.055))
+
+                    Capsule()
+                        .fill(zone.color.opacity(isActive ? 0.95 : 0.20))
+                        .frame(width: proxy.size.width * CGFloat(zone.percentage) / 100.0)
+                }
+            }
+            .frame(height: 7)
+
+            Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
+                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(isActive ? 0.70 : 0.40))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(width: 58, alignment: .trailing)
+                .monospacedDigit()
+
+            Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
+                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(isActive ? 0.48 : 0.34))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(width: 34, alignment: .trailing)
                 .monospacedDigit()
         }
-        .padding(12)
-        .innerActivityCard(cornerRadius: 15)
+        .frame(height: 22)
+    }
+}
+
+private struct HeartRateChartPoint: Identifiable {
+    var id: Date { timestamp }
+
+    let timestamp: Date
+    let minute: Double
+    let beatsPerMinute: Double
+}
+
+private struct HeartRateLineSegment: Identifiable {
+    let id = UUID()
+    let zone: HeartRateZoneDefinition
+    let points: [HeartRateChartPoint]
+}
+
+private struct SessionDetailSkeletonLine: View {
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            let midY = size.height * 0.54
+            let width = max(size.width - 24, 1)
+            let startX: CGFloat = 12
+
+            path.move(to: CGPoint(x: startX, y: midY))
+
+            for step in 0...8 {
+                let x = startX + width * CGFloat(step) / 8
+                let y = midY + (step.isMultiple(of: 2) ? -10 : 10)
+                path.addLine(to: CGPoint(x: x, y: y))
+            }
+
+            context.stroke(
+                path,
+                with: .color(color.opacity(0.30)),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+        }
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.018))
+        }
+    }
+}
+
+private func downsampleHeartRateSamples(
+    _ samples: [WorkoutHeartRateSample],
+    maximumCount: Int
+) -> [WorkoutHeartRateSample] {
+    guard samples.count > maximumCount, maximumCount > 1 else {
+        return samples
+    }
+
+    let stride = Double(samples.count - 1) / Double(maximumCount - 1)
+
+    return (0..<maximumCount).map { index in
+        let sourceIndex = min(Int((Double(index) * stride).rounded()), samples.count - 1)
+        return samples[sourceIndex]
+    }
+}
+
+private struct SessionMetricItem: Identifiable {
+    var id: String { title }
+
+    let title: String
+    let value: String
+    let unit: String
+    let icon: String
+    let color: Color
+}
+
+private struct SessionMetricGridCell: View {
+    let item: SessionMetricItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(item.color)
+                    .frame(width: 14)
+
+                Text(WeekFitLocalizedString(item.title))
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.58))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(item.value)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+
+                if !item.unit.isEmpty {
+                    Text(item.unit)
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.52))
+                        .lineLimit(1)
+                }
+            }
+            .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 9)
+    }
+}
+
+private struct ZoneDonutView: View {
+    let zones: [HeartRateZoneSummary]
+
+    private var totalMinutes: Int {
+        max(zones.map(\.minutes).reduce(0, +), 1)
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.07), lineWidth: 12)
+
+            ForEach(donutSegments) { segment in
+                Circle()
+                    .trim(from: segment.start, to: segment.end)
+                    .stroke(segment.color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+
+            VStack(spacing: -1) {
+                Text("\(totalMinutes)")
+                    .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+
+                Text("activity.min")
+                    .font(.system(size: ActivityTypography.helperText, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+        }
+    }
+
+    private var donutSegments: [DonutSegment] {
+        var start: CGFloat = 0
+
+        return zones.map { zone in
+            let fraction = CGFloat(zone.minutes) / CGFloat(totalMinutes)
+            let segment = DonutSegment(
+                id: zone.id,
+                start: start,
+                end: start + fraction,
+                color: zone.color
+            )
+            start += fraction
+            return segment
+        }
+    }
+}
+
+private struct DonutSegment: Identifiable {
+    let id: String
+    let start: CGFloat
+    let end: CGFloat
+    let color: Color
+}
+
+private struct RoutePreviewView: View {
+    let points: [WorkoutRoutePoint]
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    ActivityStyle.blue.opacity(0.18),
+                    ActivityStyle.teal.opacity(0.08),
+                    Color.white.opacity(0.025)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Canvas { context, size in
+                drawMapGrid(in: &context, size: size)
+                drawRoute(in: &context, size: size)
+            }
+        }
+    }
+
+    static func distance(from start: WorkoutRoutePoint, to end: WorkoutRoutePoint) -> Double {
+        let startLocation = CLLocation(latitude: start.latitude, longitude: start.longitude)
+        let endLocation = CLLocation(latitude: end.latitude, longitude: end.longitude)
+        return startLocation.distance(from: endLocation)
+    }
+
+    private func drawMapGrid(in context: inout GraphicsContext, size: CGSize) {
+        var gridPath = Path()
+
+        for offset in stride(from: -size.width, through: size.width * 2, by: 42) {
+            gridPath.move(to: CGPoint(x: offset, y: size.height))
+            gridPath.addLine(to: CGPoint(x: offset + size.height, y: 0))
+        }
+
+        context.stroke(
+            gridPath,
+            with: .color(Color.white.opacity(0.045)),
+            lineWidth: 1
+        )
+    }
+
+    private func drawRoute(in context: inout GraphicsContext, size: CGSize) {
+        guard points.count > 1 else { return }
+
+        let minLatitude = points.map(\.latitude).min() ?? 0
+        let maxLatitude = points.map(\.latitude).max() ?? 0
+        let minLongitude = points.map(\.longitude).min() ?? 0
+        let maxLongitude = points.map(\.longitude).max() ?? 0
+        let latitudeSpan = max(maxLatitude - minLatitude, 0.000_001)
+        let longitudeSpan = max(maxLongitude - minLongitude, 0.000_001)
+        let inset: CGFloat = 13
+        let drawingSize = CGSize(
+            width: max(size.width - inset * 2, 1),
+            height: max(size.height - inset * 2, 1)
+        )
+
+        var path = Path()
+        var firstPoint = CGPoint.zero
+        var lastPoint = CGPoint.zero
+
+        for (index, point) in points.enumerated() {
+            let x = inset + CGFloat((point.longitude - minLongitude) / longitudeSpan) * drawingSize.width
+            let y = inset + (1 - CGFloat((point.latitude - minLatitude) / latitudeSpan)) * drawingSize.height
+            let position = CGPoint(x: x, y: y)
+
+            if index == 0 {
+                firstPoint = position
+                path.move(to: position)
+            } else {
+                path.addLine(to: position)
+                lastPoint = position
+            }
+        }
+
+        context.stroke(
+            path,
+            with: .color(color.opacity(0.98)),
+            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+        )
+
+        context.fill(
+            Path(ellipseIn: CGRect(x: firstPoint.x - 4, y: firstPoint.y - 4, width: 8, height: 8)),
+            with: .color(color)
+        )
+        context.stroke(
+            Path(ellipseIn: CGRect(x: lastPoint.x - 5, y: lastPoint.y - 5, width: 10, height: 10)),
+            with: .color(.white.opacity(0.86)),
+            lineWidth: 2
+        )
     }
 }
 
@@ -784,11 +2027,11 @@ private struct EmptySessionsRow: View {
             CircleIcon(systemName: "figure.walk", color: ActivityStyle.activityColor, size: 36)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("No workouts recorded")
+                Text("activity.noWorkoutsRecorded")
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.92))
 
-                Text("Activity totals are shown from Apple Health.")
+                Text("activity.activityTotalsAreShownFromAppleHealth")
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.46))
             }
@@ -862,13 +2105,17 @@ private enum ActivityStyle {
     static let teal = Color(red: 0.25, green: 0.78, blue: 0.82)
     static let blue = Color(red: 0.30, green: 0.72, blue: 0.95)
     static let purple = Color(red: 0.58, green: 0.40, blue: 0.95)
+    static let yellow = Color(red: 0.96, green: 0.86, blue: 0.20)
+    static let orange = Color(red: 0.96, green: 0.54, blue: 0.16)
     static let amber = Color(red: 0.92, green: 0.68, blue: 0.30)
     static let red = Color(red: 0.96, green: 0.42, blue: 0.42)
 }
 
 private enum DurationFormatter {
     static func compact(_ minutes: Int) -> String {
-        guard minutes >= 90 else { return "\(minutes)m" }
+        guard minutes >= 90 else {
+            return String(format: WeekFitLocalizedString("common.unit.minuteCompactFormat"), minutes)
+        }
 
         let hours = minutes / 60
         let remainder = minutes % 60
@@ -877,17 +2124,79 @@ private enum DurationFormatter {
     }
 
     static func fullMinutes(_ minutes: Int) -> String {
-        "\(minutes) min"
+        String(format: WeekFitLocalizedString("common.unit.minuteFormat"), minutes)
     }
 }
 
 private enum MetricFormatter {
+    static func durationValue(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int((seconds / 60.0).rounded()))
+
+        guard minutes >= 90 else {
+            return "\(minutes)"
+        }
+
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        return remainder == 0 ? "\(hours)" : "\(hours)h \(remainder)"
+    }
+
+    static func durationUnit(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int((seconds / 60.0).rounded()))
+        return minutes >= 90 && minutes % 60 == 0
+            ? WeekFitLocalizedString("common.duration.hoursShortUnit")
+            : WeekFitLocalizedString("common.unit.minuteShort")
+    }
+
     static func compactSteps(_ steps: Int) -> String {
         if steps >= 1_000 {
             return String(format: "%.1fk", Double(steps) / 1000.0)
         }
 
         return "\(steps)"
+    }
+
+    static func distance(_ kilometers: Double) -> String {
+        String(format: "%.2f km", kilometers)
+    }
+
+    static func compactDistance(_ kilometers: Double) -> String {
+        String(format: kilometers >= 10 ? "%.1f" : "%.2f", kilometers)
+    }
+
+    static func heartRate(_ beatsPerMinute: Double) -> String {
+        String(format: WeekFitLocalizedString("common.unit.bpmValueFormat"), Int(beatsPerMinute.rounded()))
+    }
+
+    static func pace(_ minutesPerKilometer: Double) -> String {
+        let totalSeconds = Int((minutesPerKilometer * 60).rounded())
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d /km", minutes, seconds)
+    }
+
+    static func speed(_ kilometersPerHour: Double) -> String {
+        String(format: "%.1f km/h", kilometersPerHour)
+    }
+
+    static func compactSpeed(_ kilometersPerHour: Double) -> String {
+        String(format: "%.1f", kilometersPerHour)
+    }
+
+    static func elevation(_ meters: Double) -> String {
+        "\(Int(meters.rounded())) m"
+    }
+}
+
+private extension ActivitySessionSnapshot {
+    var endDate: Date {
+        Calendar.current.date(byAdding: .minute, value: durationMinutes, to: startDate) ?? startDate
+    }
+
+    var timeRange: String {
+        let start = startDate.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        let end = endDate.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        return "\(start) – \(end)"
     }
 }
 

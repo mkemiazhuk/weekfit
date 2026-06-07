@@ -34,11 +34,11 @@ struct RecoveryDetailsView: View {
             VStack(spacing: 0) {
                 header
 
-                RecoveryDayPicker(
-                    selectedDate: activeDate
+                HealthDetailsWeekPicker(
+                    selectedDate: $activeDate,
+                    accentColor: RecoveryStyle.recoveryColor
                 ) { date in
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    activeDate = date
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 9)
@@ -120,69 +120,6 @@ struct RecoveryDetailsView: View {
                 .fill(Color.white.opacity(0.04))
                 .frame(height: 1)
         }
-    }
-}
-
-// MARK: - Day Picker
-
-private struct RecoveryDayPicker: View {
-    let selectedDate: Date
-    let onSelect: (Date) -> Void
-
-    private var days: [Date] {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.firstWeekday = 2 // Monday
-
-        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else {
-            return []
-        }
-
-        return (0..<7).compactMap {
-            calendar.date(byAdding: .day, value: $0, to: weekInterval.start)
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(days, id: \.self) { date in
-                dayCell(date)
-            }
-        }
-    }
-
-    private func dayCell(_ date: Date) -> some View {
-        let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
-
-        return Button {
-            onSelect(date)
-        } label: {
-            VStack(spacing: 6) {
-                Text(date.formatted(.dateTime.weekday(.narrow)))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.40))
-
-                Text(date.formatted(.dateTime.day()))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(isSelected ? .black : .white.opacity(0.68))
-                    .frame(width: 28, height: 28)
-                    .background {
-                        Circle()
-                            .fill(isSelected ? RecoveryStyle.recoveryColor : Color.white.opacity(0.055))
-                    }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
-            .background {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(isSelected ? RecoveryStyle.recoveryColor.opacity(0.11) : Color.white.opacity(0.022))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .stroke(isSelected ? RecoveryStyle.recoveryColor.opacity(0.22) : Color.white.opacity(0.04), lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
 

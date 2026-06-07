@@ -399,10 +399,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit uses HealthKit permissions only to support personalized health, fitness and recovery insights.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -434,10 +435,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit uses HealthKit permissions only to support personalized health, fitness and recovery insights.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

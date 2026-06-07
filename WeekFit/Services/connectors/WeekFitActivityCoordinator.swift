@@ -22,7 +22,6 @@ final class WeekFitActivityCoordinator: ObservableObject {
     }
 
     func start() {
-        watchBridge.start()
         healthSync.start()
     }
     

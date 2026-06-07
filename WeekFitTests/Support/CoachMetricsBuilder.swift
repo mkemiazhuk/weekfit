@@ -8,6 +8,7 @@ enum CoachMetricsBuilder {
         protein: 160,
         carbs: 280,
         fats: 70,
+        fiber: 35,
         waterLiters: 2.5
     )
 
@@ -25,6 +26,7 @@ enum CoachMetricsBuilder {
         protein: Double = 80,
         carbs: Double = 120,
         fats: Double = 40,
+        fiber: Double = 18,
         calories: Double = 1200,
         waterLiters: Double = 1.2,
         activeCalories: Double = 400,
@@ -35,6 +37,7 @@ enum CoachMetricsBuilder {
             protein: protein,
             carbs: carbs,
             fats: fats,
+            fiber: fiber,
             calories: calories,
             waterLiters: waterLiters,
             activeCalories: activeCalories,

@@ -148,14 +148,6 @@ struct TodayView: View {
     private var caloriesGoal: Double { nutritionViewModel.nutritionResult?.goals.calories ?? 2761.0 }
     private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
     
-    private var currentCoachState: CoachInsightState {
-        let metrics = nutritionViewModel.currentMetrics ?? DailyNutritionMetrics(
-            protein: 0, carbs: 0, fats: 0, fiber: 0, calories: 0, waterLiters: 0,
-            activeCalories: healthManager.activeCalories, sleepHours: healthManager.sleepHours, weightKg: healthManager.weight
-        )
-        return AICoachEngine.evaluateSmartInsight(selectedDate: selectedDate, activities: selectedDayActivities, metrics: metrics, name: fullName)
-    }
-    
     private var currentWater: Double {
         let waterLogsToday = selectedDayActivities.filter { $0.imageName == "hydration" }
         return Double(waterLogsToday.count) * 0.25
@@ -769,11 +761,11 @@ struct TodayView: View {
     
     private var coachEntryPointSection: some View {
         Group {
-            if shouldShowEveningReview {
-                eveningReviewEntryPoint
-            } else {
+//            if shouldShowEveningReview {
+//                eveningReviewEntryPoint
+//            } else {
                 coachInsightSection
-            }
+//            }
         }
     }
 
@@ -917,13 +909,13 @@ struct TodayView: View {
             guard hasRecoveryData else { return "Syncing" }
 
             if recoveryPercent >= 85 || (healthManager.hrvSDNN > 75.0 && healthManager.restingHeartRate < 60.0) {
-                return "Ready"
+                return "High recovery"
             } else if recoveryPercent >= 70 {
-                return "Good"
+                return "Solid recovery"
             } else if recoveryPercent >= 50 {
-                return "Ok"
+                return "Moderate recovery"
             } else if recoveryPercent > 0 {
-                return "Need Rest"
+                return "Low recovery"
             } else {
                 return "Syncing"
             }
@@ -1542,24 +1534,8 @@ struct TodayView: View {
                         plannedActivities: selectedDayActivities,
                         selectedDate: selectedDate
                     )
-                    
-                    let effectivePhase = CoachActivityPhasePriorityResolver.resolve(
-                        activities: selectedDayActivities,
-                        selectedDate: selectedDate,
-                        now: now
-                    )
 
-                    let fallbackInsight = (
-                        title: coachOutput.dynamicInsight.title,
-                        text: coachOutput.dynamicInsight.text,
-                        icon: coachOutput.dynamicInsight.icon,
-                        color: coachOutput.dynamicInsight.color
-                    )
-
-                    let insight = todayCoachInsight(
-                        phase: effectivePhase,
-                        fallback: fallbackInsight
-                    )
+                    let insight = coachOutput.v5Interpretation.compactInsight
 
                     let insightColor = insight.color
                     let insightTitle = insight.title
@@ -1699,12 +1675,7 @@ struct TodayView: View {
             )
 
         case .stable:
-            return (
-                title: "On Track",
-                text: "No immediate action needed.",
-                icon: "checkmark.circle.fill",
-                color: CoachPalette.stable
-            )
+            return fallback
         }
     }
     

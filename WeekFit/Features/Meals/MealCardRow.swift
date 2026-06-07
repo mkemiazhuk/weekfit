@@ -48,7 +48,7 @@ struct MealCardRow: View {
                                 .minimumScaleFactor(0.82)
 
                             if isQuickLogMode && isMealMatchingCurrentTime {
-                                Text("Suggested")
+                                Text(WeekFitLocalizedString("meals.suggested"))
                                     .font(.system(size: 8.8, weight: .bold))
                                     .tracking(0.4)
                                     .foregroundStyle(weekFitGreen)
@@ -141,12 +141,23 @@ struct MealCardRow: View {
 
     private var mealImage: some View {
         Group {
-            if let items = meal.builderImageItems, !items.isEmpty {
+            if meal.isFoodProduct {
+                CustomFoodVisualView(
+                    image: MealPhotoStore.image(for: meal.displayPhotoFilename),
+                    placeholderInitial: meal.placeholderInitial,
+                    size: isQuickLogMode ? 54 : 36,
+                    imageScale: 0.62
+                )
+                .offset(x: isQuickLogMode ? -6 : -4)
+
+            } else if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealImage(items)
-            } else if UIImage(named: meal.imageName) != nil {
+
+            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
                     .resizable()
                     .scaledToFill()
+
             } else {
                 RoundedRectangle(cornerRadius: isQuickLogMode ? 18 : 12)
                     .fill(Color.white.opacity(0.04))
@@ -157,6 +168,10 @@ struct MealCardRow: View {
                     }
             }
         }
+        .frame(
+            width: isQuickLogMode ? 78 : 64,
+            height: isQuickLogMode ? 62 : 64
+        )
         .clipShape(
             RoundedRectangle(
                 cornerRadius: isQuickLogMode ? 18 : 12,
@@ -288,17 +303,17 @@ struct MealCardRow: View {
 
     private var macrosPill: some View {
         HStack(spacing: 0) {
-            Text("\(meal.calories) kcal")
+            Text(String(format: WeekFitLocalizedString("meals.detail.caloriesFormat"), meal.calories))
                 .font(.system(size: isQuickLogMode ? 11.2 : 10.5, weight: .bold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.9))
                 .frame(maxWidth: .infinity)
 
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("P \(meal.protein)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("C \(meal.carbs)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("F \(meal.fats)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 1)

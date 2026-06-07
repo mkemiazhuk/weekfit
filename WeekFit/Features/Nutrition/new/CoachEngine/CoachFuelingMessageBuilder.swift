@@ -231,7 +231,7 @@ private extension CoachFuelingMessageBuilder {
 
         case .heat:
             return [
-                "Keep heat exposure controlled",
+                "Keep heat exposure conservative",
                 "Exit if dizzy",
                 "Rehydrate after the session"
             ]
@@ -246,7 +246,7 @@ private extension CoachFuelingMessageBuilder {
         case .other:
             return [
                 "Sip water if needed",
-                "Keep effort controlled",
+                "Keep effort steady",
                 "Stay comfortable"
             ]
         }

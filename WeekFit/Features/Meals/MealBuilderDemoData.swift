@@ -21,7 +21,7 @@ enum MealIngredientCategory: String, Codable, CaseIterable, Identifiable {
         case .drinks:
             return "Drinks"
         case .extras:
-            return "Add-ons"
+            return "Extras"
         }
     }
 }

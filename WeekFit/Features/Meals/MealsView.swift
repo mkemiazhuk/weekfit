@@ -59,6 +59,18 @@ private enum MealIngredientGroup: String, CaseIterable, Identifiable {
     }
 }
 
+private enum MealCreationRoute: Identifiable {
+    case builder
+    case manualFood
+
+    var id: String {
+        switch self {
+        case .builder: return "builder"
+        case .manualFood: return "manualFood"
+        }
+    }
+}
+
 struct MealsView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
@@ -81,14 +93,16 @@ struct MealsView: View {
 
     @State private var customMeals: [Meals] = []
 
-    @State private var showMealBuilder = false
+    @State private var showCreationChooser = false
+    @State private var creationRoute: MealCreationRoute?
     @State private var selectedMeal: Meals?
+    @State private var selectedFood: Meals?
     @State private var showContent = false
 
     @State private var showProfile = false
     @State private var selectedDate = Date()
 
-    @AppStorage("weekfit_custom_meals_v1")
+    @AppStorage(CustomMealStore.storageKey)
     private var customMealsStorage: String = ""
 
     private let background = WeekFitTheme.backgroundColor
@@ -100,7 +114,11 @@ struct MealsView: View {
     // MARK: - Library groups
     
     private var mealItems: [Meals] {
-        customMeals.filter { resolvedLibraryType($0) == .meal }
+        customMeals.filter { $0.isRecipeMeal && resolvedLibraryType($0) != .ingredient }
+    }
+
+    private var foodItems: [Meals] {
+        customMeals.filter { $0.isFoodProduct }
     }
 
     private var shouldShowRecommendation: Bool {
@@ -120,17 +138,22 @@ struct MealsView: View {
         }
     }
 
+    private var sortedFoodItems: [Meals] {
+        foodItems.sorted { $0.shortTitle < $1.shortTitle }
+    }
+
     private var hasAnyItems: Bool {
-        !mealItems.isEmpty
+        !mealItems.isEmpty || !foodItems.isEmpty
     }
 
     private var headerSubtitle: String {
         if customMeals.isEmpty {
-            return "Build reusable meals"
+            return "Empty"
         }
 
-        let mealLabel = mealItems.count == 1 ? "recipe" : "recipes"
-        return "\(mealItems.count) \(mealLabel)"
+        let total = mealItems.count + foodItems.count
+        let format = total == 1 ? "%lld item" : "%lld items"
+        return String(format: WeekFitLocalizedString(format), total)
     }
 
     var body: some View {
@@ -143,7 +166,7 @@ struct MealsView: View {
             WeekFitScreenContainer {
 
                 WeekFitScreenHeader(
-                    title: "Meals Library",
+                    title: WeekFitLocalizedString("meals.library.title"),
                     subtitle: selectedDateTitle,
                     initials: profileInitials,
                     showAvatar: true
@@ -172,13 +195,25 @@ struct MealsView: View {
                     onMealLogged?()
                 },
                 onMealUpdated: { updatedMeal in
-                    if let index = customMeals.firstIndex(where: { $0.id == updatedMeal.id }) {
-                        customMeals[index] = updatedMeal
-                        saveCustomMeals()
-                    }
+                    saveMealToLibrary(updatedMeal)
                 },
                 onMealSavedAndClose: {
                     selectedMeal = nil
+                }
+            )
+        }
+        .sheet(item: $selectedFood) { food in
+            CustomFoodDetailsView(
+                food: food,
+                existingMeals: customMeals,
+                isQuickLogMode: self.isQuickLogMode,
+                onFoodUpdated: { updatedFood in
+                    saveMealToLibrary(updatedFood)
+                    selectedFood = updatedFood
+                },
+                onFoodLogged: {
+                    selectedFood = nil
+                    onMealLogged?()
                 }
             )
         }
@@ -190,24 +225,44 @@ struct MealsView: View {
             .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
         }
-        .sheet(isPresented: $showMealBuilder) {
-            MealBuilderView { newMeal in
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                    customMeals.append(newMeal)
-                    saveCustomMeals()
+        .sheet(isPresented: $showCreationChooser) {
+            MealCreationChooserSheet { route in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showCreationChooser = false
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                    creationRoute = route
                 }
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             }
-            .presentationDetents([.large])
-            .presentationCornerRadius(36)
-            .presentationDragIndicator(.hidden)
+            .presentationDetents([.height(270)])
+            .presentationCornerRadius(28)
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $creationRoute) { route in
+            switch route {
+            case .builder:
+                MealBuilderView { newMeal in
+                    saveMealToLibrary(newMeal)
+                }
+                .presentationDetents([.large])
+                .presentationCornerRadius(36)
+                .presentationDragIndicator(.hidden)
+
+            case .manualFood:
+                ManualMealFormView(existingMeals: customMeals) { newMeal in
+                    saveMealToLibrary(newMeal)
+                }
+                .presentationDetents([.large])
+                .presentationCornerRadius(36)
+                .presentationDragIndicator(.hidden)
+            }
         }
     }
     
     private var selectedDateTitle: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "EEE, MMM d"
+        formatter.dateFormat = "E, MMM d"
         return formatter.string(from: selectedDate)
     }
 
@@ -242,20 +297,20 @@ struct MealsView: View {
             opportunity: CoachSupportOpportunityV3(
                 type: .stable,
                 importance: .quiet,
-                reason: "No active guidance."
+                reason: "No Active Guidance"
             ),
             shouldSurface: false,
-            stateLabel: "STEADY",
-            title: "Everything looks steady",
-            message: "No active nutrition focus right now.",
-            insightTitle: "Everything looks steady",
+            stateLabel: "Overview",
+            title: "No Active Focus",
+            message: "No Active Nutrition Focus",
+            insightTitle: "No Active Focus",
             insightSubtitle: nil,
             supportActions: [
                 CoachSupportActionV3(
                     type: .stayConsistent,
                     icon: "waveform.path.ecg",
-                    title: "Keep rhythm",
-                    subtitle: "Stay consistent with normal meals",
+                    title: "Keep Rhythm",
+                    subtitle: "Stay Consistent Food Water Movement",
                     color: WeekFitTheme.meal
                 )
             ],
@@ -283,7 +338,7 @@ struct MealsView: View {
     private var addButton: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showMealBuilder = true
+            showCreationChooser = true
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 17, weight: .bold))
@@ -305,7 +360,7 @@ struct MealsView: View {
 
     private var mealsContent: some View {
         VStack(spacing: 0) {
-            if mealItems.isEmpty {
+            if !hasAnyItems {
                 List {
                     customEmptyState
                         .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
@@ -320,17 +375,33 @@ struct MealsView: View {
                 .listRowSpacing(0)
                 .scrollIndicators(.hidden)
             } else {
-                sectionHeader(
-                    title: "All Meals",
-                    count: mealItems.count,
-                    icon: "fork.knife"
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 2)
-                .padding(.bottom, 9)
-
                 List {
-                    mealsSection
+                    if !sortedMealItems.isEmpty {
+                        sectionHeader(
+                            title: "Meals",
+                            count: sortedMealItems.count,
+                            icon: "fork.knife"
+                        )
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 9, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                        libraryRows(sortedMealItems)
+                    }
+
+                    if !sortedFoodItems.isEmpty {
+                        sectionHeader(
+                            title: "Foods",
+                            count: sortedFoodItems.count,
+                            icon: "takeoutbag.and.cup.and.straw.fill"
+                        )
+                        .listRowInsets(EdgeInsets(top: sortedMealItems.isEmpty ? 2 : 10, leading: 16, bottom: 9, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                        libraryRows(sortedFoodItems)
+                    }
+
                     bottomSpacerRow
                 }
                 .listStyle(.plain)
@@ -363,9 +434,9 @@ struct MealsView: View {
     private var mealsSection: some View {
         if mealItems.isEmpty {
             emptyTabState(
-                title: "No saved meals yet",
-                message: "Build reusable plates from base, protein, veggies, and extras.",
-                buttonTitle: "Create Meal",
+                title: "meals.library.empty.title",
+                message: "meals.library.empty.message",
+                buttonTitle: "meals.library.empty.action",
                 icon: "fork.knife"
             )
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 10, trailing: 16))
@@ -401,6 +472,64 @@ struct MealsView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func libraryRows(_ items: [Meals]) -> some View {
+        ForEach(Array(items.enumerated()), id: \.element.id) { index, meal in
+//            Group {
+//                if meal.isFoodProduct {
+//                    MealCardRow(
+//                        meal: meal,
+//                        isQuickLogMode: isQuickLogMode
+//                    ) {
+//                        executeDirectQuickLog(meal)
+//                    }
+//                } else {
+//                    HeroMealLibraryRow(
+//                        meal: meal,
+//                        isQuickLogMode: isQuickLogMode,
+//                        isRecommended: shouldShowRecommendation &&
+//                                       items == sortedMealItems &&
+//                                       index == 0 &&
+//                                       meal.id == visibleRecommendation?.meal.id
+//                    ) {
+//                        executeDirectQuickLog(meal)
+//                    }
+//                }
+//            }
+            HeroMealLibraryRow(
+                meal: meal,
+                isQuickLogMode: isQuickLogMode,
+                isRecommended: !meal.isFoodProduct &&
+                               shouldShowRecommendation &&
+                               items == sortedMealItems &&
+                               index == 0 &&
+                               meal.id == visibleRecommendation?.meal.id
+            ) {
+                executeDirectQuickLog(meal)
+            }
+            .onTapGesture {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                if meal.isFoodProduct {
+                    selectedFood = meal
+                } else {
+                    selectedMeal = meal
+                }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                if !isQuickLogMode {
+                    Button(role: .destructive) {
+                        deleteCustomMeal(meal)
+                    } label: {
+                        Label("Delete", systemImage: "trash.fill")
+                    }
+                }
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 7, trailing: 16))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
     
     private func sectionHeader(
         title: String,
@@ -415,13 +544,13 @@ struct MealsView: View {
                 .frame(width: 16)
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(title)
+                Text(WeekFitLocalizedString(title))
                     .font(.system(size: 15.6, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary.opacity(0.84))
                     .tracking(-0.22)
 
                 if showCount {
-                    Text("(\(count))")
+                    Text(String(format: "(%lld)", count))
                         .font(.system(size: 15.0, weight: .semibold, design: .rounded))
                         .foregroundStyle(textSecondary.opacity(0.48))
                         .tracking(-0.12)
@@ -441,7 +570,7 @@ struct MealsView: View {
     ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showMealBuilder = true
+            showCreationChooser = true
         } label: {
             HStack(spacing: 14) {
                 ZStack {
@@ -455,12 +584,12 @@ struct MealsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(WeekFitLocalizedString(title))
                         .font(.system(size: 15.6, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.18)
 
-                    Text(message)
+                    Text(WeekFitLocalizedString(message))
                         .font(.system(size: 12.2, weight: .medium))
                         .foregroundStyle(textSecondary.opacity(0.60))
                         .lineSpacing(1.4)
@@ -469,7 +598,7 @@ struct MealsView: View {
 
                 Spacer(minLength: 0)
 
-                Text(buttonTitle)
+                Text(WeekFitLocalizedString(buttonTitle))
                     .font(.system(size: 12.6, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.meal.opacity(0.92))
             }
@@ -490,7 +619,7 @@ struct MealsView: View {
     private var customEmptyState: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showMealBuilder = true
+            showCreationChooser = true
         } label: {
             VStack(alignment: .leading, spacing: 12) {
 
@@ -508,15 +637,15 @@ struct MealsView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
 
-                        Text("Build your first meal")
+                        Text(WeekFitLocalizedString("meals.createYourFirstFoodOrMeal"))
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary)
 
-                        Text("Save meals you eat often and log them in one tap.")
+                        Text(WeekFitLocalizedString("meals.saveFoodsAndMealsYouEatOftenAndLog"))
                             .font(.system(size: 13.5, weight: .medium))
                             .foregroundStyle(textSecondary.opacity(0.72))
 
-                        Text("Coach recommendations will use your saved meals.")
+                        Text(WeekFitLocalizedString("meals.coachRecommendationsWillUseYourSavedMeals"))
                             .font(.system(size: 13.5, weight: .medium))
                             .foregroundStyle(textSecondary.opacity(0.72))
                     }
@@ -527,17 +656,17 @@ struct MealsView: View {
                 HStack(spacing: 8) {
                     benefitChip(
                         icon: "clock.fill",
-                        title: "Fast logging"
+                        title: "meals.library.benefit.fastLogging"
                     )
 
                     benefitChip(
                         icon: "brain.head.profile",
-                        title: "Coach"
+                        title: "meals.library.benefit.coach"
                     )
 
                     benefitChip(
                         icon: "sparkles",
-                        title: "Reusable"
+                        title: "meals.library.benefit.reusable"
                     )
                 }
                 .padding(.top, 2)
@@ -565,7 +694,7 @@ struct MealsView: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(WeekFitTheme.meal.opacity(0.9))
 
-            Text(title)
+            Text(WeekFitLocalizedString(title))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.78))
         }
@@ -604,10 +733,23 @@ struct MealsView: View {
 
     private func deleteCustomMeal(_ meal: Meals) {
         withAnimation(.easeInOut(duration: 0.22)) {
-            customMeals.removeAll { $0.id == meal.id }
+            customMeals = CustomMealStore.remove(meal, from: customMeals)
             saveCustomMeals()
         }
+        MealPhotoStore.deletePhotoSet(
+            originalFilename: meal.localPhotoFilename,
+            thumbnailFilename: meal.localPhotoThumbnailFilename
+        )
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func saveMealToLibrary(_ meal: Meals) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+            customMeals = CustomMealStore.upsert(meal, into: customMeals)
+            saveCustomMeals()
+        }
+
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
     }
 
     private enum ResolvedLibraryType {
@@ -616,6 +758,10 @@ struct MealsView: View {
     }
 
     private func resolvedLibraryType(_ meal: Meals) -> ResolvedLibraryType {
+        if let libraryKind = meal.libraryKind {
+            return libraryKind == .ingredient ? .ingredient : .meal
+        }
+
         let ids = meal.builderImageItems?.map { $0.id } ?? []
 
         if !ids.isEmpty {
@@ -632,20 +778,21 @@ struct MealsView: View {
 
 
     private func loadCustomMeals() {
-        guard let data = customMealsStorage.data(using: .utf8) else { return }
-        guard let decoded = try? JSONDecoder().decode([Meals].self, from: data) else { return }
-        customMeals = decoded
+        let loadedMeals = CustomMealStore.load(from: customMealsStorage)
+        let migratedMeals = loadedMeals.map { MealPhotoStore.ensureThumbnail(for: $0) }
+        customMeals = migratedMeals
+
+        if migratedMeals != loadedMeals {
+            customMealsStorage = CustomMealStore.encode(migratedMeals)
+        }
     }
 
     private func saveCustomMeals() {
-        guard let data = try? JSONEncoder().encode(customMeals) else { return }
-        customMealsStorage = String(data: data, encoding: .utf8) ?? ""
+        customMealsStorage = CustomMealStore.encode(customMeals)
     }
     
     private var createActionTitle: String {
-        mealItems.isEmpty
-            ? "Create First Meal"
-            : "Create Meal"
+        "meals.createFoodOrMeal"
     }
 
     private var bottomFixedActionArea: some View {
@@ -653,7 +800,7 @@ struct MealsView: View {
             if !isQuickLogMode {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showMealBuilder = true
+                    showCreationChooser = true
                 } label: {
                     HStack(spacing: 9) {
                         Spacer(minLength: 0)
@@ -662,7 +809,7 @@ struct MealsView: View {
                             .font(.system(size: 13.5, weight: .bold))
                             .foregroundStyle(WeekFitTheme.meal.opacity(0.95))
 
-                        Text(createActionTitle)
+                        Text(WeekFitLocalizedString(createActionTitle))
                             .font(.system(size: 14.0, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary.opacity(0.94))
                             .tracking(-0.16)
@@ -713,6 +860,425 @@ struct MealsView: View {
             endPoint: .bottom
         )
         .ignoresSafeArea()
+    }
+}
+
+
+private struct MealCreationChooserSheet: View {
+    let onSelect: (MealCreationRoute) -> Void
+
+    private let background = WeekFitTheme.backgroundColor
+    private let card = WeekFitTheme.elevatedCard
+    private let textPrimary = WeekFitTheme.primaryText
+    private let textSecondary = WeekFitTheme.secondaryText
+    private let accent = WeekFitTheme.meal
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Capsule()
+                .fill(Color.white.opacity(0.14))
+                .frame(width: 38, height: 4)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(WeekFitLocalizedString("meals.create"))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.55)
+
+                Text(WeekFitLocalizedString("meals.chooseHowYouWantToAddFood"))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.76))
+            }
+
+            VStack(spacing: 10) {
+                optionRow(
+                    icon: "square.grid.2x2.fill",
+                    title: "meals.creation.builder.title",
+                    subtitle: "meals.creation.builder.subtitle",
+                    route: .builder
+                )
+
+                optionRow(
+                    icon: "camera.fill",
+                    title: "meals.creation.customFood.title",
+                    subtitle: "meals.creation.customFood.subtitle",
+                    route: .manualFood
+                )
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(background.ignoresSafeArea())
+        .preferredColorScheme(.dark)
+    }
+
+    private func optionRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        route: MealCreationRoute
+    ) -> some View {
+        Button {
+            onSelect(route)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.12))
+
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(accent.opacity(0.94))
+                }
+                .frame(width: 46, height: 46)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(WeekFitLocalizedString(title))
+                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(textPrimary)
+                        .tracking(-0.15)
+
+                    Text(WeekFitLocalizedString(subtitle))
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.68))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(textSecondary.opacity(0.46))
+            }
+            .padding(14)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(card.opacity(0.70))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+
+private typealias CustomFoodFormView = ManualMealFormView
+
+private struct CustomFoodDetailsView: View {
+    @State var food: Meals
+    let existingMeals: [Meals]
+    var isQuickLogMode: Bool = false
+    var onFoodUpdated: ((Meals) -> Void)? = nil
+    var onFoodLogged: (() -> Void)? = nil
+
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @State private var showEditForm = false
+
+    private let background = WeekFitTheme.backgroundColor
+    private let cardBackground = WeekFitTheme.cardBackground
+    private let elevatedCard = WeekFitTheme.elevatedCard
+    private let textPrimary = WeekFitTheme.primaryText
+    private let textSecondary = WeekFitTheme.secondaryText
+    private let accent = WeekFitTheme.meal
+
+    var body: some View {
+        ZStack {
+            background.ignoresSafeArea()
+            WeekFitTheme.mealsAmbient
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            VStack(spacing: 12) {
+                header
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        foodPreviewCard
+                        nutritionSummary
+                        servingCard
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, isQuickLogMode ? 118 : 30)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .safeAreaInset(edge: .bottom) {
+            if isQuickLogMode {
+                quickLogButton
+            }
+        }
+        .fullScreenCover(isPresented: $showEditForm) {
+            CustomFoodFormView(
+                editingMeal: food,
+                existingMeals: existingMeals,
+                onSave: { updatedFood in
+                    food = updatedFood
+                    onFoodUpdated?(updatedFood)
+                }
+            )
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                dismiss()
+            } label: {
+                CircleIconButton(systemName: "chevron.left")
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(WeekFitLocalizedString("meals.foodDetails"))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.75)
+                    .lineLimit(1)
+
+                Text(WeekFitLocalizedString("meals.reviewServingSizeAndNutrition"))
+                    .font(.system(size: 13.2, weight: .semibold))
+                    .foregroundStyle(textSecondary.opacity(0.76))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer(minLength: 8)
+
+            if !isQuickLogMode {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showEditForm = true
+                } label: {
+                    CircleIconButton(systemName: "square.and.pencil")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    private var foodPreviewCard: some View {
+        VStack(spacing: 12) {
+            FoodMediaView(
+                meal: food,
+                presentation: .hero(size: 168),
+                forceCircleForLocalPhoto: true
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 188)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(food.title)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.42)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.78)
+
+                Text(food.servingDescription)
+                    .font(.system(size: 12.4, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.76))
+                    .lineLimit(2)
+                    .lineSpacing(1.6)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 13)
+        .padding(.top, 12)
+        .padding(.bottom, 13)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            elevatedCard.opacity(0.96),
+                            cardBackground.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+        }
+        .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
+    }
+
+    private var nutritionSummary: some View {
+        HStack(spacing: 8) {
+            nutritionTile("nutrition.metric.calories", "\(food.calories)", "common.unit.kcal", isPrimary: true)
+            nutritionTile("nutrition.metric.protein", "\(food.protein)", "common.unit.gramShort")
+            nutritionTile("nutrition.metric.carbs", "\(food.carbs)", "common.unit.gramShort")
+            nutritionTile("nutrition.metric.fats", "\(food.fats)", "common.unit.gramShort")
+        }
+    }
+
+    private func nutritionTile(
+        _ title: String,
+        _ value: String,
+        _ unit: String,
+        isPrimary: Bool = false
+    ) -> some View {
+        VStack(spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold, design: .rounded))
+                    .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
+
+                Text(WeekFitLocalizedString(unit))
+                    .font(.system(size: 9.4, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+
+            Text(WeekFitLocalizedString(title))
+                .font(.system(size: 9.4, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.74))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 46)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(isPrimary ? accent.opacity(0.052) : Color.white.opacity(0.030))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(isPrimary ? accent.opacity(0.17) : Color.white.opacity(0.038), lineWidth: 1)
+        }
+    }
+
+    private var servingCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(WeekFitLocalizedString("meals.serving"))
+                .font(.system(size: 17.0, weight: .bold, design: .rounded))
+                .foregroundStyle(textPrimary)
+                .tracking(-0.25)
+
+            HStack {
+                Text(food.servingDescription)
+                    .font(.system(size: 14.2, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(0.94))
+
+                Spacer()
+
+                Text(food.sourceLabel)
+                    .font(.system(size: 12.4, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.70))
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 48)
+            .background {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.038))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.045), lineWidth: 1)
+            }
+        }
+    }
+
+    private var quickLogButton: some View {
+        VStack(spacing: 0) {
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                logFood()
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .bold))
+
+                    Text(WeekFitLocalizedString("meals.logFood"))
+                        .font(.system(size: 14.2, weight: .bold, design: .rounded))
+                        .tracking(-0.08)
+                }
+                .foregroundStyle(.black.opacity(0.84))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background {
+                    Capsule()
+                        .fill(accent.opacity(0.92))
+                        .shadow(color: accent.opacity(0.18), radius: 10, y: 4)
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 84)
+        }
+        .background {
+            LinearGradient(
+                colors: [
+                    background.opacity(0),
+                    background.opacity(0.62),
+                    background.opacity(0.96),
+                    background
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    private func logFood() {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: PlannerType.meal.title,
+            title: food.title,
+            durationMinutes: 10,
+            icon: PlannerType.meal.icon,
+            imageName: food.imageName,
+            colorRed: PlannerType.meal.colorComponents.red,
+            colorGreen: PlannerType.meal.colorComponents.green,
+            colorBlue: PlannerType.meal.colorComponents.blue,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fats: food.fats,
+            fiber: food.fiber
+        )
+
+        activity.isCompleted = true
+        modelContext.insert(activity)
+        try? modelContext.save()
+        onFoodLogged?()
+    }
+}
+
+private struct CircleIconButton: View {
+    let systemName: String
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.white.opacity(0.045))
+                .overlay {
+                    Circle()
+                        .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                }
+
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.primaryText.opacity(0.88))
+        }
+        .frame(width: 38, height: 38)
     }
 }
 
@@ -1245,7 +1811,7 @@ private struct RecommendedTodayMealCard: View {
                 shadowOpacity: 0.12
             )
             .frame(width: 62, height: 52)
-        } else if UIImage(named: recommendation.meal.imageName) != nil {
+        } else if !recommendation.meal.imageName.isEmpty, UIImage(named: recommendation.meal.imageName) != nil {
             Image(recommendation.meal.imageName)
                 .resizable()
                 .scaledToFit()
@@ -1288,7 +1854,7 @@ private struct HeroMealLibraryRow: View {
                 VStack(alignment: .leading, spacing: 5) {
                     VStack(alignment: .leading, spacing: isRecommended ? 2 : 4) {
                         if isRecommended {
-                            Text("TODAY'S MATCH")
+                            Text(WeekFitLocalizedString("meals.todaySMatch"))
                                 .font(.system(size: 8.2, weight: .black, design: .rounded))
                                 .tracking(0.9)
                                 .foregroundStyle(accent.opacity(0.88))
@@ -1302,7 +1868,7 @@ private struct HeroMealLibraryRow: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.74)
 
-                        Text("\(meal.calories) kcal • \(ingredientCountText)")
+                        Text(String(format: WeekFitLocalizedString("meals.library.itemSummaryFormat"), meal.calories, ingredientCountText))
                             .font(.system(size: 10.9, weight: .semibold, design: .rounded))
                             .foregroundStyle(textSecondary.opacity(0.78))
                             .lineLimit(1)
@@ -1348,7 +1914,21 @@ private struct HeroMealLibraryRow: View {
 
     private var plateBackground: some View {
         ZStack {
-            if let items = meal.builderImageItems, !items.isEmpty {
+            if meal.isFoodProduct {
+                BuiltMealPlateView(
+                    items: [],
+                    plateSize: 112,
+                    itemScale: 0.40,
+                    offsetScale: 0.42,
+                    plateOpacity: 0.26,
+                    shadowOpacity: 0.18,
+                    customFoodImage: MealPhotoStore.image(for: meal.displayPhotoFilename),
+                    customFoodInitial: meal.placeholderInitial
+                )
+                .frame(width: 138, height: 88)
+                .offset(x: -8, y: 0)
+                .opacity(0.76)
+            } else if let items = meal.builderImageItems, !items.isEmpty {
                 BuiltMealPlateView(
                     items: items,
                     plateSize: 112,
@@ -1360,7 +1940,7 @@ private struct HeroMealLibraryRow: View {
                     .frame(width: 138, height: 88)
                     .offset(x: -8, y: 0)
                     .opacity(0.76)
-            } else if UIImage(named: meal.imageName) != nil {
+            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
                     .resizable()
                     .scaledToFit()
@@ -1392,19 +1972,19 @@ private struct HeroMealLibraryRow: View {
 
     private var macroStrip: some View {
         HStack(spacing: 7) {
-            macroView(prefix: "P", value: meal.protein)
+            macroView(prefix: WeekFitLocalizedString("meals.library.macroProtein"), value: meal.protein)
 
             Divider()
                 .frame(height: 14)
                 .overlay(Color.white.opacity(0.12))
 
-            macroView(prefix: "C", value: meal.carbs)
+            macroView(prefix: WeekFitLocalizedString("meals.library.macroCarbs"), value: meal.carbs)
 
             Divider()
                 .frame(height: 14)
                 .overlay(Color.white.opacity(0.12))
 
-            macroView(prefix: "F", value: meal.fats)
+            macroView(prefix: WeekFitLocalizedString("meals.library.macroFats"), value: meal.fats)
         }
     }
 
@@ -1414,7 +1994,7 @@ private struct HeroMealLibraryRow: View {
                 .font(.system(size: 10.9, weight: .bold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.82))
 
-            Text("\(value)g")
+            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
                 .font(.system(size: 10.9, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.74))
                 .monospacedDigit()

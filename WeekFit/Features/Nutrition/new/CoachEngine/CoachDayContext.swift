@@ -87,7 +87,7 @@ enum CoachDayContextBuilder {
 
         let calendar = Calendar.current
 
-        let dayActivities = activities
+        let rawDayActivities = activities
             .filter {
                 calendar.isDate($0.date, inSameDayAs: selectedDate)
             }
@@ -95,6 +95,7 @@ enum CoachDayContextBuilder {
                 $0.date < $1.date
             }
 
+        let dayActivities = CoachCanonicalDayState.coachRelevantActivities(from: rawDayActivities)
         let completed = dayActivities.filter { $0.isCompleted }
         let skipped = dayActivities.filter { $0.isSkipped }
 
@@ -125,8 +126,14 @@ enum CoachDayContextBuilder {
         let completedRecovery = completed.filter { isRecovery($0) }
         let upcomingRecovery = upcoming.filter { isRecovery($0) }
 
-        let completedMeals = completed.filter { isMeal($0) }
-        let upcomingMeals = upcoming.filter { isMeal($0) }
+        let completedMeals = CoachCanonicalDayState.completedMeals(from: rawDayActivities)
+        let upcomingMeals = rawDayActivities.filter {
+            CoachCanonicalDayState.isNutritionLog($0) &&
+                !CoachCanonicalDayState.isHydrationLog($0) &&
+                !$0.isCompleted &&
+                !$0.isSkipped &&
+                $0.date >= now
+        }
 
         let completedMinutes = completed.reduce(0) {
             $0 + effectiveMinutes($1)
@@ -277,6 +284,8 @@ private extension CoachDayContextBuilder {
     }
 
     static func isActivityVolume(_ activity: PlannedActivity) -> Bool {
+        guard !isHydrationLog(activity) else { return false }
+
         let kind = CoachActivityContextResolverV3.kind(for: activity)
 
         return kind == .workout ||
@@ -286,6 +295,8 @@ private extension CoachDayContextBuilder {
     }
 
     static func isTrainingStress(_ activity: PlannedActivity) -> Bool {
+        guard !isHydrationLog(activity) else { return false }
+
         let kind = CoachActivityContextResolverV3.kind(for: activity)
 
         guard kind == .workout ||
@@ -318,11 +329,24 @@ private extension CoachDayContextBuilder {
     }
 
     static func isRecovery(_ activity: PlannedActivity) -> Bool {
-        CoachActivityContextResolverV3.kind(for: activity) == .recovery
+        guard !isHydrationLog(activity) else { return false }
+
+        return CoachActivityContextResolverV3.kind(for: activity) == .recovery
     }
 
     static func isMeal(_ activity: PlannedActivity) -> Bool {
         CoachActivityContextResolverV3.kind(for: activity) == .meal
+    }
+
+    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+        let type = activity.type.lowercased()
+        let title = activity.title.lowercased()
+        let image = activity.imageName.lowercased()
+
+        return type == "hydration" ||
+            image == "hydration" ||
+            title.contains("water") ||
+            title.contains("hydration")
     }
 
     static func trainingStressScore(for activity: PlannedActivity) -> Int {

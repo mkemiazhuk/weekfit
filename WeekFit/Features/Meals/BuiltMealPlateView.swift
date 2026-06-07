@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BuiltMealPlateView: View {
 
@@ -8,10 +9,13 @@ struct BuiltMealPlateView: View {
     var offsetScale: CGFloat
     var plateOpacity: CGFloat = 0.28
     var shadowOpacity: CGFloat = 0.20
+    var customFoodImage: UIImage? = nil
+    var customFoodInitial: String? = nil
 
     var body: some View {
         let sortedItems = items.sorted { $0.zIndex < $1.zIndex }
-        let hasFoodItems = sortedItems.contains { !$0.id.hasPrefix("drink_") }
+        let hasCustomFoodVisual = customFoodImage != nil || customFoodInitial != nil
+        let hasFoodItems = sortedItems.contains { !$0.id.hasPrefix("drink_") } || hasCustomFoodVisual
         let isStandalone = sortedItems.count == 1
 
         ZStack {
@@ -30,6 +34,13 @@ struct BuiltMealPlateView: View {
                     .opacity(plateOpacity)
             }
 
+            if hasCustomFoodVisual {
+                customFoodPlateVisual
+                    .offset(y: -plateSize * 0.03)
+                    .shadow(color: Color.black.opacity(shadowOpacity), radius: 6, y: 3)
+                    .zIndex(1)
+            }
+
             ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
                 Image(item.imageName)
                     .resizable()
@@ -45,6 +56,16 @@ struct BuiltMealPlateView: View {
             }
         }
         .frame(width: plateSize, height: plateSize)
+    }
+
+    private var customFoodPlateVisual: some View {
+        MealAvatarView(
+            image: customFoodImage,
+            placeholderInitial: customFoodInitial ?? "F",
+            size: plateSize * 0.54,
+            imageScale: 0.66,
+            fallbackSystemImage: "fork.knife"
+        )
     }
 
     private func previewItemWidth(_ item: MealBuilderImageItem, isStandalone: Bool) -> CGFloat {
