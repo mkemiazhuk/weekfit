@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftUI
 import UIKit
+import OSLog
 
 struct ManualMealFormView: View {
     private enum FirstFocusProbe {
@@ -34,6 +35,7 @@ struct ManualMealFormView: View {
     @State private var didRemovePhoto = false
     @State private var showCamera = false
     @State private var showPhotoLibrary = false
+    @State private var showPhotoSourcePicker = false
 
     @State private var name: String
     @State private var servingGrams: String
@@ -86,18 +88,14 @@ struct ManualMealFormView: View {
             VStack(spacing: 0) {
                 header
                     .padding(.horizontal, 16)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, 18)
 
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 18) {
                             if !FirstFocusProbe.hidePhotoPreview {
                                 heroFoodCard
-                            }
-
-                            if !FirstFocusProbe.hidePhotoActions {
-                                photoActions
                             }
 
                             if FirstFocusProbe.usePlainInputRows {
@@ -116,8 +114,8 @@ struct ManualMealFormView: View {
                                     .id("validation")
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 96)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 36)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: validationMessage) { _, newValue in
@@ -134,12 +132,8 @@ struct ManualMealFormView: View {
                 }
             }
         }
-        .dynamicTypeSize(.medium)
-        .preferredColorScheme(.dark)
         .onAppear {
-            Self.debugTimed("onAppear") {
-                requestExistingPreviewImageIfNeeded()
-            }
+            requestExistingPreviewImageIfNeeded()
         }
         .onChange(of: focusedField) { oldValue, newValue in
             Self.debugLog("focus.change \(oldValue?.rawValue ?? "nil") -> \(newValue?.rawValue ?? "nil")")
@@ -181,47 +175,68 @@ struct ManualMealFormView: View {
             selection: $selectedPhotoItem,
             matching: .images
         )
+        .confirmationDialog(
+            "",
+            isPresented: $showPhotoSourcePicker,
+            titleVisibility: .hidden
+        ) {
+            Button(WeekFitLocalizedString("meals.photo.take")) {
+                openCamera()
+            }
+
+            Button(WeekFitLocalizedString("meals.photo.choose")) {
+                showPhotoLibrary = true
+            }
+
+            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) { }
+        }
     }
 
     private var heroFoodCard: some View {
-        let _ = Self.debugLog("render.heroFoodCard focus=\(focusedField?.rawValue ?? "nil")")
-
-        return HStack(spacing: 12) {
+        HStack(spacing: 12) {
             heroMealCardImage
-                .frame(width: 78, height: 62)
+                .frame(width: 84, height: 84)
 
-            VStack(alignment: .leading, spacing: 6) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? WeekFitLocalizedString("meals.foodName") : name)
-                        .font(.system(size: 17.2, weight: .bold, design: .rounded))
-                        .foregroundStyle(textPrimary.opacity(name.isEmpty ? 0.70 : 0.98))
-                        .tracking(-0.35)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(previewTitle)
+                    .font(.system(size: 20.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.82 : 1.0))
+                    .tracking(-0.45)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
 
-                    Text(WeekFitLocalizedString("meals.addAPhotoOfYourFood"))
-                        .font(.system(size: 12.4, weight: .medium))
-                        .foregroundStyle(textSecondary.opacity(0.56))
-                        .lineLimit(1)
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text(caloriesDisplay)
+                            .font(.system(size: 20.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(accent)
+                            .tracking(-0.25)
+
+                        Text(WeekFitLocalizedString("common.unit.kcal"))
+                            .font(.system(size: 12.2, weight: .semibold, design: .rounded))
+                            .foregroundStyle(textSecondary.opacity(0.82))
+                            .padding(.bottom, 2)
+                    }
+
+                    macroSummaryLine
                 }
-
-                macroSummaryRow
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 86)
+        .frame(height: 108)
         .background {
-            RoundedRectangle(cornerRadius: 23, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.clear,
-                            WeekFitTheme.cardSecondary.opacity(0.97),
-                            cardBackground.opacity(0.98)
+                            Color.white.opacity(0.030),
+                            WeekFitTheme.cardSecondary.opacity(1.0),
+                            cardBackground.opacity(1.04)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -229,208 +244,163 @@ struct ManualMealFormView: View {
                 )
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 23, style: .continuous)
-                .stroke(Color.white.opacity(0.035), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.075), lineWidth: 1)
         }
-        .shadow(color: WeekFitTheme.meal.opacity(0.035), radius: 12, y: 5)
+        .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 13, y: 6)
     }
 
-    private var macroSummaryRow: some View {
-        let _ = Self.debugLog("render.macroSummaryRow focus=\(focusedField?.rawValue ?? "nil")")
+    private var macroSummaryLine: some View {
+        HStack(spacing: 6) {
+            heroMacroLabel(
+                WeekFitLocalizedString("nutrition.macro.protein.short"),
+                value: proteinDisplay
+            )
 
-        return HStack(spacing: 0) {
-            Text(String(format: WeekFitLocalizedString("meals.value.kcalStringFormat"), caloriesDisplay))
-                .font(.system(size: 11.2, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.9))
-                .frame(maxWidth: .infinity)
+            heroMacroSeparator
 
-            macroDivider
-            macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramStringFormat"), proteinDisplay))")
-            macroDivider
-            macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramStringFormat"), carbsDisplay))")
-            macroDivider
-            macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramStringFormat"), fatsDisplay))")
+            heroMacroLabel(
+                WeekFitLocalizedString("nutrition.macro.carbs.short"),
+                value: carbsDisplay
+            )
+
+            heroMacroSeparator
+
+            heroMacroLabel(
+                WeekFitLocalizedString("nutrition.macro.fats.short"),
+                value: fatsDisplay
+            )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 1)
-        .frame(height: 20)
-        .background {
-            Capsule()
-                .fill(Color.white.opacity(0.030))
+        .font(.system(size: 13.6, weight: .semibold, design: .rounded))
+        .lineLimit(1)
+        .minimumScaleFactor(0.82)
+    }
+
+    private func heroMacroLabel(_ label: String, value: String) -> some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .foregroundStyle(textPrimary.opacity(0.94))
+
+            Text("\(value)g")
+                .foregroundStyle(textSecondary.opacity(0.86))
         }
     }
 
-    private func macroText(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 10.4, weight: .semibold, design: .monospaced))
-            .foregroundStyle(textSecondary.opacity(0.6))
-            .frame(maxWidth: .infinity)
+    private var heroMacroSeparator: some View {
+        Text("|")
+            .foregroundStyle(textSecondary.opacity(0.42))
     }
 
-    private var macroDivider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.04))
-            .frame(width: 1, height: 10)
-    }
     private var ambientBackground: some View {
-        WeekFitTheme.mealsAmbient
+        RadialGradient(
+            colors: [
+                Color.white.opacity(0.018),
+                Color.clear
+            ],
+            center: UnitPoint(x: 0.88, y: 0.02),
+            startRadius: 24,
+            endRadius: 300
+        )
             .ignoresSafeArea()
             .allowsHitTesting(false)
     }
 
     private var header: some View {
-        let _ = Self.debugLog("render.header focus=\(focusedField?.rawValue ?? "nil")")
-
-        return HStack(spacing: 12) {
-            Button { dismiss() } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(Color.white.opacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
-            }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
+        ZStack {
+            VStack(spacing: 3) {
                 Text(WeekFitLocalizedString(editingMeal == nil ? "meals.foodForm.title.create" : "meals.foodForm.title.edit"))
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 18.5, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
+                    .tracking(-0.35)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.82)
 
                 Text(WeekFitLocalizedString(editingMeal == nil ? "meals.foodForm.subtitle.create" : "meals.foodForm.subtitle.edit"))
-                    .font(.system(size: 13.2, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.76))
+                    .font(.system(size: 13.2, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.72))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
+            .frame(maxWidth: .infinity)
 
-            Spacer(minLength: 8)
-
-            Button { save() } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.09)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(isSaveEnabled ? accent.opacity(0.18) : Color.white.opacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(isSaveEnabled ? accent.opacity(0.85) : textSecondary.opacity(0.42))
+            HStack {
+                Button { dismiss() } label: {
+                    Text(WeekFitLocalizedString("common.action.cancel"))
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(textPrimary.opacity(0.88))
                 }
-                .frame(width: 38, height: 38)
+                .buttonStyle(.plain)
+
+                Spacer(minLength: 8)
+
+                Button { save() } label: {
+                    Text(WeekFitLocalizedString("common.action.save"))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isSaveEnabled ? accent : textSecondary.opacity(0.72))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isSaveEnabled)
             }
-            .buttonStyle(.plain)
-            .disabled(!isSaveEnabled)
-            .scaleEffect(isSaveEnabled ? 1.0 : 0.96)
         }
-        .padding(.bottom, 2)
+        .frame(height: 46)
     }
 
     private var heroMealCardImage: some View {
-        let _ = Self.debugLog("render.heroMealCardImage focus=\(focusedField?.rawValue ?? "nil")")
+        Button {
+            showPhotoSourcePicker = true
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 21, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            elevatedCard.opacity(1.18),
+                            cardBackground.opacity(1.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
-        return CustomFoodVisualView(
-            image: previewImage,
-            placeholderInitial: previewInitial,
-            size: 62,
-            imageScale: 0.68,
-            fallbackSystemImage: "fork.knife"
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18,
-                style: .continuous
-            )
-        )
-    }
+                if let previewImage {
+                    Image(uiImage: previewImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 94, height: 84)
+                } else {
+                    VStack(spacing: 7) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(textPrimary.opacity(0.82))
 
-    private var photoActions: some View {
-        let _ = Self.debugLog("render.photoActions focus=\(focusedField?.rawValue ?? "nil")")
-
-        return ZStack {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.030))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.040), lineWidth: 1)
-                }
-
-            HStack(spacing: 0) {
-                photoControlButton(title: "meals.photo.take", icon: "camera.fill") {
-                    openCamera()
-                }
-
-                Rectangle()
-                    .fill(Color.white.opacity(0.050))
-                    .frame(width: 1, height: 22)
-
-                photoControlButton(title: "meals.photo.choose", icon: "photo.on.rectangle") {
-                    showPhotoLibrary = true
-                }
-
-                if previewImage != nil {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.050))
-                        .frame(width: 1, height: 22)
-
-                    photoControlButton(title: "meals.photo.remove", icon: "trash") {
-                        removePhoto()
+                        Image(systemName: "photo")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(textSecondary.opacity(0.72))
                     }
                 }
             }
         }
-        .frame(height: 42)
-    }
-
-    private func photoControlButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-
-                Text(WeekFitLocalizedString(title))
-                    .font(.system(size: 13.2, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(.white.opacity(0.78))
-            .frame(maxWidth: .infinity)
-            .frame(height: 42)
-            .contentShape(Rectangle())
-        }
         .buttonStyle(.plain)
+        .frame(width: 84, height: 84)
+        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+        }
+        .shadow(color: WeekFitTheme.cardShadow.opacity(0.35), radius: 8, y: 4)
+        .contextMenu {
+            if previewImage != nil {
+                Button(WeekFitLocalizedString("meals.photo.remove"), role: .destructive) {
+                    removePhoto()
+                }
+            }
+        }
     }
 
     private var foodNameCard: some View {
-        let _ = Self.debugLog("render.foodNameCard focus=\(focusedField?.rawValue ?? "nil")")
-
-        return premiumCard(height: 58, surfaceOpacity: 0.92, borderOpacity: 0.040) {
-            HStack(spacing: 12) {
-                cardIcon("fork.knife", color: accent)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    fieldLabel("meals.foodName")
-
+        formSection(title: WeekFitLocalizedString("meals.foodName")) {
+            VStack(alignment: .leading, spacing: 8) {
+                premiumCard(height: 62, horizontalPadding: 16, surfaceOpacity: 1.25, borderOpacity: 0.070, cornerRadius: 18) {
                     TextField(WeekFitLocalizedString("meals.enterFoodName"), text: $name)
                         .font(.system(size: 16.8, weight: .semibold, design: .rounded))
                         .foregroundStyle(textPrimary)
@@ -441,73 +411,66 @@ struct ManualMealFormView: View {
                             Self.debugLog("tap.nameField")
                         }
                 }
+
+                Text("Give your food a clear and simple name.")
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.74))
+                    .padding(.horizontal, 2)
             }
         }
     }
 
     private var servingSizeCard: some View {
-        let _ = Self.debugLog("render.servingSizeCard focus=\(focusedField?.rawValue ?? "nil")")
+        HStack {
+            Text("Nutrition Per")
+                .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary.opacity(0.98))
 
-        return premiumCard(height: 80, surfaceOpacity: 0.92, borderOpacity: 0.040) {
-            HStack(spacing: 12) {
-                cardIcon("scalemass.fill", color: WeekFitTheme.purple)
+            Spacer(minLength: 12)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    fieldLabel("meals.servingSize")
-
-                    HStack(alignment: .lastTextBaseline, spacing: 10) {
-                        TextField("100", text: $servingGrams)
-                            .font(.system(size: 18.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary)
-                            .keyboardType(.numberPad)
-                            .submitLabel(.done)
-                            .tint(accent)
-                            .focused($focusedField, equals: .servingGrams)
-                            .onTapGesture {
-                                Self.debugLog("tap.servingGramsField")
-                            }
-
-                        Spacer(minLength: 8)
-
-                        Menu {
-                            Button(WeekFitLocalizedString("common.unit.gramShort")) { }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Text(WeekFitLocalizedString("common.unit.gramShort"))
-                                    .font(.system(size: 14.5, weight: .semibold, design: .rounded))
-
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10, weight: .semibold))
-                            }
-                            .foregroundStyle(textPrimary.opacity(0.78))
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            .background(Capsule().fill(Color.white.opacity(0.032)))
-                        }
+            HStack(spacing: 5) {
+                TextField("100", text: $servingGrams)
+                    .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(0.88))
+                    .keyboardType(.numberPad)
+                    .submitLabel(.done)
+                    .tint(accent)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 34)
+                    .focused($focusedField, equals: .servingGrams)
+                    .onTapGesture {
+                        Self.debugLog("tap.servingGramsField")
                     }
 
-                    Text(WeekFitLocalizedString("meals.nutritionValuesArePer100g"))
-                        .font(.system(size: 11.8, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.56))
+                Text(WeekFitLocalizedString("common.unit.gramShort"))
+                    .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+
+                Menu {
+                    Button(WeekFitLocalizedString("common.unit.gramShort")) { }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(textPrimary.opacity(0.78))
                 }
+                .buttonStyle(.plain)
+            }
+            .foregroundStyle(textPrimary.opacity(0.78))
+            .padding(.horizontal, 14)
+            .frame(height: 40)
+            .background {
+                Capsule()
+                    .fill(Color.white.opacity(0.050))
+            }
+            .overlay {
+                Capsule()
+                    .stroke(Color.white.opacity(0.070), lineWidth: 1)
             }
         }
+        .padding(.top, 2)
     }
 
     private var nutritionSection: some View {
-        let _ = Self.debugLog("render.nutritionSection focus=\(focusedField?.rawValue ?? "nil")")
-
-        return VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(WeekFitLocalizedString("meals.nutrition"))
-                    .font(.system(size: 18.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(textPrimary)
-
-                Text(WeekFitLocalizedString("meals.per100g"))
-                    .font(.system(size: 13.2, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.58))
-            }
-
+        VStack(alignment: .leading, spacing: 8) {
             LazyVGrid(columns: nutritionColumns, spacing: 8) {
                 nutritionCard(title: "meals.nutrition.calories", value: $calories, unit: "common.unit.kcal", icon: "flame.fill", color: WeekFitTheme.orange)
                 nutritionCard(title: "meals.nutrition.protein", value: $protein, unit: "common.unit.gramShort", icon: "figure.strengthtraining.traditional", color: accent)
@@ -520,9 +483,7 @@ struct ManualMealFormView: View {
     }
 
     private var plainInputRows: some View {
-        let _ = Self.debugLog("render.plainInputRows focus=\(focusedField?.rawValue ?? "nil")")
-
-        return VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             TextField(WeekFitLocalizedString("meals.enterFoodName"), text: $name)
                 .textFieldStyle(.plain)
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -568,14 +529,12 @@ struct ManualMealFormView: View {
         color: Color,
         isWide: Bool = false
     ) -> some View {
-        let _ = Self.debugLog("render.nutritionCard.\(focusedField(for: title).rawValue) focus=\(focusedField?.rawValue ?? "nil")")
-
-        return premiumCard(height: 62, horizontalPadding: 11, surfaceOpacity: 0.72, borderOpacity: 0.032, cornerRadius: 18) {
+        premiumCard(height: isWide ? 70 : 82, horizontalPadding: 14, surfaceOpacity: isWide ? 0.82 : 1.0, borderOpacity: isWide ? 0.052 : 0.065, cornerRadius: 18) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     Image(systemName: icon)
                         .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(color.opacity(0.48))
+                        .foregroundStyle(color.opacity(0.70))
                         .frame(width: 14)
 
                     fieldLabel(title)
@@ -595,7 +554,7 @@ struct ManualMealFormView: View {
 
                     Text(WeekFitLocalizedString(unit))
                         .font(.system(size: 11.6, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.44))
+                        .foregroundStyle(textSecondary.opacity(0.64))
                         .padding(.bottom, 2)
                 }
             }
@@ -619,8 +578,8 @@ struct ManualMealFormView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.040 * surfaceOpacity),
-                                Color.white.opacity(0.030 * surfaceOpacity)
+                                Color.white.opacity(0.052 * surfaceOpacity),
+                                Color.white.opacity(0.038 * surfaceOpacity)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -633,31 +592,35 @@ struct ManualMealFormView: View {
             }
     }
 
-    private func cardIcon(_ systemName: String, color: Color) -> some View {
-        ZStack {
-            Circle()
-                .fill(Color.white.opacity(0.035))
-                .overlay {
-                    Circle()
-                        .stroke(Color.white.opacity(0.035), lineWidth: 1)
-                }
+    private func formSection<Content: View>(
+        title: String,
+        optionalText: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(0.92))
 
-            Image(systemName: systemName)
-                .font(.system(size: 14.5, weight: .semibold))
-                .foregroundStyle(color.opacity(0.54))
+                if let optionalText {
+                    Text("(\(optionalText))")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.62))
+                }
+            }
+
+            content()
         }
-        .frame(width: 34, height: 34)
     }
 
     private func fieldLabel(_ text: String) -> some View {
         Text(WeekFitLocalizedString(text))
             .font(.system(size: 13.2, weight: .semibold, design: .rounded))
-            .foregroundStyle(textSecondary.opacity(0.58))
+            .foregroundStyle(textSecondary.opacity(0.76))
     }
 
     private var previewImage: UIImage? {
-        let _ = Self.debugLog("computed.previewImage selectedThumb=\(selectedThumbnailImage != nil) existing=\(existingPreviewImage != nil) removed=\(didRemovePhoto)")
-
         if let image = selectedThumbnailImage {
             return image
         }
@@ -666,10 +629,13 @@ struct ManualMealFormView: View {
     }
 
     private var previewInitial: String {
-        let _ = Self.debugLog("computed.previewInitial nameLength=\(name.count)")
-
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return String(trimmed.first ?? "F").uppercased()
+    }
+
+    private var previewTitle: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "New Food" : trimmed
     }
 
     private var caloriesDisplay: String { displayValue(calories) }
@@ -695,24 +661,32 @@ struct ManualMealFormView: View {
             Self.debugEnd("photoPicker.loadTransferable", start: start)
 
             let processingStart = Self.debugStart("photoPicker.processImage")
-            let normalized = image.normalizedForPhotoStorage()
-            let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
-            Self.debugEnd("photoPicker.processImage", start: processingStart)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let normalized = image.normalizedForPhotoStorage()
+                let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
+                Self.debugEnd("photoPicker.processImage", start: processingStart)
 
-            await MainActor.run {
-                selectedImage = normalized
-                selectedThumbnailImage = thumbnail
-                didRemovePhoto = false
+                DispatchQueue.main.async {
+                    selectedImage = normalized
+                    selectedThumbnailImage = thumbnail
+                    didRemovePhoto = false
+                }
             }
         }
     }
 
     private func processCapturedPhoto(_ image: UIImage) {
-        Self.debugTimed("camera.processImage") {
+        let processingStart = Self.debugStart("camera.processImage")
+        DispatchQueue.global(qos: .userInitiated).async {
             let normalized = image.normalizedForPhotoStorage()
-            selectedImage = normalized
-            selectedThumbnailImage = MealPhotoStore.thumbnailImage(from: normalized)
-            didRemovePhoto = false
+            let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
+            Self.debugEnd("camera.processImage", start: processingStart)
+
+            DispatchQueue.main.async {
+                selectedImage = normalized
+                selectedThumbnailImage = thumbnail
+                didRemovePhoto = false
+            }
         }
     }
 
@@ -734,7 +708,6 @@ struct ManualMealFormView: View {
     }
 
     private var isSaveEnabled: Bool {
-        let _ = Self.debugLog("computed.isSaveEnabled")
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return false }
         guard intValue(servingGrams) > 0 else { return false }
@@ -878,11 +851,11 @@ struct ManualMealFormView: View {
 
     private func requestExistingPreviewImageIfNeeded() {
         guard !didRequestExistingPreviewImage else { return }
-        didRequestExistingPreviewImage = true
 
         let filename = editingMeal?.displayPhotoFilename
         guard filename?.isEmpty == false else { return }
 
+        didRequestExistingPreviewImage = true
         Self.debugLog("existingPreview.request filename=\(filename ?? "nil")")
 
         DispatchQueue.global(qos: .userInitiated).async {
@@ -915,16 +888,18 @@ struct ManualMealFormView: View {
         }
     }
 
+    private static let logger = Logger(subsystem: "WeekFit", category: "ManualMealFormView")
+
     private static func debugLog(_ message: String) -> Void {
         #if DEBUG
-        print("[ManualMealFormTiming] \(message)")
+        logger.debug("\(message, privacy: .public)")
         #endif
     }
 
     private static func debugStart(_ label: String) -> CFAbsoluteTime {
         #if DEBUG
         let start = CFAbsoluteTimeGetCurrent()
-        print("[ManualMealFormTiming] \(label) start")
+        logger.debug("\(label, privacy: .public) start")
         return start
         #else
         return 0
@@ -934,7 +909,7 @@ struct ManualMealFormView: View {
     private static func debugEnd(_ label: String, start: CFAbsoluteTime) {
         #if DEBUG
         let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
-        print(String(format: "[ManualMealFormTiming] %@ end %.1fms", label, elapsed))
+        logger.debug("\(String(format: "%@ end %.1fms", label, elapsed), privacy: .public)")
         #endif
     }
 

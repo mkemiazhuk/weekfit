@@ -922,7 +922,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let actionTitles = story.primaryActions.map(\.title)
 
         XCTAssertTrue(actionTitles.contains("Keep morning activity easy"))
-        XCTAssertTrue(actionTitles.contains("Bring ride nutrition"))
+        XCTAssertTrue(actionTitles.contains("Bring carbs for the ride"))
         XCTAssertTrue(actionTitles.contains("Keep the first 15-20 minutes easy"))
         XCTAssertFalse(actionTitles.contains("Drink 300-500 ml water"))
         XCTAssertFalse(actionTitles.contains("Bring a bottle"))
@@ -1078,8 +1078,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             priority: noActivityStablePriority(
                 supportBullets: [
                     "Hydration is significantly behind • Add 300-500 ml in the next hour",
-                    "Bring a bottle",
-                    "Bring ride nutrition"
+                    "Sip fluids steadily",
+                    "Eat 20-40g carbs before starting"
                 ]
             )
         )
@@ -1093,7 +1093,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertFalse(visible.contains("bring a bottle"))
         XCTAssertFalse(visible.contains("workout nutrition"))
         XCTAssertTrue(story.supportActions.contains { $0.title == "Consider a glass of water" })
-        XCTAssertTrue(story.supportActions.contains { $0.title == "Eat normally at next meal" })
+        XCTAssertFalse(story.supportActions.contains { $0.title.localizedCaseInsensitiveContains("ride") })
+        XCTAssertFalse(story.supportActions.contains { $0.title.localizedCaseInsensitiveContains("workout") })
     }
 
     func testSecondaryHydrationSupportUsesSoftLanguage() throws {
@@ -1240,13 +1241,13 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             .init(name: "1. scheduled >90 min away", ride: lifecycleRide(minutesFromNow: 105), expectedState: "PREPARE", expectedTitleContains: "cycling"),
             .init(name: "2. scheduled 30-60 min away", ride: lifecycleRide(minutesFromNow: 45), expectedState: "PREPARE", expectedTitleContains: "cycling"),
             .init(name: "3. scheduled <15 min away", ride: lifecycleRide(minutesFromNow: 10), expectedState: "PREPARE", expectedTitleContains: "cycling"),
-            .init(name: "4. activity started", ride: lifecycleRide(elapsedMinutes: 1), expectedState: "KEEP IT EASY", expectedTitleContains: "keep it easy", mustNotTitleContain: "prepare"),
-            .init(name: "5. first 15 minutes", ride: lifecycleRide(elapsedMinutes: 12), expectedState: "KEEP IT EASY", expectedTitleContains: "keep it easy", mustNotTitleContain: "prepare"),
-            .init(name: "6. mid-session", ride: lifecycleRide(elapsedMinutes: 90), expectedState: "KEEP IT EASY", expectedTitleContains: "keep it easy", mustNotTitleContain: "prepare"),
-            .init(name: "7. late-session", ride: lifecycleRide(elapsedMinutes: 172), expectedState: "KEEP IT EASY", expectedTitleContains: "keep it easy", mustNotTitleContain: "prepare"),
-            .init(name: "8. activity completed", ride: lifecycleRide(completedMinutesAgo: 0), expectedState: "RECOVER", expectedTitleContains: "workout", mustNotTitleContain: "prepare"),
-            .init(name: "9. post-workout recovery window", ride: lifecycleRide(completedMinutesAgo: 45), expectedState: "RECOVER", expectedTitleContains: "workout", mustNotTitleContain: "prepare"),
-            .init(name: "10. recovery completed", ride: lifecycleRide(completedMinutesAgo: 150), expectedState: "START THE DAY", expectedTitleContains: "simple", mustNotTitleContain: "useful work")
+            .init(name: "4. activity started", ride: lifecycleRide(elapsedMinutes: 1), expectedState: "KEEP IT EASY", expectedTitleContains: "Control today's ride", mustNotTitleContain: "prepare"),
+            .init(name: "5. first 15 minutes", ride: lifecycleRide(elapsedMinutes: 12), expectedState: "KEEP IT EASY", expectedTitleContains: "Control today's ride", mustNotTitleContain: "prepare"),
+            .init(name: "6. mid-session", ride: lifecycleRide(elapsedMinutes: 90), expectedState: "KEEP IT EASY", expectedTitleContains: "Control today's ride", mustNotTitleContain: "prepare"),
+            .init(name: "7. late-session", ride: lifecycleRide(elapsedMinutes: 172), expectedState: "KEEP IT EASY", expectedTitleContains: "Control today's ride", mustNotTitleContain: "prepare"),
+            .init(name: "8. activity completed", ride: lifecycleRide(completedMinutesAgo: 0), expectedState: "RECOVER", expectedTitleContains: "Protect the work", mustNotTitleContain: "prepare"),
+            .init(name: "9. post-workout recovery window", ride: lifecycleRide(completedMinutesAgo: 45), expectedState: "RECOVER", expectedTitleContains: "Protect the work", mustNotTitleContain: "prepare"),
+            .init(name: "10. recovery completed", ride: lifecycleRide(completedMinutesAgo: 150), expectedState: "RECOVER", expectedTitleContains: "The work is done", mustNotTitleContain: "sleep")
         ]
 
         var auditLog: [String] = []
@@ -1290,6 +1291,17 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
                     "\(stage.name) must not remain stuck in \(forbidden), got \(actualTitle)"
                 )
             }
+            if stage.name.contains("activity started") || stage.name.contains("first 15") || stage.name.contains("mid-session") || stage.name.contains("late-session") {
+                XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("ride"))
+                XCTAssertFalse(actualTitle.localizedCaseInsensitiveContains("plan"))
+                XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("plan adjustment"))
+                XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("prepare"))
+            }
+            if stage.name.contains("activity completed") || stage.name.contains("post-workout") {
+                XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("ride"))
+                XCTAssertFalse(story.myRead.localizedCaseInsensitiveContains("sleep leads"))
+                XCTAssertFalse(actualTitle.localizedCaseInsensitiveContains("sleep"))
+            }
         }
 
         let renderedAudit = auditLog.joined(separator: "\n")
@@ -1299,6 +1311,98 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             encoding: .utf8
         )
         print(renderedAudit)
+    }
+
+    func testSleepLimitedCyclingLifecycleUsesExecutionThenRecoveryContinuity() throws {
+        let active = try lifecycleGuidance(
+            for: lifecycleRide(elapsedMinutes: 190, duration: 240),
+            brain: brain(
+                currentHour: 13,
+                recovery: .compromised,
+                readiness: .compromised,
+                sleepHours: 4.4
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.4)
+        )
+        let activeStory = try XCTUnwrap(active.guidance.screenStory)
+        let activeCopy = visibleTexts(activeStory).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(activeStory.title.localizedCaseInsensitiveContains("Control today's ride"))
+        XCTAssertTrue(activeStory.myRead.localizedCaseInsensitiveContains("ride"), activeStory.myRead)
+        XCTAssertTrue(
+            activeStory.myRecommendation.localizedCaseInsensitiveContains("avoid intervals") ||
+                activeStory.myRecommendation.localizedCaseInsensitiveContains("skip hard intervals") ||
+                activeStory.myRecommendation.localizedCaseInsensitiveContains("threshold"),
+            activeStory.myRecommendation
+        )
+        XCTAssertTrue(activeCopy.contains("finish with reserve") || activeCopy.contains("stay aerobic"), activeCopy)
+        XCTAssertFalse(activeCopy.contains("reduce the plan"))
+        XCTAssertFalse(activeCopy.contains("plan adjustment"))
+        XCTAssertFalse(activeCopy.contains("prepare for cycling"))
+
+        let completed = try lifecycleGuidance(
+            for: lifecycleRide(completedMinutesAgo: 9, duration: 240),
+            brain: brain(
+                currentHour: 13,
+                recovery: .compromised,
+                readiness: .compromised,
+                sleepHours: 4.4
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.4)
+        )
+        let completedStory = try XCTUnwrap(completed.guidance.screenStory)
+        let completedCopy = visibleTexts(completedStory).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(completedStory.title.localizedCaseInsensitiveContains("Protect the work"))
+        XCTAssertTrue(completedStory.myRead.localizedCaseInsensitiveContains("ride"), completedStory.myRead)
+        XCTAssertTrue(completedStory.myRead.localizedCaseInsensitiveContains("sleep"))
+        XCTAssertTrue(completedStory.myRecommendation.localizedCaseInsensitiveContains("absorbing"), completedStory.myRecommendation)
+        XCTAssertFalse(completedStory.title.localizedCaseInsensitiveContains("sleep"))
+        XCTAssertFalse(completedCopy.contains("sleep leads today"))
+        XCTAssertFalse(completedCopy.contains("prepare for cycling"))
+    }
+
+    func testPostWorkoutRecoveryLeadsUntilLateEveningSleepHandoff() throws {
+        let afternoonNow = Calendar.current.date(bySettingHour: 17, minute: 12, second: 0, of: now) ?? now
+        let nightNow = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: now) ?? now
+        let afternoonRide = completedRide(endingMinutesBefore: 180, now: afternoonNow)
+        let nightRide = completedRide(endingMinutesBefore: 410, now: nightNow)
+
+        let afternoon = try lifecycleGuidance(
+            for: afternoonRide,
+            now: afternoonNow,
+            brain: brain(
+                currentHour: 17,
+                recovery: .compromised,
+                readiness: .compromised,
+                sleepHours: 4.4
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.4)
+        )
+        let afternoonStory = try XCTUnwrap(afternoon.guidance.screenStory)
+        let afternoonCopy = visibleTexts(afternoonStory).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(afternoonStory.title.localizedCaseInsensitiveContains("work is done") || afternoonStory.title.localizedCaseInsensitiveContains("Protect the work"))
+        XCTAssertTrue(afternoonStory.myRead.localizedCaseInsensitiveContains("ride"))
+        XCTAssertTrue(afternoonStory.myRead.localizedCaseInsensitiveContains("sleep"))
+        XCTAssertFalse(afternoonStory.title.localizedCaseInsensitiveContains("sleep"))
+        XCTAssertFalse(afternoonCopy.contains("make tonight's sleep the main win"))
+
+        let night = try lifecycleGuidance(
+            for: nightRide,
+            now: nightNow,
+            brain: brain(
+                currentHour: 21,
+                recovery: .compromised,
+                readiness: .compromised,
+                sleepHours: 4.4
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.4)
+        )
+        let nightStory = try XCTUnwrap(night.guidance.screenStory)
+        let nightCopy = visibleTexts(nightStory).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(nightStory.title.localizedCaseInsensitiveContains("sleep") || nightCopy.contains("protect sleep") || nightCopy.contains("sleep leads"))
     }
 
     func testCoachV5DynamicTextScenarioAudit() throws {
@@ -3246,6 +3350,83 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertFalse(story.primaryActions.contains { $0.title.localizedCaseInsensitiveContains("Drink") })
     }
 
+    func testLiveLowSleepGuidanceIsSportSpecific() throws {
+        struct Case {
+            let title: String
+            let expectedTitle: String
+            let recommendationFragment: String
+            let actionTitle: String
+        }
+
+        let cases: [Case] = [
+            .init(
+                title: "Cycling",
+                expectedTitle: "Control today's ride",
+                recommendationFragment: "stay aerobic",
+                actionTitle: "Stay aerobic"
+            ),
+            .init(
+                title: "Running",
+                expectedTitle: "Control today's run",
+                recommendationFragment: "stay conversational",
+                actionTitle: "Stay conversational"
+            ),
+            .init(
+                title: "Upper Body",
+                expectedTitle: "Control today's upper body session",
+                recommendationFragment: "reduce working weight",
+                actionTitle: "Reduce load"
+            ),
+            .init(
+                title: "Tennis",
+                expectedTitle: "Control today's tennis session",
+                recommendationFragment: "positioning over intensity",
+                actionTitle: "Stay efficient"
+            ),
+            .init(
+                title: "Squash",
+                expectedTitle: "Control today's squash session",
+                recommendationFragment: "reduce match intensity",
+                actionTitle: "Control intensity"
+            )
+        ]
+
+        for scenario in cases {
+            let activity = workout(
+                title: scenario.title,
+                minutesFromNow: -8,
+                duration: 60,
+                completed: false
+            )
+
+            let story = try XCTUnwrap(guidance(
+                [activity],
+                brain: brain(
+                    currentHour: 10,
+                    recovery: .compromised,
+                    readiness: .compromised,
+                    sleepHours: 4.6
+                ),
+                recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.6),
+                nutrition: nutrition(water: 1.5, meals: 1)
+            ).screenStory)
+
+            XCTAssertEqual(story.title, scenario.expectedTitle, scenario.title)
+            XCTAssertTrue(
+                story.myRecommendation.localizedCaseInsensitiveContains(scenario.recommendationFragment),
+                "\(scenario.title): \(story.myRecommendation)"
+            )
+            XCTAssertTrue(
+                story.primaryActions.contains { $0.title == scenario.actionTitle },
+                "\(scenario.title): \(story.primaryActions.map(\.title))"
+            )
+            XCTAssertFalse(
+                story.myRecommendation.localizedCaseInsensitiveContains("Stay below your normal ceiling"),
+                "\(scenario.title) should not use generic live-session advice"
+            )
+        }
+    }
+
     func testLateNightActiveKnownSportPrioritizesTimeRiskOverSmallHydrationGap() throws {
         let tennis = workout(title: "Tennis", minutesFromNow: -5, duration: 75, completed: false)
 
@@ -3258,8 +3439,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let story = try XCTUnwrap(guidance.screenStory)
 
         XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("Tennis"))
-        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("controlled"))
-        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("comfort"))
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("positioning"))
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("movement quality"))
         XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("hydration is not fully covered"))
         XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("ignore targets"))
         assertTodayInsightIsTeaser(guidance, scenario: "late active tennis")
@@ -3864,7 +4045,7 @@ private extension HumanCoachDecisionEngineXCTests {
             todayMessage: "Arrive fresh and ready.",
             detailTitle: "Prepare for cycling",
             detailMessage: "Cycling starts soon, so the useful move is setup, not changing the plan.",
-            supportBullets: ["Hydration could use attention", "Bring a bottle", "Bring ride nutrition"],
+            supportBullets: ["Hydration could use attention", "Bring a bottle", "Eat 20-40g carbs before the ride"],
             whyThisMatters: "Arriving fresh matters more than chasing any single support signal."
         )
     }
@@ -4050,19 +4231,23 @@ private extension HumanCoachDecisionEngineXCTests {
     }
 
     func lifecycleGuidance(
-        for ride: PlannedActivity
+        for ride: PlannedActivity,
+        now scenarioNow: Date? = nil,
+        brain brainState: HumanBrain.State? = nil,
+        recovery: CoachRecoveryContext? = nil
     ) throws -> (context: CoachDecisionContext, priority: CoachDayPriorityResult, guidance: CoachGuidanceV3) {
-        let brain = brain(currentHour: 10, recovery: .strong, readiness: .good)
+        let resolvedNow = scenarioNow ?? now
+        let brain = brainState ?? brain(currentHour: 10, recovery: .strong, readiness: .good)
         let nutrition = nutrition(water: 1.0, meals: 1, calories: 850, carbs: 110, lastMealMinutesAgo: 60)
         let dayContext = CoachDayContextBuilder.build(
             activities: [ride],
-            selectedDate: selectedDate,
-            now: now
+            selectedDate: resolvedNow,
+            now: resolvedNow
         )
         let activityContext = CoachActivityContextResolverV3.resolveDayContext(
             activities: [ride],
-            selectedDate: selectedDate,
-            now: now,
+            selectedDate: resolvedNow,
+            now: resolvedNow,
             brain: brain
         )
         let readiness = CoachReadinessAnalyzerV3.analyze(
@@ -4074,7 +4259,7 @@ private extension HumanCoachDecisionEngineXCTests {
             dayContext: dayContext,
             activityContext: activityContext,
             tomorrowContext: nil,
-            recoveryContext: CoachRecoveryContext(recoveryPercent: 88, sleepHours: 7.6),
+            recoveryContext: recovery ?? CoachRecoveryContext(recoveryPercent: 88, sleepHours: 7.6),
             nutritionContext: nutrition,
             readiness: readiness
         )
@@ -4095,6 +4280,20 @@ private extension HumanCoachDecisionEngineXCTests {
         )
 
         return (context, priority, guidance)
+    }
+
+    func completedRide(
+        endingMinutesBefore minutesBefore: Int,
+        now scenarioNow: Date,
+        duration: Int = 180
+    ) -> PlannedActivity {
+        let start = scenarioNow.addingTimeInterval(TimeInterval(-(minutesBefore + duration) * 60))
+        return PlannedActivityBuilder.workout(
+            title: "Cycling",
+            at: start,
+            durationMinutes: duration,
+            completed: true
+        )
     }
 
     func resolve(
@@ -4151,7 +4350,8 @@ private extension HumanCoachDecisionEngineXCTests {
         currentHour: Int,
         recovery: HumanBrain.RecoveryState,
         readiness: HumanBrain.ReadinessState,
-        strain: HumanBrain.StrainState = .normal
+        strain: HumanBrain.StrainState = .normal,
+        sleepHours: Double? = nil
     ) -> HumanBrain.State {
         HumanBrainStateBuilder.make(
             currentHour: currentHour,
@@ -4159,7 +4359,8 @@ private extension HumanCoachDecisionEngineXCTests {
             fuel: .good,
             strain: strain,
             recovery: recovery,
-            readiness: readiness
+            readiness: readiness,
+            metrics: sleepHours.map { CoachMetricsBuilder.metrics(sleepHours: $0) } ?? CoachMetricsBuilder.metrics()
         )
     }
 

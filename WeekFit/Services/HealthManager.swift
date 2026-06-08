@@ -1107,7 +1107,8 @@ final class HealthManager: ObservableObject {
         let completedMealActivities = plannedActivities.filter { activity in
             guard calendar.isDate(activity.date, inSameDayAs: date) else { return false }
             guard hasActivityPassed(activity.date, for: date) else { return false }
-            return activity.type.normalized == "meal"
+            let type = activity.type.normalized
+            return (type == "meal" || type == "drink") && !isHydrationActivityByText(activity)
         }
 
         var totalProtein: Double = 0
@@ -1186,9 +1187,7 @@ final class HealthManager: ObservableObject {
 
     private func isHydrationActivityByText(_ activity: PlannedActivity) -> Bool {
         let text = "\(activity.type) \(activity.title) \(activity.imageName)".normalized
-        return text.contains("hydration") || text.contains("water") || text.contains("drink") ||
-               text.contains("lemon") || text.contains("mint") || text.contains("cucumber") ||
-               text.contains("coconut") || text.contains("electrolyte") || text.contains("smoothie") || text.contains("shake")
+        return text.contains("hydration") || text.contains("water")
     }
 
     private func calculateHeaderMetrics() {

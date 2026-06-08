@@ -57,6 +57,8 @@ struct PremiumActivityStartSheet: View {
     }
 
     var body: some View {
+        let liveActivity = activeLiveActivity
+
         ZStack {
             background.ignoresSafeArea()
 
@@ -67,11 +69,11 @@ struct PremiumActivityStartSheet: View {
 //                    .padding(.top, 8)
 
                 PremiumBottomSheetHeader(
-                    title: activeLiveActivity != nil
+                    title: liveActivity != nil
                         ? "Active Session"
                         : "Start Activity",
 
-                    subtitle: activeLiveActivity != nil
+                    subtitle: liveActivity != nil
                         ? "Finish current session before starting another"
                         : "Choose what fits your body right now"
                 ) {
@@ -79,7 +81,7 @@ struct PremiumActivityStartSheet: View {
                     isPresented = false
                 }
 
-                if let liveItem = activeLiveActivity {
+                if let liveItem = liveActivity {
                     liveSessionCard(liveItem)
                         .padding(.horizontal, 18)
                         .padding(.bottom, 14)
@@ -93,7 +95,7 @@ struct PremiumActivityStartSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
 
-                activityOptionsList
+                activityOptionsList(liveActivity: liveActivity)
             }
         }
     }
@@ -217,11 +219,11 @@ struct PremiumActivityStartSheet: View {
         }
     }
 
-    private var activityOptionsList: some View {
+    private func activityOptionsList(liveActivity: PlannedActivity?) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 10) {
                 ForEach(selectedPlannerType.options, id: \.title) { option in
-                    let isBlocked = activeLiveActivity != nil
+                    let isBlocked = liveActivity != nil
                     let duration = defaultDuration(for: option, type: selectedPlannerType)
 
                     PremiumActivityStartCard(

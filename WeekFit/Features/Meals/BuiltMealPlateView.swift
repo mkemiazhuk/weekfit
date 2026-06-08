@@ -194,3 +194,28 @@ struct BuiltMealPlateView: View {
         return "other"
     }
 }
+
+struct AsyncCustomFoodPlateView: View {
+    let filename: String?
+    let initial: String
+    var plateSize: CGFloat
+    var itemScale: CGFloat
+    var offsetScale: CGFloat
+    var plateOpacity: CGFloat = 0.28
+    var shadowOpacity: CGFloat = 0.20
+
+    var body: some View {
+        AsyncMealPhotoView(filename: filename) { image in
+            BuiltMealPlateView(
+                items: [],
+                plateSize: plateSize,
+                itemScale: itemScale,
+                offsetScale: offsetScale,
+                plateOpacity: plateOpacity,
+                shadowOpacity: shadowOpacity,
+                customFoodImage: image,
+                customFoodInitial: initial
+            )
+        }
+    }
+}

@@ -120,6 +120,134 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertEqual(priority.activity?.id, upcoming.id)
     }
 
+    func testShortSleepFromBrainMetricsStillGeneratesTrainingCandidateAfterRefresh() {
+        let cycling = PlannedActivityBuilder.workout(
+            title: "Cycling",
+            at: CoachTestClock.offset(minutes: 300, from: now),
+            durationMinutes: 75
+        )
+
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 11,
+            hasAnyFoodLogged: true,
+            waterProgress: 0.70,
+            hydration: .optimal,
+            fuel: .good,
+            recovery: .stable,
+            readiness: .good,
+            metrics: CoachMetricsBuilder.metrics(
+                calories: 1_200,
+                waterLiters: 1.5,
+                sleepHours: 4.7
+            )
+        )
+
+        let activityContext = activityContext([cycling], brain: brain)
+        let nutritionRefreshPriority = resolve(
+            [cycling],
+            brain: brain,
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 1_200,
+                caloriesGoal: 2_400,
+                proteinCurrent: 55,
+                proteinGoal: 160,
+                carbsCurrent: 180,
+                carbsGoal: 280,
+                fatsCurrent: 28,
+                fatsGoal: 70,
+                waterCurrent: 1.5,
+                waterGoal: 2.5,
+                mealsCount: 1,
+                lastMealTime: CoachTestClock.offset(minutes: -90, from: now)
+            )
+        )
+        let expertRefreshPriority = resolve(
+            [cycling],
+            brain: brain,
+            recovery: CoachRecoveryContext(recoveryPercent: 90, sleepHours: 8.2),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 1_200,
+                caloriesGoal: 2_400,
+                proteinCurrent: 55,
+                proteinGoal: 160,
+                carbsCurrent: 180,
+                carbsGoal: 280,
+                fatsCurrent: 28,
+                fatsGoal: 70,
+                waterCurrent: 1.5,
+                waterGoal: 2.5,
+                mealsCount: 1,
+                lastMealTime: CoachTestClock.offset(minutes: -90, from: now)
+            )
+        )
+
+        XCTAssertEqual(CoachCanonicalDayState.coachRelevantActivities(from: [cycling]).count, 1)
+        XCTAssertEqual(activityContext.laterTodayActivity?.id, cycling.id)
+        XCTAssertEqual(activityContext.nextUpcomingActivity?.id, cycling.id)
+        XCTAssertEqual(nutritionRefreshPriority.priority, .planChallenge)
+        XCTAssertEqual(nutritionRefreshPriority.limiter, .sleep)
+        XCTAssertEqual(nutritionRefreshPriority.activity?.id, cycling.id)
+        XCTAssertEqual(expertRefreshPriority.priority, nutritionRefreshPriority.priority)
+        XCTAssertEqual(expertRefreshPriority.limiter, nutritionRefreshPriority.limiter)
+        XCTAssertEqual(expertRefreshPriority.activity?.id, nutritionRefreshPriority.activity?.id)
+    }
+
+    func testCompletedRecoveryTransfersOwnershipToNextRecoveryBlock() {
+        let completedWalk = PlannedActivityBuilder.workout(
+            title: "Walk",
+            at: CoachTestClock.offset(minutes: -45, from: now),
+            durationMinutes: 30,
+            completed: true
+        )
+        completedWalk.type = "recovery"
+        let stretching = PlannedActivityBuilder.workout(
+            title: "Stretching",
+            at: CoachTestClock.offset(minutes: 25, from: now),
+            durationMinutes: 20
+        )
+        stretching.type = "recovery"
+        let sauna = PlannedActivityBuilder.workout(
+            title: "Sauna",
+            at: CoachTestClock.offset(minutes: 80, from: now),
+            durationMinutes: 25
+        )
+        sauna.type = "sauna"
+
+        let priority = resolve(
+            [completedWalk, stretching, sauna],
+            brain: steadyBrain,
+            nutrition: steadyNutrition
+        )
+
+        XCTAssertEqual(priority.priority, .stable)
+        XCTAssertEqual(priority.activity?.id, stretching.id)
+        XCTAssertNotEqual(priority.activity?.id, completedWalk.id)
+    }
+
+    func testRecentlyCompletedWorkoutKeepsOwnershipDuringRecoveryHold() {
+        let completedWorkout = PlannedActivityBuilder.workout(
+            title: "Strength",
+            at: CoachTestClock.offset(minutes: -65, from: now),
+            durationMinutes: 60,
+            completed: true
+        )
+        let stretching = PlannedActivityBuilder.workout(
+            title: "Stretching",
+            at: CoachTestClock.offset(minutes: 30, from: now),
+            durationMinutes: 20
+        )
+        stretching.type = "recovery"
+
+        let priority = resolve(
+            [completedWorkout, stretching],
+            brain: steadyBrain,
+            nutrition: steadyNutrition
+        )
+
+        XCTAssertTrue([CoachDayFocus.postActivityRecovery, .dailyOverview].contains(priority.focus))
+        XCTAssertEqual(priority.activity?.id, completedWorkout.id)
+    }
+
     func testSaunaSoonWithLowHydration_addsHydrationSupportWithoutHydrationWinning() {
         let sauna = PlannedActivityBuilder.workout(
             title: "Sauna",
@@ -1346,6 +1474,335 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertTrue(priority.supportBullets.contains { $0.localizedCaseInsensitiveContains("300-500 ml") || $0.localizedCaseInsensitiveContains("400-600 ml") })
         XCTAssertTrue(priority.supportBullets.contains { $0.localizedCaseInsensitiveContains("carbs") })
         XCTAssertFalse(priority.overridesTimingFocus)
+    }
+
+    func testSmallBananaBeforeCyclingReducesButDoesNotCollapsePreparation() {
+        let scenarioNow = fixedDate(hour: 10, minute: 55)
+        let cycling = PlannedActivityBuilder.workout(
+            title: "Cycling",
+            at: Calendar.current.date(byAdding: .minute, value: 35, to: scenarioNow) ?? scenarioNow,
+            durationMinutes: 75
+        )
+
+        let beforeBrain = HumanBrainStateBuilder.make(
+            currentHour: 10,
+            hasAnyFoodLogged: false,
+            energyCoverage: 0.05,
+            carbsProgress: 0.0,
+            caloriesProgress: 0.0,
+            waterProgress: 0.10,
+            hydration: .depleted,
+            fuel: .underfueled,
+            recovery: .stable,
+            readiness: .good,
+            metrics: CoachMetricsBuilder.metrics(
+                calories: 0,
+                waterLiters: 0.2,
+                sleepHours: 6.8
+            )
+        )
+        let afterBrain = HumanBrainStateBuilder.make(
+            currentHour: 10,
+            hasAnyFoodLogged: true,
+            energyCoverage: 0.12,
+            carbsProgress: 0.10,
+            caloriesProgress: 0.04,
+            waterProgress: 0.10,
+            hydration: .depleted,
+            fuel: .underfueled,
+            recovery: .stable,
+            readiness: .good,
+            metrics: CoachMetricsBuilder.metrics(
+                carbs: 27,
+                calories: 105,
+                waterLiters: 0.2,
+                sleepHours: 6.8
+            )
+        )
+
+        let before = resolve(
+            [cycling],
+            brain: beforeBrain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            recovery: CoachRecoveryContext(recoveryPercent: 72, sleepHours: 6.8),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 0,
+                caloriesGoal: 2_400,
+                proteinCurrent: 0,
+                proteinGoal: 160,
+                carbsCurrent: 0,
+                carbsGoal: 280,
+                fatsCurrent: 0,
+                fatsGoal: 70,
+                waterCurrent: 0.2,
+                waterGoal: 3.0,
+                mealsCount: 0,
+                lastMealTime: nil
+            )
+        )
+        let after = resolve(
+            [cycling],
+            brain: afterBrain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            recovery: CoachRecoveryContext(recoveryPercent: 72, sleepHours: 6.8),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 105,
+                caloriesGoal: 2_400,
+                proteinCurrent: 1,
+                proteinGoal: 160,
+                carbsCurrent: 27,
+                carbsGoal: 280,
+                fatsCurrent: 0,
+                fatsGoal: 70,
+                waterCurrent: 0.2,
+                waterGoal: 3.0,
+                mealsCount: 1,
+                lastMealTime: scenarioNow
+            )
+        )
+
+        XCTAssertEqual(before.priority, CoachDayPriority.performance)
+        XCTAssertEqual(before.focus, CoachDayFocus.prepareForActivity)
+        XCTAssertEqual(after.priority, CoachDayPriority.performance)
+        XCTAssertEqual(after.focus, CoachDayFocus.prepareForActivity)
+        XCTAssertGreaterThan(before.decisionScore, after.decisionScore)
+        XCTAssertGreaterThanOrEqual(after.decisionScore, 70)
+        XCTAssertTrue(after.supportBullets.contains { $0.localizedCaseInsensitiveContains("carb") })
+        XCTAssertTrue(after.supportBullets.contains { $0.localizedCaseInsensitiveContains("bottle") || $0.localizedCaseInsensitiveContains("water") })
+    }
+
+    func testPreparationWithShortSleepKeepsPreparationNarrative() throws {
+        let scenarioNow = now
+        let cycling = PlannedActivityBuilder.workout(
+            title: "Cycling",
+            at: Calendar.current.date(byAdding: .minute, value: 53, to: scenarioNow) ?? scenarioNow,
+            durationMinutes: 75
+        )
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 10,
+            energyCoverage: 0.10,
+            carbsProgress: 0.05,
+            caloriesProgress: 0.10,
+            waterProgress: 0.10,
+            hydration: .depleted,
+            fuel: .underfueled,
+            recovery: .vulnerable,
+            readiness: .low,
+            metrics: CoachMetricsBuilder.metrics(
+                calories: 200,
+                waterLiters: 0.2,
+                sleepHours: 4.7
+            )
+        )
+
+        let activityContext = activityContext(
+            [cycling],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow
+        )
+        let readiness = CoachReadinessAnalyzerV3.analyze(
+            brain: brain,
+            phase: activityContext.phase
+        )
+        let context = CoachDecisionContext(
+            brain: brain,
+            dayContext: CoachDayContextBuilder.build(
+                activities: [cycling],
+                selectedDate: scenarioNow,
+                now: scenarioNow
+            ),
+            activityContext: activityContext,
+            tomorrowContext: nil,
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 48, sleepHours: 4.7),
+            nutritionContext: CoachNutritionContext(
+                caloriesCurrent: 200,
+                caloriesGoal: 2_400,
+                proteinCurrent: 10,
+                proteinGoal: 160,
+                carbsCurrent: 20,
+                carbsGoal: 280,
+                fatsCurrent: 8,
+                fatsGoal: 70,
+                waterCurrent: 0.2,
+                waterGoal: 3.0,
+                mealsCount: 0,
+                lastMealTime: nil
+            ),
+            readiness: readiness
+        )
+        let priority = CoachDayPriorityResult(
+            focus: .prepareForActivity,
+            level: .high,
+            reason: "The next workout is inside its preparation window.",
+            activity: cycling,
+            overridesTimingFocus: false,
+            priority: .performance,
+            strength: .high,
+            mode: .reinforcement,
+            limiter: .sleep,
+            title: "Prepare for cycling",
+            message: "Prepare for cycling without treating short sleep as a recovery-day story.",
+            supportBullets: [
+                "Eat 20-40g carbs before the ride",
+                "Keep the first 15-20 minutes easy"
+            ],
+            whyThisMatters: "Short sleep should adjust workout execution, not replace workout preparation."
+        )
+        let decision = HumanCoachDecisionEngine.resolve(
+            context: context,
+            priority: priority
+        )
+        let guidance = HumanCoachDecisionEngine.adapt(
+            decision,
+            phase: activityContext.phase,
+            opportunity: CoachSupportOpportunityResolverV3.resolve(
+                phase: activityContext.phase,
+                readiness: readiness,
+                brain: brain
+            ),
+            legacyPriority: priority
+        )
+
+        let story = try XCTUnwrap(guidance.screenStory)
+        let renderedCopy = [
+            story.title,
+            story.myRead,
+            story.myRecommendation,
+            story.primaryActions.map(\.title).joined(separator: " ")
+        ].joined(separator: " ").lowercased()
+        XCTAssertEqual(guidance.priority.priority, CoachDayPriority.performance)
+        XCTAssertEqual(guidance.priority.focus, CoachDayFocus.prepareForActivity)
+        XCTAssertTrue(story.title.localizedCaseInsensitiveContains("Prepare"))
+        XCTAssertTrue(renderedCopy.contains("cycling") || renderedCopy.contains("ride"))
+        XCTAssertTrue(renderedCopy.contains("sleep"))
+        XCTAssertTrue(renderedCopy.contains("fuel") || renderedCopy.contains("carb") || renderedCopy.contains("nutrition"))
+        XCTAssertTrue(renderedCopy.contains("easy") || renderedCopy.contains("ceiling") || renderedCopy.contains("controlled"))
+        XCTAssertFalse(renderedCopy.contains("make tonight's sleep the main win"))
+        XCTAssertFalse(renderedCopy.contains("keep recovery work easy"))
+    }
+
+    func testPreparationPlanChallengeMentionsSelectedCycling() throws {
+        let scenarioNow = now
+        let cycling = PlannedActivityBuilder.workout(
+            title: "Cycling",
+            at: Calendar.current.date(byAdding: .minute, value: 35, to: scenarioNow) ?? scenarioNow,
+            durationMinutes: 75
+        )
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 10,
+            hasAnyFoodLogged: true,
+            energyCoverage: 0.12,
+            carbsProgress: 0.10,
+            caloriesProgress: 0.04,
+            waterProgress: 0.10,
+            hydration: .depleted,
+            fuel: .underfueled,
+            recovery: .compromised,
+            readiness: .compromised,
+            metrics: CoachMetricsBuilder.metrics(
+                carbs: 27,
+                calories: 105,
+                waterLiters: 0.2,
+                sleepHours: 4.2
+            )
+        )
+        let activityContext = activityContext(
+            [cycling],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow
+        )
+        let readiness = CoachReadinessAnalyzerV3.analyze(
+            brain: brain,
+            phase: activityContext.phase
+        )
+        let context = CoachDecisionContext(
+            brain: brain,
+            dayContext: CoachDayContextBuilder.build(
+                activities: [cycling],
+                selectedDate: scenarioNow,
+                now: scenarioNow
+            ),
+            activityContext: activityContext,
+            tomorrowContext: nil,
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 4.2),
+            nutritionContext: CoachNutritionContext(
+                caloriesCurrent: 105,
+                caloriesGoal: 2_400,
+                proteinCurrent: 1,
+                proteinGoal: 160,
+                carbsCurrent: 27,
+                carbsGoal: 280,
+                fatsCurrent: 0,
+                fatsGoal: 70,
+                waterCurrent: 0.2,
+                waterGoal: 3.0,
+                mealsCount: 1,
+                lastMealTime: scenarioNow
+            ),
+            readiness: readiness
+        )
+        let priority = CoachDayPriorityResult(
+            focus: .tomorrowPlanRisk,
+            level: .high,
+            reason: "The planned session conflicts with current readiness.",
+            activity: cycling,
+            overridesTimingFocus: true,
+            priority: .planChallenge,
+            strength: .high,
+            mode: .adjustment,
+            limiter: .sleep,
+            title: "Reduce today's intensity",
+            message: "Short sleep means the upcoming session should be adjusted.",
+            supportBullets: [
+                "Keep effort easy",
+                "Keep the first 10 minutes easy",
+                "Shorten if needed"
+            ],
+            whyThisMatters: "A hard plan only works when the body can absorb it.",
+            planChallenge: "If the warm-up feels flat, shorten the ride or remove intensity."
+        )
+        let decision = HumanCoachDecisionEngine.resolve(
+            context: context,
+            priority: priority
+        )
+        let guidance = HumanCoachDecisionEngine.adapt(
+            decision,
+            phase: activityContext.phase,
+            opportunity: CoachSupportOpportunityResolverV3.resolve(
+                phase: activityContext.phase,
+                readiness: readiness,
+                brain: brain
+            ),
+            legacyPriority: priority
+        )
+
+        let story = try XCTUnwrap(guidance.screenStory)
+        let renderedCopy = [
+            story.title,
+            story.myRead,
+            story.myRecommendation,
+            story.primaryActions.map(\.title).joined(separator: " ")
+        ].joined(separator: " ").lowercased()
+
+        XCTAssertEqual(guidance.priority.priority, CoachDayPriority.planChallenge)
+        XCTAssertEqual(guidance.priority.focus, CoachDayFocus.tomorrowPlanRisk)
+        XCTAssertTrue(story.myRead.lowercased().hasPrefix("cycling") || story.myRead.lowercased().hasPrefix("ride"))
+        XCTAssertFalse(story.myRead.lowercased().hasPrefix("tomorrow's plan"))
+        XCTAssertTrue(renderedCopy.contains("cycling") || renderedCopy.contains("ride"))
+        XCTAssertTrue(renderedCopy.contains("starts") || renderedCopy.contains("soon"))
+        XCTAssertTrue(renderedCopy.contains("sleep") || renderedCopy.contains("readiness"))
+        XCTAssertTrue(renderedCopy.contains("easy") || renderedCopy.contains("controlled") || renderedCopy.contains("shorten"))
+        XCTAssertTrue(renderedCopy.contains("20-40g carbs") || renderedCopy.contains("banana") || renderedCopy.contains("sports drink"))
+        XCTAssertFalse(renderedCopy.contains("bring ride nutrition"))
+        XCTAssertFalse(renderedCopy.contains("prepare fueling"))
+        XCTAssertFalse(renderedCopy.contains("support fueling"))
+        XCTAssertFalse(renderedCopy.contains("manage nutrition"))
+        XCTAssertFalse(renderedCopy.contains("make tonight's sleep the main win"))
+        XCTAssertFalse(renderedCopy.contains("keep recovery work easy"))
     }
 
     func testMorningMealBeforeRunInsidePrepWindow_surfacesPreparationGuidance() {

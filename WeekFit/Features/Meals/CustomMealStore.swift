@@ -1,5 +1,6 @@
 import Foundation
 import CoreImage
+import ImageIO
 import UIKit
 
 enum CustomMealStore {
@@ -147,21 +148,24 @@ enum CustomMealValidation {
 }
 
 enum MealPhotoStore {
-    static let directoryName = "MealPhotos"
-    static let thumbnailPixelSize: CGFloat = 512
-    private static let imageCache = NSCache<NSString, UIImage>()
-    private static let thumbnailCIContext = CIContext(options: nil)
+    nonisolated static let directoryName = "MealPhotos"
+    nonisolated static let thumbnailPixelSize: CGFloat = 512
+    nonisolated(unsafe) private static let imageCache = NSCache<NSString, UIImage>()
+    nonisolated private static let thumbnailCIContext = CIContext(options: nil)
+    nonisolated private static let inFlightLock = NSLock()
+    nonisolated(unsafe) private static var inFlightLoads: [String: [(UIImage?) -> Void]] = [:]
+    nonisolated private static let metadataPropertyDiagnosticsEnabled = false
 
     struct PhotoSet {
         let originalFilename: String
         let thumbnailFilename: String
     }
 
-    static func save(_ image: UIImage) throws -> String {
+    nonisolated static func save(_ image: UIImage) throws -> String {
         try save(image, filenamePrefix: "photo", compressionQuality: 0.82)
     }
 
-    static func savePhotoSet(_ image: UIImage) throws -> PhotoSet {
+    nonisolated static func savePhotoSet(_ image: UIImage) throws -> PhotoSet {
         let normalized = image.normalizedForPhotoStorage()
         let originalFilename = try save(
             normalized,
@@ -187,11 +191,12 @@ enum MealPhotoStore {
         }
     }
 
-    static func thumbnailImage(from image: UIImage, sideLength: CGFloat = thumbnailPixelSize) -> UIImage {
+    nonisolated static func thumbnailImage(from image: UIImage, sideLength: CGFloat = thumbnailPixelSize) -> UIImage {
         let normalized = image.normalizedForPhotoStorage()
         let sourceSize = normalized.size
         guard sourceSize.width > 0, sourceSize.height > 0 else { return normalized }
 
+        let resizeStart = debugStart("thumbnail.resize side=\(Int(sideLength))")
         let scale = max(sideLength / sourceSize.width, sideLength / sourceSize.height)
         let drawSize = CGSize(
             width: sourceSize.width * scale,
@@ -214,6 +219,7 @@ enum MealPhotoStore {
             context.fill(CGRect(x: 0, y: 0, width: sideLength, height: sideLength))
             normalized.draw(in: CGRect(origin: drawOrigin, size: drawSize))
         }
+        debugEnd("thumbnail.resize side=\(Int(sideLength))", start: resizeStart)
 
         return subtlyEnhancedThumbnail(cropped)
     }
@@ -242,14 +248,14 @@ enum MealPhotoStore {
         }
     }
 
-    static func deletePhotoSet(originalFilename: String?, thumbnailFilename: String?) {
+    nonisolated static func deletePhotoSet(originalFilename: String?, thumbnailFilename: String?) {
         delete(filename: originalFilename)
         if thumbnailFilename != originalFilename {
             delete(filename: thumbnailFilename)
         }
     }
 
-    private static func save(
+    nonisolated private static func save(
         _ image: UIImage,
         filenamePrefix: String,
         compressionQuality: CGFloat
@@ -271,37 +277,102 @@ enum MealPhotoStore {
         return filename
     }
 
-    static func image(for filename: String?) -> UIImage? {
+    nonisolated static func image(for filename: String?) -> UIImage? {
         guard let filename, !filename.isEmpty else { return nil }
+        return cachedImage(for: filename, label: "image")
+    }
+
+    nonisolated static func cachedImage(for filename: String?) -> UIImage? {
+        guard let filename, !filename.isEmpty else { return nil }
+        return cachedImage(for: filename, label: "cachedImage")
+    }
+
+    nonisolated private static func cachedImage(for filename: String, label: String) -> UIImage? {
         let cacheKey = filename as NSString
-        let start = debugStart("image filename=\(filename)")
+        let lookupStart = debugStart("\(label).cacheLookup filename=\(filename)")
 
         if let cachedImage = imageCache.object(forKey: cacheKey) {
-            debugEnd("image.cacheHit filename=\(filename)", start: start)
+            debugEnd("\(label).cacheHit filename=\(filename)", start: lookupStart)
             return cachedImage
         }
+        debugEnd("\(label).cacheMiss filename=\(filename)", start: lookupStart)
 
-        guard let image = UIImage(contentsOfFile: url(for: filename).path) else {
-            debugEnd("image.miss filename=\(filename)", start: start)
+        guard !Thread.isMainThread else {
+            debugLog("\(label).mainThreadDiskLoadPrevented filename=\(filename)")
             return nil
         }
 
-        imageCache.setObject(image, forKey: cacheKey)
-        debugEnd("image.diskDecode filename=\(filename)", start: start)
-        return image
+        return loadDecodedImageFromDisk(filename: filename, targetPixelSize: thumbnailPixelSize)
     }
 
-    static func delete(filename: String?) {
+    nonisolated static func loadImage(
+        for filename: String?,
+        targetPixelSize: CGFloat = thumbnailPixelSize,
+        completion: @escaping (UIImage?) -> Void
+    ) {
+        guard let filename, !filename.isEmpty else {
+            DispatchQueue.main.async {
+                completion(nil)
+            }
+            return
+        }
+
+        if let cachedImage = cachedImage(for: filename, label: "asyncImage") {
+            DispatchQueue.main.async {
+                completion(cachedImage)
+            }
+            return
+        }
+
+        inFlightLock.lock()
+        if inFlightLoads[filename] != nil {
+            inFlightLoads[filename]?.append(completion)
+            inFlightLock.unlock()
+            debugLog("asyncImage.coalesced filename=\(filename)")
+            return
+        }
+        inFlightLoads[filename] = [completion]
+        inFlightLock.unlock()
+
+        DispatchQueue.global(qos: .utility).async {
+            let image = loadDecodedImageFromDisk(filename: filename, targetPixelSize: targetPixelSize)
+            let handoffStart = debugStart("asyncImage.mainActorHandoff filename=\(filename)")
+            DispatchQueue.main.async {
+                debugEnd("asyncImage.mainActorHandoff filename=\(filename)", start: handoffStart)
+
+                let callbacks: [(UIImage?) -> Void]
+                inFlightLock.lock()
+                callbacks = inFlightLoads.removeValue(forKey: filename) ?? []
+                inFlightLock.unlock()
+
+                let completionStart = debugStart("asyncImage.completionStateUpdate filename=\(filename) callbacks=\(callbacks.count)")
+                callbacks.forEach { $0(image) }
+                debugEnd("asyncImage.completionStateUpdate filename=\(filename) callbacks=\(callbacks.count)", start: completionStart)
+            }
+        }
+    }
+
+    nonisolated static func preloadImage(
+        for filename: String?,
+        targetPixelSize: CGFloat = thumbnailPixelSize,
+        completion: (() -> Void)? = nil
+    ) {
+        loadImage(for: filename, targetPixelSize: targetPixelSize) { _ in
+            completion?()
+        }
+    }
+
+    nonisolated static func delete(filename: String?) {
         guard let filename, !filename.isEmpty else { return }
         imageCache.removeObject(forKey: filename as NSString)
         try? FileManager.default.removeItem(at: url(for: filename))
     }
 
-    static func url(for filename: String) -> URL {
+    nonisolated static func url(for filename: String) -> URL {
         photosDirectory.appendingPathComponent(filename)
     }
 
-    private static var photosDirectory: URL {
+    nonisolated private static var photosDirectory: URL {
         let base = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -312,7 +383,7 @@ enum MealPhotoStore {
             .appendingPathComponent(directoryName, isDirectory: true)
     }
 
-    private static func subtlyEnhancedThumbnail(_ image: UIImage) -> UIImage {
+    nonisolated private static func subtlyEnhancedThumbnail(_ image: UIImage) -> UIImage {
         guard let input = CIImage(image: image) else { return image }
 
         let colorControls = CIFilter(name: "CIColorControls")
@@ -333,21 +404,131 @@ enum MealPhotoStore {
         return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
     }
 
-    private static func debugStart(_ label: String) -> CFAbsoluteTime {
+    nonisolated private static func loadDecodedImageFromDisk(
+        filename: String,
+        targetPixelSize: CGFloat
+    ) -> UIImage? {
+        let fileURL = url(for: filename)
+
+        let attributesStart = debugStart("image.fileAttributes filename=\(filename)")
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber)?.int64Value ?? 0
+        debugEnd("image.fileAttributes filename=\(filename) bytes=\(fileSize)", start: attributesStart)
+
+        let readStart = debugStart("image.diskRead filename=\(filename)")
+        guard let data = try? Data(contentsOf: fileURL) else {
+            debugEnd("image.diskRead.miss filename=\(filename)", start: readStart)
+            return nil
+        }
+        debugEnd("image.diskRead filename=\(filename)", start: readStart)
+
+        let sourceOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        let sourceCreateStart = debugStart("image.metadata.sourceCreate filename=\(filename)")
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else {
+            debugEnd("image.metadata.sourceCreate.failed filename=\(filename)", start: sourceCreateStart)
+            return nil
+        }
+        debugEnd("image.metadata.sourceCreate filename=\(filename)", start: sourceCreateStart)
+
+        logImageMetadataDiagnostics(
+            source: source,
+            filename: filename,
+            fileSize: fileSize
+        )
+
+        let decodeStart = debugStart("image.downsampleDecode filename=\(filename) target=\(Int(targetPixelSize))")
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: Int(targetPixelSize)
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            debugEnd("image.downsampleDecode.failed filename=\(filename)", start: decodeStart)
+            return nil
+        }
+        let image = UIImage(cgImage: cgImage, scale: 1, orientation: .up)
+        let outputBytes = Int64(cgImage.width * cgImage.height * 4)
+        debugEnd("image.downsampleDecode filename=\(filename) width=\(cgImage.width) height=\(cgImage.height) decodedBytes=\(outputBytes)", start: decodeStart)
+
+        let cacheInsertStart = debugStart("image.cacheInsert filename=\(filename)")
+        imageCache.setObject(image, forKey: filename as NSString)
+        debugEnd("image.cacheInsert filename=\(filename)", start: cacheInsertStart)
+        return image
+    }
+
+    nonisolated private static func logImageMetadataDiagnostics(
+        source: CGImageSource,
+        filename: String,
+        fileSize: Int64
+    ) {
+        guard metadataPropertyDiagnosticsEnabled else {
+            let skippedStart = debugStart("image.metadata.propertiesSkipped filename=\(filename)")
+            debugEnd("image.metadata.propertiesSkipped filename=\(filename)", start: skippedStart)
+            return
+        }
+
+        let propertiesOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+
+        let propertiesStart = debugStart("image.metadata.copyProperties filename=\(filename)")
+        let properties = CGImageSourceCopyPropertiesAtIndex(
+            source,
+            0,
+            propertiesOptions as CFDictionary
+        ) as? [CFString: Any]
+        debugEnd("image.metadata.copyProperties filename=\(filename)", start: propertiesStart)
+
+        let exifStart = debugStart("image.metadata.exifExtraction filename=\(filename)")
+        let exif = properties?[kCGImagePropertyExifDictionary] as? [CFString: Any]
+        debugEnd("image.metadata.exifExtraction filename=\(filename) hasExif=\(exif != nil)", start: exifStart)
+
+        let orientationStart = debugStart("image.metadata.orientationExtraction filename=\(filename)")
+        let orientation = properties?[kCGImagePropertyOrientation] as? Int ?? 1
+        debugEnd("image.metadata.orientationExtraction filename=\(filename) orientation=\(orientation)", start: orientationStart)
+
+        let dimensionsStart = debugStart("image.metadata.dimensionExtraction filename=\(filename)")
+        let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
+        let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
+        debugEnd("image.metadata.dimensionExtraction filename=\(filename) width=\(width) height=\(height)", start: dimensionsStart)
+
+        let decodedBytesStart = debugStart("image.metadata.decodedBytesCalculation filename=\(filename)")
+        let decodedBytes = Int64(width * height * 4)
+        debugEnd("image.metadata.decodedBytesCalculation filename=\(filename) decodedBytes=\(decodedBytes)", start: decodedBytesStart)
+
+        let loggingStart = debugStart("image.metadata.summaryLogging filename=\(filename)")
+        debugLog("image.metadata.summary filename=\(filename) width=\(width) height=\(height) fileBytes=\(fileSize) decodedBytes=\(decodedBytes)")
+        debugEnd("image.metadata.summaryLogging filename=\(filename)", start: loggingStart)
+    }
+
+    nonisolated private static func debugStart(_ label: String) -> CFAbsoluteTime {
         #if DEBUG
-        let start = CFAbsoluteTimeGetCurrent()
-        print("[MealPhotoStoreTiming] \(label) start")
-        return start
+        _ = label
+        return CFAbsoluteTimeGetCurrent()
         #else
         return 0
         #endif
     }
 
-    private static func debugEnd(_ label: String, start: CFAbsoluteTime) {
+    nonisolated private static func debugEnd(_ label: String, start: CFAbsoluteTime) {
         #if DEBUG
-        let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
-        print(String(format: "[MealPhotoStoreTiming] %@ end %.1fms", label, elapsed))
+        _ = label
+        _ = start
         #endif
+    }
+
+    nonisolated private static func debugLog(_ message: String) {
+        #if DEBUG
+        _ = message
+        #endif
+    }
+
+    nonisolated private static var threadLabel: String {
+        Thread.isMainThread ? "main" : "background"
     }
 }
 
@@ -356,7 +537,7 @@ enum MealPhotoStoreError: Error {
 }
 
 extension UIImage {
-    func normalizedForPhotoStorage() -> UIImage {
+    nonisolated func normalizedForPhotoStorage() -> UIImage {
         if imageOrientation == .up {
             return self
         }
@@ -367,6 +548,19 @@ extension UIImage {
 
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+
+    nonisolated func predecodedForDisplay() -> UIImage {
+        guard size.width > 0, size.height > 0 else { return self }
+
+        let normalized = normalizedForPhotoStorage()
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = normalized.scale
+        format.opaque = true
+
+        return UIGraphicsImageRenderer(size: normalized.size, format: format).image { _ in
+            normalized.draw(in: CGRect(origin: .zero, size: normalized.size))
         }
     }
 }

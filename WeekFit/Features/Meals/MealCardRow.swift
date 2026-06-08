@@ -142,8 +142,8 @@ struct MealCardRow: View {
     private var mealImage: some View {
         Group {
             if meal.isFoodProduct {
-                CustomFoodVisualView(
-                    image: MealPhotoStore.image(for: meal.displayPhotoFilename),
+                AsyncCustomFoodVisualView(
+                    filename: meal.displayPhotoFilename,
                     placeholderInitial: meal.placeholderInitial,
                     size: isQuickLogMode ? 54 : 36,
                     imageScale: 0.62

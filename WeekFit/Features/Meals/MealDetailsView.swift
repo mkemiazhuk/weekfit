@@ -72,7 +72,6 @@ struct MealDetailsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             if isQuickLogMode {
                 quickLogButton

@@ -1,7 +1,9 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import UIKit
 internal import Combine
+import OSLog
 
 struct TodayView: View {
 
@@ -9,13 +11,9 @@ struct TodayView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @Environment(\.modelContext) private var modelContext
     
-    @AppStorage(ProfileService.Keys.initials)
-    private var profileInitials: String = "P"
+    @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @StateObject private var confirmationState = ActivityConfirmationState.shared
-    
-    @AppStorage(ProfileService.Keys.fullName)
-    private var fullName: String = "P"
     
     @State private var healthRefreshID = UUID()
 
@@ -23,6 +21,7 @@ struct TodayView: View {
     private var plannedActivities: [PlannedActivity]
     
     @State private var showDirectMealLogSheet = false
+    @State private var showDirectDrinkLogSheet = false
 
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
@@ -51,6 +50,17 @@ struct TodayView: View {
     @State private var showDirectRecoveryLogSheet = false
     
     @State private var selectedLogTab: QuickNutritionLogTab = .meals
+    @State private var quickLogMeals: [Meals] = []
+    @State private var quickLogMealRows: [QuickMealDisplayRow] = []
+    @State private var quickLogSnacks: [QuickItem] = []
+    @State private var quickLogDrinks: [QuickItem] = []
+    @State private var quickLogSnackRows: [QuickItemDisplayRow] = []
+    @State private var quickLogDrinkRows: [QuickItemDisplayRow] = []
+    @State private var quickItemUsage: [String: Int] = [:]
+    @State private var didPreloadQuickFood = false
+    @State private var didPreloadQuickDrinks = false
+    @State private var cachedTodayCoachInsight: TodayCoachInsight?
+    @State private var lastTodayCoachInsightSignature = ""
     
     @State private var showActivityIntelligence = false
     @State private var showNutritionDetails = false
@@ -62,45 +72,51 @@ struct TodayView: View {
     
     private enum QuickNutritionLogTab: String, CaseIterable, Identifiable {
         case meals
-        case quickItems
+        case snacks
 
         var id: String { rawValue }
 
         var title: String {
             switch self {
             case .meals: return "Meals"
-            case .quickItems: return "Drinks & Snacks"
+            case .snacks: return "Snacks"
             }
         }
     }
     
+    private var completedNutritionLogsForSelectedDay: [PlannedActivity] {
+        selectedDayActivities.filter { activity in
+            guard activity.isCompleted, !activity.isSkipped, activity.imageName != "hydration" else {
+                return false
+            }
+
+            let type = activity.type.lowercased()
+            return type == "meal" || type == "drink"
+        }
+    }
+
     private var loggedPlanCalories: Double {
-        selectedDayActivities
-            .filter { $0.type.lowercased() == "meal" && $0.isCompleted && $0.imageName != "hydration" }
+        completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.calories) }
     }
 
     private var loggedPlanProtein: Double {
-        selectedDayActivities
-            .filter { $0.type.lowercased() == "meal" && $0.isCompleted && $0.imageName != "hydration" }
+        completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.protein) }
     }
 
     private var loggedPlanCarbs: Double {
-        selectedDayActivities
-            .filter { $0.type.lowercased() == "meal" && $0.isCompleted && $0.imageName != "hydration" }
+        completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.carbs) }
     }
 
     private var loggedPlanFats: Double {
-        selectedDayActivities
-            .filter { $0.type.lowercased() == "meal" && $0.isCompleted && $0.imageName != "hydration" }
+        completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.fats) }
     }
     
     private var loggedPlanFiber: Double {
-        selectedDayActivities
-            .filter { $0.type.lowercased() == "meal" && $0.isCompleted && $0.imageName != "hydration" }
+        completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.fiber) }
     }
     
@@ -112,7 +128,7 @@ struct TodayView: View {
         plannedActivities
             .filter {
                 Calendar.current.isDate($0.date, inSameDayAs: date)
-                && $0.type.lowercased() == "meal"
+                && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink")
                 && $0.isCompleted
                 && !$0.isSkipped
                 && $0.imageName != "hydration"
@@ -170,9 +186,17 @@ struct TodayView: View {
     }
     
     private func incrementQuickItemUsage(_ item: QuickItem) {
-        var usage = UserDefaults.standard.dictionary(forKey: quickItemUsageKey) as? [String: Int] ?? [:]
-        usage[item.id, default: 0] += 1
-        UserDefaults.standard.set(usage, forKey: quickItemUsageKey)
+        var nextUsage = quickItemUsage
+        nextUsage[item.id, default: 0] += 1
+        setQuickItemUsage(nextUsage, persist: true)
+
+        if !quickLogSnacks.isEmpty {
+            setQuickLogSnacks(sortByUsage(quickLogSnacks, usage: nextUsage))
+        }
+
+        if !quickLogDrinks.isEmpty {
+            setQuickLogDrinks(sortByUsage(quickLogDrinks, usage: nextUsage))
+        }
     }
 
     var body: some View {
@@ -187,6 +211,8 @@ struct TodayView: View {
                         todayScreen
                         .onAppear {
                            now = Date()
+                           preloadQuickFoodLogDataIfNeeded()
+                           preloadQuickDrinkLogDataIfNeeded()
                            updateNutrition()
                            healthRefreshID = UUID()
                         }
@@ -223,7 +249,6 @@ struct TodayView: View {
             .opacity(showContent && !isEditingActivity ? 1 : 0)
             .offset(y: showContent && !isEditingActivity ? 0 : 120)
         }
-        .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
                 selectedDate: selectedDate,
@@ -257,12 +282,15 @@ struct TodayView: View {
         }
         .onAppear {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) { showContent = true }
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onAppear")
         }
         .task(id: healthRefreshID) {
             await refreshHealthAndNutritionAsync()
+            updateTodayCoachInsightIfNeeded(source: "TodayView.task.healthRefreshID")
         }
         .onChange(of: plannedActivities) { _, _ in
             refreshTodayLiveState(refreshHealth: false)
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.plannedActivities")
         }
         .onChange(of: WeekFitActivityCoordinator.shared.completedWorkoutsBatch) { _, _ in
             WeekFitActivityCoordinator.shared.reconcileCompletedWorkouts(
@@ -282,7 +310,11 @@ struct TodayView: View {
                     selectedDate = value
                     healthRefreshID = UUID()
                 }
+                updateTodayCoachInsightIfNeeded(source: "TodayView.timer.selectedDateChanged")
             }
+        }
+        .onReceive(nutritionViewModel.$nutritionResult) { _ in
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onReceive.nutritionResult")
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -324,13 +356,6 @@ struct TodayView: View {
             .presentationContentInteraction(.scrolls)
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
-            let storedData = UserDefaults.standard.string(forKey: "weekfit_custom_meals_v1") ?? ""
-            let quickItems = NutritionRepository().loadQuickItems()
-            let decodedMeals = (try? JSONDecoder().decode(
-                [Meals].self,
-                from: storedData.data(using: .utf8) ?? Data()
-            )) ?? []
-
             ZStack {
                 Color(red: 0.035, green: 0.043, blue: 0.047)
                     .ignoresSafeArea()
@@ -340,14 +365,14 @@ struct TodayView: View {
                         title: "Log Food",
                         subtitle: selectedLogTab == .meals
                             ? "Quick add saved meals"
-                            : "Quick add drinks or snacks"
+                            : "Quick add snacks"
                     ) {
                         showDirectMealLogSheet = false
                     }
 
                     quickLogSegmentedControl(
-                        decodedMealsCount: decodedMeals.count,
-                        quickItemsCount: quickItems.count
+                        decodedMealsCount: quickLogMealRows.count,
+                        snacksCount: quickLogSnackRows.count
                     )
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
@@ -358,7 +383,7 @@ struct TodayView: View {
                             switch selectedLogTab {
 
                             case .meals:
-                                if decodedMeals.isEmpty {
+                                if quickLogMealRows.isEmpty {
                                     quickLogEmptyState(
                                         icon: "fork.knife.circle.fill",
                                         title: "No saved meals yet",
@@ -367,49 +392,84 @@ struct TodayView: View {
                                         showAction: true
                                     )
                                 } else {
-                                    ForEach(decodedMeals) { meal in
-                                        MealCardRow(
-                                            meal: meal,
-                                            isQuickLogMode: true
+                                    ForEach(quickLogMealRows) { row in
+                                        QuickMealLogRow(
+                                            row: row
                                         ) {
-                                            logQuickMeal(meal)
+                                            logQuickMeal(row.meal)
                                         }
                                     }
                                 }
 
-                            case .quickItems:
-                                if quickItems.isEmpty {
+                            case .snacks:
+                                if quickLogSnackRows.isEmpty {
                                     quickLogEmptyState(
-                                        icon: "cup.and.saucer.fill",
-                                        title: "No drinks or snacks available",
+                                        icon: "leaf.fill",
+                                        title: "No snacks available",
                                         message: "Check that drinks_snacks.json is added to the app bundle.",
                                         buttonTitle: nil,
                                         showAction: false
                                     )
                                 } else {
-                                    let drinks = sortedByUsage(quickItems.filter { $0.category == .drink })
-                                    let snacks = sortedByUsage(quickItems.filter { $0.category == .snack })
-
-                                    if !drinks.isEmpty {
-                                        quickLogSectionHeader("Drinks")
+                                    if !quickLogSnackRows.isEmpty {
+                                        quickLogSectionHeader("Snacks")
                                             .padding(.top, 2)
 
-                                        ForEach(drinks) { item in
-                                            QuickItemLogRow(item: item) {
-                                                logQuickItem(item)
+                                        ForEach(quickLogSnackRows) { row in
+                                            QuickItemLogRow(
+                                                row: row,
+                                                accentColor: Color(red: 0.50, green: 0.74, blue: 0.54)
+                                            ) {
+                                                logSnackItem(row.item)
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 24)
+                    }
+                }
+            }
+            .presentationDetents([.height(370), .large])
+            .presentationCornerRadius(34)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+        }
+        .sheet(isPresented: $showDirectDrinkLogSheet) {
+            ZStack {
+                Color(red: 0.035, green: 0.043, blue: 0.047)
+                    .ignoresSafeArea()
 
-                                    if !snacks.isEmpty {
-                                        quickLogSectionHeader("Snacks")
-                                            .padding(.top, drinks.isEmpty ? 2 : 12)
+                VStack(spacing: 0) {
+                    PremiumBottomSheetHeader(
+                        title: "Log Drinks",
+                        subtitle: "Quick add water or another drink"
+                    ) {
+                        showDirectDrinkLogSheet = false
+                    }
 
-                                        ForEach(snacks) { item in
-                                            QuickItemLogRow(item: item) {
-                                                logQuickItem(item)
-                                            }
-                                        }
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            if quickLogDrinkRows.isEmpty {
+                                quickLogEmptyState(
+                                    icon: "drop.fill",
+                                    title: "No drinks available",
+                                    message: "Check that drinks_snacks.json is added to the app bundle.",
+                                    buttonTitle: nil,
+                                    showAction: false
+                                )
+                            } else {
+                                quickLogSectionHeader("Drinks")
+                                    .padding(.top, 2)
+
+                                ForEach(quickLogDrinkRows) { row in
+                                    QuickItemLogRow(
+                                        row: row,
+                                        accentColor: Color(red: 0.25, green: 0.55, blue: 0.95)
+                                    ) {
+                                        logDrinkItem(row.item)
                                     }
                                 }
                             }
@@ -442,12 +502,12 @@ struct TodayView: View {
 
     private func quickLogSegmentedControl(
         decodedMealsCount: Int,
-        quickItemsCount: Int
+        snacksCount: Int
     ) -> some View {
         HStack(spacing: 4) {
             ForEach(QuickNutritionLogTab.allCases) { tab in
                 let isSelected = selectedLogTab == tab
-                let count = tab == .meals ? decodedMealsCount : quickItemsCount
+                let count = tab == .meals ? decodedMealsCount : snacksCount
 
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -559,9 +619,58 @@ struct TodayView: View {
         .padding(.vertical, 38)
     }
     
-    private func sortedByUsage(_ items: [QuickItem]) -> [QuickItem] {
-        let usage = UserDefaults.standard.dictionary(forKey: quickItemUsageKey) as? [String: Int] ?? [:]
+    private func prepareQuickNutritionLogData() {
+        let start = Self.debugStart("quickNutrition.prepare")
+        let decodedMeals = (try? JSONDecoder().decode(
+            [Meals].self,
+            from: userSettings.customMealsStorage.data(using: .utf8) ?? Data()
+        )) ?? []
+        let repository = NutritionRepository()
+        let usage = loadQuickItemUsage()
+        let quickItems = repository.loadQuickItems()
 
+        setQuickItemUsage(usage)
+        setQuickLogMeals(decodedMeals)
+        setQuickLogSnacks(sortByUsage(quickItems.filter { $0.category == .snack }, usage: usage))
+        Self.debugEnd(
+            "quickNutrition.prepare meals=\(quickLogMeals.count) snacks=\(quickLogSnacks.count)",
+            start: start
+        )
+    }
+
+    private func preloadQuickFoodLogDataIfNeeded() {
+        guard !didPreloadQuickFood else { return }
+        didPreloadQuickFood = true
+        prepareQuickNutritionLogData()
+    }
+
+    private func prepareQuickDrinkLogData() {
+        let start = Self.debugStart("quickDrink.prepare")
+        let usage = loadQuickItemUsage()
+        let drinks = sortByUsage(
+            NutritionRepository().loadQuickItems().filter { $0.category == .drink },
+            usage: usage
+        )
+
+        setQuickItemUsage(usage)
+        setQuickLogDrinks(drinks)
+        Self.debugEnd(
+            "quickDrink.prepare drinks=\(quickLogDrinks.count)",
+            start: start
+        )
+    }
+
+    private func preloadQuickDrinkLogDataIfNeeded() {
+        guard !didPreloadQuickDrinks else { return }
+        didPreloadQuickDrinks = true
+        prepareQuickDrinkLogData()
+    }
+
+    private func loadQuickItemUsage() -> [String: Int] {
+        UserDefaults.standard.dictionary(forKey: quickItemUsageKey) as? [String: Int] ?? [:]
+    }
+
+    private func sortByUsage(_ items: [QuickItem], usage: [String: Int]) -> [QuickItem] {
         return items.sorted {
             let left = usage[$0.id, default: 0]
             let right = usage[$1.id, default: 0]
@@ -573,8 +682,176 @@ struct TodayView: View {
             return left > right
         }
     }
+
+    private func setQuickItemUsage(_ usage: [String: Int], persist: Bool = false) {
+        guard quickItemUsage != usage else { return }
+        quickItemUsage = usage
+
+        if persist {
+            UserDefaults.standard.set(usage, forKey: quickItemUsageKey)
+        }
+    }
+
+    private func setQuickLogMeals(_ meals: [Meals]) {
+        guard quickLogMeals != meals else { return }
+        quickLogMeals = meals
+
+        let rows = makeQuickMealRows(meals)
+        if quickLogMealRows != rows {
+            quickLogMealRows = rows
+        }
+    }
+
+    private func setQuickLogSnacks(_ snacks: [QuickItem]) {
+        guard quickLogSnacks != snacks else { return }
+        quickLogSnacks = snacks
+
+        let rows = makeQuickItemRows(snacks)
+        if quickLogSnackRows != rows {
+            quickLogSnackRows = rows
+        }
+    }
+
+    private func setQuickLogDrinks(_ drinks: [QuickItem]) {
+        guard quickLogDrinks != drinks else { return }
+        quickLogDrinks = drinks
+
+        let rows = makeQuickItemRows(drinks)
+        if quickLogDrinkRows != rows {
+            quickLogDrinkRows = rows
+        }
+    }
+
+    private func makeQuickItemRows(_ items: [QuickItem]) -> [QuickItemDisplayRow] {
+        items.map { item in
+            QuickItemDisplayRow(
+                item: item,
+                subtitleText: item.calories > 0 ? "\(item.calories) kcal • \(item.subtitle)" : item.subtitle,
+                usesAssetImage: UIImage(named: item.imageName) != nil
+            )
+        }
+    }
+
+    private func makeQuickMealRows(_ meals: [Meals]) -> [QuickMealDisplayRow] {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        return meals.map { meal in
+            QuickMealDisplayRow(
+                meal: meal,
+                title: meal.shortTitle,
+                subtitle: meal.subtitle,
+                macroText: "P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fats)g",
+                isSuggested: isMeal(meal, matchingHour: hour),
+                usesAssetImage: !meal.imageName.isEmpty && UIImage(named: meal.imageName) != nil,
+                sortedBuilderImageItems: (meal.builderImageItems ?? []).sorted { $0.zIndex < $1.zIndex }
+            )
+        }
+    }
+
+    private func isMeal(_ meal: Meals, matchingHour hour: Int) -> Bool {
+        switch meal.slot {
+        case .breakfast: return hour >= 0 && hour < 11
+        case .lunch:     return hour >= 11 && hour < 16
+        case .snack:     return hour >= 16 && hour < 18
+        case .dinner:    return hour >= 18 && hour <= 23
+        }
+    }
+
+    private func updateTodayCoachInsightIfNeeded(source: String) {
+        guard let brain = nutritionViewModel.nutritionResult?.brain else {
+            if cachedTodayCoachInsight != nil || !lastTodayCoachInsightSignature.isEmpty {
+                cachedTodayCoachInsight = nil
+                lastTodayCoachInsightSignature = ""
+            }
+            return
+        }
+
+        let signature = todayCoachInsightSignature()
+        guard signature != lastTodayCoachInsightSignature else { return }
+
+        let start = Self.debugStart("todayCoachInsight.update source=\(source)")
+        let output = CoachEngineV3.decide(
+            from: brain,
+            plannedActivities: selectedDayActivities,
+            selectedDate: selectedDate
+        )
+        let compact = output.v5Interpretation.compactInsight
+        let nextInsight = TodayCoachInsight(
+            title: compact.title,
+            message: compact.text,
+            icon: compact.icon,
+            color: compact.color
+        )
+
+        lastTodayCoachInsightSignature = signature
+        if cachedTodayCoachInsight != nextInsight {
+            cachedTodayCoachInsight = nextInsight
+        }
+        Self.debugEnd("todayCoachInsight.update source=\(source)", start: start)
+    }
+
+    private func todayCoachInsightSignature() -> String {
+        let result = nutritionViewModel.nutritionResult
+        let metrics = nutritionViewModel.currentMetrics
+        let goals = result?.goals
+        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
+        let activitiesSignature = selectedDayActivities
+            .sorted { $0.id < $1.id }
+            .map { activity in
+                [
+                    activity.id,
+                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
+                    activity.type,
+                    activity.title,
+                    "\(activity.durationMinutes)",
+                    "\(activity.calories)",
+                    "\(activity.protein)",
+                    "\(activity.carbs)",
+                    "\(activity.fats)",
+                    "\(activity.fiber)",
+                    "\(activity.isCompleted)",
+                    "\(activity.isSkipped)",
+                    activity.imageName
+                ].joined(separator: ":")
+            }
+            .joined(separator: "|")
+
+        return [
+            "\(Int(day / 86_400))",
+            String(format: "%.1f", metrics?.calories ?? -1),
+            String(format: "%.1f", metrics?.protein ?? -1),
+            String(format: "%.1f", metrics?.carbs ?? -1),
+            String(format: "%.1f", metrics?.fats ?? -1),
+            String(format: "%.1f", metrics?.waterLiters ?? -1),
+            String(format: "%.1f", goals?.calories ?? -1),
+            String(format: "%.1f", goals?.protein ?? -1),
+            String(format: "%.1f", goals?.carbs ?? -1),
+            String(format: "%.1f", goals?.fats ?? -1),
+            String(format: "%.1f", goals?.waterLiters ?? -1),
+            activitiesSignature
+        ].joined(separator: "#")
+    }
+
+    private static let logger = Logger(subsystem: "WeekFit", category: "TodayView")
+
+    private static func debugStart(_ label: String) -> CFAbsoluteTime {
+        #if DEBUG
+        let start = CFAbsoluteTimeGetCurrent()
+        logger.debug("\(label, privacy: .public) start")
+        return start
+        #else
+        return 0
+        #endif
+    }
+
+    private static func debugEnd(_ label: String, start: CFAbsoluteTime) {
+        #if DEBUG
+        let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
+        logger.debug("\(String(format: "%@ end %.1fms", label, elapsed), privacy: .public)")
+        #endif
+    }
     
-    private func logQuickItem(_ item: QuickItem) {
+    private func logSnackItem(_ item: QuickItem) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         
         incrementQuickItemUsage(item)
@@ -605,9 +882,226 @@ struct TodayView: View {
         showDirectMealLogSheet = false
         healthRefreshID = UUID()
     }
+
+    private func logDrinkItem(_ item: QuickItem) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        incrementQuickItemUsage(item)
+
+        let isWater = item.id == "drink_water" || item.title.lowercased() == "water"
+        let quickLogActivity = PlannedActivity(
+            id: UUID().uuidString,
+            date: Date(),
+            type: "drink",
+            title: item.title,
+            durationMinutes: 5,
+            icon: item.icon,
+            imageName: isWater ? "hydration" : item.imageName,
+            colorRed: 0.25,
+            colorGreen: 0.55,
+            colorBlue: 0.95,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fats: item.fats,
+            isCompleted: true,
+            isSkipped: false,
+            source: "today"
+        )
+
+        modelContext.insert(quickLogActivity)
+        try? modelContext.save()
+
+        if isWater {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.65)) {
+                showWaterToast = true
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation { showWaterToast = false }
+            }
+        }
+
+        showDirectDrinkLogSheet = false
+        updateNutrition()
+        healthRefreshID = UUID()
+    }
     
-    private struct QuickItemLogRow: View {
+    private struct QuickMealDisplayRow: Identifiable, Equatable {
+        let meal: Meals
+        let title: String
+        let subtitle: String
+        let macroText: String
+        let isSuggested: Bool
+        let usesAssetImage: Bool
+        let sortedBuilderImageItems: [MealBuilderImageItem]
+
+        var id: String { meal.id }
+    }
+
+    private struct QuickMealLogRow: View {
+        let row: QuickMealDisplayRow
+        let onTap: () -> Void
+
+        private let accent = Color(red: 0.50, green: 0.74, blue: 0.54)
+        private let textPrimary = WeekFitTheme.primaryText
+        private let textSecondary = WeekFitTheme.secondaryText
+        private let cardSecondary = WeekFitTheme.cardSecondary
+        private let cardBackground = WeekFitTheme.cardBackground
+
+        var body: some View {
+            HStack(spacing: 12) {
+                mealImage
+                    .frame(width: 78, height: 62)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text(row.title)
+                            .font(.system(size: 17.2, weight: .bold, design: .rounded))
+                            .foregroundStyle(textPrimary)
+                            .tracking(-0.35)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+
+                        if row.isSuggested {
+                            Text("Suggested")
+                                .font(.system(size: 8.8, weight: .bold))
+                                .tracking(0.4)
+                                .foregroundStyle(accent)
+                                .padding(.horizontal, 7)
+                                .frame(height: 18)
+                                .background {
+                                    Capsule()
+                                        .fill(accent.opacity(0.08))
+                                }
+                                .overlay {
+                                    Capsule()
+                                        .stroke(accent.opacity(0.22), lineWidth: 1)
+                                }
+                        }
+                    }
+
+                    Text(row.subtitle)
+                        .font(.system(size: 12.4, weight: .medium))
+                        .foregroundStyle(textSecondary.opacity(0.56))
+                        .lineLimit(1)
+
+                    Text(row.macroText)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.74))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    onTap()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(accent)
+                        .frame(width: 42, height: 42)
+                        .background {
+                            Circle()
+                                .fill(accent.opacity(0.18))
+                        }
+                        .overlay {
+                            Circle()
+                                .stroke(accent.opacity(0.14), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(height: 86)
+            .background {
+                RoundedRectangle(cornerRadius: 23, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                cardSecondary.opacity(0.97),
+                                cardBackground.opacity(0.98)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 23, style: .continuous)
+                    .stroke(Color.white.opacity(0.035), lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+            .shadow(color: accent.opacity(0.035), radius: 12, y: 5)
+        }
+
+        private var mealImage: some View {
+            Group {
+                if row.meal.isFoodProduct {
+                    CustomFoodVisualView(
+                        image: nil,
+                        placeholderInitial: row.meal.placeholderInitial,
+                        size: 54,
+                        imageScale: 0.62
+                    )
+                    .offset(x: -6)
+                } else if !row.sortedBuilderImageItems.isEmpty {
+                    builtMealImage(row.sortedBuilderImageItems)
+                } else if row.usesAssetImage {
+                    Image(row.meal.imageName)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color.white.opacity(0.04))
+                        .overlay {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 20))
+                                .foregroundColor(WeekFitTheme.tertiaryText)
+                        }
+                }
+            }
+            .frame(width: 78, height: 62)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+
+        private func builtMealImage(_ items: [MealBuilderImageItem]) -> some View {
+            let hasFoodItems = items.contains { !$0.id.hasPrefix("drink_") }
+
+            return ZStack {
+                Color.black.opacity(0.10)
+
+                if hasFoodItems {
+                    Image("plate-dark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 74, height: 74)
+                }
+
+                ForEach(items) { item in
+                    Image(item.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: CGFloat(item.visualSize) * 0.31)
+                        .zIndex(Double(item.zIndex))
+                }
+            }
+        }
+    }
+
+    private struct QuickItemDisplayRow: Identifiable, Equatable {
         let item: QuickItem
+        let subtitleText: String
+        let usesAssetImage: Bool
+
+        var id: String { item.id }
+    }
+
+    private struct QuickItemLogRow: View {
+        let row: QuickItemDisplayRow
+        let accentColor: Color
         let onTap: () -> Void
 
         var body: some View {
@@ -620,24 +1114,24 @@ struct TodayView: View {
                             .fill(Color.white.opacity(0.045))
                             .frame(width: 44, height: 44)
 
-                        if UIImage(named: item.imageName) != nil {
-                            Image(item.imageName)
+                        if row.usesAssetImage {
+                            Image(row.item.imageName)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
                         } else {
-                            Image(systemName: item.icon)
+                            Image(systemName: row.item.icon)
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color(red: 0.50, green: 0.74, blue: 0.54))
+                                .foregroundStyle(accentColor)
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title)
+                        Text(row.item.title)
                             .font(.system(size: 14.5, weight: .bold))
                             .foregroundStyle(.white.opacity(0.95))
 
-                        Text(item.calories > 0 ? "\(item.calories) kcal • \(item.subtitle)" : item.subtitle)
+                        Text(row.subtitleText)
                             .font(.system(size: 11.5, weight: .medium))
                             .foregroundStyle(.white.opacity(0.45))
                             .lineLimit(1)
@@ -651,7 +1145,7 @@ struct TodayView: View {
                         .frame(width: 30, height: 30)
                         .background(
                             Circle()
-                                .fill(Color(red: 0.50, green: 0.74, blue: 0.54))
+                                .fill(accentColor)
                         )
                 }
                 .padding(.horizontal, 12)
@@ -671,7 +1165,7 @@ struct TodayView: View {
             WeekFitScreenHeader(
                 title: "Today",
                 subtitle: selectedDateTitle,
-                initials: profileInitials,
+                initials: userSettings.profileInitials,
                 showAvatar: true
             ) {
                 showProfile = true
@@ -1525,22 +2019,11 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if let res = nutritionViewModel.nutritionResult {
-                    
-                    let _ = now
-
-                    let coachOutput = CoachEngineV3.decide(
-                        from: res.brain,
-                        plannedActivities: selectedDayActivities,
-                        selectedDate: selectedDate
-                    )
-
-                    let insight = coachOutput.v5Interpretation.compactInsight
-
+                if let insight = cachedTodayCoachInsight {
                     let insightColor = insight.color
                     let insightTitle = insight.title
                     let insightIcon = insight.icon
-                    let insightMessage = insight.text
+                    let insightMessage = insight.message
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1930,8 +2413,8 @@ struct TodayView: View {
 
             HStack(spacing: 0) {
                 quickActionItem(
-                    icon: "drop.fill",
-                    label: "Log Water",
+                    icon: "takeoutbag.and.cup.and.straw.fill",
+                    label: "Log Drinks",
                     subLabel: String(format: "%.1f/%.1fL", currentWater, waterGoal),
                     color: Color(red: 0.25, green: 0.55, blue: 0.95)
                 )
@@ -1960,10 +2443,12 @@ struct TodayView: View {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 switch label {
-                case "Log Water":
-                    executePersistentWaterLog()
+                case "Log Drinks":
+                    preloadQuickDrinkLogDataIfNeeded()
+                    showDirectDrinkLogSheet = true
                 case "Log Food":
                     selectedLogTab = .meals
+                    preloadQuickFoodLogDataIfNeeded()
                     showDirectMealLogSheet = true
                 case "Start Activity":
 //                    if currentActiveSession != nil {
@@ -1979,7 +2464,7 @@ struct TodayView: View {
                     Circle().fill(color.opacity(0.12)).frame(width: 48, height: 48)
                     Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color).frame(width: 48, height: 48)
                     
-                    if label == "Log Water" && showWaterToast {
+                    if label == "Log Drinks" && showWaterToast {
                         Text("+0.25L")
                             .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 3)
@@ -2003,32 +2488,6 @@ struct TodayView: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private func executePersistentWaterLog() {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.65)) {
-            showWaterToast = true
-            
-            let redComponent: Double = 0.25
-            let greenComponent: Double = 0.55
-            let blueComponent: Double = 0.95
-            
-            let waterActivity = PlannedActivity(
-                id: UUID().uuidString, date: Date(), type: "meal", title: "Water",
-                durationMinutes: 5, icon: "drop.fill", imageName: "hydration",
-                colorRed: redComponent, colorGreen: greenComponent, colorBlue: blueComponent,
-                calories: 0, protein: 0, carbs: 0, fats: 0, isCompleted: true, isSkipped: false, source: "today"
-            )
-            
-            modelContext.insert(waterActivity)
-            try? modelContext.save()
-            
-            updateNutrition(withExtraWater: 0.25)
-            healthRefreshID = UUID()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            withAnimation { showWaterToast = false }
-        }
     }
 
     private func updateNutrition(withExtraWater extra: Double = 0) {
@@ -2224,5 +2683,18 @@ struct TodayView: View {
 
     private var selectedDayActivities: [PlannedActivity] {
         plannedActivities.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }.sorted { $0.date < $1.date }
+    }
+}
+
+private struct TodayCoachInsight: Equatable {
+    let title: String
+    let message: String
+    let icon: String
+    let color: Color
+
+    static func == (lhs: TodayCoachInsight, rhs: TodayCoachInsight) -> Bool {
+        lhs.title == rhs.title &&
+        lhs.message == rhs.message &&
+        lhs.icon == rhs.icon
     }
 }

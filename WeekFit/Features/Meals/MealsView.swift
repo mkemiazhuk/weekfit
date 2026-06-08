@@ -82,8 +82,7 @@ struct MealsView: View {
     var isQuickLogMode: Bool = false
     var onMealLogged: (() -> Void)? = nil
 
-    @AppStorage(ProfileService.Keys.initials)
-    private var profileInitials: String = "P"
+    @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -98,12 +97,11 @@ struct MealsView: View {
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
     @State private var showContent = false
+    @State private var cachedRecommendation: MealRecommendation?
+    @State private var lastRecommendationSignature = ""
 
     @State private var showProfile = false
     @State private var selectedDate = Date()
-
-    @AppStorage(CustomMealStore.storageKey)
-    private var customMealsStorage: String = ""
 
     private let background = WeekFitTheme.backgroundColor
     private let cardSecondary = WeekFitTheme.cardSecondary
@@ -168,7 +166,7 @@ struct MealsView: View {
                 WeekFitScreenHeader(
                     title: WeekFitLocalizedString("meals.library.title"),
                     subtitle: selectedDateTitle,
-                    initials: profileInitials,
+                    initials: userSettings.profileInitials,
                     showAvatar: true
                 ) {
                     showProfile = true
@@ -180,8 +178,22 @@ struct MealsView: View {
             .opacity(showContent ? 1 : 0)
         }
         .onAppear {
-            loadCustomMeals()
+            guard !showContent else { return }
             showContent = true
+
+            Task {
+                await loadCustomMealsAsync()
+                updateRecommendationIfNeeded(source: "MealsView.onAppear.loadCustomMeals")
+            }
+        }
+        .onChange(of: customMeals) { _, _ in
+            updateRecommendationIfNeeded(source: "MealsView.onChange.customMeals")
+        }
+        .onChange(of: plannedActivities) { _, _ in
+            updateRecommendationIfNeeded(source: "MealsView.onChange.plannedActivities")
+        }
+        .onReceive(nutritionViewModel.$nutritionResult) { _ in
+            updateRecommendationIfNeeded(source: "MealsView.onReceive.nutritionResult")
         }
         .safeAreaInset(edge: .bottom) {
             bottomFixedActionArea
@@ -249,13 +261,34 @@ struct MealsView: View {
                 .presentationDragIndicator(.hidden)
 
             case .manualFood:
-                ManualMealFormView(existingMeals: customMeals) { newMeal in
+                CustomMealBuilderView(existingMeals: customMeals) { newMeal in
                     saveMealToLibrary(newMeal)
                 }
                 .presentationDetents([.large])
                 .presentationCornerRadius(36)
                 .presentationDragIndicator(.hidden)
             }
+        }
+    }
+    
+    @MainActor
+    private func loadCustomMealsAsync() async {
+        let storage = userSettings.customMealsStorage
+
+        let result = await Task.detached(priority: .utility) {
+            let loadedMeals = CustomMealStore.load(from: storage)
+            let migratedMeals = loadedMeals.map { MealPhotoStore.ensureThumbnail(for: $0) }
+            let encoded = migratedMeals != loadedMeals
+                ? CustomMealStore.encode(migratedMeals)
+                : nil
+
+            return (migratedMeals, encoded)
+        }.value
+
+        customMeals = result.0
+
+        if let encoded = result.1 {
+            userSettings.setCustomMealsStorage(encoded)
         }
     }
     
@@ -275,63 +308,104 @@ struct MealsView: View {
         }
     }
 
-    private var coachGuidance: CoachGuidanceV3 {
-        if let brain = nutritionViewModel.nutritionResult?.brain {
-            return CoachEngineV3.decide(
+    private func updateRecommendationIfNeeded(source: String) {
+        let signature = recommendationSignature()
+        guard signature != lastRecommendationSignature else { return }
+
+        let brain = nutritionViewModel.nutritionResult?.brain ?? nutritionResult?.brain
+        let nextRecommendation: MealRecommendation?
+        if let brain {
+            let guidance = CoachEngineV3.decide(
                 from: brain,
                 plannedActivities: plannedActivitiesForSelectedDate,
                 selectedDate: selectedDate
             )
-        }
-
-        if let brain = nutritionResult?.brain {
-            return CoachEngineV3.decide(
-                from: brain,
-                plannedActivities: plannedActivitiesForSelectedDate,
-                selectedDate: selectedDate
+            nextRecommendation = MealRecommendationEngine.make(
+                guidance: guidance,
+                meals: mealItems,
+                now: Date()
             )
+        } else {
+            nextRecommendation = nil
         }
 
-        return CoachGuidanceV3(
-            phase: .stable,
-            opportunity: CoachSupportOpportunityV3(
-                type: .stable,
-                importance: .quiet,
-                reason: "No Active Guidance"
-            ),
-            shouldSurface: false,
-            stateLabel: "Overview",
-            title: "No Active Focus",
-            message: "No Active Nutrition Focus",
-            insightTitle: "No Active Focus",
-            insightSubtitle: nil,
-            supportActions: [
-                CoachSupportActionV3(
-                    type: .stayConsistent,
-                    icon: "waveform.path.ecg",
-                    title: "Keep Rhythm",
-                    subtitle: "Stay Consistent Food Water Movement",
-                    color: WeekFitTheme.meal
-                )
-            ],
-            avoidNotes: [],
-            icon: "fork.knife",
-            color: WeekFitTheme.meal,
-            importance: .quiet,
-            tone: .calm
-        )
+        lastRecommendationSignature = signature
+        if cachedRecommendation != nextRecommendation {
+            cachedRecommendation = nextRecommendation
+        }
     }
 
-    private var recommendedToday: MealRecommendation? {
-        MealRecommendationEngine.make(
-            guidance: coachGuidance,
-            meals: mealItems,
-            now: Date()
-        )
+    private func recommendationSignature() -> String {
+        let goals = nutritionViewModel.nutritionResult?.goals ?? nutritionResult?.goals
+        let metrics = nutritionViewModel.currentMetrics
+        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
+        let activitySignature = plannedActivitiesForSelectedDate
+            .sorted { $0.id < $1.id }
+            .map { activity in
+                [
+                    activity.id,
+                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
+                    activity.type,
+                    activity.title,
+                    "\(activity.durationMinutes)",
+                    "\(activity.calories)",
+                    "\(activity.protein)",
+                    "\(activity.carbs)",
+                    "\(activity.fats)",
+                    "\(activity.fiber)",
+                    "\(activity.isCompleted)",
+                    "\(activity.isSkipped)",
+                    activity.imageName
+                ].joined(separator: ":")
+            }
+            .joined(separator: "|")
+        let mealSignature = mealItems
+            .sorted { $0.id < $1.id }
+            .map { meal in
+                [
+                    meal.id,
+                    meal.title,
+                    "\(meal.calories)",
+                    "\(meal.protein)",
+                    "\(meal.carbs)",
+                    "\(meal.fats)",
+                    "\(meal.fiber)"
+                ].joined(separator: ":")
+            }
+            .joined(separator: "|")
+
+        return [
+            sourceNutritionSignature(),
+            "\(Int(day / 86_400))",
+            String(format: "%.1f", metrics?.calories ?? -1),
+            String(format: "%.1f", metrics?.protein ?? -1),
+            String(format: "%.1f", metrics?.carbs ?? -1),
+            String(format: "%.1f", metrics?.fats ?? -1),
+            String(format: "%.1f", metrics?.waterLiters ?? -1),
+            String(format: "%.1f", goals?.calories ?? -1),
+            String(format: "%.1f", goals?.protein ?? -1),
+            String(format: "%.1f", goals?.carbs ?? -1),
+            String(format: "%.1f", goals?.fats ?? -1),
+            String(format: "%.1f", goals?.waterLiters ?? -1),
+            activitySignature,
+            mealSignature
+        ].joined(separator: "#")
+    }
+
+    private func sourceNutritionSignature() -> String {
+        if nutritionViewModel.nutritionResult?.brain != nil {
+            return "environment"
+        }
+
+        if nutritionResult?.brain != nil {
+            return "input"
+        }
+
+        return "missing"
     }
 
     private var visibleRecommendation: MealRecommendation? {
-        recommendedToday
+        cachedRecommendation
     }
 
 
@@ -778,17 +852,17 @@ struct MealsView: View {
 
 
     private func loadCustomMeals() {
-        let loadedMeals = CustomMealStore.load(from: customMealsStorage)
+        let loadedMeals = CustomMealStore.load(from: userSettings.customMealsStorage)
         let migratedMeals = loadedMeals.map { MealPhotoStore.ensureThumbnail(for: $0) }
         customMeals = migratedMeals
 
         if migratedMeals != loadedMeals {
-            customMealsStorage = CustomMealStore.encode(migratedMeals)
+            userSettings.setCustomMealsStorage(CustomMealStore.encode(migratedMeals))
         }
     }
 
     private func saveCustomMeals() {
-        customMealsStorage = CustomMealStore.encode(customMeals)
+        userSettings.setCustomMealsStorage(CustomMealStore.encode(customMeals))
     }
     
     private var createActionTitle: String {
@@ -913,7 +987,6 @@ private struct MealCreationChooserSheet: View {
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(background.ignoresSafeArea())
-        .preferredColorScheme(.dark)
     }
 
     private func optionRow(
@@ -969,7 +1042,7 @@ private struct MealCreationChooserSheet: View {
 }
 
 
-private typealias CustomFoodFormView = ManualMealFormView
+private typealias CustomFoodFormView = CustomMealBuilderView
 
 private struct CustomFoodDetailsView: View {
     @State var food: Meals
@@ -1012,7 +1085,6 @@ private struct CustomFoodDetailsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             if isQuickLogMode {
                 quickLogButton
@@ -1283,7 +1355,7 @@ private struct CircleIconButton: View {
 }
 
 
-private struct MealRecommendation {
+private struct MealRecommendation: Equatable {
     let meal: Meals
 
     let badge: String
@@ -1292,6 +1364,14 @@ private struct MealRecommendation {
 
     let icon: String
     let color: Color
+
+    static func == (lhs: MealRecommendation, rhs: MealRecommendation) -> Bool {
+        lhs.meal == rhs.meal &&
+        lhs.badge == rhs.badge &&
+        lhs.reason == rhs.reason &&
+        lhs.factors == rhs.factors &&
+        lhs.icon == rhs.icon
+    }
 }
 
 private enum MealRecommendationEngine {
@@ -1915,15 +1995,14 @@ private struct HeroMealLibraryRow: View {
     private var plateBackground: some View {
         ZStack {
             if meal.isFoodProduct {
-                BuiltMealPlateView(
-                    items: [],
+                AsyncCustomFoodPlateView(
+                    filename: meal.displayPhotoFilename,
+                    initial: meal.placeholderInitial,
                     plateSize: 112,
                     itemScale: 0.40,
                     offsetScale: 0.42,
                     plateOpacity: 0.26,
-                    shadowOpacity: 0.18,
-                    customFoodImage: MealPhotoStore.image(for: meal.displayPhotoFilename),
-                    customFoodInitial: meal.placeholderInitial
+                    shadowOpacity: 0.18
                 )
                 .frame(width: 138, height: 88)
                 .offset(x: -8, y: 0)

@@ -43,8 +43,10 @@ enum CoachCanonicalDayState {
 
     static func isNutritionLog(_ activity: PlannedActivity) -> Bool {
         let text = "\(activity.type) \(activity.title) \(activity.imageName) \(activity.source)".lowercased()
+        let type = activity.type.lowercased()
 
-        return text.contains("meal") ||
+        return type == "drink" ||
+            text.contains("meal") ||
             text.contains("food") ||
             text.contains("snack") ||
             text.contains("breakfast") ||

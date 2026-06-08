@@ -282,13 +282,19 @@ struct CoachScreenStory {
             visibleTexts.append(risk)
         }
 
-        let primaryActions = decision.status == .prepareSession
-            ? CoachRenderingContract.visibleActions(
+        let primaryActions: [CoachSupportingAction]
+        if decision.status == .prepareSession {
+            primaryActions = CoachRenderingContract.visibleActions(
                 candidatePrimaryActions,
                 visibleTexts: &visibleTexts
             )
-            : candidatePrimaryActions
+        } else if CoachScreenStory.hasSportSpecificLiveAction(candidatePrimaryActions) {
+            primaryActions = Array(candidatePrimaryActions.prefix(3))
+            visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
+        } else {
+            primaryActions = candidatePrimaryActions
                 .contractFiltered(visibleTexts: &visibleTexts)
+        }
 
         let supportActions = CoachScreenStory.supportActions(for: decision)
             .deduped(against: requiredTexts + primaryActions.flatMap { [$0.title, $0.subtitle] })
@@ -484,6 +490,15 @@ private extension CoachScreenStory {
         case .postSession:
             return "The training signal is done. Recovery is now the priority."
         }
+    }
+
+    static func hasSportSpecificLiveAction(_ actions: [CoachSupportingAction]) -> Bool {
+        let titles = Set(actions.map { $0.title.lowercased() })
+        return titles.contains("stay aerobic") ||
+            titles.contains("stay conversational") ||
+            titles.contains("reduce load") ||
+            titles.contains("stay efficient") ||
+            titles.contains("control intensity")
     }
 
     static func uncertainActiveSessionContext(_ phase: CoachActiveSessionPhase?) -> String {
@@ -698,24 +713,31 @@ private extension CoachScreenStory {
                 normalized.contains("meal") ||
                 normalized.contains("nutrition") {
                 if isRecoveryIntent {
-                    append(action(.recoveryMeal, title: "Recovery nutrition", subtitle: "Support the work already done"))
+                    append(action(.recoveryMeal, title: "Eat a normal meal with carbs and protein", subtitle: "Support the work already done"))
                 } else if hasActivitySpecificContext {
                     let title: String
+                    let subtitle: String
                     switch activityKind {
                     case .some(.endurance):
                         let activityText = [
                             activity?.title ?? "",
                             activity?.type ?? ""
                         ].joined(separator: " ").lowercased()
-                        title = activityText.contains("cycl") || activityText.contains("bike") || activityText.contains("ride")
-                            ? "Bring ride nutrition"
-                            : "Bring session nutrition"
+                        if activityText.contains("cycl") || activityText.contains("bike") || activityText.contains("ride") {
+                            title = "Eat 20-40g carbs before the ride"
+                            subtitle = "Banana, sports drink, toast, or fruit"
+                        } else {
+                            title = "Eat 20-40g carbs before starting"
+                            subtitle = "Keep it easy to digest"
+                        }
                     case .some(.workout):
-                        title = "Bring session fuel"
+                        title = "Eat a quick carb snack before starting"
+                        subtitle = "Fruit, toast, yogurt, or sports drink"
                     default:
-                        title = "Bring useful nutrition"
+                        title = "Eat a simple snack before starting"
+                        subtitle = "Keep it quick and digestible"
                     }
-                    append(action(.lightFueling, title: title, subtitle: "Keep energy available for the objective"))
+                    append(action(.lightFueling, title: title, subtitle: subtitle))
                 } else {
                     append(action(.lightFueling, title: "Eat normally at next meal", subtitle: "Build the day gradually"))
                 }
@@ -827,6 +849,10 @@ private extension CoachScreenStory {
             actions.append(action)
         }
 
+        if let sportActions = sportSpecificActiveSessionActions(for: text) {
+            return sportActions
+        }
+
         append(action(.controlIntensity, title: "Use body feedback now", subtitle: "Let this session set the ceiling"))
 
         if text.contains("fuel") || text.contains("food") || text.contains("carb") {
@@ -850,6 +876,60 @@ private extension CoachScreenStory {
         }
 
         return Array(actions.prefix(3))
+    }
+
+    static func sportSpecificActiveSessionActions(for text: String) -> [CoachSupportingAction]? {
+        if text.contains("squash") {
+            return [
+                action(.controlIntensity, title: "Control intensity", subtitle: "Keep match effort below today's ceiling"),
+                action(.breathingReset, title: "Take longer recovery", subtitle: "Give rallies more space"),
+                action(.cooldown, title: "Protect movement quality", subtitle: "Stop before technique drops")
+            ]
+        }
+
+        if text.contains("tennis") {
+            return [
+                action(.controlIntensity, title: "Stay efficient", subtitle: "Use positioning over intensity"),
+                action(.breathingReset, title: "Protect movement quality", subtitle: "Avoid chasing every ball"),
+                action(.cooldown, title: "Finish with reserve", subtitle: "Leave court before fatigue drives errors")
+            ]
+        }
+
+        if text.contains("upper body") ||
+            text.contains("strength") ||
+            text.contains("gym") ||
+            text.contains("working weight") ||
+            text.contains("reps in reserve") {
+            return [
+                action(.controlIntensity, title: "Reduce load", subtitle: "Keep working weight below normal"),
+                action(.breathingReset, title: "Leave reps in reserve", subtitle: "No grinding sets today"),
+                action(.cooldown, title: "Avoid failure", subtitle: "Stop before form breaks down")
+            ]
+        }
+
+        if text.contains("run") ||
+            text.contains("running") ||
+            text.contains("conversational") ||
+            text.contains("pace expectations") {
+            return [
+                action(.controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
+                action(.breathingReset, title: "Stay conversational", subtitle: "Let breathing control pace"),
+                action(.cooldown, title: "Shorten if needed", subtitle: "Finish fresh")
+            ]
+        }
+
+        if text.contains("ride") ||
+            text.contains("cycling") ||
+            text.contains("power controlled") ||
+            text.contains("stay aerobic") {
+            return [
+                action(.controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
+                action(.breathingReset, title: "Stay aerobic", subtitle: "Skip threshold or interval work"),
+                action(.cooldown, title: "Finish with reserve", subtitle: "Make recovery easier to start")
+            ]
+        }
+
+        return nil
     }
 
     static func normalizedActionTitle(_ title: String) -> String {
@@ -1363,6 +1443,177 @@ private enum CoachPreparationStage {
 }
 
 private struct ActiveSessionCoachingContext {
+    private enum SportProfile {
+        case cycling
+        case running
+        case upperBody
+        case tennis
+        case squash
+        case generic
+
+        init(text: String) {
+            let normalized = text.lowercased()
+            if normalized.contains("squash") {
+                self = .squash
+            } else if normalized.contains("tennis") {
+                self = .tennis
+            } else if normalized.contains("upper body") ||
+                        normalized.contains("strength") ||
+                        normalized.contains("gym") ||
+                        normalized.contains("weights") ||
+                        normalized.contains("lifting") {
+                self = .upperBody
+            } else if normalized.contains("run") ||
+                        normalized.contains("jog") {
+                self = .running
+            } else if normalized.contains("ride") ||
+                        normalized.contains("cycling") ||
+                        normalized.contains("cycl") ||
+                        normalized.contains("bike") {
+                self = .cycling
+            } else {
+                self = .generic
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .cycling:
+                return "Control today's ride"
+            case .running:
+                return "Control today's run"
+            case .upperBody:
+                return "Control today's upper body session"
+            case .tennis:
+                return "Control today's tennis session"
+            case .squash:
+                return "Control today's squash session"
+            case .generic:
+                return ""
+            }
+        }
+
+        var fallbackRead: String {
+            switch self {
+            case .cycling:
+                return "Today's ride is live. Keep the effort controlled and finish with reserve."
+            case .running:
+                return "Today's run is live. Keep the effort easy enough to finish fresh."
+            case .upperBody:
+                return "Today's upper body session is live. Prioritize quality over load."
+            case .tennis:
+                return "Tennis is live. Play within today's limits and protect movement quality."
+            case .squash:
+                return "Squash is live. Keep match intensity below today's normal ceiling."
+            case .generic:
+                return ""
+            }
+        }
+
+        var limiterRead: String {
+            switch self {
+            case .cycling:
+                return "Today's ride should stay controlled."
+            case .running:
+                return "Recovery does not support productive hard running today."
+            case .upperBody:
+                return "Today's session should prioritize quality over load."
+            case .tennis:
+                return "Recovery does not support long high-intensity rallies today."
+            case .squash:
+                return "Squash places high demands on movement and recovery. Today's ceiling is lower than normal."
+            case .generic:
+                return ""
+            }
+        }
+
+        var limitedRecommendation: String {
+            switch self {
+            case .cycling:
+                return "Stay aerobic, skip hard intervals, keep power controlled, and finish with reserve."
+            case .running:
+                return "Stay conversational, skip hard intervals or tempo work, reduce pace expectations, and shorten if needed."
+            case .upperBody:
+                return "Reduce working weight, skip top-end efforts, leave reps in reserve, and avoid failure training."
+            case .tennis:
+                return "Use positioning over intensity, avoid extended grinding points, protect movement quality, and keep serving effort controlled."
+            case .squash:
+                return "Reduce match intensity, take longer recovery between rallies, avoid repeated maximal efforts, and finish before technique drops."
+            case .generic:
+                return "Stay below your normal ceiling, avoid hard work, and shorten the session if effort feels flat."
+            }
+        }
+
+        func phaseRecommendation(for phase: CoachActiveSessionPhase?) -> String {
+            switch phase {
+            case .started, .none:
+                switch self {
+                case .cycling:
+                    return "Keep the first 10-15 minutes easy, stay aerobic, and let the ride settle before building."
+                case .running:
+                    return "Start conversational, ignore early pace targets, and let breathing set the ceiling."
+                case .upperBody:
+                    return "Use warm-up sets to lower the ceiling, then keep load below normal and leave reps in reserve."
+                case .tennis:
+                    return "Start efficient, use positioning over intensity, and avoid chasing every ball early."
+                case .squash:
+                    return "Open below match intensity, take longer recovery between rallies, and keep movement quality clean."
+                case .generic:
+                    return "Keep the first minutes easy. Finish with reserve."
+                }
+            case .middle:
+                switch self {
+                case .cycling:
+                    return "Stay aerobic, keep power below your normal ceiling, and avoid threshold efforts."
+                case .running:
+                    return "Stay conversational, keep pace expectations reduced, and skip tempo or interval work."
+                case .upperBody:
+                    return "Reduce working weight, avoid grinding sets, and leave reps in reserve."
+                case .tennis:
+                    return "Protect movement quality, keep serving effort controlled, and choose positioning over intensity."
+                case .squash:
+                    return "Control match intensity, extend recovery between rallies, and avoid repeated maximal efforts."
+                case .generic:
+                    return "Stay repeatable. Finish with reserve."
+                }
+            case .finishing:
+                switch self {
+                case .cycling:
+                    return "Finish controlled and leave recovery room instead of chasing the final minutes."
+                case .running:
+                    return "Finish fresh, keep it conversational, and shorten rather than forcing pace."
+                case .upperBody:
+                    return "Stop before failure work, leave reps in reserve, and finish with clean technique."
+                case .tennis:
+                    return "Finish with reserve, protect movement quality, and avoid extended grinding points."
+                case .squash:
+                    return "Finish before fatigue drives technique down and avoid another maximal rally block."
+                case .generic:
+                    return "Finish controlled. Leave recovery room."
+                }
+            case .postSession:
+                return "Stop adding work. Start recovery now."
+            }
+        }
+
+        var risk: String {
+            switch self {
+            case .cycling:
+                return "Threshold efforts, hard intervals, or chasing power when recovery is limited."
+            case .running:
+                return "Tempo work, hard intervals, or forcing pace when the run should stay conversational."
+            case .upperBody:
+                return "Grinding sets, top-end load, or failure training when quality should lead."
+            case .tennis:
+                return "Extended grinding points, chasing every ball, or serving harder than today's recovery supports."
+            case .squash:
+                return "Repeated maximal rallies or pushing past the point where technique starts dropping."
+            case .generic:
+                return ""
+            }
+        }
+    }
+
     enum Constraint: Hashable {
         case hydration
         case fuel
@@ -1417,6 +1668,7 @@ private struct ActiveSessionCoachingContext {
     }
 
     let activeName: String
+    private let sportProfile: SportProfile
     let objective: CoachObjective
     let constraints: [Constraint]
     let primaryConstraint: Constraint?
@@ -1426,6 +1678,13 @@ private struct ActiveSessionCoachingContext {
 
     init(priority: CoachDayPriorityResult, interpretation i: HumanCoachInterpretation) {
         self.activeName = i.activeTrainingName
+        self.sportProfile = SportProfile(text: [
+            i.activeTrainingName,
+            priority.activity?.title ?? "",
+            priority.activity?.type ?? "",
+            i.context.activityContext.activeActivity?.title ?? "",
+            i.context.activityContext.activeActivity?.type ?? ""
+        ].joined(separator: " "))
         self.objective = Self.objective(priority: priority, interpretation: i)
         self.phaseContext = i.activeTrainingPhaseContext
         self.activePhase = i.context.activityContext.activeSessionPhase
@@ -1439,36 +1698,43 @@ private struct ActiveSessionCoachingContext {
     }
 
     var title: String {
-        if constraints.isEmpty {
-            return "Keep it easy"
+        if !sportProfile.title.isEmpty {
+            return sportProfile.title
         }
 
-        return "Manage effort"
+        return "Control today's \(sessionTitleName)"
     }
 
     var myRead: String {
         guard let primaryConstraint else {
-            return phaseContext
+            if !sportProfile.fallbackRead.isEmpty {
+                return sportProfile.fallbackRead
+            }
+            return "\(activeName.capitalizedFirst) is live. Keep the effort controlled and finish with reserve."
         }
 
-        return "\(activeName.capitalizedFirst) is live. \(readSentence(for: primaryConstraint))"
+        if !sportProfile.limiterRead.isEmpty,
+           primaryConstraint == .sleep || primaryConstraint == .recovery {
+            return "\(readSentence(for: primaryConstraint)) \(sportProfile.limiterRead)"
+        }
+
+        return "\(activeLabel.capitalizedFirst) should stay controlled. \(readSentence(for: primaryConstraint))"
     }
 
     func recommendation(phaseRecommendation: String) -> String {
-        switch activePhase {
-        case .started, .none:
-            return "Keep the first minutes easy. Finish with reserve."
-        case .middle:
-            return "Stay repeatable. Finish with reserve."
-        case .finishing:
-            return "Finish controlled. Leave recovery room."
-        case .postSession:
-            return "Stop adding work. Start recovery now."
+        if constraints.contains(.sleep) || constraints.contains(.recovery) {
+            return sportProfile.limitedRecommendation
         }
+
+        return sportProfile.phaseRecommendation(for: activePhase)
     }
 
     var beCarefulWith: String {
         guard let primaryConstraint else {
+            if !sportProfile.risk.isEmpty {
+                return sportProfile.risk
+            }
+
             switch activePhase {
             case .started, .none:
                 return "Locking into the planned effort before the warm-up confirms it."
@@ -1490,6 +1756,18 @@ private struct ActiveSessionCoachingContext {
 
     var planChallenge: String? {
         nil
+    }
+
+    private var isRide: Bool {
+        sportProfile == .cycling
+    }
+
+    private var activeLabel: String {
+        isRide ? "today's ride" : activeName
+    }
+
+    private var sessionTitleName: String {
+        activeName == "this session" ? "session" : activeName
     }
 
     var actions: [CoachSupportActionTypeV3] {
@@ -1541,9 +1819,9 @@ private struct ActiveSessionCoachingContext {
         case .tomorrowLoad:
             return "Tomorrow's training is the limiter."
         case .recovery:
-            return "Recovery sets the ceiling."
+            return "Recovery does not support productive hard efforts today."
         case .sleep:
-            return "Short sleep lowers the margin."
+            return "Short sleep lowers today's ceiling."
         case .manualStart:
             return "This adds load to the day."
         case .remainingLoad:
@@ -2354,8 +2632,7 @@ private struct CoachSituationStory {
             return hydrationSetup(i, legacyPriority: legacyPriority)
         }
 
-        if i.context.activityContext.recentlyCompletedActivity != nil,
-           i.hasLongTrainingCompleted {
+        if i.hasDaytimeCompletedTrainingToProtect {
             return recoverFromLoad(i)
         }
 
@@ -2452,6 +2729,12 @@ private struct CoachSituationStory {
         narrativeRead: String,
         legacyPriority: CoachDayPriorityResult
     ) -> String {
+        if story.kind == .prepareForTraining,
+           legacyPriority.priority == .planChallenge,
+           legacyPriority.activity != nil {
+            return narrativeRead
+        }
+
         let shouldIncludeDiagnosis = story.usesStoryTitleAsPrimaryTitle(legacyPriority: legacyPriority) ||
             legacyPriority.focus == .trainingReadinessWarning
         guard shouldIncludeDiagnosis,
@@ -2475,6 +2758,16 @@ private struct CoachSituationStory {
 
     func usesStoryTitleAsPrimaryTitle(legacyPriority: CoachDayPriorityResult) -> Bool {
         if kind == .manageActiveTraining || kind == .manageActiveSauna {
+            return true
+        }
+
+        if kind == .recoverFromLoad {
+            return true
+        }
+
+        if kind == .prepareForTraining,
+           legacyPriority.priority == .planChallenge,
+           legacyPriority.activity != nil {
             return true
         }
 
@@ -2661,7 +2954,9 @@ private extension CoachNarrativePlan {
             )
         let sections = sectionIntents(
             for: story,
-            primaryLimiter: primaryLimiter
+            primaryLimiter: primaryLimiter,
+            legacyPriority: legacyPriority,
+            interpretation: i
         )
         let riskIntent = riskIntent(
             for: story,
@@ -2829,9 +3124,17 @@ private extension CoachNarrativePlan {
             }
 
         case .manageActiveTraining:
-            append(.keepIntensity(effort: activeEffortCue(for: i)))
+            if let sportIntents = activeSportActionIntents(for: i, legacyPriority: legacyPriority) {
+                sportIntents.forEach(append)
+            } else {
+                append(.keepIntensity(effort: activeEffortCue(for: i)))
+            }
             if primaryLimiter == .sleep {
-                append(.protectSleep)
+                append(.finishWithReserve)
+                append(.shortenSession)
+            } else if primaryLimiter == .recovery {
+                append(.finishWithReserve)
+                append(.shortenSession)
             }
             if primaryLimiter == .fuel {
                 append(.eat(macros: nil, timing: "Keep intensity easy until fuel is covered"))
@@ -2873,8 +3176,9 @@ private extension CoachNarrativePlan {
             append(.shortenSession)
 
         case .recoverFromLoad:
-            append(.eat(macros: nil, timing: "Support the work already done"))
-            append(.protectSleep)
+            append(.objectiveAction(type: .recoveryMeal, title: "Eat a normal meal with carbs and protein", subtitle: "Make the ride easier to absorb"))
+            append(.objectiveAction(type: .rehydrateGradually, title: "Drink 300-500 ml over the next hour", subtitle: "Then sip to comfort"))
+            append(.skipExtraTraining)
 
         case .fuelBeforeTraining:
             append(.eat(macros: "30-60g carbs", timing: "Before training"))
@@ -2912,6 +3216,71 @@ private extension CoachNarrativePlan {
         return Array(intents.prefix(3))
     }
 
+    static func activeSportActionIntents(
+        for i: HumanCoachInterpretation,
+        legacyPriority: CoachDayPriorityResult
+    ) -> [CoachActionIntent]? {
+        let text = [
+            i.activeTrainingName,
+            legacyPriority.activity?.title ?? "",
+            legacyPriority.activity?.type ?? "",
+            i.context.activityContext.activeActivity?.title ?? "",
+            i.context.activityContext.activeActivity?.type ?? ""
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        if text.contains("squash") {
+            return [
+                .objectiveAction(type: .controlIntensity, title: "Control intensity", subtitle: "Keep match effort below today's ceiling"),
+                .objectiveAction(type: .breathingReset, title: "Take longer recovery", subtitle: "Give rallies more space"),
+                .objectiveAction(type: .cooldown, title: "Protect movement quality", subtitle: "Stop before technique drops")
+            ]
+        }
+
+        if text.contains("tennis") {
+            return [
+                .objectiveAction(type: .controlIntensity, title: "Stay efficient", subtitle: "Use positioning over intensity"),
+                .objectiveAction(type: .breathingReset, title: "Protect movement quality", subtitle: "Avoid chasing every ball"),
+                .objectiveAction(type: .cooldown, title: "Finish with reserve", subtitle: "Leave court before fatigue drives errors")
+            ]
+        }
+
+        if text.contains("upper body") ||
+            text.contains("strength") ||
+            text.contains("gym") ||
+            text.contains("weights") ||
+            text.contains("lifting") {
+            return [
+                .objectiveAction(type: .controlIntensity, title: "Reduce load", subtitle: "Keep working weight below normal"),
+                .objectiveAction(type: .breathingReset, title: "Leave reps in reserve", subtitle: "No grinding sets today"),
+                .objectiveAction(type: .cooldown, title: "Avoid failure", subtitle: "Stop before form breaks down")
+            ]
+        }
+
+        if text.contains("run") ||
+            text.contains("jog") {
+            return [
+                .objectiveAction(type: .controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
+                .objectiveAction(type: .breathingReset, title: "Stay conversational", subtitle: "Let breathing control pace"),
+                .objectiveAction(type: .cooldown, title: "Shorten if needed", subtitle: "Finish fresh")
+            ]
+        }
+
+        if text.contains("ride") ||
+            text.contains("cycling") ||
+            text.contains("cycl") ||
+            text.contains("bike") {
+            return [
+                .objectiveAction(type: .controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
+                .objectiveAction(type: .breathingReset, title: "Stay aerobic", subtitle: "Skip threshold or interval work"),
+                .objectiveAction(type: .cooldown, title: "Finish with reserve", subtitle: "Make recovery easier to start")
+            ]
+        }
+
+        return nil
+    }
+
     static func objectivePrimaryActions(
         for i: HumanCoachInterpretation,
         legacyPriority: CoachDayPriorityResult
@@ -2926,15 +3295,22 @@ private extension CoachNarrativePlan {
         switch kind {
         case .some(.endurance):
             if name == "ride" || activity?.title.localizedCaseInsensitiveContains("cycl") == true || activity?.title.localizedCaseInsensitiveContains("bike") == true {
+                if i.minutesUntilNextTraining.map({ $0 <= 60 }) == true {
+                    return [
+                        .objectiveAction(type: .lightFueling, title: "Eat 20-40g carbs before the ride", subtitle: "Banana, sports drink, toast, or fruit"),
+                        .objectiveAction(type: .hydrateBeforeSession, title: "Drink 300-500 ml before starting", subtitle: "Then bring a bottle"),
+                        .objectiveAction(type: .controlIntensity, title: "Keep the first 10-15 minutes easy", subtitle: "Shorten the ride if power feels flat")
+                    ]
+                }
                 return [
                     .objectiveAction(type: .controlIntensity, title: "Keep morning activity easy", subtitle: "Save freshness for the ride"),
-                    .objectiveAction(type: .lightFueling, title: "Bring ride nutrition", subtitle: "Keep energy available for the long block"),
+                    .objectiveAction(type: .lightFueling, title: "Bring carbs for the ride", subtitle: "Banana, bar, sports drink, or gels"),
                     .objectiveAction(type: .controlIntensity, title: "Keep the first 15-20 minutes easy", subtitle: "Save intensity for later")
                 ]
             }
             return [
                 .objectiveAction(type: .controlIntensity, title: "Keep the first 10 minutes easy", subtitle: "Let breathing settle first"),
-                .objectiveAction(type: .lightFueling, title: "Bring session nutrition", subtitle: "Keep energy available for the work"),
+                .objectiveAction(type: .lightFueling, title: "Eat 20-40g carbs before starting", subtitle: "Keep it easy to digest"),
                 .objectiveAction(type: .controlIntensity, title: "Build pace gradually", subtitle: "Avoid pushing early")
             ]
 
@@ -2949,7 +3325,7 @@ private extension CoachNarrativePlan {
             }
             return [
                 .objectiveAction(type: .controlIntensity, title: "Keep the opening block easy", subtitle: "Let the session come to you"),
-                .objectiveAction(type: .lightFueling, title: "Bring session fuel", subtitle: "Support the planned work"),
+                .objectiveAction(type: .lightFueling, title: "Eat a quick carb snack before starting", subtitle: "Fruit, toast, yogurt, or sports drink"),
                 .objectiveAction(type: .controlIntensity, title: "Save intensity for later", subtitle: "Avoid pushing early")
             ]
 
@@ -3001,8 +3377,29 @@ private extension CoachNarrativePlan {
 
     static func sectionIntents(
         for story: CoachSituationStory,
-        primaryLimiter: CoachNarrativeLimiter
+        primaryLimiter: CoachNarrativeLimiter,
+        legacyPriority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
     ) -> CoachNarrativeSectionIntents {
+        if story.kind == .prepareForTraining {
+            return preparationSectionIntents(
+                for: story,
+                primaryLimiter: primaryLimiter,
+                legacyPriority: legacyPriority,
+                interpretation: i
+            )
+        }
+
+        if story.kind == .manageActiveTraining || story.kind == .recoverFromLoad {
+            return CoachNarrativeSectionIntents(
+                myRead: story.myRead,
+                recommendation: story.myRecommendation,
+                activityContext: nil,
+                why: story.why,
+                planAdjustment: story.planChallenge
+            )
+        }
+
         if primaryLimiter == .sleep,
            story.status != .reducePlan,
            story.kind != .normalEvening {
@@ -3024,10 +3421,86 @@ private extension CoachNarrativePlan {
         )
     }
 
+    static func preparationSectionIntents(
+        for story: CoachSituationStory,
+        primaryLimiter: CoachNarrativeLimiter,
+        legacyPriority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> CoachNarrativeSectionIntents {
+        if legacyPriority.priority == .planChallenge {
+            return CoachNarrativeSectionIntents(
+                myRead: story.myRead,
+                recommendation: story.myRecommendation,
+                activityContext: nil,
+                why: story.why,
+                planAdjustment: story.planChallenge
+            )
+        }
+
+        let stage = CoachSituationStory.preparationStage(legacyPriority, interpretation: i)
+        let preparationRead = CoachSituationStory.preparationRead(stage, interpretation: i)
+        let preparationRecommendation = CoachSituationStory.preparationRecommendation(stage, interpretation: i)
+        let readModifier: String
+        let recommendationModifier: String
+        let why: String
+
+        switch primaryLimiter {
+        case .sleep:
+            readModifier = "Short sleep lowers today's ceiling."
+            recommendationModifier = "keep the first block easier than planned"
+            why = "Sleep changes how hard the session should start; it does not change the next job, which is arriving prepared."
+        case .recovery:
+            readModifier = "Readiness sets a lower ceiling than the plan assumes."
+            recommendationModifier = "let readiness cap the early effort"
+            why = "Recovery should shape how the workout is executed, not turn pre-workout guidance into a recovery-day story."
+        case .hydration:
+            readModifier = "Hydration is still part of the preparation job."
+            recommendationModifier = "bring fluids and sip before the start"
+            why = "Fluids matter because there is a workout soon, not because hydration owns the whole day."
+        case .fuel:
+            readModifier = "Fuel is still part of the preparation job."
+            recommendationModifier = "cover simple fuel before the start"
+            why = "Food matters now because it changes how the workout starts."
+        case .heat:
+            readModifier = "Heat later adds another load to manage."
+            recommendationModifier = "save margin for the rest of the day"
+            why = "The workout should leave room for the next stressor."
+        case .futureLoad:
+            readModifier = "The rest of the plan still needs some margin."
+            recommendationModifier = "avoid spending the whole day in the opening block"
+            why = "Preparation should protect the whole plan, not only the next start line."
+        case .formQuality, .intensityControl:
+            readModifier = "Movement quality matters more than forcing pace today."
+            recommendationModifier = "use the warm-up to find clean, repeatable effort"
+            why = "Preparation should protect execution quality before the workout starts."
+        case .timing, .none:
+            readModifier = "The useful decision is arriving ready."
+            recommendationModifier = "start controlled and adjust by feel"
+            why = story.why ?? "The next useful decision is before the workout, not after it."
+        }
+
+        return CoachNarrativeSectionIntents(
+            myRead: "\(preparationRead) \(readModifier)",
+            recommendation: "\(preparationRecommendation) Also \(recommendationModifier).",
+            activityContext: nil,
+            why: why,
+            planAdjustment: story.planChallenge
+        )
+    }
+
     static func riskIntent(
         for story: CoachSituationStory,
         primaryLimiter: CoachNarrativeLimiter
     ) -> String {
+        if story.kind == .manageActiveTraining || story.kind == .recoverFromLoad {
+            return story.beCarefulWith
+        }
+
+        if story.kind == .prepareForTraining,
+           primaryLimiter == .sleep || primaryLimiter == .recovery {
+            return "Treating the planned workout like a normal-ceiling day."
+        }
+
         if primaryLimiter == .sleep,
            story.status != .reducePlan,
            story.kind != .normalEvening {
@@ -3071,10 +3544,11 @@ private extension CoachNarrativePlan {
         interpretation i: HumanCoachInterpretation
     ) -> CoachNarrativeBadgeIntent {
         if story.kind == .manageActiveTraining {
-            if story.priority == .safety {
-                return .reducePlan
-            }
             return story.status == .keepItEasy ? .keepItEasy : .manageEffort
+        }
+
+        if story.kind == .recoverFromLoad {
+            return .recover
         }
 
         if legacyPriority.focus == .trainingReadinessWarning {
@@ -3203,6 +3677,23 @@ private extension CoachSituationStory {
         let stage = preparationStage(priority, interpretation: i)
 
         switch priority.focus {
+        case .tomorrowPlanRisk, .trainingReadinessWarning:
+            guard i.context.activityContext.preparingActivity != nil else { return nil }
+            return CoachSituationStory(
+                kind: .prepareForTraining,
+                status: .adjustPlan,
+                title: preparationPlanChallengeTitle(priority, interpretation: i),
+                myRead: preparationPlanChallengeRead(priority, interpretation: i),
+                myRecommendation: preparationPlanChallengeRecommendation(priority, interpretation: i),
+                beCarefulWith: priority.interventionCostNote ??
+                    priority.planChallenge ??
+                    coachingFirstPreparationCarefulWith(priority, interpretation: i),
+                why: "The workout is still the next decision; sleep and readiness should change how you execute it.",
+                planChallenge: priority.planChallenge,
+                priority: .trainingQuality,
+                actions: [.controlIntensity, .hydrateBeforeSession, .lightFueling]
+            )
+
         case .prepareForActivity:
             let hydrationCanLead = hydrationCanLeadNarrative(priority)
             return CoachSituationStory(
@@ -3267,6 +3758,63 @@ private extension CoachSituationStory {
 
     static func hydrationCanLeadNarrative(_ priority: CoachDayPriorityResult) -> Bool {
         priority.limiter == .hydration && priority.strength == .critical
+    }
+
+    static func preparationPlanChallengeTitle(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        let name = activityName(priority, interpretation: i)
+        if isRideLike(priority, interpretation: i) {
+            return "Reduce ride intensity"
+        }
+        return "Reduce \(name) intensity"
+    }
+
+    static func preparationPlanChallengeRead(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        let name = activityName(priority, interpretation: i).capitalizedFirst
+        let timing = i.minutesUntilNextTraining.map { i.preparationTimingText($0) } ?? "soon"
+        let limiter = priority.limiter == .sleep || i.sleepHours.map { $0 < 6.0 } == true
+            ? "short sleep lowers today's ceiling"
+            : "readiness lowers today's ceiling"
+        return "\(name) starts in \(timing), but \(limiter)."
+    }
+
+    static func preparationPlanChallengeRecommendation(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        if isRideLike(priority, interpretation: i) {
+            return "Ride easier than planned, keep the first 10-15 minutes controlled, drink 300-500 ml, take a banana or sports drink before starting, and shorten if you feel flat."
+        }
+        let name = activityName(priority, interpretation: i)
+        return "Take \(name) easier than planned, keep the first 10-15 minutes controlled, drink 300-500 ml, eat a quick carb snack before starting, and shorten if you feel flat."
+    }
+
+    static func activityName(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        let explicit = priority.activity?.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let explicit, !explicit.isEmpty {
+            return explicit.lowercased()
+        }
+        return i.nextTrainingName
+    }
+
+    static func isRideLike(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> Bool {
+        let text = [
+            priority.activity?.title ?? "",
+            priority.activity?.type ?? "",
+            i.nextTrainingName
+        ].joined(separator: " ").lowercased()
+        return text.contains("cycl") || text.contains("bike") || text.contains("ride")
     }
 
     static func coachingFirstPreparationRead(
@@ -3556,23 +4104,23 @@ private extension CoachSituationStory {
         priority: CoachDayPriorityResult
     ) -> CoachSituationStory {
         let phaseRecommendation = i.activeTrainingPhaseRecommendation
+        let activeContext = ActiveSessionCoachingContext(priority: priority, interpretation: i)
 
         if i.isVeryPoorState {
             return CoachSituationStory(
                 kind: .manageActiveTraining,
-                status: .reducePlan,
-                title: "Reduce the plan",
-                myRead: "\(i.activeTrainingName.capitalizedFirst) is live, but today's sleep and recovery profile does not support productive hard work.",
-                myRecommendation: "Keep it easy or stop early. Finish with reserve.",
-                beCarefulWith: "Intervals, threshold work, or trying to prove fitness in a low-readiness state.",
+                status: .manageEffort,
+                title: activeContext.title,
+                myRead: activeContext.myRead,
+                myRecommendation: activeContext.recommendation(phaseRecommendation: phaseRecommendation),
+                beCarefulWith: activeContext.beCarefulWith,
                 why: nil,
-                planChallenge: "If the session was meant to be hard, change it to easy before continuing.",
+                planChallenge: nil,
                 priority: .safety,
-                actions: [.controlIntensity, .cooldown]
+                actions: activeContext.actions
             )
         }
 
-        let activeContext = ActiveSessionCoachingContext(priority: priority, interpretation: i)
         return CoachSituationStory(
             kind: .manageActiveTraining,
             status: activeContext.status,
@@ -3647,7 +4195,7 @@ private extension CoachSituationStory {
     }
 
     static func prepareForTraining(_ i: HumanCoachInterpretation) -> CoachSituationStory {
-        CoachSituationStory(
+        return CoachSituationStory(
             kind: .prepareForTraining,
             status: .prepareSession,
             title: "Fuel the \(i.nextTrainingName)",
@@ -3692,17 +4240,25 @@ private extension CoachSituationStory {
     }
 
     static func recoverFromLoad(_ i: HumanCoachInterpretation) -> CoachSituationStory {
-        CoachSituationStory(
+        let completed = i.completedTrainingName
+        let minutesSinceEnd = i.completedTrainingMinutesSinceEnd
+        let laterRecovery = minutesSinceEnd.map { $0 >= 120 } == true
+        let sleepClause = i.sleepHours.map { $0 < 6.5 } == true
+            ? " Short sleep makes this recovery window more important."
+            : ""
+        return CoachSituationStory(
             kind: .recoverFromLoad,
             status: .trainingGoalAchieved,
-            title: "The useful work is already done",
-            myRead: "Today's main training load is already in the bank, so the rest of the day is about absorbing it.",
-            myRecommendation: "The training signal is done. Recovery is now the priority: normal food, steady fluids, and no extra training pressure.",
-            beCarefulWith: "Adding another workout because you still feel good right now.",
+            title: laterRecovery ? "The work is done" : "Protect the work you just did",
+            myRead: laterRecovery
+                ? "A meaningful \(completed) is already banked. Recovery quality will determine what you keep from it.\(sleepClause)"
+                : "A meaningful \(completed) is now complete. Recovery quality will determine what you keep from it.\(sleepClause)",
+            myRecommendation: "Shift from training to absorbing the work: refuel calmly, hydrate steadily, and keep the rest of today low stress.",
+            beCarefulWith: "Adding more stress because you still feel good right now.",
             why: i.tomorrowSummary ?? "Fitness improves when today's work is absorbed instead of constantly extended.",
             planChallenge: nil,
             priority: .planOptimization,
-            actions: [.rehydrateGradually, .startRecoveryNutrition, .sleepPriority]
+            actions: [.rehydrateGradually, .startRecoveryNutrition, .stayConsistent]
         )
     }
 
@@ -3862,8 +4418,8 @@ private struct HumanCoachInterpretation {
     }
 
     var sleepHours: Double? {
-        if let value = context.recoveryContext?.sleepHours, value > 0 { return value }
         if context.brain.metrics.sleepHours > 0 { return context.brain.metrics.sleepHours }
+        if let value = context.recoveryContext?.sleepHours, value > 0 { return value }
         return nil
     }
 
@@ -3911,6 +4467,19 @@ private struct HumanCoachInterpretation {
         context.dayContext.completedTrainingMinutes >= 120 ||
             context.dayContext.completedTrainingActivities.contains {
                 $0.effectiveDurationMinutes >= 120 || CoachActivityContextResolverV3.load(for: $0) == .high || CoachActivityContextResolverV3.load(for: $0) == .extreme
+            }
+    }
+
+    var hasDaytimeCompletedTrainingToProtect: Bool {
+        guard !isLateEvening else { return false }
+        return context.activityContext.recentlyCompletedActivity != nil && hasLongTrainingCompleted ||
+            context.dayContext.completedTrainingActivities.contains { activity in
+                let load = CoachActivityContextResolverV3.load(for: activity)
+                let meaningful = activity.effectiveDurationMinutes >= 120 || load == .high || load == .extreme
+                guard meaningful else { return false }
+                let end = activity.date.addingTimeInterval(TimeInterval(max(activity.effectiveDurationMinutes, activity.durationMinutes) * 60))
+                let minutesSinceEnd = Int(context.dayContext.now.timeIntervalSince(end) / 60)
+                return minutesSinceEnd >= 0 && minutesSinceEnd <= 360
             }
     }
 
@@ -4309,6 +4878,18 @@ private struct HumanCoachInterpretation {
 
     var activeRecoveryName: String {
         activeActivityIdentityIsCertain ? activityShortName(activeRecovery) : "this recovery block"
+    }
+
+    var completedTrainingName: String {
+        activityShortName(context.activityContext.recentlyCompletedActivity ?? context.dayContext.completedTrainingActivities.last)
+    }
+
+    var completedTrainingMinutesSinceEnd: Int? {
+        let activity = context.activityContext.recentlyCompletedActivity ?? context.dayContext.completedTrainingActivities.last
+        guard let activity else { return nil }
+        let end = activity.date.addingTimeInterval(TimeInterval(max(activity.effectiveDurationMinutes, activity.durationMinutes) * 60))
+        let minutes = Int(context.dayContext.now.timeIntervalSince(end) / 60)
+        return minutes >= 0 ? minutes : nil
     }
 
     var tomorrowTrainingName: String {

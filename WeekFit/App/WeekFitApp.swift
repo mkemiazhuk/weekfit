@@ -20,6 +20,7 @@ struct WeekFitApp: App {
     private let refreshThreshold: TimeInterval = 4 * 60
 
     init() {
+        WeekFitWarmLocalizationCache()
         UNUserNotificationCenter.current().delegate =
             NotificationActionHandler.shared
     }

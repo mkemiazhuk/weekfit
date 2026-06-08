@@ -29,6 +29,72 @@ struct CustomFoodVisualView: View {
     }
 }
 
+struct AsyncMealPhotoView<Content: View>: View {
+    let filename: String?
+    var targetPixelSize: CGFloat
+    let content: (UIImage?) -> Content
+
+    @State private var loadedImage: UIImage?
+
+    init(
+        filename: String?,
+        targetPixelSize: CGFloat = MealPhotoStore.thumbnailPixelSize,
+        @ViewBuilder content: @escaping (UIImage?) -> Content
+    ) {
+        self.filename = filename
+        self.targetPixelSize = targetPixelSize
+        self.content = content
+    }
+
+    private var resolvedFilename: String {
+        filename ?? ""
+    }
+
+    var body: some View {
+        content(loadedImage)
+        .onAppear {
+            loadImageIfNeeded()
+        }
+        .onChange(of: resolvedFilename) { _ in
+            loadedImage = nil
+            loadImageIfNeeded()
+        }
+    }
+
+    private func loadImageIfNeeded() {
+        guard !resolvedFilename.isEmpty else {
+            loadedImage = nil
+            return
+        }
+
+        let requestedFilename = resolvedFilename
+        MealPhotoStore.loadImage(for: requestedFilename, targetPixelSize: targetPixelSize) { image in
+            guard requestedFilename == resolvedFilename else { return }
+            loadedImage = image
+        }
+    }
+}
+
+struct AsyncCustomFoodVisualView: View {
+    let filename: String?
+    var placeholderInitial: String
+    var size: CGFloat
+    var imageScale: CGFloat = 0.68
+    var fallbackSystemImage: String = "fork.knife"
+
+    var body: some View {
+        AsyncMealPhotoView(filename: filename) { image in
+            CustomFoodVisualView(
+                image: image,
+                placeholderInitial: placeholderInitial,
+                size: size,
+                imageScale: imageScale,
+                fallbackSystemImage: fallbackSystemImage
+            )
+        }
+    }
+}
+
 struct MealAvatarView: View {
     let image: UIImage?
     var placeholderInitial: String
@@ -115,20 +181,18 @@ struct FoodMediaView: View {
 
     var body: some View {
         if meal.isFoodProduct || forceCircleForLocalPhoto {
-            let image = MealPhotoStore.image(for: meal.displayPhotoFilename)
-
             switch presentation {
             case .thumbnail(let size):
-                CustomFoodVisualView(
-                    image: image,
+                AsyncCustomFoodVisualView(
+                    filename: meal.displayPhotoFilename,
                     placeholderInitial: meal.placeholderInitial,
                     size: size,
                     imageScale: 0.68
                 )
 
             case .hero(let size):
-                CustomFoodVisualView(
-                    image: image,
+                AsyncCustomFoodVisualView(
+                    filename: meal.displayPhotoFilename,
                     placeholderInitial: meal.placeholderInitial,
                     size: size * 0.85,
                     imageScale: 0.66

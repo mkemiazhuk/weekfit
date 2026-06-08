@@ -38,4 +38,12 @@ final class NutritionRepository {
             return []
         }
     }
+
+    func loadDrinkItems() -> [QuickItem] {
+        loadQuickItems().filter { $0.category == .drink }
+    }
+
+    func loadSnackItems() -> [QuickItem] {
+        loadQuickItems().filter { $0.category == .snack }
+    }
 }

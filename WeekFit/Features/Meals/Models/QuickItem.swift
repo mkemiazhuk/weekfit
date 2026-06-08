@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct QuickItem: Codable, Identifiable {
+struct QuickItem: Codable, Identifiable, Equatable {
 
     let id: String
     let title: String

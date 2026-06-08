@@ -58,10 +58,10 @@ enum AppText {
     enum Today {
         static let title: LocalizedStringResource = "today.title"
         static let savedTab: LocalizedStringResource = "today.quickLog.tab.saved"
-        static let drinksSnacksTab: LocalizedStringResource = "today.quickLog.tab.drinksSnacks"
+        static let snacksTab: LocalizedStringResource = "today.quickLog.tab.drinksSnacks"
         static let logFoodTitle: LocalizedStringResource = "today.quickLog.title.logFood"
         static let quickAddMealsSubtitle: LocalizedStringResource = "today.quickLog.subtitle.savedFoods"
-        static let quickAddDrinksSubtitle: LocalizedStringResource = "today.quickLog.subtitle.drinksSnacks"
+        static let quickAddSnacksSubtitle: LocalizedStringResource = "today.quickLog.subtitle.drinksSnacks"
         static let noSavedFoodTitle: LocalizedStringResource = "today.quickLog.empty.savedFood.title"
         static let noSavedFoodMessage: LocalizedStringResource = "today.quickLog.empty.savedFood.message"
         static let openMealsLibrary: LocalizedStringResource = "today.quickLog.empty.savedFood.action"
@@ -98,7 +98,7 @@ enum AppText {
         static let coachInsightLabel: LocalizedStringResource = "today.coachInsight.label"
         static let connectHealthInsights: LocalizedStringResource = "today.coachInsight.connectHealth"
         static let quickActionsTitle: LocalizedStringResource = "today.quickActions.title"
-        static let logWater: LocalizedStringResource = "today.quickActions.logWater"
+        static let logDrinks: LocalizedStringResource = "today.quickActions.logDrinks"
         static let logFood: LocalizedStringResource = "today.quickActions.logFood"
         static let mealsSnacks: LocalizedStringResource = "today.quickActions.mealsSnacks"
         static let startActivity: LocalizedStringResource = "today.quickActions.startActivity"
@@ -466,13 +466,15 @@ private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> Stri
         return fallback
     }
 
-    return String(localized: String.LocalizationValue(key), bundle: .main, locale: locale)
+    return key
 }
 
 func WeekFitCurrentLocale() -> Locale {
-    let languageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
-    let resolvedLanguage = AppLanguage(rawValue: languageCode) ?? .english
-    return Locale(identifier: resolvedLanguage.localeIdentifier)
+    WeekFitLocalizationCache.current.locale
+}
+
+func WeekFitWarmLocalizationCache() {
+    WeekFitLocalizationCache.refreshFromStorage()
 }
 
 func WeekFitShortWeekdayMonthDay(_ date: Date) -> String {
@@ -507,7 +509,31 @@ private func WeekFitDebugLogLocalizationResolution(key: String, locale: Locale, 
         return
     }
 
-    let language = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
+    let language = WeekFitLocalizationCache.current.languageCode
     print("[WeekFitLocalization] language=\(language) locale=\(locale.identifier) key=\(key) resolved=\"\(resolved)\"")
     #endif
+}
+
+private enum WeekFitLocalizationCache {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var cachedLanguageCode: String = AppLanguage.english.rawValue
+    private nonisolated(unsafe) static var cachedLocale: Locale = Locale(identifier: AppLanguage.english.localeIdentifier)
+
+    static var current: (languageCode: String, locale: Locale) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (cachedLanguageCode, cachedLocale)
+    }
+
+    static func refreshFromStorage() {
+        let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
+
+        let resolvedLanguage = AppLanguage(rawValue: storedLanguageCode) ?? .english
+        let locale = Locale(identifier: resolvedLanguage.localeIdentifier)
+
+        lock.lock()
+        defer { lock.unlock() }
+        cachedLanguageCode = storedLanguageCode
+        cachedLocale = locale
+    }
 }

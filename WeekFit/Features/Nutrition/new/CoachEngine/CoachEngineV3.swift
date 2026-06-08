@@ -31,10 +31,17 @@ enum CoachEngineV3 {
     ) -> CoachGuidanceV3 {
 
         let activities = plannedActivities ?? brain.activities
+        let resolvedDayContext = dayContext ?? CoachDayContextBuilder.build(
+            activities: activities,
+            selectedDate: selectedDate,
+            now: brain.now
+        )
+        let decisionNow = resolvedDayContext.now
         let inputSignature = memoSignature(
             brain: brain,
             activities: activities,
             selectedDate: selectedDate,
+            decisionNow: decisionNow,
             recoveryContext: recoveryContext,
             nutritionContext: nutritionContext
         )
@@ -46,12 +53,6 @@ enum CoachEngineV3 {
         }
         memoLock.unlock()
 
-        let resolvedDayContext = dayContext ?? CoachDayContextBuilder.build(
-            activities: activities,
-            selectedDate: selectedDate,
-            now: brain.now
-        )
-
         let resolvedRecoveryContext = recoveryContext ?? CoachRecoveryContext(
             recoveryPercent: 0,
             sleepHours: 0
@@ -60,7 +61,7 @@ enum CoachEngineV3 {
         let activityContext = CoachActivityContextResolverV3.resolveDayContext(
             activities: activities,
             selectedDate: selectedDate,
-            now: brain.now,
+            now: decisionNow,
             brain: brain
         )
 
@@ -78,7 +79,7 @@ enum CoachEngineV3 {
             tomorrowContext: tomorrowPlanContext(
                 activities: activities,
                 selectedDate: selectedDate,
-                now: brain.now
+                now: decisionNow
             ),
             recoveryContext: resolvedRecoveryContext,
             nutritionContext: nutritionContext,
@@ -233,11 +234,12 @@ private extension CoachEngineV3 {
         brain: HumanBrain.State,
         activities: [PlannedActivity],
         selectedDate: Date,
+        decisionNow: Date,
         recoveryContext: CoachRecoveryContext?,
         nutritionContext: CoachNutritionContext?
     ) -> String {
         let selectedDay = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let minuteBucket = Int(brain.now.timeIntervalSince1970 / 60)
+        let minuteBucket = Int(decisionNow.timeIntervalSince1970 / 60)
         let activitySignature = activities
             .sorted { $0.id < $1.id }
             .map(activityMemoSignature)
@@ -410,10 +412,19 @@ private extension CoachEngineV3 {
         let waterCurrent = context.nutritionContext?.waterCurrent ?? 0
         let waterGoal = context.nutritionContext?.waterGoal ?? 0
         let hydrationRatio = waterGoal > 0 ? waterCurrent / waterGoal : 1
+        let decisionMinute = Int(context.dayContext.now.timeIntervalSince1970 / 60)
+        let brainMinute = Int(context.brain.now.timeIntervalSince1970 / 60)
+        let recoveryPercent = context.recoveryContext?.recoveryPercent ?? -1
+        let recoverySleepHours = context.recoveryContext?.sleepHours ?? -1
         let signature = [
+            "\(decisionMinute)",
+            "\(brainMinute)",
             String(format: "%.2f", waterCurrent),
             String(format: "%.2f", waterGoal),
             String(format: "%.2f", hydrationRatio),
+            "\(recoveryPercent)",
+            String(format: "%.2f", recoverySleepHours),
+            String(format: "%.2f", context.brain.metrics.sleepHours),
             "\(selected.priority)",
             "\(selected.focus)",
             "\(selected.limiter)",
@@ -437,7 +448,7 @@ private extension CoachEngineV3 {
 
         CoachRefreshDebug.log(
             "[CoachPriorityDebug]",
-            "rawPlannedActivities=\(rawActivities.count) selectedDayActivities=\(selectedDayActivities.count) visibleFutureUpNextActivities=\(visibleUpNextActivities(in: context, rawActivities: rawActivities).count) coachRelevantActivities=\(coachRelevantActivities.count) hydrationLogs=\(rawActivities.filter(isHydrationLog).count) selectedUpNext=\"\(debugActivity(selectedUpNext(in: context, rawActivities: rawActivities)))\" coachIntent=\(CoachIntentResolver.resolve(context)) selectedCoachActivity=\"\(debugActivity(selected.activity ?? context.activityContext.coachFocusActivity))\" hiddenSupportSignals.count=\(selected.supportBullets.count) waterCurrent=\(String(format: "%.2f", waterCurrent)) waterGoal=\(String(format: "%.2f", waterGoal)) hydrationRatio=\(String(format: "%.2f", hydrationRatio)) selected=\(selected.priority)/\(selected.focus) limiter=\(selected.limiter) title=\"\(selected.title)\""
+            "decisionNowMinute=\(decisionMinute) brainNowMinute=\(brainMinute) rawPlannedActivities=\(rawActivities.count) selectedDayActivities=\(selectedDayActivities.count) visibleFutureUpNextActivities=\(visibleUpNextActivities(in: context, rawActivities: rawActivities).count) coachRelevantActivities=\(coachRelevantActivities.count) hydrationLogs=\(rawActivities.filter(isHydrationLog).count) selectedUpNext=\"\(debugActivity(selectedUpNext(in: context, rawActivities: rawActivities)))\" coachIntent=\(CoachIntentResolver.resolve(context)) selectedCoachActivity=\"\(debugActivity(selected.activity ?? context.activityContext.coachFocusActivity))\" hiddenSupportSignals.count=\(selected.supportBullets.count) recoveryPercent=\(recoveryPercent) recoverySleepHours=\(String(format: "%.2f", recoverySleepHours)) brainSleepHours=\(String(format: "%.2f", context.brain.metrics.sleepHours)) brainSleep=\(context.brain.sleep) brainRecovery=\(context.brain.recovery) brainReadiness=\(context.brain.readiness) completedTrainingStress=\(context.dayContext.completedTrainingStressScore) upcomingTrainingStress=\(context.dayContext.upcomingTrainingStressScore) waterCurrent=\(String(format: "%.2f", waterCurrent)) waterGoal=\(String(format: "%.2f", waterGoal)) hydrationRatio=\(String(format: "%.2f", hydrationRatio)) selected=\(selected.priority)/\(selected.focus) limiter=\(selected.limiter) title=\"\(selected.title)\""
         )
 
         let classification = coachRelevantActivities.map(activityClassificationDebug).joined(separator: " | ")
