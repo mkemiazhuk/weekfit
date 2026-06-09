@@ -45,6 +45,71 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertFalse(story.myRead.localizedCaseInsensitiveContains("Nothing in the current day asks for a major change right now"))
     }
 
+    func testRecoveryMorningMissingSleepUsesNeutralCopy() throws {
+        let walk = recovery(title: "Recovery Walk", minutesFromNow: 180, duration: 30, completed: false)
+        let output = guidance(
+            [walk],
+            brain: brain(
+                currentHour: 8,
+                sleep: .unknown,
+                recovery: .vulnerable,
+                readiness: .low,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 72, sleepHours: 0),
+            nutrition: nutrition(water: 0, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+
+        let story = try XCTUnwrap(output.screenStory)
+        let visible = visibleTexts(story).joined(separator: " ").lowercased()
+
+        XCTAssertEqual(story.title, "Recovery day")
+        XCTAssertEqual(story.myRead, "No hard training is planned today, and sleep data was not captured.")
+        XCTAssertEqual(story.myRecommendation, "Keep the morning easy, start with water, and eat normally at the next meal.")
+        XCTAssertEqual(story.primaryActions.map(\.title), [
+            "Start with 300-500 ml",
+            "Eat normally at next meal",
+            "Keep the day flexible"
+        ])
+        XCTAssertFalse(visible.contains("recovery is strong"))
+        XCTAssertFalse(visible.contains("sleep is strong"))
+        XCTAssertFalse(visible.contains("readiness is strong"))
+        XCTAssertFalse(visible.contains("recovery supports the plan"))
+    }
+
+    func testRecoveryEveningMissingSleepDoesNotRenderMorningOnlyCopy() throws {
+        let walk = recovery(title: "Recovery Walk", minutesFromNow: 180, duration: 30, completed: false)
+        let output = guidance(
+            [walk],
+            brain: brain(
+                currentHour: 17,
+                sleep: .unknown,
+                recovery: .vulnerable,
+                readiness: .low,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 72, sleepHours: 0),
+            nutrition: nutrition(water: 0, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+
+        let story = try XCTUnwrap(output.screenStory)
+        let visible = visibleTexts(story).joined(separator: " ")
+
+        XCTAssertEqual(story.title, "Recovery day")
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("Drink fluids steadily"))
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("Protect recovery for tomorrow"))
+        XCTAssertEqual(story.primaryActions.map(\.title), [
+            "Drink fluids steadily",
+            "Maintain normal routines",
+            "Keep recovery easy"
+        ])
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Keep the morning easy"))
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Start with water"))
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Start with 300-500 ml"))
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Begin the day"))
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Start the day"))
+    }
+
     func testMorningLowWaterAppearsAsSupportAction() throws {
         let output = guidance(
             [],
@@ -3078,6 +3143,112 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertTrue(guidance.v5Interpretation.supportSignals.contains(.hydration))
     }
 
+    func testSaunaPreparationMissingSleepLowWaterKeepsCandidateTitleAndLimiter() throws {
+        let sauna = recovery(title: "Sauna", minutesFromNow: 75, duration: 30, completed: false)
+
+        let guidance = guidance(
+            [sauna],
+            brain: brain(
+                currentHour: 8,
+                sleep: .unknown,
+                recovery: .stable,
+                readiness: .good,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 74, sleepHours: 0),
+            nutrition: nutrition(water: 0, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+        let story = try XCTUnwrap(guidance.screenStory)
+
+        XCTAssertEqual(guidance.priority.priority, .hydration)
+        XCTAssertEqual(guidance.priority.focus, .prepareForActivity)
+        XCTAssertEqual(guidance.priority.limiter, .hydration)
+        XCTAssertEqual(guidance.priority.title, "Prepare for sauna")
+        XCTAssertEqual(guidance.title, "Prepare for sauna")
+        XCTAssertEqual(story.title, "Prepare for sauna")
+        XCTAssertEqual(guidance.v5Contract?.primaryLimiter, .hydration)
+        XCTAssertEqual(guidance.v5Contract?.priority.limiter, .hydration)
+        XCTAssertEqual(guidance.narrativePlan?.primaryLimiter, .hydration)
+        XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("sauna"))
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("before sauna"))
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Drink 300-500 ml water" })
+        XCTAssertTrue(story.primaryActions.contains { $0.title.localizedCaseInsensitiveContains("heat") || $0.subtitle.localizedCaseInsensitiveContains("heat") })
+    }
+
+    func testSaunaPreparationAfterSomeWaterAsksForAnotherDrink() throws {
+        let sauna = recovery(title: "Sauna", minutesFromNow: 75, duration: 30, completed: false)
+
+        let guidance = guidance(
+            [sauna],
+            brain: brain(
+                currentHour: 8,
+                sleep: .unknown,
+                recovery: .stable,
+                readiness: .good,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 74, sleepHours: 0),
+            nutrition: nutrition(water: 0.50, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+        let story = try XCTUnwrap(guidance.screenStory)
+
+        XCTAssertEqual(story.title, "Prepare for sauna")
+        XCTAssertEqual(guidance.priority.focus, .prepareForActivity)
+        XCTAssertEqual(guidance.narrativePlan?.primaryLimiter, .hydration)
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("another 300-500 ml"), story.myRecommendation)
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Drink another 300-500 ml before sauna" }, story.primaryActions.map(\.title).joined(separator: " | "))
+        XCTAssertFalse(story.primaryActions.contains { $0.title == "Drink 300-500 ml water" })
+    }
+
+    func testSaunaPreparationImprovingHydrationReducesUrgency() throws {
+        let sauna = recovery(title: "Sauna", minutesFromNow: 75, duration: 30, completed: false)
+
+        let guidance = guidance(
+            [sauna],
+            brain: brain(
+                currentHour: 8,
+                sleep: .unknown,
+                recovery: .stable,
+                readiness: .good,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 74, sleepHours: 0),
+            nutrition: nutrition(water: 1.0, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+        let story = try XCTUnwrap(guidance.screenStory)
+
+        XCTAssertEqual(story.title, "Prepare for sauna")
+        XCTAssertEqual(guidance.priority.focus, .prepareForActivity)
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("keep sipping before sauna"))
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Keep sipping before sauna" })
+        XCTAssertFalse(story.primaryActions.contains { $0.title.localizedCaseInsensitiveContains("300-500") })
+    }
+
+    func testSaunaPreparationSufficientHydrationRemovesDrinkAction() throws {
+        let sauna = recovery(title: "Sauna", minutesFromNow: 75, duration: 30, completed: false)
+
+        let guidance = guidance(
+            [sauna],
+            brain: brain(
+                currentHour: 8,
+                sleep: .unknown,
+                recovery: .stable,
+                readiness: .good,
+                sleepHours: 0
+            ),
+            recovery: CoachRecoveryContext(recoveryPercent: 74, sleepHours: 0),
+            nutrition: nutrition(water: 1.50, waterGoal: 1.88, meals: 0, calories: 0, carbs: 0)
+        )
+        let story = try XCTUnwrap(guidance.screenStory)
+
+        XCTAssertEqual(story.title, "Prepare for sauna")
+        XCTAssertEqual(story.myRecommendation, "You have started bringing fluids online. Keep sauna easy and avoid adding extra stress.")
+        XCTAssertFalse(story.primaryActions.contains { $0.title.localizedCaseInsensitiveContains("drink") })
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Enter heat well hydrated" })
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Keep recovery easy" })
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Avoid staying too long if you feel flat" })
+    }
+
     func testScenarioMatrixMaintainsCoachQualityInCommonRealLifeStates() throws {
         struct MatrixScenario {
             let name: String
@@ -4348,6 +4519,7 @@ private extension HumanCoachDecisionEngineXCTests {
 
     func brain(
         currentHour: Int,
+        sleep: HumanBrain.SleepState = .okay,
         recovery: HumanBrain.RecoveryState,
         readiness: HumanBrain.ReadinessState,
         strain: HumanBrain.StrainState = .normal,
@@ -4355,6 +4527,7 @@ private extension HumanCoachDecisionEngineXCTests {
     ) -> HumanBrain.State {
         HumanBrainStateBuilder.make(
             currentHour: currentHour,
+            sleep: sleep,
             hydration: .optimal,
             fuel: .good,
             strain: strain,

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct MealDetailsView: View {
 
@@ -393,13 +394,17 @@ struct MealDetailsView: View {
             Circle()
                 .fill(Color.white.opacity(0.045))
 
-            if let imageName = ingredientImageName(index: index) {
+            if let imageName = ingredientImageName(index: index),
+               !imageName.isEmpty,
+               UIImage(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 29, height: 29)
                     .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-            } else if let imageName = fallbackIngredientImageName(for: item.name) {
+            } else if let imageName = fallbackIngredientImageName(for: item.name),
+                      !imageName.isEmpty,
+                      UIImage(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .scaledToFit()
@@ -508,7 +513,8 @@ struct MealDetailsView: View {
             calories: meal.calories,
             protein: meal.protein,
             carbs: meal.carbs,
-            fats: meal.fats
+            fats: meal.fats,
+            source: isQuickLogMode || mealTargetDate < now ? "nutritionLog" : "planner"
         )
 
         activity.isCompleted = isQuickLogMode || mealTargetDate < now

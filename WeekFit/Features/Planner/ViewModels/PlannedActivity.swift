@@ -2,6 +2,28 @@ import Foundation
 import SwiftData
 import SwiftUI
 
+enum TimelineEventKind {
+    case food
+    case drink
+    case workout
+    case recovery
+    case sauna
+    case calendar
+    case sleep
+    case bodyWeight
+    case mood
+    case coachNote
+    case plannedActivity
+}
+
+enum PlannedActivityTerminalState: String {
+    case planned
+    case active
+    case completed
+    case partial
+    case cancelled
+}
+
 @Model
 final class PlannedActivity {
     @Attribute(.unique) var id: String
@@ -78,6 +100,78 @@ extension PlannedActivity {
     var color: Color {
         Color(red: colorRed, green: colorGreen, blue: colorBlue)
     }
+
+    var timelineEventKind: TimelineEventKind {
+        let normalizedType = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedSource = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedImageName = imageName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if normalizedImageName == "hydration" ||
+            normalizedType == "drink" ||
+            normalizedType == "water" ||
+            normalizedSource == "hydration" ||
+            normalizedSource == "waterlog" {
+            return .drink
+        }
+
+        if normalizedType == "meal" ||
+            normalizedType == "food" ||
+            normalizedType == "nutrition" ||
+            normalizedSource == "nutritionlog" ||
+            normalizedSource == "foodlog" {
+            return .food
+        }
+
+        if normalizedType == "bodyweight" || normalizedType == "body_weight" {
+            return .bodyWeight
+        }
+
+        if normalizedType == "mood" || normalizedType == "checkin" || normalizedType == "check-in" {
+            return .mood
+        }
+
+        if normalizedType == "coachnote" || normalizedType == "coach_note" {
+            return .coachNote
+        }
+
+        if normalizedType == "calendar" || normalizedSource == "calendar" {
+            return .calendar
+        }
+
+        if normalizedType == "sleep" ||
+            normalizedTitle.contains("sleep") ||
+            normalizedTitle.contains("rest") {
+            return .sleep
+        }
+
+        if normalizedType == "workout" || normalizedType == "training" {
+            return .workout
+        }
+
+        if normalizedType == "recovery" {
+            if normalizedTitle.contains("sauna") {
+                return .sauna
+            }
+
+            return .recovery
+        }
+
+        if normalizedTitle.contains("sauna") {
+            return .sauna
+        }
+
+        return .plannedActivity
+    }
+
+    var blocksPlannerTime: Bool {
+        switch timelineEventKind {
+        case .workout, .recovery, .sauna, .calendar, .sleep, .plannedActivity:
+            return true
+        case .food, .drink, .bodyWeight, .mood, .coachNote:
+            return false
+        }
+    }
 }
 
 struct DisplayActivity: Identifiable {
@@ -101,5 +195,50 @@ extension PlannedActivity {
         }
 
         return durationMinutes
+    }
+
+    var completionRatio: Double {
+        guard durationMinutes > 0 else { return isCompleted ? 1 : 0 }
+        return Double(effectiveDurationMinutes) / Double(durationMinutes)
+    }
+
+    var isPartialCompletion: Bool {
+        guard isCompleted, !isSkipped else { return false }
+        guard let actualDurationMinutes else { return false }
+        return actualDurationMinutes > 0 && actualDurationMinutes < durationMinutes
+    }
+
+    var isFullCompletion: Bool {
+        isCompleted && !isSkipped && !isPartialCompletion
+    }
+
+    func terminalState(now: Date) -> PlannedActivityTerminalState {
+        if isSkipped {
+            return .cancelled
+        }
+
+        if isPartialCompletion {
+            return .partial
+        }
+
+        if isCompleted {
+            return .completed
+        }
+
+        if isActive(at: now) {
+            return .active
+        }
+
+        return .planned
+    }
+
+    func isActive(at now: Date) -> Bool {
+        guard !isCompleted, !isSkipped else { return false }
+        let endDate = Calendar.current.date(
+            byAdding: .minute,
+            value: max(effectiveDurationMinutes, durationMinutes),
+            to: date
+        ) ?? date
+        return date <= now && now <= endDate
     }
 }

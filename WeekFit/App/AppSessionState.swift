@@ -112,6 +112,7 @@ final class AppSessionState: ObservableObject {
     @Published var returnToTodayTrigger = UUID()
     @Published var healthRefreshTrigger = UUID()
     @Published var coachRefreshTrigger = UUID()
+    @Published var localDataResetTrigger = UUID()
 
     private var pendingHealthRefreshSources: [String] = []
     private var pendingCoachRefreshSources: [String] = []
@@ -120,6 +121,10 @@ final class AppSessionState: ObservableObject {
 
     func triggerReturnToToday() {
         returnToTodayTrigger = UUID()
+    }
+
+    func triggerLocalDataResetCompleted() {
+        localDataResetTrigger = UUID()
     }
 
     func triggerHealthRefresh(source: String = "unspecified") {

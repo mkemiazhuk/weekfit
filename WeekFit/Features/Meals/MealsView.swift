@@ -192,8 +192,8 @@ struct MealsView: View {
         .onChange(of: plannedActivities) { _, _ in
             updateRecommendationIfNeeded(source: "MealsView.onChange.plannedActivities")
         }
-        .onReceive(nutritionViewModel.$nutritionResult) { _ in
-            updateRecommendationIfNeeded(source: "MealsView.onReceive.nutritionResult")
+        .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
+            updateRecommendationIfNeeded(source: "MealsView.onChange.nutritionCoachStateRefreshID")
         }
         .safeAreaInset(edge: .bottom) {
             bottomFixedActionArea
@@ -247,8 +247,9 @@ struct MealsView: View {
                 }
             }
             .presentationDetents([.height(270)])
-            .presentationCornerRadius(28)
-            .presentationDragIndicator(.visible)
+            .presentationBackground(WeekFitTheme.backgroundColor)
+            .presentationCornerRadius(36)
+            .presentationDragIndicator(.hidden)
         }
         .sheet(item: $creationRoute) { route in
             switch route {
@@ -312,14 +313,8 @@ struct MealsView: View {
         let signature = recommendationSignature()
         guard signature != lastRecommendationSignature else { return }
 
-        let brain = nutritionViewModel.nutritionResult?.brain ?? nutritionResult?.brain
         let nextRecommendation: MealRecommendation?
-        if let brain {
-            let guidance = CoachEngineV3.decide(
-                from: brain,
-                plannedActivities: plannedActivitiesForSelectedDate,
-                selectedDate: selectedDate
-            )
+        if let guidance = nutritionViewModel.coachGuidanceSnapshot?.guidance {
             nextRecommendation = MealRecommendationEngine.make(
                 guidance: guidance,
                 meals: mealItems,
@@ -336,8 +331,10 @@ struct MealsView: View {
     }
 
     private func recommendationSignature() -> String {
-        let goals = nutritionViewModel.nutritionResult?.goals ?? nutritionResult?.goals
-        let metrics = nutritionViewModel.currentMetrics
+        let snapshot = nutritionViewModel.coachMetricsSnapshot
+        let goals = snapshot?.result.goals ?? nutritionResult?.goals
+        let metrics = snapshot?.metrics
+        let guidanceID = nutritionViewModel.coachGuidanceSnapshot?.id.uuidString ?? "guidance=nil"
         let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
         let activitySignature = plannedActivitiesForSelectedDate
             .sorted { $0.id < $1.id }
@@ -376,6 +373,8 @@ struct MealsView: View {
 
         return [
             sourceNutritionSignature(),
+            snapshot?.id.uuidString ?? "snapshot=nil",
+            guidanceID,
             "\(Int(day / 86_400))",
             String(format: "%.1f", metrics?.calories ?? -1),
             String(format: "%.1f", metrics?.protein ?? -1),
@@ -393,8 +392,8 @@ struct MealsView: View {
     }
 
     private func sourceNutritionSignature() -> String {
-        if nutritionViewModel.nutritionResult?.brain != nil {
-            return "environment"
+        if let snapshot = nutritionViewModel.coachMetricsSnapshot {
+            return "snapshot:\(snapshot.id)"
         }
 
         if nutritionResult?.brain != nil {
@@ -795,7 +794,8 @@ struct MealsView: View {
             protein: meal.protein,
             carbs: meal.carbs,
             fats: meal.fats,
-            fiber: meal.fiber
+            fiber: meal.fiber,
+            source: "nutritionLog"
         )
         quickActivity.isCompleted = true
 
@@ -986,7 +986,10 @@ private struct MealCreationChooserSheet: View {
         .padding(.top, 10)
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(background.ignoresSafeArea())
+        .background {
+            background
+                .ignoresSafeArea()
+        }
     }
 
     private func optionRow(
@@ -1324,7 +1327,8 @@ private struct CustomFoodDetailsView: View {
             protein: food.protein,
             carbs: food.carbs,
             fats: food.fats,
-            fiber: food.fiber
+            fiber: food.fiber,
+            source: "nutritionLog"
         )
 
         activity.isCompleted = true
@@ -1884,11 +1888,12 @@ private struct RecommendedTodayMealCard: View {
         if let items = recommendation.meal.builderImageItems, !items.isEmpty {
             BuiltMealPlateView(
                 items: items,
-                plateSize: 72,
-                itemScale: 0.26,
-                offsetScale: 0.28,
+                plateSize: 68,
+                itemScale: 0.23,
+                offsetScale: 0.24,
                 plateOpacity: 0.22,
-                shadowOpacity: 0.12
+                shadowOpacity: 0.12,
+                layoutMode: .compactPreview
             )
             .frame(width: 62, height: 52)
         } else if !recommendation.meal.imageName.isEmpty, UIImage(named: recommendation.meal.imageName) != nil {
@@ -1998,26 +2003,28 @@ private struct HeroMealLibraryRow: View {
                 AsyncCustomFoodPlateView(
                     filename: meal.displayPhotoFilename,
                     initial: meal.placeholderInitial,
-                    plateSize: 112,
-                    itemScale: 0.40,
-                    offsetScale: 0.42,
+                    plateSize: 104,
+                    itemScale: 0.36,
+                    offsetScale: 0.36,
                     plateOpacity: 0.26,
-                    shadowOpacity: 0.18
+                    shadowOpacity: 0.18,
+                    layoutMode: .compactPreview
                 )
-                .frame(width: 138, height: 88)
-                .offset(x: -8, y: 0)
+                .frame(width: 130, height: 84)
+                .offset(x: -6, y: 0)
                 .opacity(0.76)
             } else if let items = meal.builderImageItems, !items.isEmpty {
                 BuiltMealPlateView(
                     items: items,
-                    plateSize: 112,
-                    itemScale: 0.40,
-                    offsetScale: 0.42,
+                    plateSize: 104,
+                    itemScale: 0.36,
+                    offsetScale: 0.36,
                     plateOpacity: 0.26,
-                    shadowOpacity: 0.18
+                    shadowOpacity: 0.18,
+                    layoutMode: .compactPreview
                 )
-                    .frame(width: 138, height: 88)
-                    .offset(x: -8, y: 0)
+                    .frame(width: 130, height: 84)
+                    .offset(x: -6, y: 0)
                     .opacity(0.76)
             } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
@@ -2117,156 +2124,16 @@ private struct BuiltMealPlateBackground: View {
     let items: [MealBuilderImageItem]
 
     var body: some View {
-        let sortedItems = items.sorted { $0.zIndex < $1.zIndex }
-        let hasFoodItems = sortedItems.contains { !$0.id.hasPrefix("drink_") }
-        let isStandalone = sortedItems.count == 1
-
-        ZStack {
-            if hasFoodItems {
-                Ellipse()
-                    .fill(Color.black.opacity(0.14))
-                    .frame(width: 120, height: 26)
-                    .blur(radius: 9)
-                    .offset(y: 32)
-
-                Image("plate-dark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 122, height: 122)
-                    .blendMode(.multiply)
-                    .opacity(0.28)
-            }
-
-            ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
-                Image(item.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: previewItemWidth(item, isStandalone: isStandalone))
-                    .offset(
-                        x: hasFoodItems ? previewItemOffsetX(item, index: index, items: sortedItems, isStandalone: isStandalone) : 0,
-                        y: hasFoodItems ? previewItemOffsetY(item, index: index, items: sortedItems, isStandalone: isStandalone) : 0
-                    )
-                    .rotationEffect(.degrees(hasFoodItems ? previewItemRotation(item, isStandalone: isStandalone) : 0))
-                    .shadow(color: Color.black.opacity(0.20), radius: 6, y: 3)
-                    .zIndex(Double(item.zIndex))
-            }
-        }
+        BuiltMealPlateView(
+            items: items,
+            plateSize: 112,
+            itemScale: 0.38,
+            offsetScale: 0.40,
+            plateOpacity: 0.28,
+            shadowOpacity: 0.20,
+            layoutMode: .compactPreview
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private func previewItemOffsetX(
-        _ item: MealBuilderImageItem,
-        index: Int,
-        items: [MealBuilderImageItem],
-        isStandalone: Bool
-    ) -> CGFloat {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            let sameCategoryBefore = items.prefix(index).filter {
-                itemCategory($0) == itemCategory(item)
-            }.count
-
-            var x = CGFloat(item.offsetX) * 0.46
-
-            if item.offsetY < -20 {
-                x *= 0.72
-            }
-
-            if itemCategory(item) == "veg" && sameCategoryBefore >= 1 {
-                x -= 6
-            }
-
-            if sameCategoryBefore >= 3 {
-                x -= 14
-            }
-
-            return x
-        }
-
-        return 0
-    }
-
-    private func previewItemOffsetY(
-        _ item: MealBuilderImageItem,
-        index: Int,
-        items: [MealBuilderImageItem],
-        isStandalone: Bool
-    ) -> CGFloat {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            let sameCategoryBefore = items.prefix(index).filter {
-                itemCategory($0) == itemCategory(item)
-            }.count
-
-            var y = CGFloat(item.offsetY) * 0.50 - 2
-
-            if item.offsetY < -20 {
-                y += 10
-            }
-
-            if itemCategory(item) == "veg" && sameCategoryBefore >= 1 {
-                y += 6
-            }
-
-            if sameCategoryBefore >= 3 {
-                y += 4
-            }
-
-            return y
-        }
-
-        return -4
-    }
-    
-    private func itemCategory(_ item: MealBuilderImageItem) -> String {
-        if item.id.hasPrefix("base_") { return "base" }
-        if item.id.hasPrefix("protein_") { return "protein" }
-        if item.id.hasPrefix("veg_") { return "veg" }
-        if item.id.hasPrefix("fat_") { return "fat" }
-        if item.id.hasPrefix("sauce_") { return "sauce" }
-        return "other"
-    }
-
-    private func previewItemWidth(_ item: MealBuilderImageItem, isStandalone: Bool) -> CGFloat {
-        let scale: CGFloat = 0.44
-        let baseWidth = CGFloat(item.visualSize) * 1.12 * scale
-
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return baseWidth
-        }
-
-        let ratio = CGFloat(item.grams) / 100
-        let normalized = log2(max(ratio, 0.45))
-
-        let baseScale: CGFloat
-        let gramSensitivity: CGFloat
-        let maxScale: CGFloat
-
-        if item.id.hasPrefix("base_") {
-            baseScale = 0.92
-            gramSensitivity = 0.10
-            maxScale = 1.08
-        } else if item.id.hasPrefix("protein_") {
-            baseScale = 1.00
-            gramSensitivity = 0.10
-            maxScale = 1.14
-        } else if item.id.hasPrefix("veg_") {
-            baseScale = 1.06
-            gramSensitivity = 0.10
-            maxScale = 1.20
-        } else {
-            baseScale = 1.10
-            gramSensitivity = 0.10
-            maxScale = 1.24
-        }
-
-        let scaled = baseScale + normalized * item.visualDensity * gramSensitivity
-        return baseWidth * min(max(scaled, 0.78), maxScale)
-    }
-
-    private func previewItemRotation(_ item: MealBuilderImageItem, isStandalone: Bool) -> Double {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return Double(item.rotation)
-        }
-        return 0
     }
 }
 

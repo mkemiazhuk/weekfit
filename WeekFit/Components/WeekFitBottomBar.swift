@@ -55,29 +55,24 @@ struct WeekFitBottomBar: View {
         .padding(.horizontal, 5)
         .background {
             Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.050),
-                                    Color.white.opacity(0.022),
-                                    Color.black.opacity(0.120)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.14, green: 0.15, blue: 0.17),
+                            Color(red: 0.09, green: 0.10, blue: 0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay {
                     Capsule(style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.090),
-                                    Color.white.opacity(0.030),
-                                    Color.black.opacity(0.220)
+                                    Color.white.opacity(0.08),
+                                    Color.white.opacity(0.03),
+                                    Color.black.opacity(0.25)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -86,7 +81,7 @@ struct WeekFitBottomBar: View {
                         )
                 }
                 .shadow(
-                    color: Color.black.opacity(0.22),
+                    color: Color.black.opacity(0.30),
                     radius: 18,
                     x: 0,
                     y: 10
@@ -184,6 +179,17 @@ struct WeekFitBottomBar: View {
         guard selectedTab != tab else { return }
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        if tab == .coach {
+            #if DEBUG
+            CoachRefreshDebug.log(
+                "[CoachScreenLifecycle]",
+                "CoachTab selected source=WeekFitBottomBar"
+            )
+            #endif
+            selectedTab = tab
+            return
+        }
 
         withAnimation(
             .spring(

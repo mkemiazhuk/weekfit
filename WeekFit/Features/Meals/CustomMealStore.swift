@@ -368,6 +368,19 @@ enum MealPhotoStore {
         try? FileManager.default.removeItem(at: url(for: filename))
     }
 
+    nonisolated static func clearAllStoredPhotos() throws {
+        imageCache.removeAllObjects()
+
+        let directory = photosDirectory
+        guard FileManager.default.fileExists(atPath: directory.path) else {
+            print("[LocalDataReset] Meal photo directory did not exist: \(directory.path)")
+            return
+        }
+
+        try FileManager.default.removeItem(at: directory)
+        print("[LocalDataReset] Cleared meal photo directory: \(directory.path)")
+    }
+
     nonisolated static func url(for filename: String) -> URL {
         photosDirectory.appendingPathComponent(filename)
     }

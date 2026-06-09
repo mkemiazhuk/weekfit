@@ -213,7 +213,9 @@ struct TodayView: View {
                            now = Date()
                            preloadQuickFoodLogDataIfNeeded()
                            preloadQuickDrinkLogDataIfNeeded()
-                           updateNutrition()
+                           if !healthManager.isHealthAccessRequested {
+                               updateNutrition()
+                           }
                            healthRefreshID = UUID()
                         }
                         
@@ -233,7 +235,12 @@ struct TodayView: View {
                     removal: .opacity
                 )
             )
-            .animation(.interactiveSpring(response: 0.42, dampingFraction: 0.88, blendDuration: 0.12), value: selectedTab)
+            .animation(
+                selectedTab == .coach
+                    ? nil
+                    : .interactiveSpring(response: 0.42, dampingFraction: 0.88, blendDuration: 0.12),
+                value: selectedTab
+            )
             
             WeekFitBottomBar(selectedTab: $selectedTab) {
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) { selectedTab = .calendar }
@@ -282,15 +289,28 @@ struct TodayView: View {
         }
         .onAppear {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) { showContent = true }
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onAppear")
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            #if DEBUG
+            if newValue == .coach {
+                CoachRefreshDebug.log(
+                    "[CoachScreenLifecycle]",
+                    "CoachTab selected source=TodayView oldTab=\(oldValue)"
+                )
+            }
+            #endif
         }
         .task(id: healthRefreshID) {
             await refreshHealthAndNutritionAsync()
-            updateTodayCoachInsightIfNeeded(source: "TodayView.task.healthRefreshID")
         }
         .onChange(of: plannedActivities) { _, _ in
             refreshTodayLiveState(refreshHealth: false)
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.plannedActivities")
+        }
+        .onChange(of: appSession.returnToTodayTrigger) { _, _ in
+            handleReturnToTodayRequest()
+        }
+        .onChange(of: appSession.localDataResetTrigger) { _, _ in
+            handleLocalDataResetCompleted()
         }
         .onChange(of: WeekFitActivityCoordinator.shared.completedWorkoutsBatch) { _, _ in
             WeekFitActivityCoordinator.shared.reconcileCompletedWorkouts(
@@ -303,6 +323,7 @@ struct TodayView: View {
         }
         .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { value in
             now = value
+            updateTodayCoachInsightIfNeeded(source: "TodayView.timer")
 
             let calendar = Calendar.current
             if !calendar.isDate(selectedDate, inSameDayAs: value) {
@@ -310,11 +331,13 @@ struct TodayView: View {
                     selectedDate = value
                     healthRefreshID = UUID()
                 }
-                updateTodayCoachInsightIfNeeded(source: "TodayView.timer.selectedDateChanged")
             }
         }
-        .onReceive(nutritionViewModel.$nutritionResult) { _ in
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onReceive.nutritionResult")
+        .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.nutritionCoachStateRefreshID")
+        }
+        .onChange(of: nutritionViewModel.coachGuidanceSnapshot?.id) { _, _ in
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.coachGuidanceSnapshot")
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -351,8 +374,11 @@ struct TodayView: View {
                 refreshID: $healthRefreshID
             )
             .presentationDetents([.height(370)])
+            .presentationBackground(
+                Color(red: 0.035, green: 0.043, blue: 0.047)
+            )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
@@ -432,10 +458,20 @@ struct TodayView: View {
                     }
                 }
             }
-            .presentationDetents([.height(370), .large])
+            .presentationDetents([.height(370)])
+            .presentationBackground(
+                Color(red: 0.035, green: 0.043, blue: 0.047)
+            )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
+            .presentationDragIndicator(.hidden)
+        }
+        .onChange(of: showDirectMealLogSheet) { _, isPresented in
+            if isPresented {
+                prepareQuickNutritionLogData()
+            }
+        }
+        .onChange(of: userSettings.customMealsStorage) { _, _ in
+            refreshQuickLogMealsFromStorage()
         }
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
@@ -479,13 +515,31 @@ struct TodayView: View {
                     }
                 }
             }
-            .presentationDetents([.height(370), .large])
+            .presentationDetents([.height(370)])
+            .presentationBackground(
+                Color(red: 0.035, green: 0.043, blue: 0.047)
+            )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
+            .presentationDragIndicator(.hidden)
         }
     }
     
+    private enum QuickSheetTypography {
+        static let title = Font.system(size: 15.5, weight: .bold, design: .rounded)
+        static let subtitle = Font.system(size: 12.2, weight: .medium, design: .rounded)
+        static let meta = Font.system(size: 11.2, weight: .semibold, design: .rounded)
+        static let badge = Font.system(size: 8.8, weight: .bold, design: .rounded)
+    }
+
+    private enum QuickLogRowMetrics {
+        static let height: CGFloat = 74
+        static let horizontalPadding: CGFloat = 12
+        static let imageSize: CGFloat = 60
+        static let imageCornerRadius: CGFloat = 16
+        static let cardCornerRadius: CGFloat = 23
+        static let plusButtonSize: CGFloat = 42
+    }
+
     private func openActivityIntelligence() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         showActivityIntelligence = true
@@ -621,16 +675,12 @@ struct TodayView: View {
     
     private func prepareQuickNutritionLogData() {
         let start = Self.debugStart("quickNutrition.prepare")
-        let decodedMeals = (try? JSONDecoder().decode(
-            [Meals].self,
-            from: userSettings.customMealsStorage.data(using: .utf8) ?? Data()
-        )) ?? []
         let repository = NutritionRepository()
         let usage = loadQuickItemUsage()
         let quickItems = repository.loadQuickItems()
 
         setQuickItemUsage(usage)
-        setQuickLogMeals(decodedMeals)
+        refreshQuickLogMealsFromStorage()
         setQuickLogSnacks(sortByUsage(quickItems.filter { $0.category == .snack }, usage: usage))
         Self.debugEnd(
             "quickNutrition.prepare meals=\(quickLogMeals.count) snacks=\(quickLogSnacks.count)",
@@ -638,8 +688,15 @@ struct TodayView: View {
         )
     }
 
+    private func refreshQuickLogMealsFromStorage() {
+        setQuickLogMeals(CustomMealStore.load(from: userSettings.customMealsStorage))
+    }
+
     private func preloadQuickFoodLogDataIfNeeded() {
-        guard !didPreloadQuickFood else { return }
+        guard !didPreloadQuickFood else {
+            refreshQuickLogMealsFromStorage()
+            return
+        }
         didPreloadQuickFood = true
         prepareQuickNutritionLogData()
     }
@@ -726,39 +783,79 @@ struct TodayView: View {
         items.map { item in
             QuickItemDisplayRow(
                 item: item,
-                subtitleText: item.calories > 0 ? "\(item.calories) kcal • \(item.subtitle)" : item.subtitle,
-                usesAssetImage: UIImage(named: item.imageName) != nil
+                subtitleText: item.subtitle,
+                metaText: quickItemMetaText(for: item),
+                usesAssetImage: !item.imageName.isEmpty && UIImage(named: item.imageName) != nil
             )
         }
+    }
+
+    private func quickItemMetaText(for item: QuickItem) -> String? {
+        let macros = "P \(item.protein)g • C \(item.carbs)g • F \(item.fats)g"
+        let hasMacros = item.protein > 0 || item.carbs > 0 || item.fats > 0
+
+        if item.calories > 0, hasMacros {
+            return "\(item.calories) kcal • \(macros)"
+        }
+
+        if item.calories > 0 {
+            return "\(item.calories) kcal"
+        }
+
+        return hasMacros ? macros : nil
     }
 
     private func makeQuickMealRows(_ meals: [Meals]) -> [QuickMealDisplayRow] {
-        let hour = Calendar.current.component(.hour, from: Date())
-
         return meals.map { meal in
-            QuickMealDisplayRow(
+            let isFoodProduct = meal.isFoodProduct
+            let builderImageItems = isFoodProduct
+                ? []
+                : (meal.builderImageItems ?? []).sorted { $0.zIndex < $1.zIndex }
+
+            return QuickMealDisplayRow(
                 meal: meal,
-                title: meal.shortTitle,
-                subtitle: meal.subtitle,
-                macroText: "P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fats)g",
-                isSuggested: isMeal(meal, matchingHour: hour),
-                usesAssetImage: !meal.imageName.isEmpty && UIImage(named: meal.imageName) != nil,
-                sortedBuilderImageItems: (meal.builderImageItems ?? []).sorted { $0.zIndex < $1.zIndex }
+                title: isFoodProduct ? meal.title : meal.shortTitle,
+                subtitle: quickMealSubtitle(for: meal),
+                macroText: quickMealMacroText(for: meal),
+                usesAssetImage: !isFoodProduct && !meal.imageName.isEmpty && UIImage(named: meal.imageName) != nil,
+                sortedBuilderImageItems: builderImageItems,
+                localPhotoFilename: quickMealPhotoFilename(for: meal),
+                isFoodProduct: isFoodProduct,
+                placeholderInitial: meal.placeholderInitial
             )
         }
     }
 
-    private func isMeal(_ meal: Meals, matchingHour hour: Int) -> Bool {
-        switch meal.slot {
-        case .breakfast: return hour >= 0 && hour < 11
-        case .lunch:     return hour >= 11 && hour < 16
-        case .snack:     return hour >= 16 && hour < 18
-        case .dinner:    return hour >= 18 && hour <= 23
+    private func quickMealPhotoFilename(for meal: Meals) -> String? {
+        [
+            meal.localPhotoThumbnailFilename,
+            meal.localPhotoFilename
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty }
+    }
+
+    private func quickMealSubtitle(for meal: Meals) -> String {
+        if meal.isFoodProduct {
+            return meal.servingDescription
         }
+
+        let subtitle = meal.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return subtitle.isEmpty ? meal.servingDescription : subtitle
+    }
+
+    private func quickMealMacroText(for meal: Meals) -> String {
+        let macros = "P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fats)g"
+
+        if meal.calories > 0 {
+            return "\(meal.calories) kcal • \(macros)"
+        }
+
+        return macros
     }
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
-        guard let brain = nutritionViewModel.nutritionResult?.brain else {
+        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
             if cachedTodayCoachInsight != nil || !lastTodayCoachInsightSignature.isEmpty {
                 cachedTodayCoachInsight = nil
                 lastTodayCoachInsightSignature = ""
@@ -770,11 +867,29 @@ struct TodayView: View {
         guard signature != lastTodayCoachInsightSignature else { return }
 
         let start = Self.debugStart("todayCoachInsight.update source=\(source)")
-        let output = CoachEngineV3.decide(
-            from: brain,
-            plannedActivities: selectedDayActivities,
-            selectedDate: selectedDate
-        )
+        let inputSignature = canonicalCoachGuidanceInputSignature(snapshot: snapshot)
+        let output: CoachGuidanceV3
+        if let committed = nutritionViewModel.committedCoachGuidance(
+            metricsSnapshotID: snapshot.id,
+            inputSignature: inputSignature
+        ) {
+            output = committed
+        } else {
+            let next = CoachEngineV3.decide(
+                from: snapshot.brain.refreshedForCurrentLocalTime(activities: plannedActivities),
+                plannedActivities: plannedActivities,
+                selectedDate: selectedDate,
+                recoveryContext: snapshot.recoveryContext,
+                nutritionContext: snapshot.nutritionContext
+            )
+            nutritionViewModel.commitCoachGuidance(
+                next,
+                metricsSnapshotID: snapshot.id,
+                inputSignature: inputSignature,
+                source: "TodayView.\(source)"
+            )
+            output = next
+        }
         let compact = output.v5Interpretation.compactInsight
         let nextInsight = TodayCoachInsight(
             title: compact.title,
@@ -791,11 +906,11 @@ struct TodayView: View {
     }
 
     private func todayCoachInsightSignature() -> String {
-        let result = nutritionViewModel.nutritionResult
-        let metrics = nutritionViewModel.currentMetrics
-        let goals = result?.goals
+        let snapshot = nutritionViewModel.coachMetricsSnapshot
+        let metrics = snapshot?.metrics
+        let goals = snapshot?.result.goals
         let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let activitiesSignature = selectedDayActivities
+        let activitiesSignature = plannedActivities
             .sorted { $0.id < $1.id }
             .map { activity in
                 [
@@ -818,18 +933,61 @@ struct TodayView: View {
 
         return [
             "\(Int(day / 86_400))",
+            coachCopyTimePhaseSignature(),
             String(format: "%.1f", metrics?.calories ?? -1),
             String(format: "%.1f", metrics?.protein ?? -1),
             String(format: "%.1f", metrics?.carbs ?? -1),
             String(format: "%.1f", metrics?.fats ?? -1),
-            String(format: "%.1f", metrics?.waterLiters ?? -1),
+            String(format: "%.1f", nutritionViewModel.totalWaterLiters),
             String(format: "%.1f", goals?.calories ?? -1),
             String(format: "%.1f", goals?.protein ?? -1),
             String(format: "%.1f", goals?.carbs ?? -1),
             String(format: "%.1f", goals?.fats ?? -1),
             String(format: "%.1f", goals?.waterLiters ?? -1),
+            snapshot?.id.uuidString ?? "snapshot=nil",
             activitiesSignature
         ].joined(separator: "#")
+    }
+
+    private func canonicalCoachGuidanceInputSignature(snapshot: CoachMetricsSnapshot) -> String {
+        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
+        let activitiesSignature = plannedActivities
+            .sorted { $0.id < $1.id }
+            .map { activity in
+                [
+                    activity.id,
+                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
+                    activity.type,
+                    activity.title,
+                    "\(activity.durationMinutes)",
+                    "\(activity.actualDurationMinutes ?? -1)",
+                    activity.imageName,
+                    "\(activity.isCompleted)",
+                    "\(activity.isSkipped)",
+                    activity.source
+                ].joined(separator: ":")
+            }
+            .joined(separator: "|")
+
+        return [
+            snapshot.id.uuidString,
+            "\(Int(day / 86_400))",
+            coachCopyTimePhaseSignature(),
+            activitiesSignature
+        ].joined(separator: "#")
+    }
+
+    private func coachCopyTimePhaseSignature() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        switch hour {
+        case 6..<11:
+            return "morning"
+        case 11..<16:
+            return "midday"
+        default:
+            return "evening"
+        }
     }
 
     private static let logger = Logger(subsystem: "WeekFit", category: "TodayView")
@@ -932,9 +1090,11 @@ struct TodayView: View {
         let title: String
         let subtitle: String
         let macroText: String
-        let isSuggested: Bool
         let usesAssetImage: Bool
         let sortedBuilderImageItems: [MealBuilderImageItem]
+        let localPhotoFilename: String?
+        let isFoodProduct: Bool
+        let placeholderInitial: String
 
         var id: String { meal.id }
     }
@@ -950,150 +1110,191 @@ struct TodayView: View {
         private let cardBackground = WeekFitTheme.cardBackground
 
         var body: some View {
-            HStack(spacing: 12) {
-                mealImage
-                    .frame(width: 78, height: 62)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                onTap()
+            } label: {
+                HStack(spacing: 12) {
+                    mealImage
+                        .frame(
+                            width: QuickLogRowMetrics.imageSize,
+                            height: QuickLogRowMetrics.imageSize
+                        )
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(row.title)
-                            .font(.system(size: 17.2, weight: .bold, design: .rounded))
+                            .font(QuickSheetTypography.title)
                             .foregroundStyle(textPrimary)
                             .tracking(-0.35)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
 
-                        if row.isSuggested {
-                            Text("Suggested")
-                                .font(.system(size: 8.8, weight: .bold))
-                                .tracking(0.4)
-                                .foregroundStyle(accent)
-                                .padding(.horizontal, 7)
-                                .frame(height: 18)
-                                .background {
-                                    Capsule()
-                                        .fill(accent.opacity(0.08))
-                                }
-                                .overlay {
-                                    Capsule()
-                                        .stroke(accent.opacity(0.22), lineWidth: 1)
-                                }
-                        }
+                        Text(row.subtitle)
+                            .font(QuickSheetTypography.subtitle)
+                            .foregroundStyle(textSecondary.opacity(0.56))
+                            .lineLimit(1)
+
+                        Text(row.macroText)
+                            .font(QuickSheetTypography.meta)
+                            .foregroundStyle(textSecondary.opacity(0.62))
+                            .lineLimit(1)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text(row.subtitle)
-                        .font(.system(size: 12.4, weight: .medium))
-                        .foregroundStyle(textSecondary.opacity(0.56))
-                        .lineLimit(1)
-
-                    Text(row.macroText)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.74))
-                        .lineLimit(1)
+                    plusButton
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    onTap()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(accent)
-                        .frame(width: 42, height: 42)
-                        .background {
-                            Circle()
-                                .fill(accent.opacity(0.18))
-                        }
-                        .overlay {
-                            Circle()
-                                .stroke(accent.opacity(0.14), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
+                .padding(.horizontal, QuickLogRowMetrics.horizontalPadding)
+                .frame(height: QuickLogRowMetrics.height)
+                .quickLogCardBackground(
+                    cardSecondary: cardSecondary,
+                    cardBackground: cardBackground,
+                    cornerRadius: QuickLogRowMetrics.cardCornerRadius
+                )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(height: 86)
-            .background {
-                RoundedRectangle(cornerRadius: 23, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                cardSecondary.opacity(0.97),
-                                cardBackground.opacity(0.98)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 23, style: .continuous)
-                    .stroke(Color.white.opacity(0.035), lineWidth: 1)
-            }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
             .shadow(color: accent.opacity(0.035), radius: 12, y: 5)
         }
 
-        private var mealImage: some View {
-            Group {
-                if row.meal.isFoodProduct {
-                    CustomFoodVisualView(
-                        image: nil,
-                        placeholderInitial: row.meal.placeholderInitial,
-                        size: 54,
-                        imageScale: 0.62
-                    )
-                    .offset(x: -6)
-                } else if !row.sortedBuilderImageItems.isEmpty {
-                    builtMealImage(row.sortedBuilderImageItems)
-                } else if row.usesAssetImage {
-                    Image(row.meal.imageName)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color.white.opacity(0.04))
-                        .overlay {
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 20))
-                                .foregroundColor(WeekFitTheme.tertiaryText)
-                        }
+        private var plusButton: some View {
+            Image(systemName: "plus")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(accent)
+                .frame(
+                    width: QuickLogRowMetrics.plusButtonSize,
+                    height: QuickLogRowMetrics.plusButtonSize
+                )
+                .background {
+                    Circle()
+                        .fill(accent.opacity(0.18))
                 }
+                .overlay {
+                    Circle()
+                        .stroke(accent.opacity(0.14), lineWidth: 1)
+                }
+        }
+
+        private var mealImage: some View {
+            ZStack {
+                RoundedRectangle(
+                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
+                    style: .continuous
+                )
+                .fill(Color.white.opacity(0.04))
+
+                mealImageContent
+
+                quickFoodImageTone
             }
-            .frame(width: 78, height: 62)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(width: QuickLogRowMetrics.imageSize, height: QuickLogRowMetrics.imageSize)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
+                    style: .continuous
+                )
+            )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
+                    style: .continuous
+                )
+                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+            }
+        }
+
+        private var imageContentSize: CGFloat {
+            row.isFoodProduct
+                ? QuickLogRowMetrics.imageSize * 0.68
+                : QuickLogRowMetrics.imageSize * 0.92
+        }
+
+        private var imageContentCornerRadius: CGFloat {
+            QuickLogRowMetrics.imageCornerRadius * 0.70
+        }
+
+        private var quickFoodImageTone: some View {
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.04),
+                    Color.black.opacity(0.16)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blendMode(.multiply)
+            .allowsHitTesting(false)
+        }
+
+        @ViewBuilder
+        private var mealImageContent: some View {
+            if row.isFoodProduct {
+                AsyncMealPhotoView(filename: row.localPhotoFilename) { image in
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(
+                                width: imageContentSize,
+                                height: imageContentSize
+                            )
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: imageContentCornerRadius,
+                                    style: .continuous
+                                )
+                            )
+                            .saturation(0.88)
+                            .contrast(0.92)
+                            .brightness(-0.035)
+                    } else {
+                        CustomFoodVisualView(
+                            image: nil,
+                            placeholderInitial: row.placeholderInitial,
+                            size: imageContentSize,
+                            imageScale: 0.62
+                        )
+                    }
+                }
+            } else if !row.sortedBuilderImageItems.isEmpty {
+                builtMealImage(row.sortedBuilderImageItems)
+            } else if row.usesAssetImage {
+                Image(row.meal.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(
+                        width: imageContentSize,
+                        height: imageContentSize
+                    )
+                    .saturation(0.94)
+                    .contrast(0.96)
+            } else {
+                Image(systemName: "fork.knife")
+                    .font(.system(size: 20))
+                    .foregroundColor(WeekFitTheme.tertiaryText)
+            }
         }
 
         private func builtMealImage(_ items: [MealBuilderImageItem]) -> some View {
-            let hasFoodItems = items.contains { !$0.id.hasPrefix("drink_") }
-
             return ZStack {
                 Color.black.opacity(0.10)
 
-                if hasFoodItems {
-                    Image("plate-dark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 74, height: 74)
-                }
-
-                ForEach(items) { item in
-                    Image(item.imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: CGFloat(item.visualSize) * 0.31)
-                        .zIndex(Double(item.zIndex))
-                }
+                BuiltMealPlateView(
+                    items: items,
+                    plateSize: imageContentSize,
+                    itemScale: 0.33,
+                    offsetScale: 0.30,
+                    plateOpacity: 0.42,
+                    shadowOpacity: 0.12,
+                    layoutMode: .compactPreview
+                )
             }
+            .frame(width: imageContentSize, height: imageContentSize)
         }
     }
 
     private struct QuickItemDisplayRow: Identifiable, Equatable {
         let item: QuickItem
         let subtitleText: String
+        let metaText: String?
         let usesAssetImage: Bool
 
         var id: String { item.id }
@@ -1110,49 +1311,70 @@ struct TodayView: View {
             } label: {
                 HStack(spacing: 12) {
                     ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.045))
-                            .frame(width: 44, height: 44)
+                        RoundedRectangle(
+                            cornerRadius: QuickLogRowMetrics.imageCornerRadius,
+                            style: .continuous
+                        )
+                        .fill(Color.white.opacity(0.045))
+                        .frame(
+                            width: QuickLogRowMetrics.imageSize,
+                            height: QuickLogRowMetrics.imageSize
+                        )
 
                         if row.usesAssetImage {
                             Image(row.item.imageName)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 38, height: 38)
                         } else {
                             Image(systemName: row.item.icon)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(accentColor)
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(row.item.title)
-                            .font(.system(size: 14.5, weight: .bold))
+                            .font(QuickSheetTypography.title)
                             .foregroundStyle(.white.opacity(0.95))
+                            .lineLimit(1)
 
                         Text(row.subtitleText)
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.45))
+                            .font(QuickSheetTypography.subtitle)
+                            .foregroundStyle(.white.opacity(0.50))
                             .lineLimit(1)
-                    }
 
-                    Spacer()
+                        if let metaText = row.metaText {
+                            Text(metaText)
+                                .font(QuickSheetTypography.meta)
+                                .foregroundStyle(.white.opacity(0.56))
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.black.opacity(0.82))
-                        .frame(width: 30, height: 30)
-                        .background(
-                            Circle()
-                                .fill(accentColor)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(accentColor)
+                        .frame(
+                            width: QuickLogRowMetrics.plusButtonSize,
+                            height: QuickLogRowMetrics.plusButtonSize
                         )
+                        .background {
+                            Circle()
+                                .fill(accentColor.opacity(0.18))
+                        }
+                        .overlay {
+                            Circle()
+                                .stroke(accentColor.opacity(0.14), lineWidth: 1)
+                        }
                 }
-                .padding(.horizontal, 12)
-                .frame(height: 58)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.035))
+                .padding(.horizontal, QuickLogRowMetrics.horizontalPadding)
+                .frame(height: QuickLogRowMetrics.height)
+                .quickLogCardBackground(
+                    cardSecondary: WeekFitTheme.cardSecondary,
+                    cardBackground: WeekFitTheme.cardBackground,
+                    cornerRadius: QuickLogRowMetrics.cardCornerRadius
                 )
             }
             .buttonStyle(.plain)
@@ -1307,9 +1529,7 @@ struct TodayView: View {
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                selectedTab = .coach
-            }
+            selectedTab = .coach
         } label: {
             HStack(spacing: 12) {
                 ZStack {
@@ -1914,15 +2134,7 @@ struct TodayView: View {
             let type = activity.type.lowercased()
 
             guard type == "workout" || type == "recovery" else { return false }
-            guard !activity.isCompleted, !activity.isSkipped else { return false }
-
-            let endDate = Calendar.current.date(
-                byAdding: .minute,
-                value: activity.durationMinutes,
-                to: activity.date
-            ) ?? activity.date
-
-            return activity.date <= now && now <= endDate
+            return activity.terminalState(now: now) == .active
         }
     }
     
@@ -1954,8 +2166,7 @@ struct TodayView: View {
                 to: activity.date
             ) ?? activity.date
 
-            return !activity.isCompleted
-                && !activity.isSkipped
+            return activity.terminalState(now: now) == .planned
                 && now > eventEndDate
                 && !isCoveredByActiveSession(activity)
         }
@@ -2027,9 +2238,7 @@ struct TodayView: View {
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                            selectedTab = .coach
-                        }
+                        selectedTab = .coach
                     } label: {
                         HStack(alignment: .center, spacing: 14) {
                             ZStack {
@@ -2111,7 +2320,7 @@ struct TodayView: View {
         .sheet(item: $activityToConfirm) { activity in
             missedConfirmationSheet(activity)
                 .presentationDetents([.fraction(0.32)])
-                .presentationDragIndicator(.visible)
+                .presentationDragIndicator(.hidden)
         }
     }
     
@@ -2122,6 +2331,40 @@ struct TodayView: View {
         if refreshHealth {
             healthRefreshID = UUID()
         }
+    }
+
+    private func handleReturnToTodayRequest() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            selectedTab = .today
+            selectedDate = Date()
+        }
+    }
+
+    private func handleLocalDataResetCompleted() {
+        showActivityIntelligence = false
+        showNutritionDetails = false
+        showRecoveryDetails = false
+        showProfile = false
+        showDirectWorkoutLogSheet = false
+        showDirectMealLogSheet = false
+        showDirectDrinkLogSheet = false
+        showDirectRecoveryLogSheet = false
+        activityToConfirm = nil
+        isEditingActivity = false
+
+        setQuickLogMeals([])
+        setQuickLogSnacks([])
+        setQuickLogDrinks([])
+        setQuickItemUsage([:])
+        didPreloadQuickFood = false
+        didPreloadQuickDrinks = false
+        cachedTodayCoachInsight = nil
+        lastTodayCoachInsightSignature = ""
+
+        nutritionViewModel.resetLocalState()
+        handleReturnToTodayRequest()
+        now = Date()
+        healthRefreshID = UUID()
     }
     
     private func todayCoachInsight(
@@ -2230,8 +2473,7 @@ struct TodayView: View {
     private func nextRelevantActivity(after activity: PlannedActivity) -> PlannedActivity? {
         selectedDayActivities
             .filter {
-                !$0.isCompleted &&
-                !$0.isSkipped &&
+                $0.terminalState(now: Date()) == .planned &&
                 $0.date > Date()
             }
             .filter { $0.id != activity.id }
@@ -2513,7 +2755,11 @@ struct TodayView: View {
         nutritionViewModel.updateNutrition(
             metrics: metrics,
             profile: profile,
-            plannedActivities: selectedDayActivities
+            plannedActivities: selectedDayActivities,
+            recoveryContext: CoachRecoveryContext(
+                recoveryPercent: Int(healthManager.recoveryPercent),
+                sleepHours: healthManager.sleepHours
+            )
         )
     }
 
@@ -2683,6 +2929,34 @@ struct TodayView: View {
 
     private var selectedDayActivities: [PlannedActivity] {
         plannedActivities.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }.sorted { $0.date < $1.date }
+    }
+}
+
+private extension View {
+    func quickLogCardBackground(
+        cardSecondary: Color,
+        cardBackground: Color,
+        cornerRadius: CGFloat
+    ) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            cardSecondary.opacity(0.97),
+                            cardBackground.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.035), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
     }
 }
 

@@ -14,6 +14,8 @@ final class NutritionViewModel: ObservableObject {
     @Published var nutritionResult: NutritionResult?
     @Published var currentMetrics: DailyNutritionMetrics?
     @Published var currentProfile: UserNutritionProfile?
+    @Published private(set) var coachMetricsSnapshot: CoachMetricsSnapshot?
+    @Published private(set) var coachGuidanceSnapshot: CoachGuidanceSnapshot?
     @Published private(set) var coachStateRefreshID = UUID()
     
     @Published var manualWaterLiters: Double = 0
@@ -26,6 +28,22 @@ final class NutritionViewModel: ObservableObject {
     init() { load() }
 
     func load() { meals = repository.loadMeals() }
+
+    func resetLocalState() {
+        load()
+        plannedMeals = []
+        selectedCategory = nil
+        selectedMeal = nil
+        nutritionResult = nil
+        currentMetrics = nil
+        currentProfile = nil
+        coachMetricsSnapshot = nil
+        coachGuidanceSnapshot = nil
+        coachStateRefreshID = UUID()
+        manualWaterLiters = 0
+        cachedPlannedActivities = []
+        lastNutritionStateSignature = ""
+    }
 
     /// Safe UI calculation output mapping directly to HomeView Daily Status circles
     var nutritionPercent: Int {
@@ -42,6 +60,7 @@ final class NutritionViewModel: ObservableObject {
         metrics: DailyNutritionMetrics,
         profile: UserNutritionProfile,
         plannedActivities: [PlannedActivity] = [],
+        recoveryContext: CoachRecoveryContext? = nil,
         debugSource: String = "unspecified"
     ) {
         #if DEBUG
@@ -89,11 +108,15 @@ final class NutritionViewModel: ObservableObject {
             profile: automaticProfile,
             activities: plannedActivities
         )
+        let resolvedRecoveryContext = recoveryContext ??
+            coachMetricsSnapshot?.recoveryContext ??
+            CoachRecoveryContext(recoveryPercent: 0, sleepHours: updatedMetrics.sleepHours)
         let nextSignature = nutritionStateSignature(
             metrics: updatedMetrics,
             profile: automaticProfile,
             result: nextNutritionResult,
-            plannedActivities: plannedActivities
+            plannedActivities: plannedActivities,
+            recoveryContext: resolvedRecoveryContext
         )
 
         guard nextSignature != lastNutritionStateSignature else {
@@ -101,11 +124,21 @@ final class NutritionViewModel: ObservableObject {
         }
 
         lastNutritionStateSignature = nextSignature
+        let nextSnapshot = makeCoachMetricsSnapshot(
+            metrics: updatedMetrics,
+            profile: automaticProfile,
+            result: nextNutritionResult,
+            completedMeals: completedMeals,
+            recoveryContext: resolvedRecoveryContext,
+            signature: nextSignature,
+            source: debugSource
+        )
         self.currentMetrics = updatedMetrics
         self.currentProfile = automaticProfile
         self.nutritionResult = nextNutritionResult
+        self.coachMetricsSnapshot = nextSnapshot
         let oldRefreshID = coachStateRefreshID
-        let newRefreshID = UUID()
+        let newRefreshID = nextSnapshot.id
         #if DEBUG
         let waterGoal = nutritionResult?.goals.waterLiters ?? 0
         let mealDebug = completedMeals
@@ -119,17 +152,53 @@ final class NutritionViewModel: ObservableObject {
         )
         CoachRefreshDebug.log(
             "[CoachRefreshDebug]",
-            "NutritionViewModel.updateNutrition source=\(debugSource) activities=\(plannedActivities.count) uniqueActivities=\(uniqueActivityIDs.count) duplicateActivities=\(duplicateActivitiesCount) hydrationActivities=\(hydrationActivitiesCount) meals=\(completedMeals.count) earlyMorning=\(isEarlyMorning) manualWater=\(String(format: "%.2f", manualWaterLiters)) \(CoachRefreshDebug.hydrationSummary(current: updatedMetrics.waterLiters, goal: waterGoal)) coachStateRefreshID \(CoachRefreshDebug.uuidChange(oldValue: oldRefreshID, newValue: newRefreshID))"
+            "NutritionViewModel.updateNutrition source=\(debugSource) snapshot=\(nextSnapshot.id) activities=\(plannedActivities.count) uniqueActivities=\(uniqueActivityIDs.count) duplicateActivities=\(duplicateActivitiesCount) hydrationActivities=\(hydrationActivitiesCount) meals=\(completedMeals.count) earlyMorning=\(isEarlyMorning) manualWater=\(String(format: "%.2f", manualWaterLiters)) \(CoachRefreshDebug.hydrationSummary(current: updatedMetrics.waterLiters, goal: waterGoal)) recoveryPercent=\(resolvedRecoveryContext.recoveryPercent) sleepHours=\(String(format: "%.2f", resolvedRecoveryContext.sleepHours)) coachStateRefreshID \(CoachRefreshDebug.uuidChange(oldValue: oldRefreshID, newValue: newRefreshID))"
         )
         #endif
         coachStateRefreshID = newRefreshID
+    }
+
+    func committedCoachGuidance(
+        metricsSnapshotID: UUID,
+        inputSignature: String
+    ) -> CoachGuidanceV3? {
+        guard let snapshot = coachGuidanceSnapshot,
+              snapshot.metricsSnapshotID == metricsSnapshotID,
+              snapshot.inputSignature == inputSignature else {
+            return nil
+        }
+
+        return snapshot.guidance
+    }
+
+    func commitCoachGuidance(
+        _ guidance: CoachGuidanceV3,
+        metricsSnapshotID: UUID,
+        inputSignature: String,
+        source: String
+    ) {
+        if let existing = coachGuidanceSnapshot,
+           existing.metricsSnapshotID == metricsSnapshotID,
+           existing.inputSignature == inputSignature {
+            return
+        }
+
+        coachGuidanceSnapshot = CoachGuidanceSnapshot(
+            id: UUID(),
+            createdAt: Date(),
+            source: source,
+            metricsSnapshotID: metricsSnapshotID,
+            inputSignature: inputSignature,
+            guidance: guidance
+        )
     }
 
     private func nutritionStateSignature(
         metrics: DailyNutritionMetrics,
         profile: UserNutritionProfile,
         result: NutritionResult,
-        plannedActivities: [PlannedActivity]
+        plannedActivities: [PlannedActivity],
+        recoveryContext: CoachRecoveryContext
     ) -> String {
         let activitySignature = plannedActivities
             .sorted { $0.id < $1.id }
@@ -176,8 +245,45 @@ final class NutritionViewModel: ObservableObject {
             rounded(result.goals.fiber),
             rounded(result.goals.waterLiters),
             rounded(result.targetCalories),
+            "\(recoveryContext.recoveryPercent)",
+            rounded(recoveryContext.sleepHours),
             activitySignature
         ].joined(separator: "#")
+    }
+
+    private func makeCoachMetricsSnapshot(
+        metrics: DailyNutritionMetrics,
+        profile: UserNutritionProfile,
+        result: NutritionResult,
+        completedMeals: [PlannedActivity],
+        recoveryContext: CoachRecoveryContext,
+        signature: String,
+        source: String
+    ) -> CoachMetricsSnapshot {
+        CoachMetricsSnapshot(
+            id: UUID(),
+            createdAt: Date(),
+            source: source,
+            metrics: metrics,
+            profile: profile,
+            result: result,
+            nutritionContext: CoachNutritionContext(
+                caloriesCurrent: metrics.calories,
+                caloriesGoal: result.goals.calories,
+                proteinCurrent: metrics.protein,
+                proteinGoal: result.goals.protein,
+                carbsCurrent: metrics.carbs,
+                carbsGoal: result.goals.carbs,
+                fatsCurrent: metrics.fats,
+                fatsGoal: result.goals.fats,
+                waterCurrent: metrics.waterLiters,
+                waterGoal: result.goals.waterLiters,
+                mealsCount: completedMeals.count,
+                lastMealTime: completedMeals.last?.date
+            ),
+            recoveryContext: recoveryContext,
+            signature: signature
+        )
     }
 
     private func rounded(_ value: Double) -> String {
@@ -285,7 +391,8 @@ final class NutritionViewModel: ObservableObject {
             carbs: finalCarbs,
             fats: finalFats,
             isCompleted: true,
-            isSkipped: false
+            isSkipped: false,
+            source: "nutritionLog"
         )
         
         context.insert(newActivity)
@@ -321,7 +428,8 @@ final class NutritionViewModel: ObservableObject {
             carbs: 25,
             fats: 0,
             isCompleted: true,
-            isSkipped: false
+            isSkipped: false,
+            source: "nutritionLog"
         )
         
         context.insert(newActivity)
@@ -367,7 +475,8 @@ extension NutritionViewModel {
             carbs: finalCarbs,
             fats: finalFats,
             isCompleted: true,
-            isSkipped: false
+            isSkipped: false,
+            source: "nutritionLog"
         )
         
         context.insert(newMealActivity)

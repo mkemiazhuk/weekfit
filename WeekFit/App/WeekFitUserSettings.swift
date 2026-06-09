@@ -9,18 +9,32 @@ final class WeekFitUserSettings: ObservableObject {
     @Published private(set) var customMealsStorage: String
 
     private init() {
-        profileInitials = UserDefaults.standard.string(forKey: ProfileService.Keys.initials) ?? "P"
+        ProfileService.migrateProfileStorageIfNeeded()
+        profileInitials = ProfileService.resolvedInitials()
         customMealsStorage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
     }
 
     func refreshFromStorage() {
-        setProfileInitials(UserDefaults.standard.string(forKey: ProfileService.Keys.initials) ?? "P")
-        setCustomMealsStorage(UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? "")
+        ProfileService.migrateProfileStorageIfNeeded()
+        let nextInitials = ProfileService.resolvedInitials()
+        let nextCustomMealsStorage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
+
+        if profileInitials != nextInitials {
+            profileInitials = nextInitials
+        }
+
+        if customMealsStorage != nextCustomMealsStorage {
+            customMealsStorage = nextCustomMealsStorage
+        }
     }
 
     func setProfileInitials(_ value: String) {
-        guard profileInitials != value else { return }
-        profileInitials = value
+        let nextInitials = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedInitials = nextInitials.isEmpty ? "P" : nextInitials
+        UserDefaults.standard.set(resolvedInitials, forKey: ProfileService.Keys.initials)
+
+        guard profileInitials != resolvedInitials else { return }
+        profileInitials = resolvedInitials
     }
 
     func setCustomMealsStorage(_ value: String) {

@@ -173,6 +173,19 @@ enum CoachActionIntent: Hashable {
     case keepDayFlexible
 }
 
+private enum HeatPreparationHydrationState {
+    case notStarted
+    case stillLow
+    case improving
+    case sufficient
+}
+
+private enum CoachRecoveryDayCopyPhase {
+    case morning
+    case midday
+    case evening
+}
+
 private extension CoachActionIntent {
     var isHydrationSupportIntent: Bool {
         switch self {
@@ -261,6 +274,7 @@ struct CoachScreenStory {
         phase: CoachActivityPhaseV3,
         activityIdentityIsCertain: Bool = true,
         activeSessionPhase: CoachActiveSessionPhase? = nil,
+        titleOverride: String? = nil,
         icon: String,
         color: Color,
         tone: CoachToneV3
@@ -283,7 +297,13 @@ struct CoachScreenStory {
         }
 
         let primaryActions: [CoachSupportingAction]
-        if decision.status == .prepareSession {
+        if CoachScreenStory.isMissingSleepRecoveryDay(decision) {
+            primaryActions = Array(candidatePrimaryActions.prefix(3))
+            visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
+        } else if CoachScreenStory.isHeatPreparationDecision(decision) {
+            primaryActions = Array(candidatePrimaryActions.prefix(3))
+            visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
+        } else if decision.status == .prepareSession {
             primaryActions = CoachRenderingContract.visibleActions(
                 candidatePrimaryActions,
                 visibleTexts: &visibleTexts
@@ -330,7 +350,7 @@ struct CoachScreenStory {
         )
 
         self.stateLabel = decision.narrativePlan?.badgeIntent.label ?? decision.status.label
-        self.title = decision.title
+        self.title = titleOverride ?? decision.title
         self.myRead = decision.myRead
         self.myRecommendation = decision.myRecommendation
         self.beCarefulWith = decision.beCarefulWith
@@ -352,6 +372,16 @@ struct CoachScreenStory {
 }
 
 private extension CoachScreenStory {
+
+    static func isMissingSleepRecoveryDay(_ decision: HumanCoachDecision) -> Bool {
+        decision.title == "Recovery day" &&
+            decision.myRead.localizedCaseInsensitiveContains("sleep data was not captured")
+    }
+
+    static func isHeatPreparationDecision(_ decision: HumanCoachDecision) -> Bool {
+        decision.title.localizedCaseInsensitiveContains("sauna") &&
+            decision.status == .hydrateBeforeHeat
+    }
 
     static func primaryActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
         if let plan = decision.narrativePlan {
@@ -2067,18 +2097,20 @@ enum HumanCoachDecisionEngine {
         let icon = icon(for: displayStatus)
         let tone = decision.narrativePlan?.tone ?? tone(for: decision)
         let color = displayStatus.color
+        let storyPriority = decision.v5Contract?.priority ?? storyPriority(
+            for: decision,
+            legacyPriority: legacyPriority
+        )
+        let preservesTomorrowPlanRisk = storyPriority.focus == .tomorrowPlanRisk
         let screenStory = CoachScreenStory(
             decision: decision,
             phase: phase,
             activityIdentityIsCertain: activityIdentityIsCertain,
             activeSessionPhase: activeSessionPhase,
+            titleOverride: preservesTomorrowPlanRisk ? storyPriority.todayTitle : nil,
             icon: icon,
             color: color,
             tone: tone
-        )
-        let storyPriority = decision.v5Contract?.priority ?? storyPriority(
-            for: decision,
-            legacyPriority: legacyPriority
         )
         let renderedTitle = decision.title
         #if DEBUG
@@ -2098,16 +2130,18 @@ enum HumanCoachDecisionEngine {
             )
         }
 
+        let tomorrowPlanGuidanceMessage = "Tomorrow includes a meaningful session. Protect tomorrow by rebuilding basics today."
+
         return CoachGuidanceV3(
             phase: phase,
             opportunity: opportunity,
             priority: storyPriority,
             shouldSurface: decision.v5Contract?.shouldSurface ?? true,
             stateLabel: displayStatus.label,
-            title: decision.title,
-            message: visibleMessage(for: decision),
-            insightTitle: decision.title,
-            insightSubtitle: decision.myRecommendation,
+            title: preservesTomorrowPlanRisk ? storyPriority.todayTitle : decision.title,
+            message: preservesTomorrowPlanRisk ? tomorrowPlanGuidanceMessage : visibleMessage(for: decision),
+            insightTitle: preservesTomorrowPlanRisk ? storyPriority.todayTitle : decision.title,
+            insightSubtitle: preservesTomorrowPlanRisk ? "Protect tomorrow by rebuilding basics today." : decision.myRecommendation,
             supportActions: visibleSupportActions,
             avoidNotes: screenStory.shouldShowBeCarefulWith ? [decision.beCarefulWith] : [],
             icon: icon,
@@ -2183,11 +2217,12 @@ private extension HumanCoachDecisionEngine {
                 reasons: legacyPriority.reasons,
                 planChallenge: decision.planChallenge,
                 horizon: legacyPriority.horizon,
-                objective: plan.objective,
+                objective: legacyPriority.objective == .protectTomorrow ? .protectTomorrow : plan.objective,
                 opportunity: legacyPriority.opportunity,
                 interventionValue: legacyPriority.interventionValue,
                 interventionCostNote: legacyPriority.interventionCostNote,
-                completionState: legacyPriority.completionState
+                completionState: legacyPriority.completionState,
+                tomorrowProtection: legacyPriority.tomorrowProtection
             )
         }
 
@@ -2239,7 +2274,15 @@ private extension HumanCoachDecisionEngine {
             detailMessage: visibleMessage(for: decision),
             supportBullets: decision.supportingActions.map(\.title),
             whyThisMatters: decision.why,
-            planChallenge: decision.planChallenge
+            reasons: legacyPriority.reasons,
+            planChallenge: decision.planChallenge,
+            horizon: legacyPriority.horizon,
+            objective: legacyPriority.objective,
+            opportunity: legacyPriority.opportunity,
+            interventionValue: legacyPriority.interventionValue,
+            interventionCostNote: legacyPriority.interventionCostNote,
+            completionState: legacyPriority.completionState,
+            tomorrowProtection: legacyPriority.tomorrowProtection
         )
     }
 
@@ -2570,19 +2613,35 @@ private struct CoachSituationStory {
         _ i: HumanCoachInterpretation,
         legacyPriority: CoachDayPriorityResult
     ) -> CoachSituationStory {
+        let priorityActivity = legacyPriority.activity ?? i.context.activityContext.preparingActivity
+        let priorityActivityIsHeat = priorityActivity.map { CoachActivityContextResolverV3.kind(for: $0) == .heat } == true
+
+        if legacyPriority.focus == .tomorrowPlanRisk ||
+            legacyPriority.tomorrowProtection.active {
+            return priorityPreservedStory(legacyPriority, interpretation: i) ?? protectTomorrow(i)
+        }
+
+        if i.sleepDataIsMissing, i.shouldLeadWithRecoveryDay {
+            return recoveryDay(i)
+        }
+
         if legacyPriority.priority == .hydration,
            legacyPriority.limiter == .hydration {
-            let activity = legacyPriority.activity ?? i.context.activityContext.preparingActivity
-            if activity.map({ CoachActivityContextResolverV3.kind(for: $0) == .heat }) == true {
+            if priorityActivityIsHeat {
                 return hydrateAroundHeat(i)
             }
+        }
+
+        if legacyPriority.focus == .prepareForActivity,
+           priorityActivityIsHeat {
+            return hydrateAroundHeat(i)
         }
 
         if let preserved = priorityPreservedStory(legacyPriority, interpretation: i) {
             return preserved
         }
 
-        if legacyPriority.objective == .protectTomorrow,
+        if legacyPriority.tomorrowProtection.active,
            i.context.activityContext.activeActivity == nil,
            i.context.activityContext.preparingActivity == nil {
             return protectTomorrow(i)
@@ -2602,6 +2661,10 @@ private struct CoachSituationStory {
 
         if i.activeTraining != nil {
             return manageActiveTraining(i, priority: legacyPriority)
+        }
+
+        if i.sleepDataIsMissing, i.shouldLeadWithRecoveryDay {
+            return recoveryDay(i)
         }
 
         if legacyPriority.objective == .startDay || i.shouldUseMorningSetup(legacyPriority) {
@@ -2765,6 +2828,10 @@ private struct CoachSituationStory {
             return true
         }
 
+        if kind == .recoveryDay {
+            return true
+        }
+
         if kind == .prepareForTraining,
            legacyPriority.priority == .planChallenge,
            legacyPriority.activity != nil {
@@ -2775,7 +2842,7 @@ private struct CoachSituationStory {
             return true
         }
 
-        if legacyPriority.objective == .protectTomorrow {
+        if legacyPriority.tomorrowProtection.active {
             return true
         }
 
@@ -2785,7 +2852,7 @@ private struct CoachSituationStory {
     func diagnosisReadPrefix(legacyPriority: CoachDayPriorityResult) -> String? {
         switch legacyPriority.focus {
         case .trainingReadinessWarning:
-            if legacyPriority.objective == .protectTomorrow || kind == .protectTomorrow {
+            if legacyPriority.tomorrowProtection.active || kind == .protectTomorrow {
                 return "Training readiness is below the next planned demand."
             }
             return "Readiness is lower than the planned work."
@@ -2852,10 +2919,10 @@ private extension CoachSituationStory {
             insightScore: legacyPriority.insightScore,
             uniquenessScore: legacyPriority.uniquenessScore,
             decisionScore: legacyPriority.decisionScore,
-            todayTitle: decisionTitle,
-            todayMessage: contractWhat,
-            detailTitle: decisionTitle,
-            detailMessage: HumanCoachDecisionEngine.visibleMessage(
+            todayTitle: legacyPriority.focus == .tomorrowPlanRisk ? legacyPriority.todayTitle : decisionTitle,
+            todayMessage: legacyPriority.focus == .tomorrowPlanRisk ? legacyPriority.todayMessage : contractWhat,
+            detailTitle: legacyPriority.focus == .tomorrowPlanRisk ? legacyPriority.detailTitle : decisionTitle,
+            detailMessage: legacyPriority.focus == .tomorrowPlanRisk ? legacyPriority.detailMessage : HumanCoachDecisionEngine.visibleMessage(
                 title: decisionTitle,
                 myRead: plannedRead,
                 myRecommendation: plannedRecommendation,
@@ -2871,7 +2938,8 @@ private extension CoachSituationStory {
             opportunity: legacyPriority.opportunity,
             interventionValue: shouldSurface ? legacyPriority.interventionValue : .none,
             interventionCostNote: legacyPriority.interventionCostNote,
-            completionState: shouldSurface ? legacyPriority.completionState : .complete
+            completionState: shouldSurface ? legacyPriority.completionState : .complete,
+            tomorrowProtection: legacyPriority.tomorrowProtection
         )
 
         return CoachV5Contract(
@@ -3094,7 +3162,7 @@ private extension CoachNarrativePlan {
         }
 
         if legacyPriority.focus == .eveningWindDown {
-            if story.kind == .protectTomorrow || legacyPriority.objective == .protectTomorrow {
+            if story.kind == .protectTomorrow || legacyPriority.tomorrowProtection.active {
                 append(.protectSleep)
                 append(.skipExtraTraining)
                 if primaryLimiter == .hydration {
@@ -3108,6 +3176,14 @@ private extension CoachNarrativePlan {
                 append(.skipExtraTraining)
             }
 
+            return Array(intents.prefix(3))
+        }
+
+        if story.kind == .protectTomorrow,
+           legacyPriority.focus == .tomorrowPlanRisk {
+            append(.objectiveAction(type: .rehydrateGradually, title: "Drink fluids steadily", subtitle: "Rebuild hydration without chasing"))
+            append(.objectiveAction(type: .recoveryMeal, title: "Eat normally", subtitle: "Cover basics at the next meal"))
+            append(.keepRecoveryEasy)
             return Array(intents.prefix(3))
         }
 
@@ -3145,21 +3221,42 @@ private extension CoachNarrativePlan {
             append(.finishWithReserve)
 
         case .manageActiveSauna, .hydrateAroundHeat:
-            append(.drink(amountRange: "300-500 ml", timing: "Before heat if you have time"))
-            append(.keepIntensity(effort: "Keep heat comfortable"))
-            append(.finishWithReserve)
+            for intent in heatPreparationActionIntents(for: i) {
+                append(intent)
+            }
 
         case .recoveryDay, .keepRecoveryEasy:
-            append(.keepRecoveryEasy)
-            append(.finishWithReserve)
-            if primaryLimiter == .hydration {
-                append(.drink(amountRange: nil, timing: "Sip calmly"))
+            if story.kind == .recoveryDay, i.heatHydrationSupportNeedsAttention {
+                append(.drink(amountRange: "300-500 ml", timing: "Before sauna"))
+                append(.objectiveAction(type: .steadyHydration, title: "Enter heat well hydrated", subtitle: "Do not start sauna dry"))
+                append(.keepRecoveryEasy)
+            } else if story.kind == .recoveryDay, i.sleepDataIsMissing {
+                switch i.recoveryDayCopyPhase {
+                case .morning:
+                    append(.startHydration)
+                    append(.objectiveAction(type: .lightFueling, title: "Eat normally at next meal", subtitle: "After water, keep food normal"))
+                    append(.keepDayFlexible)
+                case .midday:
+                    append(.objectiveAction(type: .steadyHydration, title: "Bring fluids online", subtitle: "Sip steadily over the next hour"))
+                    append(.objectiveAction(type: .lightFueling, title: "Eat normally at next meal", subtitle: "Keep recovery easy"))
+                    append(.keepRecoveryEasy)
+                case .evening:
+                    append(.objectiveAction(type: .rehydrateGradually, title: "Drink fluids steadily", subtitle: "Protect recovery for tomorrow"))
+                    append(.objectiveAction(type: .stayConsistent, title: "Maintain normal routines", subtitle: "Keep food and activity calm"))
+                    append(.keepRecoveryEasy)
+                }
+            } else {
+                append(.keepRecoveryEasy)
+                append(.finishWithReserve)
+                if primaryLimiter == .hydration {
+                    append(.drink(amountRange: nil, timing: "Sip calmly"))
+                }
             }
 
         case .morningSetup:
             append(.startHydration)
             append(.eatNextMeal)
-            append(i.hasCurrentFutureTrainingToday ? .keepPlanUnchanged : .keepDayFlexible)
+            append(i.hasCurrentFutureTrainingToday && !i.sleepDataIsMissing ? .keepPlanUnchanged : .keepDayFlexible)
 
         case .protectTomorrow:
             append(.protectSleep)
@@ -3214,6 +3311,41 @@ private extension CoachNarrativePlan {
         }
 
         return Array(intents.prefix(3))
+    }
+
+    static func heatPreparationActionIntents(for i: HumanCoachInterpretation) -> [CoachActionIntent] {
+        let heatName = i.heatPlanDescription.isEmpty ? "heat" : i.heatPlanDescription
+        let executionActions: [CoachActionIntent] = [
+            .objectiveAction(type: .steadyHydration, title: "Enter heat well hydrated", subtitle: "Do not start \(heatName) dry"),
+            .keepRecoveryEasy
+        ]
+
+        switch i.heatPreparationHydrationState {
+        case .notStarted:
+            return [
+                .drink(amountRange: "300-500 ml", timing: "Before \(heatName)"),
+                executionActions[0],
+                executionActions[1]
+            ]
+        case .stillLow:
+            return [
+                .objectiveAction(type: .hydrateBeforeSession, title: "Drink another 300-500 ml before \(heatName)", subtitle: "You have started, but heat still needs more margin"),
+                executionActions[0],
+                executionActions[1]
+            ]
+        case .improving:
+            return [
+                .objectiveAction(type: .steadyHydration, title: "Keep sipping before \(heatName)", subtitle: "No need to chase a large bolus"),
+                executionActions[0],
+                executionActions[1]
+            ]
+        case .sufficient:
+            return [
+                executionActions[0],
+                executionActions[1],
+                .objectiveAction(type: .cooldown, title: "Avoid staying too long if you feel flat", subtitle: "Stop before heat becomes another stressor")
+            ]
+        }
     }
 
     static func activeSportActionIntents(
@@ -3564,13 +3696,13 @@ private extension CoachNarrativePlan {
         if story.status == .protectTomorrow {
             return i.isAfterMidnightBeforeMorning ? .protectMorning : .protectTomorrow
         }
+        if story.kind == .keepRecoveryEasy || story.kind == .recoveryDay || story.kind == .recoverFromLoad { return .recover }
         if primaryLimiter == .hydration && legacyPriority.strength == .critical { return .hydrate }
         if primaryLimiter == .sleep { return .protectSleep }
         if story.kind == .morningSetup { return .startDay }
         if legacyPriority.focus == .eveningWindDown || story.kind == .normalEvening { return .windDown }
         if story.status == .nothingNeedsFixing || story.status == .goodToGo || story.status == .opportunityDay { return .goodToGo }
         if story.kind == .prepareForTraining { return .prepare }
-        if story.kind == .keepRecoveryEasy || story.kind == .recoveryDay || story.kind == .recoverFromLoad { return .recover }
         if story.kind == .manageActiveTraining && primaryLimiter == .none { return .keepItEasy }
         if primaryLimiter == .hydration && legacyPriority.priority == .hydration && legacyPriority.strength == .critical { return .hydrate }
         if primaryLimiter == .fuel && legacyPriority.priority == .fueling { return .fuel }
@@ -3658,7 +3790,7 @@ private extension CoachSituationStory {
             myRead: isAfterMidnight
                 ? "The next important event is later today. The goal is arriving rested rather than catching up overnight."
                 : "Tomorrow's \(i.tomorrowTrainingName) is now the next important event. The goal is arriving fresh rather than adding more work.",
-            myRecommendation: isAfterMidnight ? "Keep the night quiet and let sleep do the work." : "Keep the evening light and let recovery start now.",
+            myRecommendation: isAfterMidnight ? "Protect sleep and keep the night quiet." : "Protect sleep and keep recovery easy tonight.",
             beCarefulWith: "Turning recovery time into more training or activity.",
             why: isAfterMidnight
                 ? "The morning depends more on reducing overnight cost than on adding another useful action."
@@ -3677,7 +3809,23 @@ private extension CoachSituationStory {
         let stage = preparationStage(priority, interpretation: i)
 
         switch priority.focus {
-        case .tomorrowPlanRisk, .trainingReadinessWarning:
+        case .tomorrowPlanRisk:
+            return CoachSituationStory(
+                kind: .protectTomorrow,
+                status: .protectTomorrow,
+                title: priority.detailTitle,
+                myRead: tomorrowPlanRiskRead(priority, interpretation: i),
+                myRecommendation: tomorrowPlanRiskRecommendation(priority, interpretation: i),
+                beCarefulWith: priority.interventionCostNote ??
+                    priority.planChallenge ??
+                    "Treating tomorrow's plan like it is already safe to absorb.",
+                why: priority.whyThisMatters,
+                planChallenge: priority.planChallenge,
+                priority: .planOptimization,
+                actions: [.rehydrateGradually, .recoveryMeal, .controlIntensity]
+            )
+
+        case .trainingReadinessWarning:
             guard i.context.activityContext.preparingActivity != nil else { return nil }
             return CoachSituationStory(
                 kind: .prepareForTraining,
@@ -3754,6 +3902,57 @@ private extension CoachSituationStory {
         default:
             return nil
         }
+    }
+
+    static func tomorrowPlanRiskRead(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        let activityName = priority.activity.map { i.activityShortName($0) } ?? i.tomorrowTrainingName
+        let trainingName = activityName.isEmpty ? "training" : activityName.lowercased()
+        let limiterText = tomorrowPlanLimiterText(priority, interpretation: i)
+        return "Tomorrow includes a meaningful \(trainingName) session. \(limiterText.capitalizedFirst) are not yet where they should be."
+    }
+
+    static func tomorrowPlanRiskRecommendation(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        "Protect tomorrow by rebuilding basics today."
+    }
+
+    static func tomorrowPlanLimiterText(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> String {
+        var limiters: [String] = []
+
+        if priority.limiter == .recovery ||
+            priority.limiter == .accumulatedFatigue ||
+            priority.limiter == .trainingReadiness ||
+            i.recoveryPercent.map({ $0 < 70 }) == true ||
+            i.context.brain.recovery == .vulnerable ||
+            i.context.brain.readiness == .low {
+            limiters.append("recovery")
+        }
+
+        if priority.limiter == .hydration || i.hydrationIsEmptyOrBehind {
+            limiters.append("hydration")
+        }
+
+        if priority.limiter == .fueling || i.fuelingIsEmptyOrBehind {
+            limiters.append("fuel")
+        }
+
+        if limiters.isEmpty {
+            limiters = ["recovery", "hydration", "fuel"]
+        } else {
+            for fallback in ["hydration", "fuel"] where !limiters.contains(fallback) {
+                limiters.append(fallback)
+            }
+        }
+
+        return i.list(limiters)
     }
 
     static func hydrationCanLeadNarrative(_ priority: CoachDayPriorityResult) -> Bool {
@@ -4022,20 +4221,65 @@ private extension CoachSituationStory {
     }
 
     static func recoveryDay(_ i: HumanCoachInterpretation) -> CoachSituationStory {
+        if i.sleepDataIsMissing {
+            let heatPlan = i.heatPlanDescription
+            let heatHydrationSupport = i.heatHydrationSupportNeedsAttention && !heatPlan.isEmpty
+            let read = heatHydrationSupport
+                ? "No hard training is planned today, sleep data was not captured, and \(heatPlan) later will increase fluid demands."
+                : "No hard training is planned today, and sleep data was not captured."
+            let recommendation: String = {
+                switch i.recoveryDayCopyPhase {
+                case .morning:
+                    return heatHydrationSupport
+                        ? "Keep the morning easy, bring fluids online before \(heatPlan), and eat normally at the next meal."
+                        : "Keep the morning easy, start with water, and eat normally at the next meal."
+                case .midday:
+                    return heatHydrationSupport
+                        ? "Keep recovery easy, bring fluids online before \(heatPlan), and eat normally at the next meal."
+                        : "Keep recovery easy, bring fluids online, and eat normally at the next meal."
+                case .evening:
+                    return heatHydrationSupport
+                        ? "Maintain normal routines, drink fluids steadily before \(heatPlan), and protect recovery for tomorrow."
+                        : "Maintain normal routines, drink fluids steadily, and protect recovery for tomorrow."
+                }
+            }()
+
+            return CoachSituationStory(
+                kind: .recoveryDay,
+                status: .prepareSession,
+                title: "Recovery day",
+                myRead: read,
+                myRecommendation: recommendation,
+                beCarefulWith: "Treating missing sleep data like strong recovery.",
+                why: "Missing data is not positive data, so the useful move is a cautious, simple start.",
+                planChallenge: nil,
+                priority: .planOptimization,
+                actions: [.hydrateBeforeSession, .lightFueling, .stayConsistent]
+            )
+        }
+
         let recoveryPlan = i.recoveryPlanDescription
         let heatPlan = i.heatPlanDescription
-        let heatClause = !heatPlan.isEmpty
-            ? " Let \(heatPlan) stay restorative instead of turning recovery into another challenge."
-            : ""
-        let actions: [CoachSupportActionTypeV3] = i.hasHeatAheadToday
-            ? [.controlIntensity, .cooldown, .hydrateBeforeSession]
-            : [.controlIntensity, .cooldown]
+        let heatHydrationSupport = i.heatHydrationSupportNeedsAttention && !heatPlan.isEmpty
+        let read = heatHydrationSupport
+            ? "Today is built to absorb training stress, not create a new one. \(heatPlan.capitalizedFirst) later will increase fluid demands."
+            : "Today is built to absorb training stress, not create a new one."
+        let heatClause = heatHydrationSupport
+            ? " Bring fluids online before \(heatPlan), and keep the heat block restorative."
+            : (!heatPlan.isEmpty
+                ? " Let \(heatPlan) stay restorative instead of turning recovery into another challenge."
+                : "")
+        let actions: [CoachSupportActionTypeV3] = heatHydrationSupport
+            ? [.hydrateBeforeSession, .controlIntensity, .cooldown]
+            : (i.hasHeatAheadToday
+                ? [.controlIntensity, .cooldown, .hydrateBeforeSession]
+                : [.controlIntensity, .cooldown])
 
         return CoachSituationStory(
             kind: .recoveryDay,
             status: .recoveryDay,
             title: "Keep recovery easy",
-            myRead: "Today is built to absorb training stress, not create a new one.",
+            myRead: read,
             myRecommendation: "Keep \(recoveryPlan) easy.\(heatClause)",
             beCarefulWith: "Adding unnecessary intensity.",
             why: "The win today is finishing the morning feeling fresher than when it started.",
@@ -4225,12 +4469,26 @@ private extension CoachSituationStory {
     }
 
     static func hydrateAroundHeat(_ i: HumanCoachInterpretation) -> CoachSituationStory {
-        CoachSituationStory(
+        let heatPlan = i.heatPlanDescription.isEmpty ? "the heat block" : i.heatPlanDescription
+        let recommendation: String = {
+            switch i.heatPreparationHydrationState {
+            case .notStarted:
+                return "Bring fluids up gradually before \(heatPlan) and keep the heat block conservative."
+            case .stillLow:
+                return "You have started bringing fluids online. Drink another 300-500 ml before \(heatPlan), then keep the heat block easy."
+            case .improving:
+                return "Hydration is moving in the right direction. Keep sipping before \(heatPlan) and keep the heat block conservative."
+            case .sufficient:
+                return "You have started bringing fluids online. Keep \(heatPlan) easy and avoid adding extra stress."
+            }
+        }()
+
+        return CoachSituationStory(
             kind: .hydrateAroundHeat,
             status: .hydrateBeforeHeat,
             title: "Arrive ready for heat",
-            myRead: "Heat is still ahead today, so hydration matters because it changes how stressful that sauna block feels.",
-            myRecommendation: "Bring fluids up gradually before the sauna and keep the heat block conservative.",
+            myRead: "\(heatPlan.capitalizedFirst) is still ahead today, so hydration matters because it changes how stressful that heat block feels.",
+            myRecommendation: recommendation,
             beCarefulWith: "Treating hydration like a number to chase at the last minute.",
             why: "Arriving steady makes heat safer and easier to recover from.",
             planChallenge: nil,
@@ -4267,22 +4525,29 @@ private extension CoachSituationStory {
         legacyPriority: CoachDayPriorityResult
     ) -> CoachSituationStory {
         let hasFutureTraining = i.hasCurrentFutureTrainingToday
+        let missingSleep = i.sleepDataIsMissing
         return CoachSituationStory(
             kind: .morningSetup,
             status: .prepareSession,
             title: "Bring the basics online",
-            myRead: hasFutureTraining
+            myRead: missingSleep
+                ? (hasFutureTraining
+                    ? "\(i.nextTrainingName.capitalizedFirst) is still later today, but sleep data is missing."
+                    : "The day is open, but sleep data is missing.")
+                : (hasFutureTraining
                 ? "Recovery is strong, and the \(i.nextTrainingName) is still later today."
-                : "The day is open and recovery is strong.",
+                : "The day is open and recovery is strong."),
             myRecommendation: hasFutureTraining
                 ? "Start hydration early and eat normally through the morning."
                 : "Use the morning to bring food and fluids online.",
             beCarefulWith: hasFutureTraining
                 ? "Waiting until the training window to catch up."
                 : "Waiting until later to catch up all at once.",
-            why: hasFutureTraining
+            why: missingSleep
+                ? "Missing sleep data keeps recovery unknown, so the useful move now is a calm setup."
+                : (hasFutureTraining
                 ? "Strong recovery gives the plan room; the useful move now is a calm setup, not reducing training."
-                : "Strong recovery gives you options; the useful move now is a calm start, not inventing urgency.",
+                : "Strong recovery gives you options; the useful move now is a calm start, not inventing urgency."),
             planChallenge: nil,
             priority: .supporting,
             actions: [.stayConsistent]
@@ -4412,6 +4677,17 @@ private struct HumanCoachInterpretation {
         CoachTimePhase.resolve(hour: context.brain.currentHour)
     }
 
+    var recoveryDayCopyPhase: CoachRecoveryDayCopyPhase {
+        switch context.brain.currentHour {
+        case 6..<11:
+            return .morning
+        case 11..<16:
+            return .midday
+        default:
+            return .evening
+        }
+    }
+
     var recoveryPercent: Int? {
         if let value = context.recoveryContext?.recoveryPercent, value > 0 { return value }
         return nil
@@ -4421,6 +4697,13 @@ private struct HumanCoachInterpretation {
         if context.brain.metrics.sleepHours > 0 { return context.brain.metrics.sleepHours }
         if let value = context.recoveryContext?.sleepHours, value > 0 { return value }
         return nil
+    }
+
+    var sleepDataIsMissing: Bool {
+        if context.brain.sleep == .unknown { return true }
+        if context.brain.metrics.sleepHours <= 0 { return true }
+        if let recovery = context.recoveryContext, recovery.sleepHours <= 0 { return true }
+        return sleepHours == nil
     }
 
     var activeHeat: PlannedActivity? {
@@ -4632,8 +4915,20 @@ private struct HumanCoachInterpretation {
         return !isLateEvening
     }
 
+    var heatHydrationSupportNeedsAttention: Bool {
+        guard hydrationRatio.map({ $0 < 0.55 }) == true else { return false }
+        guard !isLateEvening else { return false }
+
+        return futureCoachActivities.contains { activity in
+            guard CoachActivityContextResolverV3.kind(for: activity) == .heat else { return false }
+            let minutes = Int(activity.date.timeIntervalSince(context.dayContext.now) / 60)
+            guard minutes >= 0 else { return false }
+            return minutes <= CoachDayActivityContextResolver.preparationLeadMinutes(for: activity)
+        }
+    }
+
     var hasHeatAheadToday: Bool {
-        context.dayContext.upcomingActivities.contains { activity in
+        futureCoachActivities.contains { activity in
             CoachActivityContextResolverV3.kind(for: activity) == .heat
         }
     }
@@ -4703,6 +4998,27 @@ private struct HumanCoachInterpretation {
 
     var hydrationHasStarted: Bool {
         (context.nutritionContext?.waterCurrent ?? 0) >= 0.50
+    }
+
+    var heatPreparationHydrationState: HeatPreparationHydrationState {
+        let current = context.nutritionContext?.waterCurrent ?? 0
+        guard let ratio = hydrationRatio else {
+            return current <= 0.05 ? .notStarted : .improving
+        }
+
+        if ratio >= 0.75 {
+            return .sufficient
+        }
+
+        if current <= 0.05 || ratio < 0.20 {
+            return .notStarted
+        }
+
+        if ratio < 0.45 {
+            return .stillLow
+        }
+
+        return .improving
     }
 
     var fuelingIsEmptyOrBehind: Bool {
@@ -4912,7 +5228,7 @@ private struct HumanCoachInterpretation {
     }
 
     var recoveryPlanDescription: String {
-        let recoveryActivities = context.dayContext.upcomingActivities
+        let recoveryActivities = futureCoachActivities
             .filter { activity in
                 let kind = CoachActivityContextResolverV3.kind(for: activity)
                 return kind == .recovery || kind == .heat
@@ -4925,12 +5241,33 @@ private struct HumanCoachInterpretation {
     }
 
     var heatPlanDescription: String {
-        let heatActivities = context.dayContext.upcomingActivities
+        let heatActivities = futureCoachActivities
             .filter { CoachActivityContextResolverV3.kind(for: $0) == .heat }
             .map(activityShortName)
             .uniquedPreservingOrder()
 
         return list(heatActivities)
+    }
+
+    var futureCoachActivities: [PlannedActivity] {
+        let candidates = context.dayContext.upcomingActivities +
+            [
+                context.activityContext.preparingActivity,
+                context.activityContext.nextUpcomingActivity,
+                context.activityContext.laterTodayActivity
+            ].compactMap { $0 }
+        var seenIDs = Set<String>()
+
+        return candidates.compactMap { activity in
+            guard activity.date >= context.dayContext.now,
+                  !activity.isCompleted,
+                  !activity.isSkipped,
+                  !seenIDs.contains(activity.id) else {
+                return nil
+            }
+            seenIDs.insert(activity.id)
+            return activity
+        }
     }
 
     var activeActivityIdentityIsCertain: Bool {

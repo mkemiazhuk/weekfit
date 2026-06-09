@@ -165,7 +165,7 @@ enum CoachDayActivityContextResolver {
 
         let preparingCandidate = highestPriority(
             from: coachRelevant.filter { activity in
-                guard !activity.isCompleted else { return false }
+                guard activity.terminalState(now: now) == .planned else { return false }
                 let minutes = minutesUntilStart(activity, now: now)
                 guard minutes >= 0 else { return false }
                 return minutes <= preparationLeadMinutes(for: activity)
@@ -204,7 +204,8 @@ enum CoachDayActivityContextResolver {
 
         let recent = highestPriority(
             from: coachRelevant.filter { activity in
-                guard activity.isCompleted else { return false }
+                let state = activity.terminalState(now: now)
+                guard state == .completed || state == .partial else { return false }
                 guard isMeaningfulPostActivityTraining(activity) else { return false }
                 let minutes = minutesSinceEnd(activity, now: now)
                 guard minutes >= 0 else { return false }
@@ -379,15 +380,7 @@ enum CoachDayActivityContextResolver {
     // MARK: - Private helpers
 
     private static func isActive(_ activity: PlannedActivity, now: Date) -> Bool {
-        guard !activity.isCompleted else { return false }
-
-        let endDate = Calendar.current.date(
-            byAdding: .minute,
-            value: max(activity.effectiveDurationMinutes, activity.durationMinutes),
-            to: activity.date
-        ) ?? activity.date
-
-        return activity.date <= now && now <= endDate
+        activity.isActive(at: now)
     }
 
     private static func minutesSinceEnd(_ activity: PlannedActivity, now: Date) -> Int {
@@ -505,7 +498,7 @@ enum CoachDayActivityContextResolver {
 
         return activities
             .filter { activity in
-                guard !activity.isCompleted, !activity.isSkipped else { return false }
+                guard activity.terminalState(now: now) == .planned else { return false }
                 if let excluding, activity.id == excluding.id { return false }
                 if activity.id == reference.id { return false }
                 return activity.date >= referenceEnd && activity.date > now
@@ -519,7 +512,7 @@ enum CoachDayActivityContextResolver {
         now: Date
     ) -> PlannedActivity? {
         activities
-            .filter { !$0.isCompleted && !$0.isSkipped && $0.date > now }
+            .filter { $0.terminalState(now: now) == .planned && $0.date > now }
             .sorted { $0.date < $1.date }
             .first
     }
@@ -529,7 +522,7 @@ enum CoachDayActivityContextResolver {
         after now: Date
     ) -> PlannedActivity? {
         activities
-            .filter { !$0.isCompleted && $0.date > now }
+            .filter { $0.terminalState(now: now) == .planned && $0.date > now }
             .sorted { $0.date < $1.date }
             .first
     }

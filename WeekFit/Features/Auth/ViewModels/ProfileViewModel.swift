@@ -52,38 +52,22 @@ final class ProfileViewModel: ObservableObject {
         let cleanEmail = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let updatedProfile = UserProfile(
-            initials: makeInitials(from: cleanName),
+            initials: ProfileService.makeInitials(from: cleanName),
             fullName: cleanName,
             email: cleanEmail
         )
 
         userProfile = updatedProfile
         service.saveUserProfile(updatedProfile)
+        WeekFitUserSettings.shared.refreshFromStorage()
     }
 
     func signOut() {
         service.signOut()
     }
-    
-    func resetLocalData() {
-        
-    }
 
-    private func makeInitials(from name: String) -> String {
-        let parts = name
-            .split(separator: " ")
-            .map(String.init)
-
-        guard !parts.isEmpty else {
-            return "P"
-        }
-
-        let initials = parts
-            .prefix(2)
-            .compactMap { $0.first }
-            .map { String($0).uppercased() }
-            .joined()
-
-        return initials.isEmpty ? "P" : initials
+    func reloadUserProfile() {
+        userProfile = service.loadUserProfile()
+        WeekFitUserSettings.shared.refreshFromStorage()
     }
 }

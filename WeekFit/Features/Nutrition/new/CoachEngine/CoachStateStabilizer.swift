@@ -65,6 +65,14 @@ enum CoachStateStabilizer {
         return candidate
     }
 
+    static func lastVisibleGuidance(source: String) -> CoachGuidanceV3? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let surfaceKey = surfaceKey(for: source)
+        return lastVisibleGuidanceBySurface[surfaceKey] ?? lastVisibleGuidanceBySurface["shared"]
+    }
+
     static func visibleSignature(for candidate: CoachGuidanceV3, source: String) -> String {
         markSyncEvent(source: source)
 

@@ -115,6 +115,20 @@ enum CoachObjective: Hashable {
     case maintainCourse
 }
 
+struct CoachTomorrowProtectionState: Hashable {
+    let recommended: Bool
+    let active: Bool
+    let reasons: [String]
+    let activeReason: String?
+
+    static let none = CoachTomorrowProtectionState(
+        recommended: false,
+        active: false,
+        reasons: [],
+        activeReason: nil
+    )
+}
+
 enum CoachIntent: Hashable {
     case idleNow
     case dayPlanning
@@ -257,6 +271,7 @@ struct CoachDayPriorityResult {
     let interventionValue: CoachInterventionValue
     let interventionCostNote: String?
     let completionState: CompletionState
+    let tomorrowProtection: CoachTomorrowProtectionState
 
     var title: String { detailTitle }
     var message: String { detailMessage }
@@ -304,7 +319,8 @@ struct CoachDayPriorityResult {
         opportunity: CoachOpportunity? = nil,
         interventionValue: CoachInterventionValue? = nil,
         interventionCostNote: String? = nil,
-        completionState: CompletionState? = nil
+        completionState: CompletionState? = nil,
+        tomorrowProtection: CoachTomorrowProtectionState = .none
     ) {
         let resolvedPriority = priority ?? Self.defaultPriority(for: focus)
         let resolvedLimiter = limiter ?? Self.defaultLimiter(for: resolvedPriority, focus: focus)
@@ -371,6 +387,7 @@ struct CoachDayPriorityResult {
         self.interventionValue = resolvedInterventionValue
         self.interventionCostNote = interventionCostNote
         self.completionState = completionState ?? Self.defaultCompletionState(for: resolvedPriority, focus: focus)
+        self.tomorrowProtection = tomorrowProtection
     }
 
     func phase(for timingContext: CoachDayActivityContext) -> CoachActivityPhaseV3 {
@@ -419,7 +436,8 @@ struct CoachDayPriorityResult {
             opportunity: opportunity,
             interventionValue: interventionValue,
             interventionCostNote: interventionCostNote,
-            completionState: completionState
+            completionState: completionState,
+            tomorrowProtection: tomorrowProtection
         )
     }
 
@@ -460,7 +478,8 @@ struct CoachDayPriorityResult {
             opportunity: opportunity,
             interventionValue: interventionValue,
             interventionCostNote: interventionCostNote,
-            completionState: completionState
+            completionState: completionState,
+            tomorrowProtection: tomorrowProtection
         )
     }
 
@@ -494,7 +513,8 @@ struct CoachDayPriorityResult {
             opportunity: opportunity,
             interventionValue: interventionValue,
             interventionCostNote: interventionCostNote,
-            completionState: completionState
+            completionState: completionState,
+            tomorrowProtection: tomorrowProtection
         )
     }
 
@@ -528,7 +548,8 @@ struct CoachDayPriorityResult {
             opportunity: opportunity,
             interventionValue: interventionValue,
             interventionCostNote: interventionCostNote,
-            completionState: completionState
+            completionState: completionState,
+            tomorrowProtection: tomorrowProtection
         )
     }
 
@@ -562,7 +583,43 @@ struct CoachDayPriorityResult {
             opportunity: opportunity,
             interventionValue: interventionValue,
             interventionCostNote: interventionCostNote,
-            completionState: completionState
+            completionState: completionState,
+            tomorrowProtection: tomorrowProtection
+        )
+    }
+
+    func withTomorrowProtection(_ state: CoachTomorrowProtectionState) -> CoachDayPriorityResult {
+        CoachDayPriorityResult(
+            focus: focus,
+            level: level,
+            reason: reason,
+            activity: activity,
+            overridesTimingFocus: overridesTimingFocus,
+            priority: priority,
+            strength: strength,
+            confidence: confidence,
+            mode: mode,
+            limiter: limiter,
+            messageFamily: messageFamily,
+            priorityScore: priorityScore,
+            insightScore: insightScore,
+            uniquenessScore: uniquenessScore,
+            decisionScore: decisionScore,
+            todayTitle: todayTitle,
+            todayMessage: todayMessage,
+            detailTitle: detailTitle,
+            detailMessage: detailMessage,
+            supportBullets: supportBullets,
+            whyThisMatters: whyThisMatters,
+            reasons: reasons,
+            planChallenge: planChallenge,
+            horizon: horizon,
+            objective: objective,
+            opportunity: opportunity,
+            interventionValue: interventionValue,
+            interventionCostNote: interventionCostNote,
+            completionState: completionState,
+            tomorrowProtection: state
         )
     }
 }
@@ -1045,13 +1102,21 @@ enum CoachDayPriorityResolver {
         )
         let hydratedResult = withCriticalHydrationContext(supportedResult, in: context)
 
-        return hydratedResult.withHumanStateReasoning(
+        let reasonedResult = hydratedResult.withHumanStateReasoning(
             horizon: horizon(for: result, objective: objective, in: context),
             objective: objective,
             opportunity: opportunity(for: result, in: context),
             interventionValue: interventionValue(for: result, in: context),
             interventionCostNote: interventionCostNote(for: result, in: context),
             completionState: completionState(for: result, in: context)
+        )
+
+        let protectedResult = reasonedResult.withTomorrowProtection(
+            tomorrowProtectionState(for: reasonedResult, in: context)
+        )
+
+        return protectedResult.withLimiter(
+            dynamicPrimaryLimiter(for: protectedResult, in: context)
         )
     }
 }
@@ -1084,6 +1149,120 @@ enum CoachIntentResolver {
 }
 
 private extension CoachDayPriorityResolver {
+
+    static func tomorrowProtectionState(
+        for result: CoachDayPriorityResult,
+        in context: CoachDecisionContext
+    ) -> CoachTomorrowProtectionState {
+        var reasons: [String] = []
+        if isVeryLowSleep(context) || context.brain.sleep == .veryShort {
+            reasons.append("short sleep")
+            reasons.append("sleep debt")
+        } else if context.brain.sleep == .short {
+            reasons.append("short sleep")
+        }
+
+        if let recovery = context.recoveryContext, recovery.recoveryPercent > 0 {
+            if recovery.recoveryPercent < 45 {
+                reasons.append("compromised recovery")
+                reasons.append("low recovery score")
+            } else if recovery.recoveryPercent < 60 {
+                reasons.append("vulnerable recovery")
+            }
+        } else if context.brain.recovery == .compromised {
+            reasons.append("compromised recovery")
+            reasons.append("low recovery score")
+        } else if context.brain.recovery == .vulnerable {
+            reasons.append("vulnerable recovery")
+        }
+
+        if context.dayContext.completedActivities.contains(where: { CoachActivityContextResolverV3.kind(for: $0) == .heat }) {
+            reasons.append("sauna completed")
+            reasons.append("sauna impact")
+        }
+
+        if !context.dayContext.partialActivities.isEmpty {
+            reasons.append("partial workout")
+        }
+
+        if isHighLoadDay(context) || context.dayContext.completedTrainingStressScore >= 4 {
+            reasons.append("heavy training load")
+        }
+
+        if result.focus == .tomorrowPlanRisk || context.tomorrowContext?.hasHardTraining == true {
+            reasons.append("tomorrow training risk")
+        }
+
+        reasons = Array(NSOrderedSet(array: reasons).compactMap { $0 as? String })
+        let recommended = !reasons.isEmpty &&
+            (
+                reasons.contains("short sleep") ||
+                reasons.contains("compromised recovery") ||
+                reasons.contains("sauna impact") ||
+                reasons.contains("heavy training load") ||
+                reasons.contains("tomorrow training risk")
+            )
+
+        let hour = localHour(in: context)
+        let lateEvening = hour >= 22
+        let severeRecovery = reasons.contains("compromised recovery") ||
+            (reasons.contains("short sleep") && reasons.contains("sauna impact")) ||
+            severeFatigueDominates(context)
+        let active = recommended &&
+            (
+                result.objective == .protectTomorrow ||
+                result.focus == .tomorrowPlanRisk ||
+                lateEvening ||
+                severeRecovery
+            )
+
+        let activeReason: String?
+        if !active {
+            activeReason = nil
+        } else if lateEvening || result.focus == .eveningWindDown || result.objective == .protectTomorrow {
+            activeReason = "late evening recovery window"
+        } else if severeRecovery {
+            activeReason = "severe recovery constraint"
+        } else if result.focus == .tomorrowPlanRisk {
+            activeReason = "tomorrow plan risk"
+        } else {
+            activeReason = "protect tomorrow objective"
+        }
+
+        return CoachTomorrowProtectionState(
+            recommended: recommended,
+            active: active,
+            reasons: reasons,
+            activeReason: activeReason
+        )
+    }
+
+    static func dynamicPrimaryLimiter(
+        for result: CoachDayPriorityResult,
+        in context: CoachDecisionContext
+    ) -> CoachLimiter {
+        guard result.tomorrowProtection.active else {
+            return result.limiter
+        }
+
+        let hour = max(localHour(in: context), context.brain.currentHour)
+        guard hour >= 15 else {
+            return result.limiter
+        }
+
+        let reasons = result.tomorrowProtection.reasons
+        if hour >= 18, reasons.contains("partial workout") {
+            return .accumulatedFatigue
+        }
+
+        if reasons.contains("compromised recovery") ||
+            reasons.contains("low recovery score") ||
+            reasons.contains("sauna impact") {
+            return .recovery
+        }
+
+        return result.limiter
+    }
 
     private static func candidatesForSelection(
         _ candidates: [PriorityCandidate],
@@ -1599,7 +1778,12 @@ private extension CoachDayPriorityResolver {
         }
 
         if context.tomorrowContext?.hasHardTraining == true,
-           isEveningOrLater(context) {
+           (isEveningOrLater(context) || context.brain.currentHour >= 18) {
+            return .protectTomorrow
+        }
+
+        if context.tomorrowContext?.hasHardTraining == true,
+           isRecoveryLimitedForTomorrow(context) {
             return .protectTomorrow
         }
 
@@ -1928,17 +2112,20 @@ private extension CoachDayPriorityResolver {
         case .preActivityPreparation:
             guard let activity = context.activityContext.preparingActivity else { return nil }
             let activityKind = CoachActivityContextResolverV3.kind(for: activity)
+            let heatPreparation = activityKind == .heat
             let fuelSignals = fuelBehindSignals(in: context)
             let fuelBehind = fuelIsBehind(context)
             let hydrationBehind = hydrationIsBehind(context)
-            let heatCriticalHydration = activityKind == .heat &&
-                hydrationIsCriticallyBehind(context)
-            guard isTraining(activity) || heatCriticalHydration else { return nil }
-            guard fuelBehind || hydrationBehind || heatCriticalHydration else { return nil }
+            let heatCriticalHydration = heatPreparation &&
+                !hydrationGoalReached(context) &&
+                hydrationRatio(context) < 0.30
+            guard isTraining(activity) || heatPreparation else { return nil }
+            guard fuelBehind || hydrationBehind || heatPreparation else { return nil }
             let activityName = displayName(activity).lowercased()
             let recentFuelStarted = fuelSignals.alreadyAteRecently && fuelSignals.criticalFuelGap
             let score: Double = {
-                if heatCriticalHydration { return 90 }
+                if heatCriticalHydration { return 94 }
+                if heatPreparation { return hydrationBehind ? 90 : 88 }
                 if fuelBehind && hydrationBehind {
                     return recentFuelStarted ? 78 : 90
                 }
@@ -1956,6 +2143,22 @@ private extension CoachDayPriorityResolver {
                     ]
                 }
 
+                if heatPreparation {
+                    if hydrationBehind {
+                        return [
+                            "Keep sipping before sauna",
+                            "Enter heat well hydrated",
+                            "Keep recovery easy"
+                        ]
+                    }
+
+                    return [
+                        "Enter heat well hydrated",
+                        "Keep recovery easy",
+                        "Stop early if you feel flat"
+                    ]
+                }
+
                 var bullets: [String] = []
                 if hydrationBehind {
                     bullets.append("Drink 500 ml water")
@@ -1966,6 +2169,7 @@ private extension CoachDayPriorityResolver {
                 bullets.append("Bring a bottle")
                 return Array(bullets.prefix(3))
             }()
+            let title = "Prepare for \(activityName)"
 
             return PriorityCandidate(
                 priorityScore: score,
@@ -1980,22 +2184,28 @@ private extension CoachDayPriorityResolver {
                     activity: activity,
                     overridesTimingFocus: false,
                     priority: heatCriticalHydration ? .hydration : .performance,
-                    strength: .critical,
+                    strength: heatCriticalHydration ? .critical : (heatPreparation ? .medium : .critical),
                     confidence: 0.90,
-                    mode: .execution,
-                    limiter: heatCriticalHydration ? .hydration : .timing,
-                    messageFamily: heatCriticalHydration ? .hydration : .performance,
-                    todayTitle: heatCriticalHydration ? "Hydration before heat" : "Prepare for \(activityName)",
-                    todayMessage: heatCriticalHydration ? "Bring fluids up before sauna." : "Drink 300-500 ml now and eat 30-60 g carbs before leaving.",
-                    title: heatCriticalHydration ? "Hydration before heat" : "Prepare for \(activityName)",
+                    mode: heatCriticalHydration ? .execution : (heatPreparation ? .recovery : .execution),
+                    limiter: heatCriticalHydration ? .hydration : (heatPreparation ? .none : .timing),
+                    messageFamily: heatCriticalHydration ? .hydration : (heatPreparation ? .recovery : .performance),
+                    todayTitle: title,
+                    todayMessage: heatCriticalHydration
+                        ? "Bring fluids up before sauna."
+                        : (heatPreparation ? "Keep sauna easy and avoid extra stress." : "Drink 300-500 ml now and eat 30-60 g carbs before leaving."),
+                    title: title,
                     message: heatCriticalHydration
                         ? "Do not start heat exposure dry. Sip steadily first, and shorten or skip it if fluids do not come up calmly."
-                        : "\(displayName(activity)) is close. Hydration and fueling are the useful levers before it starts.",
+                        : (heatPreparation
+                            ? "\(displayName(activity)) is close. Treat it as recovery heat, enter hydrated, and stop early if you feel flat."
+                            : "\(displayName(activity)) is close. Hydration and fueling are the useful levers before it starts."),
                     supportBullets: supportBullets,
-                    whyThisMatters: "Starting under-fueled and dry makes the same workout cost more.",
+                    whyThisMatters: heatPreparation
+                        ? "Heat is useful only when it stays easy enough to recover from."
+                        : "Starting under-fueled and dry makes the same workout cost more.",
                     reasons: [
                         "The next activity is inside its preparation window.",
-                        "Fuel and hydration are behind."
+                        heatPreparation ? "Sauna is a recovery heat block." : "Fuel and hydration are behind."
                     ]
                 )
             )
@@ -3941,6 +4151,15 @@ private extension CoachDayPriorityResolver {
         guard kind == .workout || kind == .endurance || kind == .recovery || kind == .heat else {
             return nil
         }
+        if kind == .recovery || kind == .heat {
+            guard completedActivityIsWithinHoldWindow(
+                completed,
+                context: context,
+                maximumMinutes: 60
+            ) else {
+                return nil
+            }
+        }
 
         let title: String
         let message: String
@@ -4423,6 +4642,13 @@ private extension CoachDayPriorityResolver {
         guard !hasMeaningfulTrainingRemaining(context) else { return nil }
         guard let completed = context.dayContext.lastCompletedActivity else { return nil }
         guard isCompletedRecoveryReinforcementActivity(completed) else { return nil }
+        guard completedActivityIsWithinHoldWindow(
+            completed,
+            context: context,
+            maximumMinutes: 60
+        ) else {
+            return nil
+        }
 
         let activityName = displayName(completed)
         let isHeat = CoachActivityContextResolverV3.kind(for: completed) == .heat
@@ -4471,6 +4697,15 @@ private extension CoachDayPriorityResolver {
                 reasons: ["A recovery-oriented activity was completed.", "No meaningful training load needs post-workout recovery."]
             )
         )
+    }
+
+    private static func completedActivityIsWithinHoldWindow(
+        _ activity: PlannedActivity,
+        context: CoachDecisionContext,
+        maximumMinutes: Int
+    ) -> Bool {
+        let minutesSinceEnd = Int(context.dayContext.now.timeIntervalSince(activityEnd(activity)) / 60)
+        return minutesSinceEnd >= 0 && minutesSinceEnd <= maximumMinutes
     }
 
     private static func highReadinessOpportunityCandidate(in context: CoachDecisionContext) -> PriorityCandidate? {

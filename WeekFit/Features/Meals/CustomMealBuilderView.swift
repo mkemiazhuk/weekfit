@@ -94,7 +94,6 @@ struct CustomMealBuilderView: View {
     }
 
     var body: some View {
-        let _ = Self.debugLog("body.render focus=\(focusedField?.rawValue ?? "nil")")
 
         ZStack {
             background.ignoresSafeArea()
@@ -193,6 +192,7 @@ struct CustomMealBuilderView: View {
 
             Button(labels.cancel, role: .cancel) { }
         }
+        .preferredColorScheme(.dark)
     }
 
     private var ambientBackground: some View {

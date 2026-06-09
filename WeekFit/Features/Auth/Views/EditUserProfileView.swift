@@ -23,26 +23,7 @@ struct EditUserProfileView: View {
     }
 
     private var avatarInitial: String {
-        makeInitials(from: cleanName)
-    }
-    
-    private func makeInitials(from name: String) -> String {
-
-        let parts = name
-            .split(separator: " ")
-            .map(String.init)
-
-        guard !parts.isEmpty else {
-            return "P"
-        }
-
-        let initials = parts
-            .prefix(2)
-            .compactMap { $0.first }
-            .map { String($0).uppercased() }
-            .joined()
-
-        return initials.isEmpty ? "P" : initials
+        ProfileService.makeInitials(from: cleanName)
     }
 
     var body: some View {

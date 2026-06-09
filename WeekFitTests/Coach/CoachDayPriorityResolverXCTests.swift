@@ -273,6 +273,45 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertTrue(priority.supportBullets.contains { $0.localizedCaseInsensitiveContains("400-600 ml") })
     }
 
+    func testSaunaPreparationHydrationPriorityUsesTaskTitle() {
+        let sauna = PlannedActivityBuilder.workout(
+            title: "Sauna",
+            at: CoachTestClock.offset(minutes: 8, from: now),
+            durationMinutes: 30
+        )
+        sauna.type = "recovery"
+
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 14,
+            waterProgress: 0.0,
+            hydration: .depleted,
+            fuel: .good,
+            recovery: .stable,
+            readiness: .good
+        )
+
+        let priority = resolve(
+            [sauna],
+            brain: brain,
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 1_500,
+                caloriesGoal: 2_400,
+                proteinCurrent: 110,
+                proteinGoal: 150,
+                waterCurrent: 0.0,
+                waterGoal: 3.0
+            )
+        )
+
+        XCTAssertEqual(priority.priority, .hydration)
+        XCTAssertEqual(priority.focus, .prepareForActivity)
+        XCTAssertEqual(priority.limiter, .hydration)
+        XCTAssertEqual(priority.activity?.id, sauna.id)
+        XCTAssertEqual(priority.title, "Prepare for sauna")
+        XCTAssertEqual(priority.todayTitle, "Prepare for sauna")
+        XCTAssertNotEqual(priority.title, "Hydration before heat")
+    }
+
     func testSaunaSoonWithHydrationGoalReached_hydrationDoesNotRemainLimiter() {
         let sauna = PlannedActivityBuilder.workout(
             title: "Sauna",
@@ -387,7 +426,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         )
         XCTAssertNotEqual(afterOneLiterWithSauna.focus, CoachDayFocus.hydrationBehind)
         XCTAssertNotEqual(afterOneLiterWithSauna.priority, CoachDayPriority.hydration)
-        XCTAssertTrue(afterOneLiterWithSauna.supportBullets.contains { $0.localizedCaseInsensitiveContains("400-600 ml") })
+        XCTAssertTrue(afterOneLiterWithSauna.supportBullets.contains { $0.localizedCaseInsensitiveContains("keep sipping before sauna") })
 
         let afterGoalReached = resolve(
             [sauna],
@@ -1190,6 +1229,65 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertNotEqual(priority.focus, .postActivityRecovery)
         XCTAssertTrue(priority.title.localizedCaseInsensitiveContains("sauna"))
         XCTAssertTrue(priority.message.localizedCaseInsensitiveContains("easy"))
+    }
+
+    func testCompletedSaunaStopsOwningScreenAfterHoldWindow() {
+        let scenarioNow = fixedDate(hour: 19)
+        let sauna = sauna(hour: 17, minute: 0)
+        sauna.isCompleted = true
+        let tomorrowCycling = workout("Cycling", dayOffset: 1, hour: 9, duration: 120)
+        tomorrowCycling.type = "cycling"
+
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 19,
+            hasAnyFoodLogged: true,
+            energyCoverage: 0.35,
+            carbsProgress: 0.22,
+            caloriesProgress: 0.21,
+            waterProgress: 0.21,
+            hydration: .depleted,
+            fuel: .underfueled,
+            protein: .low,
+            strain: .high,
+            recovery: .vulnerable,
+            readiness: .low,
+            metrics: CoachMetricsBuilder.metrics(
+                protein: 17,
+                carbs: 30,
+                calories: 264,
+                waterLiters: 0.75,
+                activeCalories: 950,
+                sleepHours: 5.5
+            )
+        )
+
+        let priority = resolve(
+            [sauna, tomorrowCycling],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            recovery: CoachRecoveryContext(recoveryPercent: 42, sleepHours: 5.5),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 264,
+                caloriesGoal: 1_838,
+                proteinCurrent: 17,
+                proteinGoal: 153,
+                carbsCurrent: 30,
+                carbsGoal: 169,
+                fatsCurrent: 9,
+                fatsGoal: 61,
+                waterCurrent: 0.75,
+                waterGoal: 3.56,
+                mealsCount: 1,
+                lastMealTime: scenarioNow.addingTimeInterval(-4 * 3_600)
+            )
+        )
+
+        XCTAssertNotEqual(priority.title, "Sauna is done")
+        XCTAssertNotEqual(priority.activity?.id, sauna.id)
+        XCTAssertEqual(priority.focus, .tomorrowPlanRisk)
+        XCTAssertEqual(priority.title, "Protect tomorrow")
+        XCTAssertEqual(priority.activity?.id, tomorrowCycling.id)
     }
 
     func testCompletedShortRecoveryWalkDoesNotTriggerPostActivityRecovery() {
@@ -2502,11 +2600,17 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         XCTAssertEqual(guidance.priority.focus, .tomorrowPlanRisk)
         XCTAssertEqual(guidance.title, "Protect tomorrow")
-        XCTAssertEqual(guidance.message, priority.detailMessage)
+        XCTAssertTrue(guidance.message.localizedCaseInsensitiveContains("Tomorrow includes a meaningful"))
+        XCTAssertTrue(guidance.message.localizedCaseInsensitiveContains("Protect tomorrow by rebuilding basics today"))
+        XCTAssertFalse(guidance.message.localizedCaseInsensitiveContains("The day is open enough to stay simple"))
+        XCTAssertFalse(guidance.message.localizedCaseInsensitiveContains("Keep the next step flexible"))
         XCTAssertEqual(guidance.insightTitle, "Protect tomorrow")
-        XCTAssertEqual(guidance.insightSubtitle, "Recovery starts tonight.")
-        XCTAssertEqual(guidance.dynamicInsight.text, "Recovery starts tonight.")
-        XCTAssertEqual(guidance.stateLabel, "PLAN CHECK")
+        XCTAssertEqual(guidance.insightSubtitle, "Protect tomorrow by rebuilding basics today.")
+        XCTAssertEqual(guidance.screenStory?.stateLabel, CoachNarrativeBadgeIntent.protectTomorrow.label)
+        XCTAssertEqual(guidance.stateLabel, CoachNarrativeBadgeIntent.protectTomorrow.label)
+        XCTAssertTrue(guidance.supportActions.contains { $0.title.localizedCaseInsensitiveContains("drink") })
+        XCTAssertTrue(guidance.supportActions.contains { $0.title == "Eat normally" })
+        XCTAssertTrue(guidance.supportActions.contains { $0.title == "Keep recovery easy" })
         XCTAssertFalse(guidance.title.localizedCaseInsensitiveContains("endurance session planned"))
     }
 

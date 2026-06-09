@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MealBuilderView: View {
 
@@ -251,14 +252,17 @@ struct MealBuilderView: View {
                 let end = flyingLandingPoint(for: flyingIngredient)
                 let current = flyingPoint(from: start, to: end, progress: flyingProgressValue)
 
-                Image(flyingIngredient.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: finalPlateItemSize(for: flyingIngredient))
-                    .position(current)
-                    .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
-                    .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
-                    .allowsHitTesting(false)
+                if !flyingIngredient.imageName.isEmpty,
+                   UIImage(named: flyingIngredient.imageName) != nil {
+                    Image(flyingIngredient.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: finalPlateItemSize(for: flyingIngredient))
+                        .position(current)
+                        .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
+                        .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
+                        .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -289,8 +293,36 @@ struct MealBuilderView: View {
         let centerX = plateFrame.midX
         let centerY = plateFrame.midY - 6
 
-        let x = centerX + CGFloat(ingredient.offsetX) * 0.82
-        let y = centerY + CGFloat(ingredient.offsetY) * 0.82 - 2
+        let items = selectedIngredients.map { selected in
+            let ingredient = selected.ingredient
+
+            return MealBuilderImageItem(
+                id: ingredient.id,
+                imageName: ingredient.imageName,
+                visualSize: ingredient.visualSize,
+                visualDensity: ingredient.visualDensity,
+                supportsStandalonePresentation: ingredient.supportsStandalonePresentation,
+                offsetX: ingredient.offsetX,
+                offsetY: ingredient.offsetY,
+                rotation: ingredient.rotation,
+                zIndex: ingredient.zIndex,
+                grams: selected.grams
+            )
+        }
+
+        let resolvedOffset = PlateLayoutEngine.layoutItem(
+            matching: ingredient.id,
+            in: items,
+            plateSize: 220,
+            itemScale: 1.00,
+            offsetScale: 0.82
+        )?.offset ?? CGSize(
+            width: CGFloat(ingredient.offsetX) * 0.82,
+            height: CGFloat(ingredient.offsetY) * 0.82 - 2
+        )
+
+        let x = centerX + resolvedOffset.width
+        let y = centerY + resolvedOffset.height
 
         return CGPoint(x: x, y: y)
     }
@@ -715,11 +747,19 @@ struct MealBuilderView: View {
         isSelected: Bool
     ) -> some View {
         VStack(spacing: 6) {
-            Image(ingredient.imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 42, height: 32)
-                .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
+            if !ingredient.imageName.isEmpty,
+               UIImage(named: ingredient.imageName) != nil {
+                Image(ingredient.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 42, height: 32)
+                    .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
+            } else {
+                Image(systemName: "fork.knife")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(textSecondary)
+                    .frame(width: 42, height: 32)
+            }
 
             Text(ingredient.title)
                 .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold))

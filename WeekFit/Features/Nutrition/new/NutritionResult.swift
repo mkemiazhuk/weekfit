@@ -26,6 +26,37 @@ struct NutritionResult {
     let decision: CoachDecision
 }
 
+struct CoachMetricsSnapshot {
+    let id: UUID
+    let createdAt: Date
+    let source: String
+    let metrics: DailyNutritionMetrics
+    let profile: UserNutritionProfile
+    let result: NutritionResult
+    let nutritionContext: CoachNutritionContext
+    let recoveryContext: CoachRecoveryContext
+    let signature: String
+
+    var brain: HumanBrain.State {
+        result.brain
+    }
+
+    var hydrationRatio: Double {
+        nutritionContext.waterGoal > 0
+            ? nutritionContext.waterCurrent / nutritionContext.waterGoal
+            : 0
+    }
+}
+
+struct CoachGuidanceSnapshot {
+    let id: UUID
+    let createdAt: Date
+    let source: String
+    let metricsSnapshotID: UUID
+    let inputSignature: String
+    let guidance: CoachGuidanceV3
+}
+
 
 // Хелпер-структуры КБЖУ
 struct NutritionGoals {

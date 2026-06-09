@@ -205,6 +205,18 @@ enum HumanBrain {
     }
 }
 
+extension HumanBrain.State {
+    func refreshedForCurrentLocalTime(activities currentActivities: [PlannedActivity]? = nil) -> HumanBrain.State {
+        HumanBrain.build(
+            metrics: metrics,
+            profile: profile,
+            fullDayGoals: fullDayGoals,
+            smoothedGoals: smoothedGoals,
+            activities: currentActivities ?? activities
+        )
+    }
+}
+
 // MARK: - Builders
 
 private extension HumanBrain {

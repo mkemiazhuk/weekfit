@@ -23,6 +23,7 @@ struct CoachDayContext {
     let allActivities: [PlannedActivity]
 
     let completedActivities: [PlannedActivity]
+    let partialActivities: [PlannedActivity]
     let upcomingActivities: [PlannedActivity]
     let skippedActivities: [PlannedActivity]
     let missedActivities: [PlannedActivity]
@@ -96,20 +97,19 @@ enum CoachDayContextBuilder {
             }
 
         let dayActivities = CoachCanonicalDayState.coachRelevantActivities(from: rawDayActivities)
-        let completed = dayActivities.filter { $0.isCompleted }
+        let partial = dayActivities.filter(\.isPartialCompletion)
+        let completed = dayActivities.filter(\.isFullCompletion)
         let skipped = dayActivities.filter { $0.isSkipped }
 
         let upcoming = dayActivities.filter { activity in
-            !activity.isCompleted &&
-            !activity.isSkipped &&
+            activity.terminalState(now: now) == .planned &&
             activity.date >= now
         }
 
         let missed = dayActivities.filter { activity in
             let end = activityEnd(activity)
 
-            return !activity.isCompleted &&
-                   !activity.isSkipped &&
+            return activity.terminalState(now: now) == .planned &&
                    now > end
         }
 
@@ -120,6 +120,7 @@ enum CoachDayContextBuilder {
             .sorted { $0.date > $1.date }
             .first
 
+        let partialTrainingActivities = partial.filter { isTrainingStress($0) }
         let completedTrainingActivities = completed.filter { isTrainingStress($0) }
         let upcomingTrainingActivities = upcoming.filter { isTrainingStress($0) }
 
@@ -139,6 +140,10 @@ enum CoachDayContextBuilder {
             $0 + effectiveMinutes($1)
         }
 
+        let partialMinutes = partial.reduce(0) {
+            $0 + effectiveMinutes($1)
+        }
+
         let upcomingMinutes = upcoming.reduce(0) {
             $0 + effectiveMinutes($1)
         }
@@ -147,7 +152,7 @@ enum CoachDayContextBuilder {
             $0 + effectiveMinutes($1)
         }
 
-        let completedActivityVolumeMinutes = completed
+        let completedActivityVolumeMinutes = (completed + partial)
             .filter { isActivityVolume($0) }
             .reduce(0) {
                 $0 + effectiveMinutes($1)
@@ -165,7 +170,7 @@ enum CoachDayContextBuilder {
                 $0 + effectiveMinutes($1)
             }
 
-        let completedTrainingMinutes = completedTrainingActivities.reduce(0) {
+        let completedTrainingMinutes = (completedTrainingActivities + partialTrainingActivities).reduce(0) {
             $0 + effectiveMinutes($1)
         }
 
@@ -175,7 +180,7 @@ enum CoachDayContextBuilder {
 
         let totalTrainingMinutes = completedTrainingMinutes + upcomingTrainingMinutes
 
-        let completedTrainingStressScore = completedTrainingActivities.reduce(0) {
+        let completedTrainingStressScore = (completedTrainingActivities + partialTrainingActivities).reduce(0) {
             $0 + trainingStressScore(for: $1)
         }
 
@@ -227,6 +232,7 @@ enum CoachDayContextBuilder {
             now: now,
             allActivities: dayActivities,
             completedActivities: completed,
+            partialActivities: partial,
             upcomingActivities: upcoming,
             skippedActivities: skipped,
             missedActivities: missed,
@@ -239,7 +245,7 @@ enum CoachDayContextBuilder {
             upcomingRecoveryCount: upcomingRecovery.count,
             completedMealsCount: completedMeals.count,
             upcomingMealsCount: upcomingMeals.count,
-            completedMinutes: completedMinutes,
+            completedMinutes: completedMinutes + partialMinutes,
             upcomingMinutes: upcomingMinutes,
             totalPlannedMinutes: totalPlannedMinutes,
             completedActivityVolumeMinutes: completedActivityVolumeMinutes,
@@ -280,7 +286,7 @@ private extension CoachDayContextBuilder {
     }
 
     static func effectiveMinutes(_ activity: PlannedActivity) -> Int {
-        max(activity.effectiveDurationMinutes, activity.durationMinutes)
+        max(activity.effectiveDurationMinutes, 0)
     }
 
     static func isActivityVolume(_ activity: PlannedActivity) -> Bool {
@@ -354,6 +360,10 @@ private extension CoachDayContextBuilder {
 
         guard isTrainingStress(activity) else {
             return 0
+        }
+
+        if activity.isPartialCompletion {
+            return activity.effectiveDurationMinutes >= 15 ? 1 : 0
         }
 
         let load = CoachActivityContextResolverV3.load(for: activity)

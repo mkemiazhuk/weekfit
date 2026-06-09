@@ -12,9 +12,8 @@ struct WeekPlannerView: View {
     @ObservedObject var authViewModel: AuthViewModel
     
     @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
-    
-    @AppStorage(ProfileService.Keys.initials)
-    private var profileInitials: String = "P"
+
+    @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var mode: PlanMode = .week
     @State private var showProfile = false
@@ -49,7 +48,7 @@ struct WeekPlannerView: View {
                     WeekFitScreenHeader(
                         title: "Plan",
                         subtitle: "Weekly activities",
-                        initials: profileInitials,
+                        initials: userSettings.profileInitials,
                         showAvatar: true
                     ) {
                         showProfile = true
