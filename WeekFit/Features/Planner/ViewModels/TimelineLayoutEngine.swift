@@ -22,10 +22,23 @@ struct TimelineLayoutEngine {
         return calendar.date(byAdding: .minute, value: clampedMinutes, to: timelineStart) ?? timelineStart
     }
     
-    static func hasTimeConflict(newStart: Date, durationMinutes: Int, activities: [PlannedActivity], excluding: PlannedActivity?, calendar: Calendar) -> Bool {
-        activities.contains { existing in
+    static func hasTimeConflict(
+        newStart: Date,
+        durationMinutes: Int,
+        activities: [PlannedActivity],
+        excluding: PlannedActivity?,
+        calendar: Calendar,
+        newEventBlocksPlannerTime: Bool = true
+    ) -> Bool {
+        guard newEventBlocksPlannerTime else { return false }
+
+        return activities.contains { existing in
             if let excluding, existing === excluding { return false }
-            guard calendar.isDate(existing.date, inSameDayAs: newStart) && !existing.isSkipped else { return false }
+            guard calendar.isDate(existing.date, inSameDayAs: newStart),
+                  !existing.isSkipped,
+                  existing.blocksPlannerTime else {
+                return false
+            }
             
             let aEnd = calendar.date(byAdding: .minute, value: max(durationMinutes, 15), to: newStart) ?? newStart
             let bEnd = calendar.date(byAdding: .minute, value: max(existing.durationMinutes, 15), to: existing.date) ?? existing.date

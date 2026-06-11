@@ -12,9 +12,8 @@ struct WeekPlannerView: View {
     @ObservedObject var authViewModel: AuthViewModel
     
     @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
-    
-    @AppStorage(ProfileService.Keys.initials)
-    private var profileInitials: String = "P"
+
+    @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var mode: PlanMode = .week
     @State private var showProfile = false
@@ -49,7 +48,7 @@ struct WeekPlannerView: View {
                     WeekFitScreenHeader(
                         title: "Plan",
                         subtitle: "Weekly activities",
-                        initials: profileInitials,
+                        initials: userSettings.profileInitials,
                         showAvatar: true
                     ) {
                         showProfile = true
@@ -318,22 +317,10 @@ private extension WeekPlannerView {
                 Spacer(minLength: 0)
             }
 
-            HStack(spacing: 6) {
-                ForEach(viewModel.weekDays, id: \.self) { date in
-                    DynamicDayCapsule(
-                        date: date,
-                        kind: dayKind(for: date),
-                        isSelected: calendar.isDate(date, inSameDayAs: viewModel.selectedDate),
-                        isToday: calendar.isDateInToday(date)
-                    )
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                            viewModel.selectedDate = date
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
+            PlanningWeekPicker(
+                selectedDate: $viewModel.selectedDate,
+                dayKind: dayKind(for:)
+            )
 
             legend
         }
@@ -1047,38 +1034,20 @@ private extension WeekPlannerView {
         if let match = bestPlannedActivityMatch(for: workout) {
 //            print("🔗 Linking Apple Workout to existing activity:", match.title)
 
+            let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
             match.isCompleted = true
             match.isSkipped = false
             match.source = "appleWorkout"
             match.healthKitWorkoutUUID = workoutUUID
             match.date = workout.startDate
-            match.durationMinutes = max(1, Int(workout.duration / 60))
+            match.durationMinutes = actualMinutes
+            match.actualDurationMinutes = actualMinutes
 
             
 //            print("✅ Apple Workout matched and logged:", match.title)
 
         } else {
-            let imported = PlannedActivity(
-                healthKitWorkoutUUID: workoutUUID,
-                date: workout.startDate,
-                type: "workout",
-                title: title(for: workout.workoutActivityType),
-                durationMinutes: Int(workout.duration / 60),
-                icon: icon(for: workout.workoutActivityType),
-                colorRed: 0.46,
-                colorGreen: 0.72,
-                colorBlue: 0.82,
-                isCompleted: true,
-                isSkipped: false,
-                source: "appleWorkout"
-            )
-
-            imported.durationMinutes = Int(workout.duration / 60)
-            imported.isCompleted = true
-            imported.isSkipped = false
-            imported.source = "appleWorkout"
-            imported.id = workoutUUID
-
+            let imported = ActivityReconciler.importedActivity(for: workout)
             modelContext.insert(imported)
 
 //            print("🆕 Apple Workout imported as new activity:", imported.title)
@@ -1093,87 +1062,15 @@ private extension WeekPlannerView {
     }
     
     func title(for type: HKWorkoutActivityType) -> String {
-        switch type {
-
-        case .cycling:
-            return "Cycling"
-
-        case .running:
-            return "Running"
-
-        case .walking:
-            return "Walk"
-
-        case .hiking:
-            return "Hiking"
-
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining:
-            return "Strength Workout"
-
-        case .highIntensityIntervalTraining:
-            return "HIIT Workout"
-
-        case .yoga:
-            return "Yoga"
-
-        case .swimming:
-            return "Swimming"
-
-        default:
-            return "Workout"
-        }
+        ActivityReconciler.title(for: type)
     }
     
     func icon(for type: HKWorkoutActivityType) -> String {
-        switch type {
-        case .cycling:
-            return "bicycle"
-        case .running:
-            return "figure.run"
-        case .walking:
-            return "figure.walk"
-        case .hiking:
-            return "figure.hiking"
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining:
-            return "dumbbell.fill"
-        case .highIntensityIntervalTraining:
-            return "flame.fill"
-        case .yoga:
-            return "figure.yoga"
-        case .swimming:
-            return "figure.pool.swim"
-        default:
-            return "figure.run"
-        }
+        ActivityReconciler.icon(for: type)
     }
 
     func bestPlannedActivityMatch(for workout: HKWorkout) -> PlannedActivity? {
-        let workoutStart = workout.startDate
-        let workoutEnd = workout.endDate
-
-        let candidates = plannedActivities.filter { activity in
-            guard calendar.isDate(activity.date, inSameDayAs: workoutStart),
-                  !activity.isSkipped,
-                  activity.healthKitWorkoutUUID == nil,
-                  matches(activity: activity, workoutType: workout.workoutActivityType)
-            else {
-                return false
-            }
-
-            return isWorkoutCloseEnoughToPlannedActivity(
-                workoutStart: workoutStart,
-                workoutEnd: workoutEnd,
-                activity: activity
-            )
-        }
-
-        return candidates.min {
-            plannedDistanceScore(activity: $0, workoutStart: workoutStart, workoutEnd: workoutEnd)
-            <
-            plannedDistanceScore(activity: $1, workoutStart: workoutStart, workoutEnd: workoutEnd)
-        }
+        ActivityReconciler.bestMatch(for: workout, in: plannedActivities, calendar: calendar)
     }
     
     func isWorkoutCloseEnoughToPlannedActivity(
@@ -1182,32 +1079,9 @@ private extension WeekPlannerView {
         activity: PlannedActivity
     ) -> Bool {
         let plannedStart = activity.date
-        let plannedEnd = calendar.date(
-            byAdding: .minute,
-            value: max(activity.durationMinutes, 1),
-            to: plannedStart
-        ) ?? plannedStart
+        guard plannedStart <= workoutEnd else { return false }
 
-        // 1. Direct overlap
-        if workoutStart < plannedEnd && workoutEnd > plannedStart {
-            return true
-        }
-
-        // 2. Close start time
-        let startDistance = abs(plannedStart.timeIntervalSince(workoutStart))
-
-        if startDistance <= 20 * 60 {
-            return true
-        }
-
-        // 3. Workout ended close to planned start
-        let endToStartDistance = abs(plannedStart.timeIntervalSince(workoutEnd))
-
-        if endToStartDistance <= 10 * 60 {
-            return true
-        }
-
-        return false
+        return workoutEnd.timeIntervalSince(plannedStart) <= ActivityReconciler.pastMatchingWindow
     }
     
     func plannedDistanceScore(
@@ -1292,18 +1166,7 @@ private extension WeekPlannerView {
         activity: PlannedActivity,
         workoutType: HKWorkoutActivityType
     ) -> Bool {
-
-        let title = activity.title.lowercased()
-
-        let keywords = normalizedWorkoutKeywords(for: workoutType)
-
-        guard !keywords.isEmpty else {
-            return false
-        }
-
-        return keywords.contains {
-            title.contains($0)
-        }
+        ActivityReconciler.matches(activity: activity, workoutType: workoutType)
     }
 
     func activityStatus(for item: PlannedActivity) -> PlanActivityStatus {
@@ -1356,6 +1219,114 @@ private extension WeekPlannerView {
 
 // MARK: - Components
 
+private struct PlanningWeekPicker: View {
+    @Binding var selectedDate: Date
+
+    let dayKind: (Date) -> PlanDayKind
+
+    private var calendar: Calendar {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    private var weekDays: [Date] {
+        let selectedDay = calendar.startOfDay(for: selectedDate)
+
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: selectedDay)?.start else {
+            return [selectedDay]
+        }
+
+        let start = calendar.startOfDay(for: weekStart)
+
+        return (0..<7).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: start).map {
+                calendar.startOfDay(for: $0)
+            }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            weekNavigationButton(systemName: "chevron.left") {
+                moveWeek(by: -1)
+            }
+
+            HStack(spacing: 6) {
+                ForEach(weekDays, id: \.self) { date in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            selectedDate = date
+                        }
+                    } label: {
+                        DynamicDayCapsule(
+                            date: date,
+                            kind: dayKind(date),
+                            isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
+                            isToday: calendar.isDateInToday(date)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 18)
+                    .onEnded { value in
+                        guard abs(value.translation.width) > 34 else { return }
+                        moveWeek(by: value.translation.width < 0 ? 1 : -1)
+                    }
+            )
+
+            weekNavigationButton(systemName: "chevron.right") {
+                moveWeek(by: 1)
+            }
+        }
+    }
+
+    private func weekNavigationButton(
+        systemName: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            action()
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white.opacity(0.64))
+                .frame(width: 26, height: 46)
+                .background {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(Color.white.opacity(0.032))
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func moveWeek(by weekDelta: Int) {
+        let currentWeekdayIndex = weekDays.firstIndex {
+            calendar.isDate($0, inSameDayAs: selectedDate)
+        } ?? 0
+
+        guard let currentWeekStart = weekDays.first,
+              let nextWeekStart = calendar.date(byAdding: .day, value: weekDelta * 7, to: currentWeekStart),
+              let nextSelectedDate = calendar.date(byAdding: .day, value: currentWeekdayIndex, to: nextWeekStart)
+        else {
+            return
+        }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+            selectedDate = calendar.startOfDay(for: nextSelectedDate)
+        }
+    }
+
+}
+
 private struct DynamicDayCapsule: View {
 
     let date: Date
@@ -1364,12 +1335,13 @@ private struct DynamicDayCapsule: View {
     let isToday: Bool
 
     var body: some View {
-        VStack(spacing: 6) {
-            VStack(spacing: 3) {
+        VStack(spacing: 5) {
+            VStack(spacing: 2) {
                 HStack(spacing: 3) {
-                    Text(date.formatted(.dateTime.weekday(.abbreviated)).uppercased())
-                        .font(.system(size: 10.8, weight: .semibold))
+                    Text(dayLabel)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.70)
 
                     if isToday {
                         Circle()
@@ -1377,29 +1349,30 @@ private struct DynamicDayCapsule: View {
                             .frame(width: 3.5, height: 3.5)
                     }
                 }
-                .foregroundStyle(isSelected ? kind.color : .white.opacity(0.72))
+                .foregroundStyle(isSelected ? kind.color : .white.opacity(0.70))
 
                 Text(date.formatted(.dateTime.day()))
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(isSelected ? 0.94 : 0.72))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(isSelected ? 0.94 : 0.70))
             }
 
-            VStack(spacing: 3) {
+            VStack(spacing: 2.5) {
                 ForEach(0..<4, id: \.self) { index in
                     Capsule()
-                        .fill(index < kind.barCount ? kind.color : .white.opacity(0.075))
-                        .frame(width: 20, height: 4)
+                        .fill(index < kind.barCount ? kind.color : .white.opacity(0.070))
+                        .frame(width: 18, height: 3.5)
                 }
             }
         }
-        .frame(width: 43)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
         .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(isSelected ? .white.opacity(0.055) : .white.opacity(0.010))
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(
                     isSelected ? kind.color.opacity(0.72) : .white.opacity(0.018),
                     lineWidth: isSelected ? 1.05 : 1
@@ -1410,7 +1383,11 @@ private struct DynamicDayCapsule: View {
             radius: 8,
             y: 4
         )
-        .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var dayLabel: String {
+        date.formatted(.dateTime.weekday(.narrow))
     }
 }
 

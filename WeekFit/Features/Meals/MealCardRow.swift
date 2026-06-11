@@ -48,7 +48,7 @@ struct MealCardRow: View {
                                 .minimumScaleFactor(0.82)
 
                             if isQuickLogMode && isMealMatchingCurrentTime {
-                                Text("Suggested")
+                                Text(WeekFitLocalizedString("meals.suggested"))
                                     .font(.system(size: 8.8, weight: .bold))
                                     .tracking(0.4)
                                     .foregroundStyle(weekFitGreen)
@@ -141,12 +141,23 @@ struct MealCardRow: View {
 
     private var mealImage: some View {
         Group {
-            if let items = meal.builderImageItems, !items.isEmpty {
+            if meal.isFoodProduct {
+                AsyncCustomFoodVisualView(
+                    filename: meal.displayPhotoFilename,
+                    placeholderInitial: meal.placeholderInitial,
+                    size: isQuickLogMode ? 54 : 36,
+                    imageScale: 0.62
+                )
+                .offset(x: isQuickLogMode ? -6 : -4)
+
+            } else if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealImage(items)
-            } else if UIImage(named: meal.imageName) != nil {
+
+            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
                     .resizable()
                     .scaledToFill()
+
             } else {
                 RoundedRectangle(cornerRadius: isQuickLogMode ? 18 : 12)
                     .fill(Color.white.opacity(0.04))
@@ -157,6 +168,10 @@ struct MealCardRow: View {
                     }
             }
         }
+        .frame(
+            width: isQuickLogMode ? 78 : 64,
+            height: isQuickLogMode ? 62 : 64
+        )
         .clipShape(
             RoundedRectangle(
                 cornerRadius: isQuickLogMode ? 18 : 12,
@@ -166,49 +181,20 @@ struct MealCardRow: View {
     }
 
     private func builtMealImage(_ items: [MealBuilderImageItem]) -> some View {
-        let sortedItems = items.sorted { $0.zIndex < $1.zIndex }
-        let isStandalone = sortedItems.count == 1
-        let hasFoodItems = sortedItems.contains {
-            !$0.id.hasPrefix("drink_")
-        }
+        let previewSize: CGFloat = isQuickLogMode ? 74 : 60
 
         return ZStack {
             Color.black.opacity(0.10)
 
-            if hasFoodItems {
-                Image("plate-dark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: isQuickLogMode ? 74 : 60, height: isQuickLogMode ? 74 : 60)
-            }
-
-            ForEach(sortedItems) { item in
-                Image(item.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(
-                        width: builtMealItemWidth(
-                            item,
-                            isStandalone: isStandalone
-                        )
-                    )
-                    .offset(
-                        x: hasFoodItems
-                            ? builtMealItemOffsetX(item, isStandalone: isStandalone)
-                            : 0,
-                        y: hasFoodItems
-                            ? builtMealItemOffsetY(item, isStandalone: isStandalone)
-                            : 0
-                    )
-                    .rotationEffect(
-                        .degrees(
-                            hasFoodItems
-                                ? builtMealItemRotation(item, isStandalone: isStandalone)
-                                : 0
-                        )
-                    )
-                    .zIndex(Double(item.zIndex))
-            }
+            BuiltMealPlateView(
+                items: items,
+                plateSize: previewSize,
+                itemScale: isQuickLogMode ? 0.28 : 0.24,
+                offsetScale: isQuickLogMode ? 0.28 : 0.23,
+                plateOpacity: 0.42,
+                shadowOpacity: 0.12,
+                layoutMode: .compactPreview
+            )
         }
         .frame(
             width: isQuickLogMode ? 78 : 64,
@@ -216,89 +202,19 @@ struct MealCardRow: View {
         )
     }
 
-    private func builtMealItemWidth(
-        _ item: MealBuilderImageItem,
-        isStandalone: Bool
-    ) -> CGFloat {
-
-        let baseWidth = CGFloat(item.visualSize) * (isQuickLogMode ? 0.31 : 0.27)
-
-        guard isStandalone else {
-            return baseWidth
-        }
-
-        if item.id.hasPrefix("base_") {
-            return baseWidth * 0.78
-        }
-
-        if item.id.hasPrefix("protein_") {
-            return baseWidth * 1.0
-        }
-
-        if item.id.hasPrefix("veg_") {
-            return baseWidth * 1.16
-        }
-
-        if item.id.hasPrefix("extra_") {
-            return baseWidth * 1.38
-        }
-
-        if item.id.hasPrefix("drink_") {
-            return baseWidth * 2.8
-        }
-
-        return baseWidth
-    }
-
-    private func builtMealItemOffsetX(
-        _ item: MealBuilderImageItem,
-        isStandalone: Bool
-    ) -> CGFloat {
-
-        guard isStandalone else {
-            return CGFloat(item.offsetX) * 0.225
-        }
-
-        return 0
-    }
-
-    private func builtMealItemOffsetY(
-        _ item: MealBuilderImageItem,
-        isStandalone: Bool
-    ) -> CGFloat {
-
-        guard isStandalone else {
-            return (CGFloat(item.offsetY) - 2) * 0.225
-        }
-
-        return 0
-    }
-
-    private func builtMealItemRotation(
-        _ item: MealBuilderImageItem,
-        isStandalone: Bool
-    ) -> Double {
-
-        guard isStandalone else {
-            return Double(item.rotation)
-        }
-
-        return 0
-    }
-
     private var macrosPill: some View {
         HStack(spacing: 0) {
-            Text("\(meal.calories) kcal")
+            Text(String(format: WeekFitLocalizedString("meals.detail.caloriesFormat"), meal.calories))
                 .font(.system(size: isQuickLogMode ? 11.2 : 10.5, weight: .bold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.9))
                 .frame(maxWidth: .infinity)
 
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("P \(meal.protein)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("C \(meal.carbs)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
             Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
-            macroText("F \(meal.fats)g")
+            macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 1)

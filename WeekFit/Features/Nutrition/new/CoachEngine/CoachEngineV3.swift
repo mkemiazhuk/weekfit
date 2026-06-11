@@ -10,33 +10,102 @@ import SwiftUI
 
 enum CoachEngineV3 {
 
+    private static let decisionLogLock = NSLock()
+    private static var lastDecisionLogSignature: String?
+    private static let memoLock = NSLock()
+    private static var lastMemoSignature: String?
+    private static var lastMemoGuidance: CoachGuidanceV3?
+
+    #if DEBUG
+    private static let priorityDebugLock = NSLock()
+    private static var lastPriorityDebugSignature: String?
+    #endif
+
     static func decide(
         from brain: HumanBrain.State,
         plannedActivities: [PlannedActivity]? = nil,
         selectedDate: Date = Date(),
         dayContext: CoachDayContext? = nil,
+        actualLoad: CoachActualLoadSnapshot? = nil,
         recoveryContext: CoachRecoveryContext? = nil,
         nutritionContext: CoachNutritionContext? = nil
     ) -> CoachGuidanceV3 {
 
         let activities = plannedActivities ?? brain.activities
-
         let resolvedDayContext = dayContext ?? CoachDayContextBuilder.build(
             activities: activities,
             selectedDate: selectedDate,
             now: brain.now
         )
+        let decisionNow = resolvedDayContext.now
+        let inputSignature = memoSignature(
+            brain: brain,
+            activities: activities,
+            selectedDate: selectedDate,
+            decisionNow: decisionNow,
+            actualLoad: actualLoad,
+            recoveryContext: recoveryContext,
+            nutritionContext: nutritionContext
+        )
+
+        memoLock.lock()
+        if inputSignature == lastMemoSignature, let cached = lastMemoGuidance {
+            memoLock.unlock()
+            CoachLogger.compactThrottled(
+                "[CoachRefreshSkipped]",
+                key: "coachEngine.memo.unchanged",
+                "Coach refresh skipped: unchanged fingerprint source=CoachEngineV3.decide"
+            )
+            return cached
+        }
+        memoLock.unlock()
 
         let resolvedRecoveryContext = recoveryContext ?? CoachRecoveryContext(
             recoveryPercent: 0,
             sleepHours: 0
         )
 
-        let phase = CoachActivityContextResolverV3.resolve(
-            brain: brain,
+        let activityContext = CoachActivityContextResolverV3.resolveDayContext(
             activities: activities,
-            selectedDate: selectedDate
+            selectedDate: selectedDate,
+            now: decisionNow,
+            brain: brain
         )
+
+        let timingPhase = activityContext.phase
+
+        let timingReadiness = CoachReadinessAnalyzerV3.analyze(
+            brain: brain,
+            phase: timingPhase
+        )
+
+        let decisionContext = CoachDecisionContext(
+            brain: brain,
+            dayContext: resolvedDayContext,
+            activityContext: activityContext,
+            tomorrowContext: tomorrowPlanContext(
+                activities: activities,
+                selectedDate: selectedDate,
+                now: decisionNow
+            ),
+            actualLoad: actualLoad ?? CoachActualLoadSnapshot.fallback(from: brain),
+            recoveryContext: resolvedRecoveryContext,
+            nutritionContext: nutritionContext,
+            readiness: timingReadiness
+        )
+        CoachLogger.compact(
+            "[BrainStateSourceDebug]",
+            "mappingSource=CoachEngineV3.decide brainStateUsedByCoachContext sleep=\(brain.sleep) recovery=\(brain.recovery) readiness=\(brain.readiness) brainStateUsedByPriorityResolver sleep=\(decisionContext.brain.sleep) recovery=\(decisionContext.brain.recovery) readiness=\(decisionContext.brain.readiness) sourceTimestamp=\(brain.now.timeIntervalSince1970) snapshotID=unavailable"
+        )
+        let priority = CoachDayPriorityResolver.resolve(decisionContext)
+        logDecisionChange(context: decisionContext, selected: priority)
+        logPriorityResolution(
+            context: decisionContext,
+            selected: priority,
+            rawActivities: activities
+        )
+
+        let phase = priority.phase(for: activityContext)
 
         let readiness = CoachReadinessAnalyzerV3.analyze(
             brain: brain,
@@ -49,30 +118,447 @@ enum CoachEngineV3 {
             brain: brain
         )
 
-        let shouldSurface = CoachInterventionGateV3.shouldSurface(
+        let gateShouldSurface = CoachInterventionGateV3.shouldSurface(
             opportunity: opportunity,
             phase: phase,
             readiness: readiness,
             brain: brain
         )
 
-        return CoachGuidanceFactoryV3.make(
-            phase: phase,
-            readiness: readiness,
-            opportunity: opportunity,
-            shouldSurface: shouldSurface,
-            brain: brain,
-            dayContext: resolvedDayContext,
-            recoveryContext: resolvedRecoveryContext
+        let shouldSurface = gateShouldSurface || priority.level >= .useful
+
+        let humanDecision = HumanCoachDecisionEngine.resolve(
+            context: decisionContext,
+            priority: priority
         )
+
+        let guidance = HumanCoachDecisionEngine.adapt(
+            humanDecision,
+            phase: phase,
+            opportunity: opportunity,
+            legacyPriority: priority,
+            activityIdentityIsCertain: activityContext.activeActivityIdentityIsCertain,
+            activeSessionPhase: activityContext.activeSessionPhase
+        )
+
+        logRenderChain(guidance, nutritionContext: nutritionContext)
+        assertLimiterConsistency(guidance)
+        assertHydrationRenderConsistency(guidance, nutritionContext: nutritionContext)
+
+        memoLock.lock()
+        lastMemoSignature = inputSignature
+        lastMemoGuidance = guidance
+        memoLock.unlock()
+
+        return guidance
     }
 }
+
+private extension CoachEngineV3 {
+    static func logRenderChain(
+        _ guidance: CoachGuidanceV3,
+        nutritionContext: CoachNutritionContext?
+    ) {
+        #if DEBUG
+        let renderedState = guidance.screenStory?.stateLabel ?? guidance.stateLabel
+        let screenStoryType = guidance.screenStory.map { story in
+            story.narrativePlan.map { "badge=\($0.badgeIntent)" } ?? "legacy"
+        } ?? "nil"
+        let waterCurrent = nutritionContext?.waterCurrent ?? -1.0
+        let waterGoal = nutritionContext?.waterGoal ?? -1.0
+        let hydrationRatio = (nutritionContext?.waterGoal ?? 0.0) > 0
+            ? (nutritionContext?.waterCurrent ?? 0.0) / (nutritionContext?.waterGoal ?? 1.0)
+            : -1.0
+
+        CoachRefreshDebug.log(
+            "[CoachRenderChain]",
+            """
+            priority=\(guidance.priority.priority)/\(guidance.priority.focus) \
+            limiter=\(guidance.priority.limiter) strength=\(guidance.priority.strength) \
+            screenStoryType=\(screenStoryType) renderedState="\(renderedState)" \
+            waterCurrent=\(String(format: "%.2f", waterCurrent)) waterGoal=\(String(format: "%.2f", waterGoal)) hydrationRatio=\(String(format: "%.2f", hydrationRatio))
+            """
+        )
+        #endif
+    }
+
+    static func assertHydrationRenderConsistency(
+        _ guidance: CoachGuidanceV3,
+        nutritionContext: CoachNutritionContext?
+    ) {
+        #if DEBUG
+        guard let nutritionContext else { return }
+        let hydrationRatio = nutritionContext.waterGoal > 0
+            ? nutritionContext.waterCurrent / nutritionContext.waterGoal
+            : 1
+        guard nutritionContext.waterCurrent <= 0.05 || hydrationRatio < 0.20 else { return }
+        let hydrationOwnsNarrative = guidance.priority.limiter == .hydration &&
+            guidance.priority.strength == .critical &&
+            guidance.narrativePlan?.primaryLimiter == .hydration
+        guard hydrationOwnsNarrative else { return }
+
+        let renderedState = guidance.screenStory?.stateLabel ?? guidance.stateLabel
+        let forbiddenStates = ["GOOD TO GO", "ON TRACK"]
+        let storyRead = guidance.screenStory?.myRead ?? guidance.message
+
+        assert(
+            !forbiddenStates.contains(renderedState),
+            "Critical hydration-owned day rendered forbidden neutral state \(renderedState)."
+        )
+        assert(
+            !storyRead.localizedCaseInsensitiveContains("Nothing in the current day asks for a major change right now"),
+            "Hydration-limited day rendered neutral no-intervention copy."
+        )
+        #endif
+    }
+
+    static func assertLimiterConsistency(_ guidance: CoachGuidanceV3) {
+        #if DEBUG
+        guard let narrativeLimiter = guidance.narrativePlan?.primaryLimiter else { return }
+        let expectedLimiter = expectedNarrativeLimiter(from: guidance.priority.limiter)
+        assert(
+            narrativeLimiter == expectedLimiter,
+            "Coach render limiter \(narrativeLimiter) diverged from priority limiter \(guidance.priority.limiter)."
+        )
+        #endif
+    }
+
+    static func expectedNarrativeLimiter(from limiter: CoachLimiter) -> CoachNarrativeLimiter {
+        switch limiter {
+        case .sleep:
+            return .sleep
+        case .recovery, .accumulatedFatigue, .trainingReadiness, .insufficientRecoveryTime:
+            return .recovery
+        case .hydration:
+            return .hydration
+        case .fueling:
+            return .fuel
+        case .upcomingTraining, .excessivePlannedLoad:
+            return .futureLoad
+        case .timing:
+            return .timing
+        case .none:
+            return .none
+        }
+    }
+
+    static func memoSignature(
+        brain: HumanBrain.State,
+        activities: [PlannedActivity],
+        selectedDate: Date,
+        decisionNow: Date,
+        actualLoad: CoachActualLoadSnapshot?,
+        recoveryContext: CoachRecoveryContext?,
+        nutritionContext: CoachNutritionContext?
+    ) -> String {
+        let selectedDay = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
+        let activitySignature = activities
+            .sorted { $0.id < $1.id }
+            .map(activityMemoSignature)
+            .joined(separator: "|")
+        let hydrationLogCount = activities.filter(isHydrationLog).count
+
+        return [
+            "day=\(Int(selectedDay))",
+            "hydrationLogs=\(hydrationLogCount)",
+            metricsSignature(brain.metrics),
+            goalsSignature(brain.fullDayGoals),
+            "sleep=\(brain.sleep)",
+            "hydration=\(brain.hydration)",
+            "fuel=\(brain.fuel)",
+            "strain=\(brain.strain)",
+            "recovery=\(brain.recovery)",
+            "readiness=\(brain.readiness)",
+            actualLoadSignature(actualLoad),
+            recoverySignature(recoveryContext),
+            nutritionSignature(nutritionContext),
+            activitySignature
+        ].joined(separator: "#")
+    }
+
+    static func activityMemoSignature(_ activity: PlannedActivity) -> String {
+        [
+            activity.id,
+            "\(Int(activity.date.timeIntervalSince1970 / 60))",
+            activity.type,
+            activity.title,
+            "\(activity.durationMinutes)",
+            "\(activity.actualDurationMinutes ?? -1)",
+            activity.imageName,
+            "\(activity.calories)",
+            "\(activity.protein)",
+            "\(activity.carbs)",
+            "\(activity.fats)",
+            "\(activity.isCompleted)",
+            "\(activity.isSkipped)",
+            activity.source
+        ].joined(separator: ":")
+    }
+
+    static func metricsSignature(_ metrics: DailyNutritionMetrics) -> String {
+        [
+            rounded(metrics.calories),
+            rounded(metrics.protein),
+            rounded(metrics.carbs),
+            rounded(metrics.fats),
+            rounded(metrics.fiber),
+            rounded(metrics.waterLiters),
+            rounded(metrics.activeCalories),
+            rounded(metrics.sleepHours),
+            rounded(metrics.weightKg)
+        ].joined(separator: ",")
+    }
+
+    static func goalsSignature(_ goals: NutritionGoals) -> String {
+        [
+            rounded(goals.calories),
+            rounded(goals.protein),
+            rounded(goals.carbs),
+            rounded(goals.fats),
+            rounded(goals.fiber),
+            rounded(goals.waterLiters)
+        ].joined(separator: ",")
+    }
+
+    static func recoverySignature(_ context: CoachRecoveryContext?) -> String {
+        guard let context else { return "recovery=nil" }
+        return "recovery=\(rounded(Double(context.recoveryPercent))):\(rounded(context.sleepHours))"
+    }
+
+    static func actualLoadSignature(_ actualLoad: CoachActualLoadSnapshot?) -> String {
+        guard let actualLoad else { return "actualLoad=nil" }
+        return [
+            "actualLoad=\(actualLoad.source.rawValue)",
+            rounded(actualLoad.activeCalories),
+            "\(actualLoad.exerciseMinutes ?? -1)",
+            "\(actualLoad.standHours ?? -1)",
+            rounded(actualLoad.activityProgress ?? -1)
+        ].joined(separator: ",")
+    }
+
+    static func nutritionSignature(_ context: CoachNutritionContext?) -> String {
+        guard let context else { return "nutrition=nil" }
+        return [
+            rounded(context.caloriesCurrent),
+            rounded(context.caloriesGoal),
+            rounded(context.proteinCurrent),
+            rounded(context.proteinGoal),
+            rounded(context.carbsCurrent),
+            rounded(context.carbsGoal),
+            rounded(context.fatsCurrent),
+            rounded(context.fatsGoal),
+            rounded(context.waterCurrent),
+            rounded(context.waterGoal),
+            "\(context.mealsCount ?? -1)",
+            "\(context.lastMealTime.map { Int($0.timeIntervalSince1970 / 60) } ?? -1)"
+        ].joined(separator: ",")
+    }
+
+    static func rounded(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
+    static func tomorrowPlanContext(
+        activities: [PlannedActivity],
+        selectedDate: Date,
+        now: Date
+    ) -> CoachTomorrowPlanContext? {
+        guard let tomorrow = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: selectedDate
+        ) else {
+            return nil
+        }
+
+        let dayContext = CoachDayContextBuilder.build(
+            activities: activities,
+            selectedDate: tomorrow,
+            now: now
+        )
+
+        guard !dayContext.allActivities.isEmpty else {
+            return nil
+        }
+
+        return CoachTomorrowPlanContext(dayContext: dayContext)
+    }
+
+    static func logDecisionChange(
+        context: CoachDecisionContext,
+        selected: CoachDayPriorityResult
+    ) {
+        let intent = CoachIntentResolver.resolve(context)
+        let activity = selected.activity ?? context.activityContext.coachFocusActivity
+        let signature = [
+            "\(intent)",
+            "\(selected.priority)",
+            "\(selected.focus)",
+            "\(selected.limiter)",
+            selected.title,
+            activity?.id ?? "none",
+            selected.supportBullets.joined(separator: "|")
+        ].joined(separator: "#")
+
+        decisionLogLock.lock()
+        let shouldLog = signature != lastDecisionLogSignature
+        if shouldLog {
+            lastDecisionLogSignature = signature
+        }
+        decisionLogLock.unlock()
+
+        guard shouldLog else { return }
+
+        CoachLogger.decision(
+            """
+            intent=\(intent) \
+            activity=\(activity.map(debugActivityName) ?? "none") \
+            title=\(selected.title) \
+            priority=\(selected.priority)/\(selected.focus) \
+            limiter=\(selected.limiter)
+            """
+        )
+    }
+
+    static func debugActivityName(_ activity: PlannedActivity) -> String {
+        let title = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? activity.type : title
+    }
+
+    #if DEBUG
+    static func logPriorityResolution(
+        context: CoachDecisionContext,
+        selected: CoachDayPriorityResult,
+        rawActivities: [PlannedActivity]
+    ) {
+        let waterCurrent = context.nutritionContext?.waterCurrent ?? 0
+        let waterGoal = context.nutritionContext?.waterGoal ?? 0
+        let hydrationRatio = waterGoal > 0 ? waterCurrent / waterGoal : 1
+        let decisionMinute = Int(context.dayContext.now.timeIntervalSince1970 / 60)
+        let brainMinute = Int(context.brain.now.timeIntervalSince1970 / 60)
+        let recoveryPercent = context.recoveryContext?.recoveryPercent ?? -1
+        let recoverySleepHours = context.recoveryContext?.sleepHours ?? -1
+        let signature = [
+            "\(decisionMinute)",
+            "\(brainMinute)",
+            String(format: "%.2f", waterCurrent),
+            String(format: "%.2f", waterGoal),
+            String(format: "%.2f", hydrationRatio),
+            "\(recoveryPercent)",
+            String(format: "%.2f", recoverySleepHours),
+            String(format: "%.2f", context.brain.metrics.sleepHours),
+            "\(selected.priority)",
+            "\(selected.focus)",
+            "\(selected.limiter)",
+            selected.activity?.id ?? "none"
+        ].joined(separator: "|")
+
+        priorityDebugLock.lock()
+        let shouldLog = signature != lastPriorityDebugSignature
+        if shouldLog {
+            lastPriorityDebugSignature = signature
+        }
+        priorityDebugLock.unlock()
+
+        guard shouldLog else { return }
+
+        let selectedDayActivities = CoachCanonicalDayState.selectedDayActivities(
+            from: rawActivities,
+            selectedDate: context.dayContext.date
+        )
+        let coachRelevantActivities = CoachCanonicalDayState.coachRelevantActivities(from: selectedDayActivities)
+
+        CoachRefreshDebug.log(
+            "[CoachPriorityDebug]",
+            "decisionNowMinute=\(decisionMinute) brainNowMinute=\(brainMinute) rawPlannedActivities=\(rawActivities.count) selectedDayActivities=\(selectedDayActivities.count) visibleFutureUpNextActivities=\(visibleUpNextActivities(in: context, rawActivities: rawActivities).count) coachRelevantActivities=\(coachRelevantActivities.count) hydrationLogs=\(rawActivities.filter(isHydrationLog).count) selectedUpNext=\"\(debugActivity(selectedUpNext(in: context, rawActivities: rawActivities)))\" coachIntent=\(CoachIntentResolver.resolve(context)) selectedCoachActivity=\"\(debugActivity(selected.activity ?? context.activityContext.coachFocusActivity))\" hiddenSupportSignals.count=\(selected.supportBullets.count) recoveryPercent=\(recoveryPercent) recoverySleepHours=\(String(format: "%.2f", recoverySleepHours)) brainSleepHours=\(String(format: "%.2f", context.brain.metrics.sleepHours)) brainSleep=\(context.brain.sleep) brainRecovery=\(context.brain.recovery) brainReadiness=\(context.brain.readiness) completedTrainingStress=\(context.dayContext.completedTrainingStressScore) upcomingTrainingStress=\(context.dayContext.upcomingTrainingStressScore) waterCurrent=\(String(format: "%.2f", waterCurrent)) waterGoal=\(String(format: "%.2f", waterGoal)) hydrationRatio=\(String(format: "%.2f", hydrationRatio)) selected=\(selected.priority)/\(selected.focus) limiter=\(selected.limiter) title=\"\(selected.title)\""
+        )
+
+        let classification = coachRelevantActivities.map(activityClassificationDebug).joined(separator: " | ")
+        CoachRefreshDebug.log(
+            "[CoachActivityClassification]",
+            "coachRelevantActivities=\(coachRelevantActivities.count) \(classification)"
+        )
+    }
+    #else
+    static func logPriorityResolution(
+        context: CoachDecisionContext,
+        selected: CoachDayPriorityResult,
+        rawActivities: [PlannedActivity]
+    ) {}
+    #endif
+}
+
+#if DEBUG
+private extension CoachEngineV3 {
+    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+        let type = activity.type.lowercased()
+        let title = activity.title.lowercased()
+        let image = activity.imageName.lowercased()
+
+        return type == "hydration" ||
+            image == "hydration" ||
+            title.contains("water") ||
+            title.contains("hydration")
+    }
+
+    static func debugActivity(_ activity: PlannedActivity?) -> String {
+        guard let activity else { return "none" }
+
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let status: String
+        if activity.isCompleted {
+            status = "completed"
+        } else if activity.isSkipped {
+            status = "skipped"
+        } else {
+            status = "planned"
+        }
+
+        return "\(activity.title)|\(activity.date)|\(kind)|\(status)"
+    }
+
+    static func activityClassificationDebug(_ activity: PlannedActivity) -> String {
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let isWorkout = kind == .workout || kind == .endurance || kind == .heat
+        let isRecovery = kind == .recovery
+
+        return """
+        id=\(activity.id) type=\(activity.type) category=\(kind) source=\(activity.source) \
+        isNutrition=\(CoachCanonicalDayState.isNutritionLog(activity)) \
+        isHydration=\(CoachCanonicalDayState.isHydrationLog(activity)) \
+        isWorkout=\(isWorkout) isRecovery=\(isRecovery)
+        """
+    }
+
+    static func selectedUpNext(
+        in context: CoachDecisionContext,
+        rawActivities: [PlannedActivity]
+    ) -> PlannedActivity? {
+        context.activityContext.activeActivity ??
+            visibleUpNextActivities(in: context, rawActivities: rawActivities).first
+    }
+
+    static func visibleUpNextActivities(
+        in context: CoachDecisionContext,
+        rawActivities: [PlannedActivity]
+    ) -> [PlannedActivity] {
+        let calendar = Calendar.current
+
+        return rawActivities
+            .filter { calendar.isDate($0.date, inSameDayAs: context.dayContext.date) }
+            .filter { CoachActivityContextResolverV3.isVisibleScheduleActivity($0) }
+            .filter { !$0.isCompleted && !$0.isSkipped && $0.date >= context.dayContext.now }
+            .sorted { $0.date < $1.date }
+    }
+}
+#endif
 
 // MARK: - Main Output
 
 struct CoachGuidanceV3 {
     let phase: CoachActivityPhaseV3
     let opportunity: CoachSupportOpportunityV3
+    let priority: CoachDayPriorityResult
 
     let shouldSurface: Bool
 
@@ -93,6 +579,114 @@ struct CoachGuidanceV3 {
     let color: Color
     let importance: CoachGuidanceImportanceV3
     let tone: CoachToneV3
+    let screenStory: CoachScreenStory?
+    let v5Contract: CoachV5Contract?
+    let narrativePlan: CoachNarrativePlan?
+    let dayDecisionFrame: CoachDayDecisionFrame?
+
+    init(
+        phase: CoachActivityPhaseV3,
+        opportunity: CoachSupportOpportunityV3,
+        priority: CoachDayPriorityResult = .defaultOverview,
+        shouldSurface: Bool,
+        stateLabel: String,
+        title: String,
+        message: String,
+        insightTitle: String,
+        insightSubtitle: String?,
+        supportActions: [CoachSupportActionV3],
+        avoidNotes: [String],
+        icon: String,
+        color: Color,
+        importance: CoachGuidanceImportanceV3,
+        tone: CoachToneV3,
+        screenStory: CoachScreenStory? = nil,
+        v5Contract: CoachV5Contract? = nil,
+        narrativePlan: CoachNarrativePlan? = nil,
+        dayDecisionFrame: CoachDayDecisionFrame? = nil
+    ) {
+        self.phase = phase
+        self.opportunity = opportunity
+        self.priority = priority
+        self.shouldSurface = shouldSurface
+        self.stateLabel = stateLabel
+        self.title = title
+        self.message = message
+        self.insightTitle = insightTitle
+        self.insightSubtitle = insightSubtitle
+        self.supportActions = supportActions
+        self.avoidNotes = avoidNotes
+        self.icon = icon
+        self.color = color
+        self.importance = importance
+        self.tone = tone
+        self.screenStory = screenStory
+        self.v5Contract = v5Contract
+        self.narrativePlan = narrativePlan
+        self.dayDecisionFrame = dayDecisionFrame
+    }
+}
+
+// MARK: - Coach Engine V5 Interpretation Contract
+
+enum CoachPrimaryStoryV5: String, Hashable {
+    case activeSession
+    case trainingExecution
+    case recovery
+    case sleepProtection
+    case tomorrowProtection
+    case readinessWarning
+    case trainingPreparation
+    case dayMaintenance
+}
+
+struct CoachInterpretationV5 {
+    let storyType: CoachPrimaryStoryV5
+    let stateLabel: String
+    let title: String
+    let text: String
+    let icon: String
+    let color: Color
+    let shouldSurface: Bool
+    let sourceActivityID: String?
+    let primaryLimiter: CoachLimiter
+    let supportSignals: [CoachSupportKind]
+
+    var compactInsight: DynamicInsight {
+        DynamicInsight(
+            icon: icon,
+            title: title,
+            text: text,
+            color: color,
+            actionLabel: "Coach Insight",
+            tags: tags
+        )
+    }
+
+    private var tags: Set<CoachTag> {
+        var result = Set<CoachTag>()
+
+        supportSignals.forEach { signal in
+            switch signal {
+            case .hydration:
+                result.insert(.hydration)
+            case .fueling:
+                result.insert(.carbs)
+            case .recovery:
+                result.insert(.recovery)
+            case .sleep:
+                result.insert(.sleep)
+            case .pacing:
+                result.insert(.consistency)
+            }
+        }
+
+        if result.isEmpty {
+            result.insert(.consistency)
+        }
+
+        return result
+    }
 }
 
 // MARK: - Coach Phase
@@ -220,255 +814,6 @@ struct CoachSupportActionV3: Identifiable {
 
 enum CoachActivityContextResolverV3 {
 
-    static func resolve(
-        brain: HumanBrain.State,
-        activities: [PlannedActivity],
-        selectedDate: Date
-    ) -> CoachActivityPhaseV3 {
-
-        let calendar = Calendar.current
-        let now = brain.now
-
-        let todayActivities = activities
-            .filter { calendar.isDate($0.date, inSameDayAs: selectedDate) }
-            .sorted { $0.date < $1.date }
-
-        let immediateUpcomingActivity = todayActivities
-            .filter { activity in
-                guard !activity.isCompleted,
-                      !activity.isSkipped else {
-                    return false
-                }
-
-                let minutesUntil = Int(activity.date.timeIntervalSince(now) / 60)
-
-                guard minutesUntil >= 0,
-                      minutesUntil <= 15 else {
-                    return false
-                }
-
-                let kind = kind(for: activity)
-
-                return kind == .workout ||
-                       kind == .endurance ||
-                       kind == .heat
-            }
-            .sorted { $0.date < $1.date }
-            .first
-
-        let upcomingPriorityActivity = todayActivities
-            .filter { activity in
-                guard !activity.isCompleted,
-                      !activity.isSkipped else {
-                    return false
-                }
-
-                let minutesUntil = Int(activity.date.timeIntervalSince(now) / 60)
-
-                guard minutesUntil > 0,
-                      minutesUntil <= 60 else {
-                    return false
-                }
-
-                let kind = kind(for: activity)
-                let load = load(for: activity)
-
-                return kind == .heat ||
-                       kind == .workout ||
-                       (kind == .endurance && load != .low)
-            }
-            .sorted { $0.date < $1.date }
-            .first
-
-        if let active = todayActivities.first(where: { activity in
-            guard !activity.isCompleted,
-                  !activity.isSkipped else {
-                return false
-            }
-
-            let kind = kind(for: activity)
-
-            guard kind == .endurance ||
-                  kind == .workout ||
-                  kind == .heat ||
-                  kind == .recovery else {
-                return false
-            }
-
-            let end = calendar.date(
-                byAdding: .minute,
-                value: activity.durationMinutes,
-                to: activity.date
-            ) ?? activity.date
-
-            let isActiveNow = now >= activity.date && now <= end
-
-            guard isActiveNow else {
-                return false
-            }
-
-            if let immediateUpcomingActivity,
-               immediateUpcomingActivity.id != activity.id {
-
-                let activeLoad = load(for: activity)
-
-                let activeIsLowPriority =
-                    kind == .recovery ||
-                    (kind == .endurance && activeLoad == .low)
-
-                if activeIsLowPriority {
-                    return false
-                }
-            }
-
-            if let upcomingPriorityActivity,
-               upcomingPriorityActivity.id != activity.id {
-
-                let activeLoad = load(for: activity)
-
-                let activeIsLowPriority =
-                    kind == .recovery ||
-                    (kind == .endurance && activeLoad == .low)
-
-                if activeIsLowPriority {
-                    return false
-                }
-            }
-
-            return true
-        }) {
-            return .active(
-                activity: active,
-                kind: kind(for: active)
-            )
-        }
-
-        if let immediateUpcomingActivity {
-            let minutes = max(
-                0,
-                Int(immediateUpcomingActivity.date.timeIntervalSince(now) / 60)
-            )
-
-            return .preparing(
-                activity: immediateUpcomingActivity,
-                kind: kind(for: immediateUpcomingActivity),
-                minutesUntil: minutes
-            )
-        }
-
-        if let upcomingPriorityActivity {
-            let minutes = max(
-                0,
-                Int(upcomingPriorityActivity.date.timeIntervalSince(now) / 60)
-            )
-
-            return .preparing(
-                activity: upcomingPriorityActivity,
-                kind: kind(for: upcomingPriorityActivity),
-                minutesUntil: minutes
-            )
-        }
-
-        if immediateUpcomingActivity == nil,
-           let upcoming = todayActivities
-            .filter({ activity in
-                guard !activity.isCompleted,
-                      !activity.isSkipped else {
-                    return false
-                }
-
-                let minutes = Int(activity.date.timeIntervalSince(now) / 60)
-
-                return minutes > 0 &&
-                       minutes <= 360
-            })
-            .sorted(by: { $0.date < $1.date })
-            .first(where: { activity in
-                let kind = kind(for: activity)
-
-                return kind == .endurance ||
-                       kind == .workout ||
-                       kind == .heat ||
-                       kind == .recovery
-            }) {
-
-            let minutes = max(
-                0,
-                Int(upcoming.date.timeIntervalSince(now) / 60)
-            )
-
-            return .preparing(
-                activity: upcoming,
-                kind: kind(for: upcoming),
-                minutesUntil: minutes
-            )
-        }
-
-        if let recent = todayActivities
-            .filter({ activity in
-                guard activity.isCompleted else {
-                    return false
-                }
-
-                let kind = kind(for: activity)
-
-                guard kind == .endurance ||
-                      kind == .workout ||
-                      kind == .heat ||
-                      kind == .recovery else {
-                    return false
-                }
-
-                let end = calendar.date(
-                    byAdding: .minute,
-                    value: activity.durationMinutes,
-                    to: activity.date
-                ) ?? activity.date
-
-                let minutesSinceEnd = Int(now.timeIntervalSince(end) / 60)
-
-                guard minutesSinceEnd >= 0 else {
-                    return false
-                }
-
-                if kind == .recovery {
-                    if brain.hasAnyFoodLogged && minutesSinceEnd > 30 {
-                        return false
-                    }
-
-                    return minutesSinceEnd <= 90
-                }
-
-                if kind == .heat {
-                    return minutesSinceEnd <= 180
-                }
-
-                return minutesSinceEnd <= 240
-            })
-            .sorted(by: { $0.date > $1.date })
-            .first {
-
-            let end = calendar.date(
-                byAdding: .minute,
-                value: recent.durationMinutes,
-                to: recent.date
-            ) ?? recent.date
-
-            let minutesSinceEnd = max(
-                0,
-                Int(now.timeIntervalSince(end) / 60)
-            )
-
-            return .recovering(
-                activity: recent,
-                kind: kind(for: recent),
-                minutesSinceEnd: minutesSinceEnd
-            )
-        }
-
-        return .stable
-    }
-
     static func kind(for activity: PlannedActivity) -> CoachActivityKindV3 {
         let title = activity.title.lowercased()
         let type = activity.type.lowercased()
@@ -492,7 +837,9 @@ enum CoachActivityContextResolverV3 {
         let isExplicitRecovery =
             type.contains("recovery") ||
             title.contains("recovery block") ||
-            title.contains("recovery")
+            title.contains("recovery") ||
+            title.contains("breath") ||
+            type.contains("breath")
 
         if isExplicitRecovery {
             return .recovery
@@ -501,6 +848,12 @@ enum CoachActivityContextResolverV3 {
         let isRun =
             title.contains("run") ||
             type.contains("run")
+
+        let isSwim =
+            title.contains("swim") ||
+            title.contains("swimming") ||
+            type.contains("swim") ||
+            type.contains("swimming")
 
         let isRide =
             title.contains("cycling") ||
@@ -522,9 +875,21 @@ enum CoachActivityContextResolverV3 {
             type.contains("walk") ||
             type.contains("hike")
 
-        if isRun || isRide || (isWalkOrHike && activity.durationMinutes >= 60) {
+        if isRun || isRide || isSwim || (isWalkOrHike && activity.durationMinutes >= 60) {
             return .endurance
         }
+
+        let isRacketSport =
+            title.contains("tennis") ||
+            title.contains("squash") ||
+            title.contains("padel") ||
+            title.contains("pickleball") ||
+            title.contains("badminton") ||
+            type.contains("tennis") ||
+            type.contains("squash") ||
+            type.contains("padel") ||
+            type.contains("pickleball") ||
+            type.contains("badminton")
 
         if title.contains("gym") ||
             title.contains("strength") ||
@@ -535,7 +900,8 @@ enum CoachActivityContextResolverV3 {
             type.contains("strength") ||
             type.contains("hiit") ||
             type.contains("training") ||
-            type.contains("workout") {
+            type.contains("workout") ||
+            isRacketSport {
             return .workout
         }
 
@@ -598,7 +964,9 @@ enum CoachActivityContextResolverV3 {
         if title.contains("yoga") ||
             title.contains("stretch") ||
             title.contains("mobility") ||
-            title.contains("recovery") {
+            title.contains("recovery") ||
+            title.contains("breath") ||
+            type.contains("breath") {
             return .low
         }
 
@@ -1121,11 +1489,32 @@ enum CoachGuidanceFactoryV3 {
         shouldSurface: Bool,
         brain: HumanBrain.State,
         dayContext: CoachDayContext,
-        recoveryContext: CoachRecoveryContext
+        recoveryContext: CoachRecoveryContext,
+        nutritionContext: CoachNutritionContext? = nil,
+        activityContext: CoachDayActivityContext,
+        priority: CoachDayPriorityResult
     ) -> CoachGuidanceV3 {
 
         if !shouldSurface {
-            return stableGuidance(phase: phase, opportunity: opportunity)
+            return stableGuidance(
+                phase: phase,
+                opportunity: opportunity,
+                dayActivityContext: activityContext,
+                priority: priority,
+                shouldSurface: false
+            )
+        }
+
+        if let priorityGuidance = guidanceForPriority(
+            priority,
+            phase: phase,
+            readiness: readiness,
+            opportunity: opportunity,
+            activityContext: activityContext,
+            recoveryContext: recoveryContext,
+            nutritionContext: nutritionContext
+        ) {
+            return priorityGuidance
         }
 
         let scenario = CoachActivityScenarioResolver.resolve(
@@ -1137,6 +1526,7 @@ enum CoachGuidanceFactoryV3 {
             scenario: scenario,
             dayContext: dayContext,
             recoveryContext: recoveryContext,
+            nutritionContext: nutritionContext,
             readiness: readiness,
             brain: brain
         )
@@ -1146,7 +1536,8 @@ enum CoachGuidanceFactoryV3 {
             readiness: readiness,
             opportunity: opportunity,
             rule: rule,
-            scenario: scenario
+            scenario: scenario,
+            priority: priority
         )
     }
     
@@ -1155,7 +1546,8 @@ enum CoachGuidanceFactoryV3 {
         readiness: CoachReadinessStateV3,
         opportunity: CoachSupportOpportunityV3,
         rule: CoachScenarioRule,
-        scenario: CoachActivityScenario
+        scenario: CoachActivityScenario,
+        priority: CoachDayPriorityResult
     ) -> CoachGuidanceV3 {
 
         let activityTitle = activityTitle(from: phase)
@@ -1163,6 +1555,7 @@ enum CoachGuidanceFactoryV3 {
         return CoachGuidanceV3(
             phase: phase,
             opportunity: opportunity,
+            priority: priority,
             shouldSurface: true,
             stateLabel: rule.stateLabel,
             title: rule.title,
@@ -1177,13 +1570,13 @@ enum CoachGuidanceFactoryV3 {
                 preferred: rule.supportActions
             ),
             avoidNotes: rule.avoidNotes,
-            icon: icon(for: scenario),
+            icon: primaryIcon(for: priority, phase: phase, fallback: icon(for: scenario)),
             color: color(for: scenario),
             importance: opportunity.importance,
             tone: tone(for: scenario.stage)
         )
     }
-    
+
     private static func insightStageText(_ stage: CoachActivityStage) -> String {
         switch stage {
         case .before: return "coming up"
@@ -1202,6 +1595,131 @@ enum CoachGuidanceFactoryV3 {
         case .meal: return "fork.knife"
         case .other: return "sparkles"
         }
+    }
+
+    private static func primaryIcon(
+        for priority: CoachDayPriorityResult,
+        phase: CoachActivityPhaseV3? = nil,
+        fallback: String
+    ) -> String {
+        if let activity = priority.activity {
+            return activityIcon(for: activity)
+        }
+
+        if let phaseActivity = activity(from: phase) {
+            return activityIcon(for: phaseActivity)
+        }
+
+        switch priority.focus {
+        case .hydrationBehind:
+            return "drop.fill"
+        case .fuelBehind:
+            return "fork.knife"
+        default:
+            break
+        }
+
+        switch priority.priority {
+        case .hydration:
+            return "drop.fill"
+        case .fueling:
+            return "fork.knife"
+        default:
+            return fallback
+        }
+    }
+
+    private static func activity(from phase: CoachActivityPhaseV3?) -> PlannedActivity? {
+        guard let phase else { return nil }
+
+        switch phase {
+        case .preparing(let activity, _, _),
+             .active(let activity, _),
+             .recovering(let activity, _, _):
+            return activity
+        case .stable:
+            return nil
+        }
+    }
+
+    private static func primaryIcon(for phase: CoachActivityPhaseV3, fallback: String) -> String {
+        if let activity = activity(from: phase) {
+            return activityIcon(for: activity)
+        }
+
+        return fallback
+    }
+
+    private static func activityIcon(for activity: PlannedActivity) -> String {
+        let text = [
+            activity.title,
+            activity.type,
+            activity.icon,
+            activity.imageName
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        if text.contains("water") || text.contains("hydration") || text.contains("hydrate") {
+            return "drop.fill"
+        }
+
+        if text.contains("meal") ||
+            text.contains("food") ||
+            text.contains("lunch") ||
+            text.contains("dinner") ||
+            text.contains("breakfast") ||
+            text.contains("snack") ||
+            text.contains("fuel") {
+            return "fork.knife"
+        }
+
+        if text.contains("sauna") || text.contains("heat") {
+            return "thermometer.sun.fill"
+        }
+
+        if text.contains("tennis") || text.contains("squash") {
+            return "figure.tennis"
+        }
+
+        if text.contains("swim") || text.contains("pool") {
+            return "figure.pool.swim"
+        }
+
+        if text.contains("cycling") ||
+            text.contains("cycle") ||
+            text.contains("bike") ||
+            text.contains("bicycle") ||
+            text.contains("ride") {
+            return "bicycle"
+        }
+
+        if text.contains("walking") || text.contains("walk") {
+            return "figure.walk"
+        }
+
+        if text.contains("running") || text.contains("run") {
+            return "figure.run"
+        }
+
+        if text.contains("strength") ||
+            text.contains("workout") ||
+            text.contains("gym") ||
+            text.contains("dumbbell") ||
+            text.contains("weights") ||
+            text.contains("lifting") {
+            return "dumbbell.fill"
+        }
+
+        if text.contains("stretch") || text.contains("mobility") || text.contains("flexibility") {
+            return "figure.flexibility"
+        }
+
+        if text.contains("yoga") {
+            return "figure.mind.and.body"
+        }
+
+        return activity.icon.isEmpty ? "sparkles" : activity.icon
     }
 
     private static func color(for scenario: CoachActivityScenario) -> Color {
@@ -1258,7 +1776,7 @@ enum CoachGuidanceFactoryV3 {
                     : [.lightFueling, .hydrateBeforeSession, .keepDigestionLight]
             ),
             avoidNotes: load == .low ? [] : ["Keep it light enough to avoid heavy digestion."],
-            icon: load == .low ? "figure.walk" : "bolt.fill",
+            icon: primaryIcon(for: phase, fallback: load == .low ? "figure.walk" : "figure.run"),
             color: load == .low ? WeekFitTheme.meal : .orange,
             importance: load == .low ? .useful : opportunity.importance,
             tone: .preparation
@@ -1299,7 +1817,7 @@ enum CoachGuidanceFactoryV3 {
             avoidNotes: load == .low
                 ? []
                 : (readiness.recoveryProtectionUseful ? ["Keep intensity flexible if your body feels heavy."] : []),
-            icon: load == .low ? "figure.walk" : "figure.strengthtraining.traditional",
+            icon: primaryIcon(for: phase, fallback: load == .low ? "figure.walk" : "dumbbell.fill"),
             color: WeekFitTheme.meal,
             importance: load == .low ? .useful : opportunity.importance,
             tone: .preparation
@@ -1333,7 +1851,7 @@ enum CoachGuidanceFactoryV3 {
                 preferred: [.hydrateBeforeSession, .keepDigestionLight, .breathingReset]
             ),
             avoidNotes: ["Keep food light before heat."],
-            icon: "drop.triangle.fill",
+            icon: primaryIcon(for: phase, fallback: "thermometer.sun.fill"),
             color: .blue,
             importance: opportunity.importance,
             tone: .preparation
@@ -1367,7 +1885,7 @@ enum CoachGuidanceFactoryV3 {
                 preferred: [.controlIntensity, .hydrateBeforeSession, .downshiftNervousSystem]
             ),
             avoidNotes: ["Keep intensity flexible today."],
-            icon: "heart.text.square.fill",
+            icon: primaryIcon(for: phase, fallback: "heart.text.square.fill"),
             color: WeekFitTheme.purple,
             importance: opportunity.importance,
             tone: .supportive
@@ -1401,7 +1919,7 @@ enum CoachGuidanceFactoryV3 {
                 preferred: [.steadyHydration, .sustainEnergy, .controlIntensity]
             ),
             avoidNotes: [],
-            icon: "bolt.fill",
+            icon: primaryIcon(for: phase, fallback: "figure.run"),
             color: .orange,
             importance: opportunity.importance,
             tone: .supportive
@@ -1442,9 +1960,7 @@ enum CoachGuidanceFactoryV3 {
                     : [.steadyHydration, .controlIntensity, .sustainEnergy]
             ),
             avoidNotes: [],
-            icon: load == .low
-                ? "figure.walk"
-                : "figure.strengthtraining.traditional",
+            icon: primaryIcon(for: phase, fallback: load == .low ? "figure.walk" : "dumbbell.fill"),
             color: WeekFitTheme.meal,
             importance: opportunity.importance,
             tone: .supportive
@@ -1477,7 +1993,7 @@ enum CoachGuidanceFactoryV3 {
                 preferred: [.hydrateBeforeSession, .keepDigestionLight, .breathingReset]
             ),
             avoidNotes: ["Avoid heavy food until you feel settled."],
-            icon: "drop.triangle.fill",
+            icon: primaryIcon(for: phase, fallback: "thermometer.sun.fill"),
             color: .blue,
             importance: opportunity.importance,
             tone: .supportive
@@ -1555,7 +2071,7 @@ enum CoachGuidanceFactoryV3 {
             avoidNotes: load == .extreme || load == .high
                 ? ["Avoid adding more intensity today."]
                 : [],
-            icon: load == .extreme ? "flame.fill" : "heart.fill",
+            icon: primaryIcon(for: phase, fallback: load == .extreme ? "flame.fill" : "heart.fill"),
             color: load == .extreme ? .orange : WeekFitTheme.purple,
             importance: load == .extreme ? .high : opportunity.importance,
             tone: .recovery
@@ -1603,8 +2119,8 @@ enum CoachGuidanceFactoryV3 {
             return CoachNarrative(
                 title: "\(activityTitle) complete",
                 message: hasStats
-                    ? "\(stats) Let your body settle and keep the next block controlled."
-                    : "Let your body settle and keep the next block controlled."
+                    ? "\(stats) Let your body settle and keep the next block easy."
+                    : "Let your body settle and keep the next block easy."
             )
 
         case .low:
@@ -1665,7 +2181,7 @@ enum CoachGuidanceFactoryV3 {
                 preferred: [.rehydrateGradually, .downshiftNervousSystem, .lightRecoveryMovement]
             ),
             avoidNotes: ["Give your body a calmer few hours."],
-            icon: "drop.triangle.fill",
+            icon: primaryIcon(for: phase, fallback: "thermometer.sun.fill"),
             color: .blue,
             importance: opportunity.importance,
             tone: .recovery
@@ -1674,36 +2190,510 @@ enum CoachGuidanceFactoryV3 {
 
     private static func stableGuidance(
         phase: CoachActivityPhaseV3,
-        opportunity: CoachSupportOpportunityV3
+        opportunity: CoachSupportOpportunityV3,
+        dayActivityContext: CoachDayActivityContext,
+        priority: CoachDayPriorityResult = .defaultOverview,
+        shouldSurface: Bool = false
     ) -> CoachGuidanceV3 {
 
-        .init(
+        return .init(
             phase: phase,
             opportunity: opportunity,
-            shouldSurface: false,
+            priority: priority,
+            shouldSurface: shouldSurface,
             stateLabel: "OVERVIEW",
 
-            title: "No active focus",
-            message: "Nothing needs immediate attention right now.",
+            title: priority.detailTitle,
+            message: priority.detailMessage,
 
-            insightTitle: "No active focus",
-            insightSubtitle: nil,
+            insightTitle: priority.todayTitle,
+            insightSubtitle: priority.todayMessage,
 
             supportActions: [
                 .init(
                     type: .stayConsistent,
                     icon: "waveform.path.ecg",
-                    title: "Keep your rhythm",
-                    subtitle: "Stay consistent with food, water and movement",
+                    title: prioritySupportBullet(priority, index: 0, fallback: "Keep your rhythm"),
+                    subtitle: priority.todayMessage,
                     color: WeekFitTheme.meal
                 )
             ],
             avoidNotes: [],
-            icon: "waveform.path.ecg.rectangle.fill",
+            icon: primaryIcon(for: priority, phase: phase, fallback: "waveform.path.ecg.rectangle.fill"),
             color: WeekFitTheme.meal,
             importance: .quiet,
             tone: .calm
         )
+    }
+
+    private static func guidanceForPriority(
+        _ priority: CoachDayPriorityResult,
+        phase: CoachActivityPhaseV3,
+        readiness: CoachReadinessStateV3,
+        opportunity: CoachSupportOpportunityV3,
+        activityContext: CoachDayActivityContext,
+        recoveryContext: CoachRecoveryContext,
+        nutritionContext: CoachNutritionContext?
+    ) -> CoachGuidanceV3? {
+
+        switch priority.focus {
+        case .activeActivity:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: prioritySupportBullet(priority, index: 0, fallback: "Stay steady"),
+                        subtitle: "Keep the session useful",
+                        color: CoachPalette.warning
+                    ),
+                    .init(
+                        type: .steadyHydration,
+                        icon: "drop.fill",
+                        title: prioritySupportBullet(priority, index: 1, fallback: "Sip steadily"),
+                        subtitle: "Small adjustments beat late catch-up",
+                        color: .blue
+                    ),
+                    .init(
+                        type: .breathingReset,
+                        icon: "wind",
+                        title: prioritySupportBullet(priority, index: 2, fallback: "Finish cleanly"),
+                        subtitle: "Avoid turning control into extra stress",
+                        color: WeekFitTheme.purple
+                    )
+                ],
+                avoidNotes: priorityAvoidNotes(priority, fallback: "Do not let the live session become extra stress."),
+                icon: primaryIcon(for: priority, phase: phase, fallback: "figure.strengthtraining.traditional"),
+                color: CoachPalette.training,
+                importance: priority.level.guidanceImportance,
+                tone: .supportive
+            )
+
+        case .prepareForActivity:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .mobilityPrep,
+                        icon: "figure.cooldown",
+                        title: prioritySupportBullet(priority, index: 0, fallback: "Keep prep light"),
+                        subtitle: "Save energy for the session itself",
+                        color: CoachPalette.recovery
+                    ),
+                    .init(
+                        type: .hydrateBeforeSession,
+                        icon: "drop.fill",
+                        title: prioritySupportBullet(priority, index: 1, fallback: "Hydrate steadily"),
+                        subtitle: "Start with the basics",
+                        color: .blue
+                    ),
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: prioritySupportBullet(priority, index: 2, fallback: "Start easy"),
+                        subtitle: "Let the warm-up set the ceiling",
+                        color: CoachPalette.warning
+                    )
+                ],
+                avoidNotes: priorityAvoidNotes(priority, fallback: "Do not spend the session before it starts."),
+                icon: primaryIcon(for: priority, phase: phase, fallback: "sparkles"),
+                color: CoachPalette.training,
+                importance: priority.level.guidanceImportance,
+                tone: .preparation
+            )
+
+        case .performanceReadiness:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .mobilityPrep,
+                        icon: "figure.cooldown",
+                        title: prioritySupportBullet(priority, index: 0, fallback: "Warm up first"),
+                        subtitle: "Let the first block confirm readiness",
+                        color: CoachPalette.training
+                    ),
+                    .init(
+                        type: .steadyHydration,
+                        icon: "drop.fill",
+                        title: prioritySupportBullet(priority, index: 1, fallback: "Keep fluids steady"),
+                        subtitle: "Maintain the basics during training",
+                        color: .blue
+                    ),
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: prioritySupportBullet(priority, index: 2, fallback: "Hold the planned ceiling"),
+                        subtitle: "Build only if the body agrees",
+                        color: CoachPalette.warning
+                    )
+                ],
+                avoidNotes: priority.whyThisMatters.map { [$0] } ?? [],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "checkmark.seal.fill"),
+                color: CoachPalette.stable,
+                importance: priority.level.guidanceImportance,
+                tone: .preparation
+            )
+
+        case .nextActivityLater, .dailyOverview:
+            return stableGuidance(
+                phase: phase,
+                opportunity: opportunity,
+                dayActivityContext: activityContext,
+                priority: priority,
+                shouldSurface: priority.level >= .useful
+            )
+
+        case .postActivityRecovery:
+            let hydrationText = nutritionContext?.recommendedHydrationText ?? "Rehydrate gradually"
+            let proteinText = nutritionContext?.recommendedProteinText ?? "Add recovery nutrition"
+
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .rehydrateGradually,
+                        icon: "drop.fill",
+                        title: hydrationText,
+                        subtitle: "Sip steadily instead of rushing it",
+                        color: .blue
+                    ),
+                    .init(
+                        type: .startRecoveryNutrition,
+                        icon: "fork.knife",
+                        title: proteinText,
+                        subtitle: "Give the body material to repair",
+                        color: .orange
+                    ),
+                    .init(
+                        type: .downshiftNervousSystem,
+                        icon: "heart.fill",
+                        title: "Downshift",
+                        subtitle: "Give your body a quieter few minutes",
+                        color: CoachPalette.recovery
+                    )
+                ],
+                avoidNotes: ["Do not stack intensity before you have recovered."],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "heart.fill"),
+                color: CoachPalette.recovery,
+                importance: priority.level.guidanceImportance,
+                tone: .recovery
+            )
+
+        case .hydrationBehind:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .hydrateBeforeSession,
+                        icon: "drop.fill",
+                        title: nutritionContext?.recommendedHydrationText ?? "Drink some water",
+                        subtitle: "Small steady sips are enough to start",
+                        color: .blue
+                    )
+                ],
+                avoidNotes: priority.activity == nil ? [] : ["Do not start the next block dry."],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "drop.fill"),
+                color: .blue,
+                importance: priority.level.guidanceImportance,
+                tone: .supportive
+            )
+
+        case .fuelBehind:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .lightFueling,
+                        icon: "bolt.fill",
+                        title: "Add easy fuel",
+                        subtitle: "Keep it simple and digestible",
+                        color: .orange
+                    ),
+                    .init(
+                        type: .recoveryMeal,
+                        icon: "fork.knife",
+                        title: nutritionContext?.recommendedProteinText ?? "Add protein",
+                        subtitle: "Support recovery and the rest of the day",
+                        color: WeekFitTheme.meal
+                    )
+                ],
+                avoidNotes: ["Avoid waiting until the next session to catch up."],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "fork.knife"),
+                color: .orange,
+                importance: priority.level.guidanceImportance,
+                tone: .supportive
+            )
+
+        case .tomorrowPlanRisk:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .sleepPriority,
+                        icon: "moon.fill",
+                        title: prioritySupportBullet(priority, index: 0, fallback: "Protect sleep tonight"),
+                        subtitle: "Tonight sets up tomorrow's ceiling",
+                        color: WeekFitTheme.purple
+                    ),
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: prioritySupportBullet(priority, index: 1, fallback: "Check readiness before training"),
+                        subtitle: "Let recovery decide the plan",
+                        color: CoachPalette.warning
+                    ),
+                    .init(
+                        type: .mobilityPrep,
+                        icon: "figure.cooldown",
+                        title: prioritySupportBullet(priority, index: 2, fallback: "Swap intensity for recovery"),
+                        subtitle: "Use easy work if readiness stays low",
+                        color: CoachPalette.recovery
+                    )
+                ],
+                avoidNotes: priorityAvoidNotes(priority, fallback: "Do not force tomorrow's planned intensity if recovery is still suppressed."),
+                icon: primaryIcon(for: priority, phase: phase, fallback: "exclamationmark.triangle.fill"),
+                color: CoachPalette.warning,
+                importance: priority.level.guidanceImportance,
+                tone: .supportive
+            )
+
+        case .recoveryNeeded:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .mobilityPrep,
+                        icon: "figure.cooldown",
+                        title: prioritySupportBullet(priority, index: 0, fallback: "Keep mobility easy"),
+                        subtitle: "Stay easy and comfortable",
+                        color: CoachPalette.recovery
+                    ),
+                    .init(
+                        type: .sleepPriority,
+                        icon: "moon.fill",
+                        title: prioritySupportBullet(priority, index: 1, fallback: "Protect tonight's sleep"),
+                        subtitle: "Use the next block to wind down",
+                        color: WeekFitTheme.purple
+                    ),
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: prioritySupportBullet(priority, index: 2, fallback: "Avoid additional training"),
+                        subtitle: "Do not add more load tonight",
+                        color: CoachPalette.warning
+                    )
+                ],
+                avoidNotes: priorityAvoidNotes(priority, fallback: "Do not turn a low-readiness day into a hard push."),
+                icon: primaryIcon(for: priority, phase: phase, fallback: "heart.text.square.fill"),
+                color: CoachPalette.recovery,
+                importance: priority.level.guidanceImportance,
+                tone: .recovery
+            )
+
+        case .trainingReadinessWarning:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .controlIntensity,
+                        icon: "speedometer",
+                        title: "Lower the ceiling",
+                        subtitle: "Keep the plan adjustable",
+                        color: CoachPalette.warning
+                    ),
+                    .init(
+                        type: .hydrateBeforeSession,
+                        icon: "drop.fill",
+                        title: "Hydrate first",
+                        subtitle: "Support the basics before training",
+                        color: .blue
+                    )
+                ],
+                avoidNotes: ["Do not chase the planned intensity if your body is not there today."],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "exclamationmark.triangle.fill"),
+                color: CoachPalette.warning,
+                importance: .high,
+                tone: .supportive
+            )
+
+        case .eveningWindDown:
+            return .init(
+                phase: phase,
+                opportunity: opportunity,
+                priority: priority,
+                shouldSurface: true,
+                stateLabel: priorityStateLabel(priority),
+                title: priority.detailTitle,
+                message: priority.detailMessage,
+                insightTitle: priority.todayTitle,
+                insightSubtitle: priority.todayMessage,
+                supportActions: [
+                    .init(
+                        type: .sleepPriority,
+                        icon: "moon.fill",
+                        title: "Protect sleep",
+                        subtitle: "Keep food, fluids, and intensity gentle",
+                        color: WeekFitTheme.purple
+                    )
+                ],
+                avoidNotes: ["Avoid adding unnecessary intensity late."],
+                icon: primaryIcon(for: priority, phase: phase, fallback: "moon.stars.fill"),
+                color: WeekFitTheme.purple,
+                importance: priority.level.guidanceImportance,
+                tone: .calm
+            )
+        }
+    }
+
+    private static func prioritySupportBullet(
+        _ priority: CoachDayPriorityResult,
+        index: Int,
+        fallback: String
+    ) -> String {
+        guard priority.supportBullets.indices.contains(index) else {
+            return fallback
+        }
+
+        return priority.supportBullets[index]
+    }
+
+    private static func priorityStateLabel(_ priority: CoachDayPriorityResult) -> String {
+        switch priority.mode {
+        case .execution:
+            return "EXECUTE"
+        case .warning:
+            return "LIMITER"
+        case .adjustment:
+            return "PLAN CHECK"
+        case .recovery:
+            return priority.limiter == .sleep ? "SLEEP" : "RECOVERY"
+        case .opportunity:
+            return "OPPORTUNITY"
+        case .reinforcement:
+            return "READY"
+        }
+    }
+
+    private static func priorityAvoidNotes(
+        _ priority: CoachDayPriorityResult,
+        fallback: String
+    ) -> [String] {
+        var notes: [String] = []
+
+        if let why = priority.whyThisMatters {
+            notes.append(why)
+        }
+
+        if let challenge = priority.planChallenge {
+            notes.append(challenge)
+        }
+
+        if notes.isEmpty {
+            notes.append(fallback)
+        }
+
+        return notes
+    }
+
+    private static func todayRecoverySubtitle(
+        priority: CoachDayPriorityResult,
+        activityContext: CoachDayActivityContext
+    ) -> String {
+        guard priority.priority == .sleepPreparation else {
+            return priority.activity.map { "\($0.title) later" } ?? priority.supportBullets.first ?? ""
+        }
+
+        let active = activityContext.activeActivity.map(displayName)
+        let next = activityContext.nextUpcomingActivity.map(displayName)
+
+        if let active, let next {
+            return "\(active) can support this. \(priority.supportBullets.first ?? "Keep it easy tonight.")"
+        }
+
+        if let next {
+            return "Use \(next.lowercased()) to wind down, not to add load."
+        }
+
+        return priority.supportBullets.first ?? "Keep the rest of the day easy."
+    }
+
+    private static func displayName(_ activity: PlannedActivity) -> String {
+        let title = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? "Activity" : title
     }
 
     private static func supportActions(
@@ -1996,7 +2986,7 @@ enum CoachGuidanceFactoryV3 {
         case .endurance:
             return "Keep the pace comfortable"
         default:
-            return "Keep effort controlled"
+            return "Keep effort steady"
         }
     }
 
@@ -2109,14 +3099,44 @@ enum CoachGuidanceFactoryV3 {
 
 extension CoachGuidanceV3 {
 
+    var v5Interpretation: CoachInterpretationV5 {
+        let insight = dynamicInsight
+        return CoachInterpretationV5(
+            storyType: primaryStoryV5,
+            stateLabel: screenStory?.stateLabel ?? stateLabel,
+            title: insight.title,
+            text: insight.text,
+            icon: insight.icon,
+            color: insight.color,
+            shouldSurface: shouldSurface,
+            sourceActivityID: priority.activity?.id,
+            primaryLimiter: priority.limiter,
+            supportSignals: supportSignalKindsV5
+        )
+    }
+
     var dynamicInsight: DynamicInsight {
-        DynamicInsight(
+        return DynamicInsight(
             icon: icon,
             title: insightTitle,
-            text: insightSubtitle ?? "",
+            text: todayTeaserText,
             color: color,
             actionLabel: "Coach Insight",
             tags: coachTags
+        )
+    }
+
+    private var todayTeaserText: String {
+        let planMessage = narrativePlan?.sectionIntents.recommendation
+        let message = planMessage ?? (screenStory?.stateLabel == CoachStatus.prepareSession.label
+            ? (screenStory?.myRecommendation ?? v5Contract?.what ?? insightSubtitle ?? priority.todayMessage)
+            : (v5Contract?.what ?? insightSubtitle ?? priority.todayMessage))
+
+        return CoachTodayInsightTeaser.text(
+            title: insightTitle,
+            message: message,
+            screenStory: screenStory,
+            phase: phase
         )
     }
 
@@ -2192,6 +3212,79 @@ extension CoachGuidanceV3 {
         }
 
         return tags
+    }
+
+    private var primaryStoryV5: CoachPrimaryStoryV5 {
+        switch priority.focus {
+        case .activeActivity:
+            return .activeSession
+        case .prepareForActivity, .nextActivityLater:
+            return .trainingPreparation
+        case .postActivityRecovery, .recoveryNeeded:
+            return .recovery
+        case .tomorrowPlanRisk:
+            return .tomorrowProtection
+        case .trainingReadinessWarning:
+            return .readinessWarning
+        case .performanceReadiness:
+            return priority.activity == nil ? .dayMaintenance : .trainingExecution
+        case .eveningWindDown:
+            return priority.limiter == .sleep ? .sleepProtection : .dayMaintenance
+        case .hydrationBehind, .fuelBehind:
+            return priority.activity == nil ? .dayMaintenance : .trainingPreparation
+        case .dailyOverview:
+            switch priority.priority {
+            case .sleepPreparation:
+                return .sleepProtection
+            case .recovery:
+                return .recovery
+            case .planChallenge:
+                return .readinessWarning
+            default:
+                return .dayMaintenance
+            }
+        }
+    }
+
+    private var supportSignalKindsV5: [CoachSupportKind] {
+        var kinds: [CoachSupportKind] = []
+
+        func append(_ kind: CoachSupportKind) {
+            guard !kinds.contains(kind) else { return }
+            kinds.append(kind)
+        }
+
+        supportActions.forEach { action in
+            switch action.type {
+            case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually, .electrolyteRecovery:
+                append(.hydration)
+            case .lightFueling, .sustainEnergy, .startRecoveryNutrition, .recoveryMeal:
+                append(.fueling)
+            case .sleepPriority:
+                append(.sleep)
+            case .breathingReset, .mobilityPrep, .keepDigestionLight, .controlIntensity, .cooldown, .lightRecoveryMovement, .downshiftNervousSystem:
+                append(.recovery)
+            case .stayConsistent:
+                append(.pacing)
+            }
+        }
+
+        switch priority.limiter {
+        case .hydration:
+            append(.hydration)
+        case .fueling:
+            append(.fueling)
+        case .sleep:
+            append(.sleep)
+        case .recovery, .accumulatedFatigue, .trainingReadiness, .insufficientRecoveryTime:
+            append(.recovery)
+        case .upcomingTraining, .excessivePlannedLoad, .timing:
+            append(.pacing)
+        case .none:
+            break
+        }
+
+        return kinds
     }
 
     private var primaryStrategy: PrimaryStrategy {
@@ -2313,5 +3406,106 @@ extension CoachGuidanceV3 {
         }
 
         return suppressed
+    }
+}
+
+private enum CoachTodayInsightTeaser {
+    private static let maxCharacters = 80
+
+    static func text(
+        title: String,
+        message: String,
+        screenStory: CoachScreenStory?,
+        phase: CoachActivityPhaseV3
+    ) -> String {
+        let sourceCandidates: [String?]
+        if case .active = phase {
+            sourceCandidates = [
+                screenStory?.myRead,
+                Optional(message),
+                screenStory?.activityContext,
+                screenStory?.myRecommendation
+            ]
+        } else {
+            sourceCandidates = [
+                screenStory?.myRead,
+                Optional(message),
+                screenStory?.activityContext,
+                screenStory?.myRecommendation
+            ]
+        }
+
+        let source = sourceCandidates
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty } ?? message
+
+        if let activeTeaser = activeSessionTeaser(from: source, phase: phase) {
+            return activeTeaser
+        }
+
+        if source.count <= maxCharacters {
+            return source
+        }
+
+        return clippedFirstIdea(from: source)
+    }
+
+    private static func activeSessionTeaser(
+        from text: String,
+        phase: CoachActivityPhaseV3
+    ) -> String? {
+        let lowercased = text.lowercased()
+
+        if case .active(_, .heat) = phase {
+            if lowercased.contains("sleep") || lowercased.contains("downshift") {
+                return "Use the sauna to downshift, then cool down."
+            }
+
+            if lowercased.contains("relax") {
+                return "Use the sauna to relax, not extend the day."
+            }
+        }
+
+        guard case .active = phase else { return nil }
+
+        if lowercased.contains("ignore targets") || lowercased.contains("first few minutes") {
+            return "Ignore targets for the first few minutes."
+        }
+
+        if lowercased.contains("repeatable") || lowercased.contains("chasing numbers") {
+            return "Keep the effort repeatable."
+        }
+
+        if lowercased.contains("reserve") {
+            return "Finish with enough reserve to recover well."
+        }
+
+        if lowercased.contains("recovery is now the priority") {
+            return "Recovery is the priority now."
+        }
+
+        return nil
+    }
+
+    private static func clippedFirstIdea(from text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        let sentenceEnd = trimmed.firstIndex { ".!?".contains($0) }
+        let firstSentence = sentenceEnd.map { String(trimmed[...$0]) } ?? trimmed
+        if firstSentence.count <= maxCharacters {
+            return firstSentence
+        }
+
+        let words = firstSentence.split(separator: " ")
+        var result = ""
+
+        for word in words {
+            let candidate = result.isEmpty ? String(word) : "\(result) \(word)"
+            guard candidate.count <= maxCharacters - 1 else { break }
+            result = candidate
+        }
+
+        return result.isEmpty ? String(firstSentence.prefix(maxCharacters - 1)) + "…" : result + "…"
     }
 }

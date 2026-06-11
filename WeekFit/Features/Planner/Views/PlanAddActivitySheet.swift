@@ -50,7 +50,8 @@ struct PlanAddActivitySheet: View {
                 newStart: slot,
                 durationMinutes: viewModel.selectedDuration,
                 activities: plannedActivities,
-                excluding: viewModel.editingActivity
+                excluding: viewModel.editingActivity,
+                newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
             )
         }
     }
@@ -272,9 +273,14 @@ private extension PlanAddActivitySheet {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     if viewModel.selectedType == .meal {
-                        ForEach(availableMeals) { meal in
-                            mealOptionCard(meal)
-                                .id(meal.id)
+                        if availableMeals.isEmpty {
+                            emptyMealPickerState
+                                .id(optionScrollID(.emptyMealPlaceholder))
+                        } else {
+                            ForEach(availableMeals) { meal in
+                                mealOptionCard(meal)
+                                    .id(meal.id)
+                            }
                         }
                     } else {
                         ForEach(currentOptions) { option in
@@ -290,6 +296,34 @@ private extension PlanAddActivitySheet {
             .onAppear { scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedItem.title) { _, _ in scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedType) { _, _ in scrollToSelectedOption(proxy) }
+        }
+    }
+
+    var emptyMealPickerState: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "fork.knife.circle")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("No saved meals")
+                    .font(.system(size: 12.6, weight: .semibold))
+                    .foregroundStyle(textPrimary.opacity(0.86))
+
+                Text("Create a meal in Meals Library first")
+                    .font(.system(size: 10.8, weight: .medium))
+                    .foregroundStyle(textSecondary.opacity(0.62))
+            }
+        }
+        .frame(width: addSheetMealCardWidth * 1.7, height: addSheetMealCardHeight, alignment: .leading)
+        .padding(.horizontal, 12)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.022))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
         }
     }
 
@@ -566,7 +600,8 @@ private extension PlanAddActivitySheet {
                 newStart: slot,
                 durationMinutes: viewModel.selectedDuration,
                 activities: plannedActivities,
-                excluding: viewModel.editingActivity
+                excluding: viewModel.editingActivity,
+                newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
             )
         }
     }
@@ -583,7 +618,8 @@ private extension PlanAddActivitySheet {
                     newStart: currentSlot,
                     durationMinutes: viewModel.selectedDuration,
                     activities: plannedActivities,
-                    excluding: viewModel.editingActivity
+                    excluding: viewModel.editingActivity,
+                    newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
                 )
 
                 return !isPast && !conflict
@@ -686,7 +722,8 @@ private extension PlanAddActivitySheet {
             newStart: slot,
             durationMinutes: viewModel.selectedDuration,
             activities: plannedActivities,
-            excluding: viewModel.editingActivity
+            excluding: viewModel.editingActivity,
+            newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
         )
 
         let isPast = isPastSlot(slot)
@@ -826,6 +863,8 @@ private extension PlanAddActivitySheet {
             .shadow(color: viewModel.selectedType.color.opacity(0.08), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
+        .disabled(!canSaveSelectedItem)
+        .opacity(canSaveSelectedItem ? 1 : 0.46)
         .accessibilityLabel(viewModel.editingActivity == nil ? addButtonTitle : "Save changes")
     }
 }
@@ -910,7 +949,7 @@ private extension PlanAddActivitySheet {
 
     func optionImage(_ option: PlannerOption) -> some View {
         Group {
-            if UIImage(named: option.imageName) != nil {
+            if !option.imageName.isEmpty, UIImage(named: option.imageName) != nil {
                 Image(option.imageName)
                     .resizable()
                     .scaledToFill()
@@ -938,7 +977,7 @@ private extension PlanAddActivitySheet {
             return AnyView(customMealPreview(items: sortedItems))
         }
 
-        if UIImage(named: meal.imageName) != nil {
+        if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
             return AnyView(
                 Image(meal.imageName)
                     .resizable()
@@ -950,27 +989,15 @@ private extension PlanAddActivitySheet {
     }
 
     func customMealPreview(items sortedItems: [MealBuilderImageItem]) -> some View {
-        let isStandalone = sortedItems.count == 1
-
-        return ZStack {
-            Image("plate-dark")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-
-            ForEach(sortedItems) { item in
-                Image(item.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: customMealPreviewWidth(item, isStandalone: isStandalone))
-                    .offset(
-                        x: customMealPreviewOffsetX(item, isStandalone: isStandalone),
-                        y: customMealPreviewOffsetY(item, isStandalone: isStandalone)
-                    )
-                    .rotationEffect(.degrees(customMealPreviewRotation(item, isStandalone: isStandalone)))
-                    .zIndex(Double(item.zIndex))
-            }
-        }
+        BuiltMealPlateView(
+            items: sortedItems,
+            plateSize: 80,
+            itemScale: 0.30,
+            offsetScale: 0.28,
+            plateOpacity: 0.42,
+            shadowOpacity: 0.12,
+            layoutMode: .compactPreview
+        )
     }
 
     func fallbackOptionImage(icon: String) -> some View {
@@ -984,39 +1011,6 @@ private extension PlanAddActivitySheet {
         }
     }
 
-    func customMealPreviewWidth(_ item: MealBuilderImageItem, isStandalone: Bool) -> CGFloat {
-        let baseWidth = CGFloat(item.visualSize) * 0.34
-
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return baseWidth
-        }
-
-        if item.id.hasPrefix("base_") { return baseWidth * 1.05 }
-        if item.id.hasPrefix("protein_") { return baseWidth * 1.18 }
-        if item.id.hasPrefix("veg_") { return baseWidth * 1.35 }
-        return baseWidth * 1.62
-    }
-
-    func customMealPreviewOffsetX(_ item: MealBuilderImageItem, isStandalone: Bool) -> CGFloat {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return CGFloat(item.offsetX) * 0.265
-        }
-        return 0
-    }
-
-    func customMealPreviewOffsetY(_ item: MealBuilderImageItem, isStandalone: Bool) -> CGFloat {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return CGFloat(item.offsetY) * 0.265
-        }
-        return -2
-    }
-
-    func customMealPreviewRotation(_ item: MealBuilderImageItem, isStandalone: Bool) -> Double {
-        guard isStandalone, item.supportsStandalonePresentation else {
-            return Double(item.rotation)
-        }
-        return 0
-    }
 }
 
 // MARK: - Styling / State Helpers
@@ -1114,7 +1108,7 @@ private extension PlanAddActivitySheet {
     var chooseItemSubtitle: String {
         switch viewModel.selectedType {
         case .meal:
-            return viewModel.customMeals.isEmpty ? "Suggested meals for today" : "Custom meals you've saved"
+            return viewModel.customMeals.isEmpty ? "Create meals first, then add them here" : "Custom meals you've saved"
         case .workout:
             return "Choose the movement that fits your day"
         case .recovery:
@@ -1179,7 +1173,8 @@ private extension PlanAddActivitySheet {
             newStart: selectedSlot,
             durationMinutes: viewModel.selectedDuration,
             activities: plannedActivities,
-            excluding: viewModel.editingActivity
+            excluding: viewModel.editingActivity,
+            newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
         )
     }
 
@@ -1240,6 +1235,8 @@ private extension PlanAddActivitySheet {
     }
 
     func saveSelectedItem() {
+        guard canSaveSelectedItem else { return }
+
         viewModel.saveSelectedItem(
             activities: plannedActivities,
             modelContext: modelContext,
@@ -1250,5 +1247,11 @@ private extension PlanAddActivitySheet {
 
     func deleteActivity(_ activity: PlannedActivity) {
         viewModel.deleteActivity(activity, modelContext: modelContext)
+    }
+
+    var canSaveSelectedItem: Bool {
+        viewModel.selectedType != .meal ||
+        viewModel.selectedMealForPlanner != nil ||
+        viewModel.editingActivity != nil
     }
 }

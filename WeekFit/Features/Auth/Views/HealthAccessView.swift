@@ -1148,11 +1148,19 @@ private extension HealthAccessView {
 
             let session = WCSession.default
 
-            if session.activationState == .notActivated {
-                session.activate()
+            guard session.activationState == .activated else {
+                return (false, false)
             }
 
-            return (session.isPaired, session.isWatchAppInstalled)
+            guard session.isPaired else {
+                return (false, false)
+            }
+
+            guard session.isWatchAppInstalled else {
+                return (true, false)
+            }
+
+            return (true, true)
         }
     }
 

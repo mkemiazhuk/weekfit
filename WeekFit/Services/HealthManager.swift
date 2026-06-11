@@ -1,6 +1,33 @@
 import Foundation
+import CoreLocation
 import HealthKit
 internal import Combine
+
+struct WorkoutHeartRateSample: Identifiable, Hashable {
+    let id = UUID()
+    let timestamp: Date
+    let beatsPerMinute: Double
+}
+
+struct WorkoutRoutePoint: Hashable {
+    let latitude: Double
+    let longitude: Double
+    let altitude: Double
+    let timestamp: Date
+}
+
+struct WorkoutHealthDetailSnapshot: Hashable {
+    let source: String?
+    let activeCalories: Double?
+    let distanceKm: Double?
+    let averageHeartRate: Double?
+    let maxHeartRate: Double?
+    let heartRateSamples: [WorkoutHeartRateSample]
+    let routePoints: [WorkoutRoutePoint]
+    let elevationGain: Double?
+    let steps: Int?
+    let cadence: Double?
+}
 
 struct ActivityMetricsSnapshot: Hashable {
     let activeCalories: Double
@@ -116,7 +143,7 @@ final class HealthManager: ObservableObject {
     @Published var energyStatus: String = "—"
     @Published var recoveryStatus: String = "—"
     @Published var sleepText: String = "—"
-    @Published var bestTimeText = "Sync Health to personalize your day"
+    @Published var bestTimeText = WeekFitLocalizedString("health.syncHealthToPersonalizeYourDay")
 
     @Published var protein: Double = 0
     @Published var carbs: Double = 0
@@ -358,6 +385,7 @@ final class HealthManager: ObservableObject {
             hrv, restingHR, stand, vo2Max,
             HKObjectType.workoutType()
         ]
+        types.insert(HKSeriesType.workoutRoute())
 
         // Добавляем характеристики в коллекцию только если они успешно создались
         if let bioSex = biologicalSex { types.insert(bioSex) }
@@ -696,7 +724,7 @@ final class HealthManager: ObservableObject {
         energyStatus = "—"
         recoveryStatus = "—"
         sleepText = "—"
-        bestTimeText = "Sync Health to personalize your day"
+        bestTimeText = WeekFitLocalizedString("health.syncHealthToPersonalizeYourDay")
     }
 
     private func readAge() -> Int {
@@ -1079,7 +1107,8 @@ final class HealthManager: ObservableObject {
         let completedMealActivities = plannedActivities.filter { activity in
             guard calendar.isDate(activity.date, inSameDayAs: date) else { return false }
             guard hasActivityPassed(activity.date, for: date) else { return false }
-            return activity.type.normalized == "meal"
+            let type = activity.type.normalized
+            return (type == "meal" || type == "drink") && !isHydrationActivityByText(activity)
         }
 
         var totalProtein: Double = 0
@@ -1158,9 +1187,7 @@ final class HealthManager: ObservableObject {
 
     private func isHydrationActivityByText(_ activity: PlannedActivity) -> Bool {
         let text = "\(activity.type) \(activity.title) \(activity.imageName)".normalized
-        return text.contains("hydration") || text.contains("water") || text.contains("drink") ||
-               text.contains("lemon") || text.contains("mint") || text.contains("cucumber") ||
-               text.contains("coconut") || text.contains("electrolyte") || text.contains("smoothie") || text.contains("shake")
+        return text.contains("hydration") || text.contains("water")
     }
 
     private func calculateHeaderMetrics() {
@@ -1183,10 +1210,10 @@ final class HealthManager: ObservableObject {
         }
 
         energyStatus = {
-            if readyScore >= 8.0 { return "High" }
-            if readyScore >= 6.5 { return "Good" }
-            if readyScore >= 4.5 { return "Low" }
-            if readyScore > 0 { return "Rest" }
+            if readyScore >= 8.0 { return WeekFitLocalizedString("health.high") }
+            if readyScore >= 6.5 { return WeekFitLocalizedString("health.good") }
+            if readyScore >= 4.5 { return WeekFitLocalizedString("health.low") }
+            if readyScore > 0 { return WeekFitLocalizedString("health.rest") }
             return "—"
         }()
 
@@ -1197,13 +1224,13 @@ final class HealthManager: ObservableObject {
         let recovery = recoveryPercent
 
         if recovery >= 85 {
-            recoveryStatus = "Ready"
+            recoveryStatus = WeekFitLocalizedString("health.ready")
         } else if recovery >= 70 {
-            recoveryStatus = "Good"
+            recoveryStatus = WeekFitLocalizedString("health.good")
         } else if recovery >= 50 {
-            recoveryStatus = "Ok"
+            recoveryStatus = WeekFitLocalizedString("health.ok")
         } else if recovery > 0 {
-            recoveryStatus = "Need Rest"
+            recoveryStatus = WeekFitLocalizedString("health.needRest")
         } else {
             recoveryStatus = "—"
         }
@@ -1252,6 +1279,475 @@ final class HealthManager: ObservableObject {
 
             healthStore.execute(query)
         }
+    }
+
+    func loadWorkoutHealthDetails(for workout: HKWorkout) async -> WorkoutHealthDetailSnapshot {
+        async let heartRateSamples = loadWorkoutHeartRateSamples(for: workout)
+        async let routePoints = loadWorkoutRoutePoints(for: workout)
+        async let steps = readQuantitySum(
+            .stepCount,
+            unit: .count(),
+            start: workout.startDate,
+            end: workout.endDate
+        )
+        async let activeCalories = readQuantitySum(
+            .activeEnergyBurned,
+            unit: .kilocalorie(),
+            start: workout.startDate,
+            end: workout.endDate
+        )
+        async let distanceMeters = readQuantitySum(
+            .distanceWalkingRunning,
+            unit: .meter(),
+            start: workout.startDate,
+            end: workout.endDate
+        )
+
+        let loadedHeartRateSamples = await heartRateSamples
+        let loadedRoutePoints = await routePoints
+        let loadedSteps = await steps
+        let summedActiveCalories = await activeCalories
+        let summedDistanceMeters = await distanceMeters
+        let loadedActiveCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? summedActiveCalories
+        let loadedDistanceMeters = workout.totalDistance?.doubleValue(for: .meter()) ?? summedDistanceMeters
+
+        let heartRates = loadedHeartRateSamples.map(\.beatsPerMinute)
+        let averageHeartRate = heartRates.isEmpty
+            ? nil
+            : heartRates.reduce(0, +) / Double(heartRates.count)
+
+        let maxHeartRate = heartRates.max()
+
+        return WorkoutHealthDetailSnapshot(
+            source: workout.sourceRevision.source.name,
+            activeCalories: loadedActiveCalories > 0 ? loadedActiveCalories : nil,
+            distanceKm: loadedDistanceMeters > 0 ? loadedDistanceMeters / 1000.0 : nil,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            heartRateSamples: loadedHeartRateSamples,
+            routePoints: loadedRoutePoints,
+            elevationGain: elevationGain(from: loadedRoutePoints),
+            steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
+            cadence: nil
+        )
+    }
+
+    func loadWorkoutHealthDetails(
+        for workoutID: UUID,
+        start: Date,
+        end: Date,
+        activityType: HKWorkoutActivityType
+    ) async -> WorkoutHealthDetailSnapshot? {
+        guard let workout = await loadWorkoutSample(
+            id: workoutID,
+            start: start,
+            end: end
+        ) else {
+            return nil
+        }
+
+        async let metrics = loadWorkoutSupplementalMetrics(
+            for: workout,
+            activityType: activityType
+        )
+        async let heartRate = loadWorkoutHeartRateDetails(start: start, end: end)
+        async let route = loadWorkoutRouteDetails(for: workout)
+
+        let loadedMetrics = await metrics
+        let loadedHeartRate = await heartRate
+        let loadedRoute = await route
+
+        return WorkoutHealthDetailSnapshot(
+            source: workout.sourceRevision.source.name,
+            activeCalories: loadedMetrics.activeCalories,
+            distanceKm: loadedMetrics.distanceKm,
+            averageHeartRate: loadedHeartRate.averageHeartRate,
+            maxHeartRate: loadedHeartRate.maxHeartRate,
+            heartRateSamples: loadedHeartRate.heartRateSamples,
+            routePoints: loadedRoute.routePoints,
+            elevationGain: loadedRoute.elevationGain,
+            steps: loadedMetrics.steps,
+            cadence: loadedMetrics.cadence
+        )
+    }
+
+    func loadWorkoutSupplementalMetrics(
+        for workoutID: UUID,
+        start: Date,
+        end: Date,
+        activityType: HKWorkoutActivityType
+    ) async -> WorkoutHealthDetailSnapshot? {
+        guard let workout = await loadWorkoutSample(
+            id: workoutID,
+            start: start,
+            end: end
+        ) else {
+            return nil
+        }
+
+        return await loadWorkoutSupplementalMetrics(
+            for: workout,
+            activityType: activityType
+        )
+    }
+
+    func loadWorkoutHeartRateDetails(
+        start: Date,
+        end: Date
+    ) async -> WorkoutHealthDetailSnapshot {
+        let samples = await loadHeartRateSamples(start: start, end: end)
+        let values = samples.map(\.beatsPerMinute)
+        let average = values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+
+        return WorkoutHealthDetailSnapshot(
+            source: nil,
+            activeCalories: nil,
+            distanceKm: nil,
+            averageHeartRate: average,
+            maxHeartRate: values.max(),
+            heartRateSamples: samples,
+            routePoints: [],
+            elevationGain: nil,
+            steps: nil,
+            cadence: nil
+        )
+    }
+
+    func loadWorkoutRouteDetails(
+        for workoutID: UUID,
+        start: Date,
+        end: Date
+    ) async -> WorkoutHealthDetailSnapshot? {
+        guard let workout = await loadWorkoutSample(
+            id: workoutID,
+            start: start,
+            end: end
+        ) else {
+            return nil
+        }
+
+        return await loadWorkoutRouteDetails(for: workout)
+    }
+
+    private func loadWorkoutSupplementalMetrics(
+        for workout: HKWorkout,
+        activityType: HKWorkoutActivityType
+    ) async -> WorkoutHealthDetailSnapshot {
+        async let activeCalories = readQuantitySum(
+            .activeEnergyBurned,
+            unit: .kilocalorie(),
+            start: workout.startDate,
+            end: workout.endDate
+        )
+        async let distanceMeters = readQuantitySum(
+            .distanceWalkingRunning,
+            unit: .meter(),
+            start: workout.startDate,
+            end: workout.endDate
+        )
+        async let cadence = activityType == .cycling
+            ? readQuantityAverage(
+                .cyclingCadence,
+                unit: .count().unitDivided(by: .minute()),
+                start: workout.startDate,
+                end: workout.endDate
+            )
+            : 0
+
+        let shouldLoadSteps: Bool = {
+            switch activityType {
+            case .walking, .running, .hiking:
+                return true
+            default:
+                return false
+            }
+        }()
+
+        async let steps = shouldLoadSteps
+            ? readQuantitySum(
+                .stepCount,
+                unit: .count(),
+                start: workout.startDate,
+                end: workout.endDate
+            )
+            : 0
+
+        let summedActiveCalories = await activeCalories
+        let summedDistanceMeters = await distanceMeters
+        let loadedActiveCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? summedActiveCalories
+        let loadedDistanceMeters = workout.totalDistance?.doubleValue(for: .meter()) ?? summedDistanceMeters
+        let loadedSteps = await steps
+        let loadedCadence = await cadence
+
+        return WorkoutHealthDetailSnapshot(
+            source: workout.sourceRevision.source.name,
+            activeCalories: loadedActiveCalories > 0 ? loadedActiveCalories : nil,
+            distanceKm: loadedDistanceMeters > 0 ? loadedDistanceMeters / 1000.0 : nil,
+            averageHeartRate: nil,
+            maxHeartRate: nil,
+            heartRateSamples: [],
+            routePoints: [],
+            elevationGain: nil,
+            steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
+            cadence: loadedCadence > 0 ? loadedCadence : nil
+        )
+    }
+
+    private func loadWorkoutRouteDetails(for workout: HKWorkout) async -> WorkoutHealthDetailSnapshot {
+        let points = await loadWorkoutRoutePoints(for: workout)
+
+        return WorkoutHealthDetailSnapshot(
+            source: nil,
+            activeCalories: nil,
+            distanceKm: nil,
+            averageHeartRate: nil,
+            maxHeartRate: nil,
+            heartRateSamples: [],
+            routePoints: points,
+            elevationGain: elevationGain(from: points),
+            steps: nil,
+            cadence: nil
+        )
+    }
+
+    private func loadWorkoutSample(
+        id: UUID,
+        start: Date,
+        end: Date
+    ) async -> HKWorkout? {
+        let workoutType = HKObjectType.workoutType()
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: []
+        )
+        let sort = NSSortDescriptor(
+            key: HKSampleSortIdentifierStartDate,
+            ascending: true
+        )
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, error in
+                guard error == nil else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                let workout = (samples as? [HKWorkout] ?? []).first { $0.uuid == id }
+                continuation.resume(returning: workout)
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func readQuantitySum(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else {
+            return 0
+        }
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, error in
+                guard error == nil else {
+                    continuation.resume(returning: 0)
+                    return
+                }
+
+                continuation.resume(returning: result?.sumQuantity()?.doubleValue(for: unit) ?? 0)
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func readQuantityAverage(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else {
+            return 0
+        }
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage
+            ) { _, result, error in
+                guard error == nil else {
+                    continuation.resume(returning: 0)
+                    return
+                }
+
+                continuation.resume(returning: result?.averageQuantity()?.doubleValue(for: unit) ?? 0)
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func loadWorkoutHeartRateSamples(for workout: HKWorkout) async -> [WorkoutHeartRateSample] {
+        await loadHeartRateSamples(start: workout.startDate, end: workout.endDate)
+    }
+
+    private func loadHeartRateSamples(start: Date, end: Date) async -> [WorkoutHeartRateSample] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
+            return []
+        }
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+        let sort = NSSortDescriptor(
+            key: HKSampleSortIdentifierStartDate,
+            ascending: true
+        )
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, error in
+                guard error == nil else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                let unit = HKUnit.count().unitDivided(by: .minute())
+                let heartRateSamples = (samples as? [HKQuantitySample] ?? []).map {
+                    WorkoutHeartRateSample(
+                        timestamp: $0.startDate,
+                        beatsPerMinute: $0.quantity.doubleValue(for: unit)
+                    )
+                }
+
+                continuation.resume(returning: heartRateSamples)
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func downsample(
+        _ samples: [WorkoutHeartRateSample],
+        maximumCount: Int
+    ) -> [WorkoutHeartRateSample] {
+        guard samples.count > maximumCount, maximumCount > 1 else {
+            return samples
+        }
+
+        let stride = Double(samples.count - 1) / Double(maximumCount - 1)
+
+        return (0..<maximumCount).map { index in
+            let sourceIndex = min(Int((Double(index) * stride).rounded()), samples.count - 1)
+            return samples[sourceIndex]
+        }
+    }
+
+    private func loadWorkoutRoutePoints(for workout: HKWorkout) async -> [WorkoutRoutePoint] {
+        let routeType = HKSeriesType.workoutRoute()
+        let predicate = HKQuery.predicateForObjects(from: workout)
+        let sort = NSSortDescriptor(
+            key: HKSampleSortIdentifierStartDate,
+            ascending: true
+        )
+
+        let routes = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: routeType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, error in
+                guard error == nil else {
+                    continuation.resume(returning: [HKWorkoutRoute]())
+                    return
+                }
+
+                continuation.resume(returning: samples as? [HKWorkoutRoute] ?? [])
+            }
+
+            self.healthStore.execute(query)
+        }
+
+        var points: [WorkoutRoutePoint] = []
+
+        for route in routes {
+            points.append(contentsOf: await loadWorkoutRoutePoints(for: route))
+        }
+
+        return points.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private func loadWorkoutRoutePoints(for route: HKWorkoutRoute) async -> [WorkoutRoutePoint] {
+        await withCheckedContinuation { continuation in
+            var points: [WorkoutRoutePoint] = []
+
+            let query = HKWorkoutRouteQuery(route: route) { _, locations, done, error in
+                guard error == nil else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                points.append(contentsOf: (locations ?? []).map {
+                    WorkoutRoutePoint(
+                        latitude: $0.coordinate.latitude,
+                        longitude: $0.coordinate.longitude,
+                        altitude: $0.altitude,
+                        timestamp: $0.timestamp
+                    )
+                })
+
+                if done {
+                    continuation.resume(returning: points)
+                }
+            }
+
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func elevationGain(from points: [WorkoutRoutePoint]) -> Double? {
+        guard points.count > 1 else { return nil }
+
+        let gain = zip(points, points.dropFirst()).reduce(0.0) { total, pair in
+            let delta = pair.1.altitude - pair.0.altitude
+            return delta > 0 ? total + delta : total
+        }
+
+        return gain > 0 ? gain : nil
     }
     
     func loadHourlyActiveCalories(for date: Date) async -> [Double] {

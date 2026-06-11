@@ -22,7 +22,6 @@ final class WeekFitActivityCoordinator: ObservableObject {
     }
 
     func start() {
-        watchBridge.start()
         healthSync.start()
     }
     
@@ -129,7 +128,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
         guard !completedWorkoutsBatch.isEmpty else { return }
 
         for workout in completedWorkoutsBatch {
-            guard let activity = bestMatch(
+            guard let activity = ActivityReconciler.bestMatch(
                 for: workout,
                 in: activities
             ) else {
@@ -148,29 +147,5 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         try? modelContext.save()
-    }
-    
-    private func bestMatch(
-        for workout: HKWorkout,
-        in activities: [PlannedActivity]
-    ) -> PlannedActivity? {
-
-        let candidates = activities.filter { activity in
-            guard !activity.isSkipped else { return false }
-
-            let sameType = matches(
-                activity: activity,
-                workoutType: workout.workoutActivityType
-            )
-
-            let closeStart = abs(activity.date.timeIntervalSince(workout.startDate)) <= 2 * 60 * 60
-
-            return sameType && closeStart
-        }
-
-        return candidates.min {
-            abs($0.date.timeIntervalSince(workout.startDate)) <
-            abs($1.date.timeIntervalSince(workout.startDate))
-        }
     }
 }

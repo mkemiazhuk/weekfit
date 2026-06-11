@@ -13,6 +13,7 @@ struct WeekFitApp: App {
     @StateObject private var appSession = AppSessionState()
     @StateObject private var healthManager = HealthManager()
     @StateObject private var nutritionViewModel = NutritionViewModel()
+    @StateObject private var coachCoordinator = CoachCoordinator()
     @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
 
     @State private var backgroundEnteredAt: Date?
@@ -20,6 +21,7 @@ struct WeekFitApp: App {
     private let refreshThreshold: TimeInterval = 4 * 60
 
     init() {
+        WeekFitWarmLocalizationCache()
         UNUserNotificationCenter.current().delegate =
             NotificationActionHandler.shared
     }
@@ -30,6 +32,7 @@ struct WeekFitApp: App {
                 .environmentObject(appSession)
                 .environmentObject(healthManager)
                 .environmentObject(nutritionViewModel)
+                .environmentObject(coachCoordinator)
                 .environmentObject(activityCoordinator)
                 .onAppear {
                     activityCoordinator.start()

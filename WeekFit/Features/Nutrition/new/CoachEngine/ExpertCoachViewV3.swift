@@ -3,22 +3,30 @@ import SwiftData
 import HealthKit
 internal import Combine
 
-struct ExpertCoachViewV3: View {
+private final class CoachScreenLifecycleTracker: ObservableObject {
+    init() {
+        #if DEBUG
+        CoachRefreshDebug.log(
+            "[CoachScreenLifecycle]",
+            "Coach screen state object init"
+        )
+        #endif
+    }
+}
 
-    @ObservedObject var authViewModel: AuthViewModel
+struct ExpertCoachViewV3: View {
 
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @Environment(\.modelContext) private var modelContext
 
-    @AppStorage(ProfileService.Keys.initials)
-    private var profileInitials: String = "P"
+    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @StateObject private var lifecycleTracker = CoachScreenLifecycleTracker()
 
     @State private var showProfile = false
-    @State private var showContent = false
     @State private var selectedDate = Date()
-    @State private var healthRefreshID = UUID()
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -31,8 +39,14 @@ struct ExpertCoachViewV3: View {
     
     @State private var pendingFuelItem: FastFuelItem?
 
+    init(authViewModel: AuthViewModel) {
+        _ = authViewModel
+    }
+
     var body: some View {
-        ZStack(alignment: .top) {
+        let _ = lifecycleTracker
+
+        return ZStack(alignment: .top) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
 
@@ -43,7 +57,7 @@ struct ExpertCoachViewV3: View {
                 WeekFitScreenHeader(
                     title: "Coach",
                     subtitle: selectedDateTitle,
-                    initials: profileInitials,
+                    initials: userSettings.profileInitials,
                     showAvatar: true
                 ) {
                     showProfile = true
@@ -52,19 +66,15 @@ struct ExpertCoachViewV3: View {
             } content: {
                 coachContent
             }
-            .opacity(showContent ? 1 : 0)
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                showContent = true
-            }
-        }
-        .task(id: healthRefreshID) {
-            await refreshCoachDataAsync()
-        }
-        .onChange(of: appSession.healthRefreshTrigger) { _, _ in
-            healthRefreshID = UUID()
+            #if DEBUG
+            CoachRefreshDebug.log(
+                "[CoachScreenLifecycle]",
+                "CoachView onAppear stateID=\(coachCoordinator.state.id) \(debugCoachPrioritySummary())"
+            )
+            #endif
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -91,26 +101,12 @@ struct ExpertCoachViewV3: View {
     }
 
     private var guidance: CoachGuidanceV3 {
-        guard let brain = nutritionViewModel.nutritionResult?.brain else {
-            return fallbackGuidance
-        }
-
-        return CoachEngineV3.decide(
-            from: brain,
-            plannedActivities: plannedActivitiesForSelectedDate,
-            selectedDate: selectedDate,
-            dayContext: dayContext,
-            recoveryContext: CoachRecoveryContext(
-                recoveryPercent: Int(healthManager.recoveryPercent),
-                sleepHours: healthManager.sleepHours
-            ),
-            nutritionContext: nutritionContext
-        )
+        coachCoordinator.state.guidance ?? fallbackGuidance
     }
 
 
     private var coachScenario: CoachActivityScenario {
-        guard let brain = nutritionViewModel.nutritionResult?.brain else {
+        guard let brain = nutritionViewModel.coachMetricsSnapshot?.brain else {
             return fallbackCoachScenario
         }
 
@@ -121,9 +117,10 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachRule: CoachScenarioRule {
-        guard let brain = nutritionViewModel.nutritionResult?.brain else {
+        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
             return fallbackCoachRule
         }
+        let brain = snapshot.brain
 
         let readiness = CoachReadinessAnalyzerV3.analyze(
             brain: brain,
@@ -133,11 +130,8 @@ struct ExpertCoachViewV3: View {
         return CoachScenarioRuleEngine.resolve(
             scenario: coachScenario,
             dayContext: dayContext,
-            recoveryContext: CoachRecoveryContext(
-                recoveryPercent: Int(healthManager.recoveryPercent),
-                sleepHours: healthManager.sleepHours
-            ),
-            nutritionContext: nutritionContext,
+            recoveryContext: snapshot.recoveryContext,
+            nutritionContext: snapshot.nutritionContext,
             readiness: readiness,
             brain: brain
         )
@@ -158,10 +152,11 @@ struct ExpertCoachViewV3: View {
     }
 
     private var fallbackCoachRule: CoachScenarioRule {
-        CoachScenarioRule(
+        let stable = CoachActivityContextResolverV3.stablePresentation(from: coachDayContext)
+        return CoachScenarioRule(
             stateLabel: "OVERVIEW",
-            title: "No active focus right now",
-            message: "Nothing needs immediate attention right now. Keep the day steady and follow the next planned training block.",
+            title: stable.title,
+            message: stable.message,
             supportFocus: [
                 "Keep rhythm",
                 "Avoid unnecessary intensity",
@@ -173,37 +168,58 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachAccentColor: Color {
-        switch coachScenario.archetype {
-        case .performance:
-            return CoachPalette.training
-        case .endurance:
-            return CoachPalette.activity
-        case .recovery:
-            return CoachPalette.recovery
-        case .heat:
-            return CoachPalette.warning
-        case .meal:
-            return CoachPalette.stable
-        case .stable:
-            return CoachPalette.stable
-        }
+        coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
     }
 
     private var coachIcon: String {
-        switch coachScenario.archetype {
-        case .performance:
-            return "figure.strengthtraining.traditional"
-        case .endurance:
-            return "figure.run"
-        case .recovery:
-            return "figure.cooldown"
-        case .heat:
-            return "flame.fill"
-        case .meal:
-            return "waveform.path.ecg"
-        case .stable:
-            return "waveform.path.ecg.rectangle.fill"
+        coachCoordinator.state.coachPresentation?.icon ?? coachScreenStory.icon
+    }
+
+    private var coachScreenStory: CoachScreenStory {
+        if let story = guidance.screenStory {
+            return story
         }
+
+        let fallbackDecision = HumanCoachDecision(
+            status: .goodToGo,
+            title: fallbackGuidance.title,
+            myRead: fallbackGuidance.message,
+            myRecommendation: "Keep the next step simple.",
+            beCarefulWith: "Turning a normal day into something to fix.",
+            why: nil,
+            planChallenge: nil,
+            supportingActions: [
+                CoachSupportingAction(
+                    type: .stayConsistent,
+                    icon: "waveform.path.ecg",
+                    title: "Keep rhythm",
+                    subtitle: "Stay consistent with food, water, and movement",
+                    color: CoachPalette.stable
+                )
+            ],
+            priority: .supporting,
+            sourceSignals: [],
+            v5Contract: nil,
+            narrativePlan: nil,
+            dayDecisionFrame: nil
+        )
+
+        return CoachScreenStory(
+            decision: fallbackDecision,
+            phase: fallbackGuidance.phase,
+            icon: fallbackGuidance.icon,
+            color: fallbackGuidance.color,
+            tone: fallbackGuidance.tone
+        )
+    }
+
+    private var coachRenderedTitle: String {
+        coachCoordinator.state.coachPresentation?.title ?? validTitle(guidance.title) ?? coachScreenStory.title
+    }
+
+    private func validTitle(_ title: String) -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private var fallbackGuidance: CoachGuidanceV3 {
@@ -217,8 +233,8 @@ struct ExpertCoachViewV3: View {
             shouldSurface: false,
             stateLabel: "OVERVIEW",
             title: "No active focus right now",
-            message: "Nothing needs immediate attention. Check today’s balance below.",
-            insightTitle: "No active focus right now",
+            message: CoachActivityContextResolverV3.stablePresentation(from: coachDayContext).message,
+            insightTitle: CoachActivityContextResolverV3.stablePresentation(from: coachDayContext).title,
             insightSubtitle: nil,
             supportActions: [
                 CoachSupportActionV3(
@@ -275,7 +291,10 @@ struct ExpertCoachViewV3: View {
     // MARK: - Coach Card
 
     private var coachCard: some View {
-        ZStack(alignment: .topTrailing) {
+        let story = coachScreenStory
+        let presentation = coachCoordinator.state.coachPresentation
+
+        return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
                 .font(.system(size: 68, weight: .regular))
                 .foregroundStyle(coachAccentColor.opacity(0.025))
@@ -286,19 +305,32 @@ struct ExpertCoachViewV3: View {
             VStack(alignment: .leading, spacing: 0) {
                 stateBadge
 
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(coachDisplayText.title)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(coachRenderedTitle)
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.8)
                         .lineSpacing(1)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(coachDisplayText.message)
-                        .font(.system(size: 13.4, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.70))
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 10) {
+                        coachHeroTextBlock(
+                            label: "My Read",
+                            text: presentation?.message ?? story.myRead
+                        )
+
+                        coachHeroTextBlock(
+                            label: "My Recommendation",
+                            text: canonicalRecommendationText ?? story.myRecommendation
+                        )
+
+                        if story.shouldShowBeCarefulWith {
+                            coachHeroTextBlock(
+                                label: "Be Careful With",
+                                text: story.beCarefulWith
+                            )
+                        }
+                    }
                 }
                 .padding(.top, 14)
             }
@@ -334,6 +366,21 @@ struct ExpertCoachViewV3: View {
         )
         .shadow(color: coachAccentColor.opacity(0.055), radius: 18, y: 8)
         .shadow(color: Color.black.opacity(0.18), radius: 14, y: 7)
+    }
+
+    private func coachHeroTextBlock(label: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label.uppercased())
+                .font(.system(size: 9.5, weight: .black, design: .rounded))
+                .tracking(1.1)
+                .foregroundStyle(coachAccentColor.opacity(0.82))
+
+            Text(text)
+                .font(.system(size: 13.4, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.76))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var stateBadge: some View {
@@ -551,20 +598,29 @@ struct ExpertCoachViewV3: View {
     }
     
     private var coachDisplayText: (title: String, message: String) {
-        let narrative = CoachNarrativeBuilder.build(
-            scenario: coachScenario,
-            dayContext: dayContext,
-            nutrition: nutritionContext
-        )
-
         return (
-            narrative.title,
-            narrative.message
+            coachCoordinator.state.coachPresentation?.title ?? coachScreenStory.title,
+            coachCoordinator.state.coachPresentation?.message ?? coachScreenStory.myRecommendation
         )
     }
 
     private var coachDisplayStateLabel: String {
-        coachRule.stateLabel
+        coachCoordinator.state.coachPresentation?.stateLabel ?? coachScreenStory.stateLabel
+    }
+
+    private var canonicalRecommendationText: String? {
+        guard let presentation = coachCoordinator.state.coachPresentation else { return nil }
+
+        switch guidance.priority.focus {
+        case .recoveryNeeded, .postActivityRecovery:
+            return "Prioritize food, hydration and recovery before adding more load."
+        case .hydrationBehind:
+            return "Bring fluids up before asking more from the day."
+        case .fuelBehind:
+            return "Make food available before adding intensity."
+        default:
+            return nil
+        }
     }
 
     private var coachSections: [CoachSection] {
@@ -572,239 +628,65 @@ struct ExpertCoachViewV3: View {
             scenario: coachScenario,
             nutrition: nutritionContext,
             trainingFallback: trainingFocusFallback,
-            coachAccentColor: coachAccentColor
+            coachAccentColor: coachAccentColor,
+            priority: guidance.priority
         )
     }
 
     private var trainingFocusFallback: [String] {
-        let items = coachRule.supportFocus
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let items = guidance.supportActions
+            .map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
         if !items.isEmpty {
             return Array(items.prefix(3))
         }
 
+        let ruleItems = coachRule.supportFocus
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if !ruleItems.isEmpty {
+            return Array(ruleItems.prefix(3))
+        }
+
         return [
-            "Stay controlled",
+            "Stay steady",
             "Keep the plan simple",
             "Avoid unnecessary intensity"
         ]
     }
 
     private var premiumAvoidNotes: [String] {
-        coachRule.avoidNotes
+
+        let whyText = guidance.priority.whyThisMatters?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        return guidance.avoidNotes
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+            .filter { note in
+                guard let whyText else { return true }
+                return note.lowercased() != whyText
+            }
     }
 
     private var shouldSurfaceCoach: Bool {
-        switch effectiveCoachPhase {
-        case .stable:
-            return guidance.shouldSurface
-        default:
-            return true
-        }
+        coachCoordinator.state.hasValidGuidance
     }
-    
-//    private var effectiveCoachPhase: CoachActivityPhaseV3 {
-//        CoachActivityPriorityResolver.resolve(
-//            activities: plannedActivitiesForSelectedDate,
-//            selectedDate: selectedDate,
-//            now: Date()
-//        )
-//    }
 
-//    private var effectiveCoachPhase: CoachActivityPhaseV3 {
-//        let now = Date()
-//
-//        if let active = highestPriorityActivity(from: activeActivities(now: now)) {
-//            return .active(
-//                activity: active,
-//                kind: CoachActivityContextResolverV3.kind(for: active)
-//            )
-//        }
-//
-//        if let recent = highestPriorityActivity(from: recentCompletedActivities(now: now)) {
-//            return .recovering(
-//                activity: recent,
-//                kind: CoachActivityContextResolverV3.kind(for: recent),
-//                minutesSinceEnd: minutesSinceActivityEnd(recent, now: now)
-//            )
-//        }
-//
-//        if let upcoming = highestPriorityActivity(from: preparingActivities(now: now)) {
-//            return .preparing(
-//                activity: upcoming,
-//                kind: CoachActivityContextResolverV3.kind(for: upcoming),
-//                minutesUntil: minutesUntilActivityStart(upcoming, now: now)
-//            )
-//        }
-//
-//        return guidance.phase
-//    }
-
-    private var effectiveCoachPhase: CoachActivityPhaseV3 {
-        CoachActivityPhasePriorityResolver.resolve(
+    private var coachDayContext: CoachDayActivityContext {
+        CoachActivityContextResolverV3.resolveDayContext(
             activities: plannedActivitiesForSelectedDate,
             selectedDate: selectedDate,
-            now: Date()
+            now: Date(),
+            brain: nutritionViewModel.coachMetricsSnapshot?.brain
         )
     }
-    
-    private func activeActivities(now: Date) -> [PlannedActivity] {
-        plannedActivitiesForSelectedDate.filter { activity in
-            guard !activity.isCompleted && !activity.isSkipped else { return false }
-            guard isCoachRelevantActivity(activity) else { return false }
 
-            let endDate = Calendar.current.date(
-                byAdding: .minute,
-                value: max(activity.effectiveDurationMinutes, activity.durationMinutes),
-                to: activity.date
-            ) ?? activity.date
-
-            return activity.date <= now && now <= endDate
-        }
-    }
-
-    private func recentCompletedActivities(now: Date) -> [PlannedActivity] {
-        plannedActivitiesForSelectedDate.filter { activity in
-            guard activity.isCompleted && !activity.isSkipped else { return false }
-            guard isCoachRelevantActivity(activity) else { return false }
-
-            let minutes = minutesSinceActivityEnd(activity, now: now)
-            guard minutes >= 0 else { return false }
-
-            return minutes <= recoveryHoldMinutes(for: activity)
-        }
-    }
-
-    private func preparingActivities(now: Date) -> [PlannedActivity] {
-        plannedActivitiesForSelectedDate.filter { activity in
-            guard !activity.isCompleted && !activity.isSkipped else { return false }
-            guard isCoachRelevantActivity(activity) else { return false }
-
-            let minutes = minutesUntilActivityStart(activity, now: now)
-
-            return minutes >= 0 && minutes <= preparationLookaheadMinutes(for: activity)
-        }
-    }
-
-    private func highestPriorityActivity(
-        from activities: [PlannedActivity]
-    ) -> PlannedActivity? {
-        activities.max {
-            activityPriorityScore($0) < activityPriorityScore($1)
-        }
-    }
-
-    private func activityPriorityScore(_ activity: PlannedActivity) -> Int {
-        let load = CoachActivityContextResolverV3.load(for: activity)
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
-
-        var score: Int
-
-        switch load {
-        case .extreme:
-            score = 500
-        case .high:
-            score = 400
-        case .moderate:
-            score = 260
-        case .low:
-            score = 120
-        }
-
-        switch kind {
-        case .workout:
-            score += 55
-        case .endurance:
-            score += 50
-        case .heat:
-            score += 35
-        case .recovery:
-            score += 20
-        case .meal:
-            score -= 80
-        case .other:
-            score += 5
-        }
-
-        score += min(activity.effectiveDurationMinutes, 180) / 3
-
-        if isWalkLike(activity) {
-            score -= 12
-        }
-
-        return score
-    }
-
-    private func isWalkLike(_ activity: PlannedActivity) -> Bool {
-        let text = "\(activity.type) \(activity.title)".lowercased()
-
-        return text.contains("walk") ||
-               text.contains("walking") ||
-               text.contains("hike")
-    }
-
-    private func isCoachRelevantActivity(_ activity: PlannedActivity) -> Bool {
-        let type = activity.type.lowercased()
-        let title = activity.title.lowercased()
-
-        if type == "meal" { return false }
-        if activity.imageName == "hydration" { return false }
-        if title.contains("water") || title.contains("hydration") { return false }
-
-        return true
-    }
-
-    private func recoveryHoldMinutes(for activity: PlannedActivity) -> Int {
-        let load = CoachActivityContextResolverV3.load(for: activity)
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
-
-        switch load {
-        case .extreme:
-            return 120
-        case .high:
-            return 90
-        case .moderate:
-            return kind == .recovery ? 25 : 60
-        case .low:
-            return kind == .recovery ? 20 : 35
-        }
-    }
-
-    private func preparationLookaheadMinutes(for activity: PlannedActivity) -> Int {
-        let load = CoachActivityContextResolverV3.load(for: activity)
-
-        switch load {
-        case .extreme, .high:
-            return 120
-        case .moderate:
-            return 90
-        case .low:
-            return 45
-        }
-    }
-
-    private func minutesSinceActivityEnd(
-        _ activity: PlannedActivity,
-        now: Date = Date()
-    ) -> Int {
-        let endDate = Calendar.current.date(
-            byAdding: .minute,
-            value: max(activity.effectiveDurationMinutes, activity.durationMinutes),
-            to: activity.date
-        ) ?? activity.date
-
-        return Int(now.timeIntervalSince(endDate) / 60)
-    }
-
-    private func minutesUntilActivityStart(
-        _ activity: PlannedActivity,
-        now: Date = Date()
-    ) -> Int {
-        max(0, Int(activity.date.timeIntervalSince(now) / 60))
+    private var effectiveCoachPhase: CoachActivityPhaseV3 {
+        guidance.phase
     }
 
     private func oneDecimal(_ value: Double) -> String {
@@ -832,22 +714,52 @@ struct ExpertCoachViewV3: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: WeekFitScreenLayout.rootSpacing) {
 
-                if shouldShowEveningReview {
-                    CoachEveningReviewSection(
-                        summary: eveningReviewSummary,
-                        plan: eveningReviewPlan,
-                        readiness: tomorrowReadiness
-                    )
-                } else if shouldSurfaceCoach {
+//                if shouldShowEveningReview {
+//                    CoachEveningReviewSection(
+//                        summary: eveningReviewSummary,
+//                        plan: eveningReviewPlan,
+//                        readiness: tomorrowReadiness
+//                    )
+//                } else
+                if shouldSurfaceCoach {
                     coachCard
-                    supportSection
+                    storySupportSection
                 } else {
-                    todayBalanceSection
+                    coachUnavailableSection
                         .padding(.top, 12)
                 }
             }
             .padding(.bottom, 110)
         }
+    }
+
+    private var coachUnavailableSection: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(textSecondary)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(Color.white.opacity(0.05)))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Coach unavailable")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+
+                Text("Connect today’s plan, nutrition, and recovery data to unlock guidance.")
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(cardBackground.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
     }
     
     private var shouldShowEveningReview: Bool {
@@ -1283,7 +1195,12 @@ struct ExpertCoachViewV3: View {
     }
 
     private var nutritionContext: CoachNutritionContext {
+        if let snapshot = nutritionViewModel.coachMetricsSnapshot {
+            return snapshot.nutritionContext
+        }
+
         let goals = nutritionViewModel.nutritionResult?.goals
+        let completedMeals = CoachCanonicalDayState.completedMeals(from: plannedActivitiesForSelectedDate)
 
         return CoachNutritionContext(
             caloriesCurrent: nutritionViewModel.currentMetrics?.calories ?? 0,
@@ -1292,8 +1209,17 @@ struct ExpertCoachViewV3: View {
             proteinCurrent: nutritionViewModel.currentMetrics?.protein ?? 0,
             proteinGoal: goals?.protein ?? 140,
 
+            carbsCurrent: nutritionViewModel.currentMetrics?.carbs ?? 0,
+            carbsGoal: goals?.carbs ?? 300,
+
+            fatsCurrent: nutritionViewModel.currentMetrics?.fats ?? 0,
+            fatsGoal: goals?.fats ?? 80,
+
             waterCurrent: nutritionViewModel.totalWaterLiters,
-            waterGoal: goals?.waterLiters ?? 3.0
+            waterGoal: goals?.waterLiters ?? 3.0,
+
+            mealsCount: completedMeals.count,
+            lastMealTime: completedMeals.last?.date
         )
     }
     
@@ -1378,17 +1304,116 @@ struct ExpertCoachViewV3: View {
 
     // MARK: - Suggested Support
 
-    private var supportSection: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            ForEach(coachSections) { section in
-                coachSectionView(section)
+    private var storySupportSection: some View {
+        let story = coachScreenStory
+
+        return VStack(alignment: .leading, spacing: 13) {
+            if !story.primaryActions.isEmpty {
+                primaryActionsSection(story)
             }
 
-            if !premiumAvoidNotes.isEmpty {
-                avoidNoteSection
-                    .padding(.top, 1)
+            if let rationale = coachCoordinator.state.rationalePresentation {
+                rationaleSection(rationale)
+            }
+
+            if story.shouldShowWhy, let why = story.whyThisMatters {
+                storyInfoSection(
+                    title: "Why This Matters",
+                    subtitle: "The reason behind the recommendation",
+                    icon: "lightbulb.fill",
+                    text: why,
+                    color: story.color
+                )
+            }
+
+            if story.shouldShowPlanAdjustment, let planAdjustment = story.planAdjustment {
+                storyInfoSection(
+                    title: "Plan Adjustment",
+                    subtitle: "Only if the plan needs changing",
+                    icon: "arrow.triangle.2.circlepath",
+                    text: planAdjustment,
+                    color: CoachPalette.warning
+                )
+            }
+
+            if story.shouldShowActivityContext, let activityContext = story.activityContext {
+                storyInfoSection(
+                    title: "Activity Context",
+                    subtitle: "What this activity means right now",
+                    icon: "figure.mind.and.body",
+                    text: activityContext,
+                    color: story.color
+                )
             }
         }
+    }
+
+    private func rationaleSection(_ presentation: CoachRationalePresentation) -> some View {
+        storyInfoSection(
+            title: presentation.title,
+            subtitle: "Decision rationale",
+            icon: presentation.icon,
+            text: presentation.message,
+            color: presentation.color
+        )
+    }
+
+    private func primaryActionsSection(_ story: CoachScreenStory) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            supportGroupHeader(
+                title: "Primary Actions",
+                subtitle: "Do these next"
+            )
+
+            VStack(spacing: 5) {
+                ForEach(Array(story.primaryActions.prefix(3).enumerated()), id: \.offset) { _, action in
+                    coachFocusRow(
+                        action.title,
+                        color: action.color,
+                        icon: action.icon
+                    )
+                }
+            }
+        }
+    }
+
+    private func supportSignalsSection(_ story: CoachScreenStory) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            supportGroupHeader(
+                title: "Support Signals",
+                subtitle: "Helpful secondary reminders"
+            )
+
+            VStack(spacing: 5) {
+                ForEach(Array(story.supportActions.prefix(3).enumerated()), id: \.offset) { _, action in
+                    coachFocusRow(
+                        action.title,
+                        color: action.color,
+                        icon: action.icon
+                    )
+                }
+            }
+        }
+    }
+
+    private func storyInfoSection(
+        title: String,
+        subtitle: String,
+        icon: String,
+        text: String,
+        color: Color
+    ) -> some View {
+        coachSectionView(
+            CoachSection(
+                title: title,
+                subtitle: subtitle,
+                icon: icon,
+                color: color,
+                style: .info,
+                items: [],
+                informationalText: text
+            )
+        )
     }
 
     private func coachSectionView(
@@ -1676,7 +1701,7 @@ struct ExpertCoachViewV3: View {
                     .fill(Color.white.opacity(0.026))
                     .frame(width: 30, height: 30)
 
-                if UIImage(named: item.imageName) != nil {
+                if !item.imageName.isEmpty, UIImage(named: item.imageName) != nil {
                     Image(item.imageName)
                         .resizable()
                         .scaledToFit()
@@ -1710,6 +1735,7 @@ struct ExpertCoachViewV3: View {
                         item: item,
                         context: modelContext
                     )
+                    appSession.triggerCoachRefresh(source: "ExpertCoachViewV3.addFuelRecommendation")
                 }
             } label: {
                 Image(systemName: "plus")
@@ -1744,46 +1770,140 @@ struct ExpertCoachViewV3: View {
         )
     }
 
-    // MARK: - Refresh
+    #if DEBUG
+    private func debugHydrationSummary() -> String {
+        if let snapshot = nutritionViewModel.coachMetricsSnapshot {
+            return CoachRefreshDebug.hydrationSummary(
+                current: snapshot.nutritionContext.waterCurrent,
+                goal: snapshot.nutritionContext.waterGoal
+            ) + " snapshot=\(snapshot.id)"
+        }
 
-    private func refreshCoachDataAsync() async {
-        guard healthManager.isHealthAccessGranted else { return }
-
-        await healthManager.loadHealthData(
-            for: selectedDate,
-            plannedActivities: plannedActivitiesForSelectedDate
-        )
-
-        let metrics = DailyNutritionMetrics(
-            protein: nutritionViewModel.currentMetrics?.protein ?? 0,
-            carbs: nutritionViewModel.currentMetrics?.carbs ?? 0,
-            fats: nutritionViewModel.currentMetrics?.fats ?? 0,
-            fiber: nutritionViewModel.currentMetrics?.fiber ?? 0,
-            calories: nutritionViewModel.currentMetrics?.calories ?? 0,
-            waterLiters: nutritionViewModel.currentMetrics?.waterLiters ?? 0,
-            activeCalories: healthManager.activeCalories,
-            sleepHours: healthManager.sleepHours,
-            weightKg: healthManager.weight
-        )
-
-        let profile = UserNutritionProfile.createAutomatic(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm,
-            age: healthManager.age,
-            sex: healthManager.biologicalSex == .male ? .male : .female
-        )
-
-        nutritionViewModel.updateNutrition(
-            metrics: metrics,
-            profile: profile,
-            plannedActivities: plannedActivitiesForSelectedDate
+        return CoachRefreshDebug.hydrationSummary(
+            current: nutritionViewModel.currentMetrics?.waterLiters ?? 0,
+            goal: nutritionViewModel.nutritionResult?.goals.waterLiters ?? 0
         )
     }
 
-    private var plannedActivitiesForSelectedDate: [PlannedActivity] {
-        plannedActivities.filter {
-            Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
+    private func debugCoachPrioritySummary() -> String {
+        guard let output = coachCoordinator.state.guidance else { return "priority=missingCanonicalGuidance" }
+        return debugCoachPrioritySummary(for: output)
+    }
+
+    private func debugCoachPrioritySummary(for output: CoachGuidanceV3) -> String {
+        let presentation = coachCoordinator.state.coachPresentation
+        let renderedState = presentation?.stateLabel ?? output.screenStory?.stateLabel ?? output.stateLabel
+        let renderedTitle = presentation?.title ?? validTitle(output.title) ?? output.screenStory?.title ?? output.priority.detailTitle
+        return "priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) strength=\(output.priority.strength) title=\"\(output.priority.todayTitle)\" renderedState=\"\(renderedState)\" renderedTitle=\"\(renderedTitle)\""
+    }
+
+    private func debugScreenStoryType(_ output: CoachGuidanceV3) -> String {
+        guard output.screenStory != nil else { return "nil" }
+        return output.narrativePlan.map { "badge=\($0.badgeIntent)" } ?? "legacy"
+    }
+
+    private func debugCoachScreenRenderDetails(for output: CoachGuidanceV3) -> String {
+        let story = output.screenStory
+        let presentation = coachCoordinator.state.coachPresentation
+        let selectedActivity = output.priority.activity ?? coachDayContext.coachFocusActivity
+        let nextActivity = dayContext.nextActivity
+        let coachRelevantActivities = plannedActivitiesForSelectedDate.filter(CoachDayActivityContextResolver.isCoachRelevant)
+        let visibleFutureUpNextCount = coachRelevantActivities.filter {
+            !$0.isCompleted &&
+                !$0.isSkipped &&
+                $0.date >= Date()
+        }.count
+        let selectedActivityRenderState = debugSelectedActivityRenderState(
+            selectedActivity,
+            visibleFutureActivities: coachRelevantActivities.filter {
+                !$0.isCompleted &&
+                    !$0.isSkipped &&
+                    $0.date >= Date()
+            }
+        )
+        let supportSignals = output.priority.supportBullets
+        let primaryActions = story?.primaryActions ?? []
+        let secondarySupportActions = story?.supportActions ?? []
+        let hiddenSupportReason: String = {
+            if story == nil { return "screenStoryNil" }
+            if supportSignals.isEmpty && primaryActions.isEmpty && secondarySupportActions.isEmpty && output.supportActions.isEmpty { return "noSupportSignalsOrActions" }
+            if !supportSignals.isEmpty || !secondarySupportActions.isEmpty { return "hiddenByRenderingContract" }
+            if !supportSignals.isEmpty && secondarySupportActions.isEmpty { return "supportSignalsNotMappedToSupportActions" }
+            return "none"
+        }()
+        let visibleRisk = story?.shouldShowBeCarefulWith == true ? story?.beCarefulWith : nil
+
+        return """
+        ExpertCoachViewV3.renderSource=canonicalCoachState stateID=\(coachCoordinator.state.id) screenStoryNil=\(story == nil) \
+        renderedState=\"\(presentation?.stateLabel ?? story?.stateLabel ?? output.stateLabel)\" renderedTitle=\"\(presentation?.title ?? validTitle(output.title) ?? story?.title ?? output.priority.detailTitle)\" \
+        myRead=\"\(presentation?.message ?? story?.myRead ?? output.message)\" myRecommendation=\"\(canonicalRecommendationText ?? story?.myRecommendation ?? output.insightSubtitle ?? "")\" beCarefulWith=\"\(visibleRisk ?? output.avoidNotes.joined(separator: " | "))\" \
+        hiddenSupportSignals.count=\(supportSignals.count) \
+        primaryActions.count=\(primaryActions.count) primaryActions.titles=\"\(primaryActions.map(\.title).joined(separator: " | "))\" \
+        hiddenSecondarySupportActions.count=\(secondarySupportActions.count) \
+        visibleSupportActions.count=\(output.supportActions.count) hiddenSupportReason=\(hiddenSupportReason) \
+        selectedCoachActivity=\"\(debugActivitySummary(selectedActivity))\" selectedCoachActivityRenderState=\(selectedActivityRenderState) nextActivityTime=\(nextActivity.map { "\($0.date)" } ?? "nil") \
+        visibleFutureUpNextActivities=\(visibleFutureUpNextCount) rawAllActivities=\(plannedActivities.count) selectedDayActivities=\(plannedActivitiesForSelectedDate.count) coachRelevantActivities=\(coachRelevantActivities.count) \
+        guidanceSourceTime=\(Date().timeIntervalSince1970) planVersion=\"\(coachCoordinator.state.fingerprint?.rawValue ?? "nil")\" \
+        priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) intent=\(debugCoachIntentSummary())
+        """
+    }
+
+    private func debugActivitySummary(_ activity: PlannedActivity?) -> String {
+        guard let activity else { return "none" }
+        return "\(activity.title)|\(activity.date)|completed=\(activity.isCompleted)|skipped=\(activity.isSkipped)"
+    }
+
+    private func debugSelectedActivityRenderState(
+        _ activity: PlannedActivity?,
+        visibleFutureActivities: [PlannedActivity]
+    ) -> String {
+        guard let activity else { return "none" }
+        if visibleFutureActivities.contains(where: { $0.id == activity.id }) {
+            return "visibleFutureUpNext"
         }
+        if activity.isCompleted {
+            return "selectedCompletedOrRecovering"
+        }
+        if activity.isSkipped {
+            return "selectedSkipped"
+        }
+        if activity.date < Date() {
+            return "selectedActiveOrPast"
+        }
+        return "selectedCoachOnly"
+    }
+
+    private func debugCoachIntentSummary() -> String {
+        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else { return "missingSnapshot" }
+        let brain = snapshot.brain
+        let activityContext = CoachActivityContextResolverV3.resolveDayContext(
+            activities: plannedActivitiesForSelectedDate,
+            selectedDate: selectedDate,
+            now: Date(),
+            brain: brain
+        )
+        let readiness = CoachReadinessAnalyzerV3.analyze(
+            brain: brain,
+            phase: activityContext.phase
+        )
+        let context = CoachDecisionContext(
+            brain: brain,
+            dayContext: dayContext,
+            activityContext: activityContext,
+            tomorrowContext: nil,
+            recoveryContext: snapshot.recoveryContext,
+            nutritionContext: snapshot.nutritionContext,
+            readiness: readiness
+        )
+        return "\(CoachIntentResolver.resolve(context))"
+    }
+    #endif
+
+    private var plannedActivitiesForSelectedDate: [PlannedActivity] {
+        CoachCanonicalDayState.selectedDayActivities(
+            from: plannedActivities,
+            selectedDate: selectedDate
+        )
     }
     
     

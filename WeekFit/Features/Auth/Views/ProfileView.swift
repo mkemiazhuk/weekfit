@@ -1,10 +1,22 @@
 import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+
     @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var healthManager = HealthManager()
+    @State private var showResetConfirmation = false
+    @State private var showResetFailure = false
+    @State private var resetFailureMessage = ""
+    @State private var isResettingLocalData = false
+
+    @AppStorage(CoachDebugSettings.logLevelKey)
+    private var coachLogLevelRaw = CoachLogLevel.off.rawValue
 
     private let background = Color.black
 
@@ -16,37 +28,21 @@ struct ProfileView: View {
     private let accentBlue = Color(red: 0.56, green: 0.68, blue: 0.90)
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
 
+    private var isShowingDialog: Bool {
+        showResetConfirmation || showResetFailure
+    }
+
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
             ambientBackground
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    headerSection
+            profileContent
+                .blur(radius: isShowingDialog ? 3 : 0)
+                .scaleEffect(isShowingDialog ? 0.985 : 1)
+                .animation(.easeOut(duration: 0.18), value: isShowingDialog)
 
-                    healthSystemSection
-
-                    settingsBlock(
-                        title: "Settings",
-                        items: viewModel.mainSettings + viewModel.connectedSystems,
-                        showHealthStatus: true
-                    )
-
-                    settingsBlock(
-                        title: "Support",
-                        items: viewModel.supportSettings,
-                        showHealthStatus: false
-                    )
-
-                    resetLocalDataButton
-
-                    footerSection
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 4)
-                .padding(.bottom, 32)
-            }
+            resetDialogOverlay
         }
         .task {
             let actualAccess = await healthManager.checkReadAuthorizationStatus()
@@ -89,6 +85,83 @@ struct ProfileView: View {
 // MARK: - Main UI
 
 private extension ProfileView {
+
+    var profileContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                headerSection
+
+                healthSystemSection
+
+                settingsBlock(
+                    title: "Settings",
+                    items: viewModel.mainSettings + viewModel.connectedSystems,
+                    showHealthStatus: true
+                )
+
+                settingsBlock(
+                    title: "Support",
+                    items: viewModel.supportSettings,
+                    showHealthStatus: false
+                )
+
+                developerSection
+
+                footerSection
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
+        }
+    }
+
+    @ViewBuilder
+    var resetDialogOverlay: some View {
+        if showResetConfirmation {
+            ConfirmationDialogView(
+                icon: "exclamationmark.triangle.fill",
+                iconTint: destructiveRed,
+                title: "Reset local data?",
+                message: "This will delete meals, logs, activities, coach history, cached images, and local preferences stored on this device. This cannot be undone.",
+                secondaryTitle: "Cancel",
+                primaryTitle: "Reset Data",
+                isPrimaryDestructive: true,
+                onSecondary: {
+                    withDialogAnimation {
+                        showResetConfirmation = false
+                    }
+                },
+                onPrimary: {
+                    withDialogAnimation {
+                        showResetConfirmation = false
+                    }
+
+                    Task {
+                        await resetLocalData()
+                    }
+                }
+            )
+        } else if showResetFailure {
+            ConfirmationDialogView(
+                icon: "exclamationmark.circle.fill",
+                iconTint: destructiveRed,
+                title: "Reset failed",
+                message: resetFailureMessage,
+                primaryTitle: "OK",
+                dismissOnBackgroundTap: true,
+                onSecondary: {
+                    withDialogAnimation {
+                        showResetFailure = false
+                    }
+                },
+                onPrimary: {
+                    withDialogAnimation {
+                        showResetFailure = false
+                    }
+                }
+            )
+        }
+    }
 
     var ambientBackground: some View {
         ZStack {
@@ -164,7 +237,7 @@ private extension ProfileView {
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 14) {
-                    simpleAvatar(initials: hasName ? profile.initials : "P")
+                    simpleAvatar(initials: profile.initials)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(hasName ? cleanName : "Your health system")
@@ -416,6 +489,14 @@ private extension ProfileView {
             }
     }
 
+    var developerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Privacy & Data")
+            coachDebugToggle
+            resetLocalDataButton
+        }
+    }
+
     @ViewBuilder
     var healthStatusBadge: some View {
         if healthManager.isHealthAccessGranted {
@@ -457,9 +538,11 @@ private extension ProfileView {
 
     var resetLocalDataButton: some View {
         Button {
-            viewModel.resetLocalData()
+            withDialogAnimation {
+                showResetConfirmation = true
+            }
         } label: {
-            Text("Reset local data")
+            Text(isResettingLocalData ? "Resetting..." : "Reset Local Data")
                 .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(destructiveRed.opacity(0.62))
                 .frame(maxWidth: .infinity)
@@ -474,7 +557,45 @@ private extension ProfileView {
                 }
         }
         .buttonStyle(PressableScaleButtonStyle())
-        .padding(.top, 10)
+        .disabled(isResettingLocalData)
+        .opacity(isResettingLocalData ? 0.62 : 1)
+    }
+
+    var coachDebugToggle: some View {
+        HStack(spacing: 13) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.13))
+
+                Image(systemName: "stethoscope")
+                    .font(.system(size: 15, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(Color.purple.opacity(0.96))
+            }
+            .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Coach Debug")
+                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+
+                Text(coachDebugEnabled ? "Verbose Coach logs enabled" : "Enable verbose Coach decision logs")
+                    .font(.system(size: 12.6, weight: .medium))
+                    .foregroundStyle(textSecondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Toggle("", isOn: coachDebugBinding)
+                .labelsHidden()
+                .tint(accentGreen.opacity(0.88))
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 72)
+        .background {
+            premiumCardBackground(cornerRadius: 23)
+        }
     }
 
     var footerSection: some View {
@@ -495,6 +616,64 @@ private extension ProfileView {
 // MARK: - Helpers
 
 private extension ProfileView {
+
+    var coachDebugEnabled: Bool {
+        CoachLogLevel(rawValue: coachLogLevelRaw) == .verbose
+    }
+
+    var coachDebugBinding: Binding<Bool> {
+        Binding(
+            get: {
+                coachDebugEnabled
+            },
+            set: { isEnabled in
+                coachLogLevelRaw = isEnabled ? CoachLogLevel.verbose.rawValue : CoachLogLevel.off.rawValue
+                appSession.triggerCoachRefresh(source: "profileCoachDebugToggle")
+
+                #if DEBUG
+                CoachLogger.verbose(
+                    "[CoachDebugSettings]",
+                    "Profile toggle changed verboseLoggingEnabled=\(isEnabled)"
+                )
+                #endif
+            }
+        )
+    }
+
+    func withDialogAnimation(_ updates: @escaping () -> Void) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            updates()
+        }
+    }
+
+    func resetLocalData() async {
+        guard !isResettingLocalData else { return }
+        isResettingLocalData = true
+
+        do {
+            let resetService = LocalDataResetService(modelContext: modelContext)
+            try await resetService.resetAllLocalData()
+
+            ActivityConfirmationState.shared.pendingActivity = nil
+            nutritionViewModel.resetLocalState()
+            viewModel.reloadUserProfile()
+
+            appSession.triggerLocalDataResetCompleted()
+            appSession.triggerReturnToToday()
+            appSession.triggerHealthRefresh(source: "localDataReset")
+            appSession.triggerCoachRefresh(source: "localDataReset")
+
+            dismiss()
+        } catch {
+            print("[LocalDataReset][Failure] UI reset flow: \(error)")
+            resetFailureMessage = error.localizedDescription
+            withDialogAnimation {
+                showResetFailure = true
+            }
+        }
+
+        isResettingLocalData = false
+    }
 
     func isHealthSignalsItem(_ item: ProfileItem) -> Bool {
         item.title == "Health Signals" || item.title == "Apple Health"

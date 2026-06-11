@@ -6,8 +6,14 @@ enum CoachSectionBuilder {
         scenario: CoachActivityScenario,
         nutrition: CoachNutritionContext,
         trainingFallback: [String],
-        coachAccentColor: Color
+        coachAccentColor: Color,
+        priority: CoachDayPriorityResult? = nil
     ) -> [CoachSection] {
+
+        if let priority,
+           !priority.supportBullets.isEmpty {
+            return prioritySections(priority, color: coachAccentColor)
+        }
 
         let profile = CoachActivityProfileResolver.resolve(scenario: scenario)
 
@@ -42,6 +48,132 @@ enum CoachSectionBuilder {
         }
 
         return sections.filter { !$0.isEmpty }
+    }
+}
+
+private extension CoachSectionBuilder {
+
+    static func prioritySections(
+        _ priority: CoachDayPriorityResult,
+        color: Color
+    ) -> [CoachSection] {
+
+        let whyText = priority.whyThisMatters?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let cleanedSupportBullets = priority.supportBullets
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { bullet in
+                guard let whyText, !whyText.isEmpty else { return true }
+
+                let bulletNormalized = bullet.lowercased()
+                let whyNormalized = whyText.lowercased()
+
+                return bulletNormalized != whyNormalized &&
+                       !whyNormalized.contains(bulletNormalized) &&
+                       !bulletNormalized.contains(whyNormalized)
+            }
+
+        var sections = [
+            CoachSection(
+                title: supportTitle(for: priority),
+                subtitle: supportSubtitle(for: priority),
+                icon: supportIcon(for: priority.priority),
+                color: color,
+                style: .cards,
+                items: cleanedSupportBullets
+            )
+        ]
+
+        if let whyText, !whyText.isEmpty {
+            sections.append(
+                CoachSection(
+                    title: "Why This Matters",
+                    subtitle: "The day-level reason behind this priority.",
+                    icon: "leaf.fill",
+                    color: CoachPalette.recovery,
+                    style: .info,
+                    informationalText: whyText
+                )
+            )
+        }
+
+        if let planChallenge = priority.planChallenge?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !planChallenge.isEmpty {
+            sections.append(
+                CoachSection(
+                    title: "Plan Challenge",
+                    subtitle: "What to change if the signals stay the same.",
+                    icon: "exclamationmark.triangle.fill",
+                    color: CoachPalette.warning,
+                    style: .info,
+                    informationalText: planChallenge
+                )
+            )
+        }
+
+        return sections.filter { !$0.isEmpty }
+    }
+
+    static func supportTitle(for priority: CoachDayPriorityResult) -> String {
+        switch priority.priority {
+        case .recovery, .sleepPreparation:
+            return priority.limiter == .sleep ? "Sleep Support" : "Recovery Support"
+        case .hydration:
+            return "Hydration Support"
+        case .fueling:
+            return "Fueling Support"
+        case .planChallenge:
+            return "Plan Adjustment"
+        case .performance:
+            return "Training Adjustment"
+        case .activeSession:
+            return "Session Focus"
+        case .stable:
+            return "Daily Rhythm"
+        }
+    }
+
+    static func supportSubtitle(for priority: CoachDayPriorityResult) -> String {
+        switch priority.priority {
+        case .sleepPreparation:
+            return "Use the rest of the day to downshift."
+        case .recovery:
+            return "Protect the rest of the day."
+        case .hydration:
+            return "Bring fluids back up before more demand."
+        case .fueling:
+            return "Make energy available before the next hard block."
+        case .planChallenge:
+            return "Adjust the plan if readiness stays low."
+        case .performance:
+            return "Keep the plan flexible."
+        case .activeSession:
+            return "What matters while this is live."
+        case .stable:
+            return "Keep the basics steady."
+        }
+    }
+
+    static func supportIcon(for priority: CoachDayPriority) -> String {
+        switch priority {
+        case .recovery, .sleepPreparation:
+            return "moon.stars.fill"
+        case .hydration:
+            return "drop.fill"
+        case .fueling:
+            return "bolt.fill"
+        case .planChallenge:
+            return "exclamationmark.triangle.fill"
+        case .performance:
+            return "speedometer"
+        case .activeSession:
+            return "checkmark"
+        case .stable:
+            return "waveform.path.ecg"
+        }
     }
 }
 

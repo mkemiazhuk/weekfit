@@ -3,6 +3,7 @@ import SwiftUI
 enum WeekFitTab: Hashable, CaseIterable {
     case today
     case coach
+    case insights
     case meals
     case calendar
 
@@ -10,6 +11,7 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "figure.mind.and.body"
         case .coach: return "brain.head.profile"
+        case .insights: return "chart.line.uptrend.xyaxis"
         case .meals: return "fork.knife"
         case .calendar: return "calendar"
         }
@@ -19,6 +21,7 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "Today"
         case .coach: return "Coach"
+        case .insights: return "Insights"
         case .meals: return "Meals"
         case .calendar: return "Plan"
         }
@@ -28,14 +31,23 @@ enum WeekFitTab: Hashable, CaseIterable {
 struct WeekFitBottomBar: View {
 
     @Binding var selectedTab: WeekFitTab
-    var onCalendarTap: (() -> Void)? = nil
 
     @Namespace private var selectionNamespace
 
-    private let barWidth: CGFloat = 340
     private let barHeight: CGFloat = 52
-    private let itemWidth: CGFloat = 80
     private let itemHeight: CGFloat = 42
+
+    private var barWidth: CGFloat {
+        min(UIScreen.main.bounds.width - 20, 370)
+    }
+
+    private var itemWidth: CGFloat {
+        (barWidth - 10) / CGFloat(WeekFitTab.allCases.count)
+    }
+
+    private var activePillWidth: CGFloat {
+        min(66, itemWidth - 6)
+    }
 
     private var activeColor: Color {
         WeekFitTheme.primaryText.opacity(0.94)
@@ -55,29 +67,24 @@ struct WeekFitBottomBar: View {
         .padding(.horizontal, 5)
         .background {
             Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.050),
-                                    Color.white.opacity(0.022),
-                                    Color.black.opacity(0.120)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.14, green: 0.15, blue: 0.17),
+                            Color(red: 0.09, green: 0.10, blue: 0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay {
                     Capsule(style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.090),
-                                    Color.white.opacity(0.030),
-                                    Color.black.opacity(0.220)
+                                    Color.white.opacity(0.08),
+                                    Color.white.opacity(0.03),
+                                    Color.black.opacity(0.25)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -86,7 +93,7 @@ struct WeekFitBottomBar: View {
                         )
                 }
                 .shadow(
-                    color: Color.black.opacity(0.22),
+                    color: Color.black.opacity(0.30),
                     radius: 18,
                     x: 0,
                     y: 10
@@ -138,7 +145,7 @@ struct WeekFitBottomBar: View {
                             x: 0,
                             y: 4
                         )
-                        .frame(width: 66, height: 40)
+                        .frame(width: activePillWidth, height: 40)
                 }
 
                 VStack(spacing: 3) {
@@ -185,6 +192,11 @@ struct WeekFitBottomBar: View {
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
+        if tab == .coach {
+            selectedTab = tab
+            return
+        }
+
         withAnimation(
             .spring(
                 response: 0.36,
@@ -195,8 +207,5 @@ struct WeekFitBottomBar: View {
             selectedTab = tab
         }
 
-        if tab == .calendar {
-            onCalendarTap?()
-        }
     }
 }

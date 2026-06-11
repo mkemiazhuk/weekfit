@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct MealDetailsView: View {
 
@@ -27,10 +28,10 @@ struct MealDetailsView: View {
     private var automatedCurrentSlotTitle: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 0..<11:   return "Breakfast"
-        case 11..<16:  return "Lunch"
-        case 16..<18:  return "Snack"
-        default:       return "Dinner"
+        case 0..<11:   return WeekFitLocalizedString("meals.breakfast")
+        case 11..<16:  return WeekFitLocalizedString("meals.lunch")
+        case 16..<18:  return WeekFitLocalizedString("meals.snack")
+        default:       return WeekFitLocalizedString("meals.dinner")
         }
     }
 
@@ -72,7 +73,6 @@ struct MealDetailsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             if isQuickLogMode {
                 quickLogButton
@@ -147,13 +147,13 @@ struct MealDetailsView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Meal Details")
+                Text(WeekFitLocalizedString("meals.mealDetails"))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.75)
                     .lineLimit(1)
 
-                Text("Review ingredients, nutrition and preparation.")
+                Text(WeekFitLocalizedString("meals.reviewIngredientsNutritionAndPreparation"))
                     .font(.system(size: 13.2, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.76))
                     .lineLimit(1)
@@ -250,7 +250,7 @@ struct MealDetailsView: View {
         ZStack {
             if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealPreview(items)
-            } else if UIImage(named: meal.imageName) != nil {
+            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
                 Image(meal.imageName)
                     .resizable()
                     .scaledToFit()
@@ -281,7 +281,7 @@ struct MealDetailsView: View {
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(textSecondary.opacity(0.72))
 
-            Text("Saved meal")
+            Text(WeekFitLocalizedString("meals.savedMeal"))
                 .font(.system(size: 12.2, weight: .semibold, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.80))
         }
@@ -289,10 +289,10 @@ struct MealDetailsView: View {
 
     private var nutritionSummary: some View {
         HStack(spacing: 8) {
-            nutritionTile("Calories", "\(meal.calories)", "kcal", isPrimary: true)
-            nutritionTile("Protein", "\(meal.protein)", "g")
-            nutritionTile("Carbs", "\(meal.carbs)", "g")
-            nutritionTile("Fats", "\(meal.fats)", "g")
+            nutritionTile("nutrition.metric.calories", "\(meal.calories)", "common.unit.kcal", isPrimary: true)
+            nutritionTile("nutrition.metric.protein", "\(meal.protein)", "common.unit.gramShort")
+            nutritionTile("nutrition.metric.carbs", "\(meal.carbs)", "common.unit.gramShort")
+            nutritionTile("nutrition.metric.fats", "\(meal.fats)", "common.unit.gramShort")
         }
     }
 
@@ -308,14 +308,14 @@ struct MealDetailsView: View {
                     .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold, design: .rounded))
                     .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
 
-                Text(unit)
+                Text(WeekFitLocalizedString(unit))
                     .font(.system(size: 9.4, weight: .semibold, design: .rounded))
                     .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
             }
             .lineLimit(1)
             .minimumScaleFactor(0.75)
 
-            Text(title)
+            Text(WeekFitLocalizedString(title))
                 .font(.system(size: 9.4, weight: .medium, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.74))
                 .lineLimit(1)
@@ -339,7 +339,7 @@ struct MealDetailsView: View {
 
                 Spacer()
 
-                Text("1 serving")
+                Text(WeekFitLocalizedString("meals.1Serving"))
                     .font(.system(size: 12.4, weight: .semibold, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.70))
             }
@@ -394,13 +394,17 @@ struct MealDetailsView: View {
             Circle()
                 .fill(Color.white.opacity(0.045))
 
-            if let imageName = ingredientImageName(index: index) {
+            if let imageName = ingredientImageName(index: index),
+               !imageName.isEmpty,
+               UIImage(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 29, height: 29)
                     .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-            } else if let imageName = fallbackIngredientImageName(for: item.name) {
+            } else if let imageName = fallbackIngredientImageName(for: item.name),
+                      !imageName.isEmpty,
+                      UIImage(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .scaledToFit()
@@ -449,7 +453,7 @@ struct MealDetailsView: View {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 14, weight: .bold))
 
-                    Text("Log for \(automatedCurrentSlotTitle)")
+                    Text(String(format: WeekFitLocalizedString("meals.actions.logForFormat"), automatedCurrentSlotTitle))
                         .font(.system(size: 14.2, weight: .bold, design: .rounded))
                         .tracking(-0.08)
                 }
@@ -509,7 +513,8 @@ struct MealDetailsView: View {
             calories: meal.calories,
             protein: meal.protein,
             carbs: meal.carbs,
-            fats: meal.fats
+            fats: meal.fats,
+            source: isQuickLogMode || mealTargetDate < now ? "nutritionLog" : "planner"
         )
 
         activity.isCompleted = isQuickLogMode || mealTargetDate < now
@@ -540,7 +545,7 @@ struct MealDetailsView: View {
     }
 
     private func sectionTitle(_ title: String) -> some View {
-        Text(title)
+        Text(WeekFitLocalizedString(title))
             .font(.system(size: 17.0, weight: .bold, design: .rounded))
             .foregroundStyle(textPrimary)
             .tracking(-0.25)

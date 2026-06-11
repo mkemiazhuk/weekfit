@@ -20,7 +20,7 @@ final class PlanViewModel: ObservableObject {
     @Published var selectedSlot: Date?
 
     @Published var selectedType: PlannerType = .meal
-    @Published var selectedItem: PlannerOption = PlannerType.meal.options[0]
+    @Published var selectedItem: PlannerOption = PlannerOption.emptyMealPlaceholder
     @Published var selectedDuration = 15
 
     @Published var showCustomDuration = false
@@ -41,20 +41,14 @@ final class PlanViewModel: ObservableObject {
     @Published var customMeals: [Meals] = []
     @Published var selectedMealID: String?
 
-    private let nutritionRepository = NutritionRepository()
-
     var calendar: Calendar {
         var cal = Calendar.current
         cal.firstWeekday = 2
         return cal
     }
 
-    var predefinedMeals: [Meals] {
-        nutritionRepository.loadMeals()
-    }
-
     var availableMeals: [Meals] {
-        customMeals.isEmpty ? predefinedMeals : customMeals
+        customMeals
     }
 
     var mealPlannerOptions: [PlannerOption] {
@@ -67,7 +61,7 @@ final class PlanViewModel: ObservableObject {
     
     func selectType(_ type: PlannerType) {
         selectedType = type
-        selectedItem = type.options[0]
+        selectedItem = type == .meal ? PlannerOption.emptyMealPlaceholder : type.options[0]
 
         applyDefaultDurationForSelectedItem()
     }
@@ -117,13 +111,13 @@ final class PlanViewModel: ObservableObject {
     // MARK: - Data helpers
 
     func loadCustomMeals(from storage: String) {
-        guard let data = storage.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode([Meals].self, from: data) else {
-            customMeals = []
-            return
-        }
+        customMeals = CustomMealStore.load(from: storage)
 
-        customMeals = decoded
+        if selectedType == .meal,
+           let selectedMealID,
+           !customMeals.contains(where: { $0.id == selectedMealID }) {
+            syncDefaultSelectedMeal()
+        }
     }
 
     func plannerOption(for meal: Meals) -> PlannerOption {
@@ -140,7 +134,7 @@ final class PlanViewModel: ObservableObject {
 
         let meal = availableMeals.first
         selectedMealID = meal?.id
-        selectedItem = meal.map { plannerOption(for: $0) } ?? PlannerType.meal.options[0]
+        selectedItem = meal.map { plannerOption(for: $0) } ?? PlannerOption.emptyMealPlaceholder
     }
 
     func activities(for date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
@@ -237,7 +231,8 @@ final class PlanViewModel: ObservableObject {
             if !hasTimeConflict(
                 newStart: candidate,
                 durationMinutes: duration,
-                activities: activities
+                activities: activities,
+                newEventBlocksPlannerTime: selectedType.blocksPlannerTime
             ) {
                 return candidate
             }
@@ -256,14 +251,16 @@ final class PlanViewModel: ObservableObject {
         newStart: Date,
         durationMinutes: Int,
         activities: [PlannedActivity],
-        excluding: PlannedActivity? = nil
+        excluding: PlannedActivity? = nil,
+        newEventBlocksPlannerTime: Bool = true
     ) -> Bool {
         TimelineLayoutEngine.hasTimeConflict(
             newStart: newStart,
             durationMinutes: durationMinutes,
             activities: activities,
             excluding: excluding,
-            calendar: calendar
+            calendar: calendar,
+            newEventBlocksPlannerTime: newEventBlocksPlannerTime
         )
     }
 
@@ -280,7 +277,7 @@ final class PlanViewModel: ObservableObject {
 
         let firstMeal = availableMeals.first
         selectedMealID = firstMeal?.id
-        selectedItem = firstMeal.map { plannerOption(for: $0) } ?? PlannerType.meal.options[0]
+        selectedItem = firstMeal.map { plannerOption(for: $0) } ?? PlannerOption.emptyMealPlaceholder
 
         selectedDuration = 15
         customDuration = 15
@@ -309,7 +306,12 @@ final class PlanViewModel: ObservableObject {
                 selectedItem = plannerOption(for: matchingMeal)
             } else {
                 selectedMealID = nil
-                selectedItem = type.options.first(where: { $0.title.lowercased() == activity.title.lowercased() }) ?? type.options[0]
+                selectedItem = PlannerOption(
+                    title: activity.title,
+                    subtitle: "Logged meal",
+                    icon: activity.icon,
+                    imageName: activity.imageName
+                )
             }
         } else {
             selectedMealID = nil
@@ -347,7 +349,8 @@ final class PlanViewModel: ObservableObject {
             newStart: selectedSlot,
             durationMinutes: selectedDuration,
             activities: activities,
-            excluding: editingActivity
+            excluding: editingActivity,
+            newEventBlocksPlannerTime: selectedType.blocksPlannerTime
         ) {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
             timeConflictMessage = "This time overlaps with another activity. Choose another 15-minute slot."
@@ -357,8 +360,14 @@ final class PlanViewModel: ObservableObject {
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-        let finalDuration = selectedType == .meal ? 15 : selectedDuration
         let meal = selectedType == .meal ? selectedMealForPlanner : nil
+
+        if selectedType == .meal, meal == nil, editingActivity == nil {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            return
+        }
+
+        let finalDuration = selectedType == .meal ? 15 : selectedDuration
 
         if let editingActivity {
             cancelNotifications(for: editingActivity)
@@ -373,10 +382,10 @@ final class PlanViewModel: ObservableObject {
             editingActivity.colorRed = selectedType.colorComponents.red
             editingActivity.colorGreen = selectedType.colorComponents.green
             editingActivity.colorBlue = selectedType.colorComponents.blue
-            editingActivity.calories = meal?.calories ?? 0
-            editingActivity.protein = meal?.protein ?? 0
-            editingActivity.carbs = meal?.carbs ?? 0
-            editingActivity.fats = meal?.fats ?? 0
+            editingActivity.calories = meal?.calories ?? editingActivity.calories
+            editingActivity.protein = meal?.protein ?? editingActivity.protein
+            editingActivity.carbs = meal?.carbs ?? editingActivity.carbs
+            editingActivity.fats = meal?.fats ?? editingActivity.fats
 
             do {
                 try modelContext.save()
@@ -464,7 +473,8 @@ final class PlanViewModel: ObservableObject {
             newStart: newDate,
             durationMinutes: activity.durationMinutes,
             activities: activities,
-            excluding: activity
+            excluding: activity,
+            newEventBlocksPlannerTime: activity.blocksPlannerTime
         ) {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
             invalidDropSlot = newDate

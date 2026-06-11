@@ -13,6 +13,17 @@ enum MealsType: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum MealsLibraryKind: String, Codable {
+    case meal
+    case product
+    case ingredient
+}
+
+enum CustomMealCreationMode: String, Codable {
+    case manual
+    case ingredients
+}
+
 struct Meals: Identifiable, Codable, Equatable {
 
     let id: String
@@ -36,6 +47,11 @@ struct Meals: Identifiable, Codable, Equatable {
 
     var suggestedTime: String?
     var builderImageItems: [MealBuilderImageItem]?
+    var libraryKind: MealsLibraryKind?
+    var creationMode: CustomMealCreationMode?
+    var servingGrams: Int?
+    var localPhotoFilename: String?
+    var localPhotoThumbnailFilename: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -52,6 +68,11 @@ struct Meals: Identifiable, Codable, Equatable {
         case ingredients
         case suggestedTime
         case builderImageItems
+        case libraryKind
+        case creationMode
+        case servingGrams
+        case localPhotoFilename
+        case localPhotoThumbnailFilename
     }
 
     init(
@@ -68,7 +89,12 @@ struct Meals: Identifiable, Codable, Equatable {
         benefits: [String],
         ingredients: [MealsIngredient],
         suggestedTime: String? = nil,
-        builderImageItems: [MealBuilderImageItem]? = nil
+        builderImageItems: [MealBuilderImageItem]? = nil,
+        libraryKind: MealsLibraryKind? = nil,
+        creationMode: CustomMealCreationMode? = nil,
+        servingGrams: Int? = nil,
+        localPhotoFilename: String? = nil,
+        localPhotoThumbnailFilename: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -84,6 +110,11 @@ struct Meals: Identifiable, Codable, Equatable {
         self.ingredients = ingredients
         self.suggestedTime = suggestedTime
         self.builderImageItems = builderImageItems
+        self.libraryKind = libraryKind
+        self.creationMode = creationMode
+        self.servingGrams = servingGrams
+        self.localPhotoFilename = localPhotoFilename
+        self.localPhotoThumbnailFilename = localPhotoThumbnailFilename
     }
 
     init(from decoder: Decoder) throws {
@@ -153,6 +184,31 @@ struct Meals: Identifiable, Codable, Equatable {
             [MealBuilderImageItem].self,
             forKey: .builderImageItems
         )
+
+        libraryKind = try container.decodeIfPresent(
+            MealsLibraryKind.self,
+            forKey: .libraryKind
+        )
+
+        creationMode = try container.decodeIfPresent(
+            CustomMealCreationMode.self,
+            forKey: .creationMode
+        )
+
+        servingGrams = try container.decodeIfPresent(
+            Int.self,
+            forKey: .servingGrams
+        )
+
+        localPhotoFilename = try container.decodeIfPresent(
+            String.self,
+            forKey: .localPhotoFilename
+        )
+
+        localPhotoThumbnailFilename = try container.decodeIfPresent(
+            String.self,
+            forKey: .localPhotoThumbnailFilename
+        )
     }
 }
 
@@ -190,6 +246,59 @@ extension Meals {
 
     var shortTitle: String {
         title.components(separatedBy: ",").first ?? title
+    }
+
+    var normalizedTitle: String {
+        title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+    }
+
+    var servingDescription: String {
+        guard let servingGrams, servingGrams > 0 else {
+            return WeekFitLocalizedString("meals.1Serving")
+        }
+
+        return String(format: WeekFitLocalizedString("meals.lldgServing"), servingGrams)
+    }
+
+    var isFoodProduct: Bool {
+        libraryKind == .product || creationMode == .manual
+    }
+
+    var isRecipeMeal: Bool {
+        !isFoodProduct && libraryKind != .ingredient
+    }
+
+    var displayCategoryTitle: String {
+        WeekFitLocalizedString(isFoodProduct ? "meals.category.food" : "meals.category.meal")
+    }
+
+    var sourceLabel: String {
+        if creationMode == .manual || libraryKind == .product {
+            return WeekFitLocalizedString("meals.customFood")
+        }
+
+        if creationMode == .ingredients {
+            return WeekFitLocalizedString("meals.customMeal")
+        }
+
+        return "WeekFit"
+    }
+
+    var placeholderInitial: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmed.first else { return "F" }
+        return String(first).uppercased()
+    }
+
+    var hasCustomPhoto: Bool {
+        !(localPhotoThumbnailFilename?.isEmpty ?? true) || !(localPhotoFilename?.isEmpty ?? true)
+    }
+
+    var displayPhotoFilename: String? {
+        localPhotoThumbnailFilename ?? localPhotoFilename
     }
 
     var color: Color {
@@ -235,10 +344,10 @@ extension Meals {
             .joined(separator: ", ")
 
         return [
-            "Prepare all ingredients: \(ingredientNames).",
-            "Cook or assemble the main protein and base components.",
-            "Add vegetables, toppings and dressing if included.",
-            "Serve fresh and adjust seasoning to taste."
+            String(format: WeekFitLocalizedString("meals.prepareAllIngredients"), ingredientNames),
+            WeekFitLocalizedString("meals.cookOrAssembleTheMainProteinAndBaseComponents"),
+            WeekFitLocalizedString("meals.addVegetablesToppingsAndDressingIfIncluded"),
+            WeekFitLocalizedString("meals.serveFreshAndAdjustSeasoningToTaste")
         ]
     }
 }
@@ -250,7 +359,7 @@ extension MealsType {
         switch self {
 
         case .preWorkout:
-            return "Pre-Workout"
+            return "Pre Workout"
 
         case .recovery:
             return "Recovery"
@@ -265,7 +374,7 @@ extension MealsType {
             return "Hydration"
 
         case .antiInflammatory:
-            return "Anti-Inflammatory"
+            return "Anti Inflammatory"
 
         case .balanced:
             return "Balanced"

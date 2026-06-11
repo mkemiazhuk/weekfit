@@ -92,26 +92,55 @@ final class ActivityIntelligenceSnapshotProvider {
     }
 
     private func workoutSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
-        ActivitySessionSnapshot(
-            title: workoutTitle(for: workout.workoutActivityType),
+        let title = workoutTitle(for: workout.workoutActivityType)
+        let durationMinutes = max(1, Int(workout.duration / 60.0))
+        let icon = workoutIcon(for: workout.workoutActivityType)
+        let color = workoutColor(for: workout.workoutActivityType)
+        let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+        let distanceKm = workout.totalDistance.map { $0.doubleValue(for: .meter()) / 1000.0 }
+
+        return ActivitySessionSnapshot(
+            workoutID: workout.uuid,
+            title: title,
             startDate: workout.startDate,
-            durationMinutes: max(1, Int(workout.duration / 60.0)),
-            icon: workoutIcon(for: workout.workoutActivityType),
-            color: workoutColor(for: workout.workoutActivityType)
+            durationMinutes: durationMinutes,
+            icon: icon,
+            color: color,
+            detail: ActivitySessionDetailSnapshot(
+                title: title,
+                activityType: workout.workoutActivityType,
+                startDate: workout.startDate,
+                endDate: workout.endDate,
+                durationMinutes: durationMinutes,
+                workoutDurationSeconds: workout.duration,
+                elapsedDurationSeconds: workout.endDate.timeIntervalSince(workout.startDate),
+                source: workout.sourceRevision.source.name,
+                icon: icon,
+                color: color,
+                activeCalories: activeCalories,
+                distanceKm: distanceKm,
+                averageHeartRate: nil,
+                maxHeartRate: nil,
+                heartRateSamples: [],
+                routePoints: [],
+                elevationGain: nil,
+                steps: nil,
+                cadence: nil
+            )
         )
     }
 
     private func workoutTitle(for type: HKWorkoutActivityType) -> String {
         switch type {
-        case .running: return "Run"
-        case .walking: return "Walk"
-        case .cycling: return "Cycling"
-        case .traditionalStrengthTraining, .functionalStrengthTraining: return "Strength"
-        case .yoga: return "Yoga"
-        case .swimming: return "Swim"
-        case .hiking: return "Hiking"
-        case .mindAndBody: return "Recovery"
-        default: return "Workout"
+        case .running: return WeekFitLocalizedString("activity.workoutType.run")
+        case .walking: return WeekFitLocalizedString("activity.workoutType.walk")
+        case .cycling: return WeekFitLocalizedString("activity.workoutType.cycling")
+        case .traditionalStrengthTraining, .functionalStrengthTraining: return WeekFitLocalizedString("activity.workoutType.strength")
+        case .yoga: return WeekFitLocalizedString("activity.workoutType.yoga")
+        case .swimming: return WeekFitLocalizedString("activity.workoutType.swim")
+        case .hiking: return WeekFitLocalizedString("activity.workoutType.hiking")
+        case .mindAndBody: return WeekFitLocalizedString("activity.workoutType.recovery")
+        default: return WeekFitLocalizedString("activity.workoutType.workout")
         }
     }
 

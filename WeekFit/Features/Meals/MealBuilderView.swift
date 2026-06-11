@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MealBuilderView: View {
 
@@ -190,13 +191,13 @@ struct MealBuilderView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(isEditMode ? "Edit Meal" : "Build Meal")
+                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"))
                     .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.75)
                     .lineLimit(1)
 
-                Text(isEditMode ? "Adjust ingredients and save changes." : "Choose ingredients, tap +/- to adjust portions.")
+                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"))
                     .font(.system(size: 13.2, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.76))
                     .lineLimit(1)
@@ -251,14 +252,17 @@ struct MealBuilderView: View {
                 let end = flyingLandingPoint(for: flyingIngredient)
                 let current = flyingPoint(from: start, to: end, progress: flyingProgressValue)
 
-                Image(flyingIngredient.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: finalPlateItemSize(for: flyingIngredient))
-                    .position(current)
-                    .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
-                    .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
-                    .allowsHitTesting(false)
+                if !flyingIngredient.imageName.isEmpty,
+                   UIImage(named: flyingIngredient.imageName) != nil {
+                    Image(flyingIngredient.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: finalPlateItemSize(for: flyingIngredient))
+                        .position(current)
+                        .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
+                        .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
+                        .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -289,8 +293,36 @@ struct MealBuilderView: View {
         let centerX = plateFrame.midX
         let centerY = plateFrame.midY - 6
 
-        let x = centerX + CGFloat(ingredient.offsetX) * 0.82
-        let y = centerY + CGFloat(ingredient.offsetY) * 0.82 - 2
+        let items = selectedIngredients.map { selected in
+            let ingredient = selected.ingredient
+
+            return MealBuilderImageItem(
+                id: ingredient.id,
+                imageName: ingredient.imageName,
+                visualSize: ingredient.visualSize,
+                visualDensity: ingredient.visualDensity,
+                supportsStandalonePresentation: ingredient.supportsStandalonePresentation,
+                offsetX: ingredient.offsetX,
+                offsetY: ingredient.offsetY,
+                rotation: ingredient.rotation,
+                zIndex: ingredient.zIndex,
+                grams: selected.grams
+            )
+        }
+
+        let resolvedOffset = PlateLayoutEngine.layoutItem(
+            matching: ingredient.id,
+            in: items,
+            plateSize: 220,
+            itemScale: 1.00,
+            offsetScale: 0.82
+        )?.offset ?? CGSize(
+            width: CGFloat(ingredient.offsetX) * 0.82,
+            height: CGFloat(ingredient.offsetY) * 0.82 - 2
+        )
+
+        let x = centerX + resolvedOffset.width
+        let y = centerY + resolvedOffset.height
 
         return CGPoint(x: x, y: y)
     }
@@ -448,8 +480,10 @@ struct MealBuilderView: View {
     }
 
     private func amountText(_ selected: SelectedBuilderIngredient) -> String {
-        let unit = selected.ingredient.category == .drinks ? "ml" : "g"
-        return "\(selected.grams)\(unit)"
+        let key = selected.ingredient.category == .drinks
+            ? "common.unit.millilitersFormat"
+            : "common.unit.gramValueFormat"
+        return String(format: WeekFitLocalizedString(key), selected.grams)
     }
 
     private var emptyDrinkOrPlateState: some View {
@@ -458,7 +492,7 @@ struct MealBuilderView: View {
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(textSecondary.opacity(0.72))
 
-            Text(selectedDrinks.isEmpty ? "Start with a base" : "Drinks selected")
+            Text(WeekFitLocalizedString(selectedDrinks.isEmpty ? "meals.builder.empty.startWithBase" : "meals.builder.empty.drinksSelected"))
                 .font(.system(size: 12.2, weight: .semibold))
                 .foregroundStyle(textSecondary.opacity(0.80))
         }
@@ -475,7 +509,7 @@ struct MealBuilderView: View {
                     .lineLimit(1)
 
                 if selectedIngredients.isEmpty {
-                    Text("Pick ingredients below to compose your meal.")
+                    Text(WeekFitLocalizedString("meals.pickIngredientsBelowToComposeYourMeal"))
                         .font(.system(size: 12.2, weight: .medium))
                         .foregroundStyle(textSecondary.opacity(0.76))
                         .lineLimit(1)
@@ -496,10 +530,10 @@ struct MealBuilderView: View {
 
     private var nutritionSummary: some View {
         HStack(spacing: 8) {
-            nutritionTile("Calories", "\(totalCalories)", "kcal", isPrimary: true)
-            nutritionTile("Protein", "\(totalProtein)", "g")
-            nutritionTile("Carbs", "\(totalCarbs)", "g")
-            nutritionTile("Fats", "\(totalFats)", "g")
+            nutritionTile("meals.nutrition.calories", "\(totalCalories)", "common.unit.kcal", isPrimary: true)
+            nutritionTile("meals.nutrition.protein", "\(totalProtein)", "common.unit.gramShort")
+            nutritionTile("meals.nutrition.carbs", "\(totalCarbs)", "common.unit.gramShort")
+            nutritionTile("meals.nutrition.fats", "\(totalFats)", "common.unit.gramShort")
         }
     }
 
@@ -515,14 +549,14 @@ struct MealBuilderView: View {
                     .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold))
                     .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
 
-                Text(unit)
+                Text(WeekFitLocalizedString(unit))
                     .font(.system(size: 9.4, weight: .semibold))
                     .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
             }
             .lineLimit(1)
             .minimumScaleFactor(0.75)
 
-            Text(title)
+            Text(WeekFitLocalizedString(title))
                 .font(.system(size: 9.4, weight: .medium))
                 .foregroundStyle(textSecondary.opacity(0.74))
                 .lineLimit(1)
@@ -541,10 +575,10 @@ struct MealBuilderView: View {
 
     private var buildProgress: some View {
         HStack(spacing: 7) {
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .base }, "Base")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .protein }, "Protein")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .vegetables }, "Veg")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .extras }, "Extra")
+            progressPill(selectedIngredients.contains { $0.ingredient.category == .base }, "meals.builder.progress.base")
+            progressPill(selectedIngredients.contains { $0.ingredient.category == .protein }, "meals.builder.progress.protein")
+            progressPill(selectedIngredients.contains { $0.ingredient.category == .vegetables }, "meals.builder.progress.veg")
+            progressPill(selectedIngredients.contains { $0.ingredient.category == .extras }, "meals.builder.progress.extra")
         }
     }
 
@@ -553,7 +587,7 @@ struct MealBuilderView: View {
             Image(systemName: active ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 10.6, weight: .bold))
 
-            Text(title)
+            Text(WeekFitLocalizedString(title))
                 .font(.system(size: 10.6, weight: .bold))
         }
         .foregroundStyle(active ? accent.opacity(0.92) : textSecondary.opacity(0.45))
@@ -696,7 +730,7 @@ struct MealBuilderView: View {
                 }
                 .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             } else {
-                Text("\(ingredient.defaultGrams)\(ingredient.category == .drinks ? "ml" : "g")")
+                Text(String(format: WeekFitLocalizedString(ingredient.category == .drinks ? "common.unit.millilitersFormat" : "common.unit.gramValueFormat"), ingredient.defaultGrams))
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.5))
                     .frame(height: 20)
@@ -713,11 +747,19 @@ struct MealBuilderView: View {
         isSelected: Bool
     ) -> some View {
         VStack(spacing: 6) {
-            Image(ingredient.imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 42, height: 32)
-                .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
+            if !ingredient.imageName.isEmpty,
+               UIImage(named: ingredient.imageName) != nil {
+                Image(ingredient.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 42, height: 32)
+                    .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
+            } else {
+                Image(systemName: "fork.knife")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(textSecondary)
+                    .frame(width: 42, height: 32)
+            }
 
             Text(ingredient.title)
                 .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold))
@@ -762,7 +804,7 @@ struct MealBuilderView: View {
         if let extra { return extra }
         if let drinks { return drinks }
 
-        return editingMeal?.title ?? "Your meal"
+        return editingMeal?.title ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
     }
 
     private func toggle(_ ingredient: MealBuilderIngredient) {
@@ -918,9 +960,9 @@ struct MealBuilderView: View {
 
     private func makeBenefits() -> [String] {
         [
-            "Custom meal",
-            "Based on your profile",
-            "Balanced ingredients"
+            WeekFitLocalizedString("meals.builder.benefit.customMeal"),
+            WeekFitLocalizedString("meals.builder.benefit.profile"),
+            WeekFitLocalizedString("meals.builder.benefit.balancedIngredients")
         ]
     }
 
@@ -938,20 +980,30 @@ struct MealBuilderView: View {
     private func categoryHint(_ category: MealIngredientCategory) -> String {
         switch category {
         case .base:
-            return selectedIngredients.contains { $0.ingredient.category == .base } ? "1 selected" : "choose one"
+            return selectedIngredients.contains { $0.ingredient.category == .base }
+                ? WeekFitLocalizedString("meals.builder.hint.oneSelected")
+                : WeekFitLocalizedString("meals.builder.hint.chooseOne")
 
         case .protein:
-            return selectedIngredients.contains { $0.ingredient.category == .protein } ? "added" : "add protein"
+            return selectedIngredients.contains { $0.ingredient.category == .protein }
+                ? WeekFitLocalizedString("meals.builder.hint.added")
+                : WeekFitLocalizedString("meals.builder.hint.addProtein")
 
         case .vegetables:
             let count = selectedIngredients.filter { $0.ingredient.category == .vegetables }.count
-            return count > 0 ? "\(count) added" : "add more"
+            return count > 0
+                ? String(format: WeekFitLocalizedString("meals.builder.hint.countAddedFormat"), count)
+                : WeekFitLocalizedString("meals.builder.hint.addMore")
 
         case .extras:
-            return selectedIngredients.contains { $0.ingredient.category == .extras } ? "added" : "optional"
+            return selectedIngredients.contains { $0.ingredient.category == .extras }
+                ? WeekFitLocalizedString("meals.builder.hint.added")
+                : WeekFitLocalizedString("meals.builder.hint.optional")
 
         case .drinks:
-            return selectedIngredients.contains { $0.ingredient.category == .drinks } ? "added" : "optional"
+            return selectedIngredients.contains { $0.ingredient.category == .drinks }
+                ? WeekFitLocalizedString("meals.builder.hint.added")
+                : WeekFitLocalizedString("meals.builder.hint.optional")
         }
     }
 

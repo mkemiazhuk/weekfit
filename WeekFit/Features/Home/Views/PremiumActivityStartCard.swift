@@ -25,7 +25,7 @@ struct PremiumActivityStartCard: View {
             HStack(spacing: 12) {
                 imageBlock
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         if let badge {
                             Text(badge)
@@ -48,7 +48,7 @@ struct PremiumActivityStartCard: View {
                     }
 
                     Text(title)
-                        .font(.system(size: 17.4, weight: .bold, design: .rounded))
+                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(hasConflict ? 0.46 : 0.96))
                         .lineLimit(1)
 
@@ -63,7 +63,7 @@ struct PremiumActivityStartCard: View {
                         Text(formattedDuration(durationMinutes))
                             .monospacedDigit()
                     }
-                    .font(.system(size: 12.6, weight: .semibold))
+                    .font(.system(size: 11.8, weight: .semibold, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(hasConflict ? 0.34 : 0.66))
                     .lineLimit(1)
                 }
@@ -73,9 +73,8 @@ struct PremiumActivityStartCard: View {
                 startControl
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
-            .frame(height: 86)
+            .frame(height: 74)
             .background {
                 RoundedRectangle(cornerRadius: 23, style: .continuous)
                     .fill(
@@ -127,16 +126,16 @@ struct PremiumActivityStartCard: View {
 
     private var imageBlock: some View {
         ZStack {
-            if UIImage(named: imageName) != nil {
+            if !imageName.isEmpty, UIImage(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .scaledToFill()
             } else {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(accentColor.opacity(0.105))
 
                 Image(systemName: systemIcon)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(accentColor.opacity(0.78))
             }
 
@@ -149,11 +148,11 @@ struct PremiumActivityStartCard: View {
                 endPoint: .bottom
             )
 
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(.white.opacity(0.055), lineWidth: 1)
         }
-        .frame(width: 78, height: 62)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .frame(width: 60, height: 60)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var startControl: some View {

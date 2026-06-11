@@ -8,6 +8,15 @@ struct PlannerOption: Identifiable, Hashable {
     let imageName: String
 }
 
+extension PlannerOption {
+    static let emptyMealPlaceholder = PlannerOption(
+        title: "No saved meals",
+        subtitle: "Create a meal first",
+        icon: "fork.knife",
+        imageName: ""
+    )
+}
+
 enum PlannerType: CaseIterable {
     case meal
     case workout
@@ -50,6 +59,15 @@ enum PlannerType: CaseIterable {
         }
     }
 
+    var blocksPlannerTime: Bool {
+        switch self {
+        case .meal:
+            return false
+        case .workout, .recovery, .habit:
+            return true
+        }
+    }
+
     var actionTitle: String {
         switch self {
         case .meal: "Schedule Meal"
@@ -62,22 +80,18 @@ enum PlannerType: CaseIterable {
     var options: [PlannerOption] {
         switch self {
         case .meal:
-            return NutritionRepository()
-                .loadMeals()
-                .map { meal in
-                    PlannerOption(
-                        title: meal.title,
-                        subtitle: "\(meal.calories) kcal",
-                        icon: Self.mealIcon(for: meal.type),
-                        imageName: meal.imageName
-                    )
-                }
+            return []
 
         case .workout:
             return [
-                PlannerOption(title: "Upper Body", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-strength"),
-                PlannerOption(title: "Running", subtitle: "Cardio", icon: "figure.run", imageName: "workout-running"),
                 PlannerOption(title: "Cycling", subtitle: "Endurance", icon: "figure.outdoor.cycle", imageName: "workout-cycling"),
+                PlannerOption(title: "Running", subtitle: "Cardio", icon: "figure.run", imageName: "workout-running"),
+
+                PlannerOption(title: "Upper Body", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-strength"),
+                PlannerOption(title: "Core", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-core"),
+                PlannerOption(title: "Lower Body", subtitle: "Strength", icon: "figure.strengthtraining.traditional", imageName: "workout-lowerbody"),
+                PlannerOption(title: "Full Body", subtitle: "Strength", icon: "figure.strengthtraining.functional", imageName: "workout-fullbody"),
+
                 PlannerOption(title: "Tennis", subtitle: "Endurance", icon: "figure.tennis", imageName: "workout-tennis"),
                 PlannerOption(title: "Squash", subtitle: "High Intensity", icon: "figure.tennis", imageName: "workout-squash")
             ]

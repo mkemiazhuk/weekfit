@@ -9,16 +9,16 @@ enum WeekFitMealSlot: String {
     var title: String {
         switch self {
         case .breakfast:
-            return "Breakfast"
+            return WeekFitLocalizedString("meals.breakfast")
 
         case .lunch:
-            return "Lunch"
+            return WeekFitLocalizedString("meals.lunch")
 
         case .snack:
-            return "Snack"
+            return WeekFitLocalizedString("meals.snack")
 
         case .dinner:
-            return "Dinner"
+            return WeekFitLocalizedString("meals.dinner")
         }
     }
 

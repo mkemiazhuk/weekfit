@@ -127,7 +127,7 @@ private extension CoachNarrativeBuilder {
             return CoachNarrative(
                 title: "Prepare for \(name)",
                 message: dayAwareMessage(
-                    base: "Warm up well and keep the first sets controlled. Quality matters more than chasing extra load.",
+                    base: "Warm up well and keep the first sets submaximal. Quality matters more than chasing extra load.",
                     hasEarlierLoad: hasEarlierLoad,
                     hasMoreAhead: hasMoreAhead
                 )
@@ -149,7 +149,7 @@ private extension CoachNarrativeBuilder {
             return CoachNarrative(
                 title: "Prepare for \(name)",
                 message: dayAwareMessage(
-                    base: "Start easy, stay controlled and keep this block aligned with the plan.",
+                    base: "Start easy, stay steady and keep this block aligned with the plan.",
                     hasEarlierLoad: hasEarlierLoad,
                     hasMoreAhead: hasMoreAhead
                 )
@@ -201,7 +201,7 @@ private extension CoachNarrativeBuilder {
             return CoachNarrative(
                 title: "Stay steady",
                 message: hasEarlierLoad
-                    ? "You already trained earlier today. Keep this run controlled and avoid chasing speed."
+                    ? "You already trained earlier today. Keep this run easy and avoid chasing speed."
                     : "Keep the effort steady, relax your shoulders and do not chase speed today."
             )
 
@@ -225,7 +225,7 @@ private extension CoachNarrativeBuilder {
 
         case .heat:
             return CoachNarrative(
-                title: "Keep heat controlled",
+                title: "Keep heat conservative",
                 message: "Stay comfortable and end the block before it starts feeling stressful."
             )
 
@@ -235,7 +235,7 @@ private extension CoachNarrativeBuilder {
         case .endurance(.general), .racket(.general), .other:
             return CoachNarrative(
                 title: "\(name) in progress",
-                message: "Keep effort controlled, stay comfortable and finish calmly."
+                message: "Keep effort steady, stay comfortable and finish calmly."
             )
             
         case .breathing:

@@ -288,13 +288,13 @@ private extension CoachSessionMessageBuilder {
         case (.other, .before):
             return [
                 "Start easy",
-                "Stay controlled",
+                "Stay steady",
                 "Keep the plan simple"
             ]
 
         case (.other, .during):
             return [
-                "Keep effort controlled",
+                "Keep effort steady",
                 "Stay comfortable",
                 "Finish calmly"
             ]
