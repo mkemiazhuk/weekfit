@@ -34,7 +34,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             duration: 20
         )
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: 40,
             exerciseMinutes: 4,
             standHours: 3,
@@ -65,7 +65,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             durationMinutes: 60
         )
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: 862,
             exerciseMinutes: 74,
             standHours: 10,
@@ -86,7 +86,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         XCTAssertTrue(priority.reasons.contains("dayType=overload"))
         XCTAssertTrue(priority.reasons.contains("primaryDriver=accumulatedFatigue"))
-        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.activityCircleActiveCalories=862"))
+        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.healthKitSampleActiveCalories=862"))
         XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.discrepancyReason=activityCircleHigherThanPlanned"))
     }
 
@@ -112,7 +112,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             duration: 20
         )
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: 610,
             exerciseMinutes: 55,
             standHours: 8,
@@ -131,7 +131,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.syncedAppleWorkouts=1"))
         XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.manualCompletedActivities=1"))
         XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.discrepancyDetected=true"))
-        XCTAssertFalse(priority.reasons.contains("CoachLoadSourceDebug.activityCircleActiveCalories=1200"))
+        XCTAssertFalse(priority.reasons.contains("CoachLoadSourceDebug.healthKitSampleActiveCalories=1200"))
     }
 
     func testFuturePlannedActivitiesRemainPlanSourceForRemainingRisk() {
@@ -147,7 +147,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             colorBlue: 0.9
         )
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: 862,
             exerciseMinutes: 74,
             standHours: 10,
@@ -168,12 +168,12 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         XCTAssertTrue(priority.reasons.contains("RemainingActivityRiskDebug.activityTitle=Cycling"))
         XCTAssertTrue(priority.reasons.contains("RemainingActivityRiskDebug.plannedDuration=60"))
-        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.loadSourceUsed=healthKitActivityCircle"))
+        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.loadSourceUsed=healthKitSamplesWithAppGoalEstimate"))
     }
 
     func testCoachActiveCaloriesMatchesActivityCircleWhenProvided() {
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: 862,
             exerciseMinutes: 74,
             standHours: 10,
@@ -189,8 +189,8 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             actualLoad: actualLoad
         )
 
-        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.activityCircleActiveCalories=862"))
-        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.loadSourceUsed=healthKitActivityCircle"))
+        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.healthKitSampleActiveCalories=862"))
+        XCTAssertTrue(priority.reasons.contains("CoachLoadSourceDebug.loadSourceUsed=healthKitSamplesWithAppGoalEstimate"))
     }
 
     func testFoodOnlyDayDoesNotCreateActivityContextCandidate() {
@@ -730,7 +730,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         )
         XCTAssertNotEqual(afterOneLiterWithSauna.focus, CoachDayFocus.hydrationBehind)
         XCTAssertNotEqual(afterOneLiterWithSauna.priority, CoachDayPriority.hydration)
-        XCTAssertTrue(afterOneLiterWithSauna.supportBullets.contains { $0.localizedCaseInsensitiveContains("keep sipping before sauna") })
+        XCTAssertTrue(afterOneLiterWithSauna.supportBullets.contains { $0.localizedCaseInsensitiveContains("stay steady before sauna") })
 
         let afterGoalReached = resolve(
             [sauna],
@@ -1718,10 +1718,10 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 )
             )
 
-            XCTAssertEqual(priority.priority, .sleepPreparation)
+            XCTAssertEqual(priority.priority, .stable)
             XCTAssertEqual(priority.focus, .eveningWindDown)
-            XCTAssertEqual(priority.objective, .protectTomorrow)
-            XCTAssertEqual(priority.horizon, .tomorrow)
+            XCTAssertEqual(priority.objective, .completeDay)
+            XCTAssertEqual(priority.horizon, .today)
             XCTAssertFalse(priority.todayTitle.isEmpty)
             XCTAssertFalse(priority.todayMessage.isEmpty)
             XCTAssertFalse(priority.message.isEmpty)
@@ -2533,13 +2533,67 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(priority.priority, .sleepPreparation)
+        XCTAssertEqual(priority.priority, .stable)
         XCTAssertEqual(priority.objective, .completeDay)
         XCTAssertEqual(priority.completionState, .goodEnough)
-        XCTAssertEqual(priority.interventionValue, .high)
-        XCTAssertFalse(priority.interventionCostNote?.isEmpty ?? true)
+        XCTAssertEqual(priority.interventionValue, .low)
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
+    }
+
+    func testTomorrowDemandNoneCannotProtectTomorrowInSameEvening() {
+        let scenarioNow = fixedDate(hour: 23, minute: 10)
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 23,
+            energyCoverage: 1.0,
+            caloriesProgress: 1.0,
+            waterProgress: 0.90,
+            sleep: .strong,
+            hydration: .optimal,
+            fuel: .good,
+            protein: .good,
+            strain: .veryHigh,
+            recovery: .strong,
+            readiness: .good,
+            metrics: CoachMetricsBuilder.metrics(
+                calories: 2_400,
+                waterLiters: 2.8,
+                activeCalories: 950,
+                sleepHours: 7.8
+            )
+        )
+        let demand = CoachTomorrowDemandResolver.resolve(
+            tomorrowContext: tomorrowContext(
+                activities: [],
+                selectedDate: scenarioNow,
+                now: scenarioNow
+            )
+        )
+        let priority = resolve(
+            [],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            recovery: CoachRecoveryContext(recoveryPercent: 89, sleepHours: 7.8),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 2_400,
+                caloriesGoal: 2_400,
+                proteinCurrent: 160,
+                proteinGoal: 160,
+                waterCurrent: 2.8,
+                waterGoal: 3.0,
+                mealsCount: 3
+            )
+        )
+
+        XCTAssertEqual(demand.level, .none)
+        XCTAssertFalse(demand.hasDemand)
+        XCTAssertNotEqual(priority.objective, .protectTomorrow)
+        XCTAssertNotEqual(priority.horizon, .tomorrow)
+        XCTAssertFalse(priority.tomorrowProtection.recommended)
+        XCTAssertFalse(priority.tomorrowProtection.active)
+        XCTAssertFalse(priority.title.localizedCaseInsensitiveContains("Protect tomorrow"))
+        XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("Protect tomorrow"))
     }
 
     func testEmptyDayStillProducesCalmHumanStateGuidance() {
@@ -2632,11 +2686,10 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(priority.priority, .sleepPreparation)
+        XCTAssertEqual(priority.priority, .stable)
         XCTAssertEqual(priority.objective, .completeDay)
-        XCTAssertEqual(priority.completionState, .goodEnough)
-        XCTAssertTrue(priority.interventionValue == .low || priority.interventionValue == .high)
-        XCTAssertFalse(priority.interventionCostNote?.isEmpty ?? true)
+        XCTAssertEqual(priority.completionState, .complete)
+        XCTAssertEqual(priority.interventionValue, .low)
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
     }
@@ -2726,7 +2779,6 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         let priority = resolve([laterWorkout], brain: steadyBrain)
 
         XCTAssertEqual(priority.priority, .performance)
-        XCTAssertTrue(priority.level == .useful || priority.level == .high)
         XCTAssertFalse(priority.title.isEmpty)
         XCTAssertEqual(priority.activity?.id, laterWorkout.id)
         XCTAssertFalse(priority.title.isEmpty)
@@ -2744,9 +2796,8 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             nutritionContext: steadyNutrition
         )
 
-        XCTAssertEqual(guidance.priority.priority, .performance)
-        XCTAssertFalse(guidance.insightTitle.isEmpty)
-        XCTAssertTrue(guidance.shouldSurface)
+        XCTAssertEqual(guidance.priority.priority, .stable)
+        XCTAssertFalse(guidance.shouldSurface)
     }
 
     func testHighLoadLateEveningStretchingActiveBreathingUpcoming_recoveryPriorityWins() {

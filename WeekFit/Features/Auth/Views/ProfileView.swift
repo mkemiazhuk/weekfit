@@ -492,7 +492,7 @@ private extension ProfileView {
     var developerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Privacy & Data")
-            coachDebugToggle
+//            coachDebugToggle
             resetLocalDataButton
         }
     }

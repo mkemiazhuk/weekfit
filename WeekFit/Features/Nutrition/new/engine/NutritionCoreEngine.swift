@@ -19,6 +19,7 @@ enum NutritionCoreEngine {
         let brain = HumanBrain.build(
             metrics: metrics,
             profile: profile,
+            baseDayGoals: goals.baseDay,
             fullDayGoals: goals.fullDay,
             smoothedGoals: goals.smoothed,
             activities: activities

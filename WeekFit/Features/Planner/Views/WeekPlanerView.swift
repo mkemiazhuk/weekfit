@@ -1022,42 +1022,15 @@ private extension WeekPlannerView {
     }
     
     func reconcileCompletedAppleWorkout(_ workout: HKWorkout) {
-        let workoutUUID = workout.uuid.uuidString
-
-        guard !plannedActivities.contains(where: {
-            $0.healthKitWorkoutUUID == workoutUUID
-        }) else {
-//            print("⚠️ Apple Workout already reconciled:", workoutUUID)
-            return
-        }
-
-        if let match = bestPlannedActivityMatch(for: workout) {
-//            print("🔗 Linking Apple Workout to existing activity:", match.title)
-
-            let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
-            match.isCompleted = true
-            match.isSkipped = false
-            match.source = "appleWorkout"
-            match.healthKitWorkoutUUID = workoutUUID
-            match.date = workout.startDate
-            match.durationMinutes = actualMinutes
-            match.actualDurationMinutes = actualMinutes
-
-            
-//            print("✅ Apple Workout matched and logged:", match.title)
-
-        } else {
-            let imported = ActivityReconciler.importedActivity(for: workout)
-            modelContext.insert(imported)
-
-//            print("🆕 Apple Workout imported as new activity:", imported.title)
-        }
-
+        WeekFitActivityCoordinator.shared.reconcileCompletedAppleWorkout(
+            workout,
+            with: plannedActivities,
+            modelContext: modelContext
+        )
         do {
             try modelContext.save()
-//            print("💾 Apple Workout reconciliation saved")
         } catch {
-//            print("❌ Failed to save Apple workout reconciliation:", error)
+            // Reconciliation is opportunistic; the next HealthKit refresh can retry.
         }
     }
     

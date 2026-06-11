@@ -78,6 +78,7 @@ enum HumanBrainStateBuilder {
             currentHour: c.currentHour,
             metrics: c.metrics,
             profile: c.profile,
+            baseDayGoals: c.goals,
             fullDayGoals: c.goals,
             smoothedGoals: c.goals,
             activities: upcoming,

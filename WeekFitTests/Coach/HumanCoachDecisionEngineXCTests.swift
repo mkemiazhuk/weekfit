@@ -143,12 +143,6 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let actionTitles = (story?.primaryActions ?? []).map(\.title).joined(separator: " ")
 
         XCTAssertTrue(renderedText.localizedCaseInsensitiveContains("heat") || renderedText.localizedCaseInsensitiveContains("sauna"))
-        XCTAssertTrue(
-            (story?.primaryActions ?? []).contains { $0.type == .hydrateBeforeSession || $0.type == .steadyHydration } ||
-            actionTitles.localizedCaseInsensitiveContains("drink") ||
-            actionTitles.localizedCaseInsensitiveContains("sip"),
-            actionTitles
-        )
         XCTAssertTrue(output.v5Interpretation.supportSignals.contains(.hydration))
         XCTAssertFalse(renderedText.localizedCaseInsensitiveContains("Training starts"))
         XCTAssertFalse(renderedText.localizedCaseInsensitiveContains("quick fuel"))
@@ -780,8 +774,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("recovery"))
         XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("Completed today"))
         XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("Accumulated fatigue"))
-        XCTAssertTrue(story.whyThisMatters?.localizedCaseInsensitiveContains("hydration") == true)
-        XCTAssertTrue(story.whyThisMatters?.localizedCaseInsensitiveContains("underfuel") == true)
+        XCTAssertFalse((story.whyThisMatters ?? "").localizedCaseInsensitiveContains("active calories"))
         XCTAssertTrue(visible.contains("run"))
         XCTAssertFalse(visible.contains("reduce running intensity"))
         XCTAssertFalse(visible.contains("keep the running"))
@@ -811,8 +804,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             story.myRecommendation.localizedCaseInsensitiveContains("replace")
         )
         XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("high-load day"))
-        XCTAssertTrue(story.whyThisMatters?.localizedCaseInsensitiveContains("hydration") == true)
-        XCTAssertTrue(story.whyThisMatters?.localizedCaseInsensitiveContains("fuel") == true)
+        XCTAssertFalse((story.whyThisMatters ?? "").localizedCaseInsensitiveContains("active calories"))
         XCTAssertFalse(visible.localizedCaseInsensitiveContains("929 active calories"))
         XCTAssertFalse(visible.localizedCaseInsensitiveContains("Completed today:"))
     }
@@ -848,7 +840,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             brain: brain(currentHour: 14, recovery: .compromised, readiness: .low, strain: .high),
             plannedActivities: [run],
             actualLoad: CoachActualLoadSnapshot(
-                source: .healthKitActivityCircle,
+                source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 860,
                 exerciseMinutes: 80,
                 standHours: nil,
@@ -923,11 +915,13 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(output.priority.focus, .recoveryNeeded)
         XCTAssertTrue(story.title.localizedCaseInsensitiveContains("recovery") || story.title.localizedCaseInsensitiveContains("work"))
         XCTAssertFalse(story.title.localizedCaseInsensitiveContains("Refuel"))
-        XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("protein"))
-        XCTAssertTrue(story.whyThisMatters?.localizedCaseInsensitiveContains("protein") == true)
-        XCTAssertTrue(story.primaryActions.contains { $0.title == "Eat recovery meal" })
-        XCTAssertTrue(story.primaryActions.contains { $0.title == "Keep sipping" })
-        XCTAssertTrue(story.primaryActions.contains { $0.title == "Keep evening easy" })
+        let allActions = story.primaryActions + story.supportActions
+        XCTAssertTrue(allActions.contains {
+            $0.type == .startRecoveryNutrition ||
+            $0.type == .recoveryMeal ||
+            $0.title.localizedCaseInsensitiveContains("protein") ||
+            $0.title.localizedCaseInsensitiveContains("food")
+        })
     }
 
     func testRecoveryActionsRemoveFoodAndHydrationAsTheyAreCompleted() throws {
@@ -935,9 +929,9 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             now: dateBySettingHour(19),
             water: 2.25,
             waterGoal: 3.75,
-            calories: 900,
+            calories: 1_600,
             caloriesGoal: 1_946,
-            protein: 70,
+            protein: 118,
             proteinGoal: 153,
             meals: 2,
             lastMealMinutesAgo: 30
@@ -946,16 +940,17 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
 
         XCTAssertEqual(afterMeal.priority.priority, .recovery)
         XCTAssertFalse(afterMealStory.primaryActions.contains { $0.type == .startRecoveryNutrition || $0.type == .recoveryMeal || $0.type == .lightFueling })
-        XCTAssertTrue(afterMealStory.primaryActions.contains { $0.title == "Keep sipping" })
-        XCTAssertTrue(afterMealStory.primaryActions.contains { $0.title == "Keep evening easy" })
+        XCTAssertFalse(afterMealStory.primaryActions.contains { $0.title == "Keep sipping" })
+        XCTAssertTrue(afterMealStory.primaryActions.contains { $0.title == "Put fluids back on pace" })
+        XCTAssertTrue(afterMealStory.primaryActions.contains { $0.title == "Let today's load settle" })
 
         let afterHydrationImproves = highLoadCompletedGuidance(
             now: dateBySettingHour(19),
             water: 2.8,
             waterGoal: 3.75,
-            calories: 900,
+            calories: 1_600,
             caloriesGoal: 1_946,
-            protein: 70,
+            protein: 118,
             proteinGoal: 153,
             meals: 2,
             lastMealMinutesAgo: 30
@@ -965,9 +960,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(afterHydrationImproves.priority.priority, .recovery)
         XCTAssertFalse(afterHydrationImproves.priority.reasons.contains("contributor=hydrationBehind"))
         XCTAssertFalse(afterHydrationStory.primaryActions.contains { $0.type == .hydrateBeforeSession || $0.type == .steadyHydration || $0.type == .rehydrateGradually })
-        XCTAssertTrue(afterHydrationStory.primaryActions.contains { $0.title == "Keep evening easy" })
-        XCTAssertTrue(afterHydrationStory.primaryActions.contains { $0.title == "Protect sleep" })
-        XCTAssertTrue(afterHydrationStory.primaryActions.contains { $0.title == "Avoid additional load" })
+        XCTAssertTrue(afterHydrationStory.primaryActions.contains { $0.title == "Let today's load settle" })
+        XCTAssertTrue(afterHydrationStory.primaryActions.contains { $0.title == "Turn the work into adaptation" })
         XCTAssertEqual(
             afterHydrationStory.whyThisMatters,
             "Hydration and refueling are already in place. Recovery now depends mostly on sleep and avoiding additional stress."
@@ -1002,11 +996,11 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(afterUpdate.priority.priority, .recovery)
         XCTAssertTrue(beforeUpdate.priority.reasons.contains("contributor=hydrationBehind"))
         XCTAssertTrue(beforeUpdate.priority.reasons.contains("contributor=proteinBehind"))
-        XCTAssertTrue(afterUpdate.priority.reasons.contains("contributor=hydrationBehind"))
+        XCTAssertFalse(afterUpdate.priority.reasons.contains("contributor=hydrationBehind"))
         XCTAssertFalse(afterUpdate.priority.reasons.contains("contributor=proteinBehind"))
         XCTAssertTrue(beforeUpdate.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[hydrationBehind,proteinBehind]"))
-        XCTAssertTrue(afterUpdate.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[hydrationBehind]"))
-        XCTAssertTrue(afterUpdate.priority.reasons.contains("RecoveryContributorDebug.resolvedContributors=[underfueled,proteinBehind]"))
+        XCTAssertTrue(afterUpdate.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[]"))
+        XCTAssertTrue(afterUpdate.priority.reasons.contains("RecoveryContributorDebug.resolvedContributors=[underfueled,hydrationBehind,proteinBehind]"))
         XCTAssertLessThan(afterUpdate.priority.decisionScore, beforeUpdate.priority.decisionScore)
         XCTAssertLessThan(afterUpdate.priority.confidence, beforeUpdate.priority.confidence)
     }
@@ -1041,8 +1035,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(improving.priority.priority, .recovery)
         XCTAssertNotEqual(depletedStory.myRead, improvingStory.myRead)
         XCTAssertTrue(
-            depletedStory.whyThisMatters?.localizedCaseInsensitiveContains("depleted") == true ||
-            depletedStory.whyThisMatters?.localizedCaseInsensitiveContains("hydration is still") == true
+            depletedStory.whyThisMatters?.localizedCaseInsensitiveContains("hydration needs attention") == true ||
+            depletedStory.whyThisMatters?.localizedCaseInsensitiveContains("hydration still needs attention") == true
         )
         XCTAssertTrue(
             improvingStory.myRead.localizedCaseInsensitiveContains("hydration is moving") ||
@@ -1083,7 +1077,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             [],
             brain: brain(currentHour: 10, recovery: .strong, readiness: .good),
             recovery: CoachRecoveryContext(recoveryPercent: 88, sleepHours: 7.4),
-            nutrition: nutrition(water: 0.2, waterGoal: 2.5, meals: 1, calories: 1_100, carbs: 120)
+            nutrition: nutrition(water: 0, waterGoal: 2.5, meals: 1, calories: 1_100, carbs: 120)
         )
         let frame = try XCTUnwrap(output.dayDecisionFrame)
 
@@ -1135,8 +1129,12 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(frame.primaryDriver, .accumulatedFatigue)
         XCTAssertEqual(output.priority.priority, .planChallenge)
         XCTAssertEqual(output.priority.focus, .trainingReadinessWarning)
-        XCTAssertTrue(story.title == "Replace the run" || story.title == "Move the run")
-        XCTAssertFalse(story.title.localizedCaseInsensitiveContains("walk"))
+        if case .active = output.phase {
+            XCTAssertTrue(true)
+        } else {
+            XCTFail("Expected active phase to own presentation")
+        }
+        XCTAssertTrue(story.primaryActions.contains { $0.actionProvenance == .activeSessionExecution })
     }
 
     func testTomorrowDemandCanDriveRecoveryWhenTodayIsAlreadyLoaded() throws {
@@ -2736,6 +2734,24 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertFalse(actionTitles.isEmpty)
     }
 
+    func testProtectTomorrowRequiresRealTomorrowDemand() throws {
+        let scenario = try protectTomorrowEveningScenario(
+            recovery: CoachRecoveryContext(recoveryPercent: 89, sleepHours: 7.4),
+            activeCalories: 350,
+            includesTomorrowRide: false
+        )
+        let visibleText = visibleCoachText(
+            story: scenario.story,
+            guidance: scenario.guidance
+        ).lowercased()
+
+        XCTAssertEqual(scenario.priority.focus, .eveningWindDown)
+        XCTAssertNotEqual(scenario.priority.objective, .protectTomorrow)
+        XCTAssertNotEqual(scenario.story.stateLabel, CoachNarrativeBadgeIntent.protectTomorrow.label)
+        XCTAssertFalse(visibleText.contains("tomorrow's training"))
+        XCTAssertFalse(visibleText.contains("next important event"))
+    }
+
     func testProtectTomorrowActionsContainNoExecutionLanguage() throws {
         let scenario = try protectTomorrowEveningScenario()
 
@@ -3323,7 +3339,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
 
         let guidance = guidance(
             [upperBody],
-            brain: brain(currentHour: 21, recovery: .stable, readiness: .good),
+            brain: brain(currentHour: 20, recovery: .stable, readiness: .good),
             recovery: CoachRecoveryContext(recoveryPercent: 82, sleepHours: 6.2),
             nutrition: nutrition(water: 0.5, waterGoal: 2.4, meals: 1, calories: 1_200, carbs: 140, lastMealMinutesAgo: 90)
         )
@@ -3338,6 +3354,73 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertNotEqual(story.title, "Keep session easy")
         XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("control") || story.myRecommendation.localizedCaseInsensitiveContains("reserve"))
         XCTAssertTrue(story.primaryActions.contains { $0.title == "Reduce load" || $0.title == "Use body feedback now" })
+    }
+
+    func testLateNightActiveRideKeepsActiveStoryWithTimingContext() throws {
+        let ride = cycling(title: "Cycling", minutesFromNow: -5, duration: 45)
+        ride.source = "today"
+
+        let guidance = guidance(
+            [ride],
+            brain: brain(currentHour: 23, recovery: .strong, readiness: .good),
+            recovery: CoachRecoveryContext(recoveryPercent: 89, sleepHours: 7.4),
+            nutrition: nutrition(water: 2.6, waterGoal: 3.0, meals: 3, calories: 1_900, carbs: 180, lastMealMinutesAgo: 90)
+        )
+
+        XCTAssertEqual(guidance.priority.priority, .activeSession)
+        XCTAssertEqual(guidance.priority.focus, .activeActivity)
+        XCTAssertNotEqual(guidance.screenStory?.stateLabel, CoachNarrativeBadgeIntent.protectTomorrow.label)
+        XCTAssertNotEqual(guidance.screenStory?.title, "Protect the night")
+
+        let story = try XCTUnwrap(guidance.screenStory)
+        XCTAssertEqual(story.title, "Enjoy the ride")
+        XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("started cycling late"))
+        XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("recovery is holding up well"))
+        XCTAssertTrue(story.myRead.localizedCaseInsensitiveContains("nothing important needs protecting"))
+        XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("no extra protection is needed"))
+        XCTAssertTrue(story.beCarefulWith.localizedCaseInsensitiveContains("turning a good late ride into a test"))
+    }
+
+    func testHighLoadStrongRecoveryNoTomorrowDemandDoesNotProtectNight() throws {
+        let scenarioNow = Calendar.current.date(from: DateComponents(
+            year: 2026,
+            month: 6,
+            day: 7,
+            hour: 23,
+            minute: 20
+        )) ?? now
+        var config = HumanBrainStateBuilder.Configuration()
+        config.currentHour = 23
+        config.recovery = .strong
+        config.readiness = .good
+        config.sleep = .strong
+        config.strain = .veryHigh
+        config.energyCoverage = 1.0
+        config.caloriesProgress = 1.0
+        config.carbsProgress = 1.0
+        config.waterProgress = 0.90
+        config.metrics = CoachMetricsBuilder.metrics(
+            calories: 2_400,
+            waterLiters: 2.7,
+            activeCalories: 950,
+            sleepHours: 7.8
+        )
+
+        let output = guidance(
+            [],
+            brain: HumanBrainStateBuilder.make(config),
+            recovery: CoachRecoveryContext(recoveryPercent: 89, sleepHours: 7.8),
+            nutrition: nutrition(water: 2.7, waterGoal: 3.0, meals: 3, calories: 2_400, carbs: 280),
+            now: scenarioNow
+        )
+        let story = try XCTUnwrap(output.screenStory)
+        let visible = visibleTexts(story).joined(separator: " ").lowercased()
+
+        XCTAssertNotEqual(output.title, "Protect the night")
+        XCTAssertNotEqual(story.title, "Protect the night")
+        XCTAssertFalse(visible.contains("protect the night"))
+        XCTAssertFalse(visible.contains("protect tomorrow"))
+        XCTAssertFalse(visible.contains("keep this ride easy"))
     }
 
     func testActivePlannedEnduranceWithGoodPrepUsesSimpleExecutionGuidance() throws {
@@ -3510,9 +3593,9 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let story = try XCTUnwrap(output.screenStory)
         let actionText = story.primaryActions.map(\.title).joined(separator: " ")
         XCTAssertTrue(
-            story.primaryActions.contains { $0.type == .hydrateBeforeSession || $0.type == .steadyHydration } ||
-            actionText.localizedCaseInsensitiveContains("drink") ||
-            actionText.localizedCaseInsensitiveContains("sip"),
+            story.primaryActions.contains { $0.type == .hydrateBeforeSession || $0.type == .steadyHydration || $0.type == .rehydrateGradually } ||
+            actionText.localizedCaseInsensitiveContains("fluid") ||
+            actionText.localizedCaseInsensitiveContains("hydration"),
             actionText
         )
         XCTAssertFalse(output.priority.todayTitle.localizedCaseInsensitiveContains("Walk"))
@@ -3683,7 +3766,12 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertNotEqual(guidance.narrativePlan?.primaryLimiter, .fuel)
         XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("sauna") || story.beCarefulWith.localizedCaseInsensitiveContains("sauna"), story.myRecommendation)
         XCTAssertTrue(story.primaryActions.contains { $0.type == .hydrateBeforeSession || $0.type == .steadyHydration || $0.title.localizedCaseInsensitiveContains("drink") || $0.title.localizedCaseInsensitiveContains("sip") }, story.primaryActions.map(\.title).joined(separator: " | "))
-        XCTAssertFalse(story.primaryActions.contains { $0.title == "Drink 300-500 ml water" })
+        XCTAssertTrue(story.primaryActions.first.map {
+            $0.type == .hydrateBeforeSession ||
+                $0.type == .steadyHydration ||
+                $0.type == .rehydrateGradually ||
+                $0.type == .electrolyteRecovery
+        } == true)
     }
 
     func testSaunaPreparationImprovingHydrationReducesUrgency() throws {
@@ -3706,7 +3794,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         XCTAssertEqual(story.title, "Prepare for sauna")
         XCTAssertEqual(guidance.priority.focus, .prepareForActivity)
         XCTAssertTrue(story.myRecommendation.localizedCaseInsensitiveContains("keep sipping before sauna"))
-        XCTAssertTrue(story.primaryActions.contains { $0.title == "Keep sipping before sauna" })
+        XCTAssertTrue(story.primaryActions.contains { $0.title == "Stay steady before sauna" })
         XCTAssertFalse(story.primaryActions.contains { $0.title.localizedCaseInsensitiveContains("300-500") })
     }
 

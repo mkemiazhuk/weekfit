@@ -28,6 +28,7 @@ struct TodayView: View {
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
+    @EnvironmentObject private var coachInputProvider: CoachInputProvider
     
     @State private var showProfile = false
     @State private var showContent = false
@@ -830,34 +831,15 @@ struct TodayView: View {
     }
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
-        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
-            coachCoordinator.updateInput(nil)
-            _ = coachCoordinator.recomputeIfNeeded(reason: source)
-            return
-        }
-
         let start = Self.debugStart("todayCoachInsight.update source=\(source)")
-        let input = CoachInputSnapshot(
-            metricsSnapshotID: snapshot.id,
+        coachInputProvider.refreshFromCurrentState(
             selectedDate: selectedDate,
-            now: now,
-            brain: snapshot.brain,
-            plannedActivities: plannedActivities,
-            actualLoad: CoachActualLoadSnapshot(
-                source: .healthKitActivityCircle,
-                activeCalories: healthManager.activeCalories,
-                exerciseMinutes: healthManager.exerciseMinutes,
-                standHours: healthManager.standHours,
-                activityGoalCalories: automatedActivityGoal,
-                activityProgress: automatedActivityGoal > 0 ? healthManager.activeCalories / automatedActivityGoal : nil
-            ),
-            planSource: .swiftDataPlannedActivity,
-            recoveryContext: snapshot.recoveryContext,
-            nutritionContext: snapshot.nutritionContext,
+            dayActivities: selectedDayActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator,
             source: "TodayView.\(source)"
         )
-        coachCoordinator.updateInput(input)
-        _ = coachCoordinator.recomputeIfNeeded(reason: source)
         Self.debugEnd("todayCoachInsight.update source=\(source)", start: start)
     }
 

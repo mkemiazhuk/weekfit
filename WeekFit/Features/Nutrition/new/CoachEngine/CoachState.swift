@@ -261,26 +261,23 @@ private struct DayConstraints {
         let nutrition = input.nutritionContext
         let calorieRatio = Self.ratio(
             current: nutrition?.caloriesCurrent ?? input.brain.metrics.calories,
-            goal: nutrition?.caloriesGoal ?? input.brain.fullDayGoals.calories
+            goal: input.brain.baseDayGoals.calories
         )
         let proteinRatio = Self.ratio(
             current: nutrition?.proteinCurrent ?? input.brain.metrics.protein,
-            goal: nutrition?.proteinGoal ?? input.brain.fullDayGoals.protein
+            goal: input.brain.baseDayGoals.protein
         )
         let waterRatio = Self.ratio(
             current: nutrition?.waterCurrent ?? input.brain.metrics.waterLiters,
             goal: nutrition?.waterGoal ?? input.brain.fullDayGoals.waterLiters
         )
 
-        hasFuelLimiter = input.brain.fuel == .underfueled ||
-            calorieRatio < 0.45 ||
+        hasFuelLimiter = calorieRatio < 0.45 ||
             proteinRatio < 0.35
         hasHydrationLimiter = input.brain.hydration == .depleted ||
             input.brain.hydration == .behind ||
             waterRatio < 0.60
-        hasProteinLimiter = input.brain.protein == .low ||
-            input.brain.protein == .behind ||
-            proteinRatio < 0.50
+        hasProteinLimiter = proteinRatio < 0.50
     }
 
     var hasMeaningfulLimiter: Bool {

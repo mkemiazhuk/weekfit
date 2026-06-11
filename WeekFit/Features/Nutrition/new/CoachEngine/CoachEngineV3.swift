@@ -242,6 +242,13 @@ private extension CoachEngineV3 {
         }
     }
 
+    private static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+        let text = "\(activity.type) \(activity.title) \(activity.imageName) \(activity.source)".lowercased()
+
+        return text.contains("hydration") ||
+            text.contains("water")
+    }
+
     static func memoSignature(
         brain: HumanBrain.State,
         activities: [PlannedActivity],
@@ -490,17 +497,6 @@ private extension CoachEngineV3 {
 
 #if DEBUG
 private extension CoachEngineV3 {
-    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
-        let type = activity.type.lowercased()
-        let title = activity.title.lowercased()
-        let image = activity.imageName.lowercased()
-
-        return type == "hydration" ||
-            image == "hydration" ||
-            title.contains("water") ||
-            title.contains("hydration")
-    }
-
     static func debugActivity(_ activity: PlannedActivity?) -> String {
         guard let activity else { return "none" }
 
@@ -799,6 +795,16 @@ enum CoachSupportActionTypeV3 {
     case sleepPriority
 }
 
+enum CoachActionProvenance: String, Hashable {
+    case contributor
+    case resolvedContributor
+    case activeSessionExecution
+    case sleepProtection
+    case heatSafety
+    case recoveryPolicy
+    case preparationTiming
+}
+
 struct CoachSupportActionV3: Identifiable {
     let id = UUID()
     let type: CoachSupportActionTypeV3
@@ -806,6 +812,23 @@ struct CoachSupportActionV3: Identifiable {
     let title: String
     let subtitle: String
     let color: Color
+    let actionProvenance: CoachActionProvenance
+
+    init(
+        type: CoachSupportActionTypeV3,
+        icon: String,
+        title: String,
+        subtitle: String,
+        color: Color,
+        actionProvenance: CoachActionProvenance = .recoveryPolicy
+    ) {
+        self.type = type
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.color = color
+        self.actionProvenance = actionProvenance
+    }
 }
 
 // MARK: - Phase Resolver
@@ -1029,16 +1052,18 @@ enum CoachReadinessAnalyzerV3 {
 
         var signals: [CoachSignalV3] = []
 
+        let expectedHydration = expectedHydrationProgress(hour: brain.currentHour)
+        let baseCalorieProgress = ratio(brain.metrics.calories, brain.baseDayGoals.calories)
+        let baseProteinProgress = ratio(brain.metrics.protein, brain.baseDayGoals.protein)
+        let hydrationProgress = brain.current.waterProgress
+
         let fuelSupportUseful =
-            brain.fuel == .underfueled ||
-            brain.fuel == .light ||
-            brain.current.energyCoverage < 0.55 ||
-            brain.current.carbsProgress < 0.35
+            baseCalorieProgress < 0.40 ||
+            (brain.currentHour >= 18 && baseCalorieProgress < 0.60) ||
+            (brain.currentHour >= 20 && baseCalorieProgress < 0.80 && brain.hasAnyFoodLogged == false)
 
         let hydrationSupportUseful =
-            brain.hydration == .depleted ||
-            brain.hydration == .behind ||
-            brain.current.waterProgress < 0.65
+            hydrationProgress < hydrationSupportThreshold(expected: expectedHydration, hour: brain.currentHour)
 
         let mineralSupportUseful =
             brain.hydration == .excessive ||
@@ -1053,8 +1078,9 @@ enum CoachReadinessAnalyzerV3 {
             brain.strain == .veryHigh
 
         let proteinSupportUseful =
-            brain.protein == .low ||
-            brain.protein == .behind
+            baseProteinProgress < 0.40 ||
+            (brain.currentHour >= 16 && baseProteinProgress < 0.60) ||
+            (brain.currentHour >= 20 && baseProteinProgress < 0.80 && brain.hasAnyFoodLogged == false)
 
         let lightEveningUseful =
             brain.current.isEvening ||
@@ -1131,6 +1157,68 @@ enum CoachReadinessAnalyzerV3 {
             hasLowConfidence: hasLowConfidence,
             primarySignals: Array(signals.prefix(3))
         )
+    }
+
+    private static func expectedHydrationProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.08),
+            (8, 0.18),
+            (12, 0.45),
+            (16, 0.68),
+            (20, 0.90),
+            (22, 1.00)
+        ])
+    }
+
+    private static func hydrationSupportThreshold(expected: Double, hour: Int) -> Double {
+        if hour >= 20 {
+            return 0.50
+        }
+        return expected * (hour < 12 ? 0.50 : 0.75)
+    }
+
+    private static func ratio(_ current: Double, _ goal: Double) -> Double {
+        guard goal > 0 else { return 1 }
+        return max(0, current / goal)
+    }
+
+    private static func expectedNutritionProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.05),
+            (8, 0.12),
+            (12, 0.38),
+            (16, 0.62),
+            (20, 0.88),
+            (22, 1.00)
+        ])
+    }
+
+    private static func expectedProteinProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.04),
+            (8, 0.10),
+            (12, 0.28),
+            (16, 0.52),
+            (20, 0.84),
+            (22, 0.96)
+        ])
+    }
+
+    private static func interpolate(hour: Int, points: [(Int, Double)]) -> Double {
+        guard let first = points.first, let last = points.last else { return 1 }
+        if hour <= first.0 { return first.1 }
+        if hour >= last.0 { return last.1 }
+
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let next = points[index]
+            guard hour <= next.0 else { continue }
+            let span = Double(next.0 - previous.0)
+            let progress = span > 0 ? Double(hour - previous.0) / span : 1
+            return previous.1 + ((next.1 - previous.1) * progress)
+        }
+
+        return last.1
     }
 
     private static func isHeatPhase(_ phase: CoachActivityPhaseV3) -> Bool {
@@ -2770,8 +2858,8 @@ enum CoachGuidanceFactoryV3 {
                 result.append(.init(
                     type: .steadyHydration,
                     icon: "drop.fill",
-                    title: "Sip some water",
-                    subtitle: "Small sips are enough",
+                    title: "Keep fluids steady",
+                    subtitle: "No catch-up target is needed",
                     color: .blue
                 ))
 
@@ -2859,8 +2947,8 @@ enum CoachGuidanceFactoryV3 {
                     .init(
                         type: .recoveryMeal,
                         icon: "fork.knife",
-                        title: "Eat a recovery meal",
-                        subtitle: "Replace energy and support recovery",
+                        title: "Add easy recovery food",
+                        subtitle: "Protein plus easy carbs is enough",
                         color: WeekFitTheme.meal
                     )
                 )

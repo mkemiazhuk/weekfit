@@ -1,6 +1,7 @@
 import Foundation
 
 struct NutritionGoalSet {
+    let baseDay: NutritionGoals
     let fullDay: NutritionGoals
     let smoothed: NutritionGoals
 }
@@ -23,6 +24,13 @@ enum NutritionGoalEngine {
             sex: profile.sex
         )
         
+        let baseDayGoals = macroAdjuster.adjustGoals(
+            bmr: bmr,
+            activeCalories: 0,
+            weight: profile.weightKg,
+            goal: profile.goal
+        )
+
         let fullDayGoals = macroAdjuster.adjustGoals(
             bmr: bmr,
             activeCalories: metrics.activeCalories,
@@ -35,6 +43,7 @@ enum NutritionGoalEngine {
         )
         
         return NutritionGoalSet(
+            baseDay: baseDayGoals,
             fullDay: fullDayGoals,
             smoothed: smoothedGoals
         )
