@@ -26,6 +26,7 @@ enum CoachEngineV3 {
         plannedActivities: [PlannedActivity]? = nil,
         selectedDate: Date = Date(),
         dayContext: CoachDayContext? = nil,
+        actualLoad: CoachActualLoadSnapshot? = nil,
         recoveryContext: CoachRecoveryContext? = nil,
         nutritionContext: CoachNutritionContext? = nil
     ) -> CoachGuidanceV3 {
@@ -42,6 +43,7 @@ enum CoachEngineV3 {
             activities: activities,
             selectedDate: selectedDate,
             decisionNow: decisionNow,
+            actualLoad: actualLoad,
             recoveryContext: recoveryContext,
             nutritionContext: nutritionContext
         )
@@ -49,6 +51,11 @@ enum CoachEngineV3 {
         memoLock.lock()
         if inputSignature == lastMemoSignature, let cached = lastMemoGuidance {
             memoLock.unlock()
+            CoachLogger.compactThrottled(
+                "[CoachRefreshSkipped]",
+                key: "coachEngine.memo.unchanged",
+                "Coach refresh skipped: unchanged fingerprint source=CoachEngineV3.decide"
+            )
             return cached
         }
         memoLock.unlock()
@@ -81,9 +88,14 @@ enum CoachEngineV3 {
                 selectedDate: selectedDate,
                 now: decisionNow
             ),
+            actualLoad: actualLoad ?? CoachActualLoadSnapshot.fallback(from: brain),
             recoveryContext: resolvedRecoveryContext,
             nutritionContext: nutritionContext,
             readiness: timingReadiness
+        )
+        CoachLogger.compact(
+            "[BrainStateSourceDebug]",
+            "mappingSource=CoachEngineV3.decide brainStateUsedByCoachContext sleep=\(brain.sleep) recovery=\(brain.recovery) readiness=\(brain.readiness) brainStateUsedByPriorityResolver sleep=\(decisionContext.brain.sleep) recovery=\(decisionContext.brain.recovery) readiness=\(decisionContext.brain.readiness) sourceTimestamp=\(brain.now.timeIntervalSince1970) snapshotID=unavailable"
         )
         let priority = CoachDayPriorityResolver.resolve(decisionContext)
         logDecisionChange(context: decisionContext, selected: priority)
@@ -235,11 +247,11 @@ private extension CoachEngineV3 {
         activities: [PlannedActivity],
         selectedDate: Date,
         decisionNow: Date,
+        actualLoad: CoachActualLoadSnapshot?,
         recoveryContext: CoachRecoveryContext?,
         nutritionContext: CoachNutritionContext?
     ) -> String {
         let selectedDay = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let minuteBucket = Int(decisionNow.timeIntervalSince1970 / 60)
         let activitySignature = activities
             .sorted { $0.id < $1.id }
             .map(activityMemoSignature)
@@ -248,8 +260,6 @@ private extension CoachEngineV3 {
 
         return [
             "day=\(Int(selectedDay))",
-            "minute=\(minuteBucket)",
-            "hour=\(brain.currentHour)",
             "hydrationLogs=\(hydrationLogCount)",
             metricsSignature(brain.metrics),
             goalsSignature(brain.fullDayGoals),
@@ -259,6 +269,7 @@ private extension CoachEngineV3 {
             "strain=\(brain.strain)",
             "recovery=\(brain.recovery)",
             "readiness=\(brain.readiness)",
+            actualLoadSignature(actualLoad),
             recoverySignature(recoveryContext),
             nutritionSignature(nutritionContext),
             activitySignature
@@ -312,6 +323,17 @@ private extension CoachEngineV3 {
     static func recoverySignature(_ context: CoachRecoveryContext?) -> String {
         guard let context else { return "recovery=nil" }
         return "recovery=\(rounded(Double(context.recoveryPercent))):\(rounded(context.sleepHours))"
+    }
+
+    static func actualLoadSignature(_ actualLoad: CoachActualLoadSnapshot?) -> String {
+        guard let actualLoad else { return "actualLoad=nil" }
+        return [
+            "actualLoad=\(actualLoad.source.rawValue)",
+            rounded(actualLoad.activeCalories),
+            "\(actualLoad.exerciseMinutes ?? -1)",
+            "\(actualLoad.standHours ?? -1)",
+            rounded(actualLoad.activityProgress ?? -1)
+        ].joined(separator: ",")
     }
 
     static func nutritionSignature(_ context: CoachNutritionContext?) -> String {
@@ -560,6 +582,7 @@ struct CoachGuidanceV3 {
     let screenStory: CoachScreenStory?
     let v5Contract: CoachV5Contract?
     let narrativePlan: CoachNarrativePlan?
+    let dayDecisionFrame: CoachDayDecisionFrame?
 
     init(
         phase: CoachActivityPhaseV3,
@@ -579,7 +602,8 @@ struct CoachGuidanceV3 {
         tone: CoachToneV3,
         screenStory: CoachScreenStory? = nil,
         v5Contract: CoachV5Contract? = nil,
-        narrativePlan: CoachNarrativePlan? = nil
+        narrativePlan: CoachNarrativePlan? = nil,
+        dayDecisionFrame: CoachDayDecisionFrame? = nil
     ) {
         self.phase = phase
         self.opportunity = opportunity
@@ -599,6 +623,7 @@ struct CoachGuidanceV3 {
         self.screenStory = screenStory
         self.v5Contract = v5Contract
         self.narrativePlan = narrativePlan
+        self.dayDecisionFrame = dayDecisionFrame
     }
 }
 

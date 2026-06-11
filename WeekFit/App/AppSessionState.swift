@@ -21,7 +21,7 @@ enum CoachLogLevel: String, CaseIterable, Identifiable {
 }
 
 enum CoachDebugSettings {
-    private static let logLevelKey = "coach_log_level"
+    static let logLevelKey = "coach_log_level"
 
     static var logLevel: CoachLogLevel {
         get {
@@ -33,19 +33,66 @@ enum CoachDebugSettings {
             UserDefaults.standard.set(newValue.rawValue, forKey: logLevelKey)
         }
     }
+
+    static var verboseLoggingEnabled: Bool {
+        get {
+            logLevel == .verbose
+        }
+        set {
+            logLevel = newValue ? .verbose : .off
+        }
+    }
+}
+
+enum CoachDebug {
+    static var isVerboseEnabled: Bool {
+        CoachDebugSettings.logLevel == .verbose
+    }
+
+    static var isCompactEnabled: Bool {
+        CoachDebugSettings.logLevel == .decisions || isVerboseEnabled
+    }
 }
 
 enum CoachLogger {
+    private static let throttleLock = NSLock()
+    private static var lastThrottledMessages: [String: Date] = [:]
+
     static func decision(_ message: @autoclosure () -> String) {
         guard CoachDebugSettings.logLevel == .decisions ||
-                CoachDebugSettings.logLevel == .verbose else {
+                CoachDebug.isVerboseEnabled else {
             return
         }
         emit("[CoachDecision]", message())
     }
 
+    static func compact(_ tag: String, _ message: @autoclosure () -> String) {
+        guard CoachDebug.isCompactEnabled else { return }
+        emit(tag, message())
+    }
+
+    static func compactThrottled(
+        _ tag: String,
+        key: String,
+        interval: TimeInterval = 8,
+        _ message: @autoclosure () -> String
+    ) {
+        guard CoachDebug.isCompactEnabled else { return }
+
+        let now = Date()
+        throttleLock.lock()
+        let shouldEmit = now.timeIntervalSince(lastThrottledMessages[key] ?? .distantPast) >= interval
+        if shouldEmit {
+            lastThrottledMessages[key] = now
+        }
+        throttleLock.unlock()
+
+        guard shouldEmit else { return }
+        emit(tag, message())
+    }
+
     static func verbose(_ tag: String, _ message: @autoclosure () -> String) {
-        guard CoachDebugSettings.logLevel == .verbose else { return }
+        guard CoachDebug.isVerboseEnabled else { return }
         emit(tag, message())
     }
 
@@ -69,7 +116,7 @@ enum CoachRefreshDebug {
     private static var burstCount = 0
 
     static func log(_ tag: String, _ message: @autoclosure () -> String) {
-        guard CoachDebugSettings.logLevel == .verbose else { return }
+        guard CoachDebug.isVerboseEnabled else { return }
 
         let now = Date()
         let entrySequence: Int

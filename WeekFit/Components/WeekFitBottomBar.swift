@@ -3,6 +3,7 @@ import SwiftUI
 enum WeekFitTab: Hashable, CaseIterable {
     case today
     case coach
+    case insights
     case meals
     case calendar
 
@@ -10,6 +11,7 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "figure.mind.and.body"
         case .coach: return "brain.head.profile"
+        case .insights: return "chart.line.uptrend.xyaxis"
         case .meals: return "fork.knife"
         case .calendar: return "calendar"
         }
@@ -19,6 +21,7 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "Today"
         case .coach: return "Coach"
+        case .insights: return "Insights"
         case .meals: return "Meals"
         case .calendar: return "Plan"
         }
@@ -32,10 +35,20 @@ struct WeekFitBottomBar: View {
 
     @Namespace private var selectionNamespace
 
-    private let barWidth: CGFloat = 340
     private let barHeight: CGFloat = 52
-    private let itemWidth: CGFloat = 80
     private let itemHeight: CGFloat = 42
+
+    private var barWidth: CGFloat {
+        min(UIScreen.main.bounds.width - 20, 370)
+    }
+
+    private var itemWidth: CGFloat {
+        (barWidth - 10) / CGFloat(WeekFitTab.allCases.count)
+    }
+
+    private var activePillWidth: CGFloat {
+        min(66, itemWidth - 6)
+    }
 
     private var activeColor: Color {
         WeekFitTheme.primaryText.opacity(0.94)
@@ -133,7 +146,7 @@ struct WeekFitBottomBar: View {
                             x: 0,
                             y: 4
                         )
-                        .frame(width: 66, height: 40)
+                        .frame(width: activePillWidth, height: 40)
                 }
 
                 VStack(spacing: 3) {

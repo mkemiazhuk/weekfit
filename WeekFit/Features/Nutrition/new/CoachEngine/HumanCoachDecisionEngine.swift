@@ -246,6 +246,7 @@ struct HumanCoachDecision {
     let sourceSignals: [CoachSignal]
     let v5Contract: CoachV5Contract?
     let narrativePlan: CoachNarrativePlan?
+    let dayDecisionFrame: CoachDayDecisionFrame?
 }
 
 struct CoachScreenStory {
@@ -286,7 +287,12 @@ struct CoachScreenStory {
         ]
         var visibleTexts = requiredTexts
 
-        let candidatePrimaryActions = CoachScreenStory.primaryActions(for: decision)
+        let candidatePrimaryActions: [CoachSupportingAction]
+        if case .active = phase {
+            candidatePrimaryActions = CoachScreenStory.activeSessionActions(for: decision)
+        } else {
+            candidatePrimaryActions = CoachScreenStory.primaryActions(for: decision)
+        }
         let risk = CoachRenderingContract.optionalText(
             decision.beCarefulWith,
             purpose: .risk,
@@ -301,6 +307,9 @@ struct CoachScreenStory {
             primaryActions = Array(candidatePrimaryActions.prefix(3))
             visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
         } else if CoachScreenStory.isHeatPreparationDecision(decision) {
+            primaryActions = Array(candidatePrimaryActions.prefix(3))
+            visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
+        } else if CoachScreenStory.usesFrameOwnedRecoveryActions(decision) {
             primaryActions = Array(candidatePrimaryActions.prefix(3))
             visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
         } else if decision.status == .prepareSession {
@@ -334,11 +343,17 @@ struct CoachScreenStory {
             visibleTexts.append(activity)
         }
 
-        let why = CoachScreenStory.uniqueText(
-            decision.why,
-            purpose: .why,
-            against: visibleTexts
-        )
+        let why: String?
+        if CoachScreenStory.usesFrameOwnedRecoveryActions(decision),
+           decision.why?.localizedCaseInsensitiveContains("already in place") == true {
+            why = decision.why
+        } else {
+            why = CoachScreenStory.uniqueText(
+                decision.why,
+                purpose: .why,
+                against: visibleTexts
+            )
+        }
         if let why {
             visibleTexts.append(why)
         }
@@ -383,7 +398,18 @@ private extension CoachScreenStory {
             decision.status == .hydrateBeforeHeat
     }
 
+    static func usesFrameOwnedRecoveryActions(_ decision: HumanCoachDecision) -> Bool {
+        decision.dayDecisionFrame?.shouldOwnNarrative == true &&
+            (decision.status == .recoveryFirst ||
+                decision.status == .adjustPlan ||
+                decision.status == .reducePlan)
+    }
+
     static func primaryActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
+        if usesFrameOwnedRecoveryActions(decision) {
+            return decision.supportingActions
+        }
+
         if let plan = decision.narrativePlan {
             return plan.actionIntents.map(actionIntent)
         }
@@ -863,6 +889,7 @@ private extension CoachScreenStory {
 
     static func activeSessionActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
         let text = ([
+            decision.title,
             decision.myRead,
             decision.myRecommendation,
             decision.beCarefulWith
@@ -885,20 +912,12 @@ private extension CoachScreenStory {
 
         append(action(.controlIntensity, title: "Use body feedback now", subtitle: "Let this session set the ceiling"))
 
-        if text.contains("fuel") || text.contains("food") || text.contains("carb") {
-            append(action(.sustainEnergy, title: "Keep intensity easy until fueled", subtitle: "Do not spend energy you have not put in"))
-        }
-
-        if text.contains("hydration") || text.contains("fluid") || text.contains("water") || text.contains("heat") {
-            append(action(.steadyHydration, title: "Sip calmly if available", subtitle: "No chasing the full target mid-session"))
-        }
-
         if text.contains("tomorrow") || text.contains("recovery") || text.contains("reserve") || text.contains("later") || text.contains("changed the day") {
             append(action(.cooldown, title: "Finish with reserve", subtitle: "Make the next block easier to absorb"))
         }
 
         if actions.count < 3 {
-            append(action(.steadyHydration, title: "Drink to comfort during this block", subtitle: "No chasing a number mid-session"))
+            append(action(.breathingReset, title: "Stay relaxed", subtitle: "Keep breathing in control"))
         }
 
         if actions.count < 3 {
@@ -950,7 +969,7 @@ private extension CoachScreenStory {
 
         if text.contains("ride") ||
             text.contains("cycling") ||
-            text.contains("power controlled") ||
+            text.contains("power below") ||
             text.contains("stay aerobic") {
             return [
                 action(.controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
@@ -1526,7 +1545,7 @@ private struct ActiveSessionCoachingContext {
         var fallbackRead: String {
             switch self {
             case .cycling:
-                return "Today's ride is live. Keep the effort controlled and finish with reserve."
+                return "Today's ride is live. Keep the effort steady and finish with reserve."
             case .running:
                 return "Today's run is live. Keep the effort easy enough to finish fresh."
             case .upperBody:
@@ -1543,7 +1562,7 @@ private struct ActiveSessionCoachingContext {
         var limiterRead: String {
             switch self {
             case .cycling:
-                return "Today's ride should stay controlled."
+                return "Today's ride should stay below your normal ceiling."
             case .running:
                 return "Recovery does not support productive hard running today."
             case .upperBody:
@@ -1560,13 +1579,13 @@ private struct ActiveSessionCoachingContext {
         var limitedRecommendation: String {
             switch self {
             case .cycling:
-                return "Stay aerobic, skip hard intervals, keep power controlled, and finish with reserve."
+                return "Stay aerobic, skip hard intervals, keep power below your normal ceiling, and finish with reserve."
             case .running:
                 return "Stay conversational, skip hard intervals or tempo work, reduce pace expectations, and shorten if needed."
             case .upperBody:
                 return "Reduce working weight, skip top-end efforts, leave reps in reserve, and avoid failure training."
             case .tennis:
-                return "Use positioning over intensity, avoid extended grinding points, protect movement quality, and keep serving effort controlled."
+                return "Use positioning over intensity, avoid extended grinding points, protect movement quality, and keep serving effort below your normal ceiling."
             case .squash:
                 return "Reduce match intensity, take longer recovery between rallies, avoid repeated maximal efforts, and finish before technique drops."
             case .generic:
@@ -1600,7 +1619,7 @@ private struct ActiveSessionCoachingContext {
                 case .upperBody:
                     return "Reduce working weight, avoid grinding sets, and leave reps in reserve."
                 case .tennis:
-                    return "Protect movement quality, keep serving effort controlled, and choose positioning over intensity."
+                    return "Protect movement quality, keep serving effort below your normal ceiling, and choose positioning over intensity."
                 case .squash:
                     return "Control match intensity, extend recovery between rallies, and avoid repeated maximal efforts."
                 case .generic:
@@ -1609,7 +1628,7 @@ private struct ActiveSessionCoachingContext {
             case .finishing:
                 switch self {
                 case .cycling:
-                    return "Finish controlled and leave recovery room instead of chasing the final minutes."
+                    return "Finish steady and leave recovery room instead of chasing the final minutes."
                 case .running:
                     return "Finish fresh, keep it conversational, and shorten rather than forcing pace."
                 case .upperBody:
@@ -1619,7 +1638,7 @@ private struct ActiveSessionCoachingContext {
                 case .squash:
                     return "Finish before fatigue drives technique down and avoid another maximal rally block."
                 case .generic:
-                    return "Finish controlled. Leave recovery room."
+                    return "Finish steady. Leave recovery room."
                 }
             case .postSession:
                 return "Stop adding work. Start recovery now."
@@ -1740,7 +1759,7 @@ private struct ActiveSessionCoachingContext {
             if !sportProfile.fallbackRead.isEmpty {
                 return sportProfile.fallbackRead
             }
-            return "\(activeName.capitalizedFirst) is live. Keep the effort controlled and finish with reserve."
+            return "\(activeName.capitalizedFirst) is live. Keep the effort steady and finish with reserve."
         }
 
         if !sportProfile.limiterRead.isEmpty,
@@ -1748,7 +1767,7 @@ private struct ActiveSessionCoachingContext {
             return "\(readSentence(for: primaryConstraint)) \(sportProfile.limiterRead)"
         }
 
-        return "\(activeLabel.capitalizedFirst) should stay controlled. \(readSentence(for: primaryConstraint))"
+        return "\(activeLabel.capitalizedFirst) should stay below your normal ceiling. \(readSentence(for: primaryConstraint))"
     }
 
     func recommendation(phaseRecommendation: String) -> String {
@@ -2072,6 +2091,35 @@ enum HumanCoachDecisionEngine {
         priority legacyPriority: CoachDayPriorityResult
     ) -> HumanCoachDecision {
         let interpretation = HumanCoachInterpretation(context: context)
+        if let primaryProtectionStory = CoachSituationStory.primarySessionProtectionStory(
+            legacyPriority,
+            interpretation: interpretation
+        ) {
+            return primaryProtectionStory.decision(
+                sourceSignals: interpretation.signals,
+                legacyPriority: legacyPriority,
+                interpretation: interpretation
+            )
+        }
+        if interpretation.activeTraining == nil,
+           let frameStory = CoachSituationStory.dayDecisionFrameStory(
+            legacyPriority,
+            interpretation: interpretation
+           ) {
+            return frameStory.decision(
+                sourceSignals: interpretation.signals,
+                legacyPriority: legacyPriority,
+                interpretation: interpretation
+            )
+        }
+        if isLifecyclePriority(legacyPriority),
+           let insight = CoachLifecycleDecisionPipeline.insight(in: context) {
+            return lifecycleDecision(
+                insight: insight,
+                interpretation: interpretation,
+                legacyPriority: legacyPriority
+            )
+        }
         return CoachSituationStory.assess(
             interpretation,
             legacyPriority: legacyPriority
@@ -2101,7 +2149,8 @@ enum HumanCoachDecisionEngine {
             for: decision,
             legacyPriority: legacyPriority
         )
-        let preservesTomorrowPlanRisk = storyPriority.focus == .tomorrowPlanRisk
+        let preservesTomorrowPlanRisk = storyPriority.focus == .tomorrowPlanRisk &&
+            !isLifecyclePriority(storyPriority)
         let screenStory = CoachScreenStory(
             decision: decision,
             phase: phase,
@@ -2130,6 +2179,15 @@ enum HumanCoachDecisionEngine {
             )
         }
 
+        #if DEBUG
+        logPriorityActionDebug(
+            decision: decision,
+            phase: phase,
+            legacyPriority: legacyPriority,
+            screenStory: screenStory
+        )
+        #endif
+
         let tomorrowPlanGuidanceMessage = "Tomorrow includes a meaningful session. Protect tomorrow by rebuilding basics today."
 
         return CoachGuidanceV3(
@@ -2150,12 +2208,62 @@ enum HumanCoachDecisionEngine {
             tone: tone,
             screenStory: screenStory,
             v5Contract: decision.v5Contract,
-            narrativePlan: decision.narrativePlan
+            narrativePlan: decision.narrativePlan,
+            dayDecisionFrame: decision.dayDecisionFrame
         )
     }
 }
 
 private extension HumanCoachDecisionEngine {
+
+    #if DEBUG
+    static func logPriorityActionDebug(
+        decision: HumanCoachDecision,
+        phase: CoachActivityPhaseV3,
+        legacyPriority: CoachDayPriorityResult,
+        screenStory: CoachScreenStory
+    ) {
+        let activeContributors = legacyPriority.reasons
+            .first { $0.hasPrefix("RecoveryContributorDebug.activeContributors=") }?
+            .replacingOccurrences(of: "RecoveryContributorDebug.activeContributors=", with: "") ?? "[]"
+        let resolvedContributors = legacyPriority.reasons
+            .first { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") }?
+            .replacingOccurrences(of: "RecoveryContributorDebug.resolvedContributors=", with: "") ?? "[]"
+        let primaryAction = screenStory.primaryActions.first?.title ?? "none"
+        let secondaryActions = screenStory.supportActions.map(\.title).joined(separator: "|")
+        let primaryActionText = screenStory.primaryActions.map(\.title).joined(separator: " ").lowercased()
+        let foodIsPrimary = primaryActionText.contains("eat") ||
+            primaryActionText.contains("meal") ||
+            primaryActionText.contains("protein") ||
+            primaryActionText.contains("carb") ||
+            primaryActionText.contains("refuel")
+        let hydrationIsPrimary = primaryActionText.contains("drink") ||
+            primaryActionText.contains("sip") ||
+            primaryActionText.contains("water") ||
+            primaryActionText.contains("hydrate")
+        let foodCanLead = legacyPriority.focus == .fuelBehind &&
+            (legacyPriority.activity != nil || legacyPriority.mode == .warning)
+        let hydrationCanLead = legacyPriority.focus == .hydrationBehind &&
+            (legacyPriority.activity != nil || legacyPriority.strength == .critical)
+
+        CoachRefreshDebug.log(
+            "[RecoveryActionDebug]",
+            "activeContributors=\(activeContributors) resolvedContributors=\(resolvedContributors) selectedPrimaryAction=\"\(primaryAction)\" secondaryActions=\"\(secondaryActions)\" removedActions=\"\(resolvedContributors)\" reason=\"active contributors create actions; resolved contributors are evidence only\""
+        )
+
+        if case .active(let activity, let kind) = phase {
+            CoachRefreshDebug.log(
+                "[ActiveSessionOverrideDebug]",
+                "activeActivity=\"\(activity.title)\" activityType=\(kind) dayType=\(decision.dayDecisionFrame?.dayType.rawValue ?? "unknown") recoveryNeed=\(legacyPriority.focus == .recoveryNeeded || decision.dayDecisionFrame?.planStatus == .complete) overrideApplied=true previousTitle=\"\(legacyPriority.detailTitle)\" renderedTitle=\"\(screenStory.title)\" primaryAction=\"\(primaryAction)\""
+            )
+        }
+
+        CoachRefreshDebug.log(
+            "[CoachPriorityActionDebug]",
+            "mainStory=\"\(screenStory.title)\" primaryAction=\"\(primaryAction)\" secondaryActions=\"\(secondaryActions)\" whyFoodNotPrimary=\"\(foodIsPrimary ? "food is primary because timing or recovery severity allows it" : "food remains supporting unless timing, session severity, or safety requires it")\" whyHydrationNotPrimary=\"\(hydrationIsPrimary ? "hydration is primary because timing or safety allows it" : "hydration remains supporting unless timing, heat, session severity, or safety requires it")\" whyFoodPrimaryIfApplied=\"\(foodCanLead ? "fueling protects near-term training or immediate recovery" : "not applied")\" whyHydrationPrimaryIfApplied=\"\(hydrationCanLead ? "hydration protects near-term training, heat, or safety" : "not applied")\""
+        )
+    }
+    #endif
 
     static func visibleMessage(for decision: HumanCoachDecision) -> String {
         visibleMessage(
@@ -2191,6 +2299,41 @@ private extension HumanCoachDecisionEngine {
         for decision: HumanCoachDecision,
         legacyPriority: CoachDayPriorityResult
     ) -> CoachDayPriorityResult {
+        if isLifecyclePriority(legacyPriority) {
+            return CoachDayPriorityResult(
+                focus: legacyPriority.focus,
+                level: legacyPriority.level,
+                reason: decision.myRead,
+                activity: legacyPriority.activity,
+                overridesTimingFocus: legacyPriority.overridesTimingFocus,
+                priority: legacyPriority.priority,
+                strength: legacyPriority.strength,
+                confidence: legacyPriority.confidence,
+                mode: legacyPriority.mode,
+                limiter: legacyPriority.limiter,
+                messageFamily: legacyPriority.messageFamily,
+                priorityScore: legacyPriority.priorityScore,
+                insightScore: legacyPriority.insightScore,
+                uniquenessScore: legacyPriority.uniquenessScore,
+                decisionScore: legacyPriority.decisionScore,
+                todayTitle: legacyPriority.todayTitle,
+                todayMessage: legacyPriority.todayMessage,
+                detailTitle: decision.title,
+                detailMessage: visibleMessage(for: decision),
+                supportBullets: decision.supportingActions.map(\.title),
+                whyThisMatters: decision.why,
+                reasons: legacyPriority.reasons,
+                planChallenge: decision.planChallenge,
+                horizon: legacyPriority.horizon,
+                objective: legacyPriority.objective,
+                opportunity: legacyPriority.opportunity,
+                interventionValue: legacyPriority.interventionValue,
+                interventionCostNote: legacyPriority.interventionCostNote,
+                completionState: legacyPriority.completionState,
+                tomorrowProtection: legacyPriority.tomorrowProtection
+            )
+        }
+
         if let plan = decision.narrativePlan {
             return CoachDayPriorityResult(
                 focus: legacyPriority.focus,
@@ -2283,6 +2426,79 @@ private extension HumanCoachDecisionEngine {
             interventionCostNote: legacyPriority.interventionCostNote,
             completionState: legacyPriority.completionState,
             tomorrowProtection: legacyPriority.tomorrowProtection
+        )
+    }
+
+    static func isLifecyclePriority(_ priority: CoachDayPriorityResult) -> Bool {
+        priority.reasons.contains { reason in
+            reason.hasPrefix("category=") || reason.hasPrefix("lifecycle=")
+        }
+    }
+
+    static func lifecycleDecision(
+        insight: CoachPipelineInsight,
+        interpretation: HumanCoachInterpretation,
+        legacyPriority: CoachDayPriorityResult
+    ) -> HumanCoachDecision {
+        HumanCoachDecision(
+            status: lifecycleStatus(for: insight),
+            title: insight.title,
+            myRead: insight.coachRead,
+            myRecommendation: insight.recommendation,
+            beCarefulWith: insight.caution,
+            why: insight.evidence.joined(separator: " • "),
+            planChallenge: nil,
+            supportingActions: insight.actions.map(lifecycleAction),
+            priority: lifecyclePriority(for: insight),
+            sourceSignals: interpretation.signals,
+            v5Contract: nil,
+            narrativePlan: nil,
+            dayDecisionFrame: interpretation.context.dayDecisionFrame
+        )
+    }
+
+    static func lifecycleStatus(for insight: CoachPipelineInsight) -> CoachStatus {
+        switch insight.category {
+        case .downgradeToday:
+            return CoachStatus(label: "ADJUST TODAY", semanticColor: .yellow)
+        case .protectTomorrow, .planNextEvent:
+            return CoachStatus(label: "PLAN AHEAD", semanticColor: .purple)
+        case .recoverNow, .sleepPriority:
+            return CoachStatus(label: "RECOVERY NOW", semanticColor: .purple)
+        case .dayComplete, .noActionNeeded:
+            return CoachStatus(label: "DAY COMPLETE", semanticColor: .green)
+        case .prepareForLaterToday, .fuelBeforeTraining:
+            return CoachStatus(label: "PREPARE", semanticColor: .blue)
+        case .refuelAfterTraining:
+            return CoachStatus(label: "REFUEL", semanticColor: .yellow)
+        case .hydrateNow:
+            return CoachStatus(label: "HYDRATE", semanticColor: .blue)
+        case .missingSleepData:
+            return CoachStatus(label: "LOW CONFIDENCE", semanticColor: .yellow)
+        }
+    }
+
+    static func lifecyclePriority(for insight: CoachPipelineInsight) -> CoachDecisionPriority {
+        switch insight.severity {
+        case .critical:
+            return .safety
+        case .high:
+            return insight.category == .prepareForLaterToday ? .trainingQuality : .planOptimization
+        case .medium:
+            return .planOptimization
+        case .low:
+            return .supporting
+        }
+    }
+
+    static func lifecycleAction(_ action: CoachInsightAction) -> CoachSupportingAction {
+        let base = supportAction(for: action.type)
+        return CoachSupportingAction(
+            type: action.type,
+            icon: base.icon,
+            title: action.title,
+            subtitle: action.subtitle,
+            color: base.color
         )
     }
 
@@ -2519,7 +2735,8 @@ private extension HumanCoachDecisionEngine {
             priority: priority,
             sourceSignals: i.signals,
             v5Contract: nil,
-            narrativePlan: nil
+            narrativePlan: nil,
+            dayDecisionFrame: i.context.dayDecisionFrame
         )
     }
 
@@ -2608,6 +2825,86 @@ private struct CoachSituationStory {
     let planChallenge: String?
     let priority: CoachDecisionPriority
     let actions: [CoachSupportActionTypeV3]
+    let customActions: [CoachSupportingAction]?
+
+    private enum RecoverySupportContributor: Hashable {
+        case hydration
+        case calories
+        case protein
+    }
+
+    private struct RecoveryContributorState {
+        let hydrationRatio: Double
+        let calorieRatio: Double
+        let proteinRatio: Double
+        let recentMealLogged: Bool
+
+        var activeContributors: [RecoverySupportContributor] {
+            var contributors: [RecoverySupportContributor] = []
+            if hydrationRatio < 0.70 {
+                contributors.append(.hydration)
+            }
+            if !recentMealLogged && calorieRatio < 1.0 {
+                contributors.append(.calories)
+            }
+            if !recentMealLogged && proteinRatio < 1.0 {
+                contributors.append(.protein)
+            }
+            return contributors
+        }
+
+        var resolvedContributors: [RecoverySupportContributor] {
+            var contributors: [RecoverySupportContributor] = []
+            if hydrationRatio >= 0.70 {
+                contributors.append(.hydration)
+            }
+            if recentMealLogged || calorieRatio >= 1.0 {
+                contributors.append(.calories)
+            }
+            if recentMealLogged || proteinRatio >= 1.0 {
+                contributors.append(.protein)
+            }
+            return contributors
+        }
+
+        var hydrationIsActive: Bool {
+            activeContributors.contains(.hydration)
+        }
+
+        var fuelingIsActive: Bool {
+            activeContributors.contains(.calories) || activeContributors.contains(.protein)
+        }
+
+        var fuelingIsResolved: Bool {
+            resolvedContributors.contains(.calories) && resolvedContributors.contains(.protein)
+        }
+    }
+
+    init(
+        kind: Kind,
+        status: CoachStatus,
+        title: String,
+        myRead: String,
+        myRecommendation: String,
+        beCarefulWith: String,
+        why: String? = nil,
+        planChallenge: String? = nil,
+        priority: CoachDecisionPriority,
+        actions: [CoachSupportActionTypeV3],
+        customActions: [CoachSupportingAction]? = nil
+    ) {
+        self.kind = kind
+        self.status = status
+        self.title = title
+        self.myRead = myRead
+        self.myRecommendation = myRecommendation
+        self.beCarefulWith = beCarefulWith
+        self.why = why
+        self.planChallenge = planChallenge
+        self.priority = priority
+        self.actions = actions
+        self.customActions = customActions
+    }
 
     static func assess(
         _ i: HumanCoachInterpretation,
@@ -2616,8 +2913,10 @@ private struct CoachSituationStory {
         let priorityActivity = legacyPriority.activity ?? i.context.activityContext.preparingActivity
         let priorityActivityIsHeat = priorityActivity.map { CoachActivityContextResolverV3.kind(for: $0) == .heat } == true
 
-        if legacyPriority.focus == .tomorrowPlanRisk ||
-            legacyPriority.tomorrowProtection.active {
+        if (legacyPriority.focus == .tomorrowPlanRisk ||
+            legacyPriority.tomorrowProtection.active),
+           i.activeTraining == nil,
+           i.activeHeat == nil {
             return priorityPreservedStory(legacyPriority, interpretation: i) ?? protectTomorrow(i)
         }
 
@@ -2757,11 +3056,12 @@ private struct CoachSituationStory {
             beCarefulWith: narrativePlan.riskIntent,
             why: narrativePlan.sectionIntents.why,
             planChallenge: narrativePlan.sectionIntents.planAdjustment,
-            supportingActions: actions.map { HumanCoachDecisionEngine.supportAction(for: $0) },
+            supportingActions: customActions ?? actions.map { HumanCoachDecisionEngine.supportAction(for: $0) },
             priority: priority,
             sourceSignals: sourceSignals,
             v5Contract: contract,
-            narrativePlan: narrativePlan
+            narrativePlan: narrativePlan,
+            dayDecisionFrame: interpretation.context.dayDecisionFrame
         )
     }
 
@@ -3569,6 +3869,16 @@ private extension CoachNarrativePlan {
             )
         }
 
+        if legacyPriority.reasons.contains("dayDecisionFrame=primarySessionProtection") {
+            return CoachNarrativeSectionIntents(
+                myRead: story.myRead,
+                recommendation: story.myRecommendation,
+                activityContext: nil,
+                why: story.why,
+                planAdjustment: story.planChallenge
+            )
+        }
+
         let stage = CoachSituationStory.preparationStage(legacyPriority, interpretation: i)
         let preparationRead = CoachSituationStory.preparationRead(stage, interpretation: i)
         let preparationRecommendation = CoachSituationStory.preparationRecommendation(stage, interpretation: i)
@@ -3607,7 +3917,7 @@ private extension CoachNarrativePlan {
             why = "Preparation should protect execution quality before the workout starts."
         case .timing, .none:
             readModifier = "The useful decision is arriving ready."
-            recommendationModifier = "start controlled and adjust by feel"
+            recommendationModifier = "start easy and adjust by feel"
             why = story.why ?? "The next useful decision is before the workout, not after it."
         }
 
@@ -3684,9 +3994,11 @@ private extension CoachNarrativePlan {
         }
 
         if legacyPriority.focus == .trainingReadinessWarning {
-            return .adjustTrainingReadiness
+            let frame = i.context.dayDecisionFrame
+            return frame.planStatus.requiresPlanChange && frame.shouldOwnNarrative
+                ? .reducePlan
+                : .adjustTrainingReadiness
         }
-
         if story.status == .reducePlan { return .reducePlan }
         if legacyPriority.priority == .sleepPreparation,
            legacyPriority.focus == .eveningWindDown,
@@ -3827,6 +4139,9 @@ private extension CoachSituationStory {
 
         case .trainingReadinessWarning:
             guard i.context.activityContext.preparingActivity != nil else { return nil }
+            if let frameStory = dayDecisionFrameStory(priority, interpretation: i) {
+                return frameStory
+            }
             return CoachSituationStory(
                 kind: .prepareForTraining,
                 status: .adjustPlan,
@@ -3843,6 +4158,9 @@ private extension CoachSituationStory {
             )
 
         case .prepareForActivity:
+            if let primaryProtectionStory = primarySessionProtectionStory(priority, interpretation: i) {
+                return primaryProtectionStory
+            }
             let hydrationCanLead = hydrationCanLeadNarrative(priority)
             return CoachSituationStory(
                 kind: .prepareForTraining,
@@ -3902,6 +4220,226 @@ private extension CoachSituationStory {
         default:
             return nil
         }
+    }
+
+    static func dayDecisionFrameStory(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> CoachSituationStory? {
+        let frame = i.context.dayDecisionFrame
+        guard frame.shouldOwnNarrative,
+              priority.priority == .planChallenge || priority.priority == .recovery else {
+            return nil
+        }
+
+        let status: CoachStatus
+        let actions: [CoachSupportActionTypeV3]
+        switch frame.planStatus {
+        case .cancel, .replace:
+            status = .reducePlan
+            actions = [.cooldown, .lightRecoveryMovement, .rehydrateGradually]
+        case .downgrade, .adjust:
+            status = .adjustPlan
+            actions = [.controlIntensity, .lightRecoveryMovement, .rehydrateGradually]
+        case .complete:
+            status = .recoveryFirst
+            actions = [.rehydrateGradually, .startRecoveryNutrition, .sleepPriority]
+        case .valid:
+            return nil
+        }
+
+        let narrativeContext = CoachNarrativeComposer.context(
+            frame: frame,
+            priority: priority,
+            decisionContext: i.context
+        )
+        let narrative = CoachNarrativeComposer.compose(narrativeContext)
+        let contributorState = recoveryContributorState(interpretation: i)
+
+        return CoachSituationStory(
+            kind: frame.planStatus == .complete ? .recoverFromLoad : .adjustPlannedTraining,
+            status: status,
+            title: narrative.title,
+            myRead: narrative.myRead,
+            myRecommendation: narrative.myRecommendation,
+            beCarefulWith: narrative.beCarefulWith,
+            why: recoveryWhy(
+                narrativeWhy: narrative.why,
+                fallbackWhy: frame.whyText,
+                contributorState: contributorState
+            ),
+            planChallenge: nil,
+            priority: frame.planStatus.requiresPlanChange ? .planOptimization : .supporting,
+            actions: actions,
+            customActions: recoverySupportActions(contributorState: contributorState)
+        )
+    }
+
+    private static func recoveryContributorState(interpretation i: HumanCoachInterpretation) -> RecoveryContributorState {
+        let context = i.context
+        let hydrationRatio: Double = {
+            guard let nutrition = context.nutritionContext, nutrition.waterGoal > 0 else {
+                return context.brain.current.waterProgress
+            }
+            return nutrition.waterCurrent / nutrition.waterGoal
+        }()
+        let calorieRatio: Double = {
+            guard let nutrition = context.nutritionContext, nutrition.caloriesGoal > 0 else {
+                return context.brain.current.caloriesProgress
+            }
+            return nutrition.caloriesCurrent / nutrition.caloriesGoal
+        }()
+        let proteinRatio: Double = {
+            guard let nutrition = context.nutritionContext, nutrition.proteinGoal > 0 else {
+                return context.brain.current.proteinProgress
+            }
+            return nutrition.proteinCurrent / nutrition.proteinGoal
+        }()
+        let recentMealLogged = context.nutritionContext?.lastMealTime.map {
+            context.dayContext.now.timeIntervalSince($0) <= 120 * 60
+        } ?? false
+
+        return RecoveryContributorState(
+            hydrationRatio: hydrationRatio,
+            calorieRatio: calorieRatio,
+            proteinRatio: proteinRatio,
+            recentMealLogged: recentMealLogged
+        )
+    }
+
+    private static func recoverySupportActions(contributorState: RecoveryContributorState) -> [CoachSupportingAction] {
+        var actions: [CoachSupportingAction] = []
+
+        func append(_ action: CoachSupportingAction) {
+            guard !actions.contains(where: { $0.type == action.type || $0.title.caseInsensitiveCompare(action.title) == .orderedSame }) else {
+                return
+            }
+            actions.append(action)
+        }
+
+        if contributorState.fuelingIsActive {
+            if contributorState.calorieRatio < 0.40 {
+                append(CoachScreenStory.action(.startRecoveryNutrition, title: "Eat recovery meal", subtitle: "Include protein and easy carbs"))
+            } else if contributorState.proteinRatio < 1.0 {
+                append(CoachScreenStory.action(.recoveryMeal, title: "Add protein", subtitle: "Only if the meal did not cover it"))
+            } else {
+                append(CoachScreenStory.action(.recoveryMeal, title: "Eat normally", subtitle: "Support recovery without chasing food"))
+            }
+        }
+
+        switch contributorState.hydrationRatio {
+        case ..<0.40:
+            append(CoachScreenStory.action(.rehydrateGradually, title: "Drink 750 ml gradually", subtitle: "Sip over the next hour or two"))
+        case ..<0.70:
+            append(CoachScreenStory.action(.steadyHydration, title: "Keep sipping", subtitle: "Hydration is improving; do not force it"))
+        default:
+            break
+        }
+
+        if contributorState.activeContributors.isEmpty {
+            append(CoachScreenStory.action(.sleepPriority, title: "Protect sleep", subtitle: "Tonight turns the work into adaptation"))
+            append(CoachScreenStory.action(.downshiftNervousSystem, title: "Keep evening easy", subtitle: "Let recovery lead the next block"))
+            append(CoachScreenStory.action(.stayConsistent, title: "Avoid additional load", subtitle: "The day does not need another stressor"))
+        } else {
+            append(CoachScreenStory.action(.downshiftNervousSystem, title: "Keep evening easy", subtitle: "Let recovery lead the next block"))
+            append(CoachScreenStory.action(.sleepPriority, title: "Protect sleep", subtitle: "Tonight turns the work into adaptation"))
+        }
+
+        return Array(actions.prefix(3))
+    }
+
+    private static func recoveryWhy(
+        narrativeWhy: String?,
+        fallbackWhy: String,
+        contributorState: RecoveryContributorState
+    ) -> String {
+        if contributorState.resolvedContributors.contains(.hydration),
+           contributorState.fuelingIsResolved {
+            return "Hydration and refueling are already in place. Recovery now depends mostly on sleep and avoiding additional stress."
+        }
+
+        if contributorState.resolvedContributors.contains(.hydration),
+           contributorState.fuelingIsActive {
+            return "Hydration is already in place. Food still supports recovery, but the main decision remains protecting the work already done."
+        }
+
+        if contributorState.hydrationIsActive,
+           contributorState.fuelingIsResolved {
+            if contributorState.hydrationRatio < 0.50 {
+                return "Refueling is already in place. Hydration is still depleted, so fluids can support recovery without changing the main decision."
+            }
+            return "Refueling is already in place. Hydration is improving, so the main decision remains protecting recovery rather than adding stress."
+        }
+
+        return narrativeWhy ?? fallbackWhy
+    }
+
+    static func primarySessionProtectionStory(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> CoachSituationStory? {
+        guard priority.reasons.contains("dayDecisionFrame=primarySessionProtection") else {
+            return nil
+        }
+
+        let frame = i.context.dayDecisionFrame
+        let narrativeContext = CoachNarrativeComposer.context(
+            frame: frame,
+            priority: priority,
+            decisionContext: i.context
+        )
+        let narrative = CoachNarrativeComposer.compose(narrativeContext)
+        return CoachSituationStory(
+            kind: .prepareForTraining,
+            status: .prepareSession,
+            title: narrative.title,
+            myRead: narrative.myRead,
+            myRecommendation: narrative.myRecommendation,
+            beCarefulWith: narrative.beCarefulWith,
+            why: narrative.why ?? "\(frame.contributorText) A key session goes better when support factors are covered without changing the plan.",
+            planChallenge: nil,
+            priority: .trainingQuality,
+            actions: [.hydrateBeforeSession, .lightFueling, .controlIntensity]
+        )
+    }
+
+    static func dayPlanShouldChange(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> Bool {
+        guard priority.focus == .trainingReadinessWarning,
+              priority.priority == .planChallenge else {
+            return false
+        }
+
+        let reasons = priority.reasons.joined(separator: " ").lowercased()
+        if reasons.contains("decisiontype=planadjustment") {
+            return true
+        }
+
+        let context = i.context
+        let hydrationRatio: Double = {
+            guard let nutrition = context.nutritionContext, nutrition.waterGoal > 0 else {
+                return context.brain.current.waterProgress
+            }
+            return nutrition.waterCurrent / nutrition.waterGoal
+        }()
+        let fuelBehind = context.brain.fuel == .underfueled ||
+            context.brain.current.energyCoverage < 0.45 ||
+            context.brain.current.carbsProgress < 0.35
+        let hydrationBehind = hydrationRatio < 0.60 ||
+            context.brain.hydration == .behind ||
+            context.brain.hydration == .depleted
+        let overloaded = context.dayContext.completedTrainingStressScore >= 4 ||
+            context.dayContext.totalTrainingStressScore >= 5 ||
+            context.dayContext.dayRisk == .high ||
+            context.actualLoad.activeCalories >= 750 ||
+            context.actualLoad.activityProgress.map({ $0 >= 1.5 }) == true
+        let compromised = context.brain.readiness == .low ||
+            context.brain.recovery == .compromised ||
+            (context.recoveryContext?.recoveryPercent ?? 100) < 55
+
+        return overloaded && compromised && (fuelBehind || hydrationBehind)
     }
 
     static func tomorrowPlanRiskRead(
@@ -3987,10 +4525,10 @@ private extension CoachSituationStory {
         interpretation i: HumanCoachInterpretation
     ) -> String {
         if isRideLike(priority, interpretation: i) {
-            return "Ride easier than planned, keep the first 10-15 minutes controlled, drink 300-500 ml, take a banana or sports drink before starting, and shorten if you feel flat."
+            return "Ride easier than planned, keep the first 10-15 minutes easy, drink 300-500 ml, take a banana or sports drink before starting, and shorten if you feel flat."
         }
         let name = activityName(priority, interpretation: i)
-        return "Take \(name) easier than planned, keep the first 10-15 minutes controlled, drink 300-500 ml, eat a quick carb snack before starting, and shorten if you feel flat."
+        return "Take \(name) easier than planned, keep the first 10-15 minutes easy, drink 300-500 ml, eat a quick carb snack before starting, and shorten if you feel flat."
     }
 
     static func activityName(
@@ -4353,7 +4891,7 @@ private extension CoachSituationStory {
         if i.isVeryPoorState {
             return CoachSituationStory(
                 kind: .manageActiveTraining,
-                status: .manageEffort,
+                status: .reducePlan,
                 title: activeContext.title,
                 myRead: activeContext.myRead,
                 myRecommendation: activeContext.recommendation(phaseRecommendation: phaseRecommendation),

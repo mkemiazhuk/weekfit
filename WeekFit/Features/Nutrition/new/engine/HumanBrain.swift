@@ -214,6 +214,38 @@ extension HumanBrain.State {
             smoothedGoals: smoothedGoals,
             activities: currentActivities ?? activities
         )
+        .replacingBrainStates(
+            sleep: sleep,
+            recovery: recovery,
+            readiness: readiness
+        )
+    }
+
+    func replacingBrainStates(
+        sleep: HumanBrain.SleepState? = nil,
+        recovery: HumanBrain.RecoveryState? = nil,
+        readiness: HumanBrain.ReadinessState? = nil
+    ) -> HumanBrain.State {
+        HumanBrain.State(
+            now: now,
+            currentHour: currentHour,
+            metrics: metrics,
+            profile: profile,
+            fullDayGoals: fullDayGoals,
+            smoothedGoals: smoothedGoals,
+            activities: activities,
+            past: past,
+            current: current,
+            future: future,
+            sleep: sleep ?? self.sleep,
+            hydration: hydration,
+            fuel: fuel,
+            protein: protein,
+            strain: strain,
+            recovery: recovery ?? self.recovery,
+            readiness: readiness ?? self.readiness,
+            hasAnyFoodLogged: hasAnyFoodLogged
+        )
     }
 }
 

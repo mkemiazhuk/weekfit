@@ -120,6 +120,11 @@ final class NutritionViewModel: ObservableObject {
         )
 
         guard nextSignature != lastNutritionStateSignature else {
+            CoachLogger.compactThrottled(
+                "[CoachRefreshSkipped]",
+                key: "nutrition.unchanged.\(debugSource)",
+                "Coach refresh skipped: unchanged fingerprint source=NutritionViewModel.updateNutrition.\(debugSource)"
+            )
             return
         }
 
@@ -128,6 +133,7 @@ final class NutritionViewModel: ObservableObject {
             metrics: updatedMetrics,
             profile: automaticProfile,
             result: nextNutritionResult,
+            plannedActivities: plannedActivities,
             completedMeals: completedMeals,
             recoveryContext: resolvedRecoveryContext,
             signature: nextSignature,
@@ -135,7 +141,7 @@ final class NutritionViewModel: ObservableObject {
         )
         self.currentMetrics = updatedMetrics
         self.currentProfile = automaticProfile
-        self.nutritionResult = nextNutritionResult
+        self.nutritionResult = nextSnapshot.result
         self.coachMetricsSnapshot = nextSnapshot
         let oldRefreshID = coachStateRefreshID
         let newRefreshID = nextSnapshot.id
@@ -200,11 +206,14 @@ final class NutritionViewModel: ObservableObject {
         plannedActivities: [PlannedActivity],
         recoveryContext: CoachRecoveryContext
     ) -> String {
+        let day = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
         let activitySignature = plannedActivities
             .sorted { $0.id < $1.id }
             .map { activity in
                 [
                     activity.id,
+                    "\(activity.timelineEventKind)",
+                    terminalStateSignature(for: activity),
                     "\(Int(activity.date.timeIntervalSince1970 / 60))",
                     activity.type,
                     activity.title,
@@ -224,6 +233,7 @@ final class NutritionViewModel: ObservableObject {
             .joined(separator: "|")
 
         return [
+            "day=\(Int(day / 86_400))",
             rounded(metrics.calories),
             rounded(metrics.protein),
             rounded(metrics.carbs),
@@ -255,29 +265,36 @@ final class NutritionViewModel: ObservableObject {
         metrics: DailyNutritionMetrics,
         profile: UserNutritionProfile,
         result: NutritionResult,
+        plannedActivities: [PlannedActivity],
         completedMeals: [PlannedActivity],
         recoveryContext: CoachRecoveryContext,
         signature: String,
         source: String
     ) -> CoachMetricsSnapshot {
-        CoachMetricsSnapshot(
+        let adjustedResult = adjustedNutritionResult(
+            from: result,
+            recoveryContext: recoveryContext,
+            plannedActivities: plannedActivities
+        )
+
+        return CoachMetricsSnapshot(
             id: UUID(),
             createdAt: Date(),
             source: source,
             metrics: metrics,
             profile: profile,
-            result: result,
+            result: adjustedResult,
             nutritionContext: CoachNutritionContext(
                 caloriesCurrent: metrics.calories,
-                caloriesGoal: result.goals.calories,
+                caloriesGoal: adjustedResult.goals.calories,
                 proteinCurrent: metrics.protein,
-                proteinGoal: result.goals.protein,
+                proteinGoal: adjustedResult.goals.protein,
                 carbsCurrent: metrics.carbs,
-                carbsGoal: result.goals.carbs,
+                carbsGoal: adjustedResult.goals.carbs,
                 fatsCurrent: metrics.fats,
-                fatsGoal: result.goals.fats,
+                fatsGoal: adjustedResult.goals.fats,
                 waterCurrent: metrics.waterLiters,
-                waterGoal: result.goals.waterLiters,
+                waterGoal: adjustedResult.goals.waterLiters,
                 mealsCount: completedMeals.count,
                 lastMealTime: completedMeals.last?.date
             ),
@@ -288,6 +305,175 @@ final class NutritionViewModel: ObservableObject {
 
     private func rounded(_ value: Double) -> String {
         String(format: "%.2f", value)
+    }
+
+    private func terminalStateSignature(for activity: PlannedActivity) -> String {
+        if activity.isCompleted { return PlannedActivityTerminalState.completed.rawValue }
+        if activity.isSkipped { return PlannedActivityTerminalState.cancelled.rawValue }
+        if activity.actualDurationMinutes != nil { return PlannedActivityTerminalState.partial.rawValue }
+        return PlannedActivityTerminalState.planned.rawValue
+    }
+
+    private struct BrainStateMapping {
+        let sleep: HumanBrain.SleepState
+        let recovery: HumanBrain.RecoveryState
+        let readiness: HumanBrain.ReadinessState
+        let fatigueScore: Double
+        let completedTrainingStress: Int
+        let recent7DayTrainingLoad: Int
+        let reasons: [String]
+    }
+
+    private func adjustedNutritionResult(
+        from result: NutritionResult,
+        recoveryContext: CoachRecoveryContext,
+        plannedActivities: [PlannedActivity]
+    ) -> NutritionResult {
+        let mapping = brainStateMapping(
+            brain: result.brain,
+            recoveryContext: recoveryContext,
+            plannedActivities: plannedActivities
+        )
+        let adjustedBrain = result.brain.replacingBrainStates(
+            sleep: mapping.sleep,
+            recovery: mapping.recovery,
+            readiness: mapping.readiness
+        )
+        let adjustedDecision = CoachDecisionEngine.makeDecision(from: adjustedBrain)
+        let adjustedInsights = CoachInsightFactory.generateInsights(
+            brain: adjustedBrain,
+            decision: adjustedDecision
+        )
+
+        CoachLogger.compact(
+            "[BrainStateMappingDebug]",
+            """
+            rawRecovery=\(recoveryContext.recoveryPercent) sleepHours=\(String(format: "%.2f", recoveryContext.sleepHours)) fatigueScore=\(String(format: "%.1f", mapping.fatigueScore)) completedTrainingStress=\(mapping.completedTrainingStress) recent7DayTrainingLoad=\(mapping.recent7DayTrainingLoad) mappedBrainSleep=\(mapping.sleep) mappedBrainRecovery=\(mapping.recovery) mappedBrainReadiness=\(mapping.readiness) mappingReasons=\(mapping.reasons)
+            """
+        )
+
+        return NutritionResult(
+            score: result.score,
+            status: CoachCopy.headline(
+                brain: adjustedBrain,
+                decision: adjustedDecision
+            ),
+            goals: result.goals,
+            targetCalories: result.targetCalories,
+            consumedCalories: result.consumedCalories,
+            recommendation: CoachCopy.summary(
+                brain: adjustedBrain,
+                decision: adjustedDecision,
+                complianceScore: result.score
+            ),
+            activeInsights: adjustedInsights,
+            brain: adjustedBrain,
+            decision: adjustedDecision
+        )
+    }
+
+    private func brainStateMapping(
+        brain: HumanBrain.State,
+        recoveryContext: CoachRecoveryContext,
+        plannedActivities: [PlannedActivity]
+    ) -> BrainStateMapping {
+        let now = Date()
+        let completedTrainingStress = trainingStress(
+            plannedActivities.filter { $0.isCompleted && isTrainingActivity($0) }
+        )
+        let recent7DayTrainingLoad = trainingStress(
+            plannedActivities.filter {
+                $0.isCompleted &&
+                    isTrainingActivity($0) &&
+                    $0.date >= now.addingTimeInterval(-7 * 24 * 60 * 60)
+            }
+        )
+        let rawRecovery = recoveryContext.recoveryPercent
+        let sleepHours = recoveryContext.sleepHours > 0 ? recoveryContext.sleepHours : brain.metrics.sleepHours
+        let fatigueScore = max(
+            0,
+            Double(recent7DayTrainingLoad) +
+                Double(completedTrainingStress * 2) +
+                (brain.current.activeCalories >= 750 ? 3 : 0) -
+                (rawRecovery >= 85 && sleepHours >= 7 ? 3 : 0)
+        )
+
+        let mappedSleep: HumanBrain.SleepState
+        if sleepHours <= 0 {
+            mappedSleep = brain.sleep
+        } else if sleepHours < 5.5 {
+            mappedSleep = .veryShort
+        } else if sleepHours < 6.4 {
+            mappedSleep = .short
+        } else if sleepHours < 7.0 {
+            mappedSleep = .okay
+        } else {
+            mappedSleep = .strong
+        }
+
+        var reasons: [String] = []
+        let mappedRecovery: HumanBrain.RecoveryState
+        if rawRecovery >= 85 && sleepHours >= 7 && fatigueScore <= 4 && completedTrainingStress <= 1 {
+            mappedRecovery = .strong
+            reasons.append("raw recovery, sleep, fatigue, and training stress support strong recovery")
+        } else if rawRecovery >= 75 && sleepHours >= 6.5 && fatigueScore <= 8 {
+            mappedRecovery = .stable
+            reasons.append("raw recovery and sleep support stable recovery")
+        } else if rawRecovery > 0 && rawRecovery < 55 {
+            mappedRecovery = .compromised
+            reasons.append("raw recovery is below 55")
+        } else if rawRecovery > 0 && rawRecovery < 70 {
+            mappedRecovery = .vulnerable
+            reasons.append("raw recovery is below 70")
+        } else {
+            mappedRecovery = brain.recovery
+            reasons.append("kept computed recovery state")
+        }
+
+        let mappedReadiness: HumanBrain.ReadinessState
+        if mappedRecovery == .strong && mappedSleep == .strong && fatigueScore <= 4 {
+            mappedReadiness = .good
+            reasons.append("strong recovery plus 7h+ sleep maps to ready/good")
+        } else if mappedRecovery == .stable && mappedSleep != .veryShort && fatigueScore <= 8 {
+            mappedReadiness = .moderate
+            reasons.append("stable recovery maps to moderate readiness")
+        } else if mappedRecovery == .compromised {
+            mappedReadiness = .compromised
+        } else if mappedRecovery == .vulnerable {
+            mappedReadiness = .low
+        } else {
+            mappedReadiness = brain.readiness
+        }
+
+        return BrainStateMapping(
+            sleep: mappedSleep,
+            recovery: mappedRecovery,
+            readiness: mappedReadiness,
+            fatigueScore: fatigueScore,
+            completedTrainingStress: completedTrainingStress,
+            recent7DayTrainingLoad: recent7DayTrainingLoad,
+            reasons: reasons
+        )
+    }
+
+    private func isTrainingActivity(_ activity: PlannedActivity) -> Bool {
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        return kind == .workout || kind == .endurance
+    }
+
+    private func trainingStress(_ activities: [PlannedActivity]) -> Int {
+        activities.reduce(0) { total, activity in
+            switch CoachActivityContextResolverV3.load(for: activity) {
+            case .low:
+                return total + 1
+            case .moderate:
+                return total + 2
+            case .high:
+                return total + 3
+            case .extreme:
+                return total + 4
+            }
+        }
     }
 
     // MARK: - Manual Fluid Tracker Pipeline Interfaces

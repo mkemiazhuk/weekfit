@@ -25,6 +25,7 @@ struct TodayView: View {
 
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
     
     @StateObject private var planViewModel = PlanViewModel()
     
@@ -59,8 +60,6 @@ struct TodayView: View {
     @State private var quickItemUsage: [String: Int] = [:]
     @State private var didPreloadQuickFood = false
     @State private var didPreloadQuickDrinks = false
-    @State private var cachedTodayCoachInsight: TodayCoachInsight?
-    @State private var lastTodayCoachInsightSignature = ""
     
     @State private var showActivityIntelligence = false
     @State private var showNutritionDetails = false
@@ -222,6 +221,9 @@ struct TodayView: View {
                     case .coach:
                         ExpertCoachViewV3(authViewModel: authViewModel)
 
+                    case .insights:
+                        InsightsView(authViewModel: authViewModel)
+
                     case .meals:
                         MealsView(authViewModel: authViewModel, nutritionResult: nutritionViewModel.nutritionResult)
                         
@@ -243,7 +245,7 @@ struct TodayView: View {
             )
             
             WeekFitBottomBar(selectedTab: $selectedTab) {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) { selectedTab = .calendar }
+                resetPlanDateToToday()
             }
             .padding(.horizontal, 1)
             .background(alignment: .top) {
@@ -299,6 +301,14 @@ struct TodayView: View {
                 )
             }
             #endif
+
+            if newValue == .today {
+                updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.selectedTab.today")
+            }
+
+            if newValue == .calendar {
+                resetPlanDateToToday()
+            }
         }
         .task(id: healthRefreshID) {
             await refreshHealthAndNutritionAsync()
@@ -321,23 +331,32 @@ struct TodayView: View {
             appSession.healthRefreshTrigger = UUID()
             healthRefreshID = UUID()
         }
-        .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { value in
-            now = value
-            updateTodayCoachInsightIfNeeded(source: "TodayView.timer")
+        .task(id: coachCoordinator.nextScheduledCheckpoint) {
+            guard let checkpoint = coachCoordinator.nextScheduledCheckpoint else { return }
+            let delay = checkpoint.timeIntervalSinceNow
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
 
-            let calendar = Calendar.current
-            if !calendar.isDate(selectedDate, inSameDayAs: value) {
-                withAnimation(.smooth) {
-                    selectedDate = value
-                    healthRefreshID = UUID()
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                let value = Date()
+                now = value
+
+                let calendar = Calendar.current
+                if !calendar.isDate(selectedDate, inSameDayAs: value) {
+                    withAnimation(.smooth) {
+                        selectedDate = value
+                        healthRefreshID = UUID()
+                    }
                 }
+
+                updateTodayCoachInsightIfNeeded(source: "CoachCoordinator.checkpoint")
             }
         }
         .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
             updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.nutritionCoachStateRefreshID")
-        }
-        .onChange(of: nutritionViewModel.coachGuidanceSnapshot?.id) { _, _ in
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.coachGuidanceSnapshot")
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -373,13 +392,16 @@ struct TodayView: View {
                 isPresented: $showDirectWorkoutLogSheet,
                 refreshID: $healthRefreshID
             )
-            .presentationDetents([.height(370)])
+            .presentationDetents([
+                .fraction(0.45),
+                .large
+            ])
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
             .presentationBackground(
                 Color(red: 0.035, green: 0.043, blue: 0.047)
             )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
             ZStack {
@@ -458,12 +480,16 @@ struct TodayView: View {
                     }
                 }
             }
-            .presentationDetents([.height(370)])
+            .presentationDetents([
+                .fraction(0.45),
+                .large
+            ])
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
             .presentationBackground(
                 Color(red: 0.035, green: 0.043, blue: 0.047)
             )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.hidden)
         }
         .onChange(of: showDirectMealLogSheet) { _, isPresented in
             if isPresented {
@@ -515,12 +541,16 @@ struct TodayView: View {
                     }
                 }
             }
-            .presentationDetents([.height(370)])
+            .presentationDetents([
+                .fraction(0.45),
+                .large
+            ])
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
             .presentationBackground(
                 Color(red: 0.035, green: 0.043, blue: 0.047)
             )
             .presentationCornerRadius(34)
-            .presentationDragIndicator(.hidden)
         }
     }
     
@@ -856,138 +886,34 @@ struct TodayView: View {
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
         guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
-            if cachedTodayCoachInsight != nil || !lastTodayCoachInsightSignature.isEmpty {
-                cachedTodayCoachInsight = nil
-                lastTodayCoachInsightSignature = ""
-            }
+            coachCoordinator.updateInput(nil)
+            _ = coachCoordinator.recomputeIfNeeded(reason: source)
             return
         }
 
-        let signature = todayCoachInsightSignature()
-        guard signature != lastTodayCoachInsightSignature else { return }
-
         let start = Self.debugStart("todayCoachInsight.update source=\(source)")
-        let inputSignature = canonicalCoachGuidanceInputSignature(snapshot: snapshot)
-        let output: CoachGuidanceV3
-        if let committed = nutritionViewModel.committedCoachGuidance(
+        let input = CoachInputSnapshot(
             metricsSnapshotID: snapshot.id,
-            inputSignature: inputSignature
-        ) {
-            output = committed
-        } else {
-            let next = CoachEngineV3.decide(
-                from: snapshot.brain.refreshedForCurrentLocalTime(activities: plannedActivities),
-                plannedActivities: plannedActivities,
-                selectedDate: selectedDate,
-                recoveryContext: snapshot.recoveryContext,
-                nutritionContext: snapshot.nutritionContext
-            )
-            nutritionViewModel.commitCoachGuidance(
-                next,
-                metricsSnapshotID: snapshot.id,
-                inputSignature: inputSignature,
-                source: "TodayView.\(source)"
-            )
-            output = next
-        }
-        let compact = output.v5Interpretation.compactInsight
-        let nextInsight = TodayCoachInsight(
-            title: compact.title,
-            message: compact.text,
-            icon: compact.icon,
-            color: compact.color
+            selectedDate: selectedDate,
+            now: now,
+            brain: snapshot.brain,
+            plannedActivities: plannedActivities,
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitActivityCircle,
+                activeCalories: healthManager.activeCalories,
+                exerciseMinutes: healthManager.exerciseMinutes,
+                standHours: healthManager.standHours,
+                activityGoalCalories: automatedActivityGoal,
+                activityProgress: automatedActivityGoal > 0 ? healthManager.activeCalories / automatedActivityGoal : nil
+            ),
+            planSource: .swiftDataPlannedActivity,
+            recoveryContext: snapshot.recoveryContext,
+            nutritionContext: snapshot.nutritionContext,
+            source: "TodayView.\(source)"
         )
-
-        lastTodayCoachInsightSignature = signature
-        if cachedTodayCoachInsight != nextInsight {
-            cachedTodayCoachInsight = nextInsight
-        }
+        coachCoordinator.updateInput(input)
+        _ = coachCoordinator.recomputeIfNeeded(reason: source)
         Self.debugEnd("todayCoachInsight.update source=\(source)", start: start)
-    }
-
-    private func todayCoachInsightSignature() -> String {
-        let snapshot = nutritionViewModel.coachMetricsSnapshot
-        let metrics = snapshot?.metrics
-        let goals = snapshot?.result.goals
-        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let activitiesSignature = plannedActivities
-            .sorted { $0.id < $1.id }
-            .map { activity in
-                [
-                    activity.id,
-                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
-                    activity.type,
-                    activity.title,
-                    "\(activity.durationMinutes)",
-                    "\(activity.calories)",
-                    "\(activity.protein)",
-                    "\(activity.carbs)",
-                    "\(activity.fats)",
-                    "\(activity.fiber)",
-                    "\(activity.isCompleted)",
-                    "\(activity.isSkipped)",
-                    activity.imageName
-                ].joined(separator: ":")
-            }
-            .joined(separator: "|")
-
-        return [
-            "\(Int(day / 86_400))",
-            coachCopyTimePhaseSignature(),
-            String(format: "%.1f", metrics?.calories ?? -1),
-            String(format: "%.1f", metrics?.protein ?? -1),
-            String(format: "%.1f", metrics?.carbs ?? -1),
-            String(format: "%.1f", metrics?.fats ?? -1),
-            String(format: "%.1f", nutritionViewModel.totalWaterLiters),
-            String(format: "%.1f", goals?.calories ?? -1),
-            String(format: "%.1f", goals?.protein ?? -1),
-            String(format: "%.1f", goals?.carbs ?? -1),
-            String(format: "%.1f", goals?.fats ?? -1),
-            String(format: "%.1f", goals?.waterLiters ?? -1),
-            snapshot?.id.uuidString ?? "snapshot=nil",
-            activitiesSignature
-        ].joined(separator: "#")
-    }
-
-    private func canonicalCoachGuidanceInputSignature(snapshot: CoachMetricsSnapshot) -> String {
-        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let activitiesSignature = plannedActivities
-            .sorted { $0.id < $1.id }
-            .map { activity in
-                [
-                    activity.id,
-                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
-                    activity.type,
-                    activity.title,
-                    "\(activity.durationMinutes)",
-                    "\(activity.actualDurationMinutes ?? -1)",
-                    activity.imageName,
-                    "\(activity.isCompleted)",
-                    "\(activity.isSkipped)",
-                    activity.source
-                ].joined(separator: ":")
-            }
-            .joined(separator: "|")
-
-        return [
-            snapshot.id.uuidString,
-            "\(Int(day / 86_400))",
-            coachCopyTimePhaseSignature(),
-            activitiesSignature
-        ].joined(separator: "#")
-    }
-
-    private func coachCopyTimePhaseSignature() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 6..<11:
-            return "morning"
-        case 11..<16:
-            return "midday"
-        default:
-            return "evening"
-        }
     }
 
     private static let logger = Logger(subsystem: "WeekFit", category: "TodayView")
@@ -1442,6 +1368,9 @@ struct TodayView: View {
 
             case .coach:
                 WeekFitTheme.coachAmbient
+
+            case .insights:
+                WeekFitTheme.todayAmbient
 
             case .meals:
                 WeekFitTheme.mealsAmbient
@@ -2230,17 +2159,18 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if let insight = cachedTodayCoachInsight {
-                    let insightColor = insight.color
-                    let insightTitle = insight.title
-                    let insightIcon = insight.icon
-                    let insightMessage = insight.message
+                if coachCoordinator.state.hasValidGuidance {
+                    let presentation = coachCoordinator.state.todayPresentation
+                    let insightColor = presentation.color
+                    let insightTitle = presentation.title
+                    let insightIcon = presentation.icon
+                    let insightMessage = presentation.message
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         selectedTab = .coach
                     } label: {
-                        HStack(alignment: .center, spacing: 14) {
+                        HStack(alignment: .top, spacing: 14) {
                             ZStack {
                                 Circle()
                                     .fill(insightColor.opacity(0.10))
@@ -2262,24 +2192,30 @@ struct TodayView: View {
                                     .font(.system(size: 16, weight: .bold))
                                     .foregroundStyle(textPrimary)
                                     .multilineTextAlignment(.leading)
+                                    .lineLimit(nil)
+                                    .layoutPriority(1)
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
 
-                                    Text(compactTodayInsight(insightMessage))
+                                    Text(insightMessage)
                                         .font(.system(size: 13.5, weight: .medium))
                                         .foregroundStyle(textSecondary.opacity(0.82))
                                         .lineSpacing(2)
                                         .multilineTextAlignment(.leading)
+                                        .lineLimit(2)
+                                        .layoutPriority(1)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
-
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
 
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(textTertiary)
+                                .padding(.top, 4)
+                                .accessibilityHidden(true)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
@@ -2358,8 +2294,6 @@ struct TodayView: View {
         setQuickItemUsage([:])
         didPreloadQuickFood = false
         didPreloadQuickDrinks = false
-        cachedTodayCoachInsight = nil
-        lastTodayCoachInsightSignature = ""
 
         nutritionViewModel.resetLocalState()
         handleReturnToTodayRequest()
@@ -2629,21 +2563,6 @@ struct TodayView: View {
         print("🧠 [WorkoutInsight] subtitle:", output.insightSubtitle ?? "nil")
     }
     
-    private func compactTodayInsight(_ text: String) -> String {
-        let sentences = text
-            .components(separatedBy: ". ")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        let firstTwo = sentences.prefix(2).joined(separator: ". ")
-
-        if firstTwo.count <= 115 {
-            return firstTwo.hasSuffix(".") ? firstTwo : firstTwo + "."
-        }
-
-        return String(firstTwo.prefix(115)).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
-    }
-
     private var quickActionsSection: some View {
         let activeSession = currentActiveSession
 
@@ -2927,6 +2846,13 @@ struct TodayView: View {
         title.components(separatedBy: ",").first ?? title
     }
 
+    private func resetPlanDateToToday() {
+        let today = Date()
+        guard !Calendar.current.isDate(planViewModel.selectedDate, inSameDayAs: today) else { return }
+
+        planViewModel.selectedDate = today
+    }
+
     private var selectedDayActivities: [PlannedActivity] {
         plannedActivities.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }.sorted { $0.date < $1.date }
     }
@@ -2957,18 +2883,5 @@ private extension View {
                 .stroke(Color.white.opacity(0.035), lineWidth: 1)
         }
         .contentShape(Rectangle())
-    }
-}
-
-private struct TodayCoachInsight: Equatable {
-    let title: String
-    let message: String
-    let icon: String
-    let color: Color
-
-    static func == (lhs: TodayCoachInsight, rhs: TodayCoachInsight) -> Bool {
-        lhs.title == rhs.title &&
-        lhs.message == rhs.message &&
-        lhs.icon == rhs.icon
     }
 }

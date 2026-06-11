@@ -1034,38 +1034,20 @@ private extension WeekPlannerView {
         if let match = bestPlannedActivityMatch(for: workout) {
 //            print("🔗 Linking Apple Workout to existing activity:", match.title)
 
+            let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
             match.isCompleted = true
             match.isSkipped = false
             match.source = "appleWorkout"
             match.healthKitWorkoutUUID = workoutUUID
             match.date = workout.startDate
-            match.durationMinutes = max(1, Int(workout.duration / 60))
+            match.durationMinutes = actualMinutes
+            match.actualDurationMinutes = actualMinutes
 
             
 //            print("✅ Apple Workout matched and logged:", match.title)
 
         } else {
-            let imported = PlannedActivity(
-                healthKitWorkoutUUID: workoutUUID,
-                date: workout.startDate,
-                type: "workout",
-                title: title(for: workout.workoutActivityType),
-                durationMinutes: Int(workout.duration / 60),
-                icon: icon(for: workout.workoutActivityType),
-                colorRed: 0.46,
-                colorGreen: 0.72,
-                colorBlue: 0.82,
-                isCompleted: true,
-                isSkipped: false,
-                source: "appleWorkout"
-            )
-
-            imported.durationMinutes = Int(workout.duration / 60)
-            imported.isCompleted = true
-            imported.isSkipped = false
-            imported.source = "appleWorkout"
-            imported.id = workoutUUID
-
+            let imported = ActivityReconciler.importedActivity(for: workout)
             modelContext.insert(imported)
 
 //            print("🆕 Apple Workout imported as new activity:", imported.title)
@@ -1080,87 +1062,15 @@ private extension WeekPlannerView {
     }
     
     func title(for type: HKWorkoutActivityType) -> String {
-        switch type {
-
-        case .cycling:
-            return "Cycling"
-
-        case .running:
-            return "Running"
-
-        case .walking:
-            return "Walk"
-
-        case .hiking:
-            return "Hiking"
-
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining:
-            return "Strength Workout"
-
-        case .highIntensityIntervalTraining:
-            return "HIIT Workout"
-
-        case .yoga:
-            return "Yoga"
-
-        case .swimming:
-            return "Swimming"
-
-        default:
-            return "Workout"
-        }
+        ActivityReconciler.title(for: type)
     }
     
     func icon(for type: HKWorkoutActivityType) -> String {
-        switch type {
-        case .cycling:
-            return "bicycle"
-        case .running:
-            return "figure.run"
-        case .walking:
-            return "figure.walk"
-        case .hiking:
-            return "figure.hiking"
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining:
-            return "dumbbell.fill"
-        case .highIntensityIntervalTraining:
-            return "flame.fill"
-        case .yoga:
-            return "figure.yoga"
-        case .swimming:
-            return "figure.pool.swim"
-        default:
-            return "figure.run"
-        }
+        ActivityReconciler.icon(for: type)
     }
 
     func bestPlannedActivityMatch(for workout: HKWorkout) -> PlannedActivity? {
-        let workoutStart = workout.startDate
-        let workoutEnd = workout.endDate
-
-        let candidates = plannedActivities.filter { activity in
-            guard calendar.isDate(activity.date, inSameDayAs: workoutStart),
-                  !activity.isSkipped,
-                  activity.healthKitWorkoutUUID == nil,
-                  matches(activity: activity, workoutType: workout.workoutActivityType)
-            else {
-                return false
-            }
-
-            return isWorkoutCloseEnoughToPlannedActivity(
-                workoutStart: workoutStart,
-                workoutEnd: workoutEnd,
-                activity: activity
-            )
-        }
-
-        return candidates.min {
-            plannedDistanceScore(activity: $0, workoutStart: workoutStart, workoutEnd: workoutEnd)
-            <
-            plannedDistanceScore(activity: $1, workoutStart: workoutStart, workoutEnd: workoutEnd)
-        }
+        ActivityReconciler.bestMatch(for: workout, in: plannedActivities, calendar: calendar)
     }
     
     func isWorkoutCloseEnoughToPlannedActivity(
@@ -1169,32 +1079,9 @@ private extension WeekPlannerView {
         activity: PlannedActivity
     ) -> Bool {
         let plannedStart = activity.date
-        let plannedEnd = calendar.date(
-            byAdding: .minute,
-            value: max(activity.durationMinutes, 1),
-            to: plannedStart
-        ) ?? plannedStart
+        guard plannedStart <= workoutEnd else { return false }
 
-        // 1. Direct overlap
-        if workoutStart < plannedEnd && workoutEnd > plannedStart {
-            return true
-        }
-
-        // 2. Close start time
-        let startDistance = abs(plannedStart.timeIntervalSince(workoutStart))
-
-        if startDistance <= 20 * 60 {
-            return true
-        }
-
-        // 3. Workout ended close to planned start
-        let endToStartDistance = abs(plannedStart.timeIntervalSince(workoutEnd))
-
-        if endToStartDistance <= 10 * 60 {
-            return true
-        }
-
-        return false
+        return workoutEnd.timeIntervalSince(plannedStart) <= ActivityReconciler.pastMatchingWindow
     }
     
     func plannedDistanceScore(
@@ -1279,18 +1166,7 @@ private extension WeekPlannerView {
         activity: PlannedActivity,
         workoutType: HKWorkoutActivityType
     ) -> Bool {
-
-        let title = activity.title.lowercased()
-
-        let keywords = normalizedWorkoutKeywords(for: workoutType)
-
-        guard !keywords.isEmpty else {
-            return false
-        }
-
-        return keywords.contains {
-            title.contains($0)
-        }
+        ActivityReconciler.matches(activity: activity, workoutType: workoutType)
     }
 
     func activityStatus(for item: PlannedActivity) -> PlanActivityStatus {

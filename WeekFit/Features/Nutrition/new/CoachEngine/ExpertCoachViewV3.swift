@@ -3,28 +3,30 @@ import SwiftData
 import HealthKit
 internal import Combine
 
-struct ExpertCoachViewV3: View {
+private final class CoachScreenLifecycleTracker: ObservableObject {
+    init() {
+        #if DEBUG
+        CoachRefreshDebug.log(
+            "[CoachScreenLifecycle]",
+            "Coach screen state object init"
+        )
+        #endif
+    }
+}
 
-    @ObservedObject var authViewModel: AuthViewModel
+struct ExpertCoachViewV3: View {
 
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @Environment(\.modelContext) private var modelContext
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
+    @StateObject private var lifecycleTracker = CoachScreenLifecycleTracker()
 
     @State private var showProfile = false
     @State private var selectedDate = Date()
-    @State private var healthRefreshID = UUID()
-    @State private var coachRefreshID = UUID()
-    @State private var pendingCoachRefreshSources: [String] = []
-    @State private var pendingHealthRefreshSources: [String] = []
-    @State private var isCoachRefreshScheduled = false
-    @State private var isHealthRefreshScheduled = false
-    @State private var lastResolvedCoachInputSignature = ""
-    @State private var lastAppliedCoachRefreshSignature = ""
-    @State private var cachedCoachGuidance: CoachGuidanceV3?
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -38,19 +40,11 @@ struct ExpertCoachViewV3: View {
     @State private var pendingFuelItem: FastFuelItem?
 
     init(authViewModel: AuthViewModel) {
-        self.authViewModel = authViewModel
-        #if DEBUG
-        CoachRefreshDebug.log(
-            "[CoachScreenLifecycle]",
-            "CoachView init"
-        )
-        #endif
+        _ = authViewModel
     }
 
     var body: some View {
-        #if DEBUG
-        let _ = debugLogCoachStateBeforeRender()
-        #endif
+        let _ = lifecycleTracker
 
         return ZStack(alignment: .top) {
             WeekFitTheme.appBackground
@@ -78,64 +72,9 @@ struct ExpertCoachViewV3: View {
             #if DEBUG
             CoachRefreshDebug.log(
                 "[CoachScreenLifecycle]",
-                "CoachView onAppear before=\(debugCoachPrioritySummary()) renderMode=\(ExpertCoachRenderMode.resolve(cachedGuidance: cachedCoachGuidance).rawValue)"
+                "CoachView onAppear stateID=\(coachCoordinator.state.id) \(debugCoachPrioritySummary())"
             )
             #endif
-
-            if cachedCoachGuidance == nil {
-                applyCoachRefreshID(source: "ExpertCoachViewV3.onAppear.initialSnapshot")
-            } else {
-                regenerateCoachRefreshID(source: "ExpertCoachViewV3.onAppear")
-            }
-        }
-        .task(id: healthRefreshID) {
-            await refreshCoachDataAsync()
-        }
-        .onChange(of: plannedActivities) { _, _ in
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachRefreshOnChange]",
-                "ExpertCoachViewV3.plannedActivities changed count=\(plannedActivities.count) selectedDayCount=\(plannedActivitiesForSelectedDate.count) source=SwiftDataQuery"
-            )
-            #endif
-            refreshCoachLiveState(refreshHealth: false, source: "ExpertCoachViewV3.onChange.plannedActivities")
-        }
-        .onChange(of: appSession.healthRefreshTrigger) { oldValue, newValue in
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachRefreshOnChange]",
-                "ExpertCoachViewV3.appSession.healthRefreshTrigger \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue))"
-            )
-            #endif
-            regenerateHealthRefreshID(source: "ExpertCoachViewV3.onChange.appSession.healthRefreshTrigger")
-        }
-        .onChange(of: appSession.coachRefreshTrigger) { oldValue, newValue in
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachRefreshOnChange]",
-                "ExpertCoachViewV3.appSession.coachRefreshTrigger \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue)) \(debugHydrationSummary()) before=\(debugCoachPrioritySummary())"
-            )
-            #endif
-            regenerateCoachRefreshID(source: "ExpertCoachViewV3.onChange.appSession.coachRefreshTrigger")
-        }
-        .onReceive(nutritionViewModel.$currentMetrics) { metrics in
-            #if DEBUG
-            let current = metrics?.waterLiters ?? -1
-            let goal = nutritionViewModel.nutritionResult?.goals.waterLiters ?? 0
-            CoachRefreshDebug.log(
-                "[CoachRefreshOnChange]",
-                "ExpertCoachViewV3.currentMetrics received \(CoachRefreshDebug.hydrationSummary(current: current, goal: goal)) before=\(debugCoachPrioritySummary()) awaitingCoachStateCommit=true"
-            )
-            #endif
-        }
-        .onChange(of: nutritionViewModel.coachStateRefreshID) { oldValue, newValue in
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachRefreshOnChange]",
-                "ExpertCoachViewV3.nutritionViewModel.coachStateRefreshID \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue)) \(debugHydrationSummary()) before=\(debugCoachPrioritySummary())"
-            )
-            #endif
-            regenerateCoachRefreshID(source: "ExpertCoachViewV3.onChange.nutritionCoachStateRefreshID")
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -162,13 +101,7 @@ struct ExpertCoachViewV3: View {
     }
 
     private var guidance: CoachGuidanceV3 {
-        let _ = coachRefreshID
-        if let cachedCoachGuidance {
-            return cachedCoachGuidance
-        }
-
-        return CoachStateStabilizer.lastVisibleGuidance(source: "ExpertCoachViewV3.firstRenderSnapshot") ??
-            fallbackGuidance
+        coachCoordinator.state.guidance ?? fallbackGuidance
     }
 
 
@@ -235,11 +168,11 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachAccentColor: Color {
-        coachScreenStory.color
+        coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
     }
 
     private var coachIcon: String {
-        coachScreenStory.icon
+        coachCoordinator.state.coachPresentation?.icon ?? coachScreenStory.icon
     }
 
     private var coachScreenStory: CoachScreenStory {
@@ -267,7 +200,8 @@ struct ExpertCoachViewV3: View {
             priority: .supporting,
             sourceSignals: [],
             v5Contract: nil,
-            narrativePlan: nil
+            narrativePlan: nil,
+            dayDecisionFrame: nil
         )
 
         return CoachScreenStory(
@@ -280,7 +214,7 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachRenderedTitle: String {
-        validTitle(guidance.title) ?? coachScreenStory.title
+        coachCoordinator.state.coachPresentation?.title ?? validTitle(guidance.title) ?? coachScreenStory.title
     }
 
     private func validTitle(_ title: String) -> String? {
@@ -358,6 +292,7 @@ struct ExpertCoachViewV3: View {
 
     private var coachCard: some View {
         let story = coachScreenStory
+        let presentation = coachCoordinator.state.coachPresentation
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
@@ -381,12 +316,12 @@ struct ExpertCoachViewV3: View {
                     VStack(alignment: .leading, spacing: 10) {
                         coachHeroTextBlock(
                             label: "My Read",
-                            text: story.myRead
+                            text: presentation?.message ?? story.myRead
                         )
 
                         coachHeroTextBlock(
                             label: "My Recommendation",
-                            text: story.myRecommendation
+                            text: canonicalRecommendationText ?? story.myRecommendation
                         )
 
                         if story.shouldShowBeCarefulWith {
@@ -664,13 +599,28 @@ struct ExpertCoachViewV3: View {
     
     private var coachDisplayText: (title: String, message: String) {
         return (
-            coachScreenStory.title,
-            coachScreenStory.myRecommendation
+            coachCoordinator.state.coachPresentation?.title ?? coachScreenStory.title,
+            coachCoordinator.state.coachPresentation?.message ?? coachScreenStory.myRecommendation
         )
     }
 
     private var coachDisplayStateLabel: String {
-        coachScreenStory.stateLabel
+        coachCoordinator.state.coachPresentation?.stateLabel ?? coachScreenStory.stateLabel
+    }
+
+    private var canonicalRecommendationText: String? {
+        guard let presentation = coachCoordinator.state.coachPresentation else { return nil }
+
+        switch guidance.priority.focus {
+        case .recoveryNeeded, .postActivityRecovery:
+            return "Prioritize food, hydration and recovery before adding more load."
+        case .hydrationBehind:
+            return "Bring fluids up before asking more from the day."
+        case .fuelBehind:
+            return "Make food available before adding intensity."
+        default:
+            return nil
+        }
     }
 
     private var coachSections: [CoachSection] {
@@ -723,11 +673,7 @@ struct ExpertCoachViewV3: View {
     }
 
     private var shouldSurfaceCoach: Bool {
-        ExpertCoachRenderMode.resolve(cachedGuidance: guidance) == .guidance
-    }
-
-    private var isAwaitingCommittedCoachDecision: Bool {
-        cachedCoachGuidance == nil && nutritionViewModel.coachMetricsSnapshot != nil
+        coachCoordinator.state.hasValidGuidance
     }
 
     private var coachDayContext: CoachDayActivityContext {
@@ -775,14 +721,11 @@ struct ExpertCoachViewV3: View {
 //                        readiness: tomorrowReadiness
 //                    )
 //                } else
-                if isAwaitingCommittedCoachDecision {
-                    coachSnapshotLoadingSection
-                        .padding(.top, 12)
-                } else if shouldSurfaceCoach {
+                if shouldSurfaceCoach {
                     coachCard
                     storySupportSection
                 } else {
-                    todayBalanceSection
+                    coachUnavailableSection
                         .padding(.top, 12)
                 }
             }
@@ -790,17 +733,20 @@ struct ExpertCoachViewV3: View {
         }
     }
 
-    private var coachSnapshotLoadingSection: some View {
+    private var coachUnavailableSection: some View {
         HStack(spacing: 12) {
-            ProgressView()
-                .tint(textSecondary)
+            Image(systemName: "sparkles")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(textSecondary)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(Color.white.opacity(0.05)))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Preparing Coach")
+                Text("Coach unavailable")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text("Using the latest completed health snapshot.")
+                Text("Connect today’s plan, nutrition, and recovery data to unlock guidance.")
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary)
             }
@@ -1366,6 +1312,10 @@ struct ExpertCoachViewV3: View {
                 primaryActionsSection(story)
             }
 
+            if let rationale = coachCoordinator.state.rationalePresentation {
+                rationaleSection(rationale)
+            }
+
             if story.shouldShowWhy, let why = story.whyThisMatters {
                 storyInfoSection(
                     title: "Why This Matters",
@@ -1396,6 +1346,16 @@ struct ExpertCoachViewV3: View {
                 )
             }
         }
+    }
+
+    private func rationaleSection(_ presentation: CoachRationalePresentation) -> some View {
+        storyInfoSection(
+            title: presentation.title,
+            subtitle: "Decision rationale",
+            icon: presentation.icon,
+            text: presentation.message,
+            color: presentation.color
+        )
     }
 
     private func primaryActionsSection(_ story: CoachScreenStory) -> some View {
@@ -1775,7 +1735,6 @@ struct ExpertCoachViewV3: View {
                         item: item,
                         context: modelContext
                     )
-                    refreshCoachLiveState(refreshHealth: false, source: "ExpertCoachViewV3.addFuelRecommendation")
                     appSession.triggerCoachRefresh(source: "ExpertCoachViewV3.addFuelRecommendation")
                 }
             } label: {
@@ -1811,284 +1770,6 @@ struct ExpertCoachViewV3: View {
         )
     }
 
-    // MARK: - Refresh
-
-    private func refreshCoachLiveState(refreshHealth: Bool = false, source: String = "ExpertCoachViewV3.refreshCoachLiveState") {
-        #if DEBUG
-        let priorityBefore = debugCoachPrioritySummary()
-        regenerateCoachRefreshID(source: source, priorityBefore: priorityBefore)
-        #else
-        regenerateCoachRefreshID(source: source)
-        #endif
-
-        if refreshHealth {
-            regenerateHealthRefreshID(source: source)
-        }
-    }
-
-    private func refreshCoachDataAsync() async {
-        guard healthManager.isHealthAccessGranted else { return }
-
-        await healthManager.loadHealthData(
-            for: selectedDate,
-            plannedActivities: plannedActivitiesForSelectedDate
-        )
-        commitNutritionSnapshot(source: "ExpertCoachViewV3.refreshCoachDataAsync")
-    }
-
-    private func commitNutritionSnapshot(source: String) {
-        let metrics = DailyNutritionMetrics(
-            protein: 0,
-            carbs: 0,
-            fats: 0,
-            fiber: 0,
-            calories: 0,
-            waterLiters: 0,
-            activeCalories: healthManager.activeCalories,
-            sleepHours: healthManager.sleepHours,
-            weightKg: healthManager.weight
-        )
-
-        let profile = UserNutritionProfile.createAutomatic(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm,
-            age: healthManager.age,
-            sex: healthManager.biologicalSex == .male ? .male : .female
-        )
-
-        nutritionViewModel.updateNutrition(
-            metrics: metrics,
-            profile: profile,
-            plannedActivities: plannedActivitiesForSelectedDate,
-            recoveryContext: CoachRecoveryContext(
-                recoveryPercent: Int(healthManager.recoveryPercent),
-                sleepHours: healthManager.sleepHours
-            ),
-            debugSource: source
-        )
-    }
-
-    private func regenerateCoachRefreshID(
-        source: String,
-        priorityBefore: String? = nil
-    ) {
-        CoachStateStabilizer.markSyncEvent(source: source)
-        pendingCoachRefreshSources.append(source)
-        guard !isCoachRefreshScheduled else { return }
-
-        isCoachRefreshScheduled = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            let sourceSummary = summarizeRefreshSources(pendingCoachRefreshSources)
-            pendingCoachRefreshSources.removeAll()
-            isCoachRefreshScheduled = false
-
-            applyCoachRefreshID(source: sourceSummary, priorityBefore: priorityBefore)
-        }
-    }
-
-    private func applyCoachRefreshID(
-        source: String,
-        priorityBefore: String? = nil
-    ) {
-        let inputSignature = coachInputSignature
-        guard inputSignature != lastResolvedCoachInputSignature else { return }
-
-        guard let resolvedGuidance = resolveCoachGuidance(source: "ExpertCoachViewV3.applyCoachRefreshID") else {
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachScreenRender]",
-                "ExpertCoachViewV3.renderMode=\(ExpertCoachRenderMode.fallbackCurrentStatus.rawValue) cachedCoachGuidanceNil=true screenStoryNil=true renderedState=nil renderedTitle=nil priority=nil intent=\(debugCoachIntentSummary())"
-            )
-            #endif
-            return
-        }
-        lastResolvedCoachInputSignature = inputSignature
-        let signature = CoachStateStabilizer.visibleSignature(
-            for: resolvedGuidance,
-            source: "ExpertCoachViewV3.applyCoachRefreshID"
-        ) + "#\(inputSignature)"
-        guard signature != lastAppliedCoachRefreshSignature else { return }
-        lastAppliedCoachRefreshSignature = signature
-        let previousMode = ExpertCoachRenderMode.resolve(cachedGuidance: cachedCoachGuidance)
-        cachedCoachGuidance = resolvedGuidance
-
-        let oldValue = coachRefreshID
-        let newValue = UUID()
-        #if DEBUG
-        let resolverTitle = resolvedGuidance.priority.detailTitle
-        let guidanceTitle = resolvedGuidance.title
-        let screenStoryTitle = resolvedGuidance.screenStory?.title
-        let renderedTitle = validTitle(guidanceTitle) ?? screenStoryTitle ?? resolverTitle
-        let fallbackUsed = validTitle(guidanceTitle) == nil
-        let priorityDetails = [
-            priorityBefore.map { "priorityBefore=\($0)" },
-            "priorityAfter=\(debugCoachPrioritySummary(for: resolvedGuidance))",
-            "transition=\(previousMode.rawValue)->\(ExpertCoachRenderMode.resolve(cachedGuidance: resolvedGuidance).rawValue)",
-            "renderMode=\(ExpertCoachRenderMode.resolve(cachedGuidance: resolvedGuidance).rawValue)",
-            "cachedCoachGuidanceNil=false",
-            "screenStoryNil=\(resolvedGuidance.screenStory == nil)",
-            "priority=\(resolvedGuidance.priority.priority)/\(resolvedGuidance.priority.focus)",
-            "limiter=\(resolvedGuidance.priority.limiter)",
-            "strength=\(resolvedGuidance.priority.strength)",
-            "screenStoryType=\(debugScreenStoryType(resolvedGuidance))",
-            "renderedState=\"\(resolvedGuidance.screenStory?.stateLabel ?? resolvedGuidance.stateLabel)\"",
-            "renderedTitle=\"\(renderedTitle)\"",
-            "intent=\(debugCoachIntentSummary())"
-        ]
-        .compactMap { $0 }
-        .joined(separator: " ")
-        CoachRefreshDebug.log(
-            "[CoachScreenTitleMapping]",
-            "resolverTitle=\"\(resolverTitle)\" guidanceTitle=\"\(guidanceTitle)\" screenStoryTitle=\"\(screenStoryTitle ?? "nil")\" renderedTitle=\"\(renderedTitle)\" fallbackUsed=\(fallbackUsed)"
-        )
-        CoachRefreshDebug.log(
-            "[CoachRefreshDebug]",
-            "ExpertCoachViewV3.coachRefreshID source=\(source) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue)) \(debugHydrationSummary()) \(priorityDetails)"
-        )
-        CoachRefreshDebug.log(
-            "[CoachScreenRender]",
-            debugCoachScreenRenderDetails(for: resolvedGuidance)
-        )
-        CoachRefreshDebug.log(
-            "[CoachScreenLifecycle]",
-            "Coach state after refresh source=\(source) transition=\(previousMode.rawValue)->\(ExpertCoachRenderMode.resolve(cachedGuidance: resolvedGuidance).rawValue)"
-        )
-        #endif
-        coachRefreshID = newValue
-    }
-
-    private func resolveCoachGuidance(source: String) -> CoachGuidanceV3? {
-        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
-            return nil
-        }
-        let nutrition = snapshot.nutritionContext
-        let inputSignature = coachInputSignature
-
-        if let committed = nutritionViewModel.committedCoachGuidance(
-            metricsSnapshotID: snapshot.id,
-            inputSignature: inputSignature
-        ) {
-            return committed
-        }
-
-        #if DEBUG
-        let completedMeals = CoachCanonicalDayState.completedMeals(from: plannedActivitiesForSelectedDate)
-        let mealDebug = completedMeals
-            .map { meal in
-                "mealID=\(meal.id) mealName=\"\(meal.title)\" calories=\(meal.calories) protein=\(meal.protein) carbs=\(meal.carbs) fat=\(meal.fats)"
-            }
-            .joined(separator: " | ")
-        CoachRefreshDebug.log(
-            "[CoachNutritionMeals]",
-            "source=ExpertCoachViewV3.resolveCoachGuidance.\(source) meals=\(completedMeals.count) \(mealDebug)"
-        )
-        #endif
-
-        CoachNutritionConsistency.assertMatchesCurrentMetrics(
-            metrics: snapshot.metrics,
-            coach: nutrition,
-            source: "ExpertCoachViewV3.resolveCoachGuidance.\(source)"
-        )
-
-        let output = CoachEngineV3.decide(
-            from: snapshot.brain.refreshedForCurrentLocalTime(activities: plannedActivities),
-            plannedActivities: plannedActivities,
-            selectedDate: selectedDate,
-            dayContext: dayContext,
-            recoveryContext: snapshot.recoveryContext,
-            nutritionContext: nutrition
-        )
-        let stabilized = CoachStateStabilizer.stabilized(output, source: source)
-        nutritionViewModel.commitCoachGuidance(
-            stabilized,
-            metricsSnapshotID: snapshot.id,
-            inputSignature: inputSignature,
-            source: "ExpertCoachViewV3.\(source)"
-        )
-        return stabilized
-    }
-
-    private var coachInputSignature: String {
-        guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
-            return "snapshot=nil"
-        }
-
-        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let activityVersion = plannedActivities
-            .map { activity in
-                [
-                    activity.id,
-                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
-                    activity.type,
-                    activity.title,
-                    "\(activity.durationMinutes)",
-                    "\(activity.actualDurationMinutes ?? -1)",
-                    activity.imageName,
-                    "\(activity.isCompleted)",
-                    "\(activity.isSkipped)",
-                    activity.source
-                ].joined(separator: ":")
-            }
-            .sorted()
-            .joined(separator: "|")
-
-        return [
-            snapshot.id.uuidString,
-            "\(Int(day / 86_400))",
-            coachCopyTimePhaseSignature,
-            activityVersion
-        ].joined(separator: "#")
-    }
-
-    private var coachCopyTimePhaseSignature: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 6..<11:
-            return "morning"
-        case 11..<16:
-            return "midday"
-        default:
-            return "evening"
-        }
-    }
-
-    private func regenerateHealthRefreshID(source: String) {
-        CoachStateStabilizer.markSyncEvent(source: source)
-        pendingHealthRefreshSources.append(source)
-        guard !isHealthRefreshScheduled else { return }
-
-        isHealthRefreshScheduled = true
-        DispatchQueue.main.async {
-            let sourceSummary = summarizeRefreshSources(pendingHealthRefreshSources)
-            pendingHealthRefreshSources.removeAll()
-            isHealthRefreshScheduled = false
-
-            applyHealthRefreshID(source: sourceSummary)
-        }
-    }
-
-    private func applyHealthRefreshID(source: String) {
-        let oldValue = healthRefreshID
-        let newValue = UUID()
-        #if DEBUG
-        CoachRefreshDebug.log(
-            "[CoachRefreshDebug]",
-            "ExpertCoachViewV3.healthRefreshID source=\(source) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue))"
-        )
-        #endif
-        healthRefreshID = newValue
-    }
-
-    private func summarizeRefreshSources(_ sources: [String]) -> String {
-        guard !sources.isEmpty else { return "unspecified" }
-
-        let uniqueSources = Array(Set(sources)).sorted()
-        let summary = uniqueSources.prefix(4).joined(separator: ",")
-        let overflow = uniqueSources.count > 4 ? ",+\(uniqueSources.count - 4)" : ""
-        return "[\(summary)\(overflow)]"
-    }
-
     #if DEBUG
     private func debugHydrationSummary() -> String {
         if let snapshot = nutritionViewModel.coachMetricsSnapshot {
@@ -2105,28 +1786,14 @@ struct ExpertCoachViewV3: View {
     }
 
     private func debugCoachPrioritySummary() -> String {
-        guard let output = cachedCoachGuidance else { return "priority=missingCachedGuidance" }
+        guard let output = coachCoordinator.state.guidance else { return "priority=missingCanonicalGuidance" }
         return debugCoachPrioritySummary(for: output)
     }
 
-    private func debugLogCoachStateBeforeRender() {
-        let snapshot = guidance
-        let mode = ExpertCoachRenderMode.resolve(cachedGuidance: snapshot)
-        let placeholderTransition: String = {
-            let cachedMode = ExpertCoachRenderMode.resolve(cachedGuidance: cachedCoachGuidance)
-            guard cachedMode != mode else { return "none" }
-            return "\(cachedMode.rawValue)->\(mode.rawValue)"
-        }()
-        let committedSnapshot = nutritionViewModel.coachMetricsSnapshot?.id.uuidString ?? "nil"
-        CoachRefreshDebug.log(
-            "[CoachScreenLifecycle]",
-            "Coach state before render cachedCoachGuidanceNil=\(cachedCoachGuidance == nil) committedSnapshot=\(committedSnapshot) renderMode=\(mode.rawValue) placeholderTransition=\(placeholderTransition) \(debugCoachPrioritySummary(for: snapshot))"
-        )
-    }
-
     private func debugCoachPrioritySummary(for output: CoachGuidanceV3) -> String {
-        let renderedState = output.screenStory?.stateLabel ?? output.stateLabel
-        let renderedTitle = validTitle(output.title) ?? output.screenStory?.title ?? output.priority.detailTitle
+        let presentation = coachCoordinator.state.coachPresentation
+        let renderedState = presentation?.stateLabel ?? output.screenStory?.stateLabel ?? output.stateLabel
+        let renderedTitle = presentation?.title ?? validTitle(output.title) ?? output.screenStory?.title ?? output.priority.detailTitle
         return "priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) strength=\(output.priority.strength) title=\"\(output.priority.todayTitle)\" renderedState=\"\(renderedState)\" renderedTitle=\"\(renderedTitle)\""
     }
 
@@ -2137,6 +1804,7 @@ struct ExpertCoachViewV3: View {
 
     private func debugCoachScreenRenderDetails(for output: CoachGuidanceV3) -> String {
         let story = output.screenStory
+        let presentation = coachCoordinator.state.coachPresentation
         let selectedActivity = output.priority.activity ?? coachDayContext.coachFocusActivity
         let nextActivity = dayContext.nextActivity
         let coachRelevantActivities = plannedActivitiesForSelectedDate.filter(CoachDayActivityContextResolver.isCoachRelevant)
@@ -2166,17 +1834,16 @@ struct ExpertCoachViewV3: View {
         let visibleRisk = story?.shouldShowBeCarefulWith == true ? story?.beCarefulWith : nil
 
         return """
-        ExpertCoachViewV3.renderMode=\(ExpertCoachRenderMode.resolve(cachedGuidance: output).rawValue) \
-        cachedCoachGuidanceNil=false screenStoryNil=\(story == nil) \
-        renderedState=\"\(story?.stateLabel ?? output.stateLabel)\" renderedTitle=\"\(validTitle(output.title) ?? story?.title ?? output.priority.detailTitle)\" \
-        myRead=\"\(story?.myRead ?? output.message)\" myRecommendation=\"\(story?.myRecommendation ?? output.insightSubtitle ?? "")\" beCarefulWith=\"\(visibleRisk ?? output.avoidNotes.joined(separator: " | "))\" \
+        ExpertCoachViewV3.renderSource=canonicalCoachState stateID=\(coachCoordinator.state.id) screenStoryNil=\(story == nil) \
+        renderedState=\"\(presentation?.stateLabel ?? story?.stateLabel ?? output.stateLabel)\" renderedTitle=\"\(presentation?.title ?? validTitle(output.title) ?? story?.title ?? output.priority.detailTitle)\" \
+        myRead=\"\(presentation?.message ?? story?.myRead ?? output.message)\" myRecommendation=\"\(canonicalRecommendationText ?? story?.myRecommendation ?? output.insightSubtitle ?? "")\" beCarefulWith=\"\(visibleRisk ?? output.avoidNotes.joined(separator: " | "))\" \
         hiddenSupportSignals.count=\(supportSignals.count) \
         primaryActions.count=\(primaryActions.count) primaryActions.titles=\"\(primaryActions.map(\.title).joined(separator: " | "))\" \
         hiddenSecondarySupportActions.count=\(secondarySupportActions.count) \
         visibleSupportActions.count=\(output.supportActions.count) hiddenSupportReason=\(hiddenSupportReason) \
         selectedCoachActivity=\"\(debugActivitySummary(selectedActivity))\" selectedCoachActivityRenderState=\(selectedActivityRenderState) nextActivityTime=\(nextActivity.map { "\($0.date)" } ?? "nil") \
         visibleFutureUpNextActivities=\(visibleFutureUpNextCount) rawAllActivities=\(plannedActivities.count) selectedDayActivities=\(plannedActivitiesForSelectedDate.count) coachRelevantActivities=\(coachRelevantActivities.count) \
-        guidanceSourceTime=\(Date().timeIntervalSince1970) planVersion=\"\(coachInputSignature)\" \
+        guidanceSourceTime=\(Date().timeIntervalSince1970) planVersion=\"\(coachCoordinator.state.fingerprint?.rawValue ?? "nil")\" \
         priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) intent=\(debugCoachIntentSummary())
         """
     }
@@ -2276,17 +1943,4 @@ enum CoachPalette {
     // NEW
     static let good = stable
     static let activity = training
-}
-
-enum ExpertCoachRenderMode: String {
-    case guidance
-    case fallbackCurrentStatus
-
-    static func resolve(cachedGuidance: CoachGuidanceV3?) -> ExpertCoachRenderMode {
-        guard cachedGuidance?.screenStory != nil else {
-            return .fallbackCurrentStatus
-        }
-
-        return .guidance
-    }
 }

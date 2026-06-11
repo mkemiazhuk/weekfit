@@ -15,6 +15,9 @@ struct ProfileView: View {
     @State private var resetFailureMessage = ""
     @State private var isResettingLocalData = false
 
+    @AppStorage(CoachDebugSettings.logLevelKey)
+    private var coachLogLevelRaw = CoachLogLevel.off.rawValue
+
     private let background = Color.black
 
     private let textPrimary = Color.white
@@ -489,6 +492,7 @@ private extension ProfileView {
     var developerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Privacy & Data")
+            coachDebugToggle
             resetLocalDataButton
         }
     }
@@ -557,6 +561,43 @@ private extension ProfileView {
         .opacity(isResettingLocalData ? 0.62 : 1)
     }
 
+    var coachDebugToggle: some View {
+        HStack(spacing: 13) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.13))
+
+                Image(systemName: "stethoscope")
+                    .font(.system(size: 15, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(Color.purple.opacity(0.96))
+            }
+            .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Coach Debug")
+                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+
+                Text(coachDebugEnabled ? "Verbose Coach logs enabled" : "Enable verbose Coach decision logs")
+                    .font(.system(size: 12.6, weight: .medium))
+                    .foregroundStyle(textSecondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Toggle("", isOn: coachDebugBinding)
+                .labelsHidden()
+                .tint(accentGreen.opacity(0.88))
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 72)
+        .background {
+            premiumCardBackground(cornerRadius: 23)
+        }
+    }
+
     var footerSection: some View {
         VStack(spacing: 4) {
             Text("WeekFit")
@@ -575,6 +616,29 @@ private extension ProfileView {
 // MARK: - Helpers
 
 private extension ProfileView {
+
+    var coachDebugEnabled: Bool {
+        CoachLogLevel(rawValue: coachLogLevelRaw) == .verbose
+    }
+
+    var coachDebugBinding: Binding<Bool> {
+        Binding(
+            get: {
+                coachDebugEnabled
+            },
+            set: { isEnabled in
+                coachLogLevelRaw = isEnabled ? CoachLogLevel.verbose.rawValue : CoachLogLevel.off.rawValue
+                appSession.triggerCoachRefresh(source: "profileCoachDebugToggle")
+
+                #if DEBUG
+                CoachLogger.verbose(
+                    "[CoachDebugSettings]",
+                    "Profile toggle changed verboseLoggingEnabled=\(isEnabled)"
+                )
+                #endif
+            }
+        )
+    }
 
     func withDialogAnimation(_ updates: @escaping () -> Void) {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {

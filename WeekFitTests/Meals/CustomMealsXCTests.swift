@@ -291,13 +291,13 @@ final class CustomMealsXCTests: XCTestCase {
 
         XCTAssertTrue(food.isFoodProduct)
         XCTAssertFalse(food.isRecipeMeal)
-        XCTAssertEqual(food.displayCategoryTitle, "Food")
-        XCTAssertEqual(food.sourceLabel, "Custom Food")
+        XCTAssertEqual(food.displayCategoryTitle, WeekFitLocalizedString("meals.category.food"))
+        XCTAssertEqual(food.sourceLabel, WeekFitLocalizedString("meals.customFood"))
 
         XCTAssertFalse(recipe.isFoodProduct)
         XCTAssertTrue(recipe.isRecipeMeal)
-        XCTAssertEqual(recipe.displayCategoryTitle, "Meal")
-        XCTAssertEqual(recipe.sourceLabel, "Custom Meal")
+        XCTAssertEqual(recipe.displayCategoryTitle, WeekFitLocalizedString("meals.category.meal"))
+        XCTAssertEqual(recipe.sourceLabel, WeekFitLocalizedString("meals.customMeal"))
     }
 
     func testPlaceholderInitialUsesTrimmedTitleFallback() {
