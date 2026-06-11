@@ -8,6 +8,8 @@ import OSLog
 struct TodayView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
+    let returnToTodayTrigger: UUID
+    let onSelectTab: (WeekFitTab) -> Void
     @EnvironmentObject private var appSession: AppSessionState
     @Environment(\.modelContext) private var modelContext
     
@@ -27,12 +29,8 @@ struct TodayView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     
-    @StateObject private var planViewModel = PlanViewModel()
-    
     @State private var showProfile = false
-    @State private var selectedTab: WeekFitTab = .today
     @State private var showContent = false
-    @State private var isEditingActivity = false
     @State private var selectedDate = Date()
     @State private var livePulse = false
     @State private var now = Date()
@@ -68,6 +66,16 @@ struct TodayView: View {
     @State private var showRecoveryDetails = false
     
     private let quickItemUsageKey = "weekfit_quick_item_usage_v1"
+
+    init(
+        authViewModel: AuthViewModel,
+        returnToTodayTrigger: UUID = UUID(),
+        onSelectTab: @escaping (WeekFitTab) -> Void = { _ in }
+    ) {
+        self.authViewModel = authViewModel
+        self.returnToTodayTrigger = returnToTodayTrigger
+        self.onSelectTab = onSelectTab
+    }
     
     private enum QuickNutritionLogTab: String, CaseIterable, Identifiable {
         case meals
@@ -204,59 +212,16 @@ struct TodayView: View {
                 .ignoresSafeArea()
             ambientBackground
 
-            Group {
-                switch selectedTab {
-                    case .today:
-                        todayScreen
-                        .onAppear {
-                           now = Date()
-                           preloadQuickFoodLogDataIfNeeded()
-                           preloadQuickDrinkLogDataIfNeeded()
-                           if !healthManager.isHealthAccessRequested {
-                               updateNutrition()
-                           }
-                           healthRefreshID = UUID()
-                        }
-                        
-                    case .coach:
-                        ExpertCoachViewV3(authViewModel: authViewModel)
-
-                    case .insights:
-                        InsightsView(authViewModel: authViewModel)
-
-                    case .meals:
-                        MealsView(authViewModel: authViewModel, nutritionResult: nutritionViewModel.nutritionResult)
-                        
-                    case .calendar:
-                        WeekPlannerView(viewModel: planViewModel, authViewModel: authViewModel)
+            todayScreen
+                .onAppear {
+                   now = Date()
+                   preloadQuickFoodLogDataIfNeeded()
+                   preloadQuickDrinkLogDataIfNeeded()
+                   if !healthManager.isHealthAccessRequested {
+                       updateNutrition()
+                   }
+                   healthRefreshID = UUID()
                 }
-            }
-            .transition(
-                .asymmetric(
-                    insertion: .offset(y: 8).combined(with: .opacity),
-                    removal: .opacity
-                )
-            )
-            .animation(
-                selectedTab == .coach
-                    ? nil
-                    : .interactiveSpring(response: 0.42, dampingFraction: 0.88, blendDuration: 0.12),
-                value: selectedTab
-            )
-            
-            WeekFitBottomBar(selectedTab: $selectedTab) {
-                resetPlanDateToToday()
-            }
-            .padding(.horizontal, 1)
-            .background(alignment: .top) {
-                Rectangle()
-                    .fill(LinearGradient(colors: [Color.white.opacity(0.02), Color.clear], startPoint: .top, endPoint: .bottom))
-                    .frame(height: 1)
-                    .offset(y: -7)
-            }
-            .shadow(color: Color.black.opacity(0.4), radius: 25, y: -10)
-            .opacity(showContent && !isEditingActivity ? 1 : 0)
-            .offset(y: showContent && !isEditingActivity ? 0 : 120)
         }
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
@@ -292,31 +257,13 @@ struct TodayView: View {
         .onAppear {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) { showContent = true }
         }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            #if DEBUG
-            if newValue == .coach {
-                CoachRefreshDebug.log(
-                    "[CoachScreenLifecycle]",
-                    "CoachTab selected source=TodayView oldTab=\(oldValue)"
-                )
-            }
-            #endif
-
-            if newValue == .today {
-                updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.selectedTab.today")
-            }
-
-            if newValue == .calendar {
-                resetPlanDateToToday()
-            }
-        }
         .task(id: healthRefreshID) {
             await refreshHealthAndNutritionAsync()
         }
         .onChange(of: plannedActivities) { _, _ in
             refreshTodayLiveState(refreshHealth: false)
         }
-        .onChange(of: appSession.returnToTodayTrigger) { _, _ in
+        .onChange(of: returnToTodayTrigger) { _, _ in
             handleReturnToTodayRequest()
         }
         .onChange(of: appSession.localDataResetTrigger) { _, _ in
@@ -680,9 +627,7 @@ struct TodayView: View {
                 Button {
                     showDirectMealLogSheet = false
 
-                    withAnimation {
-                        selectedTab = .meals
-                    }
+                    onSelectTab(.meals)
                 } label: {
                     Text(buttonTitle)
                         .font(.system(size: 14, weight: .bold))
@@ -1360,25 +1305,7 @@ struct TodayView: View {
     
 
     private var ambientBackground: some View {
-        Group {
-            switch selectedTab {
-
-            case .today:
-                WeekFitTheme.todayAmbient
-
-            case .coach:
-                WeekFitTheme.coachAmbient
-
-            case .insights:
-                WeekFitTheme.todayAmbient
-
-            case .meals:
-                WeekFitTheme.mealsAmbient
-
-            case .calendar:
-                WeekFitTheme.planAmbient
-            }
-        }
+        WeekFitTheme.todayAmbient
         .ignoresSafeArea()
     }
     
@@ -1458,7 +1385,7 @@ struct TodayView: View {
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-            selectedTab = .coach
+            onSelectTab(.coach)
         } label: {
             HStack(spacing: 12) {
                 ZStack {
@@ -1909,9 +1836,7 @@ struct TodayView: View {
                 let accentColor = activity.color
 
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        selectedTab = .calendar
-                    }
+                    onSelectTab(.calendar)
                 } label: {
                     HStack(spacing: 12) {
 
@@ -2012,9 +1937,7 @@ struct TodayView: View {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        selectedTab = .calendar
-                    }
+                    onSelectTab(.calendar)
 
                 } label: {
                     HStack {
@@ -2168,7 +2091,7 @@ struct TodayView: View {
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        selectedTab = .coach
+                        onSelectTab(.coach)
                     } label: {
                         HStack(alignment: .top, spacing: 14) {
                             ZStack {
@@ -2270,10 +2193,7 @@ struct TodayView: View {
     }
 
     private func handleReturnToTodayRequest() {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            selectedTab = .today
-            selectedDate = Date()
-        }
+        selectedDate = Date()
     }
 
     private func handleLocalDataResetCompleted() {
@@ -2286,8 +2206,6 @@ struct TodayView: View {
         showDirectDrinkLogSheet = false
         showDirectRecoveryLogSheet = false
         activityToConfirm = nil
-        isEditingActivity = false
-
         setQuickLogMeals([])
         setQuickLogSnacks([])
         setQuickLogDrinks([])
@@ -2844,13 +2762,6 @@ struct TodayView: View {
 
     private func shortDisplayTitle(_ title: String) -> String {
         title.components(separatedBy: ",").first ?? title
-    }
-
-    private func resetPlanDateToToday() {
-        let today = Date()
-        guard !Calendar.current.isDate(planViewModel.selectedDate, inSameDayAs: today) else { return }
-
-        planViewModel.selectedDate = today
     }
 
     private var selectedDayActivities: [PlannedActivity] {

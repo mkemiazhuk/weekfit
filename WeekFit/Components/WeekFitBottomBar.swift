@@ -31,7 +31,6 @@ enum WeekFitTab: Hashable, CaseIterable {
 struct WeekFitBottomBar: View {
 
     @Binding var selectedTab: WeekFitTab
-    var onCalendarTap: (() -> Void)? = nil
 
     @Namespace private var selectionNamespace
 
@@ -194,12 +193,6 @@ struct WeekFitBottomBar: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
         if tab == .coach {
-            #if DEBUG
-            CoachRefreshDebug.log(
-                "[CoachScreenLifecycle]",
-                "CoachTab selected source=WeekFitBottomBar"
-            )
-            #endif
             selectedTab = tab
             return
         }
@@ -214,8 +207,5 @@ struct WeekFitBottomBar: View {
             selectedTab = tab
         }
 
-        if tab == .calendar {
-            onCalendarTap?()
-        }
     }
 }
