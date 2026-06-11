@@ -73,7 +73,7 @@ struct NotificationSettingsView: View {
                         notificationRow(
                             icon: "heart.fill",
                             title: "Recovery Suggestions",
-                            subtitle: "Gentle guidance after active days",
+                            subtitle: "Guidance after active days",
                             isOn: $recoverySuggestionsEnabled
                         )
 
@@ -86,14 +86,14 @@ struct NotificationSettingsView: View {
                             isOn: $hydrationRemindersEnabled
                         )
 
-                        softDivider
-
-                        notificationRow(
-                            icon: "moon.fill",
-                            title: "Sleep Wind-down",
-                            subtitle: "Evening reminders to slow down",
-                            isOn: $sleepWindDownEnabled
-                        )
+//                        softDivider
+//
+//                        notificationRow(
+//                            icon: "moon.fill",
+//                            title: "Sleep Wind-down",
+//                            subtitle: "Evening reminders to slow down",
+//                            isOn: $sleepWindDownEnabled
+//                        )
                     }
 
                     footerNote

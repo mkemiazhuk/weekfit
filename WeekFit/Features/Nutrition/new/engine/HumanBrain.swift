@@ -9,6 +9,7 @@ enum HumanBrain {
         
         let metrics: DailyNutritionMetrics
         let profile: UserNutritionProfile
+        let baseDayGoals: NutritionGoals
         let fullDayGoals: NutritionGoals
         let smoothedGoals: NutritionGoals
         let activities: [PlannedActivity]
@@ -122,6 +123,7 @@ enum HumanBrain {
     static func build(
         metrics: DailyNutritionMetrics,
         profile: UserNutritionProfile,
+        baseDayGoals: NutritionGoals? = nil,
         fullDayGoals: NutritionGoals,
         smoothedGoals: NutritionGoals,
         activities: [PlannedActivity]
@@ -187,6 +189,7 @@ enum HumanBrain {
             currentHour: currentHour,
             metrics: metrics,
             profile: profile,
+            baseDayGoals: baseDayGoals ?? fullDayGoals,
             fullDayGoals: fullDayGoals,
             smoothedGoals: smoothedGoals,
             activities: activities,
@@ -210,6 +213,7 @@ extension HumanBrain.State {
         HumanBrain.build(
             metrics: metrics,
             profile: profile,
+            baseDayGoals: baseDayGoals,
             fullDayGoals: fullDayGoals,
             smoothedGoals: smoothedGoals,
             activities: currentActivities ?? activities
@@ -231,6 +235,7 @@ extension HumanBrain.State {
             currentHour: currentHour,
             metrics: metrics,
             profile: profile,
+            baseDayGoals: baseDayGoals,
             fullDayGoals: fullDayGoals,
             smoothedGoals: smoothedGoals,
             activities: activities,

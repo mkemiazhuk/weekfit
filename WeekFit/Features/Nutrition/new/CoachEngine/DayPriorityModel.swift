@@ -80,8 +80,7 @@ struct DayPriorityModel {
             .filter { !$0.isCompleted && !$0.isPartialCompletion && $0.date >= input.now }
             .reduce(0) { $0 + sessionScore($1) }
         let todayStress = actualLoadStressScore(input.actualLoad) + futurePlanStress
-        let tomorrowStress = tomorrowActivities.reduce(0) { $0 + sessionScore($1) }
-        let tomorrowDemand = tomorrowDemand(for: tomorrowStress)
+        let tomorrowDemand = CoachTomorrowDemandResolver.resolve(activities: tomorrowActivities).level
         let stressLevel = dayStressLevel(for: todayStress)
         let goal = dayGoal(
             stressLevel: stressLevel,
@@ -155,8 +154,8 @@ struct DayPriorityModel {
     private static func isSupportingActivity(_ activity: PlannedActivity) -> Bool {
         let kind = CoachActivityContextResolverV3.kind(for: activity)
         let load = CoachActivityContextResolverV3.load(for: activity)
-        if kind == .recovery { return true }
-        if kind == .workout || kind == .endurance || kind == .heat { return false }
+        if kind == .recovery || kind == .heat { return true }
+        if kind == .workout || kind == .endurance { return false }
         return load == .low
     }
 
@@ -182,15 +181,21 @@ struct DayPriorityModel {
             calorieScore = 0
         }
 
+        let progressCanRepresentLoad = actualLoad.activeCalories >= 300 ||
+            (actualLoad.exerciseMinutes ?? 0) >= 30
         let progressScore: Int
-        switch actualLoad.activityProgress ?? 0 {
-        case 1.9...:
-            progressScore = 120
-        case 1.5..<1.9:
-            progressScore = 95
-        case 1.0..<1.5:
-            progressScore = 60
-        default:
+        if progressCanRepresentLoad {
+            switch actualLoad.activityProgress ?? 0 {
+            case 1.9...:
+                progressScore = 120
+            case 1.5..<1.9:
+                progressScore = 95
+            case 1.0..<1.5:
+                progressScore = 60
+            default:
+                progressScore = 0
+            }
+        } else {
             progressScore = 0
         }
 
@@ -207,13 +212,6 @@ struct DayPriorityModel {
         }
 
         return max(calorieScore, progressScore, exerciseScore)
-    }
-
-    private static func tomorrowDemand(for stress: Int) -> CoachTomorrowDemand {
-        if stress >= 85 { return .hard }
-        if stress >= 45 { return .moderate }
-        if stress > 0 { return .easy }
-        return .none
     }
 
     private static func dayGoal(
@@ -327,7 +325,7 @@ enum CoachContributor: String, Hashable {
     var label: String {
         switch self {
         case .underfueled:
-            return "underfueling"
+            return "fueling support"
         case .hydrationBehind:
             return "hydration behind"
         case .proteinBehind:
@@ -346,16 +344,35 @@ enum CoachContributor: String, Hashable {
     }
 }
 
-struct CoachRecoveryContributorDebug: Hashable {
-    private static let calorieBehindThreshold = 0.45
-    private static let hydrationBehindThreshold = 0.70
-    private static let proteinBehindThreshold = 0.70
+enum CoachContributorLevel: String, Hashable {
+    case aheadOfTrajectory
+    case onTrajectory
+    case slightlyBehind
+    case meaningfullyBehind
+    case actionRequired
 
+    var isActiveContributor: Bool {
+        switch self {
+        case .meaningfullyBehind, .actionRequired:
+            return true
+        case .aheadOfTrajectory, .onTrajectory, .slightlyBehind:
+            return false
+        }
+    }
+}
+
+struct CoachRecoveryContributorDebug: Hashable {
     let activeContributors: [CoachContributor]
     let resolvedContributors: [CoachContributor]
     let calorieRatio: Double
     let hydrationRatio: Double
     let proteinRatio: Double
+    let expectedCalorieRatio: Double
+    let expectedHydrationRatio: Double
+    let expectedProteinRatio: Double
+    let calorieLevel: CoachContributorLevel
+    let hydrationLevel: CoachContributorLevel
+    let proteinLevel: CoachContributorLevel
 
     var debugLines: [String] {
         [
@@ -363,7 +380,13 @@ struct CoachRecoveryContributorDebug: Hashable {
             "RecoveryContributorDebug.resolvedContributors=\(Self.format(resolvedContributors))",
             "RecoveryContributorDebug.calorieRatio=\(Self.formatRatio(calorieRatio))",
             "RecoveryContributorDebug.hydrationRatio=\(Self.formatRatio(hydrationRatio))",
-            "RecoveryContributorDebug.proteinRatio=\(Self.formatRatio(proteinRatio))"
+            "RecoveryContributorDebug.proteinRatio=\(Self.formatRatio(proteinRatio))",
+            "RecoveryContributorDebug.expectedCalorieRatio=\(Self.formatRatio(expectedCalorieRatio))",
+            "RecoveryContributorDebug.expectedHydrationRatio=\(Self.formatRatio(expectedHydrationRatio))",
+            "RecoveryContributorDebug.expectedProteinRatio=\(Self.formatRatio(expectedProteinRatio))",
+            "RecoveryContributorDebug.calorieLevel=\(calorieLevel.rawValue)",
+            "RecoveryContributorDebug.hydrationLevel=\(hydrationLevel.rawValue)",
+            "RecoveryContributorDebug.proteinLevel=\(proteinLevel.rawValue)"
         ]
     }
 
@@ -371,7 +394,7 @@ struct CoachRecoveryContributorDebug: Hashable {
         let nutrition = context.nutritionContext
         let calorieRatio = Self.ratio(
             current: nutrition?.caloriesCurrent ?? context.brain.metrics.calories,
-            goal: nutrition?.caloriesGoal ?? context.brain.fullDayGoals.calories
+            goal: context.brain.baseDayGoals.calories
         )
         let hydrationRatio = Self.ratio(
             current: nutrition?.waterCurrent ?? context.brain.metrics.waterLiters,
@@ -379,42 +402,53 @@ struct CoachRecoveryContributorDebug: Hashable {
         )
         let proteinRatio = Self.ratio(
             current: nutrition?.proteinCurrent ?? context.brain.metrics.protein,
-            goal: nutrition?.proteinGoal ?? context.brain.fullDayGoals.protein
+            goal: context.brain.baseDayGoals.protein
         )
+        let hour = context.brain.currentHour
+        let expectedCalorieRatio = Self.expectedCalorieProgress(hour: hour)
+        let expectedHydrationRatio = Self.expectedHydrationProgress(hour: hour)
+        let expectedProteinRatio = Self.expectedProteinProgress(hour: hour)
 
-        let calorieIsBehind: Bool
-        if nutrition != nil {
-            calorieIsBehind = calorieRatio < calorieBehindThreshold
-        } else {
-            calorieIsBehind = context.brain.fuel == .underfueled ||
-                calorieRatio < calorieBehindThreshold ||
-                context.brain.current.carbsProgress < 0.35
-        }
-
-        let hydrationIsBehind = hydrationRatio < hydrationBehindThreshold
-
-        let proteinIsBehind: Bool
-        if nutrition != nil {
-            proteinIsBehind = proteinRatio < proteinBehindThreshold
-        } else {
-            proteinIsBehind = context.brain.protein == .low ||
-                context.brain.protein == .behind ||
-                proteinRatio < proteinBehindThreshold
-        }
+        let calorieLevel = Self.nutritionLevel(
+            actual: calorieRatio,
+            expected: expectedCalorieRatio,
+            hour: hour,
+            domain: .calories,
+            context: context
+        )
+        let hydrationLevel = Self.hydrationLevel(
+            actual: hydrationRatio,
+            expected: expectedHydrationRatio,
+            hour: hour,
+            context: context
+        )
+        let proteinLevel = Self.nutritionLevel(
+            actual: proteinRatio,
+            expected: expectedProteinRatio,
+            hour: hour,
+            domain: .protein,
+            context: context
+        )
 
         var active: [CoachContributor] = []
         var resolved: [CoachContributor] = []
 
-        Self.classify(.underfueled, isActive: calorieIsBehind, active: &active, resolved: &resolved)
-        Self.classify(.hydrationBehind, isActive: hydrationIsBehind, active: &active, resolved: &resolved)
-        Self.classify(.proteinBehind, isActive: proteinIsBehind, active: &active, resolved: &resolved)
+        Self.classify(.underfueled, isActive: calorieLevel.isActiveContributor, active: &active, resolved: &resolved)
+        Self.classify(.hydrationBehind, isActive: hydrationLevel.isActiveContributor, active: &active, resolved: &resolved)
+        Self.classify(.proteinBehind, isActive: proteinLevel.isActiveContributor, active: &active, resolved: &resolved)
 
         return CoachRecoveryContributorDebug(
             activeContributors: active,
             resolvedContributors: resolved,
             calorieRatio: calorieRatio,
             hydrationRatio: hydrationRatio,
-            proteinRatio: proteinRatio
+            proteinRatio: proteinRatio,
+            expectedCalorieRatio: expectedCalorieRatio,
+            expectedHydrationRatio: expectedHydrationRatio,
+            expectedProteinRatio: expectedProteinRatio,
+            calorieLevel: calorieLevel,
+            hydrationLevel: hydrationLevel,
+            proteinLevel: proteinLevel
         )
     }
 
@@ -442,6 +476,168 @@ struct CoachRecoveryContributorDebug: Hashable {
     private static func ratio(current: Double, goal: Double) -> Double {
         guard goal > 0 else { return 1 }
         return max(0, current / goal)
+    }
+
+    private enum TrajectoryDomain {
+        case calories
+        case hydration
+        case protein
+    }
+
+    private static func nutritionLevel(
+        actual: Double,
+        expected: Double,
+        hour: Int,
+        domain: TrajectoryDomain,
+        context: CoachDecisionContext
+    ) -> CoachContributorLevel {
+        let mealsCount = context.nutritionContext?.mealsCount ?? 0
+        let hasSeveralMeals = mealsCount >= 3
+        let hardTrainingContext = context.dayContext.hasMeaningfulLoadCompleted ||
+            context.actualLoad.activeCalories >= 750
+
+        if actual >= 0.95, actual >= expected + 0.10 {
+            return .aheadOfTrajectory
+        }
+
+        if actual >= 0.80 {
+            return .onTrajectory
+        }
+
+        let morning = hour < 12
+        let earlyAfternoon = hour < 16
+
+        if morning {
+            if actual < 0.10 {
+                return hardTrainingContext ? .meaningfullyBehind : .slightlyBehind
+            }
+            return .onTrajectory
+        }
+
+        if actual >= 0.60 {
+            if hasSeveralMeals, !hardTrainingContext {
+                return .onTrajectory
+            }
+            return .slightlyBehind
+        }
+
+        if actual >= 0.40 {
+            if domain == .calories, earlyAfternoon {
+                return .slightlyBehind
+            }
+            if domain == .protein, earlyAfternoon, !hardTrainingContext {
+                return .slightlyBehind
+            }
+            return .meaningfullyBehind
+        }
+
+        if actual < 0.40 {
+            if hour >= 22, !hardTrainingContext {
+                return .meaningfullyBehind
+            }
+            return .actionRequired
+        }
+
+        return .onTrajectory
+    }
+
+    private static func hydrationLevel(
+        actual: Double,
+        expected: Double,
+        hour: Int,
+        context: CoachDecisionContext
+    ) -> CoachContributorLevel {
+        if actual >= 0.90 {
+            return actual >= expected * 1.08 ? .aheadOfTrajectory : .onTrajectory
+        }
+
+        if hour >= 20 {
+            switch actual {
+            case 0.75..<0.90:
+                return .slightlyBehind
+            case 0.50..<0.75:
+                return .meaningfullyBehind
+            case ..<0.50:
+                return .actionRequired
+            default:
+                break
+            }
+        }
+
+        guard expected > 0 else { return .onTrajectory }
+        let relativeToExpected = actual / expected
+        switch relativeToExpected {
+        case 1.10...:
+            return .aheadOfTrajectory
+        case 0.90..<1.10:
+            return .onTrajectory
+        case 0.75..<0.90:
+            return .slightlyBehind
+        case 0.50..<0.75:
+            return .meaningfullyBehind
+        default:
+            let morning = hour < 12
+            let hasHydrationRisk = context.dayContext.hasMoreLoadAhead ||
+                context.dayContext.hasMeaningfulLoadCompleted ||
+                context.dayContext.allActivities.contains {
+                    let kind = CoachActivityContextResolverV3.kind(for: $0)
+                    return (kind == .heat || kind == .endurance) && !$0.isCompleted
+                }
+            if morning, !hasHydrationRisk {
+                return .meaningfullyBehind
+            }
+            return .actionRequired
+        }
+    }
+
+    private static func expectedHydrationProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.08),
+            (8, 0.18),
+            (12, 0.45),
+            (16, 0.68),
+            (20, 0.90),
+            (22, 1.00)
+        ])
+    }
+
+    private static func expectedCalorieProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.05),
+            (8, 0.12),
+            (12, 0.38),
+            (16, 0.62),
+            (20, 0.88),
+            (22, 1.00)
+        ])
+    }
+
+    private static func expectedProteinProgress(hour: Int) -> Double {
+        interpolate(hour: hour, points: [
+            (6, 0.04),
+            (8, 0.10),
+            (12, 0.28),
+            (16, 0.52),
+            (20, 0.84),
+            (22, 0.96)
+        ])
+    }
+
+    private static func interpolate(hour: Int, points: [(Int, Double)]) -> Double {
+        guard let first = points.first, let last = points.last else { return 1 }
+        if hour <= first.0 { return first.1 }
+        if hour >= last.0 { return last.1 }
+
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let next = points[index]
+            guard hour <= next.0 else { continue }
+            let span = Double(next.0 - previous.0)
+            let progress = span > 0 ? Double(hour - previous.0) / span : 1
+            return previous.1 + ((next.1 - previous.1) * progress)
+        }
+
+        return last.1
     }
 }
 
@@ -636,9 +832,11 @@ struct CoachDayDecisionFrame: Hashable {
     let recommendationIntent: CoachRecommendationIntent
     let remainingActivityRisk: RemainingActivityRiskAssessment?
     let loadSourceDebug: CoachLoadSourceDebug
+    let contextConfidence: CoachContextConfidence
 
     var shouldOwnNarrative: Bool {
-        planStatus.requiresPlanChange || planStatus == .complete
+        contextConfidence.dayLevelIsAuthoritative &&
+            (planStatus.requiresPlanChange || planStatus == .complete)
     }
 
     var stateLabel: String {
@@ -890,7 +1088,8 @@ struct CoachDayDecisionFrame: Hashable {
             planStatus: planStatus,
             recommendationIntent: recommendationIntent,
             remainingActivityRisk: remainingActivityRisk,
-            loadSourceDebug: loadDebug
+            loadSourceDebug: loadDebug,
+            contextConfidence: context.contextConfidence
         )
     }
 }
@@ -902,6 +1101,26 @@ extension CoachDecisionContext {
 }
 
 private extension CoachDayDecisionFrame {
+    struct HeatRiskFactors {
+        let recoveryPoor: Bool
+        let severeDehydration: Bool
+        let recentTrainingLoadHigh: Bool
+        let multipleHardSessionsCompleted: Bool
+
+        var hasAnyRisk: Bool {
+            recoveryPoor ||
+                severeDehydration ||
+                recentTrainingLoadHigh ||
+                multipleHardSessionsCompleted
+        }
+
+        var isHighRisk: Bool {
+            severeDehydration ||
+                multipleHardSessionsCompleted ||
+                (recoveryPoor && recentTrainingLoadHigh)
+        }
+    }
+
     static func primarySession(in context: CoachDayContext) -> PlannedActivity? {
         context.allActivities
             .filter { !isSupporting($0) && sessionScore($0) > 0 }
@@ -929,11 +1148,16 @@ private extension CoachDayDecisionFrame {
         let day = context.dayContext
         let actualLoad = context.actualLoad
         let recoveryPercent = context.recoveryContext?.recoveryPercent ?? 0
-        if actualLoad.activityProgress.map({ $0 >= 1.75 }) == true ||
+        let progressCanRepresentHighLoad = actualLoad.activeCalories >= 550 ||
+            (actualLoad.exerciseMinutes ?? 0) >= 60
+        if (progressCanRepresentHighLoad && actualLoad.activityProgress.map({ $0 >= 1.75 }) == true) ||
             actualLoad.activeCalories >= 800 {
             return .overload
         }
-        if recoveryPercent > 0, recoveryPercent < 55, !day.hasMoreLoadAhead {
+        if context.contextConfidence.dayLevelIsAuthoritative,
+           recoveryPercent > 0,
+           recoveryPercent < 55,
+           !day.hasMoreLoadAhead {
             return .deload
         }
         if day.dayType == .recovery {
@@ -984,15 +1208,19 @@ private extension CoachDayDecisionFrame {
         if day.hasMoreLoadAhead, completedLoadIsHigh, day.upcomingTrainingStressScore >= 4 {
             return .excessiveLoad
         }
-        if sleepHours > 0, sleepHours < 6.0 {
+        if context.contextConfidence.dayLevelIsAuthoritative,
+           sleepHours > 0,
+           sleepHours < 6.0 {
             return .poorSleep
         }
-        if recovery.map({ $0 < 55 }) == true ||
-            context.brain.recovery == .compromised ||
-            context.brain.readiness == .compromised {
-            return .lowRecovery
+        if context.contextConfidence.dayLevelIsAuthoritative {
+            if recovery.map({ $0 < 55 }) == true ||
+                context.brain.recovery == .compromised ||
+                context.brain.readiness == .compromised {
+                return .lowRecovery
+            }
         }
-        if context.tomorrowContext?.hasHardTraining == true,
+        if context.tomorrowDemand.isHard,
            completedLoadIsHigh || contributors.contains(.tomorrowDemand) {
             return .tomorrowDemand
         }
@@ -1022,7 +1250,7 @@ private extension CoachDayDecisionFrame {
         if context.actualLoad.activeCalories >= 750 || context.actualLoad.activityProgress.map({ $0 >= 1.5 }) == true {
             append(.highActiveCalories)
         }
-        if context.tomorrowContext?.hasHardTraining == true {
+        if context.tomorrowDemand.isHard {
             append(.tomorrowDemand)
         }
 
@@ -1036,14 +1264,13 @@ private extension CoachDayDecisionFrame {
         contributors: [CoachContributor]
     ) -> CoachPlanStatus {
         let day = context.dayContext
-        let hasFuelOrHydrationDrag = contributors.contains(.underfueled) || contributors.contains(.hydrationBehind)
-
         switch primaryDriver {
         case .unsafeHeatStress, .illness, .injury:
             return .cancel
         case .accumulatedFatigue, .overloadRisk, .excessiveLoad:
             guard day.hasMoreLoadAhead else { return .complete }
-            if dayType == .overload, hasFuelOrHydrationDrag || context.brain.readiness == .low || context.brain.recovery == .compromised {
+            if dayType == .overload,
+               context.brain.readiness == .low || context.brain.recovery == .compromised {
                 return .replace
             }
             return .downgrade
@@ -1117,12 +1344,14 @@ private extension CoachDayDecisionFrame {
         let completedLoad = Int(context.actualLoad.activeCalories.rounded())
         let activeCalories = Int(context.actualLoad.activeCalories.rounded())
         let completedStress = actualCompletedTrainingStress(context: context)
-        let tomorrowDemand = context.tomorrowContext?.hasHardTraining == true
+        let tomorrowDemand = context.tomorrowDemand.isHard
         let recoveryPercent = context.recoveryContext.map { Int($0.recoveryPercent) }
+        let progressCanRepresentHighLoad = activeCalories >= 550 ||
+            (context.actualLoad.exerciseMinutes ?? 0) >= 60
         let dayIsLoaded = dayType == .overload ||
             completedStress >= 3 ||
             activeCalories >= 750 ||
-            context.actualLoad.activityProgress.map({ $0 >= 1.5 }) == true ||
+            (progressCanRepresentHighLoad && context.actualLoad.activityProgress.map({ $0 >= 1.5 }) == true) ||
             primaryDriver == .accumulatedFatigue ||
             primaryDriver == .overloadRisk ||
             primaryDriver == .excessiveLoad
@@ -1130,9 +1359,18 @@ private extension CoachDayDecisionFrame {
             context.brain.readiness == .low ||
             context.brain.readiness == .compromised ||
             recoveryPercent.map { $0 < 60 } == true
-        let supportDrag = contributors.contains(.underfueled) ||
-            contributors.contains(.hydrationBehind) ||
+        let severeHydrationDrag = hydrationRatio(context) < 0.30
+        let supportDrag = severeHydrationDrag ||
+            contributors.contains(.underfueled) ||
             contributors.contains(.proteinBehind)
+        let heatRiskFactors = HeatRiskFactors(
+            recoveryPoor: recoveryLimited,
+            severeDehydration: severeHydrationDrag,
+            recentTrainingLoadHigh: completedStress >= 3 ||
+                activeCalories >= 750 ||
+                (progressCanRepresentHighLoad && context.actualLoad.activityProgress.map({ $0 >= 1.5 }) == true),
+            multipleHardSessionsCompleted: context.dayContext.completedTrainingActivities.count >= 2
+        )
 
         let classification = classifyRemainingActivityRisk(
             category: category,
@@ -1142,7 +1380,8 @@ private extension CoachDayDecisionFrame {
             dayIsLoaded: dayIsLoaded,
             recoveryLimited: recoveryLimited,
             supportDrag: supportDrag,
-            tomorrowDemand: tomorrowDemand
+            tomorrowDemand: tomorrowDemand,
+            heatRiskFactors: heatRiskFactors
         )
 
         return RemainingActivityRiskAssessment(
@@ -1506,8 +1745,8 @@ private extension CoachDayDecisionFrame {
 
     static func isSupporting(_ activity: PlannedActivity) -> Bool {
         let kind = CoachActivityContextResolverV3.kind(for: activity)
-        if kind == .recovery { return true }
-        if kind == .workout || kind == .endurance || kind == .heat { return false }
+        if kind == .recovery || kind == .heat { return true }
+        if kind == .workout || kind == .endurance { return false }
         return CoachActivityContextResolverV3.load(for: activity) == .low
     }
 
@@ -1653,7 +1892,8 @@ private extension CoachDayDecisionFrame {
         dayIsLoaded: Bool,
         recoveryLimited: Bool,
         supportDrag: Bool,
-        tomorrowDemand: Bool
+        tomorrowDemand: Bool,
+        heatRiskFactors: HeatRiskFactors
     ) -> (
         riskLevel: RemainingActivityRiskLevel,
         action: RemainingActivityRecommendedAction,
@@ -1699,8 +1939,13 @@ private extension CoachDayDecisionFrame {
         }
 
         if category == "sauna" {
-            let risk: RemainingActivityRiskLevel = supportDrag ? .high : .medium
-            return (risk, .shorten, 10, "easy heat exposure", "mobility or stretching", "heat adds recovery cost when the day is already loaded")
+            if heatRiskFactors.isHighRisk {
+                return (.high, .shorten, min(duration, 10), "easy heat exposure", "mobility or stretching", "heat risk is elevated by recovery, hydration, or completed load")
+            }
+            if heatRiskFactors.hasAnyRisk {
+                return (.medium, .makeEasy, min(duration, 20), "easy heat exposure", nil, "sauna can stay easy with hydration and a clear exit point")
+            }
+            return (.low, .keep, duration, "easy heat exposure", nil, "sauna is recovery support when sleep, recovery, hydration, and load are stable")
         }
 
         if role == .support {

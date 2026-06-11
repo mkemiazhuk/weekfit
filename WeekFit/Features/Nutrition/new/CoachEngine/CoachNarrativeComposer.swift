@@ -314,13 +314,13 @@ private extension CoachNarrativeComposer {
         }
 
         if context.contributorsContain(.underfueled) {
-            evidence.append("underfueling is in play")
+            evidence.append("fueling could use support")
         }
 
         if context.contributorsContain(.hydrationBehind) {
             switch context.hydrationState {
             case .depleted:
-                evidence.append("hydration is still depleted")
+                evidence.append("hydration needs attention")
             case .improving:
                 evidence.append("hydration is improving")
             case .adequate:
@@ -329,7 +329,7 @@ private extension CoachNarrativeComposer {
         }
 
         if context.contributorsContain(.proteinBehind) {
-            evidence.append("protein is behind")
+            evidence.append("protein could use attention")
         }
 
         if context.contributorsContain(.recentSauna) {

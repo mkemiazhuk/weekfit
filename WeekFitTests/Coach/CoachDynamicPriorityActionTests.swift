@@ -10,12 +10,10 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
 
         assertRecoveryStory(scenario.guidance)
         XCTAssertFalse(isFoodOrWaterHero(story.title))
-        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
         XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=proteinBehind"))
-        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=hydrationBehind"))
-        XCTAssertTrue(scenario.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[underfueled,hydrationBehind,proteinBehind]"))
-        XCTAssertTrue(actionText(story).localizedCaseInsensitiveContains("meal") || actionText(story).localizedCaseInsensitiveContains("protein"))
-        XCTAssertTrue(actionText(story).localizedCaseInsensitiveContains("sip") || actionText(story).localizedCaseInsensitiveContains("drink"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
+        assertActive(scenario, ["underfueled", "proteinBehind"])
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("RecoveryContributorDebug.proteinLevel=actionRequired"))
         XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=highActiveCalories"))
     }
 
@@ -28,11 +26,11 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         XCTAssertFalse(actionText(story).localizedCaseInsensitiveContains("eat recovery meal"))
         XCTAssertFalse(after.guidance.priority.reasons.contains("contributor=underfueled"))
         XCTAssertFalse(after.guidance.priority.reasons.contains("contributor=proteinBehind"))
-        XCTAssertTrue(after.guidance.priority.reasons.contains("contributor=hydrationBehind"))
-        XCTAssertTrue(after.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[hydrationBehind]"))
-        XCTAssertTrue(after.guidance.priority.reasons.contains("RecoveryContributorDebug.resolvedContributors=[underfueled,proteinBehind]"))
-        XCTAssertNotEqual(before.guidance.priority.decisionScore, after.guidance.priority.decisionScore)
-        XCTAssertNotEqual(actionSignature(before.guidance), actionSignature(after.guidance))
+        XCTAssertFalse(after.guidance.priority.reasons.contains("contributor=hydrationBehind"))
+        XCTAssertTrue(after.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[]"))
+        XCTAssertTrue(after.guidance.priority.reasons.contains("RecoveryContributorDebug.resolvedContributors=[underfueled,hydrationBehind,proteinBehind]"))
+        XCTAssertEqual(before.guidance.priority.priority, after.guidance.priority.priority)
+        XCTAssertFalse(isFoodOrWaterHero(story.title))
     }
 
     func testWaterImprovesFoodStillBehindRemovesHydrationContributor() throws {
@@ -40,10 +38,12 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         let story = try XCTUnwrap(scenario.guidance.screenStory)
 
         assertRecoveryStory(scenario.guidance)
-        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
         XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=proteinBehind"))
-        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=hydrationBehind"))
-        XCTAssertTrue(scenario.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[underfueled,proteinBehind]"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains {
+            $0.hasPrefix("RecoveryContributorDebug.activeContributors=") && $0.contains("hydrationBehind")
+        })
+        assertActive(scenario, ["underfueled", "proteinBehind"])
         XCTAssertTrue(scenario.guidance.priority.reasons.contains { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") && $0.contains("hydrationBehind") })
         XCTAssertFalse(primaryActionText(story).localizedCaseInsensitiveContains("drink water"))
         XCTAssertFalse(primaryActionText(story).localizedCaseInsensitiveContains("sip"))
@@ -131,7 +131,7 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         assertRecoveryStory(scenario.guidance)
         XCTAssertFalse(story.title.localizedCaseInsensitiveContains("day complete"))
         XCTAssertTrue(primaryActionText(story).localizedCaseInsensitiveContains("meal") || primaryActionText(story).localizedCaseInsensitiveContains("eat") || primaryActionText(story).localizedCaseInsensitiveContains("protein"))
-        XCTAssertTrue(actionText(story).localizedCaseInsensitiveContains("sip") || actionText(story).localizedCaseInsensitiveContains("drink"))
+        XCTAssertTrue(actionText(story).localizedCaseInsensitiveContains("fluid") || actionText(story).localizedCaseInsensitiveContains("hydration"))
     }
 
     func testPostHardWorkoutRefuelCompleteRemovesRefuelAction() throws {
@@ -151,14 +151,127 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         let anotherMeal = highLoadScenario(calories: 1_900, protein: 150, water: 3.0)
         let deletedMeal = highLoadScenario(calories: 712, protein: 57, water: 3.0)
 
-        assertActive(under, ["underfueled", "hydrationBehind", "proteinBehind"])
-        assertActive(proteinMeal, ["hydrationBehind"])
+        assertActive(under, ["underfueled", "proteinBehind"])
+        assertActive(proteinMeal, [])
         assertActive(water, [])
         assertActive(anotherMeal, [])
         assertActive(deletedMeal, ["underfueled", "proteinBehind"])
         XCTAssertNotEqual(under.fingerprint.rawValue, proteinMeal.fingerprint.rawValue)
         XCTAssertNotEqual(proteinMeal.fingerprint.rawValue, water.fingerprint.rawValue)
         XCTAssertNotEqual(water.fingerprint.rawValue, deletedMeal.fingerprint.rawValue)
+    }
+
+    func testHydrationBandsRespectTimeOfDay() {
+        let onPaceAtNoon = highLoadScenario(calories: 1_500, protein: 120, water: 1.55, currentHour: 12)
+        let meaningfulLate = highLoadScenario(calories: 1_500, protein: 120, water: 2.30, currentHour: 21)
+        let actionRequiredLate = highLoadScenario(calories: 1_500, protein: 120, water: 1.30, currentHour: 20)
+
+        assertActive(onPaceAtNoon, [])
+        assertLevel(onPaceAtNoon, "hydration", "onTrajectory")
+        assertActive(meaningfulLate, ["hydrationBehind"])
+        assertLevel(meaningfulLate, "hydration", "meaningfullyBehind")
+        assertActive(actionRequiredLate, ["hydrationBehind"])
+        assertLevel(actionRequiredLate, "hydration", "actionRequired")
+    }
+
+    func testHydrationAboveNinetyDoesNotRecommendMoreWater() throws {
+        let scenario = buildScenario(
+            activities: [],
+            calories: 1_700,
+            protein: 130,
+            water: 3.50,
+            activeCalories: 1_114,
+            activityProgress: 1.57,
+            exerciseMinutes: 130,
+            recoveryPercent: 86,
+            readiness: .low,
+            recovery: .vulnerable,
+            currentHour: 21
+        )
+        let story = try XCTUnwrap(scenario.guidance.screenStory)
+
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=hydrationBehind"))
+        XCTAssertFalse(actionText(story).localizedCaseInsensitiveContains("water"))
+        XCTAssertFalse(actionText(story).localizedCaseInsensitiveContains("sip"))
+        XCTAssertFalse(actionText(story).localizedCaseInsensitiveContains("drink"))
+    }
+
+    func testCaloriesDoNotChaseFullActivityReplacementWhenMinimumFuelingIsCovered() {
+        let scenario = highLoadScenario(calories: 1_950, protein: 130, water: 3.0, currentHour: 20)
+
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=proteinBehind"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") && $0.contains("underfueled") })
+    }
+
+    func testAdjustedCaloriesDoNotCreateUnderfueledProblemWhenBaseTargetIsMet() {
+        let baseGoals = NutritionGoals(calories: 1_850, protein: 150, carbs: 180, fats: 60, fiber: 35, waterLiters: 3.0)
+        let adjustedGoals = NutritionGoals(calories: 2_700, protein: 180, carbs: 320, fats: 80, fiber: 35, waterLiters: 3.8)
+        let scenario = buildScenario(
+            activities: baseHighLoadActivities(recentHardWorkout: true),
+            calories: 1_900,
+            protein: 150,
+            water: 3.3,
+            activeCalories: 1_100,
+            activityProgress: 1.5,
+            exerciseMinutes: 105,
+            recoveryPercent: 82,
+            readiness: .good,
+            recovery: .stable,
+            currentHour: 20,
+            baseGoals: baseGoals,
+            nutritionGoals: adjustedGoals
+        )
+
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[]"))
+    }
+
+    func testAdjustedProteinDoesNotCreateProteinProblemWhenCloseToBaseTarget() {
+        let baseGoals = NutritionGoals(calories: 1_850, protein: 150, carbs: 180, fats: 60, fiber: 35, waterLiters: 3.0)
+        let adjustedGoals = NutritionGoals(calories: 2_700, protein: 180, carbs: 320, fats: 80, fiber: 35, waterLiters: 3.8)
+        let scenario = buildScenario(
+            activities: baseHighLoadActivities(recentHardWorkout: true),
+            calories: 1_900,
+            protein: 145,
+            water: 3.3,
+            activeCalories: 1_100,
+            activityProgress: 1.5,
+            exerciseMinutes: 105,
+            recoveryPercent: 82,
+            readiness: .good,
+            recovery: .stable,
+            currentHour: 20,
+            baseGoals: baseGoals,
+            nutritionGoals: adjustedGoals
+        )
+
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=proteinBehind"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("RecoveryContributorDebug.activeContributors=[]"))
+    }
+
+    func testProteinCarriesMoreWeightThanCalories() {
+        let scenario = highLoadScenario(calories: 1_500, protein: 70, water: 3.0, currentHour: 14)
+
+        XCTAssertFalse(scenario.guidance.priority.reasons.contains("contributor=underfueled"))
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("contributor=proteinBehind"))
+        assertLevel(scenario, "protein", "meaningfullyBehind")
+    }
+
+    func testProteinUsesTrajectoryInsteadOfFullDayTarget() {
+        let morning = highLoadScenario(calories: 700, protein: 35, water: 1.2, currentHour: 10)
+        let afternoon = highLoadScenario(calories: 1_000, protein: 70, water: 2.0, currentHour: 14)
+        let evening = highLoadScenario(calories: 1_500, protein: 60, water: 3.3, currentHour: 20)
+
+        assertActive(morning, [])
+        assertLevel(morning, "protein", "onTrajectory")
+        XCTAssertFalse(morning.guidance.priority.reasons.contains("contributor=proteinBehind"))
+
+        assertActive(afternoon, ["proteinBehind"])
+        assertLevel(afternoon, "protein", "meaningfullyBehind")
+
+        XCTAssertTrue(evening.guidance.priority.reasons.contains("contributor=proteinBehind"))
+        assertLevel(evening, "protein", "actionRequired")
     }
 
     func testTodayAndCoachPresentationsUseSameCanonicalState() throws {
@@ -177,6 +290,213 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         XCTAssertEqual(refreshing.id, first.state.id)
         XCTAssertEqual(refreshing.todayPresentation.title, first.state.todayPresentation.title)
         XCTAssertEqual(refreshing.coachPresentation?.title, first.state.coachPresentation?.title)
+    }
+
+    func testUnstableRecoverySyncPreventsAuthoritativeDayFrame() throws {
+        let futureRun = plannedActivity(.running, minutesFromNow: 90, duration: 60, completed: false)
+        let scenario = buildScenario(
+            activities: [futureRun],
+            calories: 1_200,
+            protein: 95,
+            water: 2.8,
+            activeCalories: 620,
+            activityProgress: 1.4,
+            exerciseMinutes: 55,
+            recoveryPercent: 0,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 0
+        )
+        let frame = try XCTUnwrap(scenario.guidance.dayDecisionFrame)
+
+        XCTAssertFalse(frame.contextConfidence.dayLevelIsAuthoritative)
+        XCTAssertFalse(frame.shouldOwnNarrative)
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains("ContextConfidence.dayLevelIsAuthoritative=false"))
+    }
+
+    func testLowActiveCaloriesCannotCreateOverloadFromEstimatedProgress() throws {
+        let saunaLater = sauna(minutesFromNow: 90, duration: 25, completed: false)
+        let scenario = buildScenario(
+            activities: [saunaLater],
+            calories: 1_300,
+            protein: 115,
+            water: 3.0,
+            activeCalories: 172,
+            activityProgress: 2.1,
+            exerciseMinutes: 16,
+            recoveryPercent: 89,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 7.8
+        )
+
+        XCTAssertNotEqual(DayPriorityModel.build(from: scenario.input).dayStressLevel, .overload)
+        XCTAssertNotEqual(scenario.guidance.dayDecisionFrame?.dayType, .overload)
+    }
+
+    func testStableSaunaIsNotHighRisk() throws {
+        let scenario = buildScenario(
+            activities: [sauna(minutesFromNow: 60, duration: 25, completed: false)],
+            calories: 1_450,
+            protein: 120,
+            water: 3.1,
+            activeCalories: 172,
+            activityProgress: 0.35,
+            exerciseMinutes: 16,
+            recoveryPercent: 89,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 7.8
+        )
+        let risk = try XCTUnwrap(scenario.guidance.dayDecisionFrame?.remainingActivityRisk)
+
+        XCTAssertNotEqual(risk.riskLevel, .high)
+        XCTAssertNotEqual(risk.recommendedAction, .shorten)
+        XCTAssertNotEqual(risk.maxRecommendedDuration, 10)
+    }
+
+    func testSevereHydrationBehindBeforeSaunaOutranksFood() throws {
+        let scenario = buildScenario(
+            activities: [sauna(minutesFromNow: 20, duration: 25, completed: false)],
+            calories: 500,
+            protein: 35,
+            water: 0.60,
+            activeCalories: 172,
+            activityProgress: 0.35,
+            exerciseMinutes: 16,
+            recoveryPercent: 89,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 7.8
+        )
+        let story = try XCTUnwrap(scenario.guidance.screenStory)
+        let firstAction = try XCTUnwrap(story.primaryActions.first)
+
+        XCTAssertTrue(firstAction.type.isHydrationAction)
+        XCTAssertFalse(firstAction.type.isFoodAction)
+    }
+
+    func testRecoveryContributorsDoNotForcePlanReplacement() throws {
+        let futureRun = plannedActivity(.running, minutesFromNow: 90, duration: 60, completed: false)
+        let scenario = buildScenario(
+            activities: [futureRun],
+            calories: 500,
+            protein: 35,
+            water: 1.4,
+            activeCalories: 820,
+            activityProgress: 1.55,
+            exerciseMinutes: 75,
+            recoveryPercent: 89,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 7.8
+        )
+        let frame = try XCTUnwrap(scenario.guidance.dayDecisionFrame)
+
+        XCTAssertTrue(frame.contributors.contains(.underfueled))
+        XCTAssertTrue(frame.contributors.contains(.hydrationBehind))
+        assertLevel(scenario, "hydration", "meaningfullyBehind")
+        XCTAssertNotEqual(frame.primaryDriver, .lowRecovery)
+        XCTAssertNotEqual(frame.planStatus, .replace)
+    }
+
+    func testMajorScenarioReasoningTracesStayExplainable() throws {
+        let stableOpenDay = buildScenario(
+            activities: [],
+            calories: 1_450,
+            protein: 120,
+            water: 3.1,
+            activeCalories: 140,
+            activityProgress: 0.22,
+            exerciseMinutes: 18,
+            recoveryPercent: 84,
+            readiness: .good,
+            recovery: .stable
+        )
+        assertTrace(stableOpenDay, name: "stable open day")
+        XCTAssertFalse(stableOpenDay.guidance.priority.reasons.contains("contributor=hydrationBehind"))
+
+        let walkSaunaWalk = buildScenario(
+            activities: [
+                plannedActivity(.walk, minutesFromNow: 60, duration: 30, completed: false),
+                sauna(minutesFromNow: 180, duration: 25, completed: false),
+                plannedActivity(.walk, minutesFromNow: 300, duration: 30, completed: false)
+            ],
+            calories: 1_250,
+            protein: 112,
+            water: 3.0,
+            activeCalories: 120,
+            activityProgress: 0.20,
+            exerciseMinutes: 15,
+            recoveryPercent: 82,
+            readiness: .good,
+            recovery: .stable
+        )
+        assertTrace(walkSaunaWalk, name: "walk + sauna + walk")
+        XCTAssertNotEqual(DayPriorityModel.build(from: walkSaunaWalk.input).dayGoal, .performance)
+
+        let activeWorkout = highLoadScenario(calories: 1_500, protein: 120, water: 3.0, active: .cycling)
+        assertTrace(activeWorkout, name: "active workout")
+        XCTAssertTrue(isActivePhase(activeWorkout.guidance.phase))
+        XCTAssertTrue(activeWorkout.guidance.supportActions.allSatisfy { $0.actionProvenance == .activeSessionExecution })
+
+        let activeRecovery = highLoadScenario(calories: 1_500, protein: 120, water: 3.0, active: .walk)
+        assertTrace(activeRecovery, name: "active recovery")
+        XCTAssertTrue(isActivePhase(activeRecovery.guidance.phase))
+        XCTAssertNotEqual(try XCTUnwrap(activeRecovery.guidance.screenStory).title, "The work is in the bank")
+
+        let completedHardWorkout = highLoadScenario(calories: 1_700, protein: 130, water: 3.0, recentHardWorkout: true)
+        assertTrace(completedHardWorkout, name: "completed hard workout")
+        XCTAssertTrue(completedHardWorkout.input.dayContext.completedTrainingActivities.isEmpty == false)
+
+        let highHealthKitNoMatch = buildScenario(
+            activities: [],
+            calories: 1_400,
+            protein: 120,
+            water: 3.0,
+            activeCalories: 1_050,
+            activityProgress: 1.75,
+            exerciseMinutes: 95,
+            recoveryPercent: 78,
+            readiness: .good,
+            recovery: .stable
+        )
+        assertTrace(highHealthKitNoMatch, name: "high HealthKit load with no matched activity")
+        XCTAssertTrue(highHealthKitNoMatch.guidance.priority.reasons.contains { $0.contains("highActiveCalories") })
+        XCTAssertTrue(highHealthKitNoMatch.guidance.priority.reasons.contains("CoachLoadSourceDebug.loadSourceUsed=healthKitSamplesWithAppGoalEstimate"))
+
+        let futureHardLowRecovery = trainingSoonScenario(
+            calories: 900,
+            protein: 80,
+            water: 2.8,
+            futureKind: .running,
+            recoveryPercent: 48,
+            sleepHours: 5.2
+        )
+        assertTrace(futureHardLowRecovery, name: "future hard workout + low sleep/recovery")
+        XCTAssertTrue(futureHardLowRecovery.guidance.priority.reasons.contains { $0.localizedCaseInsensitiveContains("sleep") || $0.localizedCaseInsensitiveContains("recovery") })
+
+        let hydrationUnresolved = highLoadScenario(calories: 1_500, protein: 120, water: 2.3)
+        let hydrationResolved = highLoadScenario(calories: 1_500, protein: 120, water: 3.1)
+        assertTrace(hydrationUnresolved, name: "hydration unresolved")
+        assertTrace(hydrationResolved, name: "hydration resolved")
+        assertActive(hydrationUnresolved, [])
+        XCTAssertTrue(hydrationUnresolved.guidance.priority.reasons.contains { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") && $0.contains("hydrationBehind") })
+        XCTAssertTrue(hydrationResolved.guidance.priority.reasons.contains { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") && $0.contains("hydrationBehind") })
+        XCTAssertFalse(try XCTUnwrap(hydrationResolved.guidance.screenStory).primaryActions.contains { $0.type.isHydrationAction })
+
+        let foodUnresolved = highLoadScenario(calories: 650, protein: 45, water: 3.1, currentHour: 20)
+        let foodResolved = highLoadScenario(calories: 1_600, protein: 130, water: 3.1)
+        assertTrace(foodUnresolved, name: "food unresolved")
+        XCTAssertFalse(foodResolved.guidance.title.isEmpty)
+        XCTAssertTrue(foodUnresolved.guidance.priority.reasons.contains("contributor=proteinBehind"))
+        assertLevel(foodUnresolved, "protein", "actionRequired")
+        XCTAssertTrue(foodResolved.guidance.priority.reasons.contains { $0.hasPrefix("RecoveryContributorDebug.resolvedContributors=") && $0.contains("proteinBehind") })
+        XCTAssertFalse(try XCTUnwrap(foodResolved.guidance.screenStory).primaryActions.contains { $0.type.isFoodAction })
+
+        let afterMidnight = afterMidnightScenario()
+        assertTrace(afterMidnight, name: "late evening / after midnight")
+        XCTAssertTrue(afterMidnight.guidance.title.isEmpty == false)
     }
 }
 
@@ -199,7 +519,8 @@ private extension CoachDynamicPriorityActionTests {
         protein: Double,
         water: Double,
         active: ActivityKind? = nil,
-        recentHardWorkout: Bool = false
+        recentHardWorkout: Bool = false,
+        currentHour: Int? = nil
     ) -> Scenario {
         var activities = baseHighLoadActivities(recentHardWorkout: recentHardWorkout)
         if let active {
@@ -218,7 +539,8 @@ private extension CoachDynamicPriorityActionTests {
             exerciseMinutes: 130,
             recoveryPercent: 86,
             readiness: active == nil ? .low : .compromised,
-            recovery: active == nil ? .vulnerable : .compromised
+            recovery: active == nil ? .vulnerable : .compromised,
+            currentHour: currentHour
         )
     }
 
@@ -226,7 +548,9 @@ private extension CoachDynamicPriorityActionTests {
         calories: Double,
         protein: Double,
         water: Double,
-        futureKind: ActivityKind
+        futureKind: ActivityKind,
+        recoveryPercent: Int = 82,
+        sleepHours: Double = 7.02
     ) -> Scenario {
         let future = plannedActivity(futureKind, minutesFromNow: 45, duration: 60, completed: false)
         return buildScenario(
@@ -237,9 +561,27 @@ private extension CoachDynamicPriorityActionTests {
             activeCalories: 180,
             activityProgress: 0.35,
             exerciseMinutes: 25,
-            recoveryPercent: 82,
+            recoveryPercent: recoveryPercent,
             readiness: .good,
-            recovery: .stable
+            recovery: recoveryPercent < 60 ? .compromised : .stable,
+            sleepHours: sleepHours
+        )
+    }
+
+    func afterMidnightScenario() -> Scenario {
+        buildScenario(
+            activities: [sauna(minutesFromNow: -10, duration: 20)],
+            calories: 0,
+            protein: 0,
+            water: 0,
+            activeCalories: 80,
+            activityProgress: 0.12,
+            exerciseMinutes: 8,
+            recoveryPercent: 74,
+            readiness: .good,
+            recovery: .stable,
+            sleepHours: 0,
+            currentHour: 1
         )
     }
 
@@ -253,19 +595,26 @@ private extension CoachDynamicPriorityActionTests {
         exerciseMinutes: Int,
         recoveryPercent: Int,
         readiness: HumanBrain.ReadinessState,
-        recovery: HumanBrain.RecoveryState
+        recovery: HumanBrain.RecoveryState,
+        sleepHours: Double = 7.02,
+        currentHour: Int? = nil,
+        baseGoals: NutritionGoals? = nil,
+        nutritionGoals: NutritionGoals? = nil
     ) -> Scenario {
-        let nutrition = nutritionContext(calories: calories, protein: protein, water: water)
+        let nutrition = nutritionContext(calories: calories, protein: protein, water: water, goals: nutritionGoals)
         let brain = brainState(
             calories: calories,
             protein: protein,
             water: water,
             activeCalories: activeCalories,
             readiness: readiness,
-            recovery: recovery
+            recovery: recovery,
+            sleepHours: sleepHours,
+            currentHour: currentHour,
+            baseGoals: baseGoals
         )
         let actualLoad = CoachActualLoadSnapshot(
-            source: .healthKitActivityCircle,
+            source: .healthKitSamplesWithAppGoalEstimate,
             activeCalories: activeCalories,
             exerciseMinutes: exerciseMinutes,
             standHours: 12,
@@ -293,7 +642,7 @@ private extension CoachDynamicPriorityActionTests {
             selectedDate: tomorrowDate,
             now: now
         )
-        let recoveryContext = CoachRecoveryContext(recoveryPercent: recoveryPercent, sleepHours: 7.02)
+        let recoveryContext = CoachRecoveryContext(recoveryPercent: recoveryPercent, sleepHours: sleepHours)
         let context = CoachDecisionContext(
             brain: brain,
             dayContext: dayContext,
@@ -394,12 +743,12 @@ private extension CoachDynamicPriorityActionTests {
         return activity
     }
 
-    func sauna(minutesFromNow: Int, duration: Int) -> PlannedActivity {
+    func sauna(minutesFromNow: Int, duration: Int, completed: Bool = true) -> PlannedActivity {
         let activity = PlannedActivityBuilder.workout(
             title: "Sauna",
             at: now.addingTimeInterval(TimeInterval(minutesFromNow * 60)),
             durationMinutes: duration,
-            completed: true
+            completed: completed
         )
         activity.type = "sauna"
         activity.source = "planner"
@@ -438,10 +787,13 @@ private extension CoachDynamicPriorityActionTests {
         water: Double,
         activeCalories: Double,
         readiness: HumanBrain.ReadinessState,
-        recovery: HumanBrain.RecoveryState
+        recovery: HumanBrain.RecoveryState,
+        sleepHours: Double = 7.02,
+        currentHour: Int? = nil,
+        baseGoals: NutritionGoals? = nil
     ) -> HumanBrain.State {
         var config = HumanBrainStateBuilder.Configuration()
-        config.currentHour = Calendar.current.component(.hour, from: now)
+        config.currentHour = currentHour ?? Calendar.current.component(.hour, from: now)
         config.hasAnyFoodLogged = calories > 0
         config.energyCoverage = calories / 1_954
         config.caloriesProgress = calories / 1_954
@@ -450,7 +802,15 @@ private extension CoachDynamicPriorityActionTests {
         config.hydration = water / 3.75 >= 0.70 ? .optimal : .behind
         config.fuel = calories / 1_954 < 0.45 ? .underfueled : .good
         config.protein = protein / 153 >= 0.70 ? .good : .low
-        config.sleep = .strong
+        config.goals = baseGoals ?? NutritionGoals(
+            calories: 1_954,
+            protein: 153,
+            carbs: 189,
+            fats: 65,
+            fiber: 35,
+            waterLiters: 3.75
+        )
+        config.sleep = sleepHours <= 0 ? .unknown : (sleepHours < 6 ? .veryShort : .strong)
         config.recovery = recovery
         config.readiness = readiness
         config.strain = .veryHigh
@@ -461,23 +821,36 @@ private extension CoachDynamicPriorityActionTests {
             calories: calories,
             waterLiters: water,
             activeCalories: activeCalories,
-            sleepHours: 7.02
+            sleepHours: sleepHours
         )
         return HumanBrainStateBuilder.make(config)
     }
 
-    func nutritionContext(calories: Double, protein: Double, water: Double) -> CoachNutritionContext {
-        CoachNutritionContext(
+    func nutritionContext(
+        calories: Double,
+        protein: Double,
+        water: Double,
+        goals: NutritionGoals? = nil
+    ) -> CoachNutritionContext {
+        let resolvedGoals = goals ?? NutritionGoals(
+            calories: 1_954,
+            protein: 153,
+            carbs: 189,
+            fats: 65,
+            fiber: 35,
+            waterLiters: 3.75
+        )
+        return CoachNutritionContext(
             caloriesCurrent: calories,
-            caloriesGoal: 1_954,
+            caloriesGoal: resolvedGoals.calories,
             proteinCurrent: protein,
-            proteinGoal: 153,
+            proteinGoal: resolvedGoals.protein,
             carbsCurrent: calories * 0.12,
-            carbsGoal: 189,
+            carbsGoal: resolvedGoals.carbs,
             fatsCurrent: calories * 0.02,
-            fatsGoal: 65,
+            fatsGoal: resolvedGoals.fats,
             waterCurrent: water,
-            waterGoal: 3.75,
+            waterGoal: resolvedGoals.waterLiters,
             mealsCount: calories > 0 ? 4 : 0,
             lastMealTime: calories / 1_954 >= 0.70 || protein / 153 >= 0.70 ? now.addingTimeInterval(-45 * 60) : nil
         )
@@ -523,6 +896,11 @@ private extension CoachDynamicPriorityActionTests {
         XCTAssertTrue(scenario.guidance.priority.reasons.contains(expected), "Missing \(expected) in \(scenario.guidance.priority.reasons)")
     }
 
+    func assertLevel(_ scenario: Scenario, _ domain: String, _ level: String) {
+        let expected = "RecoveryContributorDebug.\(domain)Level=\(level)"
+        XCTAssertTrue(scenario.guidance.priority.reasons.contains(expected), "Missing \(expected) in \(scenario.guidance.priority.reasons)")
+    }
+
     func hasActiveRecoveryContributor(_ guidance: CoachGuidanceV3, _ contributor: String) -> Bool {
         guidance.priority.reasons.contains("contributor=\(contributor)")
     }
@@ -555,5 +933,41 @@ private extension CoachDynamicPriorityActionTests {
             return true
         }
         return false
+    }
+
+    func assertTrace(_ scenario: Scenario, name: String) {
+        XCTAssertEqual(scenario.input.actualLoad.source, .healthKitSamplesWithAppGoalEstimate, name)
+        XCTAssertFalse(scenario.input.dayContext.allActivities.contains { $0.title.isEmpty }, name)
+        XCTAssertFalse(scenario.guidance.priority.reasons.isEmpty, name)
+        XCTAssertFalse(scenario.guidance.title.isEmpty, name)
+        XCTAssertFalse(scenario.guidance.message.isEmpty, name)
+        XCTAssertNotNil(scenario.guidance.screenStory, name)
+        let visibleActions = scenario.guidance.supportActions
+        XCTAssertTrue(
+            visibleActions.allSatisfy { action in
+                !action.title.isEmpty && !action.subtitle.isEmpty
+            },
+            name
+        )
+    }
+}
+
+private extension CoachSupportActionTypeV3 {
+    var isHydrationAction: Bool {
+        switch self {
+        case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually, .electrolyteRecovery:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var isFoodAction: Bool {
+        switch self {
+        case .lightFueling, .sustainEnergy, .startRecoveryNutrition, .recoveryMeal, .keepDigestionLight:
+            return true
+        default:
+            return false
+        }
     }
 }

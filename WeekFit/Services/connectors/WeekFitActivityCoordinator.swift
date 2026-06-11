@@ -128,24 +128,45 @@ final class WeekFitActivityCoordinator: ObservableObject {
         guard !completedWorkoutsBatch.isEmpty else { return }
 
         for workout in completedWorkoutsBatch {
-            guard let activity = ActivityReconciler.bestMatch(
-                for: workout,
-                in: activities
-            ) else {
-                continue
-            }
+            reconcileCompletedAppleWorkout(
+                workout,
+                with: activities,
+                modelContext: modelContext
+            )
+        }
 
+        try? modelContext.save()
+    }
+
+    func reconcileCompletedAppleWorkout(
+        _ workout: HKWorkout,
+        with activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) {
+        let workoutUUID = workout.uuid.uuidString
+
+        guard !activities.contains(where: {
+            $0.healthKitWorkoutUUID == workoutUUID || $0.id == workoutUUID
+        }) else {
+            return
+        }
+
+        if let activity = ActivityReconciler.bestMatch(
+            for: workout,
+            in: activities
+        ) {
             let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
 
             activity.isCompleted = true
             activity.isSkipped = false
+            activity.source = "appleWorkout"
+            activity.healthKitWorkoutUUID = workoutUUID
+            activity.date = workout.startDate
+            activity.durationMinutes = actualMinutes
             activity.actualDurationMinutes = actualMinutes
-
-            // optional, если есть такие поля:
-            // activity.syncedWorkoutID = workout.uuid.uuidString
-            // activity.source = "healthkit"
+        } else {
+            let imported = ActivityReconciler.importedActivity(for: workout)
+            modelContext.insert(imported)
         }
-
-        try? modelContext.save()
     }
 }

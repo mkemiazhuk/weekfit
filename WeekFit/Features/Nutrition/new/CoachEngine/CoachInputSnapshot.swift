@@ -1,7 +1,7 @@
 import Foundation
 
 enum CoachActualLoadSource: String, Hashable {
-    case healthKitActivityCircle
+    case healthKitSamplesWithAppGoalEstimate
     case nutritionMetricsFallback
 }
 
@@ -42,9 +42,9 @@ struct CoachLoadSourceDebug: Hashable {
 
     var debugLines: [String] {
         [
-            "CoachLoadSourceDebug.activityCircleActiveCalories=\(Int(activityCircleActiveCalories.rounded()))",
-            "CoachLoadSourceDebug.activityCircleExerciseMinutes=\(exerciseMinutesText)",
-            "CoachLoadSourceDebug.activityCircleProgress=\(activityCircleProgress.map { String(format: "%.2f", $0) } ?? "nil")",
+            "CoachLoadSourceDebug.healthKitSampleActiveCalories=\(Int(activityCircleActiveCalories.rounded()))",
+            "CoachLoadSourceDebug.healthKitSampleExerciseMinutes=\(exerciseMinutesText)",
+            "CoachLoadSourceDebug.estimatedActivityProgress=\(activityCircleProgress.map { String(format: "%.2f", $0) } ?? "nil")",
             "CoachLoadSourceDebug.plannedCompletedActivities=\(plannedCompletedActivities)",
             "CoachLoadSourceDebug.syncedAppleWorkouts=\(syncedAppleWorkouts)",
             "CoachLoadSourceDebug.manualCompletedActivities=\(manualCompletedActivities)",

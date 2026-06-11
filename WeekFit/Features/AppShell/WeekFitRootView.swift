@@ -1,15 +1,22 @@
 import SwiftUI
+import SwiftData
 
 struct WeekFitRootView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var healthManager: HealthManager
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
 
     @StateObject private var planViewModel = PlanViewModel()
+    @StateObject private var coachInputProvider = CoachInputProvider()
     @State private var selectedTab: WeekFitTab = .today
     @State private var todayResetTrigger = UUID()
     @State private var showContent = false
+
+    @Query(sort: \PlannedActivity.date, order: .forward)
+    private var plannedActivities: [PlannedActivity]
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -25,12 +32,18 @@ struct WeekFitRootView: View {
                         returnToTodayTrigger: todayResetTrigger,
                         onSelectTab: selectTab
                     )
+                    .environmentObject(coachInputProvider)
 
                 case .coach:
                     ExpertCoachViewV3(authViewModel: authViewModel)
+                        .environmentObject(coachInputProvider)
 
                 case .insights:
-                    InsightsView(authViewModel: authViewModel)
+                    InsightsView(
+                        authViewModel: authViewModel,
+                        onSelectTab: selectTab
+                    )
+                    .environmentObject(coachInputProvider)
 
                 case .meals:
                     MealsView(
@@ -90,6 +103,34 @@ struct WeekFitRootView: View {
         .onChange(of: appSession.returnToTodayTrigger) { _, _ in
             returnToToday()
         }
+        .task(id: coachRefreshSignature) {
+            await refreshCoachInput(source: "rootTask")
+        }
+    }
+
+    private var coachRefreshSignature: String {
+        [
+            selectedTab == .coach ? "coachVisible" : "coachHidden",
+            nutritionViewModel.coachStateRefreshID.uuidString,
+            appSession.healthRefreshTrigger.uuidString,
+            appSession.coachRefreshTrigger.uuidString,
+            appSession.returnToTodayTrigger.uuidString,
+            plannedActivities
+                .map { activity in
+                    [
+                        activity.id,
+                        "\(Int(activity.date.timeIntervalSince1970 / 60))",
+                        activity.title,
+                        activity.type,
+                        "\(activity.isCompleted)",
+                        "\(activity.isSkipped)",
+                        "\(activity.actualDurationMinutes ?? -1)",
+                        activity.healthKitWorkoutUUID ?? "nil",
+                        activity.source
+                    ].joined(separator: ":")
+                }
+                .joined(separator: "|")
+        ].joined(separator: "#")
     }
 
     private var ambientBackground: some View {
@@ -141,6 +182,10 @@ struct WeekFitRootView: View {
         if newValue == .calendar {
             resetPlanDateToToday()
         }
+
+        Task {
+            await refreshCoachInput(source: "tabChange.\(newValue)")
+        }
     }
 
     private func returnToToday() {
@@ -157,5 +202,17 @@ struct WeekFitRootView: View {
         }
 
         planViewModel.selectedDate = today
+    }
+
+    private func refreshCoachInput(source: String) async {
+        await coachInputProvider.refresh(
+            selectedDate: Date(),
+            plannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator,
+            source: source,
+            refreshHealth: selectedTab == .coach
+        )
     }
 }

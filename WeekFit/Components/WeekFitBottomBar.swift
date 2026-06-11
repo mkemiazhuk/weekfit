@@ -22,7 +22,7 @@ enum WeekFitTab: Hashable, CaseIterable {
         case .today: return "Today"
         case .coach: return "Coach"
         case .insights: return "Insights"
-        case .meals: return "Meals"
+        case .meals: return "Nutrition"
         case .calendar: return "Plan"
         }
     }

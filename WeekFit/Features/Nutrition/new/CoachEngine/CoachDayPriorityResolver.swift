@@ -129,6 +129,102 @@ struct CoachTomorrowProtectionState: Hashable {
     )
 }
 
+struct CoachTomorrowDemandAssessment: Hashable {
+    let level: CoachTomorrowDemand
+    let primaryTrainingActivity: PlannedActivity?
+    let trainingMinutes: Int
+    let trainingStressScore: Int
+
+    var hasDemand: Bool {
+        level != .none
+    }
+
+    var isHard: Bool {
+        level == .hard
+    }
+}
+
+enum CoachTomorrowDemandResolver {
+    static func resolve(context: CoachDecisionContext) -> CoachTomorrowDemandAssessment {
+        resolve(tomorrowContext: context.tomorrowContext)
+    }
+
+    static func resolve(tomorrowContext: CoachTomorrowPlanContext?) -> CoachTomorrowDemandAssessment {
+        guard let tomorrowContext else {
+            return CoachTomorrowDemandAssessment(
+                level: .none,
+                primaryTrainingActivity: nil,
+                trainingMinutes: 0,
+                trainingStressScore: 0
+            )
+        }
+
+        return resolve(dayContext: tomorrowContext.dayContext)
+    }
+
+    static func resolve(dayContext: CoachDayContext) -> CoachTomorrowDemandAssessment {
+        resolve(
+            activities: dayContext.upcomingTrainingActivities,
+            trainingMinutes: dayContext.upcomingTrainingMinutes,
+            trainingStressScore: dayContext.upcomingTrainingStressScore
+        )
+    }
+
+    static func resolve(activities: [PlannedActivity]) -> CoachTomorrowDemandAssessment {
+        let trainingActivities = activities
+            .filter { !$0.isSkipped }
+            .filter { CoachDayPriorityResolver.isTraining($0) }
+        let minutes = trainingActivities.reduce(0) { $0 + $1.effectiveDurationMinutes }
+        let stress = trainingActivities.reduce(0) { $0 + stressScore($1) }
+
+        return resolve(
+            activities: trainingActivities,
+            trainingMinutes: minutes,
+            trainingStressScore: stress
+        )
+    }
+
+    private static func resolve(
+        activities: [PlannedActivity],
+        trainingMinutes: Int,
+        trainingStressScore: Int
+    ) -> CoachTomorrowDemandAssessment {
+        let primary = activities.max {
+            CoachActivityContextResolverV3.load(for: $0).riskScore < CoachActivityContextResolverV3.load(for: $1).riskScore
+        }
+        let hasHardActivity = primary.map {
+            let load = CoachActivityContextResolverV3.load(for: $0)
+            return load == .high || load == .extreme
+        } ?? false
+
+        let level: CoachTomorrowDemand
+        if trainingStressScore >= 3 || trainingMinutes >= 75 || hasHardActivity {
+            level = .hard
+        } else if trainingStressScore > 0 || trainingMinutes > 0 || primary != nil {
+            level = trainingStressScore >= 2 || trainingMinutes >= 45 ? .moderate : .easy
+        } else {
+            level = .none
+        }
+
+        return CoachTomorrowDemandAssessment(
+            level: level,
+            primaryTrainingActivity: primary,
+            trainingMinutes: trainingMinutes,
+            trainingStressScore: trainingStressScore
+        )
+    }
+
+    private static func stressScore(_ activity: PlannedActivity) -> Int {
+        let load = CoachActivityContextResolverV3.load(for: activity)
+        switch load {
+        case .low: return 1
+        case .moderate: return 2
+        case .high: return 3
+        case .extreme: return 4
+        }
+    }
+}
+
 enum CoachIntent: Hashable {
     case idleNow
     case dayPlanning
@@ -968,19 +1064,20 @@ private extension CoachDayPriorityResult {
 struct CoachTomorrowPlanContext {
     let dayContext: CoachDayContext
 
+    var demand: CoachTomorrowDemandAssessment {
+        CoachTomorrowDemandResolver.resolve(dayContext: dayContext)
+    }
+
     var primaryTrainingActivity: PlannedActivity? {
-        dayContext.upcomingTrainingActivities.max {
-            CoachActivityContextResolverV3.load(for: $0).riskScore < CoachActivityContextResolverV3.load(for: $1).riskScore
-        }
+        demand.primaryTrainingActivity
     }
 
     var hasHardTraining: Bool {
-        dayContext.upcomingTrainingStressScore >= 3 ||
-            dayContext.upcomingTrainingMinutes >= 75 ||
-            primaryTrainingActivity.map {
-                let load = CoachActivityContextResolverV3.load(for: $0)
-                return load == .high || load == .extreme
-            } ?? false
+        demand.isHard
+    }
+
+    var hasRealDemand: Bool {
+        demand.hasDemand
     }
 }
 
@@ -993,6 +1090,7 @@ struct CoachDecisionContext {
     let recoveryContext: CoachRecoveryContext?
     let nutritionContext: CoachNutritionContext?
     let readiness: CoachReadinessStateV3
+    let contextConfidence: CoachContextConfidence
 
     init(
         brain: HumanBrain.State,
@@ -1012,6 +1110,62 @@ struct CoachDecisionContext {
         self.recoveryContext = recoveryContext
         self.nutritionContext = nutritionContext
         self.readiness = readiness
+        self.contextConfidence = CoachContextConfidence.resolve(
+            brain: brain,
+            recoveryContext: recoveryContext,
+            actualLoad: self.actualLoad
+        )
+    }
+}
+
+extension CoachDecisionContext {
+    var tomorrowDemand: CoachTomorrowDemandAssessment {
+        CoachTomorrowDemandResolver.resolve(context: self)
+    }
+}
+
+struct CoachContextConfidence: Hashable {
+    let value: Double
+    let sleepIsStable: Bool
+    let recoveryIsStable: Bool
+    let actualLoadIsStable: Bool
+    let dayLevelIsAuthoritative: Bool
+
+    var debugLines: [String] {
+        [
+            "ContextConfidence.value=\(String(format: "%.2f", value))",
+            "ContextConfidence.sleepIsStable=\(sleepIsStable)",
+            "ContextConfidence.recoveryIsStable=\(recoveryIsStable)",
+            "ContextConfidence.actualLoadIsStable=\(actualLoadIsStable)",
+            "ContextConfidence.dayLevelIsAuthoritative=\(dayLevelIsAuthoritative)"
+        ]
+    }
+
+    static func resolve(
+        brain: HumanBrain.State,
+        recoveryContext: CoachRecoveryContext?,
+        actualLoad: CoachActualLoadSnapshot
+    ) -> CoachContextConfidence {
+        let sleepHours = recoveryContext?.sleepHours ?? brain.metrics.sleepHours
+        let sleepIsStable = sleepHours > 0 || brain.sleep != .unknown
+        let recoveryIsStable = (recoveryContext?.recoveryPercent ?? 0) > 0
+        let actualLoadIsStable = actualLoad.activeCalories > 0 ||
+            actualLoad.exerciseMinutes != nil ||
+            actualLoad.source == .healthKitSamplesWithAppGoalEstimate
+
+        let value = [
+            sleepIsStable ? 0.34 : 0,
+            recoveryIsStable ? 0.46 : 0,
+            actualLoadIsStable ? 0.20 : 0
+        ].reduce(0, +)
+
+        return CoachContextConfidence(
+            value: value,
+            sleepIsStable: sleepIsStable,
+            recoveryIsStable: recoveryIsStable,
+            actualLoadIsStable: actualLoadIsStable,
+            dayLevelIsAuthoritative: value >= 0.75 && sleepIsStable && recoveryIsStable
+        )
     }
 }
 
@@ -1202,10 +1356,10 @@ enum CoachLifecycleDecisionPipeline {
             hrv: nil,
             rhr: nil,
             nutritionCaloriesConsumed: nutrition?.caloriesCurrent ?? context.brain.metrics.calories,
-            nutritionCaloriesTarget: nutrition?.caloriesGoal ?? context.brain.fullDayGoals.calories,
-            proteinProgress: ratio(nutrition?.proteinCurrent ?? context.brain.metrics.protein, nutrition?.proteinGoal ?? context.brain.fullDayGoals.protein),
-            carbsProgress: ratio(nutrition?.carbsCurrent ?? context.brain.metrics.carbs, nutrition?.carbsGoal ?? context.brain.fullDayGoals.carbs),
-            fatProgress: ratio(nutrition?.fatsCurrent ?? context.brain.metrics.fats, nutrition?.fatsGoal ?? context.brain.fullDayGoals.fats),
+            nutritionCaloriesTarget: context.brain.baseDayGoals.calories,
+            proteinProgress: ratio(nutrition?.proteinCurrent ?? context.brain.metrics.protein, context.brain.baseDayGoals.protein),
+            carbsProgress: ratio(nutrition?.carbsCurrent ?? context.brain.metrics.carbs, context.brain.baseDayGoals.carbs),
+            fatProgress: ratio(nutrition?.fatsCurrent ?? context.brain.metrics.fats, context.brain.baseDayGoals.fats),
             drinksConsumed: nutrition?.waterCurrent ?? context.brain.metrics.waterLiters,
             drinksTarget: nutrition?.waterGoal ?? context.brain.fullDayGoals.waterLiters,
             lastCoachInsightId: nil,
@@ -1273,7 +1427,7 @@ private extension CoachLifecycleDecisionPipeline {
         context: CoachDecisionContext,
         normalized c: CoachContext
     ) -> CoachPipelineInsight? {
-        let hasHardTomorrow = context.tomorrowContext?.hasHardTraining == true
+        let hasHardTomorrow = context.tomorrowDemand.isHard
         let hardTomorrow = hasHardTomorrow ? context.tomorrowContext?.primaryTrainingActivity : nil
         let highLoad = c.loadClass == .high || c.loadClass == .veryHigh || context.dayContext.completedTrainingStressScore >= 4
         let veryHighLoad = c.loadClass == .veryHigh || c.completedActivityMinutesToday >= 150 || c.workoutCountToday >= 2
@@ -1597,8 +1751,7 @@ private extension CoachLifecycleDecisionPipeline {
         let hydrationRatio = ratio(c.drinksConsumed, c.drinksTarget)
         let nutritionBehind = ratio(c.nutritionCaloriesConsumed, c.nutritionCaloriesTarget) < 0.45 ||
             c.proteinProgress < 0.45 ||
-            c.carbsProgress < 0.35 ||
-            context.brain.fuel == .underfueled
+            c.carbsProgress < 0.35
         let hydrationBehind = hydrationRatio < 0.60 ||
             context.brain.hydration == .behind ||
             context.brain.hydration == .depleted
@@ -1937,7 +2090,7 @@ private extension CoachLifecycleDecisionPipeline {
         if let later = plannedToday.first(where: { isTraining($0) }) {
             return .plannedLaterToday(later)
         }
-        if let tomorrow = context.tomorrowContext?.primaryTrainingActivity, context.tomorrowContext?.hasHardTraining == true {
+        if let tomorrow = context.tomorrowDemand.primaryTrainingActivity, context.tomorrowDemand.isHard {
             return .plannedTomorrow(tomorrow)
         }
         if nutritionGap(context), canStillAct {
@@ -1997,8 +2150,8 @@ private extension CoachLifecycleDecisionPipeline {
 
     static func nutritionGap(_ context: CoachDecisionContext) -> Bool {
         guard let nutrition = context.nutritionContext else { return false }
-        return ratio(nutrition.caloriesCurrent, nutrition.caloriesGoal) < 0.45 ||
-            ratio(nutrition.proteinCurrent, nutrition.proteinGoal) < 0.35
+        return ratio(nutrition.caloriesCurrent, context.brain.baseDayGoals.calories) < 0.45 ||
+            ratio(nutrition.proteinCurrent, context.brain.baseDayGoals.protein) < 0.35
     }
 
     static func hydrationGap(_ context: CoachDecisionContext) -> Bool {
@@ -2365,8 +2518,12 @@ enum CoachDayPriorityResolver {
             dynamicPrimaryLimiter(for: protectedResult, in: context)
         )
 
+        let contributorLines = decisionFrame.contributors
+            .map { "contributor=\($0.rawValue)" }
+            .filter { !limitedResult.reasons.contains($0) }
         let loadDebugLines = decisionFrame.loadSourceDebug.debugLines.filter { !limitedResult.reasons.contains($0) }
-        return limitedResult.withReasons(limitedResult.reasons + loadDebugLines)
+        let confidenceDebugLines = context.contextConfidence.debugLines.filter { !limitedResult.reasons.contains($0) }
+        return limitedResult.withReasons(limitedResult.reasons + contributorLines + loadDebugLines + confidenceDebugLines)
     }
 }
 
@@ -2626,6 +2783,7 @@ private extension CoachDayPriorityResolver {
         for result: CoachDayPriorityResult,
         in context: CoachDecisionContext
     ) -> CoachTomorrowProtectionState {
+        let hasTomorrowDemand = context.tomorrowDemand.hasDemand
         var reasons: [String] = []
         if isVeryLowSleep(context) || context.brain.sleep == .veryShort {
             reasons.append("short sleep")
@@ -2661,12 +2819,14 @@ private extension CoachDayPriorityResolver {
             reasons.append("heavy training load")
         }
 
-        if result.focus == .tomorrowPlanRisk || context.tomorrowContext?.hasHardTraining == true {
+        if hasTomorrowDemand,
+           (result.focus == .tomorrowPlanRisk || context.tomorrowDemand.isHard) {
             reasons.append("tomorrow training risk")
         }
 
         reasons = Array(NSOrderedSet(array: reasons).compactMap { $0 as? String })
-        let recommended = !reasons.isEmpty &&
+        let recommended = hasTomorrowDemand &&
+            !reasons.isEmpty &&
             (
                 reasons.contains("short sleep") ||
                 reasons.contains("compromised recovery") ||
@@ -2680,7 +2840,8 @@ private extension CoachDayPriorityResolver {
         let severeRecovery = reasons.contains("compromised recovery") ||
             (reasons.contains("short sleep") && reasons.contains("sauna impact")) ||
             severeFatigueDominates(context)
-        let active = recommended &&
+        let active = hasTomorrowDemand &&
+            recommended &&
             (
                 result.objective == .protectTomorrow ||
                 result.focus == .tomorrowPlanRisk ||
@@ -3509,6 +3670,7 @@ private extension CoachDayPriorityResolver {
         in context: CoachDecisionContext,
         mode: CoachCommonSenseMode
     ) -> CoachObjective {
+        let hasTomorrowDemand = context.tomorrowDemand.hasDemand
         if let active = context.activityContext.activeActivity {
             return activeSessionObjective(active, in: context)
         }
@@ -3518,7 +3680,8 @@ private extension CoachDayPriorityResolver {
             return .recoverFromActivity
         }
 
-        if isLateNight(context) && localHour(in: context) < Thresholds.dayClosedMorningEndHour {
+        if hasTomorrowDemand,
+           isLateNight(context) && localHour(in: context) < Thresholds.dayClosedMorningEndHour {
             return .protectTomorrow
         }
 
@@ -3526,12 +3689,12 @@ private extension CoachDayPriorityResolver {
             return .completeDay
         }
 
-        if context.tomorrowContext?.hasHardTraining == true,
+        if context.tomorrowDemand.isHard,
            (isEveningOrLater(context) || context.brain.currentHour >= 18) {
             return .protectTomorrow
         }
 
-        if context.tomorrowContext?.hasHardTraining == true,
+        if context.tomorrowDemand.isHard,
            isRecoveryLimitedForTomorrow(context) {
             return .protectTomorrow
         }
@@ -3546,9 +3709,9 @@ private extension CoachDayPriorityResolver {
         case .postActivityRecovery:
             return .recoverFromActivity
         case .lateEveningRecovery:
-            return .protectTomorrow
+            return hasTomorrowDemand ? .protectTomorrow : .completeDay
         case .dayClosed:
-            return isLateNight(context) && localHour(in: context) < Thresholds.dayClosedMorningEndHour ? .protectTomorrow : .completeDay
+            return hasTomorrowDemand && isLateNight(context) && localHour(in: context) < Thresholds.dayClosedMorningEndHour ? .protectTomorrow : .completeDay
         case .actionableDay:
             if recoveryIsLow(context) || sleepIsPoor(context) {
                 return .buildReadiness
@@ -3567,7 +3730,7 @@ private extension CoachDayPriorityResolver {
     ) -> CoachObjective {
         guard isTraining(active) else { return .recoveryDay }
 
-        if context.tomorrowContext?.hasHardTraining == true,
+        if context.tomorrowDemand.isHard,
            isRecoveryLimitedForTomorrow(context) {
             return .protectTomorrow
         }
@@ -3781,7 +3944,7 @@ private extension CoachDayPriorityResolver {
             )
 
         case .lateEveningRecovery:
-            guard context.tomorrowContext?.hasHardTraining == true else { return nil }
+            guard context.tomorrowDemand.isHard else { return nil }
             return PriorityCandidate(
                 priorityScore: 66,
                 insightScore: 78,
@@ -3895,7 +4058,7 @@ private extension CoachDayPriorityResolver {
                 if heatPreparation {
                     if hydrationBehind {
                         return [
-                            "Keep sipping before sauna",
+                            "Stay steady before sauna",
                             "Enter heat well hydrated",
                             "Keep recovery easy"
                         ]
@@ -4027,7 +4190,7 @@ private extension CoachDayPriorityResolver {
             return .preActivityPreparation
 
         case .sleepPreparation:
-            return context.tomorrowContext?.hasHardTraining == true ? .lateEveningRecovery : .dayClosed
+            return context.tomorrowDemand.isHard ? .lateEveningRecovery : .dayClosed
 
         case .dayPlanning:
             return (5..<12).contains(localHour(in: context)) ? .morningSetup : .actionableDay
@@ -4146,10 +4309,10 @@ private extension CoachDayPriorityResolver {
 
     private static func eveningFuelCovered(in context: CoachDecisionContext) -> Bool {
         guard let nutrition = context.nutritionContext else { return false }
-        let caloriesCovered = nutrition.caloriesGoal > 0 &&
-            nutrition.caloriesCurrent / nutrition.caloriesGoal >= 1.0
-        let carbsCovered = nutrition.carbsGoal > 0 &&
-            nutrition.carbsCurrent / nutrition.carbsGoal >= 1.0
+        let caloriesCovered = context.brain.baseDayGoals.calories > 0 &&
+            nutrition.caloriesCurrent / context.brain.baseDayGoals.calories >= 0.80
+        let carbsCovered = context.brain.baseDayGoals.carbs > 0 &&
+            nutrition.carbsCurrent / context.brain.baseDayGoals.carbs >= 0.60
         let recentMeal = latestMealTime(in: context).map {
             let minutes = max(0, Int(context.dayContext.now.timeIntervalSince($0) / 60))
             return minutes <= Thresholds.recentMealSuppressionMinutes
@@ -4892,7 +5055,7 @@ private extension CoachDayPriorityResolver {
     }
 
     private static func tomorrowAdjustmentCandidate(in context: CoachDecisionContext) -> PriorityCandidate? {
-        guard let tomorrow = context.tomorrowContext, tomorrow.hasHardTraining else { return nil }
+        guard context.tomorrowDemand.isHard else { return nil }
 
         var score = 34.0
         var reasons: [String] = ["Tomorrow has meaningful training planned."]
@@ -4927,7 +5090,7 @@ private extension CoachDayPriorityResolver {
 
         guard score >= 64 else { return nil }
 
-        let activity = tomorrow.primaryTrainingActivity
+        let activity = context.tomorrowDemand.primaryTrainingActivity
         let trainingName = activity?.title ?? "tomorrow's session"
         let challenge = "\(trainingName) may be too much if sleep, fuel, and recovery do not improve tonight. Consider replacing it with recovery work or an easier aerobic block."
         let support = supportBullets(
@@ -5032,7 +5195,7 @@ private extension CoachDayPriorityResolver {
             score += 14
             reasons.append("There is no meaningful performance work left today.")
         }
-        if context.tomorrowContext?.hasHardTraining == true {
+        if context.tomorrowDemand.isHard {
             score += 12
             reasons.append("Tomorrow depends on recovery quality.")
         }
@@ -5047,7 +5210,7 @@ private extension CoachDayPriorityResolver {
 
         guard score >= 58 else { return nil }
 
-        let challenge = context.tomorrowContext?.hasHardTraining == true && (isVeryLowSleep(context) || isHighLoadDay(context))
+        let challenge = context.tomorrowDemand.isHard && (isVeryLowSleep(context) || isHighLoadDay(context))
             ? "If you wake up flat, reduce tomorrow's intensity before forcing the planned session."
             : nil
 
@@ -5126,7 +5289,7 @@ private extension CoachDayPriorityResolver {
             score += isDaytimePostWorkoutRecoveryWindow(context) ? 24 : 8
             reasons.append("A meaningful session is already banked.")
         }
-        if context.tomorrowContext?.hasHardTraining == true {
+        if context.tomorrowDemand.isHard {
             score += 8
             reasons.append("Tomorrow will need better recovery.")
         }
@@ -5140,7 +5303,7 @@ private extension CoachDayPriorityResolver {
 
         guard score >= 50 || (score >= 44 && highLoadEveningWithNoWork) else { return nil }
 
-        let challenge = context.tomorrowContext?.hasHardTraining == true && score >= 78
+        let challenge = context.tomorrowDemand.isHard && score >= 78
             ? "Keep tomorrow flexible. If recovery stays low, make the hard work easy or move it."
             : nil
 
@@ -5484,7 +5647,7 @@ private extension CoachDayPriorityResolver {
             context.activityContext.recentlyCompletedActivity.map { isMeaningfulPostActivityTraining($0) } == true
         let eveningRecoveryPressure = hour >= 17 &&
             ratio < 0.20 &&
-            (sweatOrLoadDemand || postLoadPressure || context.tomorrowContext?.hasHardTraining == true || recoveryIsLow(context) || sleepIsPoor(context))
+            (sweatOrLoadDemand || postLoadPressure || context.tomorrowDemand.isHard || recoveryIsLow(context) || sleepIsPoor(context))
         let safetyPressure = severeFatigueDominates(context) ||
             (hasHeatAheadToday(context) && hydrationIsCriticallyBehind(context))
         let hydrationMayLead = heatSoon ||
@@ -5595,7 +5758,7 @@ private extension CoachDayPriorityResolver {
         let hour = localHour(in: context)
         let signals = fuelBehindSignals(in: context)
         let hardActivity = signals.hardActivitySoon
-        let tomorrowHard = context.tomorrowContext?.hasHardTraining == true
+        let tomorrowHard = context.tomorrowDemand.isHard
         let ratio = nutritionRatio(context)
         let protein = proteinRatio(context)
         let expectedRatio = expectedNutritionRatio(forHour: hour)
@@ -5604,6 +5767,12 @@ private extension CoachDayPriorityResolver {
             context.actualLoad.activeCalories > 800
 
         guard fuelIsBehind(context) else { return nil }
+
+        if heatHydrationActivity(in: context) != nil,
+           hydrationRatio(context) < 0.40,
+           hardActivity == nil {
+            return nil
+        }
 
         if hardActivity == nil &&
             !tomorrowHard &&
@@ -5912,7 +6081,7 @@ private extension CoachDayPriorityResolver {
             return nil
         }
 
-        guard !isFoodMeal(completed), !isHydrationLog(completed) else { return nil }
+        guard !isFoodMeal(completed), !CoachCanonicalDayState.isHydrationLog(completed) else { return nil }
         guard !isMeaningfulPostActivityTraining(completed) else { return nil }
 
         let kind = CoachActivityContextResolverV3.kind(for: completed)
@@ -6163,20 +6332,26 @@ private extension CoachDayPriorityResolver {
 
         let hydrationBehindNow = hydrationIsBehind(context)
         let fuelBehindNow = fuelIsBehind(context)
-        let tomorrowHard = context.tomorrowContext?.hasHardTraining == true
-        let tomorrowLoad = context.tomorrowContext?.dayContext.upcomingTrainingStressScore ?? 0
+        let tomorrowDemand = CoachTomorrowDemandResolver.resolve(context: context)
+        let tomorrowHard = tomorrowDemand.isHard
+        let hasTomorrowDemand = tomorrowDemand.hasDemand
         let highLoadToday = isHighLoadDay(context) || context.dayContext.hasMeaningfulLoadCompleted
         let timeBucket = localTimeBucket(in: context)
         let lateNight = timeBucket == .lateNight
         let sleepLimited = sleepIsPoor(context) || isVeryLowSleep(context)
         let recoveryLimited = recoveryIsLow(context)
+        let recentOverload = CoachLifecycleDecisionPipeline.recent7DayTrainingLoad(in: context) >= 7
+        let noBasicsLogged = (context.nutritionContext?.mealsCount ?? 0) == 0 &&
+            (context.nutritionContext?.waterCurrent ?? 0) <= 0.10 &&
+            (context.nutritionContext?.caloriesCurrent ?? 0) <= 0
+        let loadNeedsProtection = highLoadToday && (hasTomorrowDemand || sleepLimited || recoveryLimited || recentOverload)
         let severeEveningLimiter = protectTomorrowHasSafetyLimiter(context)
 
         guard hydrationBehindNow ||
                 fuelBehindNow ||
                 tomorrowHard ||
-                tomorrowLoad > 0 ||
-                highLoadToday ||
+                hasTomorrowDemand ||
+                loadNeedsProtection ||
                 sleepLimited ||
                 recoveryLimited ||
                 lateNight else {
@@ -6197,7 +6372,21 @@ private extension CoachDayPriorityResolver {
         let intervention: CoachInterventionValue
         let completion: CompletionState
 
-        if lateNight {
+        if highLoadToday && !loadNeedsProtection && !hydrationBehindNow && !fuelBehindNow {
+            limiter = .none
+            title = "The work is done"
+            todayTitle = "Recovery is holding up"
+            todayMessage = "Nothing important needs protecting."
+            message = "The work is done, recovery is holding up well, and nothing important needs protecting tonight."
+            support = ["Enjoy the evening", "Let recovery keep working", "No extra protection needed"]
+            priority = .stable
+            mode = .reinforcement
+            strength = .medium
+            baseScore = 91
+            objective = .completeDay
+            intervention = .low
+            completion = .goodEnough
+        } else if lateNight && (sleepLimited || recoveryLimited || hasTomorrowDemand || hydrationBehindNow || fuelBehindNow || recentOverload || noBasicsLogged) {
             limiter = .sleep
             title = "Protect the night"
             todayTitle = "Protect sleep"
@@ -6264,12 +6453,16 @@ private extension CoachDayPriorityResolver {
             intervention = .useful
             completion = .goodEnough
         } else {
-            limiter = sleepLimited ? .sleep : .recovery
-            title = "Close the day"
-            todayTitle = "Close the day"
-            todayMessage = "Let recovery take over."
-            message = "The day is basically done. Keep the evening calm, recover, and make tomorrow easier to start."
-            support = ["Keep the evening calm", "Avoid extra intensity", "Protect sleep"]
+            limiter = .none
+            title = highLoadToday ? "The work is done" : "Close the day"
+            todayTitle = highLoadToday ? "Recovery is holding up" : "Close the day"
+            todayMessage = highLoadToday ? "Nothing important needs protecting." : "Let recovery take over."
+            message = highLoadToday
+                ? "The work is done, recovery is holding up well, and nothing important needs protecting tonight."
+                : "The day is basically done. Keep the evening calm, recover, and make tomorrow easier to start."
+            support = highLoadToday
+                ? ["Enjoy the evening", "Let recovery keep working", "No extra protection needed"]
+                : ["Keep the evening calm", "Avoid extra intensity", "Protect sleep"]
             priority = .stable
             mode = .reinforcement
             strength = .medium
@@ -6481,7 +6674,7 @@ private extension CoachDayPriorityResolver {
         guard !isEveningOrLater(context), !isOvernightBeforeDayStart(context) else { return nil }
         guard !fuelIsBehind(context), !hydrationIsBehind(context), !recoveryIsLow(context), !sleepIsPoor(context) else { return nil }
         guard !context.dayContext.hasMeaningfulLoadCompleted else { return nil }
-        guard context.tomorrowContext?.hasHardTraining != true else { return nil }
+        guard !context.tomorrowDemand.isHard else { return nil }
 
         let recoveryStrong = recoveryPercent(context).map { $0 >= 85 } ??
             (context.brain.recovery == .strong || context.brain.readiness == .excellent)
@@ -6855,7 +7048,7 @@ private extension CoachDayPriorityResolver {
         }
 
         if isHighLoadDay(context) {
-            let tomorrowText = context.tomorrowContext?.hasHardTraining == true
+            let tomorrowText = context.tomorrowDemand.isHard
                 ? " That is also how you protect tomorrow's session."
                 : ""
 
@@ -6877,7 +7070,7 @@ private extension CoachDayPriorityResolver {
             )
         }
 
-        if context.tomorrowContext?.hasHardTraining == true {
+        if context.tomorrowDemand.isHard {
             return RecoveryNarrative(
                 title: "Protect tomorrow's training",
                 message: "Recovery is the limiter today because tomorrow asks for more. I would make the rest of the day quieter instead of borrowing from tomorrow.",
@@ -6970,7 +7163,7 @@ private extension CoachDayPriorityResolver {
         }
 
         if bullets.count < 3 {
-            if context.tomorrowContext?.hasHardTraining == true {
+            if context.tomorrowDemand.isHard {
                 bullets.append("Keep tomorrow adjustable")
             } else {
                 bullets.append("Avoid extra intensity")
@@ -7006,27 +7199,32 @@ private extension CoachDayPriorityResolver {
     }
 
     static func nutritionRatio(_ context: CoachDecisionContext) -> Double {
-        if let nutrition = context.nutritionContext, nutrition.caloriesGoal > 0 {
-            return nutrition.caloriesCurrent / nutrition.caloriesGoal
+        if let nutrition = context.nutritionContext {
+            return safeRatio(nutrition.caloriesCurrent, context.brain.baseDayGoals.calories)
         }
 
-        return context.brain.current.caloriesProgress
+        return safeRatio(context.brain.metrics.calories, context.brain.baseDayGoals.calories)
     }
 
     static func proteinRatio(_ context: CoachDecisionContext) -> Double {
-        if let nutrition = context.nutritionContext, nutrition.proteinGoal > 0 {
-            return nutrition.proteinCurrent / nutrition.proteinGoal
+        if let nutrition = context.nutritionContext {
+            return safeRatio(nutrition.proteinCurrent, context.brain.baseDayGoals.protein)
         }
 
-        return context.brain.current.proteinProgress
+        return safeRatio(context.brain.metrics.protein, context.brain.baseDayGoals.protein)
     }
 
     static func carbsRatio(_ context: CoachDecisionContext) -> Double {
-        if let nutrition = context.nutritionContext, nutrition.carbsGoal > 0 {
-            return nutrition.carbsCurrent / nutrition.carbsGoal
+        if let nutrition = context.nutritionContext {
+            return safeRatio(nutrition.carbsCurrent, context.brain.baseDayGoals.carbs)
         }
 
         return context.brain.current.carbsProgress
+    }
+
+    static func safeRatio(_ current: Double, _ target: Double) -> Double {
+        guard target > 0 else { return 1 }
+        return max(0, current / target)
     }
 
     static func strongRecovery(in context: CoachDecisionContext) -> Bool {
@@ -7110,7 +7308,6 @@ private extension CoachDayPriorityResolver {
 
     static func fuelIsCriticallyBehind(_ context: CoachDecisionContext) -> Bool {
         nutritionRatio(context) < 0.20 ||
-            context.brain.current.energyCoverage < 0.25 ||
             carbsRatio(context) < 0.15
     }
 
@@ -7123,7 +7320,7 @@ private extension CoachDayPriorityResolver {
     
     static func tomorrowPlanRiskPriority(in context: CoachDecisionContext) -> CoachDayPriorityResult? {
         guard let tomorrow = context.tomorrowContext else { return nil }
-        guard tomorrow.hasHardTraining else { return nil }
+        guard context.tomorrowDemand.isHard else { return nil }
         guard isRecoveryLimitedForTomorrow(context) else { return nil }
 
         let activity = tomorrow.primaryTrainingActivity
@@ -7156,7 +7353,7 @@ private extension CoachDayPriorityResolver {
         guard isHighLoadDay(context) else { return nil }
 
         let tomorrowClause: String
-        if let tomorrow = context.tomorrowContext, tomorrow.hasHardTraining {
+        if context.tomorrowDemand.isHard {
             tomorrowClause = " and keep tomorrow's harder work realistic"
         } else {
             tomorrowClause = ""
@@ -7388,12 +7585,15 @@ private extension CoachDayPriorityResolver {
         let timingIsImmediate = context.activityContext.activeActivity != nil ||
             context.activityContext.preparingActivity != nil
 
-        guard hardActivity != nil ||
-              context.brain.current.energyCoverage < Thresholds.fuelBehindHardWorkoutRatio else {
+        let baseFuelBehind = nutritionRatio(context) < Thresholds.fuelBehindHardWorkoutRatio ||
+            proteinRatio(context) < 0.45 ||
+            carbsRatio(context) < 0.35
+
+        guard hardActivity != nil || baseFuelBehind else {
             return nil
         }
 
-        guard !timingIsImmediate || context.brain.current.energyCoverage < 0.45 else {
+        guard !timingIsImmediate || nutritionRatio(context) < 0.45 || carbsRatio(context) < 0.30 else {
             return nil
         }
 
@@ -7552,8 +7752,13 @@ private extension CoachDayPriorityResolver {
     }
 
     static func activityProgress(_ context: CoachDecisionContext) -> Double {
-        context.actualLoad.activityProgress ??
+        let progress = context.actualLoad.activityProgress ??
             context.actualLoad.activeCalories / Thresholds.estimatedActivityGoalCalories
+        guard context.actualLoad.activeCalories >= 300 ||
+                (context.actualLoad.exerciseMinutes ?? 0) >= 30 else {
+            return min(progress, 0.99)
+        }
+        return progress
     }
 
     static func isVeryLowSleep(_ context: CoachDecisionContext) -> Bool {
@@ -7630,7 +7835,7 @@ private extension CoachDayPriorityResolver {
                 load == .extreme ||
                 activity.effectiveDurationMinutes >= Thresholds.hardWorkoutMinimumMinutes
         } ?? false
-        let caloriesBehind = caloriesRatio < 0.35 || context.brain.current.energyCoverage < 0.35
+        let caloriesBehind = caloriesRatio < 0.35
         let carbsBehind = carbsRatio < 0.25
         let criticalFuelGap = caloriesBehind || carbsBehind
         let reasonableTimeToEat = hour >= 6 && hour < Thresholds.lateEveningHour
@@ -7642,8 +7847,7 @@ private extension CoachDayPriorityResolver {
             criticalFuelGap &&
             (
                 carbsRatio < 0.18 ||
-                caloriesRatio < 0.18 ||
-                context.brain.current.energyCoverage < 0.45
+                caloriesRatio < 0.18
             )
         let recentFuelSatisfiesTraining = alreadyAteRecently && !closeTrainingStillUnderFueled
         let insufficientRecentFuel = criticalFuelGap || (noMealsToday && !alreadyAteRecently)
@@ -7771,7 +7975,7 @@ private extension CoachDayPriorityResolver {
     static func fuelIsBehind(_ context: CoachDecisionContext) -> Bool {
         let signals = fuelBehindSignals(in: context)
         let hour = localHour(in: context)
-        let tomorrowHard = context.tomorrowContext?.hasHardTraining == true
+        let tomorrowHard = context.tomorrowDemand.isHard
         let recoveryDayWithoutTraining =
             context.dayContext.dayType == .recovery &&
             !hasMeaningfulTrainingRemaining(context)
