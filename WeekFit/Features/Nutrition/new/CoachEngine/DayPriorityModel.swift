@@ -591,14 +591,7 @@ struct CoachRecoveryContributorDebug: Hashable {
     }
 
     private static func expectedHydrationProgress(hour: Int) -> Double {
-        interpolate(hour: hour, points: [
-            (6, 0.08),
-            (8, 0.18),
-            (12, 0.45),
-            (16, 0.68),
-            (20, 0.90),
-            (22, 1.00)
-        ])
+        HumanBrain.expectedHydrationProgress(for: hour)
     }
 
     private static func expectedCalorieProgress(hour: Int) -> Double {

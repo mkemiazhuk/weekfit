@@ -125,7 +125,7 @@ final class PlanViewModel: ObservableObject {
             title: meal.title,
             subtitle: "\(meal.calories) kcal • P \(meal.protein)g",
             icon: PlannerType.meal.icon,
-            imageName: meal.imageName
+            imageName: displayImageName(for: meal)
         )
     }
 
@@ -368,6 +368,9 @@ final class PlanViewModel: ObservableObject {
         }
 
         let finalDuration = selectedType == .meal ? 15 : selectedDuration
+        let finalImageName = selectedType == .meal
+            ? displayImageName(for: meal)
+            : selectedItem.imageName
 
         if let editingActivity {
             cancelNotifications(for: editingActivity)
@@ -378,7 +381,7 @@ final class PlanViewModel: ObservableObject {
             editingActivity.title = selectedItem.title
             editingActivity.durationMinutes = selectedDuration
             editingActivity.icon = selectedType.icon
-            editingActivity.imageName = selectedItem.imageName
+            editingActivity.imageName = finalImageName
             editingActivity.colorRed = selectedType.colorComponents.red
             editingActivity.colorGreen = selectedType.colorComponents.green
             editingActivity.colorBlue = selectedType.colorComponents.blue
@@ -405,7 +408,7 @@ final class PlanViewModel: ObservableObject {
                 title: selectedItem.title,
                 durationMinutes: finalDuration,
                 icon: selectedType.icon,
-                imageName: selectedItem.imageName,
+                imageName: finalImageName,
                 colorRed: selectedType.colorComponents.red,
                 colorGreen: selectedType.colorComponents.green,
                 colorBlue: selectedType.colorComponents.blue,
@@ -430,6 +433,18 @@ final class PlanViewModel: ObservableObject {
         }
 
         closeAddSheet()
+    }
+
+    private func displayImageName(for meal: Meals?) -> String {
+        guard let meal else { return selectedItem.imageName }
+
+        if let photoFilename = meal.displayPhotoFilename?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !photoFilename.isEmpty {
+            return photoFilename
+        }
+
+        return meal.imageName
     }
 
     func closeAddSheet() {

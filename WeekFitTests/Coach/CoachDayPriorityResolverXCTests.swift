@@ -571,13 +571,13 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         let priority = resolve([sauna], brain: brain)
 
-        XCTAssertNotEqual(priority.focus, CoachDayFocus.hydrationBehind)
-        XCTAssertTrue(priority.priority == .hydration || priority.priority == .planChallenge || priority.priority == .recovery)
+        assertExecutionLayerIsNotPrimary(priority)
+        XCTAssertTrue(priority.priority == .performance || priority.priority == .planChallenge || priority.priority == .recovery)
         XCTAssertEqual(priority.activity?.id, sauna.id)
         XCTAssertTrue(priority.supportBullets.contains { $0.localizedCaseInsensitiveContains("400-600 ml") })
     }
 
-    func testSaunaPreparationHydrationPriorityUsesTaskTitle() {
+    func testSaunaPreparationUsesActivityNarrativeWithHydrationAction() {
         let sauna = PlannedActivityBuilder.workout(
             title: "Sauna",
             at: CoachTestClock.offset(minutes: 8, from: now),
@@ -607,9 +607,10 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(priority.priority == .hydration || priority.priority == .planChallenge)
+        assertExecutionLayerIsNotPrimary(priority)
+        XCTAssertTrue(priority.priority == .performance || priority.priority == .planChallenge)
         XCTAssertTrue(priority.focus == .prepareForActivity || priority.focus == .trainingReadinessWarning)
-        XCTAssertEqual(priority.limiter, .hydration)
+        XCTAssertNotEqual(priority.limiter, .hydration)
         XCTAssertEqual(priority.activity?.id, sauna.id)
         XCTAssertFalse(priority.title.isEmpty)
         XCTAssertFalse(priority.todayTitle.isEmpty)
@@ -1152,7 +1153,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         XCTAssertNotEqual(priority.priority, CoachDayPriority.hydration)
         XCTAssertNotEqual(priority.focus, CoachDayFocus.hydrationBehind)
-        XCTAssertTrue(priority.limiter == .hydration || priority.limiter == .timing)
+        XCTAssertEqual(priority.limiter, CoachLimiter.timing)
         XCTAssertFalse(priority.supportBullets.isEmpty)
     }
 
@@ -2686,12 +2687,163 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(priority.priority, .stable)
+        XCTAssertEqual(priority.priority, .sleepPreparation)
         XCTAssertEqual(priority.objective, .completeDay)
-        XCTAssertEqual(priority.completionState, .complete)
-        XCTAssertEqual(priority.interventionValue, .low)
+        XCTAssertEqual(priority.completionState, .goodEnough)
+        XCTAssertEqual(priority.interventionValue, .high)
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
+    }
+
+    func testRecentMealSuppressesNutritionGapNextImportantEvent() {
+        let scenarioNow = fixedDate(hour: 14)
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 14,
+            energyCoverage: 0.25,
+            caloriesProgress: 0.20,
+            waterProgress: 0.80,
+            hydration: .optimal,
+            fuel: .underfueled,
+            protein: .low,
+            recovery: .stable,
+            readiness: .good
+        )
+        let context = decisionContext(
+            [],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 450,
+                caloriesGoal: 2_400,
+                proteinCurrent: 20,
+                proteinGoal: 160,
+                waterCurrent: 2.4,
+                waterGoal: 3.0,
+                mealsCount: 1,
+                lastMealTime: scenarioNow.addingTimeInterval(-60)
+            )
+        )
+
+        let normalized = CoachLifecycleDecisionPipeline.normalizedContext(from: context)
+
+        XCTAssertNotEqual(normalized.nextImportantEvent, .nutritionGapToday)
+    }
+
+    func testBadSleepAndHydrationBehindKeepsRecoveryNarrative() {
+        let scenarioNow = fixedDate(hour: 14)
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 14,
+            waterProgress: 0.12,
+            sleep: .veryShort,
+            hydration: .depleted,
+            fuel: .good,
+            protein: .good,
+            recovery: .vulnerable,
+            readiness: .low,
+            metrics: CoachMetricsBuilder.metrics(waterLiters: 0.35, sleepHours: 5.4)
+        )
+
+        let priority = resolve(
+            [],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            recovery: CoachRecoveryContext(recoveryPercent: 52, sleepHours: 5.4),
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 1_600,
+                caloriesGoal: 2_400,
+                proteinCurrent: 130,
+                proteinGoal: 160,
+                waterCurrent: 0.35,
+                waterGoal: 3.0
+            )
+        )
+
+        assertExecutionLayerIsNotPrimary(priority)
+        XCTAssertTrue(priority.priority == .recovery || priority.priority == .sleepPreparation || priority.priority == .planChallenge)
+    }
+
+    func testWorkoutSoonAndCarbsBehindKeepsTrainingPreparationNarrative() {
+        let scenarioNow = fixedDate(hour: 15)
+        let workout = PlannedActivityBuilder.workout(
+            title: "Intervals",
+            at: scenarioNow.addingTimeInterval(60 * 60),
+            durationMinutes: 60
+        )
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 15,
+            energyCoverage: 0.30,
+            carbsProgress: 0.10,
+            caloriesProgress: 0.22,
+            waterProgress: 0.80,
+            hydration: .optimal,
+            fuel: .underfueled,
+            protein: .good,
+            recovery: .stable,
+            readiness: .good
+        )
+
+        let priority = resolve(
+            [workout],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 500,
+                caloriesGoal: 2_400,
+                proteinCurrent: 100,
+                proteinGoal: 160,
+                carbsCurrent: 20,
+                carbsGoal: 260,
+                waterCurrent: 2.4,
+                waterGoal: 3.0
+            )
+        )
+
+        assertExecutionLayerIsNotPrimary(priority)
+        XCTAssertEqual(priority.priority, CoachDayPriority.performance)
+        XCTAssertEqual(priority.focus, CoachDayFocus.prepareForActivity)
+        XCTAssertEqual(priority.activity?.id, workout.id)
+    }
+
+    func testRecoveryDayWithoutBreakfastKeepsRecoveryDayNarrative() {
+        let scenarioNow = fixedDate(hour: 10)
+        let walk = recoveryActivity(
+            "Recovery Walk",
+            minutesFromNow: 90,
+            duration: 30
+        )
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 10,
+            energyCoverage: 0.10,
+            caloriesProgress: 0.0,
+            waterProgress: 0.60,
+            hydration: .optimal,
+            fuel: .underfueled,
+            protein: .low,
+            recovery: .stable,
+            readiness: .good
+        )
+
+        let priority = resolve(
+            [walk],
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow,
+            nutrition: CoachNutritionContext(
+                caloriesCurrent: 0,
+                caloriesGoal: 2_200,
+                proteinCurrent: 0,
+                proteinGoal: 150,
+                waterCurrent: 1.8,
+                waterGoal: 3.0,
+                mealsCount: 0
+            )
+        )
+
+        assertExecutionLayerIsNotPrimary(priority)
+        XCTAssertTrue(priority.priority == .recovery || priority.priority == .stable || priority.priority == .sleepPreparation)
     }
 
     func testPoorRecoveryTodayWithRecoveryTomorrowRecognizesRecoverySpace() {
@@ -3105,6 +3257,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
 
             printScenario(scenario, priority: priority)
+            assertExecutionLayerIsNotPrimary(priority)
 
             XCTAssertTrue(
                 scenario.expectedPriorities.contains(priority.priority) ||
@@ -3172,7 +3325,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
     func testHumanCoachTwentyScenarioAcceptanceMatrix() {
         let scenarios = [
-            scenario("1. Woke up strong, walk later", hour: 7, sleep: 7.8, recovery: 88, activityPercent: 5, nutritionPercent: 0, hydrationPercent: 0, today: [recoveryActivity("Walk", minutesFromNow: 60, duration: 30)], expected: [.hydration], requiredText: "fluids"),
+            scenario("1. Woke up strong, walk later", hour: 7, sleep: 7.8, recovery: 88, activityPercent: 5, nutritionPercent: 0, hydrationPercent: 0, today: [recoveryActivity("Walk", minutesFromNow: 60, duration: 30)], expected: [.recovery, .performance, .stable], requiredText: "fluids"),
             scenario("2. Good recovery, workout tonight", hour: 9, sleep: 7.8, recovery: 92, activityPercent: 10, nutritionPercent: 80, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 540, duration: 60)], expected: [.stable]),
             scenario("3. Workout soon, readiness good", hour: 17, minute: 30, sleep: 7.5, recovery: 84, activityPercent: 40, nutritionPercent: 80, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 30, duration: 60)], expected: [.performance], requiredText: "controlled"),
             scenario("4. Workout in progress", hour: 18, sleep: 7.4, recovery: 82, activityPercent: 70, nutritionPercent: 80, hydrationPercent: 80, today: [workout("Strength", minutesFromNow: -10, duration: 60)], expected: [.activeSession], requiredText: "controlled"),
@@ -3181,13 +3334,13 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             scenario("7. Late night after training", hour: 23, minute: 45, sleep: 7.0, recovery: 74, activityPercent: 260, nutritionPercent: 80, hydrationPercent: 80, today: [completedWorkout("Strength", minutesAgo: 300, duration: 75)], expected: [.sleepPreparation], requiredText: "sleep"),
             scenario("8. After midnight before morning", hour: 0, minute: 40, sleep: 7.0, recovery: 80, activityPercent: 5, nutritionPercent: 70, hydrationPercent: 70, today: [workout("Strength", minutesFromNow: 455, duration: 45)], expected: [.sleepPreparation], requiredText: "sleep"),
             scenario("9. Recovery day with walk", hour: 11, sleep: 8.0, recovery: 86, activityPercent: 15, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Walk", minutesFromNow: 120, duration: 30)], expected: [.stable], requiredText: "recovery"),
-            scenario("10. Hydration behind, no activity soon", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 25, nutritionPercent: 80, hydrationPercent: 20, expected: [.hydration], requiredText: "fluid"),
-            scenario("11. Nutrition behind, workout later", hour: 13, sleep: 7.4, recovery: 82, activityPercent: 25, nutritionPercent: 18, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 300, duration: 75)], expected: [.fueling], requiredText: "energy"),
-            scenario("12. Good recovery, fuel bottleneck", hour: 13, sleep: 8.0, recovery: 90, activityPercent: 20, nutritionPercent: 8, hydrationPercent: 85, expected: [.fueling], requiredText: "fuel"),
+            scenario("10. Hydration behind, no activity soon", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 25, nutritionPercent: 80, hydrationPercent: 20, expected: [.recovery, .stable], requiredText: "fluid"),
+            scenario("11. Nutrition behind, workout later", hour: 13, sleep: 7.4, recovery: 82, activityPercent: 25, nutritionPercent: 18, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 300, duration: 75)], expected: [.performance, .recovery, .stable], requiredText: "energy"),
+            scenario("12. Good recovery, fuel bottleneck", hour: 13, sleep: 8.0, recovery: 90, activityPercent: 20, nutritionPercent: 8, hydrationPercent: 85, expected: [.recovery, .stable], requiredText: "fuel"),
             scenario("13. Poor sleep limits recovery", hour: 12, sleep: 4.8, recovery: 52, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 80, expected: [.recovery, .sleepPreparation], requiredText: "sleep"),
             scenario("14. Missed activity reset", hour: 15, sleep: 7.4, recovery: 82, activityPercent: 30, nutritionPercent: 80, hydrationPercent: 80, today: [skippedWorkout("Strength", hour: 11, duration: 45)], expected: [.stable], requiredText: "miss"),
             scenario("15. Excellent day handled", hour: 20, sleep: 8.2, recovery: 90, activityPercent: 180, nutritionPercent: 100, hydrationPercent: 100, today: [completedWorkout("Strength", minutesAgo: 240, duration: 60)], expected: [.stable], requiredText: "work"),
-            scenario("16. Workout later, fuel and water low", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 35, nutritionPercent: 15, hydrationPercent: 25, today: [workout("Strength", minutesFromNow: 120, duration: 75)], expected: [.fueling, .hydration], requiredText: "fuel"),
+            scenario("16. Workout later, fuel and water low", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 35, nutritionPercent: 15, hydrationPercent: 25, today: [workout("Strength", minutesFromNow: 120, duration: 75)], expected: [.performance, .recovery, .planChallenge], requiredText: "fuel"),
             scenario("17. Long gap before activity", hour: 12, sleep: 8.0, recovery: 88, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 80, today: [workout("Strength", minutesFromNow: 360, duration: 60)], expected: [.stable]),
             scenario("18. Recovery walk soon", hour: 10, sleep: 8.0, recovery: 88, activityPercent: 10, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Walk", minutesFromNow: 30, duration: 30)], expected: [.stable], requiredText: "easy"),
             scenario("19. User already did enough", hour: 19, sleep: 8.0, recovery: 88, activityPercent: 180, nutritionPercent: 95, hydrationPercent: 95, today: [completedWorkout("Strength", minutesAgo: 180, duration: 60)], expected: [.stable, .recovery], requiredText: "work"),
@@ -3243,6 +3396,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
 
             familyCounts[priority.messageFamily, default: 0] += 1
+            assertExecutionLayerIsNotPrimary(priority)
 
             if priority.messageFamily == .recovery || priority.messageFamily == .sleep {
                 let copyKey = normalizedCopyKey(priority)
@@ -3930,7 +4084,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 hydrationPercent: 45,
                 today: [sauna(hour: 19, minute: 20)],
                 tomorrow: [workout("Normal Training", dayOffset: 1, hour: 12, duration: 45)],
-                expected: [.hydration],
+                expected: [.performance, .recovery, .planChallenge],
                 requiredText: "heat"
             ),
             scenario(
@@ -3956,7 +4110,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 hydrationPercent: 80,
                 carbsPercent: 8,
                 today: [workout("Cycling", minutesFromNow: 60, duration: 180)],
-                expected: [.fueling],
+                expected: [.performance, .recovery],
                 requiredText: "energy"
             ),
             scenario(
@@ -3969,7 +4123,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 hydrationPercent: 70,
                 carbsPercent: 20,
                 tomorrow: [workout("Long Endurance Ride", dayOffset: 1, hour: 9, duration: 240)],
-                expected: [.fueling, .planChallenge],
+                expected: [.performance, .recovery, .planChallenge],
                 requiredText: "tomorrow"
             ),
             scenario(
@@ -4056,7 +4210,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 activityPercent: 40,
                 nutritionPercent: 80,
                 hydrationPercent: 35,
-                expected: [.hydration],
+                expected: [.recovery],
                 requiredText: "fluid"
             ),
             scenario(
@@ -4068,7 +4222,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 nutritionPercent: 20,
                 hydrationPercent: 80,
                 tomorrow: [recoveryActivity("Rest Walk", dayOffset: 1, hour: 12, duration: 30)],
-                expected: [.fueling],
+                expected: [.recovery],
                 requiredText: "recovery"
             ),
             scenario(
@@ -4105,7 +4259,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
                 nutritionPercent: 5,
                 hydrationPercent: 90,
                 today: [workout("Strength", minutesFromNow: 45, duration: 60)],
-                expected: [.fueling],
+                expected: [.performance, .recovery],
                 requiredText: "fuel"
             ),
             scenario(
@@ -4155,7 +4309,7 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         )
 
         return [
-            scenario("1. Wake strong before walk", hour: 7, sleep: 7.8, recovery: 88, activityPercent: 5, nutritionPercent: 0, hydrationPercent: 0, today: [recoveryActivity("Easy Walk", minutesFromNow: 60, duration: 30)], expected: [.hydration], requiredText: "recovery"),
+            scenario("1. Wake strong before walk", hour: 7, sleep: 7.8, recovery: 88, activityPercent: 5, nutritionPercent: 0, hydrationPercent: 0, today: [recoveryActivity("Easy Walk", minutesFromNow: 60, duration: 30)], expected: [.recovery, .performance, .stable], requiredText: "recovery"),
             scenario("2. Good recovery workout much later", hour: 9, sleep: 8.0, recovery: 92, activityPercent: 10, nutritionPercent: 80, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 540, duration: 60)], expected: [.stable]),
             scenario("3. Workout in preparation window", hour: 17, minute: 30, sleep: 7.5, recovery: 84, activityPercent: 30, nutritionPercent: 80, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 30, duration: 60)], expected: [.performance], requiredText: "controlled"),
             scenario("4. Workout in progress", hour: 14, sleep: 7.5, recovery: 82, activityPercent: 60, nutritionPercent: 80, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: -10, duration: 60)], expected: [.activeSession], requiredText: "controlled"),
@@ -4164,13 +4318,13 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             scenario("7. Late night after training", hour: 23, minute: 45, sleep: 7.0, recovery: 72, activityPercent: 220, nutritionPercent: 80, hydrationPercent: 80, today: [completedEarlierAtNight], expected: [.sleepPreparation], requiredText: "sleep"),
             scenario("8. Midnight before morning activity", hour: 0, minute: 40, sleep: 7.0, recovery: 78, activityPercent: 5, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Easy Walk", minutesFromNow: 455, duration: 30)], expected: [.sleepPreparation], requiredText: "sleep"),
             scenario("9. Recovery day walk later", hour: 10, sleep: 8.2, recovery: 86, activityPercent: 10, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Recovery Walk", minutesFromNow: 180, duration: 30)], expected: [.stable], requiredText: "easy"),
-            scenario("10. Hydration behind no activity", hour: 15, sleep: 7.5, recovery: 80, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 20, expected: [.hydration], requiredText: "fluid"),
-            scenario("11. Nutrition behind workout later", hour: 13, sleep: 7.5, recovery: 82, activityPercent: 20, nutritionPercent: 18, hydrationPercent: 85, carbsPercent: 12, today: [workout("Strength", minutesFromNow: 240, duration: 75)], expected: [.fueling], requiredText: "energy"),
-            scenario("12. Good recovery poor fuel", hour: 13, sleep: 8.0, recovery: 90, activityPercent: 20, nutritionPercent: 8, hydrationPercent: 85, carbsPercent: 6, expected: [.fueling], requiredText: "fuel"),
+            scenario("10. Hydration behind no activity", hour: 15, sleep: 7.5, recovery: 80, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 20, expected: [.recovery, .stable], requiredText: "fluid"),
+            scenario("11. Nutrition behind workout later", hour: 13, sleep: 7.5, recovery: 82, activityPercent: 20, nutritionPercent: 18, hydrationPercent: 85, carbsPercent: 12, today: [workout("Strength", minutesFromNow: 240, duration: 75)], expected: [.performance, .recovery, .stable], requiredText: "energy"),
+            scenario("12. Good recovery poor fuel", hour: 13, sleep: 8.0, recovery: 90, activityPercent: 20, nutritionPercent: 8, hydrationPercent: 85, carbsPercent: 6, expected: [.recovery, .stable], requiredText: "fuel"),
             scenario("13. Poor sleep low recovery", hour: 12, sleep: 4.8, recovery: 52, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 80, expected: [.recovery, .sleepPreparation], requiredText: "sleep"),
             scenario("14. Missed activity reset", hour: 15, sleep: 7.2, recovery: 78, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 80, today: [skippedWorkout], expected: [.stable], requiredText: "miss"),
             scenario("15. Excellent day handled", hour: 19, sleep: 8.0, recovery: 88, activityPercent: 120, nutritionPercent: 100, hydrationPercent: 100, today: [completedEnough], expected: [.stable], requiredText: "done"),
-            scenario("16. Workout later fuel and water low", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 25, nutritionPercent: 18, hydrationPercent: 25, carbsPercent: 12, today: [workout("Strength", minutesFromNow: 120, duration: 75)], expected: [.fueling, .hydration], requiredText: "preparation"),
+            scenario("16. Workout later fuel and water low", hour: 15, sleep: 7.5, recovery: 82, activityPercent: 25, nutritionPercent: 18, hydrationPercent: 25, carbsPercent: 12, today: [workout("Strength", minutesFromNow: 120, duration: 75)], expected: [.performance, .recovery, .planChallenge], requiredText: "preparation"),
             scenario("17. Long gap before activity", hour: 10, sleep: 8.0, recovery: 86, activityPercent: 15, nutritionPercent: 80, hydrationPercent: 80, today: [workout("Strength", minutesFromNow: 360, duration: 60)], expected: [.stable]),
             scenario("18. Recovery walk soon", hour: 13, sleep: 8.0, recovery: 84, activityPercent: 15, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Recovery Walk", minutesFromNow: 30, duration: 30)], expected: [.stable], requiredText: "easy"),
             scenario("19. Enough work completed", hour: 16, sleep: 7.5, recovery: 82, activityPercent: 130, nutritionPercent: 90, hydrationPercent: 90, today: [completedEnough], expected: [.stable], requiredText: "banked"),
@@ -4189,35 +4343,35 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             scenario("23. High load work already covered", hour: 21, sleep: 7.0, recovery: 70, activityPercent: 520, nutritionPercent: 80, hydrationPercent: 80, expected: [.recovery, .sleepPreparation], requiredText: "load"),
             scenario("24. High load with easy tomorrow", hour: 21, sleep: 6.5, recovery: 62, activityPercent: 480, nutritionPercent: 80, hydrationPercent: 80, tomorrow: tomorrowEasy, expected: [.recovery, .sleepPreparation], requiredText: "work"),
             scenario("25. Tomorrow intervals unrealistic", hour: 20, sleep: 4.0, recovery: 44, activityPercent: 260, nutritionPercent: 65, hydrationPercent: 70, tomorrow: tomorrowHard, expected: [.planChallenge], requiresPlanChallenge: true, requiredText: "tomorrow"),
-            scenario("26. Tomorrow endurance under fueled", hour: 20, sleep: 6.5, recovery: 65, activityPercent: 260, nutritionPercent: 30, hydrationPercent: 70, carbsPercent: 20, tomorrow: tomorrowEndurance, expected: [.fueling, .planChallenge], requiredText: "tomorrow"),
-            scenario("27. Sauna dry but otherwise ready", hour: 18, sleep: 8.0, recovery: 84, activityPercent: 50, nutritionPercent: 80, hydrationPercent: 30, today: [sauna(hour: 18, minute: 15)], expected: [.hydration], requiredText: "heat"),
-            scenario("28. Hydration low before endurance", hour: 13, sleep: 7.5, recovery: 82, activityPercent: 40, nutritionPercent: 80, hydrationPercent: 38, today: [workout("Endurance Ride", minutesFromNow: 50, duration: 120)], expected: [.hydration], requiredText: "fluid"),
-            scenario("29. Fuel limiter despite high recovery", hour: 12, sleep: 8.0, recovery: 92, activityPercent: 35, nutritionPercent: 18, hydrationPercent: 85, carbsPercent: 10, today: [workout("Intervals", minutesFromNow: 70, duration: 75)], expected: [.fueling], requiredText: "energy"),
-            scenario("30. Fuel recovery gap no session", hour: 16, sleep: 7.0, recovery: 75, activityPercent: 120, nutritionPercent: 22, hydrationPercent: 80, tomorrow: tomorrowEasy, expected: [.fueling], requiredText: "recovery"),
+            scenario("26. Tomorrow endurance under fueled", hour: 20, sleep: 6.5, recovery: 65, activityPercent: 260, nutritionPercent: 30, hydrationPercent: 70, carbsPercent: 20, tomorrow: tomorrowEndurance, expected: [.recovery, .planChallenge], requiredText: "tomorrow"),
+            scenario("27. Sauna dry but otherwise ready", hour: 18, sleep: 8.0, recovery: 84, activityPercent: 50, nutritionPercent: 80, hydrationPercent: 30, today: [sauna(hour: 18, minute: 15)], expected: [.performance, .recovery, .planChallenge], requiredText: "heat"),
+            scenario("28. Hydration low before endurance", hour: 13, sleep: 7.5, recovery: 82, activityPercent: 40, nutritionPercent: 80, hydrationPercent: 38, today: [workout("Endurance Ride", minutesFromNow: 50, duration: 120)], expected: [.performance, .recovery], requiredText: "fluid"),
+            scenario("29. Fuel limiter despite high recovery", hour: 12, sleep: 8.0, recovery: 92, activityPercent: 35, nutritionPercent: 18, hydrationPercent: 85, carbsPercent: 10, today: [workout("Intervals", minutesFromNow: 70, duration: 75)], expected: [.performance, .recovery], requiredText: "energy"),
+            scenario("30. Fuel recovery gap no session", hour: 16, sleep: 7.0, recovery: 75, activityPercent: 120, nutritionPercent: 22, hydrationPercent: 80, tomorrow: tomorrowEasy, expected: [.recovery], requiredText: "recovery"),
             scenario("31. Recovery suppressed easy walk", hour: 11, sleep: 7.0, recovery: 35, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 80, today: [recoveryActivity("Easy Walk", minutesFromNow: 45, duration: 30)], expected: [.recovery], requiredText: "recovery"),
             scenario("32. Recovery suppressed no activity", hour: 13, sleep: 6.8, recovery: 39, activityPercent: 30, nutritionPercent: 80, hydrationPercent: 80, expected: [.recovery], requiredText: "recovery"),
             scenario("33. Recovery low and dry", hour: 18, sleep: 5.0, recovery: 42, activityPercent: 160, nutritionPercent: 70, hydrationPercent: 32, expected: [.recovery, .sleepPreparation], requiredText: "hydration"),
             scenario("34. Good readiness long ride later", hour: 9, sleep: 8.2, recovery: 90, activityPercent: 10, nutritionPercent: 82, hydrationPercent: 85, today: [workout("Long Ride", minutesFromNow: 180, duration: 150)], expected: [.performance], requiredText: "train"),
             scenario("35. Active endurance supported", hour: 14, sleep: 7.5, recovery: 82, activityPercent: 80, nutritionPercent: 80, hydrationPercent: 80, today: [workout("Cycling", minutesFromNow: -5, duration: 90)], expected: [.activeSession], requiredText: "controlled"),
-            scenario("36. Post workout recovery window", hour: 14, sleep: 7.0, recovery: 70, activityPercent: 120, nutritionPercent: 40, hydrationPercent: 45, today: [workout("Tempo Run", minutesFromNow: -80, duration: 45)], expected: [.recovery, .fueling, .hydration], requiredText: "session"),
+            scenario("36. Post workout recovery window", hour: 14, sleep: 7.0, recovery: 70, activityPercent: 120, nutritionPercent: 40, hydrationPercent: 45, today: [workout("Tempo Run", minutesFromNow: -80, duration: 45)], expected: [.recovery], requiredText: "session"),
             scenario("37. Accumulated trend tomorrow hard", hour: 19, sleep: 6.0, recovery: 61, activityPercent: 140, nutritionPercent: 70, hydrationPercent: 75, tomorrow: tomorrowHard, expected: [.planChallenge, .recovery], recentLoadTrend: true, requiredText: "trend"),
-            scenario("38. High load dehydration no heat", hour: 17, sleep: 7.0, recovery: 78, activityPercent: 350, nutritionPercent: 75, hydrationPercent: 35, expected: [.hydration], requiredText: "fluid"),
+            scenario("38. High load dehydration no heat", hour: 17, sleep: 7.0, recovery: 78, activityPercent: 350, nutritionPercent: 75, hydrationPercent: 35, expected: [.recovery], requiredText: "fluid"),
             scenario("39. Severe fatigue skips sauna", hour: 21, sleep: 2.8, recovery: 32, activityPercent: 500, nutritionPercent: 60, hydrationPercent: 50, today: [sauna(hour: 21, minute: 20)], tomorrow: tomorrowHard, expected: [.sleepPreparation, .recovery, .planChallenge], requiresPlanChallenge: true),
             scenario("40. Balanced rest day", hour: 10, sleep: 8.0, recovery: 88, activityPercent: 15, nutritionPercent: 80, hydrationPercent: 85, expected: [.stable]),
             scenario("41. Balanced workout day", hour: 11, sleep: 8.0, recovery: 88, activityPercent: 20, nutritionPercent: 85, hydrationPercent: 85, today: [workout("Strength", minutesFromNow: 130, duration: 60)], expected: [.performance]),
-            scenario("42. Under fueled after hard day", hour: 20, sleep: 7.0, recovery: 68, activityPercent: 420, nutritionPercent: 20, hydrationPercent: 75, tomorrow: tomorrowEasy, expected: [.fueling, .recovery], requiredText: "fuel"),
-            scenario("43. Under fueled tomorrow intervals", hour: 18, sleep: 7.0, recovery: 72, activityPercent: 90, nutritionPercent: 24, hydrationPercent: 80, tomorrow: tomorrowHard, expected: [.fueling, .planChallenge], requiredText: "tomorrow"),
+            scenario("42. Under fueled after hard day", hour: 20, sleep: 7.0, recovery: 68, activityPercent: 420, nutritionPercent: 20, hydrationPercent: 75, tomorrow: tomorrowEasy, expected: [.recovery], requiredText: "fuel"),
+            scenario("43. Under fueled tomorrow intervals", hour: 18, sleep: 7.0, recovery: 72, activityPercent: 90, nutritionPercent: 24, hydrationPercent: 80, tomorrow: tomorrowHard, expected: [.recovery, .planChallenge], requiredText: "tomorrow"),
             scenario("44. Poor sleep tomorrow easy", hour: 21, sleep: 3.4, recovery: 66, activityPercent: 70, nutritionPercent: 75, hydrationPercent: 80, tomorrow: tomorrowEasy, expected: [.sleepPreparation, .recovery], requiredText: "sleep"),
             scenario("45. Poor sleep low recovery", hour: 13, sleep: 3.5, recovery: 40, activityPercent: 50, nutritionPercent: 80, hydrationPercent: 80, expected: [.sleepPreparation, .recovery], requiredText: "sleep"),
-            scenario("46. Hydration normal fuel low", hour: 15, sleep: 7.5, recovery: 80, activityPercent: 50, nutritionPercent: 28, hydrationPercent: 90, today: [workout("Strength", minutesFromNow: 80, duration: 60)], expected: [.fueling], requiredText: "energy"),
-            scenario("47. Hydration before sauna with high load", hour: 19, sleep: 7.0, recovery: 75, activityPercent: 220, nutritionPercent: 80, hydrationPercent: 42, today: [sauna(hour: 19, minute: 5)], expected: [.hydration], requiredText: "dry"),
+            scenario("46. Hydration normal fuel low", hour: 15, sleep: 7.5, recovery: 80, activityPercent: 50, nutritionPercent: 28, hydrationPercent: 90, today: [workout("Strength", minutesFromNow: 80, duration: 60)], expected: [.performance, .recovery], requiredText: "energy"),
+            scenario("47. Hydration before sauna with high load", hour: 19, sleep: 7.0, recovery: 75, activityPercent: 220, nutritionPercent: 80, hydrationPercent: 42, today: [sauna(hour: 19, minute: 5)], expected: [.performance, .recovery, .planChallenge], requiredText: "dry"),
             scenario("48. Tomorrow long ride recovery narrow", hour: 20, sleep: 5.0, recovery: 52, activityPercent: 190, nutritionPercent: 65, hydrationPercent: 70, tomorrow: tomorrowEndurance, expected: [.planChallenge, .recovery], requiresPlanChallenge: true, requiredText: "tomorrow"),
             scenario("49. Current recovery block after load", hour: 22, sleep: 6.0, recovery: 58, activityPercent: 430, nutritionPercent: 80, hydrationPercent: 78, today: [recoveryActivity("Mobility", hour: 21, minute: 55, duration: 20)], expected: [.recovery, .sleepPreparation], requiredText: "work"),
             scenario("50. Timing only preparation", hour: 13, sleep: 7.8, recovery: 86, activityPercent: 40, nutritionPercent: 82, hydrationPercent: 84, today: [workout("Strength", minutesFromNow: 20, duration: 60)], expected: [.performance], requiredText: "controlled"),
             scenario("51. Strong recovery with recent trend", hour: 14, sleep: 8.0, recovery: 91, activityPercent: 30, nutritionPercent: 82, hydrationPercent: 82, today: [workout("Intervals", minutesFromNow: 90, duration: 75)], expected: [.performance], recentLoadTrend: true, requiredText: "train"),
             scenario("52. Low recovery versus intervals today", hour: 14, sleep: 6.0, recovery: 43, activityPercent: 70, nutritionPercent: 75, hydrationPercent: 80, today: [workout("Intervals", minutesFromNow: 45, duration: 75)], expected: [.planChallenge, .recovery], requiredText: "intensity"),
-            scenario("53. Hydration alone quiet afternoon", hour: 15, sleep: 8.0, recovery: 85, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 40, expected: [.hydration], requiredText: "fluid"),
-            scenario("54. Fuel and sleep conflict", hour: 20, sleep: 3.8, recovery: 60, activityPercent: 90, nutritionPercent: 20, hydrationPercent: 80, tomorrow: tomorrowHard, expected: [.fueling, .sleepPreparation, .planChallenge], requiredText: "tomorrow"),
+            scenario("53. Hydration alone quiet afternoon", hour: 15, sleep: 8.0, recovery: 85, activityPercent: 20, nutritionPercent: 80, hydrationPercent: 40, expected: [.recovery, .stable], requiredText: "fluid"),
+            scenario("54. Fuel and sleep conflict", hour: 20, sleep: 3.8, recovery: 60, activityPercent: 90, nutritionPercent: 20, hydrationPercent: 80, tomorrow: tomorrowHard, expected: [.recovery, .sleepPreparation, .planChallenge], requiredText: "tomorrow"),
             scenario("55. High load high recovery", hour: 20, sleep: 8.0, recovery: 90, activityPercent: 520, nutritionPercent: 85, hydrationPercent: 85, expected: [.recovery], requiredText: "work"),
             scenario("56. Hard tomorrow but ready", hour: 18, sleep: 8.0, recovery: 88, activityPercent: 60, nutritionPercent: 85, hydrationPercent: 85, tomorrow: tomorrowHard, expected: [.stable, .performance])
         ]
@@ -4512,31 +4666,96 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             now: resolvedNow,
             selectedDate: resolvedSelectedDate
         )
+
+        return CoachDayPriorityResolver.resolve(
+            decisionContext(
+                activities,
+                brain: brain,
+                now: resolvedNow,
+                selectedDate: resolvedSelectedDate,
+                actualLoad: actualLoad,
+                recovery: recovery,
+                nutrition: nutrition,
+                activityContext: activityContext
+            )
+        )
+    }
+
+    private func decisionContext(
+        _ activities: [PlannedActivity],
+        brain: HumanBrain.State,
+        now: Date? = nil,
+        selectedDate: Date? = nil,
+        actualLoad: CoachActualLoadSnapshot? = nil,
+        recovery: CoachRecoveryContext = CoachRecoveryContext(recoveryPercent: 82, sleepHours: 7.4),
+        nutrition: CoachNutritionContext? = nil,
+        activityContext providedActivityContext: CoachDayActivityContext? = nil
+    ) -> CoachDecisionContext {
+        let resolvedNow = now ?? self.now
+        let resolvedSelectedDate = selectedDate ?? self.selectedDate
+        let activityContext = providedActivityContext ?? self.activityContext(
+            activities,
+            brain: brain,
+            now: resolvedNow,
+            selectedDate: resolvedSelectedDate
+        )
         let readiness = CoachReadinessAnalyzerV3.analyze(
             brain: brain,
             phase: activityContext.phase
         )
 
-        return CoachDayPriorityResolver.resolve(
-            CoachDecisionContext(
-                brain: brain,
-                dayContext: CoachDayContextBuilder.build(
-                    activities: activities,
-                    selectedDate: resolvedSelectedDate,
-                    now: resolvedNow
-                ),
-                activityContext: activityContext,
-                tomorrowContext: tomorrowContext(
-                    activities: activities,
-                    selectedDate: resolvedSelectedDate,
-                    now: resolvedNow
-                ),
-                actualLoad: actualLoad,
-                recoveryContext: recovery,
-                nutritionContext: nutrition,
-                readiness: readiness
-            )
+        return CoachDecisionContext(
+            brain: brain,
+            dayContext: CoachDayContextBuilder.build(
+                activities: activities,
+                selectedDate: resolvedSelectedDate,
+                now: resolvedNow
+            ),
+            activityContext: activityContext,
+            tomorrowContext: tomorrowContext(
+                activities: activities,
+                selectedDate: resolvedSelectedDate,
+                now: resolvedNow
+            ),
+            actualLoad: actualLoad,
+            recoveryContext: recovery,
+            nutritionContext: nutrition,
+            readiness: readiness
         )
+    }
+
+    private func assertExecutionLayerIsNotPrimary(
+        _ priority: CoachDayPriorityResult,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        switch priority.priority {
+        case .hydration, .fueling:
+            XCTFail("Food and hydration must not be the primary day priority.", file: file, line: line)
+        default:
+            break
+        }
+
+        switch priority.focus {
+        case .hydrationBehind, .fuelBehind:
+            XCTFail("Food and hydration must not be the primary day focus.", file: file, line: line)
+        default:
+            break
+        }
+
+        switch priority.limiter {
+        case .hydration, .fueling:
+            XCTFail("Food and hydration must not be the primary limiter.", file: file, line: line)
+        default:
+            break
+        }
+
+        switch priority.messageFamily {
+        case .hydration, .fueling:
+            XCTFail("Food and hydration must not be the primary message family.", file: file, line: line)
+        default:
+            break
+        }
     }
 
     private func tomorrowContext(

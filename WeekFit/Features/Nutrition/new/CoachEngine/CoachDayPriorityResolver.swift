@@ -418,36 +418,47 @@ struct CoachDayPriorityResult {
         completionState: CompletionState? = nil,
         tomorrowProtection: CoachTomorrowProtectionState = .none
     ) {
-        let resolvedPriority = priority ?? Self.defaultPriority(for: focus)
-        let resolvedLimiter = limiter ?? Self.defaultLimiter(for: resolvedPriority, focus: focus)
+        let requestedPriority = priority ?? Self.defaultPriority(for: focus)
+        let resolvedPriority = Self.executionLayerSafePriority(requestedPriority, focus: focus)
+        let resolvedFocus = Self.executionLayerSafeFocus(focus, priority: resolvedPriority)
+        let requestedLimiter = limiter ?? Self.defaultLimiter(for: resolvedPriority, focus: resolvedFocus)
+        let resolvedLimiter = Self.executionLayerSafeLimiter(
+            requestedLimiter,
+            priority: resolvedPriority,
+            focus: resolvedFocus
+        )
+        let resolvedMessageFamily = Self.executionLayerSafeMessageFamily(
+            messageFamily ?? Self.defaultMessageFamily(for: resolvedPriority),
+            priority: resolvedPriority
+        )
         self.priority = resolvedPriority
         self.strength = strength ?? Self.defaultStrength(for: level)
         self.confidence = min(max(confidence, 0), 1)
-        self.mode = mode ?? Self.defaultMode(for: resolvedPriority, focus: focus)
+        self.mode = mode ?? Self.defaultMode(for: resolvedPriority, focus: resolvedFocus)
         self.limiter = resolvedLimiter
-        self.messageFamily = messageFamily ?? Self.defaultMessageFamily(for: resolvedPriority)
+        self.messageFamily = resolvedMessageFamily
         self.priorityScore = priorityScore
         self.insightScore = insightScore
         self.uniquenessScore = uniquenessScore
         self.decisionScore = decisionScore
-        self.focus = focus
+        self.focus = resolvedFocus
         self.reason = reason
         self.reasons = reasons ?? [reason]
         self.activity = activity
         self.overridesTimingFocus = overridesTimingFocus
-        let resolvedDetailTitle = detailTitle ?? title ?? Self.defaultTitle(for: resolvedPriority, focus: focus)
+        let resolvedDetailTitle = detailTitle ?? title ?? Self.defaultTitle(for: resolvedPriority, focus: resolvedFocus)
         let resolvedDetailMessage = detailMessage ?? message ?? reason
         self.detailTitle = resolvedDetailTitle
         self.detailMessage = resolvedDetailMessage
         self.todayTitle = todayTitle ?? Self.defaultTodayTitle(
             for: resolvedPriority,
-            focus: focus,
+            focus: resolvedFocus,
             limiter: resolvedLimiter,
             detailTitle: resolvedDetailTitle
         )
         self.todayMessage = todayMessage ?? Self.defaultTodayMessage(
             for: resolvedPriority,
-            focus: focus,
+            focus: resolvedFocus,
             limiter: resolvedLimiter,
             activity: activity,
             detailMessage: resolvedDetailMessage
@@ -455,17 +466,17 @@ struct CoachDayPriorityResult {
         self.supportBullets = supportBullets ?? Self.defaultSupportBullets(for: resolvedPriority, activity: activity)
         self.whyThisMatters = whyThisMatters
         self.planChallenge = planChallenge
-        self.horizon = horizon ?? Self.defaultHorizon(for: focus, limiter: resolvedLimiter)
+        self.horizon = horizon ?? Self.defaultHorizon(for: resolvedFocus, limiter: resolvedLimiter)
         let resolvedObjective = objective ??
             Self.defaultObjective(
-                for: focus,
+                for: resolvedFocus,
                 priority: resolvedPriority,
                 limiter: resolvedLimiter
             )
 
         let resolvedOpportunity = opportunity ??
             Self.defaultOpportunity(
-                for: focus,
+                for: resolvedFocus,
                 priority: resolvedPriority,
                 mode: self.mode,
                 limiter: resolvedLimiter
@@ -757,12 +768,105 @@ struct CoachDayPriorityResult {
 
 private extension CoachDayPriorityResult {
 
+    static func executionLayerSafePriority(
+        _ priority: CoachDayPriority,
+        focus: CoachDayFocus
+    ) -> CoachDayPriority {
+        switch priority {
+        case .hydration, .fueling:
+            switch focus {
+            case .prepareForActivity, .performanceReadiness, .activeActivity:
+                return .performance
+            case .tomorrowPlanRisk:
+                return .planChallenge
+            case .postActivityRecovery, .recoveryNeeded, .eveningWindDown, .hydrationBehind, .fuelBehind:
+                return .recovery
+            case .nextActivityLater, .dailyOverview:
+                return .recovery
+            case .trainingReadinessWarning:
+                return .planChallenge
+            }
+        default:
+            return priority
+        }
+    }
+
+    static func executionLayerSafeFocus(
+        _ focus: CoachDayFocus,
+        priority: CoachDayPriority
+    ) -> CoachDayFocus {
+        switch focus {
+        case .hydrationBehind, .fuelBehind:
+            switch priority {
+            case .performance, .activeSession:
+                return .prepareForActivity
+            case .planChallenge:
+                return .tomorrowPlanRisk
+            default:
+                return .recoveryNeeded
+            }
+        default:
+            return focus
+        }
+    }
+
+    static func executionLayerSafeLimiter(
+        _ limiter: CoachLimiter,
+        priority: CoachDayPriority,
+        focus: CoachDayFocus
+    ) -> CoachLimiter {
+        switch limiter {
+        case .hydration, .fueling:
+            switch priority {
+            case .performance, .activeSession:
+                return .timing
+            case .planChallenge:
+                return .upcomingTraining
+            case .sleepPreparation:
+                return .sleep
+            case .recovery:
+                return focus == .postActivityRecovery ? .insufficientRecoveryTime : .recovery
+            case .stable:
+                return .none
+            case .hydration, .fueling:
+                return .none
+            }
+        default:
+            return limiter
+        }
+    }
+
+    static func executionLayerSafeMessageFamily(
+        _ family: CoachMessageFamily,
+        priority: CoachDayPriority
+    ) -> CoachMessageFamily {
+        switch family {
+        case .hydration, .fueling:
+            switch priority {
+            case .performance, .activeSession:
+                return .performance
+            case .planChallenge:
+                return .planAdjustment
+            case .sleepPreparation:
+                return .sleep
+            case .recovery:
+                return .recovery
+            case .stable:
+                return .stable
+            case .hydration, .fueling:
+                return .stable
+            }
+        default:
+            return family
+        }
+    }
+
     static func defaultPriority(for focus: CoachDayFocus) -> CoachDayPriority {
         switch focus {
         case .hydrationBehind:
-            return .hydration
+            return .recovery
         case .fuelBehind:
-            return .fueling
+            return .recovery
         case .recoveryNeeded, .postActivityRecovery, .eveningWindDown:
             return .recovery
         case .trainingReadinessWarning, .performanceReadiness:
@@ -1942,8 +2046,8 @@ private extension CoachLifecycleDecisionPipeline {
             confidence: confidence(base: 0.82, sleepStatus: c.sleepStatus),
             lifecyclePhase: .activeGuidance,
             nextImportantEvent: .plannedLaterToday(activity),
-            title: "Fuel before training",
-            shortSummary: "Fuel before training",
+            title: "Prepare for training",
+            shortSummary: "Prepare for training",
             coachRead: "\(activity.title) is planned later today, and food is behind for that effort.",
             recommendation: "Add easy fuel before the session so the workout does not start under-supported.",
             caution: "Starting the planned session with low energy and trying to fix it during intensity.",
@@ -1952,9 +2056,9 @@ private extension CoachLifecycleDecisionPipeline {
                 action("Fuel before training", "Use easy carbs and some protein", .lightFueling),
                 action("Start planned workout", "Start only after basics are covered", .controlIntensity)
             ],
-            priority: .fueling,
-            focus: .fuelBehind,
-            limiter: .fueling,
+            priority: .performance,
+            focus: .prepareForActivity,
+            limiter: .timing,
             mode: .warning,
             objective: .prepareActivity
         )
@@ -1971,8 +2075,8 @@ private extension CoachLifecycleDecisionPipeline {
             confidence: confidence(base: 0.78, sleepStatus: c.sleepStatus),
             lifecyclePhase: .wrapUp,
             nextImportantEvent: .nutritionGapToday,
-            title: "Refuel after training",
-            shortSummary: "Refuel after training",
+            title: "Recover from training",
+            shortSummary: "Recover from training",
             coachRead: "Training is already logged, and nutrition is still behind the recovery demand.",
             recommendation: "Use a normal meal or protein-forward snack. Keep it light late in the evening.",
             caution: "Skipping recovery food after the training signal is already in.",
@@ -1980,9 +2084,9 @@ private extension CoachLifecycleDecisionPipeline {
             actions: [
                 action("Refuel with protein", "Use a normal meal or snack", .startRecoveryNutrition)
             ],
-            priority: .fueling,
-            focus: .fuelBehind,
-            limiter: .fueling,
+            priority: .recovery,
+            focus: .postActivityRecovery,
+            limiter: .recovery,
             mode: .recovery,
             objective: .recoverFromActivity
         )
@@ -2001,8 +2105,8 @@ private extension CoachLifecycleDecisionPipeline {
             confidence: confidence(base: 0.80, sleepStatus: c.sleepStatus),
             lifecyclePhase: activity == nil ? .preventive : .activeGuidance,
             nextImportantEvent: activity.map(CoachNextImportantEvent.plannedLaterToday) ?? .hydrationGapToday,
-            title: late ? "Small drink only" : "Bring fluids up",
-            shortSummary: late ? "Small drink" : "Bring fluids up",
+            title: activity.map { "Prepare for \(activityName($0).lowercased())" } ?? "Support readiness",
+            shortSummary: activity == nil ? "Support readiness" : "Prepare for activity",
             coachRead: activity.map { "\($0.title) is planned later today, and drinks are behind." } ?? "Drinks are behind for this point of the day.",
             recommendation: late ? "Take a small drink if thirsty; do not force fluids close to sleep." : "Drink steadily now instead of trying to catch up late.",
             caution: "Over-correcting hydration so it disrupts sleep or replaces food.",
@@ -2010,11 +2114,11 @@ private extension CoachLifecycleDecisionPipeline {
             actions: [
                 action(late ? "Drink a small glass" : "Drink steadily", late ? "Only if thirsty before bed" : "Build intake gradually", .steadyHydration)
             ],
-            priority: .hydration,
-            focus: .hydrationBehind,
-            limiter: .hydration,
+            priority: activity == nil ? .recovery : .performance,
+            focus: activity == nil ? .recoveryNeeded : .prepareForActivity,
+            limiter: activity == nil ? .recovery : .timing,
             mode: .warning,
-            objective: .buildReadiness
+            objective: activity == nil ? .buildReadiness : .prepareActivity
         )
     }
 
@@ -2150,6 +2254,12 @@ private extension CoachLifecycleDecisionPipeline {
 
     static func nutritionGap(_ context: CoachDecisionContext) -> Bool {
         guard let nutrition = context.nutritionContext else { return false }
+        if let lastMealTime = nutrition.lastMealTime {
+            let minutesSinceLastMeal = max(0, Int(context.dayContext.now.timeIntervalSince(lastMealTime) / 60))
+            if minutesSinceLastMeal <= 120 {
+                return false
+            }
+        }
         return ratio(nutrition.caloriesCurrent, context.brain.baseDayGoals.calories) < 0.45 ||
             ratio(nutrition.proteinCurrent, context.brain.baseDayGoals.protein) < 0.35
     }
@@ -2233,9 +2343,11 @@ private extension CoachLifecycleDecisionPipeline {
     static func messageFamily(for category: CoachInsightCategory) -> CoachMessageFamily {
         switch category {
         case .hydrateNow:
-            return .hydration
-        case .fuelBeforeTraining, .refuelAfterTraining:
-            return .fueling
+            return .recovery
+        case .fuelBeforeTraining:
+            return .performance
+        case .refuelAfterTraining:
+            return .recovery
         case .recoverNow, .dayComplete:
             return .recovery
         case .sleepPriority, .missingSleepData:
@@ -2974,12 +3086,14 @@ private extension CoachDayPriorityResolver {
             return sequenceCandidates
         }
 
+        let recoveryProtectedCandidates = candidatesWithHydrationLimitedByRecovery(candidates, in: context)
+
         guard let preparing = context.activityContext.preparingActivity,
               isTraining(preparing) else {
-            return candidates
+            return recoveryProtectedCandidates
         }
 
-        let timingCandidates = candidates.filter { candidate in
+        let timingCandidates = recoveryProtectedCandidates.filter { candidate in
             candidate.result.activity?.id == preparing.id &&
                 (
                     candidate.result.focus == .prepareForActivity ||
@@ -2988,12 +3102,12 @@ private extension CoachDayPriorityResolver {
         }
 
         guard !timingCandidates.isEmpty else {
-            return candidates
+            return recoveryProtectedCandidates
         }
 
         if hasHeatAheadToday(context),
            hydrationIsCriticallyBehind(context) {
-            let hydrationCandidates = candidates.filter { candidate in
+            let hydrationCandidates = recoveryProtectedCandidates.filter { candidate in
                 candidate.result.priority == .hydration &&
                     candidate.result.limiter == .hydration
             }
@@ -3003,7 +3117,7 @@ private extension CoachDayPriorityResolver {
         }
 
         if prepWindowHasCriticalLimiter(context) {
-            return candidates.filter { candidate in
+            return recoveryProtectedCandidates.filter { candidate in
                 timingCandidates.contains { $0.result.focus == candidate.result.focus && $0.result.activity?.id == candidate.result.activity?.id } ||
                     isCriticalPrepOverride(candidate.result, in: context)
             }
@@ -3281,6 +3395,46 @@ private extension CoachDayPriorityResolver {
 
         return context.dayContext.dayType == .recovery ||
             nextRecoveryOrHeatOwner(in: context) != nil && !hasMeaningfulTrainingRemaining(context)
+    }
+
+    private static func candidatesWithHydrationLimitedByRecovery(
+        _ candidates: [PriorityCandidate],
+        in context: CoachDecisionContext
+    ) -> [PriorityCandidate] {
+        let recoveryNarrativeActive = candidates.contains {
+            isRecoveryStory($0.result, in: context)
+        }
+        let recoveryShouldLead =
+            sleepIsUnderSixHours(context) ||
+            context.brain.readiness == .low ||
+            context.brain.readiness == .compromised ||
+            recoveryNarrativeActive
+
+        guard recoveryShouldLead,
+              !hydrationCanLeadAsPrimary(in: context) else {
+            return candidates
+        }
+
+        let filtered = candidates.filter { candidate in
+            !isHydrationPrimaryStory(candidate.result)
+        }
+
+        return filtered.isEmpty ? candidates : filtered
+    }
+
+    private static func isHydrationPrimaryStory(_ result: CoachDayPriorityResult) -> Bool {
+        result.priority == .hydration ||
+            result.focus == .hydrationBehind ||
+            result.limiter == .hydration ||
+            result.messageFamily == .hydration
+    }
+
+    private static func sleepIsUnderSixHours(_ context: CoachDecisionContext) -> Bool {
+        if let hours = sleepHours(context) {
+            return hours < 6.0
+        }
+
+        return context.brain.sleep == .veryShort
     }
 
     private static func isHeatHydrationStory(_ result: CoachDayPriorityResult) -> Bool {
@@ -4095,15 +4249,15 @@ private extension CoachDayPriorityResolver {
                         : "Training is close and preparation basics are behind.",
                     activity: activity,
                     overridesTimingFocus: false,
-                    priority: heatCriticalHydration ? .hydration : .performance,
+                    priority: .performance,
                     strength: heatCriticalHydration ? .critical : (heatPreparation ? .medium : .critical),
                     confidence: 0.90,
                     mode: heatCriticalHydration ? .execution : (heatPreparation ? .recovery : .execution),
-                    limiter: heatCriticalHydration ? .hydration : (heatPreparation ? .none : .timing),
-                    messageFamily: heatCriticalHydration ? .hydration : (heatPreparation ? .recovery : .performance),
+                    limiter: heatCriticalHydration ? .timing : (heatPreparation ? .none : .timing),
+                    messageFamily: heatCriticalHydration ? .performance : (heatPreparation ? .recovery : .performance),
                     todayTitle: title,
                     todayMessage: heatCriticalHydration
-                        ? "Bring fluids up before sauna."
+                        ? "Prepare before sauna."
                         : (heatPreparation ? "Keep sauna easy and avoid extra stress." : "Drink 300-500 ml now and eat 30-60 g carbs before leaving."),
                     title: title,
                     message: heatCriticalHydration
@@ -5563,22 +5717,7 @@ private extension CoachDayPriorityResolver {
     }
 
     private static func expectedHydrationRatio(forHour hour: Int) -> Double {
-        switch hour {
-        case ..<8:
-            return 0.10
-        case 8..<10:
-            return 0.20
-        case 10..<12:
-            return 0.35
-        case 12..<15:
-            return 0.50
-        case 15..<18:
-            return 0.70
-        case 18..<21:
-            return 0.85
-        default:
-            return 0.95
-        }
+        HumanBrain.expectedHydrationProgress(for: hour)
     }
 
     private static func expectedNutritionRatio(forHour hour: Int) -> Double {
@@ -5645,17 +5784,7 @@ private extension CoachDayPriorityResolver {
             } == true
         let postLoadPressure = context.dayContext.hasMeaningfulLoadCompleted ||
             context.activityContext.recentlyCompletedActivity.map { isMeaningfulPostActivityTraining($0) } == true
-        let eveningRecoveryPressure = hour >= 17 &&
-            ratio < 0.20 &&
-            (sweatOrLoadDemand || postLoadPressure || context.tomorrowDemand.isHard || recoveryIsLow(context) || sleepIsPoor(context))
-        let safetyPressure = severeFatigueDominates(context) ||
-            (hasHeatAheadToday(context) && hydrationIsCriticallyBehind(context))
-        let hydrationMayLead = heatSoon ||
-            longEnduranceSoon ||
-            hardTrainingPreparationPressure ||
-            (postLoadPressure && ratio < 0.35) ||
-            eveningRecoveryPressure ||
-            safetyPressure
+        let hydrationMayLead = hydrationCanLeadAsPrimary(in: context)
 
         guard hydrationMayLead else {
             return nil
@@ -5719,28 +5848,42 @@ private extension CoachDayPriorityResolver {
 
         guard score >= 52 else { return nil }
 
-        let title = heatSoon ? "Prepare for heat" : "Bring fluids up"
+        let hydrationNarrativeIsPreparation = heatSoon || longEnduranceSoon || hardTrainingPreparationPressure
+        let title: String
+        if heatSoon {
+            title = "Prepare for heat"
+        } else if hydrationNarrativeIsPreparation, let activity {
+            title = "Prepare for \(displayName(activity).lowercased())"
+        } else if postLoadPressure || sweatOrLoadDemand {
+            title = "Support recovery"
+        } else {
+            title = "Support readiness"
+        }
 
         let message = heatSoon
             ? "Do not start heat exposure dry. If you cannot bring fluids up calmly, skip or shorten it."
             : "Fluids matter for the next decision. Sip steadily now, but do not chase the full daily target all at once."
+        let narrativeFocus: CoachDayFocus = hydrationNarrativeIsPreparation ? .prepareForActivity : .recoveryNeeded
+        let narrativePriority: CoachDayPriority = hydrationNarrativeIsPreparation ? .performance : .recovery
+        let narrativeLimiter: CoachLimiter = hydrationNarrativeIsPreparation ? .timing : .recovery
+        let narrativeFamily: CoachMessageFamily = hydrationNarrativeIsPreparation ? .performance : .recovery
 
         return PriorityCandidate(
             priorityScore: score,
             insightScore: score + (heatSoon ? 18 : 6),
             uniquenessScore: heatSoon ? 95 : 68,
             result: CoachDayPriorityResult(
-                focus: .hydrationBehind,
+                focus: narrativeFocus,
                 level: level(for: score),
                 reason: heatSoon ? "Fluids are low before heat exposure." : "Fluids are low enough to affect the next useful decision.",
                 activity: activity,
                 overridesTimingFocus: heatSoon || activityIsImmediate || score >= 74,
-                priority: .hydration,
+                priority: narrativePriority,
                 strength: strength(for: score),
                 confidence: confidence(for: score),
                 mode: heatSoon ? .warning : .opportunity,
-                limiter: .hydration,
-                messageFamily: .hydration,
+                limiter: narrativeLimiter,
+                messageFamily: narrativeFamily,
                 title: title,
                 message: message,
                 supportBullets: heatSoon
@@ -5851,20 +5994,40 @@ private extension CoachDayPriorityResolver {
             context.activityContext.laterTodayActivity
         let title: String
         let message: String
+        let narrativeFocus: CoachDayFocus
+        let narrativePriority: CoachDayPriority
+        let narrativeLimiter: CoachLimiter
+        let narrativeFamily: CoachMessageFamily
         if let hardActivity {
-            title = "Fuel before training"
+            title = "Prepare for training"
             message = "\(hardActivity.title) needs energy available before it starts. Eat something simple now, then keep the session honest."
+            narrativeFocus = .prepareForActivity
+            narrativePriority = .performance
+            narrativeLimiter = .timing
+            narrativeFamily = .performance
         } else if signals.postTrainingRefuelRequired || highLoadFuelingRequired {
-            title = "Refuel after training"
+            title = "Recover from training"
             message = protein < 0.50
                 ? "The useful move is recovery support. Add a real meal with protein so the work you banked has something to adapt with."
                 : "The useful move is recovery support, not chasing calories. Add a simple meal that replaces what the session spent."
+            narrativeFocus = signals.postTrainingRefuelRequired ? .postActivityRecovery : .recoveryNeeded
+            narrativePriority = .recovery
+            narrativeLimiter = .recovery
+            narrativeFamily = .recovery
         } else if tomorrowHard {
-            title = "Refuel tonight"
+            title = "Protect tomorrow"
             message = "The gap is not just about calories. Tomorrow's training depends on replacing enough energy tonight to recover from today."
+            narrativeFocus = .tomorrowPlanRisk
+            narrativePriority = .planChallenge
+            narrativeLimiter = .upcomingTraining
+            narrativeFamily = .planAdjustment
         } else {
-            title = "Add useful fuel"
+            title = "Support recovery"
             message = "Fuel is behind for this point in the day. Add something useful, but do not let nutrition override the bigger training or recovery decision."
+            narrativeFocus = .recoveryNeeded
+            narrativePriority = .recovery
+            narrativeLimiter = .recovery
+            narrativeFamily = .recovery
         }
 
         return PriorityCandidate(
@@ -5872,17 +6035,17 @@ private extension CoachDayPriorityResolver {
             insightScore: score + (hardActivity != nil ? 16 : 6) + (tomorrowHard ? 8 : 0),
             uniquenessScore: hardActivity != nil ? 88 : 66,
             result: CoachDayPriorityResult(
-                focus: .fuelBehind,
+                focus: narrativeFocus,
                 level: level(for: score),
                 reason: "Fuel is contextually relevant to the next training or recovery step.",
                 activity: activity,
                 overridesTimingFocus: context.activityContext.preparingActivity != nil || context.activityContext.activeActivity != nil || score >= 80,
-                priority: .fueling,
+                priority: narrativePriority,
                 strength: strength(for: score),
                 confidence: confidence(for: score),
                 mode: hardActivity != nil ? .warning : .opportunity,
-                limiter: .fueling,
-                messageFamily: .fueling,
+                limiter: narrativeLimiter,
+                messageFamily: narrativeFamily,
                 title: title,
                 message: message,
                 supportBullets: ["Add easy carbs plus protein", "Keep it digestible", tomorrowHard ? "Review tomorrow after breakfast" : "Match food to the next block"],
@@ -7314,8 +7477,65 @@ private extension CoachDayPriorityResolver {
     static func hydrationIsCriticallyBehind(_ context: CoachDecisionContext) -> Bool {
         guard !hydrationGoalReached(context) else { return false }
 
-        return hydrationRatio(context) < 0.30 ||
-               context.brain.hydration == .depleted
+        return hydrationCanLeadAsPrimary(in: context) &&
+            (
+                hydrationRatio(context) < 0.30 ||
+                context.brain.hydration == .depleted
+            )
+    }
+
+    private static func hydrationCanLeadAsPrimary(in context: CoachDecisionContext) -> Bool {
+        guard !hydrationGoalReached(context),
+              hydrationIsBehind(context) else {
+            return false
+        }
+
+        return trajectoryAdjustedHydrationRatio(context) < 0.20 ||
+            heatHydrationActivity(in: context) != nil ||
+            workoutWithinNext90Minutes(context) ||
+            hasDehydrationRiskIndicators(context)
+    }
+
+    private static func trajectoryAdjustedHydrationRatio(_ context: CoachDecisionContext) -> Double {
+        let expected = expectedHydrationRatio(forHour: localHour(in: context))
+        guard expected > 0 else { return hydrationRatio(context) }
+        return hydrationRatio(context) / expected
+    }
+
+    private static func workoutWithinNext90Minutes(_ context: CoachDecisionContext) -> Bool {
+        let candidates = [
+            context.activityContext.activeActivity,
+            context.activityContext.preparingActivity,
+            context.activityContext.laterTodayActivity,
+            context.activityContext.nextUpcomingActivity
+        ]
+        .compactMap { $0 }
+
+        return candidates.contains { activity in
+            guard isTraining(activity) else { return false }
+            if context.activityContext.activeActivity?.id == activity.id {
+                return true
+            }
+            return minutesUntil(activity, in: context).map { $0 <= 90 } == true
+        } || context.dayContext.upcomingTrainingActivities.contains { activity in
+            minutesUntil(activity, in: context).map { $0 <= 90 } == true
+        }
+    }
+
+    private static func hasDehydrationRiskIndicators(_ context: CoachDecisionContext) -> Bool {
+        let enduranceSoon = context.dayContext.upcomingActivities.contains { activity in
+            guard CoachActivityContextResolverV3.kind(for: activity) == .endurance else {
+                return false
+            }
+            let minutes = minutesUntil(activity, in: context)
+            return minutes.map { $0 <= 240 } ?? false
+        }
+
+        return context.actualLoad.activeCalories >= 1_200 ||
+            context.dayContext.completedTrainingStressScore >= 4 ||
+            context.dayContext.hasMeaningfulLoadCompleted ||
+            context.brain.strain == .veryHigh ||
+            enduranceSoon
     }
     
     static func tomorrowPlanRiskPriority(in context: CoachDecisionContext) -> CoachDayPriorityResult? {
@@ -7540,7 +7760,7 @@ private extension CoachDayPriorityResolver {
         }
 
         return CoachDayPriorityResult(
-            focus: .hydrationBehind,
+            focus: hasHeatSoon || activity != nil ? .prepareForActivity : .recoveryNeeded,
             level: hasHeatSoon || highLoadHydrationGap ? .high : .important,
             reason: hasHeatSoon
                 ? "Fluids are low before heat exposure."
@@ -7549,9 +7769,11 @@ private extension CoachDayPriorityResolver {
                     : "Fluids are low for what the rest of the day needs."),
             activity: activity,
             overridesTimingFocus: shouldOverride,
-            priority: .hydration,
+            priority: hasHeatSoon || activity != nil ? .performance : .recovery,
             strength: hasHeatSoon || highLoadHydrationGap ? .critical : .high,
-            title: hasHeatSoon ? "Prepare for heat" : "Support the next block",
+            limiter: hasHeatSoon || activity != nil ? .timing : .recovery,
+            messageFamily: hasHeatSoon || activity != nil ? .performance : .recovery,
+            title: hasHeatSoon ? "Prepare for heat" : (activity != nil ? "Prepare for the next block" : "Support recovery"),
             message: highLoadHydrationGap
                 ? "Today's load is high. Bring fluids up before leaning on the next activity."
                 : (activity.map { "Before \($0.title.lowercased()), bring fluids back up." }
@@ -7598,14 +7820,16 @@ private extension CoachDayPriorityResolver {
         }
 
         return CoachDayPriorityResult(
-            focus: .fuelBehind,
+            focus: hardActivity != nil ? .prepareForActivity : .recoveryNeeded,
             level: .important,
             reason: "Nutrition is behind the current day demand.",
             activity: activity,
             overridesTimingFocus: timingIsImmediate,
-            priority: .fueling,
+            priority: hardActivity != nil ? .performance : .recovery,
             strength: .high,
-            title: "Fuel before the hard work",
+            limiter: hardActivity != nil ? .timing : .recovery,
+            messageFamily: hardActivity != nil ? .performance : .recovery,
+            title: hardActivity != nil ? "Prepare for the hard work" : "Support recovery",
             message: activity.map { "Nutrition is behind, and \($0.title.lowercased()) still needs usable energy." }
                 ?? "Nutrition is behind the current day demand.",
             supportBullets: [
@@ -7936,30 +8160,15 @@ private extension CoachDayPriorityResolver {
             CoachActivityContextResolverV3.kind(for: $0) == .endurance
         } ?? false
 
-        // Night / early morning: 0 water is normal, not a limiter.
-        // Exception: sauna / endurance is active or soon.
-        if hour < 10 {
-            return heatSoon || enduranceDemand
-        }
+        let expected = expectedHydrationRatio(forHour: hour)
+        let deltaFromExpected = ratio - expected
+        let materiallyBehindTrajectory = deltaFromExpected < -0.08
+        let criticallyLowAdjustedProgress = trajectoryAdjustedHydrationRatio(context) < 0.20
 
-        // Late morning: only meaningful if still almost nothing logged
-        // or there is heat/endurance demand.
-        if hour < 12 {
-            return heatSoon || enduranceDemand || ratio < 0.15
-        }
-
-        // Early afternoon.
-        if hour < 15 {
-            return ratio < 0.35
-        }
-
-        // Afternoon / evening.
-        if hour < 20 {
-            return ratio < 0.55
-        }
-
-        // Late evening.
-        return ratio < 0.70
+        return heatSoon ||
+            enduranceDemand ||
+            criticallyLowAdjustedProgress ||
+            materiallyBehindTrajectory
     }
 
     static func hydrationGoalReached(_ context: CoachDecisionContext) -> Bool {

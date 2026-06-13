@@ -433,7 +433,11 @@ private extension HumanBrain {
             return .optimal
         }
         
-        if current.waterProgress < 0.55 || current.waterDeltaFromExpected < -0.25 {
+        let trajectoryAdjustedProgress = current.expectedWaterProgress > 0
+            ? current.waterProgress / current.expectedWaterProgress
+            : current.waterProgress
+
+        if trajectoryAdjustedProgress < 0.20 || current.waterDeltaFromExpected < -0.25 {
             return .depleted
         }
         
@@ -708,21 +712,14 @@ extension HumanBrain {
     static func expectedHydrationProgress(
         for hour: Int
     ) -> Double {
-        
-        switch hour {
-        case 5..<9:
-            return 0.20
-        case 9..<12:
-            return 0.38
-        case 12..<15:
-            return 0.58
-        case 15..<18:
-            return 0.75
-        case 18..<21:
-            return 0.90
-        default:
-            return 1.0
-        }
+        interpolate(hour: hour, points: [
+            (6, 0.08),
+            (8, 0.18),
+            (12, 0.45),
+            (16, 0.68),
+            (20, 0.90),
+            (22, 1.00)
+        ])
     }
     
     static func safeRatio(
@@ -735,5 +732,22 @@ extension HumanBrain {
         }
         
         return value / target
+    }
+
+    private static func interpolate(hour: Int, points: [(Int, Double)]) -> Double {
+        guard let first = points.first, let last = points.last else { return 1 }
+        if hour <= first.0 { return first.1 }
+        if hour >= last.0 { return last.1 }
+
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let next = points[index]
+            guard hour <= next.0 else { continue }
+            let span = Double(next.0 - previous.0)
+            let progress = span > 0 ? Double(hour - previous.0) / span : 1
+            return previous.1 + ((next.1 - previous.1) * progress)
+        }
+
+        return last.1
     }
 }

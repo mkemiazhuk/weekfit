@@ -440,4 +440,414 @@ final class InsightsSnapshotModelTests: XCTestCase {
             "detail.recovery"
         )
     }
+
+    func testStoryEngineTurnsStableRecoveryAndShortSleepIntoDespiteInsight() {
+        let recoverySleepRecords = makeInsightRecords(days: 21, sleepMinutes: 378, activeCalories: 0, hrv: 50, restingHeartRate: 52)
+        let records = Array(recoverySleepRecords.suffix(7))
+
+        let story = topInsightStory(records: records, recoverySleepRecords: recoverySleepRecords)
+
+        XCTAssertEqual(story.id, "recovery.short_sleep_mismatch")
+        XCTAssertEqual(story.trend.title, "Recovery is holding despite short sleep")
+        XCTAssertEqual(story.driver.title, "Sleep Duration")
+        XCTAssertEqual(story.driver.text, "sleep is 0.7h below target, but recovery stayed above baseline")
+        XCTAssertEqual(story.action.title, "Keep sleep above 7h before adding load")
+        XCTAssertEqual(story.action.text, "preserve recovery margin")
+
+        let oneSentence = "\(story.trend.title), because \(story.driver.text), so \(story.action.action)."
+        XCTAssertEqual(oneSentence, "Recovery is holding despite short sleep, because sleep is 0.7h below target, but recovery stayed above baseline, so keep sleep above 7h before adding load.")
+        XCTAssertFalse(oneSentence.localizedCaseInsensitiveContains("healthy and stable"))
+    }
+
+    func testTopTwoStoriesUseDifferentTrendDomains() {
+        let recoverySleepRecords = makeInsightRecords(days: 21, sleepMinutes: 378, activeCalories: 0, hrv: 50, restingHeartRate: 52)
+        let records = Array(recoverySleepRecords.suffix(7))
+
+        let stories = insightStories(records: records, recoverySleepRecords: recoverySleepRecords)
+        let domains = stories.prefix(2).map { domainKey($0.trend.domain) }
+
+        XCTAssertEqual(domains, ["recovery", "sleep"])
+        XCTAssertEqual(Set(domains).count, domains.count)
+    }
+
+    func testStoryEngineTurnsStableRecoveryAndHighLoadIntoAbsorptionInsight() {
+        let recoverySleepRecords = makeInsightRecords(days: 21, sleepMinutes: 420, activeCalories: 0, hrv: 50, restingHeartRate: 52)
+        let records = makeInsightRecords(days: 7, sleepMinutes: 420, activeCalories: 800, exerciseMinutes: 55, hrv: 50, restingHeartRate: 52)
+
+        let story = topInsightStory(records: records, recoverySleepRecords: recoverySleepRecords)
+
+        XCTAssertEqual(story.id, "recovery.stable_despite_load")
+        XCTAssertEqual(story.trend.title, "Recovery is absorbing high load")
+        XCTAssertEqual(story.driver.text, "load is high, but recovery stayed above baseline")
+        XCTAssertEqual(story.action.title, "Hold current load for 7 days before increasing")
+        XCTAssertEqual(story.action.text, "confirm the load is sustainable")
+        XCTAssertFalse(story.action.title.localizedCaseInsensitiveContains("do not add load yet"))
+    }
+
+    func testSleepBelowTargetStoryUsesDurationMetricNotSleepScore() {
+        let earlier = makeInsightRecords(days: 14, sleepMinutes: 378, activeCalories: 0, hrv: 10, restingHeartRate: 80)
+        let recent = makeInsightRecords(days: 7, sleepMinutes: 378, activeCalories: 0, hrv: 50, restingHeartRate: 52, startingDayOffset: 14)
+        let recoverySleepRecords = earlier + recent
+        let records = Array(recoverySleepRecords.suffix(7))
+
+        let story = topInsightStory(records: records, recoverySleepRecords: recoverySleepRecords)
+
+        XCTAssertEqual(story.id, "sleep.below_target")
+        XCTAssertEqual(story.trend.title, "Sleep duration is below target")
+        XCTAssertEqual(story.trend.badgeValue, "6.3h")
+        XCTAssertEqual(story.trend.targetLabel, "7h target")
+        XCTAssertEqual(story.driver.metrics.first?.value, "6.3h")
+
+        let renderedMetricText = [
+            story.trend.title,
+            story.trend.badgeValue,
+            story.trend.badgeLabel,
+            story.trend.targetLabel ?? "",
+            story.driver.title,
+            story.driver.metrics.first?.benchmark ?? ""
+        ].joined(separator: " ")
+        XCTAssertFalse(renderedMetricText.localizedCaseInsensitiveContains("sleep score"))
+    }
+
+    func testInsightsV6ReturnsExactlyThreeMonthlyReviewPagesInFixedOrder() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 420,
+            activeCalories: 520,
+            exerciseMinutes: 35,
+            protein: 135,
+            calories: 2_500,
+            water: 2.8,
+            hrv: 50,
+            restingHeartRate: 52
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+
+        XCTAssertEqual(pages.count, 3)
+        XCTAssertEqual(pages.map { domainKey($0.domain) }, ["recovery", "activity", "nutrition"])
+        XCTAssertEqual(pages.map(\.label), ["RECOVERY", "ACTIVITY", "NUTRITION"])
+        XCTAssertEqual(pages.map(\.keySignals.count), [3, 3, 3])
+        XCTAssertTrue(pages.allSatisfy { !$0.chartValues.isEmpty })
+        XCTAssertTrue(pages.allSatisfy { !$0.scoreValue.isEmpty })
+        XCTAssertTrue(pages.allSatisfy { !$0.statusText.isEmpty })
+    }
+
+    func testInsightsV6PagesDoNotLeadWithRawMetricLabels() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 378,
+            activeCalories: 540,
+            exerciseMinutes: 35,
+            protein: 90,
+            calories: 2_100,
+            water: 2.4,
+            hrv: 50,
+            restingHeartRate: 52
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+        let bannedMetricFirstCopy = ["Sleep Duration:", "Protein:", "Active Energy:", "Training Load:", "Hydration:"]
+
+        for page in pages {
+            XCTAssertFalse(page.headline.isEmpty)
+            XCTAssertFalse(page.standoutText.isEmpty)
+            XCTAssertFalse(page.focusText.isEmpty)
+            XCTAssertEqual(page.headline.split(separator: ".").count, 1, page.headline)
+            XCTAssertLessThanOrEqual(page.headline.count, 54, "\(page.title) headline is too long: \(page.headline)")
+            XCTAssertLessThanOrEqual(page.standoutText.count, 96, "\(page.title) explanation is too long: \(page.standoutText)")
+            XCTAssertLessThanOrEqual(page.focusText.split(separator: ".").count, 1, page.focusText)
+
+            let visibleCopy = [page.headline, page.standoutText, page.focusText].joined(separator: " ")
+            for banned in bannedMetricFirstCopy {
+                XCTAssertFalse(visibleCopy.localizedCaseInsensitiveContains(banned), "\(page.title) exposes raw metric-first copy: \(banned)")
+            }
+
+            XCTAssertFalse(visibleCopy.localizedCaseInsensitiveContains("Activity load is balanced"))
+            XCTAssertFalse(visibleCopy.localizedCaseInsensitiveContains("Stable HRV offset reduced sleep duration"))
+        }
+    }
+
+    func testInsightsV6UsesCoachLanguageInsteadOfRepeatedTargetLanguage() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 378,
+            activeCalories: 540,
+            exerciseMinutes: 35,
+            protein: 90,
+            calories: 2_100,
+            water: 2.4,
+            hrv: 50,
+            restingHeartRate: 52
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+
+        for page in pages {
+            let coachingCopy = [
+                page.headline,
+                page.standoutText,
+                page.focusText
+            ].joined(separator: " ")
+
+            XCTAssertFalse(coachingCopy.localizedCaseInsensitiveContains("above target"), page.title)
+            XCTAssertFalse(coachingCopy.localizedCaseInsensitiveContains("below target"), page.title)
+            XCTAssertFalse(coachingCopy.localizedCaseInsensitiveContains("target missed"), page.title)
+            XCTAssertFalse(coachingCopy.localizedCaseInsensitiveContains("target achieved"), page.title)
+        }
+    }
+
+    func testInsightsV6KeepsHydrationInsideNutritionPage() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 420,
+            activeCalories: 520,
+            exerciseMinutes: 35,
+            protein: 145,
+            calories: 2_550,
+            water: 1.2,
+            hrv: 50,
+            restingHeartRate: 52
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+        let nutritionPage = pages.first { $0.domain == .nutrition }
+
+        XCTAssertFalse(pages.contains { $0.domain == .hydration })
+        XCTAssertNotNil(nutritionPage)
+        XCTAssertTrue(
+            [
+                nutritionPage?.headline,
+                nutritionPage?.standoutText,
+                nutritionPage?.focusText,
+                nutritionPage?.keySignals.map(\.label).joined(separator: " ")
+            ]
+                .compactMap { $0 }
+                .joined(separator: " ")
+                .localizedCaseInsensitiveContains("hydration")
+        )
+    }
+
+    func testInsightsV3WhyThisScoreUsesCoachDriverCards() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 420,
+            activeCalories: 520,
+            exerciseMinutes: 35,
+            protein: 135,
+            calories: 2_500,
+            water: 2.8,
+            hrv: 50,
+            restingHeartRate: 52
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+
+        XCTAssertEqual(pages[0].keySignals.map(\.label), ["Sleep supports recovery", "Recovery stabilized", "No overload detected"])
+        XCTAssertEqual(pages[1].keySignals.map(\.label), ["Strong consistency", "Load in balance", "Recovery matched demand"])
+        XCTAssertEqual(pages[2].keySignals.map(\.label), ["Protein remains the opportunity", "Meal quality improved", "Recovery support"])
+
+        let rawMetricFragments = ["workouts completed", "74g", "1.2L", "+2%", "-3%"]
+        for page in pages {
+            XCTAssertEqual(page.keySignals.count, 3)
+            for signal in page.keySignals {
+                XCTAssertFalse(signal.label.isEmpty)
+                XCTAssertFalse(signal.value.isEmpty)
+                for fragment in rawMetricFragments {
+                    XCTAssertFalse(signal.value.localizedCaseInsensitiveContains(fragment), "\(page.title) exposes raw metric value: \(signal.value)")
+                }
+            }
+        }
+    }
+
+    func testInsightsV3DoesNotRepeatScoreStatusInCoachCopy() {
+        let analysisRecords = makeNutritionInsightRecords(
+            days: 30,
+            sleepMinutes: 540,
+            activeCalories: 520,
+            exerciseMinutes: 35,
+            protein: 145,
+            calories: 2_550,
+            water: 2.8,
+            hrv: 90,
+            restingHeartRate: 42
+        )
+        let pages = domainPages(records: Array(analysisRecords.suffix(7)), recoverySleepRecords: analysisRecords)
+
+        for page in pages {
+            let coachCopy = [
+                page.headline,
+                page.standoutText,
+                page.keySignals.map { "\($0.label) \($0.value)" }.joined(separator: " "),
+                page.focusText
+            ].joined(separator: " ")
+
+            XCTAssertFalse(coachCopy.localizedCaseInsensitiveContains("Excellent consistency"), page.title)
+            XCTAssertFalse(coachCopy.localizedCaseInsensitiveContains("\(page.statusText) \(page.statusText)"), page.title)
+        }
+    }
+
+    private func topInsightStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate {
+        guard let story = insightStories(records: records, recoverySleepRecords: recoverySleepRecords).first else {
+            let dataQuality = makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)
+            XCTFail("Expected a ranked insight story")
+            return InsightsStoryEngine.fallbackStory(records: records, recoverySleepRecords: recoverySleepRecords, dataQuality: dataQuality)
+        }
+
+        return story
+    }
+
+    private func insightStories(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> [InsightsStoryCandidate] {
+        let dataQuality = InsightsDataQuality(
+            recoveryDays: recoverySleepRecords.filter { $0.recoveryScore > 0 }.count,
+            sleepDays: recoverySleepRecords.filter { $0.sleepMinutes > 0 }.count,
+            hydrationDays: records.filter { $0.waterLiters > 0 }.count,
+            mealDays: records.filter { $0.mealCount > 0 }.count,
+            activityDays: records.filter(\.hasActivitySignal).count,
+            plannerDays: records.filter { $0.plannedCount > 0 }.count
+        )
+
+        return InsightsStoryEngine.topStories(
+            records: records,
+            recoverySleepRecords: recoverySleepRecords,
+            dataQuality: dataQuality
+        )
+    }
+
+    private func domainPages(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> [InsightsDomainPage] {
+        InsightsDomainIntelligenceEngine.pages(
+            records: records,
+            recoverySleepRecords: recoverySleepRecords,
+            dataQuality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)
+        )
+    }
+
+    private func makeDataQuality(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsDataQuality {
+        InsightsDataQuality(
+            recoveryDays: recoverySleepRecords.filter { $0.recoveryScore > 0 }.count,
+            sleepDays: recoverySleepRecords.filter { $0.sleepMinutes > 0 }.count,
+            hydrationDays: records.filter { $0.waterLiters > 0 }.count,
+            mealDays: records.filter { $0.mealCount > 0 }.count,
+            activityDays: records.filter(\.hasActivitySignal).count,
+            plannerDays: records.filter { $0.plannedCount > 0 }.count
+        )
+    }
+
+    private func domainKey(_ domain: InsightsDomain) -> String {
+        switch domain {
+        case .recovery:
+            return "recovery"
+        case .sleep:
+            return "sleep"
+        case .activity:
+            return "activity"
+        case .nutrition:
+            return "nutrition"
+        case .hydration:
+            return "hydration"
+        case .consistency:
+            return "consistency"
+        case .missingData:
+            return "missingData"
+        }
+    }
+
+    private func makeInsightRecords(
+        days: Int,
+        sleepMinutes: Int,
+        activeCalories: Double,
+        exerciseMinutes: Int = 0,
+        hrv: Double,
+        restingHeartRate: Double,
+        startingDayOffset: Int = 0
+    ) -> [InsightsDayRecord] {
+        let calendar = Calendar(identifier: .gregorian)
+        let start = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_800_000_000))
+
+        return (0..<days).map { index in
+            let date = calendar.date(byAdding: .day, value: startingDayOffset + index, to: start) ?? start
+            return InsightsDayRecord(
+                date: date,
+                metrics: ActivityMetricsSnapshot(
+                    activeCalories: activeCalories,
+                    steps: activeCalories > 0 ? 9_000 : 0,
+                    exerciseMinutes: exerciseMinutes,
+                    sleepMinutes: sleepMinutes,
+                    timeInBedMinutes: sleepMinutes + 20,
+                    awakeMinutes: 10,
+                    awakeningsCount: 1,
+                    distanceKm: activeCalories > 0 ? 6 : 0,
+                    standHours: activeCalories > 0 ? 10 : 0,
+                    vo2Max: 0,
+                    deepSleepMinutes: Int(Double(sleepMinutes) * 0.20),
+                    remSleepMinutes: Int(Double(sleepMinutes) * 0.22),
+                    coreSleepMinutes: Int(Double(sleepMinutes) * 0.58),
+                    restingHeartRate: restingHeartRate,
+                    hrvSDNN: hrv
+                ),
+                activities: [],
+                syncedWorkouts: [],
+                todayNutrition: nil,
+                nutritionGoals: nil
+            )
+        }
+    }
+
+    private func makeNutritionInsightRecords(
+        days: Int,
+        sleepMinutes: Int,
+        activeCalories: Double,
+        exerciseMinutes: Int,
+        protein: Double,
+        calories: Double,
+        water: Double,
+        hrv: Double,
+        restingHeartRate: Double,
+        startingDayOffset: Int = 0
+    ) -> [InsightsDayRecord] {
+        let goals = NutritionGoals(
+            calories: 2_600,
+            protein: 150,
+            carbs: 300,
+            fats: 85,
+            fiber: 35,
+            waterLiters: 3.0
+        )
+
+        return makeInsightRecords(
+            days: days,
+            sleepMinutes: sleepMinutes,
+            activeCalories: activeCalories,
+            exerciseMinutes: exerciseMinutes,
+            hrv: hrv,
+            restingHeartRate: restingHeartRate,
+            startingDayOffset: startingDayOffset
+        ).map { record in
+            InsightsDayRecord(
+                date: record.date,
+                metrics: record.metrics,
+                activities: record.activities,
+                syncedWorkouts: record.syncedWorkouts,
+                todayNutrition: DailyNutritionMetrics(
+                    protein: protein,
+                    carbs: max(0, (calories - protein * 4) / 6),
+                    fats: max(0, calories / 30),
+                    fiber: 28,
+                    calories: calories,
+                    waterLiters: water,
+                    activeCalories: activeCalories,
+                    sleepHours: Double(sleepMinutes) / 60.0,
+                    weightKg: 80
+                ),
+                nutritionGoals: goals
+            )
+        }
+    }
 }
