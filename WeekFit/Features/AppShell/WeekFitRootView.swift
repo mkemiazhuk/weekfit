@@ -23,41 +23,9 @@ struct WeekFitRootView: View {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
             ambientBackground
+                .ignoresSafeArea()
 
-            Group {
-                switch selectedTab {
-                case .today:
-                    TodayView(
-                        authViewModel: authViewModel,
-                        returnToTodayTrigger: todayResetTrigger,
-                        onSelectTab: selectTab
-                    )
-                    .environmentObject(coachInputProvider)
-
-                case .coach:
-                    ExpertCoachViewV3(authViewModel: authViewModel)
-                        .environmentObject(coachInputProvider)
-
-                case .insights:
-                    InsightsView(
-                        authViewModel: authViewModel,
-                        onSelectTab: selectTab
-                    )
-                    .environmentObject(coachInputProvider)
-
-                case .meals:
-                    MealsView(
-                        authViewModel: authViewModel,
-                        nutritionResult: nutritionViewModel.nutritionResult
-                    )
-
-                case .calendar:
-                    WeekPlannerView(
-                        viewModel: planViewModel,
-                        authViewModel: authViewModel
-                    )
-                }
-            }
+            selectedContent
             .transition(
                 .asymmetric(
                     insertion: .offset(y: 8).combined(with: .opacity),
@@ -133,22 +101,52 @@ struct WeekFitRootView: View {
         ].joined(separator: "#")
     }
 
-    private var ambientBackground: some View {
-        Group {
-            switch selectedTab {
-            case .today:
-                WeekFitTheme.todayAmbient
-            case .coach:
-                WeekFitTheme.coachAmbient
-            case .insights:
-                WeekFitTheme.todayAmbient
-            case .meals:
-                WeekFitTheme.mealsAmbient
-            case .calendar:
-                WeekFitTheme.planAmbient
-            }
+    @ViewBuilder
+    private var selectedContent: some View {
+        switch selectedTab {
+        case .today:
+            TodayView(
+                authViewModel: authViewModel,
+                returnToTodayTrigger: todayResetTrigger,
+                onSelectTab: selectTab
+            )
+            .environmentObject(coachInputProvider)
+
+        case .coach:
+            ExpertCoachViewV3(authViewModel: authViewModel)
+                .environmentObject(coachInputProvider)
+
+        case .highlights:
+            HighlightsView()
+
+        case .meals:
+            MealsView(
+                authViewModel: authViewModel,
+                nutritionResult: nutritionViewModel.nutritionResult
+            )
+
+        case .calendar:
+            WeekPlannerView(
+                viewModel: planViewModel,
+                authViewModel: authViewModel
+            )
         }
-        .ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    private var ambientBackground: some View {
+        switch selectedTab {
+        case .today:
+            WeekFitTheme.todayAmbient
+        case .coach:
+            WeekFitTheme.coachAmbient
+        case .highlights:
+            WeekFitTheme.todayAmbient
+        case .meals:
+            WeekFitTheme.mealsAmbient
+        case .calendar:
+            WeekFitTheme.planAmbient
+        }
     }
 
     private func selectTab(_ tab: WeekFitTab) {

@@ -876,7 +876,7 @@ private struct InsightsTrendCandidate {
     let card: InsightsTrendCard
 }
 
-private struct InsightsSyncedWorkout {
+struct InsightsSyncedWorkout {
     let id: String
     let startDate: Date
     let durationMinutes: Int
@@ -889,11 +889,56 @@ final class InsightsViewModel: ObservableObject {
     @Published private(set) var snapshot = InsightsSnapshot.fallback
     @Published private(set) var hasLoadedSnapshot: Bool
 
+    private struct InsightsStoryCandidate {
+        let id: String
+        let impactScore: Double
+        let confidence: Double
+        let trend: InsightsHeroInsight
+        let driver: InsightSupportCard
+        let action: InsightsFocusNext
+
+        var evidence: InsightsEvidence {
+            InsightsEvidence(
+                label: "WHY THIS STORY",
+                confidenceLabel: Self.confidenceLabel(for: confidence),
+                confidenceValue: confidence,
+                sourceSummary: "Impact score \(Int(impactScore.rounded()))/100",
+                recencyText: trend.timeframe,
+                bullets: [
+                    driver.text,
+                    action.action
+                ]
+            )
+        }
+
+        var displayStory: InsightsStory {
+            InsightsStory(
+                id: id,
+                impactScore: impactScore,
+                trend: trend,
+                driver: driver,
+                action: action,
+                evidence: evidence
+            )
+        }
+
+        private static func confidenceLabel(for confidence: Double) -> String {
+            switch confidence {
+            case 0.78...:
+                return "High Confidence"
+            case 0.55..<0.78:
+                return "Medium Confidence"
+            default:
+                return "Low Confidence"
+            }
+        }
+    }
+
     init(
-        initialSnapshot: InsightsSnapshot = .fallback,
+        initialSnapshot: InsightsSnapshot? = nil,
         hasLoadedSnapshot: Bool = false
     ) {
-        snapshot = initialSnapshot
+        snapshot = initialSnapshot ?? .fallback
         self.hasLoadedSnapshot = hasLoadedSnapshot
     }
 
@@ -952,12 +997,13 @@ final class InsightsViewModel: ObservableObject {
         }
 
         let healthHistoryRecords = healthHistoryDates.map { date in
-            InsightsDayRecord(
+            let dayActivities = plannedActivities.filter { calendar.isDate($0.date, inSameDayAs: date) }
+            return InsightsDayRecord(
                 date: date,
                 metrics: metricsByDay[date] ?? .empty,
-                activities: [],
+                activities: dayActivities,
                 syncedWorkouts: [],
-                todayNutrition: nil,
+                todayNutrition: calendar.isDate(date, inSameDayAs: today) ? nutritionViewModel.currentMetrics : nil,
                 nutritionGoals: nutritionViewModel.nutritionResult?.goals
             )
         }
@@ -982,28 +1028,24 @@ final class InsightsViewModel: ObservableObject {
         let calendarWeekDays = records.map { shortWeekday(for: $0.date) }
         let fallback = InsightsSnapshot.fallback
         let dataQuality = makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)
-        let hero = makeHero(
+        let storyCandidates = InsightsStoryEngine.topStories(
             records: records,
             recoverySleepRecords: recoverySleepRecords,
-            nutritionViewModel: nutritionViewModel,
-            coachContext: coachContext
+            dataQuality: dataQuality
         )
+        let stories = storyCandidates.map(\.displayStory)
+        let story = storyCandidates.first ?? InsightsStoryEngine.fallbackStory(records: records, recoverySleepRecords: recoverySleepRecords, dataQuality: dataQuality)
+        let domainPages = InsightsDomainIntelligenceEngine.pages(
+            records: records,
+            recoverySleepRecords: recoverySleepRecords,
+            dataQuality: dataQuality
+        )
+        let hero = story.trend
         let heroWeekDays = hero.domain == .recovery || hero.domain == .sleep
             ? ["", "", "", "", "", "", ""]
             : calendarWeekDays
-        let evidence = makeEvidence(
-            records: records,
-            recoverySleepRecords: recoverySleepRecords,
-            dataQuality: dataQuality,
-            hero: hero,
-            coachContext: coachContext
-        )
-        let supportCards = makeSupportCards(
-            records: records,
-            recoverySleepRecords: recoverySleepRecords,
-            hero: hero,
-            coachContext: coachContext
-        )
+        let evidence = story.evidence
+        let supportCards = [story.driver]
         let trends = makeTrends(records: records, recoverySleepRecords: recoverySleepRecords, avoiding: hero.domain)
         let trendDomains = Set(trends.map(\.domain))
         let reflection = makeReflection(
@@ -1017,6 +1059,8 @@ final class InsightsViewModel: ObservableObject {
             avatarInitials: fallback.avatarInitials,
             weekDays: heroWeekDays,
             hero: hero,
+            stories: stories,
+            domainPages: domainPages,
             evidence: evidence,
             whyItems: [],
             nextActions: [],
@@ -1037,11 +1081,7 @@ final class InsightsViewModel: ObservableObject {
             trends: trends,
             hydrationImpact: makeHydrationImpact(records: records),
             weeklyReflection: reflection,
-            focusNext: makeFocusNext(
-                records: records,
-                recoverySleepRecords: recoverySleepRecords,
-                coachContext: coachContext
-            ),
+            focusNext: story.action,
             dataQuality: dataQuality
         )
     }
@@ -1058,6 +1098,832 @@ final class InsightsViewModel: ObservableObject {
             activityDays: records.filter(\.hasActivitySignal).count,
             plannerDays: records.filter { $0.plannedCount > 0 }.count
         )
+    }
+
+    private func makeTopStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord],
+        dataQuality: InsightsDataQuality
+    ) -> InsightsStoryCandidate {
+        if let winner = makeTopStories(
+            records: records,
+            recoverySleepRecords: recoverySleepRecords,
+            dataQuality: dataQuality
+        ).first {
+            return winner
+        }
+
+        return fallbackStory(records: records, recoverySleepRecords: recoverySleepRecords, dataQuality: dataQuality)
+    }
+
+    private func makeTopStories(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord],
+        dataQuality: InsightsDataQuality
+    ) -> [InsightsStoryCandidate] {
+        let ranked = makeStoryCandidates(
+            records: records,
+            recoverySleepRecords: recoverySleepRecords
+        )
+        .sorted { lhs, rhs in
+            if lhs.impactScore != rhs.impactScore {
+                return lhs.impactScore > rhs.impactScore
+            }
+            return lhs.confidence > rhs.confidence
+        }
+
+        guard !ranked.isEmpty else {
+            return [fallbackStory(records: records, recoverySleepRecords: recoverySleepRecords, dataQuality: dataQuality)]
+        }
+
+        var selected: [InsightsStoryCandidate] = []
+        var usedDomains: Set<InsightsDomain> = []
+
+        for story in ranked {
+            guard !usedDomains.contains(story.trend.domain) else { continue }
+            selected.append(story)
+            usedDomains.insert(story.trend.domain)
+
+            if selected.count == 2 {
+                break
+            }
+        }
+
+        return selected.isEmpty ? Array(ranked.prefix(1)) : selected
+    }
+
+    private func fallbackStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord],
+        dataQuality: InsightsDataQuality
+    ) -> InsightsStoryCandidate {
+        if hasEnoughStableContext(dataQuality) {
+            let hero = noMajorChangeHero(records: records, recoverySleepRecords: recoverySleepRecords)
+            let driver = InsightSupportCard(
+                role: .strongestPattern,
+                domain: .consistency,
+                title: "No dominant driver",
+                text: "No signal changed enough to earn hero placement.",
+                icon: "checkmark.seal.fill",
+                accent: hero.accent,
+                metrics: [
+                    InsightTrendMetric(label: "Story", value: "stable", direction: .stable, detail: "no anomaly", benchmark: "30-day review")
+                ]
+            )
+            let action = InsightsFocusNext(
+                label: "ACTION",
+                title: "Maintain the current routine",
+                text: "No major risk or opportunity is visible in the current 30-day pattern.",
+                action: "Do not increase training volume by more than 10% over the next 7 days.",
+                icon: hero.icon,
+                accent: hero.accent,
+                domain: .consistency,
+                actionTitle: "Open Coach",
+                actionDestination: .tab(.coach)
+            )
+            return InsightsStoryCandidate(
+                id: "stable.no_major_change",
+                impactScore: 35,
+                confidence: confidence(from: dataQuality),
+                trend: hero,
+                driver: driver,
+                action: action
+            )
+        }
+
+        let hero = missingDataHero(records: records, recoverySleepRecords: recoverySleepRecords)
+        let driver = InsightSupportCard(
+            role: .strongestPattern,
+            domain: .missingData,
+            title: "Insufficient overlap",
+            text: "Insights needs more overlapping sleep, recovery, training and nutrition data before ranking stories.",
+            icon: "sparkles",
+            accent: hero.accent,
+            metrics: [
+                InsightTrendMetric(label: "Read", value: "building", direction: .stable, detail: "not enough data", benchmark: "complete 7 days")
+            ]
+        )
+        let action = InsightsFocusNext(
+            label: "ACTION",
+            title: "Build a complete baseline",
+            text: "A cleaner week gives Insights enough overlap to rank real stories.",
+            action: "Log sleep, meals, drinks and activity every day for the next 7 days.",
+            icon: "sparkles",
+            accent: hero.accent,
+            domain: .missingData,
+            actionTitle: "Log Today",
+            actionDestination: .tab(.today)
+        )
+        return InsightsStoryCandidate(
+            id: "baseline.insufficient_overlap",
+            impactScore: 20,
+            confidence: confidence(from: dataQuality),
+            trend: hero,
+            driver: driver,
+            action: action
+        )
+    }
+
+    private func makeStoryCandidates(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> [InsightsStoryCandidate] {
+        [
+            recoveryDeclineStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            recoveryReboundStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            recoveryPlateauStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            sleepDebtStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            weekendSleepStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            trainingLoadStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            activeCaloriesDeclineStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            proteinConsistencyStory(records: records, recoverySleepRecords: recoverySleepRecords),
+            hydrationHardDayStory(records: records, recoverySleepRecords: recoverySleepRecords)
+        ]
+        .compactMap { $0 }
+        .filter { isCausalStory($0) }
+        .filter { $0.impactScore >= 45 }
+    }
+
+    private func isCausalStory(_ story: InsightsStoryCandidate) -> Bool {
+        guard story.trend.domain != .missingData else { return true }
+        return !(story.trend.domain == story.driver.domain && story.driver.domain == story.action.domain)
+    }
+
+    private func recoveryDeclineStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        guard recoveryRecords.count >= 14 else { return nil }
+
+        let recent = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        let baseline = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
+        let delta = recent - baseline
+        guard baseline > 0, delta <= -4 else { return nil }
+
+        let latest = recoveryRecords.last?.recoveryScore ?? Int(recent.rounded())
+        let driver = strongestRecoveryDriver(records: records, recoverySleepRecords: recoverySleepRecords, delta: delta)
+        let impact = min(96, 58 + abs(delta) * 4 + (recent < 68 ? 12 : 0))
+        let confidenceValue = storyConfidence(primaryDays: recoveryRecords.count, pairedDays: recoverySleepRecords.filter { $0.recoveryScore > 0 && $0.sleepMinutes > 0 }.count)
+
+        return InsightsStoryCandidate(
+            id: "recovery.decline",
+            impactScore: impact,
+            confidence: confidenceValue,
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: latest >= 72 ? "Recovery remains healthy but is declining" : "Recovery is losing momentum",
+                subtitle: "Recovery is down \(Int(abs(delta).rounded())) points versus baseline.",
+                takeaway: "Stabilize recovery before increasing load.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(latest)",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: driver.domain == .sleep ? "Restore sleep before increasing load" : "Stabilize the driver before adding load",
+                text: "The 30-day story shows recovery moving in the wrong direction.",
+                action: driver.domain == .sleep
+                    ? "Sleep at least 7 hours on 5 of the next 7 nights."
+                    : "Keep every workout easy or Zone 2 for the next 7 days.",
+                icon: driver.icon,
+                accent: driver.accent,
+                domain: driver.domain,
+                destination: driver.domain == .activity ? .detail(.activity) : .detail(.recovery)
+            )
+        )
+    }
+
+    private func recoveryReboundStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        guard recoveryRecords.count >= 14 else { return nil }
+
+        let recent = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        let baseline = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
+        let delta = recent - baseline
+        guard baseline > 0, delta >= 5 else { return nil }
+
+        let sleepRecords = recoverySleepRecords.filter { $0.sleepMinutes > 0 }
+        let recentSleep = average(Array(sleepRecords.suffix(7)).map(\.sleepHours))
+        let volume = trainingVolumeSummary(records)
+        let loadChange = workloadBaselineChange(volume)
+        let driver: InsightSupportCard
+        if recentSleep >= 7 {
+            driver = InsightSupportCard(
+                role: .resilience,
+                domain: .sleep,
+                title: "Sleep Consistency",
+                text: "Sleep is at the level that supports recovery.",
+                icon: "moon.fill",
+                accent: WeekFitTheme.purple,
+                metrics: [
+                    InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: .stable, detail: "average", benchmark: "Target: 7h")
+                ]
+            )
+        } else if volume.hasMeaningfulLoad, loadChange <= 10 {
+            driver = InsightSupportCard(
+                role: .workload,
+                domain: .activity,
+                title: "Controlled Load",
+                text: "Training load has stayed controlled while recovery improved.",
+                icon: "figure.run",
+                accent: WeekFitTheme.orange,
+                metrics: [
+                    workloadSignificanceMetric(volume)
+                ]
+            )
+        } else {
+            return nil
+        }
+
+        return InsightsStoryCandidate(
+            id: "recovery.rebound",
+            impactScore: min(88, 52 + delta * 4),
+            confidence: storyConfidence(primaryDays: recoveryRecords.count, pairedDays: max(sleepRecords.count, records.filter(\.hasActivitySignal).count)),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Recovery resilience is improving",
+                subtitle: "Recovery has rebounded \(Int(delta.rounded())) points versus baseline.",
+                takeaway: "Protect the routine that created the rebound.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(Int(recent.rounded()))",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: driver.domain == .sleep ? "Protect the sleep routine" : "Keep load increases gradual",
+                text: "The trend has turned positive; the goal is to preserve it.",
+                action: driver.domain == .sleep
+                    ? "Keep sleep above 7 hours on 5 of the next 7 nights."
+                    : "Do not increase training volume by more than 10% over the next 7 days.",
+                icon: driver.icon,
+                accent: driver.accent,
+                domain: driver.domain,
+                destination: driver.domain == .activity ? .detail(.activity) : .detail(.recovery)
+            )
+        )
+    }
+
+    private func recoveryPlateauStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        guard recoveryRecords.count >= 21 else { return nil }
+
+        let firstWindow = average(Array(recoveryRecords.prefix(10)).map { Double($0.recoveryScore) })
+        let middleWindow = average(Array(recoveryRecords.dropFirst(10).prefix(10)).map { Double($0.recoveryScore) })
+        let recent = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        guard middleWindow - firstWindow >= 4, abs(recent - middleWindow) <= 2 else { return nil }
+
+        let driver = InsightSupportCard(
+            role: .resilience,
+            domain: .recovery,
+            title: "Recovery plateau",
+            text: "Recovery improved earlier, then flattened over the recent window.",
+            icon: "equal.circle.fill",
+            accent: WeekFitTheme.meal,
+            metrics: [
+                InsightTrendMetric(label: "Recent trend", value: "flat", direction: .stable, detail: "after improvement", benchmark: "plateau")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "recovery.plateau",
+            impactScore: 64,
+            confidence: storyConfidence(primaryDays: recoveryRecords.count, pairedDays: recoveryRecords.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Recovery plateau detected",
+                subtitle: "Recovery improved, then stopped progressing.",
+                takeaway: "Find the next limiter before adding load.",
+                timeframe: "Last 30 Days",
+                icon: "equal.circle.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(Int(recent.rounded()))",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Hold training volume while testing the next limiter",
+                text: "A plateau means the first improvement has already been absorbed.",
+                action: "Keep training volume flat for the next 7 days.",
+                icon: "target",
+                accent: WeekFitTheme.meal,
+                domain: .recovery,
+                destination: .detail(.recovery)
+            )
+        )
+    }
+
+    private func sleepDebtStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let sleepRecords = recoverySleepRecords.filter { $0.sleepMinutes > 0 }
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        guard sleepRecords.count >= 7, recoveryRecords.count >= 7 else { return nil }
+
+        let recentSleep = average(Array(sleepRecords.suffix(7)).map(\.sleepHours))
+        let baselineSleep = average(Array(sleepRecords.dropLast(7)).map(\.sleepHours))
+        let declining = baselineSleep > 0 && recentSleep <= baselineSleep - 0.25
+        guard recentSleep < 6.9 || declining else { return nil }
+
+        let recentRecovery = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        let baselineRecovery = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
+        let recoveryDelta = recentRecovery - baselineRecovery
+        let recoveryIsStable = baselineRecovery > 0 && abs(recoveryDelta) <= 3
+        let recoveryIsDeclining = baselineRecovery > 0 && recoveryDelta <= -3
+        guard recoveryIsStable || recoveryIsDeclining else { return nil }
+
+        let latestRecovery = recoveryRecords.last?.recoveryScore ?? Int(recentRecovery.rounded())
+        let impact = min(82, 46 + max(0, 7.0 - recentSleep) * 10 + (declining ? 8 : 0) + (recoveryIsDeclining ? 14 : 0))
+        let driver = InsightSupportCard(
+            role: .limitingFactor,
+            domain: .sleep,
+            title: "Sleep Duration",
+            text: "Sleep has fallen below the level that protects recovery.",
+            icon: "moon.fill",
+            accent: WeekFitTheme.purple,
+            metrics: [
+                InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: declining ? .decreasing : .stable, detail: "average", benchmark: "Target: 7h")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "recovery.sleep_pressure",
+            impactScore: impact,
+            confidence: storyConfidence(primaryDays: sleepRecords.count, pairedDays: recoverySleepRecords.filter { $0.sleepMinutes > 0 && $0.recoveryScore > 0 }.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: recoveryIsDeclining ? "Recovery is starting to lose support" : "Recovery is holding despite short sleep",
+                subtitle: recoveryIsDeclining
+                    ? "Recovery is down \(Int(abs(recoveryDelta).rounded())) points while sleep is below target."
+                    : "Sleep is below target, but recovery has not dropped yet.",
+                takeaway: "Restore sleep before increasing training load.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(latestRecovery)",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Restore sleep before increasing load",
+                text: "Sleep is the driver to fix before changing training.",
+                action: "Sleep at least 7 hours on 5 of the next 7 nights.",
+                icon: "moon.zzz.fill",
+                accent: WeekFitTheme.purple,
+                domain: .sleep,
+                destination: .detail(.recovery)
+            )
+        )
+    }
+
+    private func weekendSleepStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let paired = recoverySleepRecords.filter { $0.sleepMinutes > 0 && $0.recoveryScore > 0 }
+        let weekend = paired.filter { Calendar.current.isDateInWeekend($0.date) }
+        let weekday = paired.filter { !Calendar.current.isDateInWeekend($0.date) }
+        guard weekend.count >= 4, weekday.count >= 8 else { return nil }
+
+        let weekendSleep = average(weekend.map(\.sleepHours))
+        let weekdaySleep = average(weekday.map(\.sleepHours))
+        let weekendRecovery = average(weekend.map { Double($0.recoveryScore) })
+        let weekdayRecovery = average(weekday.map { Double($0.recoveryScore) })
+        let recoveryGap = weekdayRecovery - weekendRecovery
+        guard weekendSleep <= weekdaySleep - 0.35, recoveryGap >= 4 else { return nil }
+        let recentRecovery = Int(average(Array(paired.suffix(7)).map { Double($0.recoveryScore) }).rounded())
+
+        let driver = InsightSupportCard(
+            role: .limitingFactor,
+            domain: .sleep,
+            title: "Weekend sleep",
+            text: "Weekend sleep is lower than weekdays.",
+            icon: "calendar",
+            accent: WeekFitTheme.purple,
+            metrics: [
+                InsightTrendMetric(label: "Weekend gap", value: "-\(Int(recoveryGap.rounded()))", direction: .decreasing, detail: "recovery points", benchmark: "vs weekdays")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "sleep.weekend_disruption",
+            impactScore: min(86, 54 + recoveryGap * 3),
+            confidence: storyConfidence(primaryDays: paired.count, pairedDays: weekend.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Weekend recovery is weaker",
+                subtitle: "Weekend recovery is \(Int(recoveryGap.rounded())) points lower than weekdays.",
+                takeaway: "Protect weekend wake time.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(paired.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(recentRecovery)",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Protect weekend sleep timing",
+                text: "The weekly dip is concentrated around weekends.",
+                action: "Keep weekend wake time within 60 minutes of weekdays for the next 2 weekends.",
+                icon: "alarm.fill",
+                accent: WeekFitTheme.purple,
+                domain: .sleep,
+                destination: .detail(.recovery)
+            )
+        )
+    }
+
+    private func trainingLoadStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let volume = trainingVolumeSummary(records)
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        let recentRecovery = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        let baselineRecovery = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
+        let recoveryDelta = recentRecovery - baselineRecovery
+        guard volume.hasMeaningfulLoad, recoveryRecords.count >= 7 else { return nil }
+        let loadPressure = workloadBaselineChange(volume)
+        guard loadPressure >= 15, (recentRecovery < 70 || recoveryDelta <= -3) else { return nil }
+
+        let driver = InsightSupportCard(
+            role: .workload,
+            domain: .activity,
+            title: "Training Load",
+            text: "Training load is outpacing the recovery response.",
+            icon: "figure.run",
+            accent: WeekFitTheme.orange,
+            metrics: [
+                InsightTrendMetric(label: "Load", value: workloadCategory(volume), direction: .increasing, detail: volume.badgeValue, benchmark: "above recent base")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "training.load_outrunning_recovery",
+            impactScore: min(94, 58 + loadPressure * 0.5 + max(0, -recoveryDelta) * 3),
+            confidence: storyConfidence(primaryDays: records.filter(\.hasActivitySignal).count, pairedDays: recoveryRecords.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Recovery is not keeping up with load",
+                subtitle: "Recovery is soft while training load is elevated.",
+                takeaway: "Hold training volume until recovery stabilizes.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                visualization: .correlation(
+                    primary: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                    secondary: smoothedTrendValues(recoverySleepRecords.map(\.activityLoadGraphValue)),
+                    primaryLabel: "recovery",
+                    secondaryLabel: "load"
+                ),
+                badgeValue: "\(Int(recentRecovery.rounded()))",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Hold current training volume",
+                text: "Recovery needs to catch up before more load is useful.",
+                action: "Do not add sessions or increase volume for the next 7 days.",
+                icon: "bolt.shield.fill",
+                accent: WeekFitTheme.orange,
+                domain: .activity,
+                destination: .detail(.activity)
+            )
+        )
+    }
+
+    private func activeCaloriesDeclineStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let calorieRecords = recoverySleepRecords.filter { $0.metrics.activeCalories > 0 }
+        guard calorieRecords.count >= 14 else { return nil }
+        let recent = average(Array(calorieRecords.suffix(7)).map(\.metrics.activeCalories))
+        let baseline = average(Array(calorieRecords.dropLast(7)).map(\.metrics.activeCalories))
+        guard baseline > 0, recent <= baseline * 0.75 else { return nil }
+
+        let drop = baseline - recent
+        let driver = InsightSupportCard(
+            role: .workload,
+            domain: .activity,
+            title: "Active Calories",
+            text: "Active calories have declined meaningfully versus baseline.",
+            icon: "flame.fill",
+            accent: WeekFitTheme.orange,
+            metrics: [
+                InsightTrendMetric(label: "Active calories", value: "-\(Int(drop.rounded()))", direction: .decreasing, detail: "per day", benchmark: "vs baseline")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "activity.active_calories_declining",
+            impactScore: min(78, 46 + (drop / max(baseline, 1)) * 80),
+            confidence: storyConfidence(primaryDays: calorieRecords.count, pairedDays: calorieRecords.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Active calories are declining",
+                subtitle: "Daily active calories are down versus baseline.",
+                takeaway: "Rebuild activity consistency before adding intensity.",
+                timeframe: "Last 30 Days",
+                icon: "flame.fill",
+                accent: WeekFitTheme.orange,
+                graphValues: smoothedTrendValues(calorieRecords.map { min(max($0.metrics.activeCalories / max(baseline, 1), 0), 1) }),
+                targetValue: 0.85,
+                targetLabel: "baseline",
+                badgeValue: "\(Int(recent.rounded()))",
+                badgeLabel: "cal/day",
+                domain: .activity,
+                actionDestination: .detail(.activity)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Rebuild activity consistency",
+                text: "The decline is volume-based, not intensity-based.",
+                action: "Complete 30 minutes of Zone 2 activity on 4 of the next 7 days.",
+                icon: "figure.walk",
+                accent: WeekFitTheme.orange,
+                domain: .activity,
+                destination: .detail(.activity)
+            )
+        )
+    }
+
+    private func proteinConsistencyStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let nutritionRecords = records.filter { $0.mealCount > 0 || $0.proteinGrams > 0 }
+        let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
+        let proteinGoal = records.last?.nutritionGoals?.protein ?? 0
+        guard nutritionRecords.count >= 4, recoveryRecords.count >= 7, proteinGoal > 0 else { return nil }
+
+        let hitDays = nutritionRecords.filter { $0.proteinGrams >= proteinGoal }.count
+        let averageProtein = average(nutritionRecords.map(\.proteinGrams))
+        guard hitDays < 5 || averageProtein < proteinGoal * 0.75 else { return nil }
+
+        let recentRecovery = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
+        let baselineRecovery = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
+        let recoveryDelta = recentRecovery - baselineRecovery
+        guard baselineRecovery == 0 || recoveryDelta <= 3 else { return nil }
+
+        let impact = min(74, 44 + Double(max(0, 6 - hitDays)) * 4 + max(0, 1 - averageProtein / proteinGoal) * 16 + (recoveryDelta <= -3 ? 10 : 0))
+        let driver = InsightSupportCard(
+            role: .limitingFactor,
+            domain: .nutrition,
+            title: "Protein Consistency",
+            text: "Protein consistency is below the level needed to support adaptation.",
+            icon: "fork.knife",
+            accent: WeekFitTheme.meal,
+            metrics: [
+                InsightTrendMetric(label: "Protein", value: "\(hitDays)/7", direction: .decreasing, detail: "target days", benchmark: "Target: 6 of 7 days")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "nutrition.protein_consistency",
+            impactScore: impact,
+            confidence: storyConfidence(primaryDays: nutritionRecords.count, pairedDays: nutritionRecords.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: recoveryDelta <= -3 ? "Recovery support is getting weaker" : "Recovery is missing a nutrition signal",
+                subtitle: "Protein target was hit on \(hitDays) of the last 7 logged days.",
+                takeaway: "Make protein consistent before changing training.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(Int(recentRecovery.rounded()))",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Use protein to support recovery",
+                text: "Protein is the driver to stabilize before training changes.",
+                action: "Hit your protein target on at least 6 of the next 7 days.",
+                icon: "takeoutbag.and.cup.and.straw.fill",
+                accent: WeekFitTheme.meal,
+                domain: .nutrition,
+                destination: .detail(.nutrition)
+            )
+        )
+    }
+
+    private func hydrationHardDayStory(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsStoryCandidate? {
+        let paired = records.filter { $0.waterLiters > 0 && $0.hasActivitySignal && $0.recoveryScore > 0 }
+        guard paired.count >= 4 else { return nil }
+
+        let highLoadDays = paired.filter { $0.activityLoadScore >= 55 }
+        guard highLoadDays.count >= 2 else { return nil }
+
+        let lowerHydration = highLoadDays.filter { $0.waterLiters < max($0.waterGoal, 2.4) * 0.7 }
+        let betterHydration = highLoadDays.filter { $0.waterLiters >= max($0.waterGoal, 2.4) * 0.7 }
+        guard !lowerHydration.isEmpty, !betterHydration.isEmpty else { return nil }
+
+        let lowerRecovery = average(lowerHydration.map { Double($0.recoveryScore) })
+        let betterRecovery = average(betterHydration.map { Double($0.recoveryScore) })
+        let lift = betterRecovery - lowerRecovery
+        guard abs(lift) >= 5 else { return nil }
+
+        let recentRecovery = Int(average(Array(paired.suffix(7)).map { Double($0.recoveryScore) }).rounded())
+        let driver = InsightSupportCard(
+            role: .relationship,
+            domain: .hydration,
+            title: "Hydration on hard days",
+            text: "Hydration is separating recovery after higher-load days.",
+            icon: "drop.fill",
+            accent: WeekFitTheme.blue,
+            metrics: [
+                InsightTrendMetric(label: "Hard days", value: lift > 0 ? "+\(Int(lift.rounded()))" : "\(Int(lift.rounded()))", direction: lift > 0 ? .increasing : .decreasing, detail: "recovery points", benchmark: "hydrated vs low-fluid")
+            ]
+        )
+
+        return InsightsStoryCandidate(
+            id: "hydration.hard_day_effect",
+            impactScore: min(76, 46 + abs(lift) * 4),
+            confidence: storyConfidence(primaryDays: paired.count, pairedDays: highLoadDays.count),
+            trend: InsightsHeroInsight(
+                label: "TREND",
+                title: "Hard-day recovery is uneven",
+                subtitle: "Recovery changes by \(Int(abs(lift).rounded())) points based on hard-day hydration.",
+                takeaway: "Prioritize fluids around hard training.",
+                timeframe: "Last 30 Days",
+                icon: "heart.fill",
+                accent: WeekFitTheme.meal,
+                graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(paired.suffix(30)))),
+                targetValue: 0.72,
+                targetLabel: "72 target",
+                badgeValue: "\(recentRecovery)",
+                badgeLabel: "Recovery",
+                domain: .recovery,
+                actionDestination: .detail(.recovery)
+            ),
+            driver: driver,
+            action: actionForStory(
+                title: "Prioritize fluids around hard sessions",
+                text: "Hydration is the driver to control around high load.",
+                action: "Drink at least 750ml in the 2 hours after each hard session this week.",
+                icon: "drop.fill",
+                accent: WeekFitTheme.blue,
+                domain: .hydration,
+                destination: .detail(.nutrition)
+            )
+        )
+    }
+
+    private func strongestRecoveryDriver(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord],
+        delta: Double
+    ) -> InsightSupportCard {
+        let sleepRecords = recoverySleepRecords.filter { $0.sleepMinutes > 0 }
+        let recentSleep = average(Array(sleepRecords.suffix(7)).map(\.sleepHours))
+        let baselineSleep = average(Array(sleepRecords.dropLast(7)).map(\.sleepHours))
+        if recentSleep > 0, recentSleep < 7 || (baselineSleep > 0 && recentSleep <= baselineSleep - 0.25) {
+            return InsightSupportCard(
+                role: .limitingFactor,
+                domain: .sleep,
+                title: "Sleep Duration",
+                text: "Recovery decline is most strongly associated with reduced sleep duration.",
+                icon: "moon.fill",
+                accent: WeekFitTheme.purple,
+                metrics: [
+                    InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: .decreasing, detail: "average", benchmark: "Target: 7h")
+                ]
+            )
+        }
+
+        let volume = trainingVolumeSummary(records)
+        if volume.hasMeaningfulLoad, workloadBaselineChange(volume) >= 15 {
+            return InsightSupportCard(
+                role: .workload,
+                domain: .activity,
+                title: "Training Load",
+                text: "Recovery decline is most strongly associated with training load.",
+                icon: "figure.run",
+                accent: WeekFitTheme.orange,
+                metrics: [
+                    workloadSignificanceMetric(volume)
+                ]
+            )
+        }
+
+        return InsightSupportCard(
+            role: .resilience,
+            domain: .recovery,
+            title: "Recovery Consistency",
+            text: "Recovery consistency is the strongest signal in the 30-day pattern.",
+            icon: "heart.fill",
+            accent: WeekFitTheme.meal,
+            metrics: [
+                InsightTrendMetric(label: "Recovery", value: "\(Int(delta.rounded()))", direction: .decreasing, detail: "vs baseline", benchmark: "recent 7 days")
+            ]
+        )
+    }
+
+    private func actionForStory(
+        title: String,
+        text: String,
+        action: String,
+        icon: String,
+        accent: Color,
+        domain: InsightsDomain,
+        destination: InsightsActionDestination?
+    ) -> InsightsFocusNext {
+        InsightsFocusNext(
+            label: "ACTION",
+            title: title,
+            text: text,
+            action: action,
+            icon: icon,
+            accent: accent,
+            domain: domain,
+                actionTitle: storyActionTitle(for: destination),
+            actionDestination: destination
+        )
+    }
+
+    private func storyActionTitle(for destination: InsightsActionDestination?) -> String {
+        switch destination {
+        case .detail(.recovery):
+            return "View Recovery Analysis"
+        case .detail(.activity):
+            return "Review Training Trends"
+        case .detail(.nutrition):
+            return "Explore Nutrition Details"
+        case .tab(.coach):
+            return "Open Coach"
+        case .tab(.today):
+            return "Log Today"
+        case .tab(.meals):
+            return "Open Nutrition"
+        case .tab(.calendar):
+            return "Open Plan"
+        case .tab(.highlights):
+            return "Open Highlights"
+        case nil:
+            return "Review Details"
+        }
+    }
+
+    private func storyConfidence(primaryDays: Int, pairedDays: Int) -> Double {
+        let primary = min(Double(primaryDays) / 21.0, 1.0)
+        let paired = min(Double(pairedDays) / 14.0, 1.0)
+        return min(max(0.42 + primary * 0.34 + paired * 0.24, 0.35), 0.94)
+    }
+
+    private func hasEnoughStableContext(_ quality: InsightsDataQuality) -> Bool {
+        quality.recoveryDays >= 14 ||
+            quality.sleepDays >= 14 ||
+            quality.activityDays >= 7 ||
+            quality.mealDays >= 7
     }
 
     private func makeHero(
@@ -1094,9 +1960,9 @@ final class InsightsViewModel: ObservableObject {
                 timeframe: observationWindowText(for: .sleep, quality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)),
                 icon: "bed.double.fill",
                 accent: WeekFitTheme.purple,
-                graphValues: smoothedTrendValues(Array(validSleep.suffix(30)).map { sleepScore($0.sleepMinutes) / 100.0 }),
-                targetValue: 7.0 / 8.0,
-                targetLabel: "7h target",
+                graphValues: sleepScoreTrendValues(validSleep),
+                targetValue: 0.70,
+                targetLabel: "70 sleep score",
                 badgeValue: "\(formatOneDecimal(recentSleep))h",
                 badgeLabel: sleepTrend == .decreasing ? "falling" : "recent avg",
                 domain: .sleep
@@ -1219,6 +2085,9 @@ final class InsightsViewModel: ObservableObject {
             let sleepLooksLow = averageSleepHours < 7
             let recoveryLooksStrong = recentRecoveryAverage >= 72
             let sleepPriority = sleepTrend == .decreasing ? 24 : 30
+            let sleepHasMeaningfulStory = sleepLooksLow ||
+                sleepTrend != .stable ||
+                (baselineSleep > 0 && abs(recentSleep - baselineSleep) >= 0.25)
             let sleepSubtitle: String
             let sleepTitle: String
             let sleepTakeaway: String
@@ -1239,79 +2108,97 @@ final class InsightsViewModel: ObservableObject {
                 sleepSubtitle = "Sleep remains below target."
                 sleepTakeaway = "Aim for one more 7+ hour night."
             }
-            candidates.append(InsightsHeroCandidate(priority: sleepPriority, insight: InsightsHeroInsight(
-                label: "MAIN INSIGHT",
-                title: sleepTitle,
-                subtitle: sleepSubtitle,
-                takeaway: sleepTakeaway,
-                timeframe: observationWindowText(for: .sleep, quality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)),
-                icon: "moon.fill",
-                accent: WeekFitTheme.purple,
-                graphValues: smoothedTrendValues(Array(validSleep.suffix(30)).map { sleepScore($0.sleepMinutes) / 100.0 }),
-                targetValue: 7.0 / 8.0,
-                targetLabel: "7h target",
-                badgeValue: "\(formatOneDecimal(averageSleepHours))h",
-                badgeLabel: "avg sleep",
-                domain: .sleep
-            )))
+            if sleepHasMeaningfulStory {
+                candidates.append(InsightsHeroCandidate(priority: sleepPriority, insight: InsightsHeroInsight(
+                    label: "MAIN INSIGHT",
+                    title: sleepTitle,
+                    subtitle: sleepSubtitle,
+                    takeaway: sleepTakeaway,
+                    timeframe: observationWindowText(for: .sleep, quality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)),
+                    icon: "moon.fill",
+                    accent: WeekFitTheme.purple,
+                    graphValues: sleepScoreTrendValues(validSleep),
+                    targetValue: 0.70,
+                    targetLabel: "70 sleep score",
+                    badgeValue: "\(formatOneDecimal(averageSleepHours))h",
+                    badgeLabel: "avg sleep",
+                    domain: .sleep
+                )))
+            }
         }
 
         if validRecovery.count >= 7 {
             let averageRecovery = Int(average(validRecovery.map { Double($0.recoveryScore) }).rounded())
-            let recoveryPriority = recoveryTrend == .decreasing ? 25 : 31
-            candidates.append(InsightsHeroCandidate(priority: recoveryPriority, insight: InsightsHeroInsight(
-                label: "MAIN INSIGHT",
-                title: averageRecovery >= 72 ? "Recovery looks resilient" : "Recovery needs a lighter week",
-                subtitle: averageRecovery >= 72
-                    ? "Recovery is holding steady."
-                    : "Recovery is running low.",
-                takeaway: averageRecovery >= 72
-                    ? "Watch whether the next load increase changes it."
-                    : "Watch whether a lighter week helps it rebound.",
-                timeframe: observationWindowText(for: .recovery, quality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)),
-                icon: "heart.fill",
-                accent: WeekFitTheme.meal,
-                graphValues: recoveryValues,
-                targetValue: 0.72,
-                targetLabel: "72 target",
-                badgeValue: "\(averageRecovery)",
-                badgeLabel: "Recovery",
-                domain: .recovery
-            )))
-        }
+            let recoveryRebounded = priorRecoveryAverage > 0 && recentRecoveryAverage >= priorRecoveryAverage + 5
+            let recoveryIsLow = averageRecovery < 68
 
-        if validRecovery.count < 7,
-           let coachContext,
-           coachContext.shouldLeadInsights {
-            candidates.append(InsightsHeroCandidate(priority: 80, insight: InsightsHeroInsight(
-                label: "MAIN INSIGHT",
-                title: insightTitle(for: coachContext),
-                subtitle: "Recent history is still building.",
-                takeaway: "Keep logging to unlock stronger Insights.",
-                timeframe: "Building history",
-                icon: coachContext.icon,
-                accent: coachContext.accent,
-                graphValues: coachContext.domain == .activity ? smoothedTrendValues(recoverySleepRecords.map(\.activityLoadGraphValue)) : recoveryValues,
-                targetValue: targetValue(for: coachContext.domain),
-                targetLabel: targetLabel(for: coachContext.domain),
-                visualization: coachVisualization(
-                    for: coachContext.domain,
-                    records: records,
-                    historyRecords: recoverySleepRecords,
-                    recoveryValues: recoveryValues
-                ),
-                badgeValue: "Building",
-                badgeLabel: "history",
-                domain: coachContext.domain,
-                actionDestination: coachContext.actionDestination
-            )))
+            if recoveryRebounded || recoveryIsLow {
+                candidates.append(InsightsHeroCandidate(priority: recoveryRebounded ? 25 : 18, insight: InsightsHeroInsight(
+                    label: "MAIN INSIGHT",
+                    title: recoveryRebounded ? "Recovery has rebounded" : "Recovery needs a lighter week",
+                    subtitle: recoveryRebounded
+                        ? "Recovery has improved meaningfully over the last month."
+                        : "Recovery is running low.",
+                    takeaway: recoveryRebounded
+                        ? "Hold the routine that supported the rebound."
+                        : "Watch whether a lighter week helps it rebound.",
+                    timeframe: observationWindowText(for: .recovery, quality: makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)),
+                    icon: "heart.fill",
+                    accent: WeekFitTheme.meal,
+                    graphValues: recoveryValues,
+                    targetValue: 0.72,
+                    targetLabel: "72 target",
+                    badgeValue: "\(averageRecovery)",
+                    badgeLabel: "Recovery",
+                    domain: .recovery
+                )))
+            }
         }
 
         if let best = candidates.sorted(by: { $0.priority < $1.priority }).first {
             return best.insight
         }
 
+        let quality = makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)
+        let hasEnoughStableContext = quality.recoveryDays >= 14 ||
+            quality.sleepDays >= 14 ||
+            quality.activityDays >= 7 ||
+            quality.mealDays >= 7
+
+        if hasEnoughStableContext {
+            return noMajorChangeHero(records: records, recoverySleepRecords: recoverySleepRecords)
+        }
+
         return missingDataHero(records: records, recoverySleepRecords: recoverySleepRecords)
+    }
+
+    private func noMajorChangeHero(
+        records: [InsightsDayRecord],
+        recoverySleepRecords: [InsightsDayRecord]
+    ) -> InsightsHeroInsight {
+        let quality = makeDataQuality(records: records, recoverySleepRecords: recoverySleepRecords)
+
+        return InsightsHeroInsight(
+            label: "TREND",
+            title: "No major 30-day change detected",
+            subtitle: "Core signals are stable. Insights will surface a hero when a meaningful change, risk, opportunity or anomaly appears.",
+            takeaway: "Keep the current routine stable.",
+            timeframe: observationWindowText(for: .consistency, quality: quality),
+            icon: "checkmark.seal.fill",
+            accent: WeekFitTheme.meal,
+            graphValues: [],
+            targetValue: nil,
+            targetLabel: nil,
+            visualization: .contributionBreakdown(segments: [
+                InsightContribution(label: "recovery", value: min(Double(quality.recoveryDays) / 30.0, 0.34), color: WeekFitTheme.meal),
+                InsightContribution(label: "sleep", value: min(Double(quality.sleepDays) / 30.0, 0.30), color: WeekFitTheme.purple),
+                InsightContribution(label: "training", value: min(Double(quality.activityDays) / 7.0, 0.26), color: WeekFitTheme.orange)
+            ]),
+            badgeValue: "Stable",
+            badgeLabel: "30 days",
+            domain: .consistency,
+            actionDestination: .tab(.coach)
+        )
     }
 
     private func missingDataHero(
@@ -1347,7 +2234,7 @@ final class InsightsViewModel: ObservableObject {
             timeframe: "Recent data",
             icon: "brain.head.profile",
             accent: WeekFitTheme.meal,
-            graphValues: InsightsSnapshot.fallback.hero.graphValues,
+            graphValues: [],
             targetValue: nil,
             targetLabel: nil,
             visualization: .contributionBreakdown(segments: [
@@ -1393,18 +2280,6 @@ final class InsightsViewModel: ObservableObject {
         let sourceSummary = confidenceBasisText(dataQuality)
         let recency = observationWindowText(for: hero.domain, quality: dataQuality)
 
-        if let coachContext, coachContext.shouldLeadInsights {
-            let bullets = Array(coachContext.evidence.prefix(2))
-            return InsightsEvidence(
-                label: "WHY THIS READ",
-                confidenceLabel: confidenceLabel(coachContext.confidence),
-                confidenceValue: coachContext.confidence,
-                sourceSummary: sourceSummary,
-                recencyText: recency,
-                bullets: bullets.isEmpty ? [coachContext.message] : bullets
-            )
-        }
-
         let heroFacts = evidenceBullets(
             records: records,
             recoverySleepRecords: recoverySleepRecords,
@@ -1431,7 +2306,6 @@ final class InsightsViewModel: ObservableObject {
         let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
         let sleepRecords = recoverySleepRecords.filter { $0.sleepMinutes > 0 }
         let activityRecords = records.filter(\.hasActivitySignal)
-        let mealRecords = records.filter { $0.mealCount > 0 }
         let hydrationRecords = records.filter { $0.waterLiters > 0 }
 
         switch heroDomain {
@@ -1538,7 +2412,6 @@ final class InsightsViewModel: ObservableObject {
         let recoveryRecords = recoverySleepRecords.filter { $0.recoveryScore > 0 }
         let sleepRecords = recoverySleepRecords.filter { $0.sleepHours > 0 }
         let mealRecords = records.filter { $0.mealCount > 0 }
-        let hydrationRecords = records.filter { $0.waterLiters > 0 }
         let averageRecovery = average(recoveryRecords.map { Double($0.recoveryScore) })
         let recentRecovery = average(Array(recoveryRecords.suffix(7)).map { Double($0.recoveryScore) })
         let baselineRecovery = average(Array(recoveryRecords.dropLast(7)).map { Double($0.recoveryScore) })
@@ -1743,10 +2616,6 @@ final class InsightsViewModel: ObservableObject {
         let averageSleep = average(sleepRecords.map(\.sleepHours))
         let volume = trainingVolumeSummary(records)
         let today = records.last
-        let waterGoal = today?.waterGoal ?? 0
-        let waterLiters = today?.waterLiters ?? 0
-        let waterGapLiters = max(waterGoal - waterLiters, 0)
-        let waterGapMl = Int((waterGapLiters * 1000).rounded(.toNearestOrAwayFromZero))
         let proteinGoal = today?.nutritionGoals?.protein ?? 0
         let protein = today?.proteinGrams ?? 0
 
@@ -2812,7 +3681,7 @@ final class InsightsViewModel: ObservableObject {
     private func targetValue(for domain: InsightsDomain) -> Double? {
         switch domain {
         case .sleep:
-            return 7.0 / 8.0
+            return 0.70
         case .recovery:
             return 0.72
         case .activity:
@@ -2829,7 +3698,7 @@ final class InsightsViewModel: ObservableObject {
     private func targetLabel(for domain: InsightsDomain) -> String? {
         switch domain {
         case .sleep:
-            return "7h target"
+            return "70 sleep score"
         case .recovery:
             return "72 target"
         case .activity:
@@ -3164,7 +4033,12 @@ final class InsightsViewModel: ObservableObject {
         let activityDays = records.filter(\.hasActivitySignal).count
 
         guard recoveryDays >= 2 || sleepDays >= 2 || hydrationDays >= 2 || mealDays >= 2 || activityDays >= 2 else {
-            return InsightsSnapshot.fallback.weeklyReflection
+            return InsightsReflection(
+                label: "WEEKLY REFLECTION",
+                text: "Insights needs a few real logged days before it can compare patterns.",
+                domain: .missingData,
+                actionDestination: .tab(.today)
+            )
         }
 
         let domainCounts: [(domain: InsightsDomain, name: String, count: Int, target: Int)] = [
@@ -3220,26 +4094,12 @@ final class InsightsViewModel: ObservableObject {
             ? nutritionRecords.filter { $0.proteinGrams >= proteinGoal }.count
             : 0
 
-        if let coachContext, coachContext.shouldLeadInsights {
-            return InsightsFocusNext(
-                label: "FOCUS NEXT",
-                title: coachContext.title,
-                text: coachContext.message,
-                action: coachContext.recommendation,
-                icon: coachContext.icon,
-                accent: coachContext.accent,
-                domain: coachContext.domain,
-                actionTitle: coachContext.actionTitle,
-                actionDestination: coachContext.actionDestination
-            )
-        }
-
         if sleepRecords.count >= 7, sleepAverage > 0, sleepAverage < 7 {
             return InsightsFocusNext(
                 label: "FOCUS NEXT",
                 title: "Prioritize sleep before more volume",
                 text: "Sleep has been under 7 hours recently. Better sleep is more likely to help recovery than extra training.",
-                action: "Aim for one more 7h+ night this week.",
+                action: "Sleep at least 7 hours on 5 of the next 7 nights.",
                 icon: "moon.zzz.fill",
                 accent: WeekFitTheme.purple,
                 domain: .sleep,
@@ -3253,7 +4113,7 @@ final class InsightsViewModel: ObservableObject {
                 label: "FOCUS NEXT",
                 title: "Let recovery catch up",
                 text: "Recovery is low enough that adding more training is unlikely to help right now.",
-                action: "Keep the next training block easy.",
+                action: "Keep every workout easy or Zone 2 for the next 7 days.",
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 domain: .recovery,
@@ -3263,12 +4123,11 @@ final class InsightsViewModel: ObservableObject {
         }
 
         if nutritionRecords.count < 7 {
-            let needed = max(1, 7 - nutritionRecords.count)
             return InsightsFocusNext(
                 label: "FOCUS NEXT",
                 title: "Make nutrition visible",
                 text: "Meal logging is too inconsistent to connect food with recovery yet.",
-                action: "Log meals on \(needed) more \(dayWord(needed)).",
+                action: "Log every meal for the next 7 days.",
                 icon: "fork.knife",
                 accent: WeekFitTheme.meal,
                 domain: .nutrition,
@@ -3282,7 +4141,7 @@ final class InsightsViewModel: ObservableObject {
                 label: "FOCUS NEXT",
                 title: "Make protein more consistent",
                 text: "Protein is inconsistent enough that recovery changes are harder to explain.",
-                action: "Hit protein on at least 4 days next week.",
+                action: "Hit your protein target on at least 6 of the next 7 days.",
                 icon: "takeoutbag.and.cup.and.straw.fill",
                 accent: WeekFitTheme.meal,
                 domain: .nutrition,
@@ -3297,7 +4156,7 @@ final class InsightsViewModel: ObservableObject {
                 label: "FOCUS NEXT",
                 title: "Build a real training rhythm",
                 text: "\(workloadSignificanceText(volume)) The next useful step is more total work, not intensity.",
-                action: "Build toward three hours of weekly activity.",
+                action: "Complete 3 hours of total activity over the next 7 days.",
                 icon: "figure.run",
                 accent: WeekFitTheme.orange,
                 domain: .activity,
@@ -3311,7 +4170,7 @@ final class InsightsViewModel: ObservableObject {
                 label: "FOCUS NEXT",
                 title: "Current load looks sustainable",
                 text: "Recovery is stable and your recent routine looks manageable.",
-                action: "Repeat the week or add only a small load bump.",
+                action: "Do not increase training volume by more than 10% over the next 7 days.",
                 icon: "checkmark.seal.fill",
                 accent: WeekFitTheme.meal,
                 domain: .consistency,
@@ -3324,7 +4183,7 @@ final class InsightsViewModel: ObservableObject {
             label: "FOCUS NEXT",
             title: "Keep building the picture",
             text: "One more consistent week will make the next recommendation clearer.",
-            action: "Keep logging sleep, food, drinks and activity.",
+            action: "Log sleep, meals, drinks and activity every day for the next 7 days.",
             icon: "sparkles",
             accent: WeekFitTheme.orange,
             domain: .missingData,
@@ -3369,6 +4228,12 @@ final class InsightsViewModel: ObservableObject {
         }
     }
 
+    private func sleepScoreTrendValues(_ records: [InsightsDayRecord]) -> [Double] {
+        smoothedTrendValues(Array(records.suffix(30)).map { record in
+            Double(record.sleepScore) / 100.0
+        })
+    }
+
     private func smoothedTrendValues(_ values: [Double], maxPoints: Int = 10) -> [Double] {
         let valid = values.filter { $0 > 0 }
         guard valid.count > 2 else { return values }
@@ -3385,11 +4250,6 @@ final class InsightsViewModel: ObservableObject {
             let index = Int((Double(point) * Double(smoothed.count - 1) / Double(maxPoints - 1)).rounded())
             return smoothed[index]
         }
-    }
-
-    private func sleepScore(_ minutes: Int) -> Double {
-        guard minutes > 0 else { return 0 }
-        return clamp(Double(minutes) / 480.0) * 100.0
     }
 
     private func lastThreeValues(_ values: [Double], formatter: (Double) -> String) -> [String] {
@@ -3473,7 +4333,7 @@ final class InsightsViewModel: ObservableObject {
     }
 }
 
-private struct InsightsDayRecord {
+struct InsightsDayRecord {
     let date: Date
     let metrics: ActivityMetricsSnapshot
     let activities: [PlannedActivity]
@@ -3483,6 +4343,7 @@ private struct InsightsDayRecord {
 
     var recoveryScore: Int { metrics.recoveryPercent }
     var sleepMinutes: Int { metrics.sleepMinutes }
+    var sleepScore: Int { metrics.sleepScore }
     var sleepHours: Double { metrics.sleepHours }
 
     var waterLiters: Double {
@@ -3631,6 +4492,7 @@ struct InsightsView: View {
     @State private var showProfile = false
     @State private var selectedDetail: InsightsDetailDestination?
     @State private var nutritionDetailsDate = Date()
+    @State private var selectedStoryID: String?
 
     private let usesFixedSnapshot: Bool
     private let onSelectTab: (WeekFitTab) -> Void
@@ -3646,6 +4508,45 @@ struct InsightsView: View {
 
     private var snapshot: InsightsSnapshot {
         viewModel.snapshot
+    }
+
+    private var visibleStories: [InsightsStory] {
+        if snapshot.stories.isEmpty {
+            return [
+                InsightsStory(
+                    id: "snapshot.hero",
+                    impactScore: 0,
+                    trend: snapshot.hero,
+                    driver: snapshot.supportCards.first ?? fallbackSupportCard(for: snapshot.hero.domain),
+                    action: snapshot.focusNext,
+                    evidence: snapshot.evidence
+                )
+            ]
+        }
+
+        return Array(snapshot.stories.prefix(2))
+    }
+
+    private var visibleDomainPages: [InsightsDomainPage] {
+        snapshot.domainPages.isEmpty ? InsightsDomainPage.fallbackPages : snapshot.domainPages
+    }
+
+    private var selectedStory: InsightsStory {
+        if let selectedStoryID,
+           let story = visibleStories.first(where: { $0.id == selectedStoryID }) {
+            return story
+        }
+
+        return visibleStories[0]
+    }
+
+    private var selectedDomainPage: InsightsDomainPage {
+        if let selectedStoryID,
+           let page = visibleDomainPages.first(where: { $0.id == selectedStoryID }) {
+            return page
+        }
+
+        return visibleDomainPages[0]
     }
 
     private var shouldShowSnapshotContent: Bool {
@@ -3692,29 +4593,28 @@ struct InsightsView: View {
             WeekFitScreenContainer {
                 WeekFitScreenHeader(
                     title: "Insights",
-                    subtitle: "What matters most",
+                    subtitle: "Last 30 Days",
                     initials: userSettings.profileInitials,
                     showAvatar: true
                 ) {
                     showProfile = true
                 }
-            } content: {
+            }content: {
                 if shouldShowSnapshotContent {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 12) {
-                            heroInsightCard
-                            narrativeSupportSection
-                            tryThisNextSection
-                        }
-                        .padding(.bottom, 95)
-                        .opacity(showContent ? 1 : 0)
-                        .offset(y: showContent ? 0 : 14)
+                    VStack(spacing: 8) {
+
+                        storyPager
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 8)
+
+                        pageIndicator
                     }
+                    .padding(.bottom, 4)
+
                 } else {
                     insightsLoadingState
                 }
             }
-            .padding(.bottom, 95)
         }
         .ignoresSafeArea(.keyboard)
         .navigationBarHidden(true)
@@ -3722,6 +4622,14 @@ struct InsightsView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             showContent = true
+            selectedStoryID = visibleDomainPages.first?.id
+        }
+        .onChange(of: snapshot.domainPages.map(\.id)) { _, pageIDs in
+            guard let selectedStoryID,
+                  pageIDs.contains(selectedStoryID) else {
+                self.selectedStoryID = visibleDomainPages.first?.id
+                return
+            }
         }
         .task(id: refreshSignature) {
             guard !usesFixedSnapshot else { return }
@@ -3752,6 +4660,28 @@ struct InsightsView: View {
         }
         .fullScreenCover(item: $selectedDetail) { destination in
             detailView(for: destination)
+        }
+    }
+    
+    private var pageIndicator: some View {
+        HStack(spacing: 7) {
+            ForEach(Array(visibleDomainPages.enumerated()), id: \.element.id) { _, page in
+
+                let isSelected = page.id == selectedStoryID
+
+                Group {
+                    if isSelected {
+                        Capsule()
+                            .fill(page.accent)
+                            .frame(width: 18, height: 6)
+                    } else {
+                        Circle()
+                            .fill(Color.white.opacity(0.14))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                .animation(.spring(duration: 0.25), value: selectedStoryID)
+            }
         }
     }
 
@@ -3941,8 +4871,8 @@ struct InsightsView: View {
             return "Open Coach"
         case .tab(.today):
             return "Open Today"
-        case .tab(.insights):
-            return "Stay in Insights"
+        case .tab(.highlights):
+            return "Open Highlights"
         case .tab(.meals):
             return "Open Nutrition"
         case .tab(.calendar):
@@ -3983,6 +4913,747 @@ struct InsightsView: View {
     }
 }
 
+// MARK: - Strategic Story
+
+private enum StoryCardProminence {
+    case primary
+    case secondary
+    case tertiary
+
+    var contentSpacing: CGFloat {
+        switch self {
+        case .primary:
+            return 10
+        case .secondary:
+            return 7
+        case .tertiary:
+            return 7
+        }
+    }
+
+    var padding: CGFloat {
+        switch self {
+        case .primary:
+            return 14
+        case .secondary:
+            return 11
+        case .tertiary:
+            return 11
+        }
+    }
+
+    var labelSize: CGFloat {
+        switch self {
+        case .primary:
+            return 10.8
+        case .secondary, .tertiary:
+            return 10.2
+        }
+    }
+
+    var labelIconSize: CGFloat {
+        switch self {
+        case .primary:
+            return 12.5
+        case .secondary, .tertiary:
+            return 11.5
+        }
+    }
+
+    var accentOpacity: Double {
+        switch self {
+        case .primary:
+            return 0.070
+        case .secondary:
+            return 0.040
+        case .tertiary:
+            return 0.030
+        }
+    }
+
+    var shadowOpacity: Double {
+        switch self {
+        case .primary:
+            return 0.50
+        case .secondary:
+            return 0.26
+        case .tertiary:
+            return 0.18
+        }
+    }
+
+    var shadowRadius: CGFloat {
+        switch self {
+        case .primary:
+            return 14
+        case .secondary:
+            return 9
+        case .tertiary:
+            return 7
+        }
+    }
+
+    var shadowY: CGFloat {
+        switch self {
+        case .primary:
+            return 7
+        case .secondary:
+            return 4
+        case .tertiary:
+            return 3
+        }
+    }
+}
+
+private extension InsightsView {
+
+    var storyPager: some View {
+        TabView(selection: $selectedStoryID) {
+            ForEach(visibleDomainPages) { page in
+                domainPageView(page)
+                    .tag(Optional(page.id))
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .frame(height: 560)
+    }
+
+    func domainPageView(_ page: InsightsDomainPage) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(page.label)
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(0.42)
+                        .foregroundStyle(page.accent.opacity(0.88))
+
+                    Text(page.headline)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+
+                    Text(page.standoutText)
+                        .font(.system(size: 13.2, weight: .semibold))
+                        .foregroundStyle(textSecondary.opacity(0.80))
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 16)
+
+                Text(page.scoreValue)
+                    .font(.system(size: 54, weight: .heavy))
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(1)
+                    .monospacedDigit()
+            }
+
+            domainChart(page)
+                .frame(height: 176)
+
+            whyThisScoreSection(page)
+
+            monthlyReviewTextSection(
+                title: "NEXT FOCUS",
+                text: page.focusText,
+                accent: page.accent,
+                isFocus: true
+            )
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            page.accent.opacity(0.16),
+                            Color.white.opacity(0.052),
+                            Color.white.opacity(0.030)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                }
+        }
+    }
+
+    func domainChart(_ page: InsightsDomainPage) -> some View {
+        let zones = chartZones(for: page.domain)
+
+        return PremiumInsightAreaChart(
+            values: page.chartValues,
+            target: zones.middleBoundary,
+            targetLabel: zones.middle,
+            accent: page.accent,
+            upperZoneLabel: zones.upper,
+            middleZoneLabel: zones.middle,
+            lowerZoneLabel: zones.lower,
+            upperBoundary: zones.upperBoundary,
+            middleBoundary: zones.middleBoundary
+        )
+    }
+
+    func chartZones(for domain: InsightsDomain) -> (upper: String, middle: String, lower: String, upperBoundary: Double, middleBoundary: Double) {
+        switch domain {
+        case .activity:
+            return ("High load", "Sustainable load", "Low load", 0.70, 0.30)
+        case .recovery:
+            return ("Strong recovery", "Target range", "Low recovery", 0.75, 0.40)
+        case .nutrition:
+            return ("Protein target", "Consistent intake", "Below target", 0.80, 0.50)
+        default:
+            return ("High", "Target range", "Low", 0.75, 0.40)
+        }
+    }
+
+    func whyThisScoreSection(_ page: InsightsDomainPage) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("WHY THIS SCORE")
+                .font(.system(size: 10.2, weight: .bold))
+                .tracking(0.36)
+                .foregroundStyle(textSecondary.opacity(0.62))
+
+            VStack(spacing: 7) {
+                ForEach(page.keySignals.prefix(3)) { signal in
+                    scoreDriverCard(signal, accent: page.accent)
+                }
+            }
+        }
+    }
+
+    func scoreDriverCard(_ signal: InsightsKeySignal, accent: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(signal.label)
+                .font(.system(size: 12.2, weight: .bold))
+                .foregroundStyle(textPrimary.opacity(0.94))
+                .lineLimit(1)
+
+            Text(signal.value)
+                .font(.system(size: 11.6, weight: .semibold))
+                .foregroundStyle(textSecondary.opacity(0.74))
+                .lineLimit(2)
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(accent.opacity(0.095))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(accent.opacity(0.16), lineWidth: 1)
+            }
+        }
+    }
+
+    func monthlyReviewTextSection(title: String, text: String, accent: Color, isFocus: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 10.2, weight: .bold))
+                .tracking(0.36)
+                .foregroundStyle(isFocus ? accent.opacity(0.82) : textSecondary.opacity(0.62))
+
+            Text(text)
+                .font(.system(size: isFocus ? 14.5 : 13.2, weight: isFocus ? .bold : .semibold))
+                .foregroundStyle(textPrimary.opacity(isFocus ? 0.96 : 0.76))
+                .lineLimit(2)
+        }
+    }
+
+    func domainLineVisualization(values rawValues: [Double], target: Double?, accent: Color) -> some View {
+        GeometryReader { geo in
+            ZStack {
+                let scale = graphScale(primary: rawValues, secondary: nil)
+
+                if let target {
+                    Path { path in
+                        let y = geo.size.height * CGFloat(1 - scaledGraphValue(target, scale: scale))
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                    .stroke(textSecondary.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                }
+
+                let values = scaledGraphValues(rawValues, scale: scale)
+                linePath(values: values, geo: geo)
+                    .stroke(accent.opacity(0.86), style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+
+    func trendSection(_ story: InsightsStory) -> some View {
+        storyCard(label: "TREND", icon: story.trend.icon, accent: story.trend.accent, prominence: .primary) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(trendTitle(for: story))
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+
+                heroScoreExplanation(for: story)
+
+                Text(trendDeltaText(for: story))
+                    .font(.system(size: 10.6, weight: .bold))
+                    .foregroundStyle(story.trend.accent.opacity(0.84))
+
+                heroVisualization(for: story.trend)
+                    .frame(height: 48)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture {
+            perform(action: story.trend.actionDestination)
+        }
+    }
+
+    func heroScoreExplanation(for story: InsightsStory) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(heroMetricName(for: story.trend))
+                    .font(.system(size: 10.4, weight: .bold))
+                    .foregroundStyle(textSecondary.opacity(0.72))
+
+                Spacer(minLength: 8)
+
+                Text(heroMetricValue(for: story.trend))
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(textPrimary.opacity(0.96))
+                    .multilineTextAlignment(.trailing)
+            }
+
+            Text(heroTargetExplanation(for: story.trend))
+                .font(.system(size: 10.8, weight: .bold))
+                .foregroundStyle(story.trend.accent.opacity(0.88))
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    func driverSection(_ story: InsightsStory) -> some View {
+        let driver = story.driver
+        let metric = driver.metrics.first
+
+        return storyCard(label: "DRIVER", icon: driver.icon, accent: driver.accent, prominence: .secondary) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(driverName(for: driver))
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
+
+                Text(driverValue(for: driver))
+                    .font(.system(size: 15.5, weight: .bold))
+                    .foregroundStyle(textPrimary.opacity(0.94))
+                    .lineLimit(1)
+
+                Text(driverTargetText(metric: metric, domain: driver.domain))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(driver.accent.opacity(0.84))
+                    .lineLimit(1)
+
+                Text(compactDriverStatement(for: story))
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(textSecondary.opacity(0.80))
+                    .lineLimit(2)
+
+                Text(confidenceText)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(textSecondary.opacity(0.58))
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture {
+            perform(action: supportActionDestination(for: driver))
+        }
+    }
+
+    func actionSection(_ story: InsightsStory) -> some View {
+        let focus = story.action
+
+        return Button {
+            perform(action: focus.actionDestination)
+        } label: {
+            storyCard(label: "ACTION", icon: focus.icon, accent: focus.accent, prominence: .tertiary) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(focus.title)
+                        .font(.system(size: 16.5, weight: .bold))
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.88)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        actionLine(label: "Goal", text: focus.action, accent: focus.accent)
+                        actionLine(label: "Expected outcome", text: expectedOutcomeText(for: story), accent: focus.accent)
+                    }
+
+                    HStack(spacing: 8) {
+                        Text(refinedActionTitle(for: focus.actionDestination, fallback: focus.actionTitle))
+                            .font(.system(size: 10.8, weight: .bold))
+                            .foregroundStyle(focus.accent.opacity(0.92))
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(textPrimary.opacity(0.86))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(focus.accent.opacity(0.075))
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(focus.actionDestination == nil)
+    }
+
+    func storyCard<Content: View>(
+        label: String,
+        icon: String,
+        accent: Color,
+        prominence: StoryCardProminence,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: prominence.contentSpacing) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: prominence.labelIconSize, weight: .bold))
+
+                Text(label)
+                    .font(.system(size: prominence.labelSize, weight: .bold))
+                    .tracking(0.42)
+
+                Spacer()
+            }
+            .foregroundStyle(accent.opacity(0.86))
+
+            content()
+        }
+        .padding(prominence.padding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    accent.opacity(prominence.accentOpacity),
+                    cardBackground.opacity(0.98)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.055), lineWidth: 1)
+        }
+        .shadow(color: softShadow.opacity(prominence.shadowOpacity), radius: prominence.shadowRadius, y: prominence.shadowY)
+    }
+
+    func actionLine(label: String, text: String, accent: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(label):")
+                .font(.system(size: 9.8, weight: .bold))
+                .foregroundStyle(accent.opacity(0.78))
+
+            Text(text)
+                .font(.system(size: 12.8, weight: .bold))
+                .foregroundStyle(textPrimary.opacity(0.94))
+                .lineLimit(2)
+                .minimumScaleFactor(0.88)
+        }
+    }
+
+    var primaryDriver: InsightSupportCard {
+        snapshot.supportCards.first ?? fallbackSupportCard(for: snapshot.hero.domain)
+    }
+
+    func trendTitle(for story: InsightsStory) -> String {
+        story.trend.title
+    }
+
+    func heroMetricName(for hero: InsightsHeroInsight) -> String {
+        switch hero.domain {
+        case .recovery:
+            return "Recovery Score"
+        case .sleep:
+            return hero.badgeValue.localizedCaseInsensitiveContains("h") ? "Sleep Duration" : "Sleep Score"
+        case .activity:
+            return "Training Load"
+        case .nutrition:
+            return "Nutrition Signal"
+        case .hydration:
+            return "Hydration Signal"
+        case .consistency:
+            return "Consistency"
+        case .missingData:
+            return "Pattern Readiness"
+        }
+    }
+
+    func heroMetricValue(for hero: InsightsHeroInsight) -> String {
+        if hero.domain == .sleep, hero.badgeValue.localizedCaseInsensitiveContains("h") {
+            return "\(hero.badgeValue) average"
+        }
+
+        guard (hero.domain == .recovery || hero.domain == .sleep),
+              let score = numericHeroValue(for: hero),
+              score <= 100 else {
+            return hero.badgeValue
+        }
+
+        return "\(Int(score.rounded())) / 100"
+    }
+
+    func heroTargetExplanation(for hero: InsightsHeroInsight) -> String {
+        if hero.domain == .sleep, hero.badgeValue.localizedCaseInsensitiveContains("h") {
+            let sleepHours = numericHeroValue(for: hero) ?? 0
+            let targetHours = 7.0
+            let gap = sleepHours - targetHours
+            let gapText = gap >= 0 ? "+\(String(format: "%.1f", gap))h" : "\(String(format: "%.1f", gap))h"
+            return "Target: 7h • Gap: \(gapText)"
+        }
+
+        guard (hero.domain == .recovery || hero.domain == .sleep),
+              let score = numericHeroValue(for: hero),
+              let target = hero.targetValue,
+              score <= 100 else {
+            return hero.badgeLabel == "patterns" ? "Not enough real data yet" : hero.badgeLabel
+        }
+
+        let targetScore = Int((target * 100).rounded())
+        let delta = Int((score - Double(targetScore)).rounded())
+        if delta >= 0 {
+            return "Above target by +\(delta)"
+        }
+
+        return "Below target by \(delta)"
+    }
+
+    func numericHeroValue(for hero: InsightsHeroInsight) -> Double? {
+        let filtered = hero.badgeValue.filter { character in
+            character.isNumber || character == "." || character == "-"
+        }
+
+        return Double(filtered)
+    }
+
+    func trendDeltaText(for story: InsightsStory) -> String {
+        if story.trend.domain == .consistency,
+           story.trend.title.localizedCaseInsensitiveContains("no major") {
+            return "→ No meaningful change detected"
+        }
+
+        guard trendValues(for: story.trend).count >= 2 else {
+            return "Trend builds with real data"
+        }
+
+        switch validatedTrendDirection(for: story) {
+        case .increasing:
+            return "↑ Improving over 30 days"
+        case .decreasing:
+            return "↓ Declining over 30 days"
+        case .stable:
+            return "→ Stable over 30 days"
+        }
+    }
+
+    func validatedTrendDirection(for story: InsightsStory) -> InsightTrendDirection {
+        let values = trendValues(for: story.trend)
+        guard let first = values.first, let last = values.last, values.count >= 2 else {
+            return .stable
+        }
+
+        let delta = (last - first) * 100
+        if delta >= 3 {
+            return .increasing
+        }
+        if delta <= -3 {
+            return .decreasing
+        }
+        return .stable
+    }
+
+    func trendValues(for hero: InsightsHeroInsight) -> [Double] {
+        switch hero.visualization {
+        case .trendLine(let values, _, _):
+            return values
+        case .correlation(let primary, _, _, _), .relationshipGraph(let primary, _, _):
+            return primary
+        case .weeklyPattern(let values, _), .distribution(let values, _):
+            return values
+        case .trendChange(_, let after, _):
+            return after
+        case .signalStrength(let strength, _):
+            return [strength]
+        case .comparison, .consistency, .contributionBreakdown:
+            return hero.graphValues
+        }
+    }
+
+    var confidenceText: String {
+        let percent = Int((snapshot.evidence.confidenceValue * 100).rounded())
+        let label = confidenceLevelText
+        guard percent > 0 else {
+            return label
+        }
+        return "\(label) (\(percent)%)"
+    }
+
+    var confidenceLevelText: String {
+        switch snapshot.evidence.confidenceValue {
+        case 0.78...:
+            return "High Confidence"
+        case 0.55..<0.78:
+            return "Medium Confidence"
+        default:
+            return "Low Confidence"
+        }
+    }
+
+    var driverName: String {
+        driverName(for: primaryDriver)
+    }
+
+    func driverName(for driver: InsightSupportCard) -> String {
+        switch driver.domain {
+        case .sleep:
+            return "Sleep Duration"
+        case .activity:
+            return "Training Load"
+        case .nutrition:
+            return "Protein Consistency"
+        case .recovery:
+            return "Recovery Consistency"
+        case .hydration:
+            return "Hydration"
+        case .consistency, .missingData:
+            return "Logging Consistency"
+        }
+    }
+
+    var driverValue: String {
+        driverValue(for: primaryDriver)
+    }
+
+    func driverValue(for driver: InsightSupportCard) -> String {
+        guard let metric = driver.metrics.first else {
+            return compactValue(for: driver.domain)
+        }
+
+        switch driver.domain {
+        case .sleep:
+            return metric.value.contains("h") ? "\(metric.value) average" : metric.value
+        case .activity, .nutrition, .recovery, .hydration, .consistency, .missingData:
+            return metric.value
+        }
+    }
+
+    var driverExplanation: String {
+        driverExplanation(for: selectedStory)
+    }
+
+    func compactDriverStatement(for story: InsightsStory) -> String {
+        story.driver.text
+    }
+
+    func driverExplanation(for story: InsightsStory) -> String {
+        switch story.driver.domain {
+        case .sleep:
+            return validatedTrendDirection(for: story) == .decreasing
+                ? "Recovery decline is most strongly associated with reduced sleep duration."
+                : "Average sleep is the strongest support signal in this trend."
+        case .activity:
+            return validatedTrendDirection(for: story) == .decreasing
+                ? "Recovery decline is most strongly associated with training load."
+                : "Training load is the strongest signal behind this trend."
+        case .nutrition:
+            return "Protein consistency is the strongest nutrition signal in this trend."
+        case .recovery:
+            return "Recovery consistency is the strongest signal in the 30-day pattern."
+        case .hydration:
+            return "Hydration is the strongest support signal in this trend."
+        case .consistency, .missingData:
+            return "Insights needs a cleaner 30-day pattern before naming a stronger driver."
+        }
+    }
+
+    func driverTargetText(metric: InsightTrendMetric?, domain: InsightsDomain) -> String {
+        switch domain {
+        case .sleep:
+            return "Target: 7h"
+        case .nutrition:
+            return "Target: 6 of 7 days"
+        case .activity:
+            return "Target: stable weekly load"
+        case .recovery:
+            return "Target: 72+ recovery"
+        case .hydration:
+            return "Target: consistent intake"
+        case .consistency, .missingData:
+            return metric?.benchmark ?? "Target: complete logs"
+        }
+    }
+
+    func expectedOutcomeText(for story: InsightsStory) -> String {
+        guard !story.action.text.isEmpty else {
+            return "The next insight should be based on a cleaner pattern."
+        }
+
+        return story.action.text
+    }
+
+    func refinedActionTitle(for destination: InsightsActionDestination?, fallback: String) -> String {
+        switch destination {
+        case .detail(.recovery):
+            return "View Recovery Analysis"
+        case .detail(.activity):
+            return "Review Training Trends"
+        case .detail(.nutrition):
+            return "Explore Nutrition Details"
+        case .tab(.coach):
+            return "Open Coach"
+        case .tab(.today):
+            return "Log Today"
+        case .tab(.meals):
+            return "Open Nutrition"
+        case .tab(.calendar):
+            return "Open Plan"
+        case .tab(.highlights):
+            return "Open Highlights"
+        case nil:
+            return fallback
+        }
+    }
+
+    func compactValue(for domain: InsightsDomain) -> String {
+        switch domain {
+        case .recovery:
+            return snapshot.weeklyScores.first { $0.title == "Recovery" }?.value ?? "Building"
+        case .sleep:
+            return snapshot.weeklyScores.first { $0.title == "Sleep" }?.value ?? "Building"
+        case .activity:
+            return snapshot.weeklyScores.first { $0.title == "Training" }?.value ?? "Building"
+        case .nutrition:
+            return snapshot.weeklyScores.first { $0.title == "Nutrition" }?.value ?? "Building"
+        case .hydration:
+            return snapshot.hydrationImpact.rows.first?.values.last ?? "Building"
+        case .consistency, .missingData:
+            return "Building"
+        }
+    }
+}
+
 // MARK: - Hero
 
 private extension InsightsView {
@@ -4009,13 +5680,11 @@ private extension InsightsView {
                         Text(snapshot.hero.title)
                             .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
 
                         Text(snapshot.hero.subtitle)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(textSecondary.opacity(0.82))
                             .lineSpacing(2)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 4)
@@ -4044,7 +5713,8 @@ private extension InsightsView {
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }
             }
-            .padding(17)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
         }
         .frame(minHeight: 218)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -4095,6 +5765,38 @@ private extension InsightsView {
     @ViewBuilder
     var heroVisualization: some View {
         switch snapshot.hero.visualization {
+        case .trendLine(let values, let target, _):
+            lineVisualization(values: values, target: target, secondary: nil)
+        case .comparison(let primaryLabel, let primaryValue, let secondaryLabel, let secondaryValue, let delta):
+            comparisonVisualization(
+                primaryLabel: primaryLabel,
+                primaryValue: primaryValue,
+                secondaryLabel: secondaryLabel,
+                secondaryValue: secondaryValue,
+                delta: delta
+            )
+        case .distribution(let values, let highlightIndex):
+            distributionVisualization(values: values, highlightIndex: highlightIndex)
+        case .correlation(let primary, let secondary, _, _):
+            lineVisualization(values: primary, target: nil, secondary: secondary)
+        case .consistency(let values, let positiveLabel, let negativeLabel):
+            consistencyVisualization(values: values, positiveLabel: positiveLabel, negativeLabel: negativeLabel)
+        case .weeklyPattern(let values, let labels):
+            weeklyPatternVisualization(values: values, labels: labels)
+        case .contributionBreakdown(let segments):
+            contributionVisualization(segments: segments)
+        case .relationshipGraph(let primary, let secondary, _):
+            lineVisualization(values: primary, target: nil, secondary: secondary)
+        case .trendChange(let before, let after, _):
+            trendChangeVisualization(before: before, after: after)
+        case .signalStrength(let strength, let label):
+            signalStrengthVisualization(strength: strength, label: label)
+        }
+    }
+
+    @ViewBuilder
+    func heroVisualization(for hero: InsightsHeroInsight) -> some View {
+        switch hero.visualization {
         case .trendLine(let values, let target, _):
             lineVisualization(values: values, target: target, secondary: nil)
         case .comparison(let primaryLabel, let primaryValue, let secondaryLabel, let secondaryValue, let delta):
@@ -4211,7 +5913,6 @@ private extension InsightsView {
                 .font(.system(size: 17.5, weight: .bold))
                 .foregroundStyle(textPrimary.opacity(0.96))
                 .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: false, vertical: true)
 
             Text(snapshot.hero.timeframe)
                 .font(.system(size: 8.8, weight: .bold))
@@ -4312,13 +6013,11 @@ private extension InsightsView {
     }
 
     func normalizedGraphValues(_ values: [Double]) -> [Double] {
-        let fallback = InsightsSnapshot.fallback.hero.graphValues
-        return (values.isEmpty ? fallback : values).map { min(max($0, 0.08), 0.92) }
+        values.map { min(max($0, 0.08), 0.92) }
     }
 
     func graphScale(primary: [Double], secondary: [Double]?) -> ClosedRange<Double> {
-        let fallback = InsightsSnapshot.fallback.hero.graphValues
-        let values = (primary.isEmpty ? fallback : primary) + (secondary ?? [])
+        let values = primary + (secondary ?? [])
         let clamped = values.map { min(max($0, 0), 1) }
         guard let minValue = clamped.min(), let maxValue = clamped.max() else {
             return 0...1
@@ -4339,8 +6038,7 @@ private extension InsightsView {
     }
 
     func scaledGraphValues(_ values: [Double], scale: ClosedRange<Double>) -> [Double] {
-        let fallback = InsightsSnapshot.fallback.hero.graphValues
-        return (values.isEmpty ? fallback : values).map { scaledGraphValue($0, scale: scale) }
+        values.map { scaledGraphValue($0, scale: scale) }
     }
 
     func scaledGraphValue(_ value: Double, scale: ClosedRange<Double>) -> Double {
@@ -4400,7 +6098,7 @@ private extension InsightsView {
     }
 
     func consistencyVisualization(values: [Bool], positiveLabel: String, negativeLabel: String) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 6) {
                 ForEach(values.indices, id: \.self) { index in
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -4439,7 +6137,7 @@ private extension InsightsView {
     }
 
     func contributionVisualization(segments: [InsightContribution]) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 14) {
             GeometryReader { geo in
                 HStack(spacing: 3) {
                     ForEach(segments) { segment in
@@ -4541,7 +6239,6 @@ private extension InsightsView {
                 .font(.system(size: 11.7, weight: .semibold))
                 .foregroundStyle(textSecondary.opacity(0.84))
                 .lineSpacing(1.5)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
@@ -4597,7 +6294,7 @@ private extension InsightsView {
             return true
         }
 
-        let visible = Array(distinct.prefix(3))
+        let visible = Array(distinct.prefix(2))
         return visible.isEmpty ? [fallbackSupportCard(for: snapshot.hero.domain)] : visible
     }
 
@@ -4720,13 +6417,11 @@ private extension InsightsView {
                     Text(card.title)
                         .font(.system(size: 13.3, weight: .bold))
                         .foregroundStyle(textPrimary.opacity(0.95))
-                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(card.text)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(textSecondary.opacity(0.78))
                         .lineSpacing(1.5)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 0)
@@ -4837,13 +6532,11 @@ private extension InsightsView {
                         Text(focus.title)
                             .font(.system(size: 14.2, weight: .bold))
                             .foregroundStyle(textPrimary.opacity(0.96))
-                            .fixedSize(horizontal: false, vertical: true)
 
                         Text(focus.text)
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(textSecondary.opacity(0.80))
                             .lineSpacing(1.5)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 0)
@@ -4975,13 +6668,11 @@ private extension InsightsView {
                 Text(learning.title)
                     .font(.system(size: 13.3, weight: .bold))
                     .foregroundStyle(textPrimary.opacity(0.95))
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(learning.text)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.78))
                     .lineSpacing(1.5)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -5023,13 +6714,11 @@ private extension InsightsView {
                         Text(opportunity.title)
                             .font(.system(size: 14.2, weight: .bold))
                             .foregroundStyle(textPrimary.opacity(0.96))
-                            .fixedSize(horizontal: false, vertical: true)
 
                         Text(opportunity.text)
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(textSecondary.opacity(0.80))
                             .lineSpacing(1.5)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 0)
@@ -5151,12 +6840,10 @@ private extension InsightsView {
                     Text(title)
                         .font(.system(size: 13.2, weight: .bold))
                         .foregroundStyle(textPrimary.opacity(0.95))
-                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(subtitle)
                         .font(.system(size: 10.4, weight: .semibold))
                         .foregroundStyle(textSecondary.opacity(0.76))
-                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 4)
@@ -5212,7 +6899,6 @@ private extension InsightsView {
                 .font(.system(size: 10.6, weight: .semibold))
                 .foregroundStyle(textSecondary.opacity(0.82))
                 .lineSpacing(1.5)
-                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
@@ -5243,13 +6929,11 @@ private extension InsightsView {
                 Text(snapshot.hydrationImpact.title)
                     .font(.system(size: 13.3, weight: .bold))
                     .foregroundStyle(textPrimary.opacity(0.95))
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(snapshot.hydrationImpact.subtitle)
                     .font(.system(size: 10.4, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.76))
                     .lineSpacing(1.5)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -5316,7 +7000,6 @@ private extension InsightsView {
                         .font(.system(size: 9.8, weight: .semibold))
                         .foregroundStyle(textPrimary.opacity(0.92))
                         .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
                 }
@@ -5349,7 +7032,6 @@ private extension InsightsView {
                     .font(.system(size: 11.8, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.78))
                     .lineSpacing(1.5)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 3)
@@ -5461,18 +7143,15 @@ private extension InsightsView {
                 Text(snapshot.focusNext.title)
                     .font(.system(size: 14.4, weight: .bold))
                     .foregroundStyle(textPrimary.opacity(0.96))
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(snapshot.focusNext.text)
                     .font(.system(size: 11.3, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.78))
                     .lineSpacing(1.5)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(snapshot.focusNext.action)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(snapshot.focusNext.accent.opacity(0.90))
-                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 1)
 
                 HStack(spacing: 6) {
@@ -5560,6 +7239,234 @@ private extension InsightsView {
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.white.opacity(0.04), lineWidth: 1)
+        }
+    }
+}
+
+private struct PremiumInsightAreaChart: View {
+    let values: [Double]
+    let target: Double?
+    let targetLabel: String?
+    let accent: Color
+    let upperZoneLabel: String
+    let middleZoneLabel: String
+    let lowerZoneLabel: String
+    let upperBoundary: Double
+    let middleBoundary: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            let axisHeight: CGFloat = 14
+            let rowSpacing: CGFloat = 8
+            let labelSpacing: CGFloat = 12
+            let labelWidth: CGFloat = min(86, max(70, geometry.size.width * 0.20))
+            let plotWidth = max(geometry.size.width - labelWidth - labelSpacing, 1)
+            let plotHeight = max(geometry.size.height - axisHeight - rowSpacing, 1)
+            let plotSize = CGSize(width: plotWidth, height: plotHeight)
+
+            VStack(spacing: rowSpacing) {
+                HStack(alignment: .top, spacing: labelSpacing) {
+                let points = chartPoints(in: plotSize)
+                let upperBoundaryY = yPosition(for: upperBoundary, in: plotSize)
+                let lowerBoundaryY = yPosition(for: middleBoundary, in: plotSize)
+                let topZoneY = yPosition(for: (upperBoundary + 1) / 2, in: plotSize)
+                let middleZoneY = yPosition(for: (upperBoundary + middleBoundary) / 2, in: plotSize)
+                let lowerZoneY = yPosition(for: middleBoundary / 2, in: plotSize)
+
+                    ZStack {
+                        zoneLine(y: upperBoundaryY, width: plotWidth, opacity: 0.09)
+                        zoneLine(y: lowerBoundaryY, width: plotWidth, opacity: 0.08)
+                        zoneLine(y: topZoneY, width: plotWidth, opacity: 0.06)
+                        targetLine(y: middleZoneY, width: plotWidth)
+                        zoneLine(y: lowerZoneY, width: plotWidth, opacity: 0.08)
+
+                        areaPath(points: points, bottomY: plotSize.height)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        accent.opacity(0.045),
+                                        accent.opacity(0.006)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+
+                        smoothPath(points: points)
+                            .stroke(
+                                accent.opacity(0.30),
+                                style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round)
+                            )
+                            .blur(radius: 8)
+
+                        smoothPath(points: points)
+                            .stroke(
+                                accent.opacity(0.94),
+                                style: StrokeStyle(lineWidth: 3.6, lineCap: .round, lineJoin: .round)
+                            )
+
+                        endMarker(points: points)
+                    }
+                    .frame(width: plotWidth, height: plotSize.height)
+                    .clipped()
+
+                    zoneLabels(
+                        width: labelWidth,
+                        topY: topZoneY,
+                        middleY: middleZoneY,
+                        lowerY: lowerZoneY
+                    )
+                }
+
+                HStack(alignment: .top, spacing: labelSpacing) {
+                    HStack {
+                        Text("30d ago")
+                        Spacer()
+                        Text("15d")
+                        Spacer()
+                        Text("Today")
+                    }
+                    .frame(width: plotWidth)
+                    .font(.system(size: 9.8, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.38))
+
+                    Color.clear
+                        .frame(width: labelWidth, height: axisHeight)
+                }
+            }
+        }
+    }
+
+    private func chartPoints(in size: CGSize) -> [CGPoint] {
+        let normalizedValues = values.isEmpty ? [0.5, 0.5] : values.map { min(max($0, 0), 1) }
+        let displayValues = normalizedValues.count == 1 ? [normalizedValues[0], normalizedValues[0]] : normalizedValues
+        let step = size.width / CGFloat(max(displayValues.count - 1, 1))
+
+        return displayValues.indices.map { index in
+            CGPoint(
+                x: CGFloat(index) * step,
+                y: yPosition(for: displayValues[index], in: size)
+            )
+        }
+    }
+
+    private func yPosition(for value: Double, in size: CGSize) -> CGFloat {
+        let clampedValue = min(max(value, 0), 1)
+        let topInset: CGFloat = 12
+        let bottomInset: CGFloat = 18
+        let drawableHeight = max(size.height - topInset - bottomInset, 1)
+        return topInset + drawableHeight * CGFloat(1 - clampedValue)
+    }
+
+    private func zoneLine(y: CGFloat, width: CGFloat, opacity: Double) -> some View {
+        Path { path in
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: width, y: y))
+        }
+        .stroke(Color.white.opacity(opacity), lineWidth: 1)
+    }
+
+    private func targetLine(y: CGFloat, width: CGFloat) -> some View {
+        Path { path in
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: width, y: y))
+        }
+        .stroke(
+            Color.white.opacity(0.22),
+            style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [5, 7])
+        )
+    }
+
+    private func zoneLabels(width: CGFloat, topY: CGFloat, middleY: CGFloat, lowerY: CGFloat) -> some View {
+        ZStack(alignment: .topTrailing) {
+            zoneLabel(upperZoneLabel, accent: false)
+                .position(x: width / 2, y: max(10, topY - 11))
+
+            zoneLabel(targetLabel ?? middleZoneLabel, accent: true)
+                .position(x: width / 2, y: max(14, middleY - 13))
+
+            zoneLabel(lowerZoneLabel, accent: false)
+                .position(x: width / 2, y: max(10, lowerY - 11))
+        }
+        .frame(width: width)
+        .frame(maxHeight: .infinity)
+    }
+
+    private func zoneLabel(_ label: String, accent isAccent: Bool) -> some View {
+        Text(label)
+            .font(.system(size: isAccent ? 10.6 : 9.4, weight: isAccent ? .bold : .semibold))
+            .foregroundStyle(isAccent ? accent.opacity(0.92) : Color.white.opacity(0.34))
+            .lineLimit(1)
+            .minimumScaleFactor(0.76)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private func endMarker(points: [CGPoint]) -> some View {
+        let point = points.last ?? .zero
+
+        return ZStack {
+            Circle()
+                .stroke(accent.opacity(0.26), lineWidth: 7)
+                .frame(width: 20, height: 20)
+                .blur(radius: 2)
+
+            Circle()
+                .fill(accent)
+                .frame(width: 8.5, height: 8.5)
+                .overlay {
+                    Circle()
+                        .stroke(.white.opacity(0.72), lineWidth: 1.2)
+                }
+        }
+        .position(point)
+    }
+
+    private func smoothPath(points: [CGPoint]) -> Path {
+        Path { path in
+            addSmoothCurve(to: &path, points: points)
+        }
+    }
+
+    private func areaPath(points: [CGPoint], bottomY: CGFloat) -> Path {
+        Path { path in
+            guard let first = points.first, let last = points.last else { return }
+            path.move(to: CGPoint(x: first.x, y: bottomY))
+            path.addLine(to: first)
+            addSmoothCurve(to: &path, points: points, moveToFirstPoint: false)
+            path.addLine(to: CGPoint(x: last.x, y: bottomY))
+            path.closeSubpath()
+        }
+    }
+
+    private func addSmoothCurve(to path: inout Path, points: [CGPoint], moveToFirstPoint: Bool = true) {
+        guard let first = points.first else { return }
+        if moveToFirstPoint {
+            path.move(to: first)
+        }
+        guard points.count > 1 else { return }
+
+        for index in 0..<(points.count - 1) {
+            let p0 = index > 0 ? points[index - 1] : points[index]
+            let p1 = points[index]
+            let p2 = points[index + 1]
+            let p3 = index + 2 < points.count ? points[index + 2] : p2
+            let tension: CGFloat = 0.92
+
+            var control1 = CGPoint(
+                x: p1.x + (p2.x - p0.x) * tension / 6,
+                y: p1.y + (p2.y - p0.y) * tension / 6
+            )
+            var control2 = CGPoint(
+                x: p2.x - (p3.x - p1.x) * tension / 6,
+                y: p2.y - (p3.y - p1.y) * tension / 6
+            )
+
+            let minY = min(p1.y, p2.y)
+            let maxY = max(p1.y, p2.y)
+            control1.y = min(max(control1.y, minY), maxY)
+            control2.y = min(max(control2.y, minY), maxY)
+
+            path.addCurve(to: p2, control1: control1, control2: control2)
         }
     }
 }

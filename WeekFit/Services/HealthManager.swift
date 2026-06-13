@@ -54,6 +54,20 @@ struct ActivityMetricsSnapshot: Hashable {
         Double(sleepMinutes) / 60.0
     }
 
+    var sleepScore: Int {
+        guard sleepMinutes > 0 else { return 0 }
+
+        let durationScore = min(Double(sleepMinutes) / 480.0, 1.0) * 45
+        let deepRatio = Double(deepSleepMinutes) / Double(max(sleepMinutes, 1))
+        let deepScore = min(deepRatio / 0.18, 1.0) * 20
+        let remRatio = Double(remSleepMinutes) / Double(max(sleepMinutes, 1))
+        let remScore = min(remRatio / 0.22, 1.0) * 20
+        let awakePenalty = min(Double(awakeMinutes) / 60.0, 1.0) * 8
+        let wakePenalty = min(Double(awakeningsCount) / 6.0, 1.0) * 7
+
+        return Int(max(0, min(100, durationScore + deepScore + remScore + 15 - awakePenalty - wakePenalty)).rounded())
+    }
+
     var recoveryBreakdown: RecoveryScoreBreakdown {
         RecoveryScoreEngine.calculate(
             sleepMinutes: sleepMinutes,

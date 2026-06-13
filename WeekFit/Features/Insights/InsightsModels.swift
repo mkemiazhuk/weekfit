@@ -4,6 +4,8 @@ struct InsightsSnapshot {
     let avatarInitials: String
     let weekDays: [String]
     let hero: InsightsHeroInsight
+    let stories: [InsightsStory]
+    let domainPages: [InsightsDomainPage]
     let evidence: InsightsEvidence
     let whyItems: [InsightsWhyItem]
     let nextActions: [InsightsNextAction]
@@ -21,6 +23,8 @@ struct InsightsSnapshot {
         avatarInitials: String,
         weekDays: [String],
         hero: InsightsHeroInsight,
+        stories: [InsightsStory] = [],
+        domainPages: [InsightsDomainPage] = [],
         evidence: InsightsEvidence = .fallback,
         whyItems: [InsightsWhyItem] = [],
         nextActions: [InsightsNextAction] = [],
@@ -37,6 +41,8 @@ struct InsightsSnapshot {
         self.avatarInitials = avatarInitials
         self.weekDays = weekDays
         self.hero = hero
+        self.stories = stories
+        self.domainPages = domainPages
         self.evidence = evidence
         self.whyItems = whyItems
         self.nextActions = nextActions
@@ -61,11 +67,13 @@ struct InsightsSnapshot {
             takeaway: "Start with one consistent week.",
             icon: "brain.head.profile",
             accent: WeekFitTheme.meal,
-            graphValues: [0.32, 0.42, 0.38, 0.48, 0.45, 0.52, 0.50],
+            graphValues: [],
             badgeValue: "—",
             badgeLabel: "patterns",
             domain: .missingData
         ),
+        stories: [],
+        domainPages: InsightsDomainPage.fallbackPages,
         evidence: InsightsEvidence.fallback,
         whyItems: [
             InsightsWhyItem(
@@ -118,7 +126,7 @@ struct InsightsSnapshot {
             title: "Build the baseline first",
             text: "Consistent sleep, recovery, training and nutrition logs are the fastest path to useful discoveries.",
             icon: "target",
-            accent: WeekFitTheme.meal,
+            accent: Color(red: 0.95, green: 0.65, blue: 0.12),
             domain: .missingData,
             actionDestination: .tab(.today)
         ),
@@ -184,6 +192,107 @@ enum InsightType: String, CaseIterable, Hashable {
     case hydration
     case consistency
     case missingData
+}
+
+struct InsightsStory: Identifiable {
+    let id: String
+    let impactScore: Double
+    let trend: InsightsHeroInsight
+    let driver: InsightSupportCard
+    let action: InsightsFocusNext
+    let evidence: InsightsEvidence
+}
+
+struct InsightsKeySignal: Identifiable {
+    let id: String
+    let label: String
+    let value: String
+}
+
+struct InsightsDomainPage: Identifiable {
+    let id: String
+    let domain: InsightsDomain
+    let label: String
+    let title: String
+    let scoreValue: String
+    let statusText: String
+    let headline: String
+    let chartValues: [Double]
+    let chartTarget: Double?
+    let chartTargetLabel: String?
+    let keySignals: [InsightsKeySignal]
+    let standoutText: String
+    let focusText: String
+    let icon: String
+    let accent: Color
+}
+
+extension InsightsDomainPage {
+    static let fallbackPages: [InsightsDomainPage] = [
+        InsightsDomainPage(
+            id: "domain.recovery.fallback",
+            domain: .recovery,
+            label: "RECOVERY",
+            title: "Recovery",
+            scoreValue: "—",
+            statusText: "Building",
+            headline: "Recovery review is building",
+            chartValues: [],
+            chartTarget: nil,
+            chartTargetLabel: nil,
+            keySignals: [
+                InsightsKeySignal(id: "recovery.sleep", label: "Sleep baseline needed", value: "Sleep history is not complete enough to explain recovery yet."),
+                InsightsKeySignal(id: "recovery.readiness", label: "Recovery signal building", value: "More readiness data will make the monthly pattern clearer."),
+                InsightsKeySignal(id: "recovery.load", label: "Load context missing", value: "Training and recovery need more overlap before the coach read is reliable.")
+            ],
+            standoutText: "Log recovery and sleep to unlock the monthly coach read.",
+            focusText: "Log recovery and sleep for the next 7 days.",
+            icon: "heart.fill",
+            accent: Color(red: 0.18, green: 0.74, blue: 0.89)
+        ),
+        InsightsDomainPage(
+            id: "domain.activity.fallback",
+            domain: .activity,
+            label: "ACTIVITY",
+            title: "Activity",
+            scoreValue: "—",
+            statusText: "Building",
+            headline: "Activity review is building",
+            chartValues: [],
+            chartTarget: nil,
+            chartTargetLabel: nil,
+            keySignals: [
+                InsightsKeySignal(id: "activity.load", label: "Load baseline needed", value: "More activity history is needed before training load is meaningful."),
+                InsightsKeySignal(id: "activity.rhythm", label: "Training rhythm building", value: "Completed workouts will reveal whether the routine is repeatable."),
+                InsightsKeySignal(id: "activity.recovery", label: "Recovery match unknown", value: "Activity needs recovery overlap before sustainability is clear.")
+            ],
+            standoutText: "Log or sync activity to unlock the monthly coach read.",
+            focusText: "Log or sync activity for the next 7 days.",
+            icon: "figure.run",
+            accent: Color(red: 0.16, green: 0.80, blue: 0.43)
+        ),
+        InsightsDomainPage(
+            id: "domain.nutrition.fallback",
+            domain: .nutrition,
+            label: "NUTRITION",
+            title: "Nutrition",
+            scoreValue: "—",
+            statusText: "Building",
+            headline: "Nutrition review is building",
+            chartValues: [],
+            chartTarget: nil,
+            chartTargetLabel: nil,
+            keySignals: [
+                InsightsKeySignal(id: "nutrition.protein", label: "Protein signal missing", value: "Protein history is needed to judge recovery support."),
+                InsightsKeySignal(id: "nutrition.hydration", label: "Hydration baseline needed", value: "Water logs will show whether hydration supports recovery."),
+                InsightsKeySignal(id: "nutrition.quality", label: "Meal quality building", value: "More logged meals will make the nutrition pattern clearer.")
+            ],
+            standoutText: "Log meals and hydration to unlock the monthly coach read.",
+            focusText: "Log meals and hydration for the next 7 days.",
+            icon: "fork.knife",
+            accent: Color(red: 0.95, green: 0.65, blue: 0.12)
+        )
+    ]
 }
 
 enum InsightTrendDirection: String, CaseIterable, Hashable {

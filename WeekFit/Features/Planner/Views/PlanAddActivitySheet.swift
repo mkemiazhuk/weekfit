@@ -971,6 +971,10 @@ private extension PlanAddActivitySheet {
     }
 
     func mealPreview(_ meal: Meals) -> some View {
+        if meal.isFoodProduct {
+            return AnyView(customFoodPreview(meal))
+        }
+
         let sortedItems = meal.builderImageItems?.sorted { $0.zIndex < $1.zIndex } ?? []
 
         if !sortedItems.isEmpty {
@@ -986,6 +990,21 @@ private extension PlanAddActivitySheet {
         }
 
         return AnyView(fallbackOptionImage(icon: PlannerType.meal.icon))
+    }
+
+    func customFoodPreview(_ meal: Meals) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(viewModel.selectedType.color.opacity(0.09))
+
+            AsyncCustomFoodVisualView(
+                filename: meal.displayPhotoFilename,
+                placeholderInitial: meal.placeholderInitial,
+                size: 42,
+                imageScale: 0.62,
+                fallbackSystemImage: PlannerType.meal.icon
+            )
+        }
     }
 
     func customMealPreview(items sortedItems: [MealBuilderImageItem]) -> some View {

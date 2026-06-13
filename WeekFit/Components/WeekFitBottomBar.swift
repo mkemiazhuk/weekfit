@@ -3,7 +3,8 @@ import SwiftUI
 enum WeekFitTab: Hashable, CaseIterable {
     case today
     case coach
-    case insights
+    case highlights
+//    case insights
     case meals
     case calendar
 
@@ -11,7 +12,8 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "figure.mind.and.body"
         case .coach: return "brain.head.profile"
-        case .insights: return "chart.line.uptrend.xyaxis"
+        case .highlights: return "sparkles"
+//        case .insights: return "chart.line.uptrend.xyaxis"
         case .meals: return "fork.knife"
         case .calendar: return "calendar"
         }
@@ -21,7 +23,8 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "Today"
         case .coach: return "Coach"
-        case .insights: return "Insights"
+        case .highlights: return "Highlights"
+//        case .insights: return "Insights"
         case .meals: return "Nutrition"
         case .calendar: return "Plan"
         }

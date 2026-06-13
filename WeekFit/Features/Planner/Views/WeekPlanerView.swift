@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import UIKit
 
 struct WeekPlannerView: View {
 
@@ -30,6 +31,9 @@ struct WeekPlannerView: View {
 
     @AppStorage(NotificationPreferenceKey.completionCheckIns)
     private var completionCheckInsEnabled = false
+
+    @AppStorage(CustomMealStore.storageKey)
+    private var customMealsStorage = ""
     
     @State private var activityToConfirm: PlannedActivity?
     
@@ -434,7 +438,10 @@ private extension WeekPlannerView {
                                         accent: activityAccent(for: activity),
                                         time: timelineTime(for: item),
                                         subtitle: timelineSubtitle(for: item),
-                                        status: status
+                                        status: status,
+                                        mealImageName: mealImageName(for: activity),
+                                        mealBuilderImageItems: mealBuilderImageItems(for: activity),
+                                        mealPlaceholderInitial: mealPlaceholderInitial(for: activity)
                                     )
                                     .padding(.leading, 28)
                                 }
@@ -776,6 +783,56 @@ private extension WeekPlannerView {
             || title.contains("hydration")
             || type.contains("water")
             || type.contains("hydration")
+    }
+
+    private var customMeals: [Meals] {
+        CustomMealStore.load(from: customMealsStorage)
+    }
+
+    private func matchingCustomMeal(for activity: PlannedActivity) -> Meals? {
+        guard activity.type.lowercased() == "meal" else { return nil }
+
+        let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
+        guard !normalizedTitle.isEmpty else { return nil }
+
+        return customMeals.first {
+            CustomMealStore.normalizedTitle($0.title) == normalizedTitle
+        }
+    }
+
+    private func mealImageName(for activity: PlannedActivity) -> String? {
+        let storedImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !storedImageName.isEmpty {
+            return storedImageName
+        }
+
+        guard let meal = matchingCustomMeal(for: activity) else { return nil }
+
+        if let photoFilename = meal.displayPhotoFilename?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !photoFilename.isEmpty {
+            return photoFilename
+        }
+
+        let assetName = meal.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return assetName.isEmpty ? nil : assetName
+    }
+
+    private func mealBuilderImageItems(for activity: PlannedActivity) -> [MealBuilderImageItem] {
+        matchingCustomMeal(for: activity)?
+            .builderImageItems?
+            .sorted { $0.zIndex < $1.zIndex } ?? []
+    }
+
+    private func mealPlaceholderInitial(for activity: PlannedActivity) -> String {
+        matchingCustomMeal(for: activity)?.placeholderInitial
+            ?? activityPlaceholderInitial(for: activity.title)
+    }
+
+    private func activityPlaceholderInitial(for title: String) -> String {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmedTitle.first else { return "" }
+        return String(first).uppercased()
     }
 
     private func mergedWaterTitle(_ first: String, _ second: String) -> String {
@@ -1396,6 +1453,9 @@ private struct DynamicPlanRow: View {
     let time: String
     let subtitle: String
     let status: PlanActivityStatus
+    let mealImageName: String?
+    let mealBuilderImageItems: [MealBuilderImageItem]
+    let mealPlaceholderInitial: String
 
     @State private var pulse = false
 
@@ -1491,10 +1551,66 @@ private struct DynamicPlanRow: View {
                 .fill(accent.opacity(isLive ? 0.26 : 0.15))
                 .frame(width: 34, height: 34)
 
+            iconContent
+        }
+    }
+
+    @ViewBuilder
+    private var iconContent: some View {
+        if activity.type.lowercased() == "meal" {
+            mealIconContent
+                .opacity(isPending ? 0.62 : 0.96)
+        } else {
             Image(systemName: resolvedIcon)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(accent.opacity(isPending ? 0.62 : 0.96))
         }
+    }
+
+    @ViewBuilder
+    private var mealIconContent: some View {
+        if !mealBuilderImageItems.isEmpty {
+            BuiltMealPlateView(
+                items: mealBuilderImageItems,
+                plateSize: 33,
+                itemScale: 0.24,
+                offsetScale: 0.22,
+                plateOpacity: 0.48,
+                shadowOpacity: 0.10,
+                layoutMode: .compactPreview
+            )
+            .frame(width: 30, height: 30)
+        } else if let assetImageName = activityAssetImageName {
+            Image(assetImageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
+        } else {
+            AsyncCustomFoodVisualView(
+                filename: activityLocalPhotoFilename,
+                placeholderInitial: mealPlaceholderInitial,
+                size: 28,
+                imageScale: 0.62,
+                fallbackSystemImage: resolvedIcon
+            )
+        }
+    }
+
+    private var activityAssetImageName: String? {
+        let imageName = resolvedMealImageName
+        guard !imageName.isEmpty, UIImage(named: imageName) != nil else { return nil }
+        return imageName
+    }
+
+    private var activityLocalPhotoFilename: String? {
+        let imageName = resolvedMealImageName
+        guard !imageName.isEmpty, UIImage(named: imageName) == nil else { return nil }
+        return imageName
+    }
+
+    private var resolvedMealImageName: String {
+        mealImageName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
     
     private var resolvedIcon: String {
