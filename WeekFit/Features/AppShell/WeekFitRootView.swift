@@ -8,6 +8,7 @@ struct WeekFitRootView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @StateObject private var planViewModel = PlanViewModel()
     @StateObject private var coachInputProvider = CoachInputProvider()
@@ -79,6 +80,7 @@ struct WeekFitRootView: View {
     private var coachRefreshSignature: String {
         [
             selectedTab == .coach ? "coachVisible" : "coachHidden",
+            languageManager.selectedLanguage.rawValue,
             nutritionViewModel.coachStateRefreshID.uuidString,
             appSession.healthRefreshTrigger.uuidString,
             appSession.coachRefreshTrigger.uuidString,
@@ -116,8 +118,8 @@ struct WeekFitRootView: View {
             ExpertCoachViewV3(authViewModel: authViewModel)
                 .environmentObject(coachInputProvider)
 
-        case .highlights:
-            HighlightsView()
+//        case .highlights:
+//            HighlightsView()
 
         case .meals:
             MealsView(
@@ -140,8 +142,8 @@ struct WeekFitRootView: View {
             WeekFitTheme.todayAmbient
         case .coach:
             WeekFitTheme.coachAmbient
-        case .highlights:
-            WeekFitTheme.todayAmbient
+//        case .highlights:
+//            WeekFitTheme.todayAmbient
         case .meals:
             WeekFitTheme.mealsAmbient
         case .calendar:

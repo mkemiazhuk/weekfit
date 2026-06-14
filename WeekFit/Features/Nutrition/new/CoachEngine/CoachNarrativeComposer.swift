@@ -11,6 +11,133 @@ struct CoachComposedNarrative: Hashable {
     let voice: CoachNarrativeVoice
     let strategy: CoachNarrativeStrategy
     let dayStory: CoachNarrativeDayStory
+
+    init(
+        title: String,
+        myRead: String,
+        myRecommendation: String,
+        beCarefulWith: String,
+        why: String?,
+        todayTitle: String,
+        todayMessage: String,
+        voice: CoachNarrativeVoice,
+        strategy: CoachNarrativeStrategy,
+        dayStory: CoachNarrativeDayStory
+    ) {
+        self.title = coachComposedNarrativeLocalizedText(
+            title,
+            fallback: strategy.russianFallbackTitle
+        )
+        self.myRead = coachComposedNarrativeLocalizedText(
+            myRead,
+            fallback: strategy.russianFallbackRead
+        )
+        self.myRecommendation = coachComposedNarrativeLocalizedText(
+            myRecommendation,
+            fallback: strategy.russianFallbackRecommendation
+        )
+        self.beCarefulWith = coachComposedNarrativeLocalizedText(
+            beCarefulWith,
+            fallback: strategy.russianFallbackRisk
+        )
+        self.why = why.map {
+            coachComposedNarrativeLocalizedText($0, fallback: strategy.russianFallbackWhy)
+        }
+        self.todayTitle = coachComposedNarrativeLocalizedText(
+            todayTitle,
+            fallback: strategy.russianFallbackTitle
+        )
+        self.todayMessage = coachComposedNarrativeLocalizedText(
+            todayMessage,
+            fallback: strategy.russianFallbackRecommendation
+        )
+        self.voice = voice
+        self.strategy = strategy
+        self.dayStory = dayStory
+    }
+}
+
+private func coachComposedNarrativeLocalizedText(_ text: String, fallback: String) -> String {
+    let localized = WeekFitLocalizedString(text)
+    if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+        return localized
+    }
+    return fallback
+}
+
+private extension CoachNarrativeStrategy {
+    var russianFallbackTitle: String {
+        switch self {
+        case .protectAdaptation:
+            return "Дайте работе усвоиться"
+        case .reduceRisk:
+            return "Снизьте риск сегодня"
+        case .preserveKeySession:
+            return "Сохраните силы на главную тренировку"
+        case .recoverNow:
+            return "Сейчас важнее восстановиться"
+        case .keepPlanCalm:
+            return "Держите план спокойным"
+        }
+    }
+
+    var russianFallbackRead: String {
+        switch self {
+        case .protectAdaptation:
+            return "Полезная работа уже сделана. Сейчас важнее дать телу адаптироваться."
+        case .reduceRisk:
+            return "Готовность сегодня требует более низкого потолка и аккуратного выбора нагрузки."
+        case .preserveKeySession:
+            return "Главная тренировка важнее лишнего объема вокруг нее."
+        case .recoverNow:
+            return "Остаток дня лучше отдать восстановлению."
+        case .keepPlanCalm:
+            return "План выглядит стабильным, его не нужно усложнять."
+        }
+    }
+
+    var russianFallbackRecommendation: String {
+        switch self {
+        case .protectAdaptation:
+            return "Закройте базу: вода, нормальная еда, спокойное завершение дня."
+        case .reduceRisk:
+            return "Снизьте интенсивность, начните легче и оставьте план гибким."
+        case .preserveKeySession:
+            return "Сохраните силы на главную тренировку: вода, питание и без лишней нагрузки."
+        case .recoverNow:
+            return "Восстановите жидкость, поешьте нормально и не добавляйте интенсивность."
+        case .keepPlanCalm:
+            return "Сохраняйте ритм и не добавляйте исправления, которые день не просит."
+        }
+    }
+
+    var russianFallbackRisk: String {
+        switch self {
+        case .protectAdaptation:
+            return "Не добавляйте работу после того, как полезный сигнал уже получен."
+        case .reduceRisk:
+            return "Не держитесь за исходную интенсивность, если тело просит снизить нагрузку."
+        case .preserveKeySession:
+            return "Не тратьте силы до главной тренировки."
+        case .recoverNow:
+            return "Не превращайте восстановительный день в еще одну тренировку."
+        case .keepPlanCalm:
+            return "Не добавляйте структуру, которая сегодня не нужна."
+        }
+    }
+
+    var russianFallbackWhy: String {
+        switch self {
+        case .protectAdaptation, .recoverNow:
+            return "Прогресс приходит, когда после нагрузки есть место для восстановления."
+        case .reduceRisk:
+            return "Снижение потолка сегодня помогает сохранить качество и не накапливать лишний стресс."
+        case .preserveKeySession:
+            return "Главная тренировка требует свежести, а не дополнительной нагрузки перед ней."
+        case .keepPlanCalm:
+            return "Ровный день лучше поддерживать простыми привычками."
+        }
+    }
 }
 
 enum CoachNarrativeVoice: String, Hashable {

@@ -11,6 +11,7 @@ struct PremiumActivityStartSheet: View {
     @Binding var refreshID: UUID
 
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var allPlannedActivities: [PlannedActivity]
@@ -46,17 +47,18 @@ struct PremiumActivityStartSheet: View {
 
     private var selectedAccent: Color {
         currentSubTab == "Workout"
-            ? Color(red: 0.46, green: 0.72, blue: 0.82)
+            ? CoachPalette.stable
             : Color(red: 0.66, green: 0.58, blue: 0.86)
     }
 
     private var selectedAccentComponents: (red: Double, green: Double, blue: Double) {
         currentSubTab == "Workout"
-            ? (0.46, 0.72, 0.82)
+            ? (0.16, 0.80, 0.43)
             : (0.66, 0.58, 0.86)
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
         let liveActivity = activeLiveActivity
 
         ZStack {
@@ -70,12 +72,12 @@ struct PremiumActivityStartSheet: View {
 
                 PremiumBottomSheetHeader(
                     title: liveActivity != nil
-                        ? "Active Session"
-                        : "Start Activity",
+                        ? WeekFitLocalizedString("home.activityStart.activeSession.title")
+                        : WeekFitLocalizedString("home.activityStart.title"),
 
                     subtitle: liveActivity != nil
-                        ? "Finish current session before starting another"
-                        : "Choose what fits your body right now"
+                        ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle")
+                        : WeekFitLocalizedString("home.activityStart.subtitle")
                 ) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     isPresented = false
@@ -122,11 +124,11 @@ struct PremiumActivityStartSheet: View {
     private var sheetHeader: some View {
         ZStack {
             VStack(spacing: 3) {
-                Text(activeLiveActivity != nil ? "Active Session" : "Start Activity")
+                Text(activeLiveActivity != nil ? WeekFitLocalizedString("home.activityStart.activeSession.title") : WeekFitLocalizedString("home.activityStart.title"))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.96))
 
-                Text(activeLiveActivity != nil ? "Finish current session before starting another" : "Choose what fits your body right now")
+                Text(activeLiveActivity != nil ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle") : WeekFitLocalizedString("home.activityStart.subtitle"))
                     .font(.system(size: 11.8, weight: .medium))
                     .foregroundStyle(.white.opacity(0.38))
                     .lineLimit(1)
@@ -160,8 +162,8 @@ struct PremiumActivityStartSheet: View {
 
     private var segmentedControl: some View {
         HStack(spacing: 0) {
-            segmentButton("Workout")
-            segmentButton("Recovery")
+            segmentButton(id: "Workout", title: WeekFitLocalizedString("home.activityStart.tab.workout"))
+            segmentButton(id: "Recovery", title: WeekFitLocalizedString("home.activityStart.tab.recovery"))
         }
         .padding(3)
         .frame(height: 38)
@@ -175,14 +177,14 @@ struct PremiumActivityStartSheet: View {
         }
     }
 
-    private func segmentButton(_ title: String) -> some View {
-        let isSelected = currentSubTab == title
+    private func segmentButton(id: String, title: String) -> some View {
+        let isSelected = currentSubTab == id
 
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
             withAnimation(.spring(response: 0.26, dampingFraction: 0.88)) {
-                currentSubTab = title
+                currentSubTab = id
             }
         } label: {
             Text(title)
@@ -211,7 +213,7 @@ struct PremiumActivityStartSheet: View {
                 .fill(selectedAccent.opacity(0.78))
                 .frame(width: 5, height: 5)
 
-            Text(currentSubTab == "Workout" ? "Quick start training sessions" : "Low-friction recovery options")
+            Text(currentSubTab == "Workout" ? WeekFitLocalizedString("home.activityStart.context.workout") : WeekFitLocalizedString("home.activityStart.context.recovery"))
                 .font(.system(size: 11.8, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.42))
 
@@ -227,8 +229,8 @@ struct PremiumActivityStartSheet: View {
                     let duration = defaultDuration(for: option, type: selectedPlannerType)
 
                     PremiumActivityStartCard(
-                        title: option.title,
-                        subtitle: option.subtitle,
+                        title: localizedOptionTitle(option.title),
+                        subtitle: localizedOptionSubtitle(option.subtitle),
                         imageName: option.imageName,
                         systemIcon: selectedPlannerType.icon,
                         accentColor: selectedAccent,
@@ -321,48 +323,81 @@ struct PremiumActivityStartSheet: View {
         let title = option.title.lowercased()
 
         if title.contains("sleep") || title.contains("bedtime") {
-            return "EVENING"
+            return WeekFitLocalizedString("home.activityStart.badge.evening")
         }
 
         if title.contains("yoga") || title.contains("stretch") || title.contains("mobility") {
-            return "LOW IMPACT"
+            return WeekFitLocalizedString("home.activityStart.badge.lowImpact")
         }
 
         if title.contains("breath") {
-            return "RESET"
+            return WeekFitLocalizedString("home.activityStart.badge.reset")
         }
 
         if title.contains("run") || title.contains("cycling") || title.contains("cardio") {
-            return "CARDIO"
+            return WeekFitLocalizedString("home.activityStart.badge.cardio")
         }
 
         if title.contains("upper") || title.contains("strength") || title.contains("body") {
-            return "STRENGTH"
+            return WeekFitLocalizedString("home.activityStart.badge.strength")
         }
 
-        return type == .recovery ? "RECOVERY" : nil
+        return type == .recovery ? WeekFitLocalizedString("home.activityStart.badge.recovery") : nil
+    }
+
+    private func localizedOptionTitle(_ title: String) -> String {
+        switch title {
+        case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
+        case "Running": return WeekFitLocalizedString("planner.option.running")
+        case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")
+        case "Core": return WeekFitLocalizedString("planner.option.core")
+        case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")
+        case "Full Body": return WeekFitLocalizedString("planner.option.fullBody")
+        case "Tennis": return WeekFitLocalizedString("planner.option.tennis")
+        case "Squash": return WeekFitLocalizedString("planner.option.squash")
+        case "Stretching": return WeekFitLocalizedString("planner.option.stretching")
+        case "Walk": return WeekFitLocalizedString("planner.option.walk")
+        case "Sauna": return WeekFitLocalizedString("planner.option.sauna")
+        case "Yoga": return WeekFitLocalizedString("planner.option.yoga")
+        case "Breathing": return WeekFitLocalizedString("planner.option.breathing")
+        default: return WeekFitCoachRuntimeLocalizedString(title)
+        }
+    }
+
+    private func localizedOptionSubtitle(_ subtitle: String) -> String {
+        switch subtitle {
+        case "Endurance": return WeekFitLocalizedString("planner.option.subtitle.endurance")
+        case "Cardio": return WeekFitLocalizedString("planner.option.subtitle.cardio")
+        case "Strength": return WeekFitLocalizedString("planner.option.subtitle.strength")
+        case "High Intensity": return WeekFitLocalizedString("planner.option.subtitle.highIntensity")
+        case "Mobility": return WeekFitLocalizedString("planner.option.subtitle.mobility")
+        case "Light recovery": return WeekFitLocalizedString("planner.option.subtitle.lightRecovery")
+        case "Relax": return WeekFitLocalizedString("planner.option.subtitle.relax")
+        case "Calm": return WeekFitLocalizedString("planner.option.subtitle.calm")
+        default: return WeekFitCoachRuntimeLocalizedString(subtitle)
+        }
     }
 
     private func liveSessionCard(_ liveItem: PlannedActivity) -> some View {
-        let accentColor = liveItem.type.lowercased() == "workout"
-            ? Color(red: 0.46, green: 0.72, blue: 0.82)
-            : Color(red: 0.66, green: 0.58, blue: 0.86)
+        let accentColor = Color(red: 0.60, green: 0.52, blue: 0.39)
+        let badgeColor = Color(red: 0.72, green: 0.63, blue: 0.45)
 
         return HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(accentColor.opacity(0.15))
+                    .fill(accentColor.opacity(0.075))
                     .frame(width: 42, height: 42)
+                    .overlay(Circle().stroke(accentColor.opacity(0.20), lineWidth: 1))
 
                 Image(systemName: liveItem.icon.isEmpty ? "figure.run" : liveItem.icon)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(accentColor.opacity(0.95))
+                    .foregroundStyle(badgeColor.opacity(0.86))
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(accentColor)
+                        .fill(badgeColor.opacity(0.92))
                         .frame(width: 5, height: 5)
                         .phaseAnimator([0.35, 1.0]) { content, phase in
                             content.opacity(phase)
@@ -370,13 +405,13 @@ struct PremiumActivityStartSheet: View {
                             .easeInOut(duration: 0.9)
                         }
 
-                    Text("LIVE NOW")
+                    Text(WeekFitLocalizedString("home.liveNow"))
                         .font(.system(size: 9.4, weight: .bold))
                         .tracking(0.5)
-                        .foregroundStyle(accentColor.opacity(0.92))
+                        .foregroundStyle(badgeColor.opacity(0.92))
                 }
 
-                Text(liveItem.title)
+                Text(localizedOptionTitle(liveItem.title))
                     .font(.system(size: 15.2, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.96))
                     .lineLimit(1)
@@ -412,7 +447,7 @@ struct PremiumActivityStartSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accentColor.opacity(0.105),
+                            accentColor.opacity(0.030),
                             .white.opacity(0.026),
                             .white.opacity(0.012)
                         ],
@@ -426,7 +461,7 @@ struct PremiumActivityStartSheet: View {
                 .stroke(
                     LinearGradient(
                         colors: [
-                            accentColor.opacity(0.28),
+                            accentColor.opacity(0.18),
                             .white.opacity(0.055),
                             .clear
                         ],
@@ -436,7 +471,7 @@ struct PremiumActivityStartSheet: View {
                     lineWidth: 1
                 )
         }
-        .shadow(color: accentColor.opacity(0.07), radius: 14, y: 5)
+        .shadow(color: accentColor.opacity(0.025), radius: 10, y: 4)
     }
 
     private func liveTimer(startedAt: Date) -> some View {
@@ -459,7 +494,7 @@ struct PremiumActivityStartSheet: View {
             let elapsed = max(0, Int(context.date.timeIntervalSince(startedAt)))
             let elapsedMinutes = min(elapsed / 60, max(maxMinutes, 1))
 
-            Text("\(elapsedMinutes) / \(maxMinutes) min")
+            Text(String(format: WeekFitLocalizedString("home.activityStart.progressFormat"), elapsedMinutes, maxMinutes))
                 .font(.system(size: 10.6, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(.white.opacity(0.38))

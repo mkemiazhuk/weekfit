@@ -8,6 +8,7 @@ struct RecoveryDetailsView: View {
 
     @StateObject private var viewModel = RecoveryDetailsViewModel()
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @State private var activeDate: Date
 
     // Kept for compatibility with existing navigation from Today.
@@ -27,6 +28,8 @@ struct RecoveryDetailsView: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             RecoveryStyle.screenBackground
                 .ignoresSafeArea()
@@ -72,6 +75,11 @@ struct RecoveryDetailsView: View {
                 await load(date: newDate)
             }
         }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            Task {
+                await load(date: activeDate)
+            }
+        }
     }
 
     private func load(date: Date) async {
@@ -96,13 +104,13 @@ struct RecoveryDetailsView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Recovery Details")
+                Text(WeekFitLocalizedString("recovery.details.title"))
                     .font(.system(size: 27, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
 
-                Text(activeDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                Text(recoveryDetailsDateTitle)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.56))
             }
@@ -121,6 +129,13 @@ struct RecoveryDetailsView: View {
                 .frame(height: 1)
         }
     }
+
+    private var recoveryDetailsDateTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
+        return formatter.string(from: activeDate)
+    }
 }
 
 // MARK: - Cards
@@ -137,7 +152,7 @@ private struct RecoveryHeroCard: View {
             recoveryRing
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("RECOVERY SCORE")
+                Text(WeekFitLocalizedString("recovery.details.score.title").uppercased())
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.8)
                     .foregroundStyle(RecoveryStyle.recoveryColor)
@@ -191,7 +206,7 @@ private struct RecoveryHeroCard: View {
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("score")
+                Text(WeekFitLocalizedString("common.unit.score"))
                     .font(.system(size: RecoveryTypography.heroScoreLabel, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.40))
             }
@@ -202,15 +217,15 @@ private struct RecoveryHeroCard: View {
     private var statusText: String {
         switch snapshot.recoveryScore {
         case 85...:
-            return "Fully recovered"
+            return WeekFitLocalizedString("recovery.details.status.fullyRecovered")
         case 70..<85:
-            return "Well recovered"
+            return WeekFitLocalizedString("recovery.details.status.wellRecovered")
         case 55..<70:
-            return "Moderately ready"
+            return WeekFitLocalizedString("recovery.details.status.moderatelyReady")
         case 1..<55:
-            return "Take it easier"
+            return WeekFitLocalizedString("recovery.details.status.takeItEasier")
         default:
-            return "No data yet"
+            return WeekFitLocalizedString("recovery.details.status.noData")
         }
     }
 }
@@ -227,11 +242,11 @@ private struct RecoveryBreakdownCard: View {
             header
 
             VStack(spacing: 9) {
-                breakdownRow(title: "Sleep duration", value: breakdown.sleepDuration, maxValue: 35, icon: "clock.fill", color: RecoveryStyle.recoveryColor)
-                breakdownRow(title: "Sleep continuity", value: breakdown.sleepContinuity, maxValue: 25, icon: "waveform.path", color: RecoveryStyle.blue)
-                breakdownRow(title: "Sleep quality", value: breakdown.sleepQuality, maxValue: 20, icon: "moon.zzz.fill", color: RecoveryStyle.purple)
-                breakdownRow(title: "HRV", value: breakdown.hrv, maxValue: 12, icon: "heart.text.square.fill", color: RecoveryStyle.recoveryColor)
-                breakdownRow(title: "Resting heart rate", value: breakdown.restingHeartRate, maxValue: 8, icon: "heart.fill", color: RecoveryStyle.red)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), value: breakdown.sleepDuration, maxValue: 35, icon: "clock.fill", color: RecoveryStyle.recoveryColor)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), value: breakdown.sleepContinuity, maxValue: 25, icon: "waveform.path", color: RecoveryStyle.blue)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepQuality"), value: breakdown.sleepQuality, maxValue: 20, icon: "moon.zzz.fill", color: RecoveryStyle.purple)
+                breakdownRow(title: WeekFitLocalizedString("today.status.metric.hrv"), value: breakdown.hrv, maxValue: 12, icon: "heart.text.square.fill", color: RecoveryStyle.recoveryColor)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), value: breakdown.restingHeartRate, maxValue: 8, icon: "heart.fill", color: RecoveryStyle.red)
             }
 
             explanation
@@ -243,7 +258,7 @@ private struct RecoveryBreakdownCard: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionLabel("RECOVERY BREAKDOWN")
+            SectionLabel(WeekFitLocalizedString("recovery.details.section.breakdown"))
 
             Text(dynamicExplanationTitle)
                 .font(.system(size: 12.5, weight: .medium, design: .rounded))
@@ -255,18 +270,18 @@ private struct RecoveryBreakdownCard: View {
 
     private var dynamicExplanationTitle: String {
         let items: [(String, Int, Int)] = [
-            ("sleep duration", breakdown.sleepDuration, 35),
-            ("sleep continuity", breakdown.sleepContinuity, 25),
-            ("sleep quality", breakdown.sleepQuality, 20),
-            ("HRV", breakdown.hrv, 12),
-            ("resting heart rate", breakdown.restingHeartRate, 8)
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), breakdown.sleepDuration, 35),
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), breakdown.sleepContinuity, 25),
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepQuality"), breakdown.sleepQuality, 20),
+            (WeekFitLocalizedString("today.status.metric.hrv"), breakdown.hrv, 12),
+            (WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), breakdown.restingHeartRate, 8)
         ]
 
         let strongest = items.max {
             scoreRatio(value: $0.1, maxValue: $0.2) < scoreRatio(value: $1.1, maxValue: $1.2)
-        }?.0 ?? "sleep"
+        }?.0 ?? WeekFitLocalizedString("recovery.details.breakdown.sleep")
 
-        return "Most points came from \(strongest)."
+        return String(format: WeekFitLocalizedString("recovery.details.mostPointsFormat"), strongest)
     }
 
     private var explanation: some View {
@@ -276,7 +291,7 @@ private struct RecoveryBreakdownCard: View {
                 .foregroundStyle(.white.opacity(0.34))
                 .padding(.top, 1)
 
-            Text("Score combines sleep duration, continuity, quality, HRV and resting heart rate.")
+            Text(WeekFitLocalizedString("recovery.details.score.explanation"))
                 .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.39))
                 .lineSpacing(2)
@@ -335,6 +350,7 @@ private struct RecoveryBreakdownCard: View {
         guard maxValue > 0 else { return 0 }
         return min(max(Double(value) / Double(maxValue), 0), 1)
     }
+
 }
 
 private struct SleepDetailsCard: View {
@@ -342,12 +358,12 @@ private struct SleepDetailsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            SectionLabel("SLEEP DETAILS")
+            SectionLabel(WeekFitLocalizedString("recovery.details.section.sleepDetails"))
 
             HStack(alignment: .center, spacing: 10) {
-                compactSleepMetric(title: "Asleep", value: RecoveryFormat.duration(snapshot.asleepMinutes), icon: "moon.zzz.fill", color: RecoveryStyle.recoveryColor)
-                compactSleepMetric(title: "In bed", value: RecoveryFormat.duration(snapshot.timeInBedMinutes), icon: "bed.double.fill", color: RecoveryStyle.purple)
-                compactSleepMetric(title: "Awake", value: RecoveryFormat.duration(snapshot.awakeMinutes), icon: "eye.fill", color: RecoveryStyle.amber)
+                compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.asleep"), value: RecoveryFormat.duration(snapshot.asleepMinutes), icon: "moon.zzz.fill", color: RecoveryStyle.recoveryColor)
+                compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.inBed"), value: RecoveryFormat.duration(snapshot.timeInBedMinutes), icon: "bed.double.fill", color: RecoveryStyle.purple)
+                compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.awake"), value: RecoveryFormat.duration(snapshot.awakeMinutes), icon: "eye.fill", color: RecoveryStyle.amber)
             }
 
             Rectangle()
@@ -355,9 +371,9 @@ private struct SleepDetailsCard: View {
                 .frame(height: 1)
 
             VStack(spacing: 7) {
-                SleepTimeRow(title: "Went to bed", value: RecoveryFormat.time(snapshot.bedStart))
-                SleepTimeRow(title: "Woke up", value: RecoveryFormat.time(snapshot.wakeTime))
-                SleepTimeRow(title: "Awake moments", value: "\(snapshot.awakeningsCount)")
+                SleepTimeRow(title: WeekFitLocalizedString("recovery.details.sleep.wentToBed"), value: RecoveryFormat.time(snapshot.bedStart))
+                SleepTimeRow(title: WeekFitLocalizedString("recovery.details.sleep.wokeUp"), value: RecoveryFormat.time(snapshot.wakeTime))
+                SleepTimeRow(title: WeekFitLocalizedString("recovery.details.sleep.awakeMoments"), value: "\(snapshot.awakeningsCount)")
             }
         }
         .padding(.horizontal, 17)
@@ -409,7 +425,7 @@ private struct SleepStagesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            SectionLabel("SLEEP QUALITY")
+            SectionLabel(WeekFitLocalizedString("recovery.details.section.sleepQuality"))
             stageBar
             stageRows
         }
@@ -440,9 +456,9 @@ private struct SleepStagesCard: View {
 
     private var stageRows: some View {
         VStack(spacing: 7) {
-            SleepStageRow(title: "Deep sleep", value: RecoveryFormat.duration(snapshot.deepSleepMinutes), percent: stagePercent(snapshot.deepSleepMinutes), color: RecoveryStyle.deepBlue)
-            SleepStageRow(title: "REM sleep", value: RecoveryFormat.duration(snapshot.remSleepMinutes), percent: stagePercent(snapshot.remSleepMinutes), color: RecoveryStyle.purple)
-            SleepStageRow(title: "Core sleep", value: RecoveryFormat.duration(snapshot.coreSleepMinutes), percent: stagePercent(snapshot.coreSleepMinutes), color: RecoveryStyle.recoveryColor)
+            SleepStageRow(title: WeekFitLocalizedString("recovery.details.sleep.deep"), value: RecoveryFormat.duration(snapshot.deepSleepMinutes), percent: stagePercent(snapshot.deepSleepMinutes), color: RecoveryStyle.deepBlue)
+            SleepStageRow(title: WeekFitLocalizedString("recovery.details.sleep.rem"), value: RecoveryFormat.duration(snapshot.remSleepMinutes), percent: stagePercent(snapshot.remSleepMinutes), color: RecoveryStyle.purple)
+            SleepStageRow(title: WeekFitLocalizedString("recovery.details.sleep.core"), value: RecoveryFormat.duration(snapshot.coreSleepMinutes), percent: stagePercent(snapshot.coreSleepMinutes), color: RecoveryStyle.recoveryColor)
         }
     }
 
@@ -563,14 +579,14 @@ private enum RecoveryFormat {
         let remainder = minutes % 60
 
         if hours > 0 && remainder > 0 {
-            return "\(hours)h \(remainder)m"
+            return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, remainder)
         }
 
         if hours > 0 {
-            return "\(hours)h"
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
         }
 
-        return "\(minutes)m"
+        return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
     }
 
     static func time(_ date: Date?) -> String {

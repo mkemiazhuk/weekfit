@@ -33,7 +33,7 @@ enum CoachFuelingMessageBuilder {
             items = []
         }
 
-        return Array(unique(items).prefix(maxItems))
+        return Array(unique(items).map(localized).prefix(maxItems))
     }
 }
 
@@ -343,11 +343,100 @@ private extension CoachFuelingMessageBuilder {
     ) -> String {
 
         if let recommendation = nutrition.recommendedProteinText {
-            return "\(recommendation) (Greek yogurt, eggs, chicken or shake)"
+            return String(
+                format: WeekFitLocalizedString("coach.fueling.proteinRecommendationFormat"),
+                recommendation
+            )
         }
 
-        return "Add protein (Greek yogurt, eggs, chicken or shake)"
+        return localized("Add protein (Greek yogurt, eggs, chicken or shake)")
     }
+
+    static func localized(_ text: String) -> String {
+        let catalogValue = WeekFitLocalizedString(text)
+        if catalogValue != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+            return catalogValue
+        }
+
+        return russianFixedMessageTranslations[text] ?? text
+    }
+
+    static let russianFixedMessageTranslations: [String: String] = [
+        "Add light carbs if energy is low (banana)": "Добавьте легкие углеводы, если мало энергии (банан)",
+        "Add protein (Greek yogurt, eggs, chicken or shake)": "Добавьте белок (греческий йогурт, яйца, курица или шейк)",
+        "Avoid adding load": "Не добавляйте нагрузку",
+        "Avoid all-out rallies every point": "Не играйте каждый розыгрыш на максимуме",
+        "Avoid another high-intensity block": "Не добавляйте еще один интенсивный блок",
+        "Avoid hard effort after heat": "Избегайте тяжелой нагрузки после тепла",
+        "Bring water to court": "Возьмите воду на корт",
+        "Cool down gradually": "Остывайте постепенно",
+        "Do not turn this into training": "Не превращайте это в тренировку",
+        "Drink 300–500 ml water before the run": "Выпейте 300–500 мл воды перед бегом",
+        "Drink water before court time": "Выпейте воды перед кортом",
+        "Drink water before heat": "Выпейте воды перед теплом",
+        "Drink water before the ride": "Выпейте воды перед заездом",
+        "Drink water before training": "Выпейте воды перед тренировкой",
+        "Drink water before you start": "Выпейте воды перед стартом",
+        "Drink water gradually": "Пейте воду постепенно",
+        "Eat a protein meal when ready": "Съешьте белковый прием пищи, когда будете готовы",
+        "Eat a recovery meal (protein + carbs)": "Съешьте восстановительный прием пищи (белок + углеводы)",
+        "Eat a recovery meal if hungry": "Съешьте восстановительный прием пищи, если голодны",
+        "Eat carbs every 45–60 min (banana or bar)": "Ешьте углеводы каждые 45–60 мин (банан или батончик)",
+        "Eat carbs if session goes long (banana or bar)": "Добавьте углеводы, если тренировка затянется (банан или батончик)",
+        "Eat light if hungry (banana or toast)": "Ешьте легко, если голодны (банан или тост)",
+        "Eat normally": "Ешьте нормально",
+        "Exit if dizzy": "Выходите, если закружится голова",
+        "Keep cadence steady": "Держите ровный каденс",
+        "Keep effort steady": "Держите ровное усилие",
+        "Keep effort sustainable": "Держите устойчивое усилие",
+        "Keep energy steady": "Держите энергию ровной",
+        "Keep food light": "Держите еду легкой",
+        "Keep food light (banana if hungry)": "Держите еду легкой (банан, если голодны)",
+        "Keep food light before lifting": "Держите еду легкой перед силовой",
+        "Keep food light before play": "Держите еду легкой перед игрой",
+        "Keep heat exposure conservative": "Держите тепловой блок консервативным",
+        "Keep hydration simple": "Держите гидратацию простой",
+        "Keep it easy": "Держите легко",
+        "Keep movement light": "Держите движение легким",
+        "Keep pace comfortable": "Держите комфортный темп",
+        "Keep the day steady": "Держите день ровным",
+        "Keep the next block easy": "Держите следующий блок легким",
+        "No extra food needed for short lifting": "Для короткой силовой дополнительная еда не нужна",
+        "No extra food unless energy drops": "Без дополнительной еды, если энергия не падает",
+        "No special food needed": "Специальная еда не нужна",
+        "Plan protein after training": "Запланируйте белок после тренировки",
+        "Prepare portable carbs (banana or energy bar)": "Подготовьте углеводы с собой (банан или энергетический батончик)",
+        "Prepare portable carbs (gel, banana or bar)": "Подготовьте углеводы с собой (гель, банан или батончик)",
+        "Rehydrate after the session": "Восполните жидкость после тренировки",
+        "Replace fluids after sweating": "Восполните жидкость после потоотделения",
+        "Replace fluids and electrolytes": "Восполните жидкость и электролиты",
+        "Replace fluids and minerals": "Восполните жидкость и минералы",
+        "Return to routine": "Вернитесь к рутине",
+        "Sip water as needed": "Пейте воду маленькими глотками по необходимости",
+        "Sip water between games": "Пейте воду между геймами",
+        "Sip water between sets": "Пейте воду между подходами",
+        "Sip water if needed": "Пейте воду маленькими глотками, если нужно",
+        "Sip water regularly": "Пейте воду регулярно маленькими глотками",
+        "Start below target pace": "Начните ниже целевого темпа",
+        "Start the first 10 min easy": "Первые 10 минут начните легко",
+        "Stay comfortable": "Оставайтесь в комфорте",
+        "Stay relaxed": "Оставайтесь расслабленными",
+        "Stay within the plan": "Оставайтесь в рамках плана",
+        "Stop before form drops": "Остановитесь до ухудшения техники",
+        "Take a banana if energy is low": "Возьмите банан, если мало энергии",
+        "Take portable carbs (banana or bar)": "Возьмите углеводы с собой (банан или батончик)",
+        "Take portable carbs (banana or energy bar)": "Возьмите углеводы с собой (банан или энергетический батончик)",
+        "Take portable carbs if needed (gel or banana)": "Возьмите углеводы с собой при необходимости (гель или банан)",
+        "Take water with you": "Возьмите воду с собой",
+        "Use carbs after 45–60 min (gel or banana)": "Используйте углеводы после 45–60 мин (гель или банан)",
+        "Use electrolytes (mineral water or isotonic drink)": "Используйте электролиты (минеральная вода или изотоник)",
+        "Use electrolytes between games": "Используйте электролиты между геймами",
+        "Use electrolytes if hot or sweaty": "Используйте электролиты, если жарко или много пота",
+        "Use electrolytes if sweating": "Используйте электролиты, если потеете",
+        "Use electrolytes if sweating (isotonic drink)": "Используйте электролиты, если потеете (изотоник)",
+        "Use electrolytes if sweating heavily": "Используйте электролиты при сильном потоотделении",
+        "Use this as recovery support": "Используйте это как поддержку восстановления"
+    ]
 }
 
 // MARK: - Helpers

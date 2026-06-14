@@ -3,6 +3,7 @@ import SwiftUI
 struct NutritionDetailsSheet: View {
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     let date: Date
     let protein: MacroValue
@@ -12,6 +13,8 @@ struct NutritionDetailsSheet: View {
     let meals: [NutritionMealItem]
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             Color.black.ignoresSafeArea()
 
@@ -52,7 +55,7 @@ private extension NutritionDetailsSheet {
 
                 Spacer()
 
-                Text("Nutrition Details")
+                Text(AppText.Nutrition.Details.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -72,7 +75,7 @@ private extension NutritionDetailsSheet {
                     Image(systemName: "calendar")
                         .font(.system(size: 18, weight: .semibold))
 
-                    Text(date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                    Text(sheetDateTitle)
                         .font(.system(size: 22, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(.white.opacity(0.75))
@@ -123,7 +126,7 @@ private extension NutritionDetailsSheet {
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(macro.color)
 
-                Text("\(macro.current) / \(macro.goal)\(macro.unit)")
+                Text(String(format: WeekFitLocalizedString("nutrition.details.macroCurrentGoalUnitFormat"), macro.current, macro.goal, macro.unit))
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.68))
             }
@@ -139,11 +142,11 @@ private extension NutritionDetailsSheet {
     var nutritionInsight: some View {
         HStack(spacing: 18) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Nutrition Insight")
+                Text(WeekFitLocalizedString("nutrition.details.insight.title"))
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Protein intake is progressing well.\nFiber and healthy fats remain below overall nutrition progress.")
+                Text(WeekFitLocalizedString("nutrition.details.insight.legacySummary"))
                     .font(.system(size: 19, weight: .regular, design: .rounded))
                     .lineSpacing(5)
                     .foregroundStyle(.white.opacity(0.72))
@@ -174,7 +177,7 @@ private extension NutritionDetailsSheet {
 
     var mealTimeline: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Meal Timeline")
+            Text(WeekFitLocalizedString("nutrition.details.section.mealTimeline"))
                 .font(.system(size: 27, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -220,16 +223,16 @@ private extension NutritionDetailsSheet {
 
                     Spacer()
 
-                    Text("\(meal.kcal) kcal")
+                    Text(String(format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"), meal.kcal))
                         .font(.system(size: 19, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.55))
                 }
 
                 HStack(spacing: 20) {
-                    macroText("P", meal.protein, color: .purple)
-                    macroText("C", meal.carbs, color: .orange)
-                    macroText("F", meal.fat, color: .pink)
-                    macroText("Fiber", meal.fiber, color: .green)
+                    macroText(WeekFitLocalizedString("meals.library.macroProtein"), meal.protein, color: .purple)
+                    macroText(WeekFitLocalizedString("meals.library.macroCarbs"), meal.carbs, color: .orange)
+                    macroText(WeekFitLocalizedString("meals.library.macroFats"), meal.fat, color: .pink)
+                    macroText(WeekFitLocalizedString("nutrition.macro.fiber"), meal.fiber, color: .green)
                 }
             }
             .padding(.top, 7)
@@ -243,7 +246,7 @@ private extension NutritionDetailsSheet {
                 .foregroundStyle(color)
                 .fontWeight(.bold)
 
-            Text("\(value)g")
+            Text(String(format: WeekFitLocalizedString("common.unit.gramFormat"), value))
                 .foregroundStyle(.white.opacity(0.66))
         }
         .font(.system(size: 18, weight: .medium, design: .rounded))
@@ -267,26 +270,26 @@ private extension NutritionDetailsSheet {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Next Meal Suggestion")
+                Text(WeekFitLocalizedString("nutrition.details.nextMeal.suggestion"))
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.55))
 
-                Text("Balanced Dinner")
+                Text(WeekFitLocalizedString("nutrition.details.nextMeal.balancedDinner"))
                     .font(.system(size: 25, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Target")
+                Text(WeekFitLocalizedString("nutrition.details.nextMeal.target"))
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
 
                 HStack(spacing: 22) {
-                    macroText("P", 35, color: .purple)
-                    macroText("C", 60, color: .orange)
-                    macroText("F", 15, color: .pink)
-                    macroText("Fiber", 8, color: .green)
+                    macroText(WeekFitLocalizedString("meals.library.macroProtein"), 35, color: .purple)
+                    macroText(WeekFitLocalizedString("meals.library.macroCarbs"), 60, color: .orange)
+                    macroText(WeekFitLocalizedString("meals.library.macroFats"), 15, color: .pink)
+                    macroText(WeekFitLocalizedString("nutrition.macro.fiber"), 8, color: .green)
                 }
 
-                Text("≈ 600–700 kcal")
+                Text(WeekFitLocalizedString("nutrition.details.nextMeal.caloriesRange"))
                     .font(.system(size: 20, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.58))
                     .padding(.top, 2)
@@ -320,7 +323,7 @@ private extension NutritionDetailsSheet {
                     .foregroundStyle(Color.purple)
             }
 
-            Text("Values are estimates based on your logged meals.\nMake sure to log everything for best accuracy.")
+            Text(WeekFitLocalizedString("nutrition.details.note.legacyFull"))
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.48))
                 .lineSpacing(3)
@@ -342,6 +345,13 @@ private extension NutritionDetailsSheet {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+
+    var sheetDateTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
+        return formatter.string(from: date)
     }
 }
 

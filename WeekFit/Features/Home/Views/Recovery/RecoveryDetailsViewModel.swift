@@ -114,10 +114,10 @@ struct RecoveryDaySnapshot: Equatable {
         awakeningsCount: 0,
         restingHeartRate: nil,
         hrv: nil,
-        insightTitle: "No recovery data yet",
-        insightText: "Wear Apple Watch during sleep to unlock recovery insights.",
-        actionTitle: "Today",
-        actionText: "Keep the day easy until more data is available."
+        insightTitle: WeekFitLocalizedString("recovery.empty.title"),
+        insightText: WeekFitLocalizedString("recovery.empty.text"),
+        actionTitle: WeekFitLocalizedString("recovery.empty.actionTitle"),
+        actionText: WeekFitLocalizedString("recovery.empty.actionText")
     )
 
     static func empty(for date: Date) -> RecoveryDaySnapshot {
@@ -137,10 +137,10 @@ struct RecoveryDaySnapshot: Equatable {
             awakeningsCount: 0,
             restingHeartRate: nil,
             hrv: nil,
-            insightTitle: "No recovery data yet",
-            insightText: "Wear Apple Watch during sleep to unlock recovery insights.",
-            actionTitle: "Today",
-            actionText: "Keep the day easy until more data is available."
+            insightTitle: WeekFitLocalizedString("recovery.empty.title"),
+            insightText: WeekFitLocalizedString("recovery.empty.text"),
+            actionTitle: WeekFitLocalizedString("recovery.empty.actionTitle"),
+            actionText: WeekFitLocalizedString("recovery.empty.actionText")
         )
     }
 
@@ -172,25 +172,25 @@ struct RecoveryDaySnapshot: Equatable {
     }
 
     private func resolvedInsightTitle(for score: Int) -> String {
-        guard hasSleepData else { return "No recovery data yet" }
+        guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.title") }
 
         switch score {
         case 85...:
-            return "Fully recovered"
+            return WeekFitLocalizedString("recovery.fullyRecovered")
         case 70..<85:
-            return "Well recovered"
+            return WeekFitLocalizedString("recovery.wellRecovered")
         case 55..<70:
-            return "Moderately ready"
+            return WeekFitLocalizedString("recovery.moderatelyReady")
         case 1..<55:
-            return "Take it easier"
+            return WeekFitLocalizedString("recovery.takeItEasier")
         default:
-            return "No recovery data yet"
+            return WeekFitLocalizedString("recovery.empty.title")
         }
     }
 
     private func resolvedInsightText(for score: Int) -> String {
         guard hasSleepData else {
-            return "Wear Apple Watch during sleep to unlock recovery insights."
+            return WeekFitLocalizedString("recovery.empty.text")
         }
 
         let sleepDurationIsStrong = asleepMinutes >= 420
@@ -198,65 +198,65 @@ struct RecoveryDaySnapshot: Equatable {
         let continuityIsStrong = timeInBedMinutes > 0 && Double(asleepMinutes) / Double(timeInBedMinutes) >= 0.88
 
         if score >= 85 {
-            return "Sleep duration, continuity and sleep structure were supportive overnight."
+            return WeekFitLocalizedString("recovery.sleepDurationContinuityAndSleepStructureWereSupportiveOvernight")
         }
 
         if score >= 70 {
             if sleepDurationIsStrong && sleepQualityIsStrong {
-                return "Sleep duration and sleep structure supported recovery overnight."
+                return WeekFitLocalizedString("recovery.sleepDurationAndSleepStructureSupportedRecoveryOvernight")
             }
 
             if continuityIsStrong {
-                return "Sleep continuity was strong, with only limited awake time overnight."
+                return WeekFitLocalizedString("recovery.sleepContinuityWasStrongWithOnlyLimitedAwakeTime")
             }
 
-            return "Recovery looks solid, with one or two signals still holding the score back."
+            return WeekFitLocalizedString("recovery.recoveryLooksSolidWithOneOrTwoSignalsStill")
         }
 
         if score >= 55 {
             if !sleepDurationIsStrong {
-                return "Sleep duration was below target, so recovery may feel less stable today."
+                return WeekFitLocalizedString("recovery.sleepDurationWasBelowTargetSoRecoveryMayFeel")
             }
 
             if !sleepQualityIsStrong {
-                return "Sleep structure was lighter than ideal, which may limit recovery today."
+                return WeekFitLocalizedString("recovery.sleepStructureWasLighterThanIdealWhichMayLimit")
             }
 
-            return "Recovery is moderate. Keep intensity controlled until signals improve."
+            return WeekFitLocalizedString("recovery.recoveryIsModerateKeepIntensityControlledUntilSignalsImprove")
         }
 
-        return "Recovery signals are low. Prioritize easy movement, hydration and an earlier night."
+        return WeekFitLocalizedString("recovery.recoverySignalsAreLowPrioritizeEasyMovementHydrationAnd")
     }
 
     private func resolvedActionTitle(for score: Int) -> String {
-        guard hasSleepData else { return "Today" }
+        guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.actionTitle") }
 
         switch score {
         case 85...:
-            return "Ready"
+            return WeekFitLocalizedString("recovery.ready")
         case 70..<85:
-            return "Train normally"
+            return WeekFitLocalizedString("recovery.trainNormally")
         case 55..<70:
-            return "Control intensity"
+            return WeekFitLocalizedString("recovery.details.action.controlIntensity")
         default:
-            return "Recover"
+            return WeekFitLocalizedString("recovery.recover")
         }
     }
 
     private func resolvedActionText(for score: Int) -> String {
         guard hasSleepData else {
-            return "Keep the day easy until more data is available."
+            return WeekFitLocalizedString("recovery.empty.actionText")
         }
 
         switch score {
         case 85...:
-            return "You can handle normal training load today."
+            return WeekFitLocalizedString("recovery.youCanHandleNormalTrainingLoadToday")
         case 70..<85:
-            return "A normal session is fine, but avoid forcing extra intensity."
+            return WeekFitLocalizedString("recovery.aNormalSessionIsFineButAvoidForcingExtra")
         case 55..<70:
-            return "Choose moderate work and pay attention to how you feel."
+            return WeekFitLocalizedString("recovery.chooseModerateWorkAndPayAttentionToHowYou")
         default:
-            return "Keep activity light and focus on recovery basics."
+            return WeekFitLocalizedString("recovery.keepActivityLightAndFocusOnRecoveryBasics")
         }
     }
 

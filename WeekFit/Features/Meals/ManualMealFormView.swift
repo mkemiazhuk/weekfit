@@ -26,6 +26,7 @@ struct ManualMealFormView: View {
     let onSave: (Meals) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @FocusState private var focusedField: FocusedField?
 
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -79,6 +80,7 @@ struct ManualMealFormView: View {
     }
     
     var body: some View {
+        let _ = languageManager.selectedLanguage
         let _ = Self.debugLog("body.render focus=\(focusedField?.rawValue ?? "nil") plainRows=\(FirstFocusProbe.usePlainInputRows) hidePhotoPreview=\(FirstFocusProbe.hidePhotoPreview) hidePhotoActions=\(FirstFocusProbe.hidePhotoActions)")
 
         ZStack {
@@ -412,7 +414,7 @@ struct ManualMealFormView: View {
                         }
                 }
 
-                Text("Give your food a clear and simple name.")
+                Text(WeekFitLocalizedString("meals.manual.nameHint"))
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.74))
                     .padding(.horizontal, 2)
@@ -422,7 +424,7 @@ struct ManualMealFormView: View {
 
     private var servingSizeCard: some View {
         HStack {
-            Text("Nutrition Per")
+            Text(WeekFitLocalizedString("meals.manual.nutritionPer"))
                 .font(.system(size: 15.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.98))
 

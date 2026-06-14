@@ -20,6 +20,7 @@ struct ExpertCoachViewV3: View {
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.modelContext) private var modelContext
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
@@ -30,6 +31,8 @@ struct ExpertCoachViewV3: View {
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
+
+    private let coachContentHorizontalInset: CGFloat = 0
 
     private let background = WeekFitTheme.backgroundColor
     private let cardBackground = WeekFitTheme.cardBackground
@@ -45,6 +48,7 @@ struct ExpertCoachViewV3: View {
 
     var body: some View {
         let _ = lifecycleTracker
+        let _ = languageManager.selectedLanguage
 
         return ZStack(alignment: .top) {
             WeekFitTheme.appBackground
@@ -55,7 +59,7 @@ struct ExpertCoachViewV3: View {
             WeekFitScreenContainer {
 
                 WeekFitScreenHeader(
-                    title: "Coach",
+                    title: WeekFitLocalizedString("common.tab.coach"),
                     subtitle: selectedDateTitle,
                     initials: userSettings.profileInitials,
                     showAvatar: true
@@ -74,6 +78,12 @@ struct ExpertCoachViewV3: View {
                 "[CoachScreenLifecycle]",
                 "CoachView onAppear stateID=\(coachCoordinator.state.id) \(debugCoachPrioritySummary())"
             )
+            debugCoachHeroColorSystem(event: "onAppear")
+            #endif
+        }
+        .onChange(of: coachCoordinator.state.id) { _, _ in
+            #if DEBUG
+            debugCoachHeroColorSystem(event: "stateChanged")
             #endif
         }
         .sheet(isPresented: $showProfile) {
@@ -83,6 +93,7 @@ struct ExpertCoachViewV3: View {
             .environmentObject(healthManager)
             .environmentObject(nutritionViewModel)
             .environmentObject(appSession)
+            .environmentObject(languageManager)
             .presentationDetents([.large])
             .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
@@ -137,6 +148,15 @@ struct ExpertCoachViewV3: View {
         )
     }
 
+    private var finalStory: CoachFinalStory? {
+        coachCoordinator.state.finalStory
+    }
+
+    private var finalStoryRenderModel: CoachFinalStoryRenderModel? {
+        guard let finalStory else { return nil }
+        return CoachFinalStoryRenderModel(story: finalStory)
+    }
+
     private var fallbackCoachScenario: CoachActivityScenario {
         CoachActivityScenario(
             stage: .stable,
@@ -158,9 +178,9 @@ struct ExpertCoachViewV3: View {
             title: stable.title,
             message: stable.message,
             supportFocus: [
-                "Keep rhythm",
-                "Avoid unnecessary intensity",
-                "Follow the plan"
+                WeekFitLocalizedString("coach.fallback.keepRhythm"),
+                WeekFitLocalizedString("coach.fallback.avoidUnnecessaryIntensity"),
+                WeekFitLocalizedString("coach.fallback.followThePlan")
             ],
             supportActions: [],
             avoidNotes: []
@@ -168,11 +188,25 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachAccentColor: Color {
-        coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
+        finalStoryRenderModel?.color ?? coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
+    }
+
+    private var heroSemanticColor: Color {
+        finalStoryRenderModel?.color ?? coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
+    }
+
+    private var heroSemanticColorSource: String {
+        if let finalStoryRenderModel {
+            return "finalStoryRenderModel.\(finalStoryRenderModel.colorFamily.rawValue)"
+        }
+        if coachCoordinator.state.coachPresentation != nil {
+            return "coachPresentation.color"
+        }
+        return "coachScreenStory.color"
     }
 
     private var coachIcon: String {
-        coachCoordinator.state.coachPresentation?.icon ?? coachScreenStory.icon
+        finalStoryRenderModel?.icon ?? coachCoordinator.state.coachPresentation?.icon ?? coachScreenStory.icon
     }
 
     private var coachScreenStory: CoachScreenStory {
@@ -184,16 +218,16 @@ struct ExpertCoachViewV3: View {
             status: .goodToGo,
             title: fallbackGuidance.title,
             myRead: fallbackGuidance.message,
-            myRecommendation: "Keep the next step simple.",
-            beCarefulWith: "Turning a normal day into something to fix.",
+            myRecommendation: WeekFitLocalizedString("coach.fallback.keepNextStepSimple"),
+            beCarefulWith: WeekFitLocalizedString("coach.fallback.normalDayWarning"),
             why: nil,
             planChallenge: nil,
             supportingActions: [
                 CoachSupportingAction(
                     type: .stayConsistent,
                     icon: "waveform.path.ecg",
-                    title: "Keep rhythm",
-                    subtitle: "Stay consistent with food, water, and movement",
+                    title: WeekFitLocalizedString("coach.fallback.keepRhythm"),
+                    subtitle: WeekFitLocalizedString("coach.fallback.stayConsistentWithBasics"),
                     color: CoachPalette.stable
                 )
             ],
@@ -214,7 +248,7 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachRenderedTitle: String {
-        coachCoordinator.state.coachPresentation?.title ?? validTitle(guidance.title) ?? coachScreenStory.title
+        finalStoryRenderModel?.title ?? coachCoordinator.state.coachPresentation?.title ?? validTitle(guidance.title) ?? coachScreenStory.title
     }
 
     private func validTitle(_ title: String) -> String? {
@@ -232,7 +266,7 @@ struct ExpertCoachViewV3: View {
             ),
             shouldSurface: false,
             stateLabel: "OVERVIEW",
-            title: "No active focus right now",
+            title: WeekFitLocalizedString("coach.fallback.noActiveFocusRightNow"),
             message: CoachActivityContextResolverV3.stablePresentation(from: coachDayContext).message,
             insightTitle: CoachActivityContextResolverV3.stablePresentation(from: coachDayContext).title,
             insightSubtitle: nil,
@@ -240,8 +274,8 @@ struct ExpertCoachViewV3: View {
                 CoachSupportActionV3(
                     type: .stayConsistent,
                     icon: "waveform.path.ecg",
-                    title: "Keep rhythm",
-                    subtitle: "Stay consistent with food, water and movement",
+                    title: WeekFitLocalizedString("coach.fallback.keepRhythm"),
+                    subtitle: WeekFitLocalizedString("coach.fallback.stayConsistentWithBasics"),
                     color: CoachPalette.stable
                 )
             ],
@@ -282,31 +316,59 @@ struct ExpertCoachViewV3: View {
     }
 
     private var selectedDateTitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "EEE, MMM d"
-        return formatter.string(from: selectedDate)
+        WeekFitShortWeekdayMonthDay(selectedDate)
     }
 
     // MARK: - Coach Card
 
     private var coachCard: some View {
-        let story = coachScreenStory
-        let presentation = coachCoordinator.state.coachPresentation
+        let story = finalStoryRenderModel == nil ? coachScreenStory : nil
+        let presentation = finalStoryRenderModel == nil ? coachCoordinator.state.coachPresentation : nil
+        let renderedTitle = coachRenderedTitle
+        let renderedRead = finalStoryRenderModel?.subtitle ?? coachUniqueHeroText(
+            coachOneStoryHeroText(
+                presentation?.message ?? story?.myRead ?? coachHeroReadFallback,
+                role: .assessment,
+                fallback: coachHeroReadFallback
+            ),
+            fallback: coachHeroReadFallback,
+            avoiding: [coachDisplayStateLabel, renderedTitle]
+        )
+        let renderedRecommendation = finalStoryRenderModel?.primaryRecommendation ?? coachUniqueHeroText(
+            coachOneStoryHeroText(
+                presentation?.recommendation ?? canonicalRecommendationText ?? story?.myRecommendation ?? coachHeroRecommendationFallback,
+                role: .recommendation,
+                fallback: coachHeroRecommendationFallback
+            ),
+            fallback: coachHeroRecommendationFallback,
+            avoiding: [coachDisplayStateLabel, renderedTitle, renderedRead]
+        )
+        let renderedRisk = finalStoryRenderModel?.avoidRecommendation ?? coachUniqueHeroText(
+            coachOneStoryHeroText(
+                presentation?.avoidNotes.first ?? story?.beCarefulWith ?? coachHeroRiskFallback,
+                role: .caution,
+                fallback: coachHeroRiskFallback
+            ),
+            fallback: coachHeroRiskFallback,
+            avoiding: [coachDisplayStateLabel, renderedTitle, renderedRead, renderedRecommendation]
+        )
+        let shouldShowRisk = finalStoryRenderModel != nil
+            ? !renderedRisk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            : (presentation?.avoidNotes.isEmpty == false || story?.shouldShowBeCarefulWith == true)
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(coachAccentColor.opacity(0.025))
+                .foregroundStyle(heroSemanticColor.opacity(0.045))
                 .padding(.top, 18)
-                .padding(.trailing, 18)
+                .padding(.trailing, -28)
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 0) {
                 stateBadge
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(coachRenderedTitle)
+                    Text(renderedTitle)
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.8)
@@ -315,19 +377,19 @@ struct ExpertCoachViewV3: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         coachHeroTextBlock(
-                            label: "My Read",
-                            text: presentation?.message ?? story.myRead
+                            label: WeekFitLocalizedString("coach.hero.myRead"),
+                            text: renderedRead
                         )
 
                         coachHeroTextBlock(
-                            label: "My Recommendation",
-                            text: canonicalRecommendationText ?? story.myRecommendation
+                            label: WeekFitLocalizedString("coach.hero.myRecommendation"),
+                            text: renderedRecommendation
                         )
 
-                        if story.shouldShowBeCarefulWith {
+                        if shouldShowRisk {
                             coachHeroTextBlock(
-                                label: "Be Careful With",
-                                text: story.beCarefulWith
+                                label: WeekFitLocalizedString("coach.hero.beCarefulWith"),
+                                text: renderedRisk
                             )
                         }
                     }
@@ -336,13 +398,14 @@ struct ExpertCoachViewV3: View {
             }
             .padding(16)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            coachAccentColor.opacity(0.075),
-                            cardBackground.opacity(0.52),
+                            heroSemanticColor.opacity(0.13),
+                            cardBackground.opacity(0.50),
                             cardBackground.opacity(0.30)
                         ],
                         startPoint: .topLeading,
@@ -354,7 +417,7 @@ struct ExpertCoachViewV3: View {
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    coachAccentColor.opacity(0.12),
+                                    heroSemanticColor.opacity(0.22),
                                     Color.white.opacity(0.035)
                                 ],
                                 startPoint: .topLeading,
@@ -364,7 +427,7 @@ struct ExpertCoachViewV3: View {
                         )
                 )
         )
-        .shadow(color: coachAccentColor.opacity(0.055), radius: 18, y: 8)
+        .shadow(color: heroSemanticColor.opacity(0.085), radius: 18, y: 8)
         .shadow(color: Color.black.opacity(0.18), radius: 14, y: 7)
     }
 
@@ -373,7 +436,7 @@ struct ExpertCoachViewV3: View {
             Text(label.uppercased())
                 .font(.system(size: 9.5, weight: .black, design: .rounded))
                 .tracking(1.1)
-                .foregroundStyle(coachAccentColor.opacity(0.82))
+                .foregroundStyle(textSecondary.opacity(0.42))
 
             Text(text)
                 .font(.system(size: 13.4, weight: .medium, design: .rounded))
@@ -383,25 +446,438 @@ struct ExpertCoachViewV3: View {
         }
     }
 
+    private func coachLocalizedGeneratedText(_ text: String, fallback: String) -> String {
+        let localized = WeekFitCoachRuntimeLocalizedString(text)
+        if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+            return localized
+        }
+        return fallback
+    }
+
+    private enum CoachHeroCopyRole {
+        case assessment
+        case recommendation
+        case caution
+    }
+
+    private func coachOneStoryHeroText(
+        _ text: String,
+        role: CoachHeroCopyRole,
+        fallback: String
+    ) -> String {
+        let localized = coachLocalizedGeneratedText(text, fallback: fallback)
+
+        guard shouldUsePrimaryStoryFallback(localized, role: role) else {
+            return localized
+        }
+
+        return fallback
+    }
+
+    private func shouldUsePrimaryStoryFallback(
+        _ text: String,
+        role: CoachHeroCopyRole
+    ) -> Bool {
+        let normalized = coachNormalizedCopy(text)
+        guard !normalized.isEmpty else { return true }
+
+        if WeekFitCurrentLocale().identifier.hasPrefix("ru") && containsEnglishCoachCopy(normalized) {
+            return true
+        }
+
+        let competingSignals = competingCoachSignals(in: normalized)
+        if competingSignals.count > 1 {
+            return true
+        }
+
+        switch guidance.priority.focus {
+        case .recoveryNeeded, .postActivityRecovery:
+            return competingSignals.contains { $0 != "recovery" }
+        case .activeActivity, .prepareForActivity, .nextActivityLater, .performanceReadiness, .trainingReadinessWarning:
+            return competingSignals.contains { $0 != "activity" && $0 != "readiness" }
+        case .hydrationBehind:
+            return competingSignals.contains { $0 != "hydration" }
+        case .fuelBehind:
+            return competingSignals.contains { $0 != "fuel" }
+        case .tomorrowPlanRisk:
+            return competingSignals.contains { $0 != "tomorrow" && $0 != "recovery" }
+        case .dailyOverview, .eveningWindDown:
+            return false
+        }
+    }
+
+    private func containsEnglishCoachCopy(_ normalized: String) -> Bool {
+        let englishFragments = [
+            "recovery is",
+            "main constraint",
+            "should stay below",
+            "normal ceiling",
+            "fuel is",
+            "hydration is",
+            "this effort",
+            "today s",
+            "upper body",
+            "running",
+            "cycling"
+        ]
+
+        return englishFragments.contains { normalized.contains($0) }
+    }
+
+    private func competingCoachSignals(in normalized: String) -> Set<String> {
+        var signals = Set<String>()
+
+        if normalized.contains("recovery") ||
+            normalized.contains("восстанов") ||
+            normalized.contains("устал") {
+            signals.insert("recovery")
+        }
+
+        if normalized.contains("activity") ||
+            normalized.contains("training") ||
+            normalized.contains("workout") ||
+            normalized.contains("ride") ||
+            normalized.contains("run") ||
+            normalized.contains("трениров") ||
+            normalized.contains("нагруз") ||
+            normalized.contains("темп") {
+            signals.insert("activity")
+        }
+
+        if normalized.contains("readiness") ||
+            normalized.contains("готовност") ||
+            normalized.contains("ceiling") ||
+            normalized.contains("потолок") {
+            signals.insert("readiness")
+        }
+
+        if normalized.contains("fuel") ||
+            normalized.contains("food") ||
+            normalized.contains("nutrition") ||
+            normalized.contains("питан") ||
+            normalized.contains("энерг") {
+            signals.insert("fuel")
+        }
+
+        if normalized.contains("hydration") ||
+            normalized.contains("water") ||
+            normalized.contains("fluid") ||
+            normalized.contains("гидратац") ||
+            normalized.contains("вод") {
+            signals.insert("hydration")
+        }
+
+        if normalized.contains("tomorrow") ||
+            normalized.contains("завтра") {
+            signals.insert("tomorrow")
+        }
+
+        return signals
+    }
+
+    private func coachUniqueHeroText(
+        _ text: String,
+        fallback: String,
+        avoiding higherPriorityTexts: [String]
+    ) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return fallback }
+
+        if higherPriorityTexts.contains(where: { coachCopiesOverlap(trimmed, $0) }) {
+            return fallback
+        }
+
+        if guidance.priority.focus == .dailyOverview,
+           coachNormalizedCopy(trimmed).contains("сегодня все идет по плану") {
+            return fallback
+        }
+
+        if guidance.priority.focus == .activeActivity,
+           coachNormalizedCopy(trimmed).contains("сегодня лучше держать нагрузку ниже привычного максимума") {
+            return fallback
+        }
+
+        return trimmed
+    }
+
+    private func coachCopiesOverlap(_ lhs: String, _ rhs: String) -> Bool {
+        let left = coachNormalizedCopy(lhs)
+        let right = coachNormalizedCopy(rhs)
+        guard !left.isEmpty, !right.isEmpty else { return false }
+        return left == right
+    }
+
+    private func coachNormalizedCopy(_ text: String) -> String {
+        text
+            .lowercased()
+            .replacingOccurrences(of: "ё", with: "е")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private var coachHeroStateFallback: String {
+        switch guidance.priority.focus {
+        case .activeActivity:
+            return "ТРЕНИРОВКА"
+
+        case .prepareForActivity, .nextActivityLater:
+            return "ПОДГОТОВКА"
+
+        case .performanceReadiness:
+            return "ГОТОВ К НАГРУЗКЕ"
+
+        case .postActivityRecovery:
+            return "ПОСЛЕ НАГРУЗКИ"
+
+        case .recoveryNeeded:
+            return "ВОССТАНОВЛЕНИЕ"
+
+        case .hydrationBehind:
+            return "НУЖНА ВОДА"
+
+        case .fuelBehind:
+            return "НУЖНА ЭНЕРГИЯ"
+
+        case .trainingReadinessWarning:
+            return "СНИЗЬТЕ ПОТОЛОК"
+
+        case .tomorrowPlanRisk:
+            return "ЗАВТРА ВАЖНО"
+
+        case .dailyOverview:
+            return "ВСЕ ПО ПЛАНУ"
+
+        case .eveningWindDown:
+            return "ВЕЧЕРНИЙ РЕЖИМ"
+        }
+    }
+
+    private var coachHeroTitleFallback: String {
+        switch guidance.priority.focus {
+        case .activeActivity:
+            return "Не гонитесь за цифрами"
+
+        case .prepareForActivity, .nextActivityLater:
+            return "Готовьтесь к следующей активности"
+
+        case .performanceReadiness:
+            return "Сегодня многое зависит от восстановления"
+
+        case .postActivityRecovery:
+            return "Хорошая работа — теперь восстановитесь"
+
+        case .recoveryNeeded:
+            return "Сегодня лучше восстановиться"
+
+        case .hydrationBehind:
+            return "Организму нужна вода"
+
+        case .fuelBehind:
+            return "Пора восполнить энергию"
+
+        case .trainingReadinessWarning:
+            return "Не давите сильнее, чем нужно"
+
+        case .tomorrowPlanRisk:
+            return "Поберегите силы на завтра"
+
+        case .dailyOverview:
+            return "Сегодня нет причин менять план"
+
+        case .eveningWindDown:
+            return "Пора замедлиться"
+        }
+    }
+
+    private var coachHeroReadFallback: String {
+        switch guidance.priority.focus {
+
+        case .activeActivity:
+            return "Сегодняшняя тренировка уже создает достаточную нагрузку."
+
+        case .prepareForActivity, .nextActivityLater:
+            return "До следующей активности есть время. Вода, питание и спокойная подготовка сейчас важнее всего."
+
+        case .performanceReadiness:
+            return "Сегодняшняя готовность выглядит неплохо, но начните спокойно и дайте телу войти в ритм."
+
+        case .postActivityRecovery:
+            return "Главная работа уже сделана. Сейчас больше пользы даст восстановление, а не новая нагрузка."
+
+        case .recoveryNeeded:
+            return "Организму нужно чуть больше времени. Не всегда нужно делать больше — иногда лучше сделать меньше."
+
+        case .hydrationBehind:
+            return "Воды пока недостаточно. Небольшой запас гидратации поможет чувствовать себя лучше до конца дня."
+
+        case .fuelBehind:
+            return "Организму нужно немного энергии для восстановления и обычной активности."
+
+        case .trainingReadinessWarning:
+            return "Сегодня лучше не форсировать. Спокойный подход даст больше пользы, чем попытка выжать максимум."
+
+        case .tomorrowPlanRisk:
+            return "Сохраните часть энергии на завтра. Следующий день выиграет от более аккуратного темпа сегодня."
+
+        case .dailyOverview:
+            return "Сон, нагрузка, вода и питание не дают срочного сигнала для коррекции."
+
+        case .eveningWindDown:
+            return "Лучшее, что можно сделать сейчас — спокойно завершить день и подготовиться ко сну."
+        }
+    }
+
+    private var coachHeroRecommendationFallback: String {
+        switch guidance.priority.focus {
+
+        case .activeActivity:
+            return "Сохраняйте комфортный темп до конца тренировки."
+
+        case .prepareForActivity, .nextActivityLater:
+            return "Добавьте воды, при необходимости перекусите и начинайте без спешки."
+
+        case .performanceReadiness:
+            return "Начните спокойно и повышайте нагрузку только если чувствуете себя хорошо."
+
+        case .postActivityRecovery:
+            return "Восполните воду, нормально поешьте и дайте организму восстановиться."
+
+        case .recoveryNeeded:
+            return "Сегодня лучше восстановиться, а не добавлять нагрузку."
+
+        case .hydrationBehind:
+            return "Постепенно восполняйте воду в течение дня."
+
+        case .fuelBehind:
+            return "Добавьте полноценный прием пищи или небольшой перекус."
+
+        case .trainingReadinessWarning:
+            return "Снизьте ожидания от тренировки и ориентируйтесь на самочувствие."
+
+        case .tomorrowPlanRisk:
+            return "Сохраните немного энергии сегодня, чтобы чувствовать себя лучше завтра."
+
+        case .dailyOverview:
+            return "Следуйте своему плану и не добавляйте лишнюю нагрузку."
+
+        case .eveningWindDown:
+            return "Замедлитесь, отключитесь от дел и готовьтесь ко сну."
+        }
+    }
+
+    private var coachHeroRiskFallback: String {
+        switch guidance.priority.focus {
+
+        case .activeActivity:
+            return "Не пытайтесь добавить темп, если усилие уже ощущается высоким."
+
+        case .prepareForActivity, .nextActivityLater:
+            return "Не начинайте слишком быстро — организму может понадобиться немного больше времени на подготовку."
+
+        case .performanceReadiness:
+            return "Не превращайте первые минуты в проверку своих пределов."
+
+        case .postActivityRecovery:
+            return "Не ищите дополнительную нагрузку после уже выполненной тренировки."
+
+        case .recoveryNeeded:
+            return "Не путайте усталость с необходимостью сделать ещё больше."
+
+        case .hydrationBehind:
+            return "Не пытайтесь восполнить всю воду за один раз."
+
+        case .fuelBehind:
+            return "Не ждите сильного чувства голода, чтобы поесть."
+
+        case .trainingReadinessWarning:
+            return "Не игнорируйте сигналы усталости ради запланированной интенсивности."
+
+        case .tomorrowPlanRisk:
+            return "Не расходуйте сегодня энергию, которая понадобится завтра."
+
+        case .dailyOverview:
+            return "Не усложняйте день без веской причины."
+
+        case .eveningWindDown:
+            return "Не затягивайте вечер активностями, которые могут помешать сну."
+        }
+    }
+
+    private func coachFallbackActionTitle(for type: CoachSupportActionTypeV3) -> String {
+        switch type {
+        case .lightFueling:
+            return "Перекусите"
+
+        case .hydrateBeforeSession:
+            return "Пейте воду"
+
+        case .breathingReset:
+            return "Подышите глубже"
+
+        case .mobilityPrep:
+            return "Разомнитесь"
+
+        case .keepDigestionLight:
+            return "Не переедайте"
+
+        case .cooldown:
+            return "Восстанавливайтесь"
+
+        case .controlIntensity:
+            return "Снизьте темп"
+
+        case .sustainEnergy:
+            return "Поддержите энергию"
+
+        case .recoveryMeal:
+            return "Поешьте"
+
+        case .steadyHydration:
+            return "Продолжайте пить"
+
+        case .lightRecoveryMovement:
+            return "Легко подвигайтесь"
+
+        case .downshiftNervousSystem:
+            return "Замедлитесь"
+
+        case .sleepPriority:
+            return "Готовьтесь ко сну"
+
+        case .stayConsistent:
+            return "Держите ритм"
+
+        case .rehydrateGradually:
+            return "Восполняйте воду"
+
+        case .startRecoveryNutrition:
+            return "Начните восстановление"
+
+        case .electrolyteRecovery:
+            return "Добавьте электролиты"
+        }
+    }
+
     private var stateBadge: some View {
         HStack(spacing: 8) {
             Image(systemName: coachIcon)
                 .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(coachAccentColor)
+                .foregroundStyle(heroSemanticColor)
 
             Text(coachDisplayStateLabel)
                 .font(.system(size: 10, weight: .black, design: .rounded))
                 .tracking(1.4)
-                .foregroundStyle(coachAccentColor)
+                .foregroundStyle(heroSemanticColor)
         }
         .padding(.horizontal, 11)
         .frame(height: 24)
         .background(
             Capsule()
-                .fill(coachAccentColor.opacity(0.09))
+                .fill(heroSemanticColor.opacity(0.09))
                 .overlay(
                     Capsule()
-                        .stroke(coachAccentColor.opacity(0.12), lineWidth: 1)
+                        .stroke(heroSemanticColor.opacity(0.22), lineWidth: 1)
                 )
         )
     }
@@ -493,94 +969,94 @@ struct ExpertCoachViewV3: View {
         let recoverySubtitle: String = {
             if !hasSleepData {
                 if recoveryPercent > 0 {
-                    return "\(Int(recoveryPercent))% recovery • sleep data missing"
+                    return String(format: WeekFitLocalizedString("coach.status.recovery.sleepMissingFormat"), Int(recoveryPercent))
                 }
-                return "Sleep data missing • recovery limited"
+                return WeekFitLocalizedString("coach.status.recovery.limited")
             }
 
             if recoveryGood && shortSleep {
-                return "\(Int(recoveryPercent))% recovery • short sleep had limited impact"
+                return String(format: WeekFitLocalizedString("coach.status.recovery.shortSleepLimitedFormat"), Int(recoveryPercent))
             }
 
             if recoveryGood {
-                return "\(Int(recoveryPercent))% recovery • body looks ready"
+                return String(format: WeekFitLocalizedString("coach.status.recovery.readyFormat"), Int(recoveryPercent))
             }
 
             if recoveryOkay && shortSleep {
-                return "\(Int(recoveryPercent))% recovery • shorter sleep noted"
+                return String(format: WeekFitLocalizedString("coach.status.recovery.shortSleepNotedFormat"), Int(recoveryPercent))
             }
 
             if recoveryPercent < 65 && shortSleep {
-                return "\(Int(recoveryPercent))% recovery • sleep is limiting today"
+                return String(format: WeekFitLocalizedString("coach.status.recovery.sleepLimitingFormat"), Int(recoveryPercent))
             }
 
             if hrv > 0 && rhr > 0 {
-                return "\(Int(recoveryPercent))% recovery • HRV \(Int(hrv)), RHR \(Int(rhr))"
+                return String(format: WeekFitLocalizedString("coach.status.recovery.hrvRhrFormat"), Int(recoveryPercent), Int(hrv), Int(rhr))
             }
 
-            return "\(Int(recoveryPercent))% recovery today"
+            return String(format: WeekFitLocalizedString("coach.status.recovery.todayFormat"), Int(recoveryPercent))
         }()
 
         let hydrationSubtitle: String = {
             if waterGoal <= 0 {
-                return "\(oneDecimal(currentWater))L logged today"
+                return String(format: WeekFitLocalizedString("coach.status.hydration.loggedFormat"), oneDecimal(currentWater))
             }
 
             if currentWater <= 0.01 {
-                return "Hydration not started • first target 500ml"
+                return WeekFitLocalizedString("coach.status.hydration.notStarted")
             }
 
             if hydrationGood {
-                return "\(oneDecimal(currentWater))L of \(oneDecimal(waterGoal))L completed"
+                return String(format: WeekFitLocalizedString("coach.status.hydration.completedFormat"), oneDecimal(currentWater), oneDecimal(waterGoal))
             }
 
             if hour < 12 {
-                return "\(oneDecimal(currentWater))L logged • keep building the base"
+                return String(format: WeekFitLocalizedString("coach.status.hydration.morningLoggedFormat"), oneDecimal(currentWater))
             }
 
-            return "\(oneDecimal(waterRemaining))L remaining to target"
+            return String(format: WeekFitLocalizedString("coach.status.hydration.remainingFormat"), oneDecimal(waterRemaining))
         }()
 
         let fuelingSubtitle: String = {
             if protein <= 0.5 && calories <= 20 {
                 if hour < 12 {
-                    return "Breakfast not started • protein first"
+                    return WeekFitLocalizedString("coach.status.fueling.breakfastNotStarted")
                 }
-                return "No fueling logged • protein first"
+                return WeekFitLocalizedString("coach.status.fueling.noneLogged")
             }
 
             if proteinRatio < 0.65 && calorieRatio < 0.45 {
-                return "\(Int(proteinRemaining))g protein • \(Int(caloriesRemaining)) kcal left"
+                return String(format: WeekFitLocalizedString("coach.status.fueling.proteinCaloriesLeftFormat"), Int(proteinRemaining), Int(caloriesRemaining))
             }
 
             if proteinRatio < 0.65 {
-                return "\(Int(proteinRemaining))g protein remaining"
+                return String(format: WeekFitLocalizedString("coach.status.fueling.proteinRemainingFormat"), Int(proteinRemaining))
             }
 
             if calorieRatio < 0.45 {
-                return "\(Int(caloriesRemaining)) kcal remaining today"
+                return String(format: WeekFitLocalizedString("coach.status.fueling.caloriesRemainingFormat"), Int(caloriesRemaining))
             }
 
-            return "\(Int(protein))g of \(Int(proteinGoal))g protein reached"
+            return String(format: WeekFitLocalizedString("coach.status.fueling.proteinReachedFormat"), Int(protein), Int(proteinGoal))
         }()
 
         let loadSubtitle: String = {
             if let nextActivity {
-                return "\(completedActivities) done • \(nextActivity.title) in \(timeUntil(nextActivity.date))"
+                return String(format: WeekFitLocalizedString("coach.status.load.nextActivityFormat"), completedActivities, WeekFitCoachRuntimeLocalizedString(nextActivity.title), timeUntil(nextActivity.date))
             }
 
             if !hasActivityToday {
-                return "Open schedule • recovery remains priority"
+                return WeekFitLocalizedString("coach.status.load.openSchedule")
             }
 
-            return "\(completedActivities) completed • \(upcomingActivities) upcoming"
+            return String(format: WeekFitLocalizedString("coach.status.load.completedUpcomingFormat"), completedActivities, upcomingActivities)
         }()
 
         return [
             TodayBalanceItem(
                 id: "recovery",
                 icon: recoveryIsGood ? "heart.fill" : "heart.text.square.fill",
-                title: "Recovery",
+                title: WeekFitLocalizedString("today.status.recovery"),
                 subtitle: recoverySubtitle,
                 color: recoveryIsGood ? CoachPalette.recovery : CoachPalette.warning,
                 isGood: recoveryIsGood
@@ -589,7 +1065,7 @@ struct ExpertCoachViewV3: View {
             TodayBalanceItem(
                 id: "load",
                 icon: hasActivityToday ? "figure.run" : "waveform.path.ecg",
-                title: hasActivityToday ? "Activities" : "Daily load",
+                title: hasActivityToday ? WeekFitLocalizedString("coach.status.load.activities") : WeekFitLocalizedString("coach.status.load.dailyLoad"),
                 subtitle: loadSubtitle,
                 color: hasActivityToday ? CoachPalette.training : CoachPalette.stable,
                 isGood: true
@@ -599,41 +1075,81 @@ struct ExpertCoachViewV3: View {
     
     private var coachDisplayText: (title: String, message: String) {
         return (
-            coachCoordinator.state.coachPresentation?.title ?? coachScreenStory.title,
-            coachCoordinator.state.coachPresentation?.message ?? coachScreenStory.myRecommendation
+            finalStoryRenderModel?.title ?? coachCoordinator.state.coachPresentation?.title ?? coachScreenStory.title,
+            finalStoryRenderModel?.subtitle ?? coachCoordinator.state.coachPresentation?.message ?? coachScreenStory.myRecommendation
         )
     }
 
     private var coachDisplayStateLabel: String {
-        coachCoordinator.state.coachPresentation?.stateLabel ?? coachScreenStory.stateLabel
+        if let finalStoryRenderModel {
+            return finalStoryRenderModel.badge.uppercased()
+        }
+
+        // Compatibility fallback only. When CoachFinalStory exists, badge text is finalStory.badgeState.
+        let localized = coachLocalizedGeneratedText(
+            coachCoordinator.state.coachPresentation?.stateLabel ?? coachScreenStory.stateLabel,
+            fallback: coachHeroStateFallback
+        )
+
+        if shouldUseShortCoachStateFallback(localized) {
+            return coachHeroStateFallback
+        }
+
+        return localized.uppercased()
+    }
+
+    private func shouldUseShortCoachStateFallback(_ stateLabel: String) -> Bool {
+        let trimmed = stateLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+
+        if trimmed.split(separator: " ").count > 3 {
+            return true
+        }
+
+        let normalized = coachNormalizedCopy(trimmed)
+        if normalized.contains("сегодня все идет по плану") ||
+            normalized.contains("продолжайте") ||
+            normalized.contains("сделайте") ||
+            normalized.contains("снизьте") {
+            return true
+        }
+
+        return false
     }
 
     private var canonicalRecommendationText: String? {
+        guard finalStoryRenderModel == nil else { return nil }
         guard let presentation = coachCoordinator.state.coachPresentation else { return nil }
 
         switch guidance.priority.focus {
         case .recoveryNeeded, .postActivityRecovery:
-            return "Prioritize food, hydration and recovery before adding more load."
+            return WeekFitLocalizedString("coach.recommendation.recoveryBeforeLoad")
         case .hydrationBehind:
-            return "Bring fluids up before asking more from the day."
+            return WeekFitLocalizedString("coach.recommendation.hydrationBeforeMore")
         case .fuelBehind:
-            return "Make food available before adding intensity."
+            return WeekFitLocalizedString("coach.recommendation.fuelBeforeIntensity")
         default:
             return nil
         }
     }
 
     private var coachSections: [CoachSection] {
-        CoachSectionBuilder.build(
+        guard finalStoryRenderModel == nil else { return [] }
+
+        // Compatibility fallback only. Final-story support is rendered by storySupportSection.
+        return CoachSectionBuilder.build(
             scenario: coachScenario,
             nutrition: nutritionContext,
             trainingFallback: trainingFocusFallback,
-            coachAccentColor: coachAccentColor,
+            coachAccentColor: heroSemanticColor,
             priority: guidance.priority
         )
     }
 
     private var trainingFocusFallback: [String] {
+        guard finalStoryRenderModel == nil else { return [] }
+
+        // Compatibility fallback only. Final-story actions come from CoachFinalStory.primaryAction.
         let items = guidance.supportActions
             .map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -651,14 +1167,19 @@ struct ExpertCoachViewV3: View {
         }
 
         return [
-            "Stay steady",
-            "Keep the plan simple",
-            "Avoid unnecessary intensity"
+            WeekFitLocalizedString("coach.fallback.staySteady"),
+            WeekFitLocalizedString("coach.fallback.keepPlanSimple"),
+            WeekFitLocalizedString("coach.fallback.avoidUnnecessaryIntensity")
         ]
     }
 
     private var premiumAvoidNotes: [String] {
+        if let finalStoryRenderModel {
+            let avoid = finalStoryRenderModel.avoidRecommendation.trimmingCharacters(in: .whitespacesAndNewlines)
+            return avoid.isEmpty ? [] : [avoid]
+        }
 
+        // Compatibility fallback only. Final-story avoid text comes from CoachFinalStory.avoidRecommendation.
         let whyText = guidance.priority.whyThisMatters?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
@@ -669,6 +1190,12 @@ struct ExpertCoachViewV3: View {
             .filter { note in
                 guard let whyText else { return true }
                 return note.lowercased() != whyText
+            }
+            .map {
+                coachLocalizedGeneratedText(
+                    $0,
+                    fallback: WeekFitLocalizedString("coach.fallback.avoidUnnecessaryIntensity")
+                )
             }
     }
 
@@ -697,22 +1224,22 @@ struct ExpertCoachViewV3: View {
         let minutes = max(0, Int(date.timeIntervalSince(Date()) / 60))
 
         if minutes < 60 {
-            return "\(minutes)m"
+            return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
         }
 
         let hours = minutes / 60
         let remainder = minutes % 60
 
         if remainder == 0 {
-            return "\(hours)h"
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
         }
 
-        return "\(hours)h \(remainder)m"
+        return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, remainder)
     }
     
     private var coachContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: WeekFitScreenLayout.rootSpacing) {
+            VStack(alignment: .center, spacing: WeekFitScreenLayout.rootSpacing) {
 
 //                if shouldShowEveningReview {
 //                    CoachEveningReviewSection(
@@ -729,6 +1256,8 @@ struct ExpertCoachViewV3: View {
                         .padding(.top, 12)
                 }
             }
+            .padding(.horizontal, coachContentHorizontalInset)
+            .frame(maxWidth: .infinity)
             .padding(.bottom, 110)
         }
     }
@@ -742,11 +1271,11 @@ struct ExpertCoachViewV3: View {
                 .background(Circle().fill(Color.white.opacity(0.05)))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Coach unavailable")
+                Text(WeekFitLocalizedString("coach.unavailable.title"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text("Connect today’s plan, nutrition, and recovery data to unlock guidance.")
+                Text(WeekFitLocalizedString("coach.unavailable.message"))
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary)
             }
@@ -760,6 +1289,7 @@ struct ExpertCoachViewV3: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.05), lineWidth: 1)
         )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
     private var shouldShowEveningReview: Bool {
@@ -831,10 +1361,10 @@ struct ExpertCoachViewV3: View {
 
         if plannedCount == 0 {
             return CoachEveningReviewSummary(
-                title: totalMinutes > 0 ? "Active recovery day" : "Recovery day",
+                title: totalMinutes > 0 ? WeekFitLocalizedString("coach.activeRecoveryDay") : WeekFitLocalizedString("coach.recoveryDay"),
                 message: totalMinutes > 0
-                    ? "\(activeTimeText) active time"
-                    : "No planned activities today",
+                    ? String(format: WeekFitLocalizedString("coach.evening.activeTimeFormat"), activeTimeText)
+                    : WeekFitLocalizedString("coach.eveningReview.noPlannedActivities"),
                 achievement: biggestAchievementText,
                 score: score
             )
@@ -842,8 +1372,8 @@ struct ExpertCoachViewV3: View {
 
         if completedCount == plannedCount && skippedCount == 0 {
             return CoachEveningReviewSummary(
-                title: "Perfect execution",
-                message: "\(activeTimeText) active time",
+                title: WeekFitLocalizedString("coach.perfectExecution"),
+                message: String(format: WeekFitLocalizedString("coach.evening.activeTimeFormat"), activeTimeText),
                 achievement: biggestAchievementText,
                 score: score
             )
@@ -851,18 +1381,18 @@ struct ExpertCoachViewV3: View {
 
         if completedCount > 0 {
             return CoachEveningReviewSummary(
-                title: "Solid execution",
-                message: "\(activeTimeText) active time",
+                title: WeekFitLocalizedString("coach.solidExecution"),
+                message: String(format: WeekFitLocalizedString("coach.evening.activeTimeFormat"), activeTimeText),
                 achievement: biggestAchievementText,
                 score: score
             )
         }
 
         return CoachEveningReviewSummary(
-            title: "Reset tomorrow",
+            title: WeekFitLocalizedString("coach.resetTomorrow"),
             message: totalMinutes > 0
-                ? "\(activeTimeText) active time"
-                : "No active time logged",
+                ? String(format: WeekFitLocalizedString("coach.evening.activeTimeFormat"), activeTimeText)
+                : WeekFitLocalizedString("coach.evening.noActiveTimeLogged"),
             achievement: biggestAchievementText,
             score: score
         )
@@ -873,14 +1403,14 @@ struct ExpertCoachViewV3: View {
         let minutes = totalMinutes % 60
 
         if hours > 0 && minutes > 0 {
-            return "\(hours)h \(minutes)m"
+            return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, minutes)
         }
 
         if hours > 0 {
-            return "\(hours)h"
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
         }
 
-        return "\(minutes)m"
+        return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
     }
 
     private var eveningReviewScore: Int {
@@ -969,15 +1499,7 @@ struct ExpertCoachViewV3: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
 
-        if hours > 0 && minutes > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-
-        if hours > 0 {
-            return "\(hours)h"
-        }
-
-        return "\(minutes)m"
+        return formatMinutes(totalMinutes)
     }
 
     private var tomorrowReadiness: CoachTomorrowReadiness {
@@ -993,8 +1515,8 @@ struct ExpertCoachViewV3: View {
             $0.durationMinutes < $1.durationMinutes
         }
 
-        let longestTitle = longest?.title ?? "Activity"
-        let longestDuration = longest.map { formatMinutes($0.effectiveDurationMinutes) } ?? "0m"
+        let longestTitle = longest.map { WeekFitCoachRuntimeLocalizedString($0.title) } ?? WeekFitLocalizedString("coach.activity.fallbackTitle")
+        let longestDuration = longest.map { formatMinutes($0.effectiveDurationMinutes) } ?? formatMinutes(0)
 
         let hasLongSession = longest?.durationMinutes ?? 0 >= 120
         let hasVeryHighVolume = totalMinutes >= 240
@@ -1016,29 +1538,29 @@ struct ExpertCoachViewV3: View {
 
         let loadLabel: String = {
             if hasVeryHighVolume || hasLongSession {
-                return "High load"
+                return WeekFitLocalizedString("coach.highLoad")
             }
 
             if hasHighVolume {
-                return "Moderate load"
+                return WeekFitLocalizedString("coach.moderateLoad")
             }
 
-            return "Balanced load"
+            return WeekFitLocalizedString("coach.balancedLoad")
         }()
 
         let metricsLine: String = {
             if let longest {
-                return "Recovery \(Int(recovery))% • \(longest.title) \(formatMinutes(longest.effectiveDurationMinutes))"
+                return String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryActivityFormat"), Int(recovery), WeekFitCoachRuntimeLocalizedString(longest.title), formatMinutes(longest.effectiveDurationMinutes))
             }
 
-            return "Recovery \(Int(recovery))% • \(loadLabel)"
+            return String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryLoadFormat"), Int(recovery), loadLabel)
         }()
 
         if recovery < 55 {
             return CoachTomorrowReadiness(
-                title: "Recovery day recommended",
+                title: WeekFitLocalizedString("coach.recoveryDayRecommended"),
                 metrics: metricsLine,
-                recommendation: "Sleep • Mobility • Easy walk",
+                recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.sleepMobilityWalk"),
                 icon: "moon.zzz.fill",
                 color: CoachPalette.stress
             )
@@ -1047,17 +1569,17 @@ struct ExpertCoachViewV3: View {
         if hasVeryHighVolume || hasLongSession {
             if recovery >= 75 {
                 return CoachTomorrowReadiness(
-                    title: "Keep tomorrow lighter",
-                    metrics: "Recovery \(Int(recovery))% • \(longestTitle) \(longestDuration)",
-                    recommendation: "Sauna • Mobility • Walk",
+                    title: WeekFitLocalizedString("coach.keepTomorrowLighter"),
+                    metrics: String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryActivityFormat"), Int(recovery), longestTitle, longestDuration),
+                    recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.saunaMobilityWalk"),
                     icon: "figure.cooldown",
                     color: CoachPalette.warning
                 )
             } else {
                 return CoachTomorrowReadiness(
-                    title: "Prioritize recovery tomorrow",
-                    metrics: "Recovery \(Int(recovery))% • \(loadLabel)",
-                    recommendation: "Sleep • Mobility • Easy walk",
+                    title: WeekFitLocalizedString("coach.prioritizeRecoveryTomorrow"),
+                    metrics: String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryLoadFormat"), Int(recovery), loadLabel),
+                    recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.sleepMobilityWalk"),
                     icon: "heart.fill",
                     color: CoachPalette.warning
                 )
@@ -1066,9 +1588,9 @@ struct ExpertCoachViewV3: View {
 
         if hasHighVolume && !hasRecoverySupport {
             return CoachTomorrowReadiness(
-                title: "Add recovery support",
-                metrics: "Recovery \(Int(recovery))% • \(loadLabel)",
-                recommendation: "Sauna • Stretching • Easy walk",
+                title: WeekFitLocalizedString("coach.addRecoverySupport"),
+                metrics: String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryLoadFormat"), Int(recovery), loadLabel),
+                recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.saunaStretchingWalk"),
                 icon: "sparkles",
                 color: CoachPalette.recovery
             )
@@ -1076,18 +1598,18 @@ struct ExpertCoachViewV3: View {
 
         if recovery >= 75 {
             return CoachTomorrowReadiness(
-                title: "Ready for training",
-                metrics: "Recovery \(Int(recovery))% • \(loadLabel)",
-                recommendation: "Normal training • Keep intensity planned",
+                title: WeekFitLocalizedString("coach.readyForTraining"),
+                metrics: String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryLoadFormat"), Int(recovery), loadLabel),
+                recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.normalTraining"),
                 icon: "checkmark.seal.fill",
                 color: CoachPalette.stable
             )
         }
 
         return CoachTomorrowReadiness(
-            title: "Moderate readiness",
-            metrics: "Recovery \(Int(recovery))% • \(loadLabel)",
-            recommendation: "Flexible plan • Avoid extra intensity",
+            title: WeekFitLocalizedString("coach.moderateReadiness"),
+            metrics: String(format: WeekFitLocalizedString("coach.tomorrow.metrics.recoveryLoadFormat"), Int(recovery), loadLabel),
+            recommendation: WeekFitLocalizedString("coach.tomorrow.recommendation.flexiblePlan"),
             icon: "gauge.medium",
             color: CoachPalette.training
         )
@@ -1111,7 +1633,7 @@ struct ExpertCoachViewV3: View {
         if let best = meaningfulCompleted.max(by: {
             achievementScore(for: $0) < achievementScore(for: $1)
         }) {
-            return "\(achievementLabel(for: best)) — \(durationText(best.durationMinutes)) completed."
+            return String(format: WeekFitLocalizedString("coach.evening.achievement.completedFormat"), achievementLabel(for: best), durationText(best.durationMinutes))
         }
 
         let planned = plannedActivitiesForSelectedDate.count
@@ -1119,23 +1641,23 @@ struct ExpertCoachViewV3: View {
         let skippedCount = plannedActivitiesForSelectedDate.filter { $0.isSkipped }.count
 
         if planned > 0 && completedCount == planned {
-            return "You completed everything you planned today."
+            return WeekFitLocalizedString("coach.youCompletedEverythingYouPlannedToday")
         }
 
         if planned > 0 && completedCount + skippedCount == planned {
-            return "You closed the day clearly by completing or skipping every planned item."
+            return WeekFitLocalizedString("coach.evening.closedByResolvingPlan")
         }
 
         let recovery = Int(healthManager.recoveryPercent)
         if recovery >= 80 {
-            return "Recovery finished strong at \(recovery)%."
+            return String(format: WeekFitLocalizedString("coach.evening.recoveryFinishedFormat"), recovery)
         }
 
         if completedCount > 0 {
-            return "You still completed \(completedCount) planned item\(completedCount == 1 ? "" : "s")."
+            return String(format: WeekFitLocalizedString("coach.evening.plannedCompletedFormat"), completedCount, completedCount == 1 ? WeekFitLocalizedString("common.item.singular") : WeekFitLocalizedString("common.item.plural"))
         }
 
-        return "You closed the day without forcing a late catch-up."
+        return WeekFitLocalizedString("coach.evening.closedWithoutCatchUp")
     }
 
     private func achievementScore(for activity: PlannedActivity) -> Double {
@@ -1175,8 +1697,8 @@ struct ExpertCoachViewV3: View {
     }
 
     private func achievementLabel(for activity: PlannedActivity) -> String {
-        let title = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return title.isEmpty ? "Strongest activity" : title
+        let title = WeekFitCoachRuntimeLocalizedString(activity.title).trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? WeekFitLocalizedString("coach.evening.achievement.strongestActivity") : title
     }
 
     private func durationText(_ minutes: Int) -> String {
@@ -1184,14 +1706,14 @@ struct ExpertCoachViewV3: View {
         let remainder = minutes % 60
 
         if hours > 0 && remainder > 0 {
-            return "\(hours)h \(remainder)m"
+            return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, remainder)
         }
 
         if hours > 0 {
-            return "\(hours)h"
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
         }
 
-        return "\(minutes)m"
+        return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
     }
 
     private var nutritionContext: CoachNutritionContext {
@@ -1226,11 +1748,11 @@ struct ExpertCoachViewV3: View {
     private var todayBalanceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Current status")
+                Text(WeekFitLocalizedString("coach.status.current.title"))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text("Your main recovery and activity signals right now.")
+                Text(WeekFitLocalizedString("coach.status.current.subtitle"))
                     .font(.system(size: 12.2, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.62))
             }
@@ -1305,95 +1827,149 @@ struct ExpertCoachViewV3: View {
     // MARK: - Suggested Support
 
     private var storySupportSection: some View {
-        let story = coachScreenStory
+        if let finalStoryRenderModel {
+            return AnyView(finalStorySupportSection(finalStoryRenderModel))
+        }
 
-        return VStack(alignment: .leading, spacing: 13) {
-            if !story.primaryActions.isEmpty {
-                primaryActionsSection(story)
+        // Compatibility fallback only. Final-story support must not use coachScreenStory or priority-derived rationale.
+        let story = coachScreenStory
+        let actions = coachCoordinator.state.coachPresentation?.supportActions ?? []
+
+        return AnyView(VStack(alignment: .leading, spacing: 13) {
+            if !actions.isEmpty {
+                primaryActionsSection(actions)
             }
 
             if let rationale = coachCoordinator.state.rationalePresentation {
                 rationaleSection(rationale)
             }
 
-            if story.shouldShowWhy, let why = story.whyThisMatters {
+            if shouldShowOwnerPlanAdjustment,
+               story.shouldShowPlanAdjustment,
+               let planAdjustment = story.planAdjustment {
                 storyInfoSection(
-                    title: "Why This Matters",
-                    subtitle: "The reason behind the recommendation",
-                    icon: "lightbulb.fill",
-                    text: why,
-                    color: story.color
-                )
-            }
-
-            if story.shouldShowPlanAdjustment, let planAdjustment = story.planAdjustment {
-                storyInfoSection(
-                    title: "Plan Adjustment",
-                    subtitle: "Only if the plan needs changing",
+                    title: WeekFitLocalizedString("coach.info.planAdjustment.title"),
+                    subtitle: WeekFitLocalizedString("coach.info.planAdjustment.subtitle"),
                     icon: "arrow.triangle.2.circlepath",
-                    text: planAdjustment,
+                    text: WeekFitCoachRuntimeLocalizedString(planAdjustment),
                     color: CoachPalette.warning
                 )
             }
 
-            if story.shouldShowActivityContext, let activityContext = story.activityContext {
+            if shouldShowOwnerActivityContext,
+               story.shouldShowActivityContext,
+               let activityContext = story.activityContext {
                 storyInfoSection(
-                    title: "Activity Context",
-                    subtitle: "What this activity means right now",
+                    title: WeekFitLocalizedString("coach.info.activityContext.title"),
+                    subtitle: WeekFitLocalizedString("coach.info.activityContext.subtitle"),
                     icon: "figure.mind.and.body",
-                    text: activityContext,
+                    text: WeekFitCoachRuntimeLocalizedString(activityContext),
                     color: story.color
                 )
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading))
+    }
+
+    private func finalStorySupportSection(_ renderModel: CoachFinalStoryRenderModel) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            if !renderModel.supportActions.isEmpty {
+                primaryActionsSection(renderModel.supportActions)
+            }
+
+            if !renderModel.supportSignals.isEmpty {
+                finalStorySupportSignalsSection(renderModel.supportSignals)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func finalStorySupportSignalsSection(_ signals: [CoachFinalStoryRenderedSupportSignal]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            supportGroupHeader(
+                title: WeekFitLocalizedString("coach.supportSignals"),
+                subtitle: WeekFitLocalizedString("coach.supportSignals.subtitle")
+            )
+
+            VStack(spacing: 5) {
+                ForEach(Array(signals.prefix(3).enumerated()), id: \.offset) { _, signal in
+                    coachFocusRow(
+                        signal.title,
+                        color: signal.color,
+                        icon: signal.icon
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var shouldShowOwnerPlanAdjustment: Bool {
+        switch guidance.priority.focus {
+        case .tomorrowPlanRisk, .trainingReadinessWarning:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var shouldShowOwnerActivityContext: Bool {
+        switch guidance.priority.focus {
+        case .activeActivity, .prepareForActivity, .nextActivityLater, .performanceReadiness:
+            return true
+        default:
+            return false
         }
     }
 
     private func rationaleSection(_ presentation: CoachRationalePresentation) -> some View {
         storyInfoSection(
-            title: presentation.title,
-            subtitle: "Decision rationale",
+            title: WeekFitCoachRuntimeLocalizedString(presentation.title),
+            subtitle: WeekFitLocalizedString("coach.info.rationale.subtitle"),
             icon: presentation.icon,
-            text: presentation.message,
+            text: WeekFitCoachRuntimeLocalizedString(presentation.message),
             color: presentation.color
         )
     }
 
-    private func primaryActionsSection(_ story: CoachScreenStory) -> some View {
+    private func primaryActionsSection(_ actions: [CoachSupportActionV3]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: "Primary Actions",
-                subtitle: "Do these next"
+                title: WeekFitLocalizedString("coach.primaryActions"),
+                subtitle: WeekFitLocalizedString("coach.doTheseNext")
             )
 
             VStack(spacing: 5) {
-                ForEach(Array(story.primaryActions.prefix(3).enumerated()), id: \.offset) { _, action in
+                ForEach(Array(actions.prefix(3).enumerated()), id: \.offset) { _, action in
                     coachFocusRow(
-                        action.title,
-                        color: action.color,
+                        finalStory == nil ? coachLocalizedGeneratedText(action.title, fallback: coachFallbackActionTitle(for: action.type)) : action.title,
+                        color: ActionSemanticColor.color(for: action),
                         icon: action.icon
                     )
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func supportSignalsSection(_ story: CoachScreenStory) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: "Support Signals",
-                subtitle: "Helpful secondary reminders"
+                title: WeekFitLocalizedString("coach.supportSignals"),
+                subtitle: WeekFitLocalizedString("coach.supportSignals.subtitle")
             )
 
             VStack(spacing: 5) {
                 ForEach(Array(story.supportActions.prefix(3).enumerated()), id: \.offset) { _, action in
                     coachFocusRow(
-                        action.title,
+                        coachLocalizedGeneratedText(action.title, fallback: coachFallbackActionTitle(for: action.type)),
                         color: action.color,
                         icon: action.icon
                     )
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func storyInfoSection(
@@ -1405,13 +1981,13 @@ struct ExpertCoachViewV3: View {
     ) -> some View {
         coachSectionView(
             CoachSection(
-                title: title,
-                subtitle: subtitle,
+                title: WeekFitCoachRuntimeLocalizedString(title),
+                subtitle: WeekFitCoachRuntimeLocalizedString(subtitle),
                 icon: icon,
                 color: color,
                 style: .info,
                 items: [],
-                informationalText: text
+                informationalText: WeekFitCoachRuntimeLocalizedString(text)
             )
         )
     }
@@ -1421,8 +1997,8 @@ struct ExpertCoachViewV3: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: section.title,
-                subtitle: section.subtitle
+                title: WeekFitCoachRuntimeLocalizedString(section.title),
+                subtitle: WeekFitCoachRuntimeLocalizedString(section.subtitle)
             )
 
             switch section.style {
@@ -1455,7 +2031,7 @@ struct ExpertCoachViewV3: View {
             }
             .padding(.top, 1)
 
-            Text(section.informationalText ?? "")
+            Text(WeekFitCoachRuntimeLocalizedString(section.informationalText ?? ""))
                 .font(.system(size: 13.2, weight: .medium, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.84))
                 .lineSpacing(3)
@@ -1490,7 +2066,7 @@ struct ExpertCoachViewV3: View {
         VStack(spacing: 7) {
             ForEach(Array(section.items.prefix(3).enumerated()), id: \.offset) { _, item in
                 compactSupportRow(
-                    item,
+                    WeekFitCoachRuntimeLocalizedString(item),
                     color: section.color,
                     icon: section.icon
                 )
@@ -1523,7 +2099,7 @@ struct ExpertCoachViewV3: View {
         VStack(spacing: 5) {
             ForEach(Array(section.items.prefix(3).enumerated()), id: \.offset) { _, item in
                 coachFocusRow(
-                    item,
+                    WeekFitCoachRuntimeLocalizedString(item),
                     color: section.color,
                     icon: section.icon
                 )
@@ -1654,6 +2230,7 @@ struct ExpertCoachViewV3: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 46)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(cardBackground.opacity(0.25))
@@ -1797,6 +2374,30 @@ struct ExpertCoachViewV3: View {
         return "priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) strength=\(output.priority.strength) title=\"\(output.priority.todayTitle)\" renderedState=\"\(renderedState)\" renderedTitle=\"\(renderedTitle)\""
     }
 
+    private func debugCoachHeroColorSystem(event: String) {
+        guard let guidance = coachCoordinator.state.guidance else {
+            CoachRefreshDebug.log("[CoachHeroColorDebug]", "event=\(event) priority=missing")
+            return
+        }
+
+        CoachRefreshDebug.log(
+            "[CoachHeroColorDebug]",
+            [
+                "event=\(event)",
+                "priority.focus=\(guidance.priority.focus)",
+                "priority.priority=\(guidance.priority.priority)",
+                "priority.strength=\(guidance.priority.strength)",
+                "priority.severity=\(guidance.priority.severity)",
+                "guidance.importance=\(guidance.importance)",
+                "heroSemanticColorSource=\(heroSemanticColorSource)",
+                "finalStoryRenderModel.colorFamily=\(finalStoryRenderModel?.colorFamily.rawValue ?? "nil")",
+                "coachPresentation.colorSource=\(coachCoordinator.state.coachPresentation == nil ? "nil" : "coachPresentation.color")",
+                "badgeColorSource=heroSemanticColor",
+                "actionColorSource=ActionSemanticColor/per-action"
+            ].joined(separator: " ")
+        )
+    }
+
     private func debugScreenStoryType(_ output: CoachGuidanceV3) -> String {
         guard output.screenStory != nil else { return "nil" }
         return output.narrativePlan.map { "badge=\($0.badgeIntent)" } ?? "legacy"
@@ -1931,16 +2532,119 @@ struct ExpertCoachViewV3: View {
     }
 }
 
+private extension CoachSupportActionV3 {
+    init(_ action: CoachSupportingAction) {
+        self.init(
+            type: action.type,
+            icon: action.icon,
+            title: action.title,
+            subtitle: action.subtitle,
+            color: action.color,
+            actionProvenance: action.actionProvenance
+        )
+    }
+}
+
 enum CoachPalette {
-    static let recovery = Color(red: 0.66, green: 0.58, blue: 0.98)
+    static let recovery = Color(red: 0.18, green: 0.74, blue: 0.89)
     static let hydration = Color(red: 0.40, green: 0.72, blue: 0.98)
     static let warning = Color(red: 1.00, green: 0.76, blue: 0.26)
-    static let fueling = Color(red: 0.52, green: 0.90, blue: 0.70)
-    static let training = Color(red: 0.47, green: 0.42, blue: 1.00)
-    static let stable = Color(red: 0.62, green: 0.84, blue: 0.67)
+    static let fueling = WeekFitTheme.orange
+    static let training = WeekFitTheme.workout
+    static let stable = Color(red: 0.16, green: 0.80, blue: 0.43)
     static let stress = Color(red: 1.00, green: 0.47, blue: 0.47)
 
     // NEW
     static let good = stable
     static let activity = training
+
+    static func accent(for priority: CoachDayPriorityResult) -> Color {
+        if priority.strength == .critical {
+            return stress
+        }
+
+        if priority.focus == .activeActivity {
+            return priority.severity == .critical ? warning : activity
+        }
+
+        switch priority.severity {
+        case .critical:
+            return stress
+        case .caution:
+            if priority.focus == .hydrationBehind || priority.limiter == .hydration {
+                return hydration
+            }
+            if priority.focus == .fuelBehind || priority.limiter == .fueling {
+                return fueling
+            }
+            if priority.focus == .prepareForActivity ||
+                priority.focus == .nextActivityLater ||
+                priority.focus == .performanceReadiness {
+                return training
+            }
+            if priority.focus == .postActivityRecovery ||
+                priority.focus == .recoveryNeeded ||
+                priority.focus == .eveningWindDown ||
+                priority.limiter == .sleep ||
+                priority.limiter == .recovery ||
+                priority.limiter == .insufficientRecoveryTime {
+                return recovery
+            }
+            return warning
+        case .normal:
+            if priority.focus == .postActivityRecovery || priority.focus == .recoveryNeeded || priority.focus == .eveningWindDown {
+                return recovery
+            }
+            return stable
+        }
+    }
+
+    static func accent(for focus: CoachDayFocus) -> Color {
+        switch focus {
+        case .activeActivity, .prepareForActivity, .nextActivityLater, .performanceReadiness:
+            return training
+        case .postActivityRecovery, .recoveryNeeded, .eveningWindDown:
+            return recovery
+        case .hydrationBehind:
+            return hydration
+        case .fuelBehind:
+            return fueling
+        case .trainingReadinessWarning, .tomorrowPlanRisk:
+            return warning
+        case .dailyOverview:
+            return stable
+        }
+    }
+}
+
+private enum ActionSemanticColor {
+    static func color(for action: CoachSupportActionV3) -> Color {
+        switch action.type {
+        case .sleepPriority:
+            return Color(red: 0.30, green: 0.42, blue: 0.95)
+
+        case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually, .electrolyteRecovery:
+            return CoachPalette.hydration
+
+        case .startRecoveryNutrition, .recoveryMeal, .lightFueling, .sustainEnergy, .keepDigestionLight:
+            return CoachPalette.fueling
+
+        case .cooldown, .lightRecoveryMovement:
+            return Color(red: 0.18, green: 0.78, blue: 0.42)
+
+        case .mobilityPrep:
+            return Color(red: 0.20, green: 0.78, blue: 0.68)
+
+        case .breathingReset, .downshiftNervousSystem:
+            return Color(red: 0.22, green: 0.78, blue: 0.88)
+
+        case .controlIntensity:
+            return action.actionProvenance == .activeSessionExecution
+                ? Color(red: 1.00, green: 0.68, blue: 0.24)
+                : Color(red: 0.62, green: 0.66, blue: 0.72)
+
+        case .stayConsistent:
+            return CoachPalette.stable
+        }
+    }
 }

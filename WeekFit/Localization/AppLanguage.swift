@@ -1,4 +1,5 @@
 import Foundation
+internal import Combine
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     static let storageKey = "weekfit.app.language"
@@ -17,5 +18,28 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .russian:
             return AppText.Settings.Language.Option.russian
         }
+    }
+}
+
+@MainActor
+final class AppLanguageManager: ObservableObject {
+    @Published var selectedLanguage: AppLanguage {
+        didSet {
+            guard selectedLanguage != oldValue else { return }
+            UserDefaults.standard.set(selectedLanguage.rawValue, forKey: AppLanguage.storageKey)
+            WeekFitSetCurrentLanguage(selectedLanguage)
+        }
+    }
+
+    var locale: Locale {
+        Locale(identifier: selectedLanguage.localeIdentifier)
+    }
+
+    init() {
+        let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+            ?? AppLanguage.english.rawValue
+        let storedLanguage = AppLanguage(rawValue: storedLanguageCode) ?? .english
+        self.selectedLanguage = storedLanguage
+        WeekFitSetCurrentLanguage(storedLanguage)
     }
 }

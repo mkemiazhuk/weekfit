@@ -11,8 +11,8 @@ enum CoachSectionBuilder {
     ) -> [CoachSection] {
 
         if let priority,
-           !priority.supportBullets.isEmpty {
-            return prioritySections(priority, color: coachAccentColor)
+           priorityHasSectionContent(priority) {
+            return normalizedSections(prioritySections(priority, color: coachAccentColor))
         }
 
         let profile = CoachActivityProfileResolver.resolve(scenario: scenario)
@@ -47,7 +47,7 @@ enum CoachSectionBuilder {
             )
         }
 
-        return sections.filter { !$0.isEmpty }
+        return normalizedSections(sections)
     }
 }
 
@@ -74,6 +74,10 @@ private extension CoachSectionBuilder {
                        !whyNormalized.contains(bulletNormalized) &&
                        !bulletNormalized.contains(whyNormalized)
             }
+        let localizedSupportBullets = localizedPrioritySupportBullets(
+            for: priority,
+            rawBullets: cleanedSupportBullets
+        )
 
         var sections = [
             CoachSection(
@@ -82,34 +86,40 @@ private extension CoachSectionBuilder {
                 icon: supportIcon(for: priority.priority),
                 color: color,
                 style: .cards,
-                items: cleanedSupportBullets
+                items: localizedSupportBullets
             )
         ]
 
         if let whyText, !whyText.isEmpty {
             sections.append(
                 CoachSection(
-                    title: "Why This Matters",
-                    subtitle: "The day-level reason behind this priority.",
+                    title: WeekFitLocalizedString("coach.info.whyThisMatters.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.priorityWhy.subtitle"),
                     icon: "leaf.fill",
                     color: CoachPalette.recovery,
                     style: .info,
-                    informationalText: whyText
+                    informationalText: localizedPriorityText(
+                        whyText,
+                        fallback: priorityWhyFallback(for: priority)
+                    )
                 )
             )
         }
 
-        if let planChallenge = priority.planChallenge?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !planChallenge.isEmpty {
+        let planChallenge = priority.planChallenge?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if shouldShowPlanChallenge(for: priority, planChallenge: planChallenge) {
             sections.append(
                 CoachSection(
-                    title: "Plan Challenge",
-                    subtitle: "What to change if the signals stay the same.",
+                    title: WeekFitLocalizedString("coach.info.planChallenge.title"),
+                    subtitle: WeekFitLocalizedString("coach.info.planChallenge.subtitle"),
                     icon: "exclamationmark.triangle.fill",
                     color: CoachPalette.warning,
                     style: .info,
-                    informationalText: planChallenge
+                    informationalText: localizedPriorityText(
+                        planChallenge ?? "",
+                        fallback: priorityPlanFallback(for: priority)
+                    )
                 )
             )
         }
@@ -120,40 +130,40 @@ private extension CoachSectionBuilder {
     static func supportTitle(for priority: CoachDayPriorityResult) -> String {
         switch priority.priority {
         case .recovery, .sleepPreparation:
-            return priority.limiter == .sleep ? "Sleep Support" : "Recovery Support"
+            return priority.limiter == .sleep ? WeekFitLocalizedString("coach.section.sleepSupport.title") : WeekFitLocalizedString("coach.section.recoverySupport.title")
         case .hydration:
-            return "Hydration Support"
+            return WeekFitLocalizedString("coach.section.hydrationSupport.title")
         case .fueling:
-            return "Fueling Support"
+            return WeekFitLocalizedString("coach.section.fuelingSupport.title")
         case .planChallenge:
-            return "Plan Adjustment"
+            return WeekFitLocalizedString("coach.info.planAdjustment.title")
         case .performance:
-            return "Training Adjustment"
+            return WeekFitLocalizedString("coach.section.trainingAdjustment.title")
         case .activeSession:
-            return "Session Focus"
+            return WeekFitLocalizedString("coach.section.sessionFocus.title")
         case .stable:
-            return "Daily Rhythm"
+            return WeekFitLocalizedString("coach.section.dailyRhythm.title")
         }
     }
 
     static func supportSubtitle(for priority: CoachDayPriorityResult) -> String {
         switch priority.priority {
         case .sleepPreparation:
-            return "Use the rest of the day to downshift."
+            return WeekFitLocalizedString("coach.section.subtitle.sleepPreparation")
         case .recovery:
-            return "Protect the rest of the day."
+            return WeekFitLocalizedString("coach.section.subtitle.recovery")
         case .hydration:
-            return "Bring fluids back up before more demand."
+            return WeekFitLocalizedString("coach.section.subtitle.hydration")
         case .fueling:
-            return "Make energy available before the next hard block."
+            return WeekFitLocalizedString("coach.section.subtitle.fueling")
         case .planChallenge:
-            return "Adjust the plan if readiness stays low."
+            return WeekFitLocalizedString("coach.section.subtitle.planChallenge")
         case .performance:
-            return "Keep the plan flexible."
+            return WeekFitLocalizedString("coach.section.subtitle.performance")
         case .activeSession:
-            return "What matters while this is live."
+            return WeekFitLocalizedString("coach.section.subtitle.activeSession")
         case .stable:
-            return "Keep the basics steady."
+            return WeekFitLocalizedString("coach.section.subtitle.stable")
         }
     }
 
@@ -174,6 +184,168 @@ private extension CoachSectionBuilder {
         case .stable:
             return "waveform.path.ecg"
         }
+    }
+
+    static func priorityHasSectionContent(_ priority: CoachDayPriorityResult) -> Bool {
+        !priority.supportBullets.isEmpty ||
+            !(priority.whyThisMatters?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) ||
+            !(priority.planChallenge?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) ||
+            priority.priority == .planChallenge
+    }
+
+    static func shouldShowPlanChallenge(
+        for priority: CoachDayPriorityResult,
+        planChallenge: String?
+    ) -> Bool {
+        !(planChallenge?.isEmpty ?? true) || priority.priority == .planChallenge
+    }
+
+    static func localizedPrioritySupportBullets(
+        for priority: CoachDayPriorityResult,
+        rawBullets: [String]
+    ) -> [String] {
+        guard !rawBullets.isEmpty else {
+            return []
+        }
+
+        let fallbacks = prioritySupportFallbacks(for: priority)
+        return rawBullets.enumerated().map { index, bullet in
+            localizedPriorityText(
+                bullet,
+                fallback: fallbacks[index % fallbacks.count]
+            )
+        }
+    }
+
+    static func localizedPriorityText(_ text: String, fallback: String) -> String {
+        let localized = WeekFitCoachRuntimeLocalizedString(text)
+        if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+            return localized
+        }
+        return fallback
+    }
+
+    static func prioritySupportFallbacks(for priority: CoachDayPriorityResult) -> [String] {
+        switch priority.priority {
+        case .sleepPreparation:
+            return ["Сохраните сон сегодня", "Сделайте вечер спокойным", "Не добавляйте позднюю нагрузку"]
+        case .recovery:
+            return ["Держите движение легким", "Восстановите воду и питание", "Не добавляйте интенсивность"]
+        case .hydration:
+            return ["Пейте воду постепенно", "Держите бутылку рядом", "Не догоняйте цель одним большим объемом"]
+        case .fueling:
+            return ["Добавьте простой прием пищи", "Сделайте еду легко усваиваемой", "Не откладывайте питание до старта"]
+        case .planChallenge:
+            return ["Снизьте потолок нагрузки", "Сохраните сон сегодня", "Оставьте план гибким"]
+        case .performance:
+            return ["Начните легче обычного", "Держите усилие повторяемым", "Корректируйте по самочувствию"]
+        case .activeSession:
+            return ["Держите усилие ровным", "Пейте спокойно", "Закончите с запасом"]
+        case .stable:
+            return ["Сохраняйте ритм", "Держите воду и питание ровно", "Не добавляйте лишнюю нагрузку"]
+        }
+    }
+
+    static func priorityWhyFallback(for priority: CoachDayPriorityResult) -> String {
+        switch priority.priority {
+        case .sleepPreparation:
+            return "Сон сегодня задает качество восстановления и готовность к следующему дню."
+        case .recovery:
+            return "Организм лучше адаптируется, когда после нагрузки есть место для восстановления."
+        case .hydration:
+            return "Жидкость поддерживает качество движения, терморегуляцию и восстановление."
+        case .fueling:
+            return "Питание делает энергию доступной до нагрузки и помогает восстановиться после нее."
+        case .planChallenge:
+            return "План работает лучше, когда его можно адаптировать под реальную готовность."
+        case .performance:
+            return "Качество тренировки зависит от контролируемого старта и умения вовремя снизить усилие."
+        case .activeSession:
+            return "Во время тренировки важнее повторяемое усилие, чем попытка добрать план любой ценой."
+        case .stable:
+            return "Стабильный день не требует исправления, ему нужен ровный ритм."
+        }
+    }
+
+    static func priorityPlanFallback(for priority: CoachDayPriorityResult) -> String {
+        switch priority.priority {
+        case .planChallenge, .performance:
+            return "Если готовность не улучшится к тренировке, сделайте ее легче или перенесите интенсивность."
+        case .recovery, .sleepPreparation:
+            return "Оставьте следующий блок гибким, пока восстановление не станет надежнее."
+        case .hydration:
+            return "Не повышайте нагрузку, пока гидратация не вернется в норму."
+        case .fueling:
+            return "Не начинайте требовательную работу, пока питание не закрыто."
+        case .activeSession:
+            return "Пусть текущая тренировка задаст реальный темп нагрузки."
+        case .stable:
+            return "План можно оставить без изменений."
+        }
+    }
+
+    static func normalizedSections(_ sections: [CoachSection]) -> [CoachSection] {
+        var seenSectionKeys = Set<String>()
+        var seenTextIdeas = Set<String>()
+        var result: [CoachSection] = []
+
+        for section in sections where !section.isEmpty {
+            let title = WeekFitCoachRuntimeLocalizedString(section.title)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let subtitle = WeekFitCoachRuntimeLocalizedString(section.subtitle)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let sectionKey = normalizedIdea("\(title) \(subtitle) \(section.icon)")
+            guard !sectionKey.isEmpty, !seenSectionKeys.contains(sectionKey) else { continue }
+
+            let items = section.items.compactMap { item -> String? in
+                let localized = WeekFitCoachRuntimeLocalizedString(item)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let idea = normalizedIdea(localized)
+                guard !localized.isEmpty, !idea.isEmpty, !seenTextIdeas.contains(idea) else {
+                    return nil
+                }
+                seenTextIdeas.insert(idea)
+                return localized
+            }
+
+            let informationalText: String? = {
+                guard let text = section.informationalText else { return nil }
+                let localized = WeekFitCoachRuntimeLocalizedString(text)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let idea = normalizedIdea(localized)
+                guard !localized.isEmpty, !idea.isEmpty, !seenTextIdeas.contains(idea) else {
+                    return nil
+                }
+                seenTextIdeas.insert(idea)
+                return localized
+            }()
+
+            let cleaned = CoachSection(
+                title: title,
+                subtitle: subtitle,
+                icon: section.icon,
+                color: section.color,
+                style: section.style,
+                items: items,
+                informationalText: informationalText
+            )
+            guard !cleaned.isEmpty else { continue }
+            seenSectionKeys.insert(sectionKey)
+            result.append(cleaned)
+        }
+
+        return result
+    }
+
+    static func normalizedIdea(_ text: String) -> String {
+        text
+            .lowercased()
+            .replacingOccurrences(of: "[^a-zа-яё0-9]+", with: " ", options: .regularExpression)
+            .split(separator: " ")
+            .filter { token in
+                !["the", "and", "this", "that", "with", "для", "это", "сейчас", "сегодня", "чтобы"].contains(String(token))
+            }
+            .joined(separator: " ")
     }
 }
 
@@ -202,7 +374,7 @@ private extension CoachSectionBuilder {
 
         return [
             CoachSection(
-                title: "Fuel & Hydration",
+                title: WeekFitLocalizedString("coach.section.fuelHydration.title"),
                 subtitle: fuelSubtitle(for: scenario),
                 icon: "fork.knife",
                 color: WeekFitTheme.meal,
@@ -211,7 +383,7 @@ private extension CoachSectionBuilder {
             ),
 
             CoachSection(
-                title: "Session Focus",
+                title: WeekFitLocalizedString("coach.section.sessionFocus.title"),
                 subtitle: sessionSubtitle(for: scenario),
                 icon: "checkmark",
                 color: coachAccentColor,
@@ -235,40 +407,40 @@ private extension CoachSectionBuilder {
         case .before:
             return [
                 CoachSection(
-                    title: "Settle In",
-                    subtitle: "How to enter the session calmly.",
+                    title: WeekFitLocalizedString("coach.section.settleIn.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.settleIn.subtitle"),
                     icon: "wind",
                     color: CoachPalette.recovery,
                     style: .cards,
                     items: [
-                        "Sit or lie down comfortably",
-                        "Let the exhale become slower",
-                        "Do not force the breath"
+                        WeekFitLocalizedString("coach.section.breathing.before.sit"),
+                        WeekFitLocalizedString("coach.section.breathing.before.exhale"),
+                        WeekFitLocalizedString("coach.section.breathing.before.noForce")
                     ]
                 ),
 
                 CoachSection(
-                    title: "Coach Insight",
-                    subtitle: "What to keep in mind.",
+                    title: WeekFitLocalizedString("coach.section.insight.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.insight.keepInMind"),
                     icon: "leaf.fill",
                     color: CoachPalette.recovery,
                     style: .info,
-                    informationalText: "This is not a performance block. The goal is to create a calmer state and let the body downshift."
+                    informationalText: WeekFitLocalizedString("coach.section.breathing.before.insight")
                 )
             ]
 
         case .during:
             return [
                 CoachSection(
-                    title: "Stay With It",
-                    subtitle: "What matters during this session.",
+                    title: WeekFitLocalizedString("coach.section.stayWithIt.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.stayWithIt.subtitle"),
                     icon: "wind",
                     color: CoachPalette.recovery,
                     style: .cards,
                     items: [
-                        "Keep the breath comfortable",
-                        "Make the exhale gentle",
-                        "Return calmly if your mind wanders"
+                        WeekFitLocalizedString("coach.section.breathing.during.comfortable"),
+                        WeekFitLocalizedString("coach.section.breathing.during.gentleExhale"),
+                        WeekFitLocalizedString("coach.section.breathing.during.returnCalmly")
                     ]
                 )
             ]
@@ -276,38 +448,38 @@ private extension CoachSectionBuilder {
         case .after:
             return [
                 CoachSection(
-                    title: "Recovery Effect",
-                    subtitle: "What changed during the session.",
+                    title: WeekFitLocalizedString("coach.section.recoveryEffect.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.recoveryEffect.subtitle"),
                     icon: "leaf.fill",
                     color: CoachPalette.recovery,
                     style: .cards,
                     items: [
-                        "Heart rate begins to settle",
-                        "Stress may feel lower",
-                        "Recovery mode is easier to maintain"
+                        WeekFitLocalizedString("coach.section.breathing.after.heartRate"),
+                        WeekFitLocalizedString("coach.section.breathing.after.stress"),
+                        WeekFitLocalizedString("coach.section.breathing.after.recoveryMode")
                     ]
                 ),
 
                 CoachSection(
-                    title: "What To Do Next",
-                    subtitle: "How to protect the downshift.",
+                    title: WeekFitLocalizedString("coach.section.next.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.next.subtitle"),
                     icon: "moon.stars.fill",
                     color: CoachPalette.recovery,
                     style: .cards,
                     items: [
-                        "Keep screens low for the next hour",
-                        "Continue into your evening routine",
-                        "Avoid jumping back into stress"
+                        WeekFitLocalizedString("coach.section.breathing.after.screens"),
+                        WeekFitLocalizedString("coach.section.breathing.after.routine"),
+                        WeekFitLocalizedString("coach.section.breathing.after.noStress")
                     ]
                 ),
 
                 CoachSection(
-                    title: "Coach Insight",
-                    subtitle: "The effect continues afterwards.",
+                    title: WeekFitLocalizedString("coach.section.insight.title"),
+                    subtitle: WeekFitLocalizedString("coach.section.insight.afterwards"),
                     icon: "sparkles",
                     color: CoachPalette.recovery,
                     style: .info,
-                    informationalText: "The goal now is simple: protect the relaxed state you just created."
+                    informationalText: WeekFitLocalizedString("coach.section.breathing.after.insight")
                 )
             ]
 
@@ -333,7 +505,7 @@ private extension CoachSectionBuilder {
 
         return [
             CoachSection(
-                title: "Recovery Support",
+                title: WeekFitLocalizedString("coach.section.recoverySupport.title"),
                 subtitle: recoverySupportSubtitle(for: scenario),
                 icon: "drop.fill",
                 color: WeekFitTheme.meal,
@@ -342,8 +514,8 @@ private extension CoachSectionBuilder {
             ),
 
             CoachSection(
-                title: "Why This Matters",
-                subtitle: "How this recovery block helps your body.",
+                title: WeekFitLocalizedString("coach.info.whyThisMatters.title"),
+                subtitle: WeekFitLocalizedString("coach.section.recoveryWhy.subtitle"),
                 icon: "leaf.fill",
                 color: CoachPalette.recovery,
                 style: .info,
@@ -364,39 +536,39 @@ private extension CoachSectionBuilder {
                 scenario.dayTime == .lateEvening ||
                 scenario.dayTime == .night {
                 return [
-                    "Drink 300–500 ml water",
-                    "Keep dinner protein-focused",
-                    "Avoid heavy food right before sleep"
+                    WeekFitLocalizedString("coach.section.recovery.walkEvening.water"),
+                    WeekFitLocalizedString("coach.section.recovery.walkEvening.proteinDinner"),
+                    WeekFitLocalizedString("coach.section.recovery.walkEvening.avoidHeavyFood")
                 ]
             }
 
             return [
-                "Drink water if needed",
-                "Walk at a comfortable pace",
-                "Keep breathing relaxed"
+                WeekFitLocalizedString("coach.section.recovery.walk.water"),
+                WeekFitLocalizedString("coach.section.recovery.walk.pace"),
+                WeekFitLocalizedString("coach.section.recovery.walk.breathing")
             ]
         }
 
         if isStretching(text) {
             return [
-                "Move slowly",
-                "Avoid painful positions",
-                "Focus on range of motion"
+                WeekFitLocalizedString("coach.section.recovery.stretching.slowly"),
+                WeekFitLocalizedString("coach.section.recovery.stretching.noPain"),
+                WeekFitLocalizedString("coach.section.recovery.stretching.range")
             ]
         }
 
         if isYoga(text) {
             return [
-                "Keep the flow gentle",
-                "Avoid forcing deep positions",
-                "Finish calmer than you started"
+                WeekFitLocalizedString("coach.section.recovery.yoga.gentle"),
+                WeekFitLocalizedString("coach.section.recovery.yoga.noForce"),
+                WeekFitLocalizedString("coach.section.recovery.yoga.finishCalmer")
             ]
         }
 
         return [
-            "Keep hydration simple",
-            "Move gently",
-            "Avoid adding load"
+            WeekFitLocalizedString("coach.section.recovery.general.hydration"),
+            WeekFitLocalizedString("coach.section.recovery.general.moveGently"),
+            WeekFitLocalizedString("coach.section.recovery.general.noLoad")
         ]
     }
 }
@@ -412,7 +584,7 @@ private extension CoachSectionBuilder {
 
         [
             CoachSection(
-                title: "Recovery Support",
+                title: WeekFitLocalizedString("coach.section.recoverySupport.title"),
                 subtitle: heatSupportSubtitle(for: scenario),
                 icon: "drop.fill",
                 color: WeekFitTheme.meal,
@@ -421,12 +593,12 @@ private extension CoachSectionBuilder {
             ),
 
             CoachSection(
-                title: "Why This Matters",
-                subtitle: "How heat supports recovery.",
+                title: WeekFitLocalizedString("coach.info.whyThisMatters.title"),
+                subtitle: WeekFitLocalizedString("coach.section.heatWhy.subtitle"),
                 icon: "flame.fill",
                 color: CoachPalette.warning,
                 style: .info,
-                informationalText: "Heat can help circulation, muscle relaxation and the transition into recovery mode. Hydration afterwards is what turns the session into recovery support rather than extra stress."
+                informationalText: WeekFitLocalizedString("coach.section.heatWhy.text")
             )
         ]
     }
@@ -438,23 +610,23 @@ private extension CoachSectionBuilder {
         switch scenario.stage {
         case .before:
             return [
-                "Drink water before heat",
-                "Have mineral water or electrolytes",
-                "Keep food light"
+                WeekFitLocalizedString("coach.section.heat.before.water"),
+                WeekFitLocalizedString("coach.section.heat.minerals"),
+                WeekFitLocalizedString("coach.section.heat.before.foodLight")
             ]
 
         case .during:
             return [
-                "Keep the session comfortable",
-                "Exit if dizzy",
-                "Do not push through stress"
+                WeekFitLocalizedString("coach.section.heat.during.comfortable"),
+                WeekFitLocalizedString("coach.section.heat.during.exitDizzy"),
+                WeekFitLocalizedString("coach.section.heat.during.noPush")
             ]
 
         case .after:
             return [
-                "Drink water slowly",
-                "Have mineral water or electrolytes",
-                "Keep the evening calm"
+                WeekFitLocalizedString("coach.section.heat.after.waterSlowly"),
+                WeekFitLocalizedString("coach.section.heat.minerals"),
+                WeekFitLocalizedString("coach.section.heat.after.calmEvening")
             ]
 
         case .stable:
@@ -472,13 +644,13 @@ private extension CoachSectionBuilder {
     ) -> String {
         switch scenario.stage {
         case .before:
-            return "What to eat, drink or take before starting."
+            return WeekFitLocalizedString("coach.section.fuel.subtitle.before")
         case .during:
-            return "What to use during the session."
+            return WeekFitLocalizedString("coach.section.fuel.subtitle.during")
         case .after:
-            return "What supports recovery after training."
+            return WeekFitLocalizedString("coach.section.fuel.subtitle.after")
         case .stable:
-            return "Useful nutrition and hydration support."
+            return WeekFitLocalizedString("coach.section.fuel.subtitle.stable")
         }
     }
 
@@ -487,13 +659,13 @@ private extension CoachSectionBuilder {
     ) -> String {
         switch scenario.stage {
         case .before:
-            return "How to approach the upcoming session."
+            return WeekFitLocalizedString("coach.section.session.subtitle.before")
         case .during:
-            return "What matters while the session is happening."
+            return WeekFitLocalizedString("coach.section.session.subtitle.during")
         case .after:
-            return "How to recover from the completed session."
+            return WeekFitLocalizedString("coach.section.session.subtitle.after")
         case .stable:
-            return "Training guidance for the current context."
+            return WeekFitLocalizedString("coach.section.session.subtitle.stable")
         }
     }
 
@@ -502,13 +674,13 @@ private extension CoachSectionBuilder {
     ) -> String {
         switch scenario.stage {
         case .before:
-            return "What helps recovery around this activity."
+            return WeekFitLocalizedString("coach.section.recovery.subtitle.before")
         case .during:
-            return "What to keep in mind while doing it."
+            return WeekFitLocalizedString("coach.section.recovery.subtitle.during")
         case .after:
-            return "What to do over the next 1–2 hours."
+            return WeekFitLocalizedString("coach.section.recovery.subtitle.after")
         case .stable:
-            return "Simple recovery support for now."
+            return WeekFitLocalizedString("coach.section.recovery.subtitle.stable")
         }
     }
 
@@ -517,13 +689,13 @@ private extension CoachSectionBuilder {
     ) -> String {
         switch scenario.stage {
         case .before:
-            return "What to do before heat exposure."
+            return WeekFitLocalizedString("coach.section.heat.subtitle.before")
         case .during:
-            return "How to keep the heat block safe."
+            return WeekFitLocalizedString("coach.section.heat.subtitle.during")
         case .after:
-            return "What to do over the next 1–2 hours."
+            return WeekFitLocalizedString("coach.section.recovery.subtitle.after")
         case .stable:
-            return "Simple heat recovery support."
+            return WeekFitLocalizedString("coach.section.heat.subtitle.stable")
         }
     }
 
@@ -534,18 +706,18 @@ private extension CoachSectionBuilder {
         let text = activityText(scenario)
 
         if isWalk(text) {
-            return "Easy walking supports circulation and recovery without adding meaningful fatigue. The goal is to feel better afterwards, not more tired."
+            return WeekFitLocalizedString("coach.section.recovery.why.walk")
         }
 
         if isStretching(text) {
-            return "Mobility work can reduce stiffness and maintain movement quality between training sessions. Move slowly and avoid forcing painful positions."
+            return WeekFitLocalizedString("coach.section.recovery.why.stretching")
         }
 
         if isYoga(text) {
-            return "Gentle yoga can release tension, improve mobility and help the body downshift. Keep the session calm enough to support recovery."
+            return WeekFitLocalizedString("coach.section.recovery.why.yoga")
         }
 
-        return "Recovery work helps the body settle after load. The goal is to reduce tension, support sleep and avoid adding more stress."
+        return WeekFitLocalizedString("coach.section.recovery.why.general")
     }
 }
 

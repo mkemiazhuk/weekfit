@@ -77,8 +77,11 @@ final class WeekFitDataSynthesizer {
 
         if changes.activity > 10, changes.recovery < -5 {
             return HighlightStory(
-                headline: "Activity is up, but efficiency is dropping",
-                bodyNarrative: "Your training volume increased by \(changes.activity)%, but your recovery metrics didn't match the output. Your body is running on a temporary deficit, causing your overall readiness to trend downward.",
+                headline: WeekFitLocalizedString("highlights.story.activityUpRecoveryDown.headline"),
+                bodyNarrative: String(
+                    format: WeekFitLocalizedString("highlights.story.activityUpRecoveryDown.bodyFormat"),
+                    changes.activity
+                ),
                 primaryMetric: .activity,
                 trend: .down,
                 trendLabel: Self.statusLabel(for: .down),
@@ -90,8 +93,11 @@ final class WeekFitDataSynthesizer {
 
         if changes.sleep > 8, changes.recovery > 5 {
             return HighlightStory(
-                headline: "Recovery became more predictable",
-                bodyNarrative: "Your sleep schedule became more consistent by \(changes.sleep)%, helping your recovery stabilize and bounce back efficiently while training stayed steady.",
+                headline: WeekFitLocalizedString("highlights.story.sleepRecoveryUp.headline"),
+                bodyNarrative: String(
+                    format: WeekFitLocalizedString("highlights.story.sleepRecoveryUp.bodyFormat"),
+                    changes.sleep
+                ),
                 primaryMetric: .sleep,
                 trend: .up,
                 trendLabel: Self.statusLabel(for: .up),
@@ -103,8 +109,8 @@ final class WeekFitDataSynthesizer {
 
         if changes.activity < -10, Self.recoveryOrSleepDroppedEarly(in: firstHalf) {
             return HighlightStory(
-                headline: "Training took a back seat this month",
-                bodyNarrative: "And it was likely the right call. Your recovery baselines dropped early in the cycle, and you naturally scaled back your activity volume to prevent burnout and protect your body.",
+                headline: WeekFitLocalizedString("highlights.story.trainingBackSeat.headline"),
+                bodyNarrative: WeekFitLocalizedString("highlights.story.trainingBackSeat.body"),
                 primaryMetric: .recovery,
                 trend: .down,
                 trendLabel: Self.statusLabel(for: .down),
@@ -117,8 +123,8 @@ final class WeekFitDataSynthesizer {
         let downCount = snapshots.filter { $0.trend == .down }.count
         if downCount >= 3 {
             return HighlightStory(
-                headline: "Your rhythm needs attention",
-                bodyNarrative: "Recovery, activity, and sleep moved lower this month. WeekFit is watching whether this is a short dip or a pattern that needs more recovery support.",
+                headline: WeekFitLocalizedString("highlights.story.rhythmNeedsAttention.headline"),
+                bodyNarrative: WeekFitLocalizedString("highlights.story.rhythmNeedsAttention.body"),
                 primaryMetric: .recovery,
                 trend: .down,
                 trendLabel: Self.statusLabel(for: .down),
@@ -134,8 +140,8 @@ final class WeekFitDataSynthesizer {
 
         if recoveryTrend == .stable, activityTrend == .down || sleepTrend == .down {
             return HighlightStory(
-                headline: "Recovery stayed resilient",
-                bodyNarrative: "Your recovery stayed steady despite lighter activity and uneven sleep. A few weaker days did not change the overall pattern.",
+                headline: WeekFitLocalizedString("highlights.story.recoveryResilient.headline"),
+                bodyNarrative: WeekFitLocalizedString("highlights.story.recoveryResilient.body"),
                 primaryMetric: .recovery,
                 trend: .stable,
                 trendLabel: Self.statusLabel(for: .stable),
@@ -146,8 +152,8 @@ final class WeekFitDataSynthesizer {
         }
 
         return HighlightStory(
-            headline: "You've found your rhythm",
-            bodyNarrative: "Recovery stayed steady because your sleep timing and training load were more consistent this month.",
+            headline: WeekFitLocalizedString("highlights.story.foundRhythm.headline"),
+            bodyNarrative: WeekFitLocalizedString("highlights.story.foundRhythm.body"),
             primaryMetric: .recovery,
             trend: .stable,
             trendLabel: Self.statusLabel(for: .stable),
@@ -176,8 +182,8 @@ private extension WeekFitDataSynthesizer {
 
     static var emptyStateStory: HighlightStory {
         HighlightStory(
-            headline: "We're studying your patterns...",
-            bodyNarrative: "WeekFit needs at least 20 days of recovery, activity, nutrition, and sleep data before it can synthesize your first monthly story.",
+            headline: WeekFitLocalizedString("highlights.story.empty.headline"),
+            bodyNarrative: WeekFitLocalizedString("highlights.story.empty.body"),
             primaryMetric: .recovery,
             trend: .stable,
             trendLabel: statusLabel(for: .stable),
@@ -215,11 +221,11 @@ private extension WeekFitDataSynthesizer {
     static func statusLabel(for trend: TrendDirection) -> String {
         switch trend {
         case .up:
-            return "IMPROVING"
+            return WeekFitLocalizedString("highlights.trend.improving")
         case .down:
-            return "NEEDS ATTENTION"
+            return WeekFitLocalizedString("highlights.trend.needsAttention")
         case .stable:
-            return "STABLE"
+            return WeekFitLocalizedString("highlights.trend.stable")
         }
     }
 

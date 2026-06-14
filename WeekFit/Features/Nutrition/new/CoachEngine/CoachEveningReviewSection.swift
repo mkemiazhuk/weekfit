@@ -228,7 +228,7 @@ struct CoachEveningReviewSection: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("Tomorrow Readiness")
+                Text(WeekFitLocalizedString("coach.eveningReview.tomorrowReadiness"))
                     .font(.system(size: 11.8, weight: .semibold, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.56))
 
@@ -246,7 +246,7 @@ struct CoachEveningReviewSection: View {
 
                 if !readiness.recommendation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Recommended")
+                        Text(WeekFitLocalizedString("coach.eveningReview.recommended"))
                             .font(.system(size: 10.4, weight: .bold, design: .rounded))
                             .foregroundStyle(textSecondary.opacity(0.46))
 

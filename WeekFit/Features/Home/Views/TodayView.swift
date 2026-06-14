@@ -29,6 +29,7 @@ struct TodayView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var coachInputProvider: CoachInputProvider
+    @EnvironmentObject private var languageManager: AppLanguageManager
     
     @State private var showProfile = false
     @State private var showContent = false
@@ -86,8 +87,8 @@ struct TodayView: View {
 
         var title: String {
             switch self {
-            case .meals: return "Meals"
-            case .snacks: return "Snacks"
+            case .meals: return WeekFitLocalizedString("today.quickLog.section.meals")
+            case .snacks: return WeekFitLocalizedString("today.quickLog.section.snacks")
             }
         }
     }
@@ -208,6 +209,8 @@ struct TodayView: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack(alignment: .bottom) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
@@ -306,14 +309,19 @@ struct TodayView: View {
         .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
             updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.nutritionCoachStateRefreshID")
         }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.language")
+        }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
                 ProfileView()
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
+                            Button {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 showProfile = false // Плавное закрытие шторки
+                            } label: {
+                                Text(AppText.Common.Action.done)
                             }
                             .font(.system(size: 15, weight: .bold))
                             .foregroundColor(Color(red: 0.16, green: 0.80, blue: 0.43)) // Твой зеленый WeekFit акцент
@@ -323,6 +331,7 @@ struct TodayView: View {
             .environmentObject(healthManager)
             .environmentObject(nutritionViewModel)
             .environmentObject(appSession)
+            .environmentObject(languageManager)
             .presentationDetents([.large])
             .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
@@ -358,10 +367,10 @@ struct TodayView: View {
 
                 VStack(spacing: 0) {
                     PremiumBottomSheetHeader(
-                        title: "Log Food",
+                        title: WeekFitLocalizedString("today.quickLog.title.logFood"),
                         subtitle: selectedLogTab == .meals
-                            ? "Quick add saved meals"
-                            : "Quick add snacks"
+                            ? WeekFitLocalizedString("today.quickLog.subtitle.savedFoods")
+                            : WeekFitLocalizedString("today.quickLog.subtitle.drinksSnacks")
                     ) {
                         showDirectMealLogSheet = false
                     }
@@ -382,9 +391,9 @@ struct TodayView: View {
                                 if quickLogMealRows.isEmpty {
                                     quickLogEmptyState(
                                         icon: "fork.knife.circle.fill",
-                                        title: "No saved meals yet",
-                                        message: "Create meals first, then log them instantly here.",
-                                        buttonTitle: "Open Meals Library",
+                                        title: WeekFitLocalizedString("today.quickLog.empty.savedFood.title"),
+                                        message: WeekFitLocalizedString("today.quickLog.empty.savedFood.message"),
+                                        buttonTitle: WeekFitLocalizedString("today.quickLog.empty.savedFood.action"),
                                         showAction: true
                                     )
                                 } else {
@@ -401,14 +410,14 @@ struct TodayView: View {
                                 if quickLogSnackRows.isEmpty {
                                     quickLogEmptyState(
                                         icon: "leaf.fill",
-                                        title: "No snacks available",
-                                        message: "Check that drinks_snacks.json is added to the app bundle.",
+                                        title: WeekFitLocalizedString("today.quickLog.empty.quickItems.title"),
+                                        message: WeekFitLocalizedString("today.quickLog.empty.quickItems.message"),
                                         buttonTitle: nil,
                                         showAction: false
                                     )
                                 } else {
                                     if !quickLogSnackRows.isEmpty {
-                                        quickLogSectionHeader("Snacks")
+                                        quickLogSectionHeader(WeekFitLocalizedString("today.quickLog.section.snacks"))
                                             .padding(.top, 2)
 
                                         ForEach(quickLogSnackRows) { row in
@@ -454,8 +463,8 @@ struct TodayView: View {
 
                 VStack(spacing: 0) {
                     PremiumBottomSheetHeader(
-                        title: "Log Drinks",
-                        subtitle: "Quick add water or another drink"
+                        title: WeekFitLocalizedString("today.quickActions.logDrinks"),
+                        subtitle: WeekFitLocalizedString("today.quickLog.subtitle.drinks")
                     ) {
                         showDirectDrinkLogSheet = false
                     }
@@ -465,13 +474,13 @@ struct TodayView: View {
                             if quickLogDrinkRows.isEmpty {
                                 quickLogEmptyState(
                                     icon: "drop.fill",
-                                    title: "No drinks available",
-                                    message: "Check that drinks_snacks.json is added to the app bundle.",
+                                    title: WeekFitLocalizedString("today.quickLog.empty.drinks.title"),
+                                    message: WeekFitLocalizedString("today.quickLog.empty.quickItems.message"),
                                     buttonTitle: nil,
                                     showAction: false
                                 )
                             } else {
-                                quickLogSectionHeader("Drinks")
+                                quickLogSectionHeader(WeekFitLocalizedString("today.quickLog.section.drinks"))
                                     .padding(.top, 2)
 
                                 ForEach(quickLogDrinkRows) { row in
@@ -767,15 +776,15 @@ struct TodayView: View {
     }
 
     private func quickItemMetaText(for item: QuickItem) -> String? {
-        let macros = "P \(item.protein)g • C \(item.carbs)g • F \(item.fats)g"
+        let macros = localizedMacroSummary(protein: item.protein, carbs: item.carbs, fats: item.fats)
         let hasMacros = item.protein > 0 || item.carbs > 0 || item.fats > 0
 
         if item.calories > 0, hasMacros {
-            return "\(item.calories) kcal • \(macros)"
+            return "\(localizedCalories(item.calories)) • \(macros)"
         }
 
         if item.calories > 0 {
-            return "\(item.calories) kcal"
+            return localizedCalories(item.calories)
         }
 
         return hasMacros ? macros : nil
@@ -821,13 +830,29 @@ struct TodayView: View {
     }
 
     private func quickMealMacroText(for meal: Meals) -> String {
-        let macros = "P \(meal.protein)g • C \(meal.carbs)g • F \(meal.fats)g"
+        let macros = localizedMacroSummary(protein: meal.protein, carbs: meal.carbs, fats: meal.fats)
 
         if meal.calories > 0 {
-            return "\(meal.calories) kcal • \(macros)"
+            return "\(localizedCalories(meal.calories)) • \(macros)"
         }
 
         return macros
+    }
+
+    private func localizedMacroSummary(protein: Int, carbs: Int, fats: Int) -> String {
+        [
+            "\(WeekFitLocalizedString("meals.library.macroProtein")) \(localizedGrams(protein))",
+            "\(WeekFitLocalizedString("meals.library.macroCarbs")) \(localizedGrams(carbs))",
+            "\(WeekFitLocalizedString("meals.library.macroFats")) \(localizedGrams(fats))"
+        ].joined(separator: " • ")
+    }
+
+    private func localizedCalories(_ calories: Int) -> String {
+        String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), calories)
+    }
+
+    private func localizedGrams(_ grams: Int) -> String {
+        String(format: WeekFitLocalizedString("common.unit.gramFormat"), grams)
     }
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
@@ -835,6 +860,7 @@ struct TodayView: View {
         coachInputProvider.refreshFromCurrentState(
             selectedDate: selectedDate,
             dayActivities: selectedDayActivities,
+            allPlannedActivities: plannedActivities,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
@@ -859,6 +885,33 @@ struct TodayView: View {
         #if DEBUG
         let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
         logger.debug("\(String(format: "%@ end %.1fms", label, elapsed), privacy: .public)")
+        #endif
+    }
+
+    private func debugTodayCoachInsight(
+        semanticInsight: DynamicInsight?,
+        titleKey: String,
+        subtitleKey: String,
+        localizedTitle: String,
+        localizedSubtitle: String,
+        coachScreenStoryTitle: String?
+    ) {
+        #if DEBUG
+        let insightID = semanticInsight?.actionID ?? "missing"
+        let semanticTitle = semanticInsight?.title ?? titleKey
+        let semanticSubtitle = semanticInsight?.text ?? subtitleKey
+        if let coachScreenStoryTitle {
+            let expectedTitle = WeekFitCoachRuntimeLocalizedString(coachScreenStoryTitle)
+            if localizedTitle != expectedTitle {
+                Self.logger.error(
+                    "TodayCoachInsight narrative mismatch localizedTitle=\(localizedTitle, privacy: .public) coachScreenStoryTitle=\(expectedTitle, privacy: .public)"
+                )
+                assertionFailure("TodayCoachInsight title must match CoachScreenStory title")
+            }
+        }
+        Self.logger.debug(
+            "TodayCoachInsight language=\(languageManager.selectedLanguage.rawValue, privacy: .public) semanticInsightID=\(insightID, privacy: .public) titleKey=\(semanticTitle, privacy: .public) subtitleKey=\(semanticSubtitle, privacy: .public) localizedTitle=\(localizedTitle, privacy: .public) localizedSubtitle=\(localizedSubtitle, privacy: .public)"
+        )
         #endif
     }
     
@@ -1238,7 +1291,7 @@ struct TodayView: View {
         WeekFitScreenContainer {
 
             WeekFitScreenHeader(
-                title: "Today",
+                title: WeekFitLocalizedString("today.title"),
                 subtitle: selectedDateTitle,
                 initials: userSettings.profileInitials,
                 showAvatar: true
@@ -1381,11 +1434,11 @@ struct TodayView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Evening Review is ready")
+                    Text(AppText.Today.eveningReviewReady)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
 
-                    Text("Open Coach to review how today went.")
+                    Text(AppText.Today.eveningReviewSubtitle)
                         .font(.system(size: 11.5, weight: .medium, design: .rounded))
                         .foregroundStyle(textSecondary.opacity(0.72))
                 }
@@ -1416,9 +1469,9 @@ struct TodayView: View {
         let remaining = target + burned - eaten
         
         if remaining > 0 {
-            return "Left: \(Int(remaining)) kcal"
+            return String(format: WeekFitLocalizedString("today.calories.leftFormat"), Int(remaining))
         } else {
-            return "Over: \(Int(abs(remaining))) kcal"
+            return String(format: WeekFitLocalizedString("today.calories.overFormat"), Int(abs(remaining)))
         }
     }
 
@@ -1450,30 +1503,30 @@ struct TodayView: View {
         let nutritionColor = Color(red: 0.95, green: 0.65, blue: 0.12)
         let recoveryColor = Color(red: 0.18, green: 0.74, blue: 0.89)
 
-        let activityGoalText = "Goal: \(Int(baseGoal)) kcal"
-        let activityValueText = "\(Int(healthManager.activeCalories)) kcal"
+        let activityGoalText = String(format: WeekFitLocalizedString("today.status.activity.goalFormat"), Int(baseGoal))
+        let activityValueText = String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(healthManager.activeCalories))
 
         let sleepValueInfoText = healthManager.sleepMinutes > 0
-            ? String(format: "Sleep: %.1f h", Double(healthManager.sleepMinutes) / 60.0)
-            : "Sleep: —"
+            ? String(format: WeekFitLocalizedString("today.sleep.valueFormat"), Double(healthManager.sleepMinutes) / 60.0)
+            : WeekFitLocalizedString("today.sleep.empty")
 
         let recoveryStatusText: String = {
-            guard hasRecoveryData else { return "Syncing" }
+            guard hasRecoveryData else { return WeekFitLocalizedString("today.recovery.syncing") }
 
             if recoveryPercent >= 85 || (healthManager.hrvSDNN > 75.0 && healthManager.restingHeartRate < 60.0) {
-                return "High recovery"
+                return WeekFitLocalizedString("today.recovery.ready")
             } else if recoveryPercent >= 70 {
-                return "Solid recovery"
+                return WeekFitLocalizedString("today.recovery.good")
             } else if recoveryPercent >= 50 {
-                return "Moderate recovery"
+                return WeekFitLocalizedString("today.recovery.ok")
             } else if recoveryPercent > 0 {
-                return "Low recovery"
+                return WeekFitLocalizedString("today.recovery.needRest")
             } else {
-                return "Syncing"
+                return WeekFitLocalizedString("today.recovery.syncing")
             }
         }()
 
-        let exerciseValueText = "\(healthManager.exerciseMinutes)"
+        let exerciseValueText = compactActivityMetricDuration(healthManager.exerciseMinutes)
         let standValueText = healthManager.standHours > 0 ? "\(healthManager.standHours)/12" : "-"
         let vo2ValueText = healthManager.cardioFitnessVO2 > 0 ? String(format: "%.1f", healthManager.cardioFitnessVO2) : "—"
 
@@ -1484,11 +1537,11 @@ struct TodayView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Daily Status")
+                    Text(AppText.Today.dailyStatusTitle)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(textPrimary)
 
-                    Text("Your key metrics at a glance")
+                    Text(AppText.Today.dailyStatusSubtitle)
                         .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(textTertiary)
                 }
@@ -1510,11 +1563,11 @@ struct TodayView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Connect Apple Health")
+                            Text(AppText.Today.connectAppleHealth)
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(textPrimary)
 
-                            Text("WeekFit uses Health data to adapt activity, recovery and nutrition to your real day.")
+                            Text(AppText.Today.healthDescription)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(textSecondary)
                                 .lineSpacing(2)
@@ -1536,7 +1589,7 @@ struct TodayView: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text("Connect Apple Health")
+                            Text(AppText.Today.connectAppleHealth)
                         }
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.black)
@@ -1575,7 +1628,7 @@ struct TodayView: View {
                     } label: {
                         VStack(spacing: 12) {
                             statusRingWidget(
-                                title: "Activity",
+                                title: WeekFitLocalizedString("today.status.activity"),
                                 infoText: activityGoalText,
                                 valueText: activityValueText,
                                 value: activityPercent,
@@ -1583,9 +1636,9 @@ struct TodayView: View {
                             )
 
                             VStack(spacing: 5) {
-                                metricRow(title: "Exercise", value: exerciseValueText, unit: "m", color: activityColor)
-                                metricRow(title: "Stand", value: standValueText, unit: "h", color: activityColor.opacity(0.7))
-                                metricRow(title: "Cardio", value: vo2ValueText, unit: "vo2", color: activityColor.opacity(0.5))
+                                metricRow(title: WeekFitLocalizedString("today.status.metric.exercise"), value: exerciseValueText, unit: "", color: activityColor)
+                                metricRow(title: WeekFitLocalizedString("today.status.metric.stand"), value: standValueText, unit: WeekFitLocalizedString("common.unit.hoursShort"), color: activityColor.opacity(0.7))
+                                metricRow(title: WeekFitLocalizedString("today.status.metric.cardio"), value: vo2ValueText, unit: WeekFitLocalizedString("common.unit.vo2"), color: activityColor.opacity(0.5))
                             }
                             .padding(6)
                             .background {
@@ -1609,33 +1662,34 @@ struct TodayView: View {
 
                             VStack(spacing: 12) {
                             statusRingWidget(
-                                title: "Nutrition",
+                                title: WeekFitLocalizedString("today.status.nutrition"),
                                 infoText: remainingCaloriesText,
-                                valueText: "\(Int(eatenCalories)) kcal",
+                                valueText: String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(eatenCalories)),
                                 value: nutritionPercent,
                                 color: nutritionColor
                             )
                             VStack(spacing: 5) {
                                 metricRow(
-                                    title: "P",
+                                    title: WeekFitLocalizedString("meals.library.macroProtein"),
                                     value: "\(Int(nutritionViewModel.currentMetrics?.protein ?? 0.0))/\(Int(proteinGoal))",
                                     unit: "",
                                     color: Color(red: 0.55, green: 0.40, blue: 0.85)
                                 )
-
+                                
                                 metricRow(
-                                    title: "C",
-                                    value: "\(Int(nutritionViewModel.currentMetrics?.carbs ?? 0.0))/\(Int(carbsGoal))",
-                                    unit: "",
-                                    color: Color.orange
-                                )
-
-                                metricRow(
-                                    title: "F",
+                                    title: WeekFitLocalizedString("meals.library.macroFats"),
                                     value: "\(Int(nutritionViewModel.currentMetrics?.fats ?? 0.0))/\(Int(fatsGoal))",
                                     unit: "",
                                     color: Color.pink
                                 )
+
+                                metricRow(
+                                    title: WeekFitLocalizedString("meals.library.macroCarbs"),
+                                    value: "\(Int(nutritionViewModel.currentMetrics?.carbs ?? 0.0))/\(Int(carbsGoal))",
+                                    unit: "",
+                                    color: Color.orange
+                                )
+                               
                             }
                             .padding(6)
                             .background {
@@ -1657,32 +1711,32 @@ struct TodayView: View {
                         VStack(spacing: 12) {
 
                             statusRingWidget(
-                                title: "Recovery",
-                                infoText: recoveryDisplayValue == nil ? "Syncing Health" : recoveryStatusText,
-                                valueText: recoveryDisplayValue == nil ? "Loading" : sleepValueInfoText,
+                                title: WeekFitLocalizedString("today.status.recovery"),
+                                infoText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.syncingHealth") : recoveryStatusText,
+                                valueText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.loading") : sleepValueInfoText,
                                 value: recoveryDisplayValue,
                                 color: recoveryColor
                             )
 
                             VStack(spacing: 5) {
                                 metricRow(
-                                    title: "Deep",
+                                    title: WeekFitLocalizedString("today.status.metric.deep"),
                                     value: deepSleepText,
-                                    unit: "h",
+                                    unit: WeekFitLocalizedString("common.unit.hoursShort"),
                                     color: recoveryColor.opacity(0.5)
                                 )
 
                                 metricRow(
-                                    title: "HRV",
+                                    title: WeekFitLocalizedString("today.status.metric.hrv"),
                                     value: hrvValueText,
-                                    unit: "ms",
+                                    unit: WeekFitLocalizedString("common.unit.millisecondShort"),
                                     color: recoveryColor
                                 )
 
                                 metricRow(
-                                    title: "RHR",
+                                    title: WeekFitLocalizedString("today.status.metric.rhr"),
                                     value: rhrValueText,
-                                    unit: "bpm",
+                                    unit: WeekFitLocalizedString("common.unit.bpm"),
                                     color: recoveryColor.opacity(0.7)
                                 )
                             }
@@ -1739,6 +1793,24 @@ struct TodayView: View {
         }
     }
 
+    private func compactActivityMetricDuration(_ minutes: Int) -> String {
+        let safeMinutes = max(0, minutes)
+
+        if safeMinutes < 60 {
+            return "\(safeMinutes)\(compactMinuteUnit)"
+        }
+
+        return String(format: "%.1f%@", Double(safeMinutes) / 60.0, compactHourUnit)
+    }
+
+    private var compactMinuteUnit: String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "м" : "m"
+    }
+
+    private var compactHourUnit: String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "ч" : "h"
+    }
+
     private func statusRingWidget(
         title: String,
         infoText: String,
@@ -1784,10 +1856,14 @@ struct TodayView: View {
 
     private var upNextSection: some View {
         let now = self.now
+        let liveBronze = Color(red: 0.60, green: 0.52, blue: 0.39)
+        let liveBadgeBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
+        let neutralIconFill = Color.white.opacity(0.065)
+        let neutralStroke = Color.white.opacity(0.06)
 
         let activeSession = currentActiveSession
 
-        let futureActivity = selectedDayActivities.first { activity in
+        let futureActivityToday = selectedDayActivities.first { activity in
             guard !activity.isCompleted,
                   !activity.isSkipped else {
                 return false
@@ -1805,18 +1881,85 @@ struct TodayView: View {
             return true
         }
 
-        let nextActivity = futureActivity
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)
+        let futureActivityTomorrow = plannedActivities
+            .filter { activity in
+                guard !activity.isCompleted,
+                      !activity.isSkipped,
+                      activity.date > now,
+                      let tomorrow,
+                      Calendar.current.isDate(activity.date, inSameDayAs: tomorrow) else {
+                    return false
+                }
+
+                return true
+            }
+            .sorted { $0.date < $1.date }
+            .first
+
+        let nextActivity = futureActivityToday ?? futureActivityTomorrow
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Up Next")
+            Text(AppText.Today.upNextTitle)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(textPrimary)
                 .tracking(0.3)
                 .padding(.leading, 2)
 
-            if let activity = nextActivity {
-                let accentColor = activity.color
+            if let activeSession {
+                let activeColor = liveBronze
 
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(activeColor.opacity(0.075))
+                            .frame(width: 44, height: 44)
+                            .overlay(Circle().stroke(activeColor.opacity(0.24), lineWidth: 1))
+
+                        Image(systemName: activeSession.icon.isEmpty ? "figure.run" : activeSession.icon)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(liveBadgeBronze.opacity(0.86))
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AppText.Today.currentSession)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(textPrimary)
+
+                        Text(String(format: WeekFitLocalizedString("today.upNext.inProgressFormat"), shortDisplayTitle(activityDisplayTitle(activeSession))))
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(textTertiary)
+                    }
+
+                    Spacer()
+
+                    Text(AppText.Today.live)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(liveBadgeBronze.opacity(0.92))
+                        .clipShape(Capsule())
+                }
+                .padding(14)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            activeColor.opacity(0.030),
+                            cardBackground.opacity(0.44)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(activeColor.opacity(0.20), lineWidth: 1)
+                )
+                .shadow(color: activeColor.opacity(0.025), radius: 10, y: 4)
+
+            } else if let activity = nextActivity {
                 Button {
                     onSelectTab(.calendar)
                 } label: {
@@ -1824,25 +1967,17 @@ struct TodayView: View {
 
                         ZStack {
                             Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            accentColor.opacity(0.18),
-                                            accentColor.opacity(0.04)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                                .fill(neutralIconFill)
                                 .frame(width: 44, height: 44)
+                                .overlay(Circle().stroke(neutralStroke, lineWidth: 1))
 
                             Image(systemName: activity.icon.isEmpty ? "sparkles" : activity.icon)
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(accentColor)
+                                .foregroundColor(textSecondary.opacity(0.86))
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(shortDisplayTitle(activity.title))
+                            Text(shortDisplayTitle(activityDisplayTitle(activity)))
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundStyle(textPrimary)
 
@@ -1853,12 +1988,12 @@ struct TodayView: View {
 
                         Spacer()
 
-                        Text(activityTime(activity.date))
+                        Text(upNextTimeText(for: activity, selectedDate: selectedDate))
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 0.35, green: 0.55, blue: 0.95))
+                            .foregroundColor(liveBronze.opacity(0.82))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color(red: 0.35, green: 0.55, blue: 0.95).opacity(0.1))
+                            .background(liveBronze.opacity(0.075))
                             .clipShape(Capsule())
 
                         Image(systemName: "chevron.right")
@@ -1866,54 +2001,14 @@ struct TodayView: View {
                             .foregroundStyle(textTertiary)
                     }
                     .padding(14)
-                    .background(cardBackground.opacity(0.5))
+                    .background(cardBackground.opacity(0.38))
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(accentColor.opacity(0.25), lineWidth: 1)
+                            .stroke(neutralStroke, lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
-
-            } else if let activeSession {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(activeSession.color.opacity(0.16))
-                            .frame(width: 44, height: 44)
-
-                        Image(systemName: activeSession.icon.isEmpty ? "figure.run" : activeSession.icon)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(activeSession.color)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Current session")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(textPrimary)
-
-                        Text("\(shortDisplayTitle(activeSession.title)) is in progress")
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundStyle(textTertiary)
-                    }
-
-                    Spacer()
-
-                    Text("LIVE")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(activeSession.color)
-                        .clipShape(Capsule())
-                }
-                .padding(14)
-                .background(cardBackground.opacity(0.35))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(activeSession.color.opacity(0.25), lineWidth: 1)
-                )
 
             } else {
                 Button {
@@ -1926,7 +2021,7 @@ struct TodayView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(Color(red: 0.16, green: 0.80, blue: 0.43))
 
-                        Text("No activities planned yet.")
+                        Text(AppText.Today.noActivitiesPlanned)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(textSecondary)
 
@@ -1960,7 +2055,7 @@ struct TodayView: View {
 
         return activity.date >= active.date && activity.date <= activeEnd
     }
-    
+
     private var currentActiveSession: PlannedActivity? {
         let now = Date()
 
@@ -1976,16 +2071,16 @@ struct TodayView: View {
         switch activity.type.lowercased() {
 
         case "meal":
-            return "Nutrition"
+            return WeekFitLocalizedString("today.activity.context.nutrition")
 
         case "workout":
-            return "Endurance"
+            return WeekFitLocalizedString("today.activity.context.endurance")
 
         case "recovery":
-            return "Recovery"
+            return WeekFitLocalizedString("today.activity.context.recovery")
 
         default:
-            return "Routine"
+            return WeekFitLocalizedString("today.activity.context.routine")
         }
     }
 
@@ -2025,11 +2120,11 @@ struct TodayView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Pending Action Required")
+                            Text(AppText.Today.pendingActionTitle)
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(attentionColor)
 
-                            Text("Your slot '\(pending.title)' needs confirmation. Tap to update your metrics.")
+                            Text(String(format: WeekFitLocalizedString("today.pending.messageFormat"), pending.title))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(textPrimary.opacity(0.92))
                                 .lineSpacing(2)
@@ -2064,12 +2159,22 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if coachCoordinator.state.hasValidGuidance {
-                    let presentation = coachCoordinator.state.todayPresentation
-                    let insightColor = presentation.color
-                    let insightTitle = presentation.title
-                    let insightIcon = presentation.icon
-                    let insightMessage = presentation.message
+                if let finalStory = coachCoordinator.state.finalStory {
+                    let renderModel = CoachFinalStoryRenderModel(story: finalStory)
+                    let insightColor = renderModel.color
+                    let insightTitle = renderModel.title
+                    let insightIcon = renderModel.icon
+                    let insightMessage = renderModel.subtitle
+                    let insightStateLabel = renderModel.badge
+
+                    let _ = debugTodayCoachInsight(
+                        semanticInsight: nil,
+                        titleKey: finalStory.titleKey,
+                        subtitleKey: finalStory.subtitleKey,
+                        localizedTitle: insightTitle,
+                        localizedSubtitle: insightMessage,
+                        coachScreenStoryTitle: nil
+                    )
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2088,7 +2193,7 @@ struct TodayView: View {
 
                             VStack(alignment: .leading, spacing: 8) {
 
-                                Text("COACH INSIGHT")
+                                Text(insightStateLabel)
                                     .font(.system(size: 10.5, weight: .bold))
                                     .tracking(1.3)
                                     .foregroundStyle(insightColor.opacity(0.82))
@@ -2127,7 +2232,7 @@ struct TodayView: View {
                         .background(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.015),
+                                    insightColor.opacity(0.060),
                                     cardBackground.opacity(0.72)
                                 ],
                                 startPoint: .topLeading,
@@ -2137,17 +2242,28 @@ struct TodayView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            insightColor.opacity(0.18),
+                                            Color.white.opacity(0.035)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
                         )
+                        .shadow(color: insightColor.opacity(0.05), radius: 12, y: 5)
                         .shadow(color: Color.black.opacity(0.10), radius: 10, y: 4)
                     }
                     .buttonStyle(.plain)
                 } else {
-                    // Базовый фолбэк-индикатор, пока данные подгружаются
+                    // Settling fallback only. Do not synthesize a legacy Coach story without CoachFinalStory.
                     HStack {
                         ProgressView()
                             .padding(.trailing, 8)
-                        Text("Connect Health to unlock recovery insights")
+                        Text(AppText.Today.connectHealthInsights)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(textSecondary)
                     }
@@ -2199,182 +2315,6 @@ struct TodayView: View {
         handleReturnToTodayRequest()
         now = Date()
         healthRefreshID = UUID()
-    }
-    
-    private func todayCoachInsight(
-        phase: CoachActivityPhaseV3,
-        fallback: (title: String, text: String, icon: String, color: Color)
-    ) -> (title: String, text: String, icon: String, color: Color) {
-
-        switch phase {
-
-        case .active(let activity, _):
-            return (
-                title: activeCoachActionTitle(for: activity),
-                text: activeCoachingMessage(for: activity),
-                icon: activity.icon.isEmpty ? "figure.run" : activity.icon,
-                color: activity.color
-            )
-
-        case .recovering(let activity, _, _):
-            let next = nextRelevantActivity(after: activity)
-
-            return (
-                title: recoveryCoachActionTitle(after: activity, before: next),
-                text: "\(activity.title) completed recently.",
-                icon: "heart.fill",
-                color: CoachPalette.recovery
-            )
-
-        case .preparing(let activity, _, let minutesUntil):
-            return (
-                title: preparingCoachActionTitle(for: activity),
-                text: preparingText(for: activity, minutesUntil: minutesUntil),
-                icon: activity.icon.isEmpty ? "clock.fill" : activity.icon,
-                color: activity.color
-            )
-
-        case .stable:
-            return fallback
-        }
-    }
-    
-    private func preparingText(
-        for activity: PlannedActivity,
-        minutesUntil: Int
-    ) -> String {
-
-        if minutesUntil <= 5 {
-            return "\(activity.title) is about to start."
-        }
-
-        if minutesUntil < 60 {
-            return "\(activity.title) starts in \(minutesUntil) min."
-        }
-
-        if minutesUntil < 120 {
-            let hours = minutesUntil / 60
-            let mins = minutesUntil % 60
-
-            if mins == 0 {
-                return "\(activity.title) starts in \(hours) hour."
-            }
-
-            return "\(activity.title) starts in \(hours)h \(mins)m."
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-
-        let startTime = Calendar.current.date(
-            byAdding: .minute,
-            value: minutesUntil,
-            to: Date()
-        ) ?? Date()
-
-        return "\(activity.title) today at \(formatter.string(from: startTime))."
-    }
-    
-    private func activeCoachingMessage(
-        for activity: PlannedActivity
-    ) -> String {
-
-        let title = activity.title.lowercased()
-
-        if title.contains("tennis") {
-            return "Avoid turning every rally into maximal effort."
-        }
-
-        if title.contains("squash") {
-            return "Keep reserve for the final games."
-        }
-
-        if title.contains("running") {
-            return "Stay below threshold and keep pace sustainable."
-        }
-
-        if title.contains("cycling") {
-            return "Focus on smooth cadence and steady output."
-        }
-
-        if title.contains("upper body") {
-            return "Keep technique consistent and stop before form drops."
-        }
-
-        return "Stay controlled and avoid unnecessary fatigue."
-    }
-    
-    private func nextRelevantActivity(after activity: PlannedActivity) -> PlannedActivity? {
-        selectedDayActivities
-            .filter {
-                $0.terminalState(now: Date()) == .planned &&
-                $0.date > Date()
-            }
-            .filter { $0.id != activity.id }
-            .sorted { $0.date < $1.date }
-            .first
-    }
-
-    private func activeCoachActionTitle(for activity: PlannedActivity) -> String {
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
-
-        switch kind {
-        case .workout, .endurance:
-            return "Stay controlled"
-        case .recovery:
-            return "Keep it easy"
-        case .heat:
-            return "Hydrate steadily"
-        case .meal:
-            return "Fuel calmly"
-        case .other:
-            return "Stay on track"
-        }
-    }
-
-    private func recoveryCoachActionTitle(
-        after activity: PlannedActivity,
-        before next: PlannedActivity?
-    ) -> String {
-        guard let next else {
-            return "Focus on recovery"
-        }
-
-        let nextKind = CoachActivityContextResolverV3.kind(for: next)
-
-        switch nextKind {
-        case .recovery:
-            return "Recover before your next block"
-        case .workout:
-            return "Recover before training"
-        case .endurance:
-            return "Refuel before endurance"
-        case .heat:
-            return "Hydrate before heat"
-        case .meal:
-            return "Refuel next"
-        case .other:
-            return "Recover before moving on"
-        }
-    }
-
-    private func preparingCoachActionTitle(for activity: PlannedActivity) -> String {
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
-
-        switch kind {
-        case .workout:
-            return "Prepare for training"
-        case .endurance:
-            return "Prepare for endurance"
-        case .recovery:
-            return "Keep recovery easy"
-        case .heat:
-            return "Hydrate before heat"
-        case .meal:
-            return "Fuel next"
-        case .other:
-            return "Get ready"
-        }
     }
     
     private func workoutInsightIcon(
@@ -2467,7 +2407,7 @@ struct TodayView: View {
         let activeSession = currentActiveSession
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Quick Actions")
+            Text(AppText.Today.quickActionsTitle)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(textPrimary)
                 .padding(.leading, 2)
@@ -2475,57 +2415,64 @@ struct TodayView: View {
             HStack(spacing: 0) {
                 quickActionItem(
                     icon: "takeoutbag.and.cup.and.straw.fill",
-                    label: "Log Drinks",
+                    label: WeekFitLocalizedString("today.quickActions.logDrinks"),
                     subLabel: String(format: "%.1f/%.1fL", currentWater, waterGoal),
-                    color: Color(red: 0.25, green: 0.55, blue: 0.95)
-                )
+                    color: Color(red: 0.25, green: 0.55, blue: 0.95),
+                    showsWaterToast: showWaterToast
+                ) {
+                    preloadQuickDrinkLogDataIfNeeded()
+                    showDirectDrinkLogSheet = true
+                }
 
                 quickActionItem(
                     icon: "fork.knife",
-                    label: "Log Food",
-                    subLabel: "Meals / Snacks",
-                    color: Color(red: 0.55, green: 0.40, blue: 0.85)
-                )
+                    label: WeekFitLocalizedString("today.quickActions.logFood"),
+                    subLabel: WeekFitLocalizedString("today.quickActions.mealsSnacks"),
+                    color: Color(red: 0.95, green: 0.65, blue: 0.12)
+                ) {
+                    selectedLogTab = .meals
+                    preloadQuickFoodLogDataIfNeeded()
+                    showDirectMealLogSheet = true
+                }
 
                 quickActionItem(
                     icon: activeSession == nil ? "play.circle.fill" : "stop.circle.fill",
-                    label: "Start Activity",
-                    subLabel: activeSession?.title ?? "Workout / Recovery",
-                    color: activeSession == nil
-                        ? Color(red: 0.16, green: 0.80, blue: 0.43)
-                        : Color.orange
-                )
+                    label: activeSession == nil ? WeekFitLocalizedString("today.quickActions.startActivity") : WeekFitLocalizedString("today.quickActions.endActivity"),
+                    subLabel: activeSession.map { activityDisplayTitle($0) }
+                        ?? WeekFitLocalizedString("today.quickActions.workoutRecovery"),
+                    color: activeSession == nil ? CoachPalette.stable : Color(red: 0.60, green: 0.52, blue: 0.39),
+                    liveIndicatorColor: activeSession == nil
+                        ? nil
+                        : Color(red: 0.72, green: 0.63, blue: 0.45)
+                ) {
+                    showDirectWorkoutLogSheet = true
+                }
             }
         }
     }
 
-    private func quickActionItem(icon: String, label: String, subLabel: String, color: Color) -> some View {
+    private func quickActionItem(
+        icon: String,
+        label: String,
+        subLabel: String,
+        color: Color,
+        liveIndicatorColor: Color? = nil,
+        showsWaterToast: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         VStack(spacing: 6) {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                switch label {
-                case "Log Drinks":
-                    preloadQuickDrinkLogDataIfNeeded()
-                    showDirectDrinkLogSheet = true
-                case "Log Food":
-                    selectedLogTab = .meals
-                    preloadQuickFoodLogDataIfNeeded()
-                    showDirectMealLogSheet = true
-                case "Start Activity":
-//                    if currentActiveSession != nil {
-//                        selectedTab = .calendar
-//                    } else {
-                        showDirectWorkoutLogSheet = true
-//                    }
-                default:
-                    break
-                }
+                action()
             } label: {
                 ZStack(alignment: .top) {
-                    Circle().fill(color.opacity(0.12)).frame(width: 48, height: 48)
-                    Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color).frame(width: 48, height: 48)
+                    Circle()
+                        .fill(color.opacity(0.12))
+//                        .overlay(Circle().stroke(color.opacity(0.72), lineWidth: 1.4))
+                        .frame(width: 30, height: 30)
+                    Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color).frame(width: 30, height: 30)
                     
-                    if label == "Log Drinks" && showWaterToast {
+                    if showsWaterToast {
                         Text("+0.25L")
                             .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 3)
@@ -2587,11 +2534,11 @@ struct TodayView: View {
         
         return VStack(spacing: 22) {
             VStack(spacing: 8) {
-                Text("Verify Log Block")
+                Text(AppText.Today.verifyLogBlock)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(textPrimary)
                 
-                Text("Coach requires confirmation for **\(activity.title)** to update your active metabolic and energy expenditure baseline.")
+                Text(String(format: WeekFitLocalizedString("today.verify.messageFormat"), activityDisplayTitle(activity)))
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(textSecondary)
                     .multilineTextAlignment(.center)
@@ -2616,7 +2563,7 @@ struct TodayView: View {
                 } label: {
                     HStack {
                         Image(systemName: "xmark.circle")
-                        Text("I skipped it")
+                        Text(AppText.Today.skippedAction)
                     }
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(textSecondary)
@@ -2640,7 +2587,7 @@ struct TodayView: View {
                 } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Confirm Log")
+                        Text(AppText.Today.confirmLogAction)
                     }
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.black)
@@ -2676,24 +2623,24 @@ struct TodayView: View {
 
         case "meal":
             if activity.title.lowercased().contains("breakfast") {
-                return "Morning fuel"
+                return WeekFitLocalizedString("today.activity.subtitle.morningFuel")
             } else if activity.title.lowercased().contains("snack") {
-                return "Energy support"
+                return WeekFitLocalizedString("today.activity.subtitle.energySupport")
             } else {
-                return "Nutrition support"
+                return WeekFitLocalizedString("today.activity.subtitle.nutritionSupport")
             }
 
         case "workout":
-            return "Training session"
+            return WeekFitLocalizedString("today.activity.subtitle.trainingSession")
 
         case "recovery":
-            return "Recovery block"
+            return WeekFitLocalizedString("today.activity.subtitle.recoveryBlock")
 
         case "hydration":
-            return "Hydration support"
+            return WeekFitLocalizedString("today.activity.subtitle.hydrationSupport")
 
         default:
-            return "Planned activity"
+            return WeekFitLocalizedString("today.activity.subtitle.plannedActivity")
         }
     }
 
@@ -2703,18 +2650,27 @@ struct TodayView: View {
         let remainder = safeMinutes % 60
 
         if hours > 0 && remainder > 0 {
-            return "\(hours)h \(remainder)m"
+            return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, remainder)
         }
 
         if hours > 0 {
-            return "\(hours)h"
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
         }
 
-        return "\(safeMinutes)m"
+        return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), safeMinutes)
     }
 
     private func activityTime(_ date: Date) -> String {
         date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    }
+
+    private func upNextTimeText(for activity: PlannedActivity, selectedDate: Date) -> String {
+        if Calendar.current.isDate(activity.date, inSameDayAs: selectedDate) {
+            return activityTime(activity.date)
+        }
+
+        let prefix = WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Завтра" : "Tomorrow"
+        return "\(prefix) \(activityTime(activity.date))"
     }
 
     private func refreshHealthAndNutritionAsync() async {
@@ -2736,14 +2692,15 @@ struct TodayView: View {
     }
 
     private var selectedDateTitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "EEE, MMM d"
-        return formatter.string(from: selectedDate)
+        WeekFitShortWeekdayMonthDay(selectedDate)
     }
 
     private func shortDisplayTitle(_ title: String) -> String {
         title.components(separatedBy: ",").first ?? title
+    }
+
+    private func activityDisplayTitle(_ activity: PlannedActivity) -> String {
+        WeekFitCoachRuntimeLocalizedString(activity.title)
     }
 
     private var selectedDayActivities: [PlannedActivity] {

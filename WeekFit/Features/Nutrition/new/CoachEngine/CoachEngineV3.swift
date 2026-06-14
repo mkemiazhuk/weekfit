@@ -98,6 +98,7 @@ enum CoachEngineV3 {
             "mappingSource=CoachEngineV3.decide brainStateUsedByCoachContext sleep=\(brain.sleep) recovery=\(brain.recovery) readiness=\(brain.readiness) brainStateUsedByPriorityResolver sleep=\(decisionContext.brain.sleep) recovery=\(decisionContext.brain.recovery) readiness=\(decisionContext.brain.readiness) sourceTimestamp=\(brain.now.timeIntervalSince1970) snapshotID=unavailable"
         )
         let priority = CoachDayPriorityResolver.resolve(decisionContext)
+        logTomorrowPipelineContext(context: decisionContext, selected: priority, rawActivities: activities)
         logDecisionChange(context: decisionContext, selected: priority)
         logPriorityResolution(
             context: decisionContext,
@@ -266,6 +267,7 @@ private extension CoachEngineV3 {
         let hydrationLogCount = activities.filter(isHydrationLog).count
 
         return [
+            "locale=\(WeekFitCurrentLocale().identifier)",
             "day=\(Int(selectedDay))",
             "hydrationLogs=\(hydrationLogCount)",
             metricsSignature(brain.metrics),
@@ -389,6 +391,35 @@ private extension CoachEngineV3 {
         }
 
         return CoachTomorrowPlanContext(dayContext: dayContext)
+    }
+
+    static func logTomorrowPipelineContext(
+        context: CoachDecisionContext,
+        selected: CoachDayPriorityResult,
+        rawActivities: [PlannedActivity]
+    ) {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: context.dayContext.date)
+        let rawTomorrowActivities = tomorrow.map { date in
+            rawActivities.filter { calendar.isDate($0.date, inSameDayAs: date) }
+        } ?? []
+        let plannedActivitiesTomorrow = rawTomorrowActivities.filter { !$0.isCompleted && !$0.isSkipped }
+        let filteredTomorrowActivities = context.tomorrowContext?.dayContext.upcomingTrainingActivities ?? []
+        let tomorrowDemand = context.tomorrowDemand
+
+        CoachLogger.verbose(
+            "[CoachTomorrowPipelineDebug]",
+            "stage=engine rawTomorrowActivities=\(debugTomorrowActivities(rawTomorrowActivities)) plannedActivitiesTomorrow=\(debugTomorrowActivities(plannedActivitiesTomorrow)) filteredTomorrowActivities=\(debugTomorrowActivities(filteredTomorrowActivities)) tomorrowDemand=\(tomorrowDemand.level.rawValue) upcomingTrainingStress=\(context.tomorrowContext?.dayContext.upcomingTrainingStressScore ?? 0) selectedTomorrowProtectionTarget=\(debugTomorrowActivity(selected.focus == .tomorrowPlanRisk ? selected.activity : tomorrowDemand.primaryTrainingActivity))"
+        )
+    }
+
+    static func debugTomorrowActivities(_ activities: [PlannedActivity]) -> String {
+        "[" + activities.map { debugTomorrowActivity($0) }.joined(separator: " | ") + "]"
+    }
+
+    static func debugTomorrowActivity(_ activity: PlannedActivity?) -> String {
+        guard let activity else { return "nil" }
+        return "\(activity.title){type=\(activity.type),duration=\(activity.effectiveDurationMinutes),completed=\(activity.isCompleted),skipped=\(activity.isSkipped)}"
     }
 
     static func logDecisionChange(
@@ -828,6 +859,84 @@ struct CoachSupportActionV3: Identifiable {
         self.subtitle = subtitle
         self.color = color
         self.actionProvenance = actionProvenance
+    }
+}
+
+private func coachV3LocalizedActionText(_ text: String, fallback: String) -> String {
+    if text.range(of: "\\p{Cyrillic}", options: .regularExpression) != nil {
+        return text
+    }
+
+    let localized = WeekFitLocalizedString(text)
+    if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+        return localized
+    }
+    return fallback
+}
+
+private extension CoachSupportActionTypeV3 {
+    var v3RussianFallbackTitle: String {
+        switch self {
+        case .lightFueling:
+            return "Добавьте легкое питание"
+        case .hydrateBeforeSession:
+            return "Выпейте воды перед тренировкой"
+        case .breathingReset:
+            return "Сбросьте напряжение дыханием"
+        case .mobilityPrep:
+            return "Добавьте легкую мобилити"
+        case .keepDigestionLight:
+            return "Держите еду легкой"
+        case .steadyHydration:
+            return "Пейте воду спокойно"
+        case .sustainEnergy:
+            return "Добавьте энергии"
+        case .controlIntensity:
+            return "Контролируйте интенсивность"
+        case .cooldown:
+            return "Сделайте заминку"
+        case .rehydrateGradually:
+            return "Восполняйте жидкость постепенно"
+        case .lightRecoveryMovement:
+            return "Двигайтесь легко"
+        case .downshiftNervousSystem:
+            return "Снизьте напряжение"
+        case .startRecoveryNutrition:
+            return "Поешьте после нагрузки"
+        case .stayConsistent:
+            return "Сохраняйте рутину"
+        case .recoveryMeal:
+            return "Съешьте нормальную еду после нагрузки"
+        case .electrolyteRecovery:
+            return "Восполните минералы"
+        case .sleepPriority:
+            return "Сохраните сон"
+        }
+    }
+
+    var v3RussianFallbackSubtitle: String {
+        switch self {
+        case .lightFueling, .sustainEnergy:
+            return "Добавьте энергии без лишней тяжести"
+        case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually:
+            return "Пейте для самочувствия, не ради цифры"
+        case .breathingReset, .downshiftNervousSystem:
+            return "Помогите телу перейти в более спокойный режим"
+        case .mobilityPrep, .cooldown, .lightRecoveryMovement:
+            return "Держите нагрузку легкой"
+        case .keepDigestionLight:
+            return "Не добавляйте пищеварительный стресс"
+        case .controlIntensity:
+            return "Пусть готовность задает потолок нагрузки"
+        case .startRecoveryNutrition, .recoveryMeal:
+            return "Дайте организму восстановиться и сохранить качество"
+        case .stayConsistent:
+            return "Дополнительное исправление не нужно"
+        case .electrolyteRecovery:
+            return "Полезно после тепла или сильного потоотделения"
+        case .sleepPriority:
+            return "Сегодняшний сон готовит следующую тренировку"
+        }
     }
 }
 

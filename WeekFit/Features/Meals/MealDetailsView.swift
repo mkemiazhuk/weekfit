@@ -14,6 +14,7 @@ struct MealDetailsView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @State private var showMealBuilder = false
 
@@ -47,6 +48,8 @@ struct MealDetailsView: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             background.ignoresSafeArea()
             ambientBackground

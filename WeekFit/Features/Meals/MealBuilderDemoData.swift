@@ -13,15 +13,15 @@ enum MealIngredientCategory: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .base:
-            return "Base"
+            return WeekFitLocalizedString("meals.ingredient.category.base")
         case .protein:
-            return "Protein"
+            return WeekFitLocalizedString("meals.ingredient.category.protein")
         case .vegetables:
-            return "Vegetables"
+            return WeekFitLocalizedString("meals.ingredient.category.vegetables")
         case .drinks:
-            return "Drinks"
+            return WeekFitLocalizedString("meals.ingredient.category.drinks")
         case .extras:
-            return "Extras"
+            return WeekFitLocalizedString("meals.ingredient.category.extras")
         }
     }
 }
@@ -48,6 +48,59 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let offsetY: Int
     let rotation: Int
     let zIndex: Int
+
+    var localizedTitle: String {
+        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else { return title }
+
+        return Self.russianTitles[id] ?? title
+    }
+
+    private static let russianTitles: [String: String] = [
+        "base_rice": "Рис",
+        "base_pasta": "Паста",
+        "base_buckwheat": "Гречка",
+        "base_potatoes": "Картофель",
+        "base_oatmeal": "Овсянка",
+        "base_muesli": "Мюсли",
+        "base_greek_yogurt": "Греческий йогурт",
+        "base_toast": "Тост",
+        "protein_chicken": "Курица",
+        "protein_turkey": "Индейка",
+        "protein_pork": "Свинина",
+        "protein_lamb": "Баранина",
+        "protein_veal": "Телятина",
+        "protein_duck": "Утка",
+        "protein_beef": "Говядина",
+        "protein_salmon": "Лосось",
+        "protein_white_fish": "Белая рыба",
+        "protein_shrimp": "Креветки",
+        "protein_eggs": "Яйца",
+        "protein_cottage_cheese": "Творог",
+        "veg_broccoli": "Брокколи",
+        "veg_spinach": "Шпинат",
+        "veg_tomatoes": "Помидоры",
+        "veg_cucumber": "Огурец",
+        "veg_bell_pepper": "Болгарский перец",
+        "veg_lettuce": "Салат",
+        "veg_carrot": "Морковь",
+        "veg_red_onion": "Красный лук",
+        "veg_mushrooms": "Грибы",
+        "veg_asparagus": "Спаржа",
+        "veg_zucchini": "Цукини",
+        "extra_olive_oil": "Оливковое масло",
+        "extra_butter": "Сливочное масло",
+        "extra_avocado": "Авокадо",
+        "extra_banana": "Банан",
+        "extra_blueberries": "Голубика",
+        "extra_strawberries": "Клубника",
+        "extra_apple": "Яблоко",
+        "extra_peanut_butter": "Арахисовая паста",
+        "extra_almonds": "Миндаль",
+        "extra_walnuts": "Грецкие орехи",
+        "extra_honey": "Мед",
+        "extra_cheese": "Сыр",
+        "extra_chia_seeds": "Семена чиа"
+    ]
 }
 
 struct SelectedBuilderIngredient: Identifiable, Equatable {

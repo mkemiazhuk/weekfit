@@ -174,7 +174,9 @@ struct PremiumActivityStartCard: View {
 
     private var cleanSubtitle: String {
         if subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return plannerType == .workout ? "Training" : "Recovery"
+            return plannerType == .workout
+                ? WeekFitLocalizedString("home.activityStart.subtitle.training")
+                : WeekFitLocalizedString("home.activityStart.subtitle.recovery")
         }
 
         return subtitle
@@ -189,12 +191,16 @@ struct PremiumActivityStartCard: View {
             let remainingMinutes = minutes % 60
 
             if remainingMinutes == 0 {
-                return "\(hours)h"
+                return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), Int64(hours))
             }
 
-            return "\(hours)h \(remainingMinutes)m"
+            return String(
+                format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"),
+                Int64(hours),
+                Int64(remainingMinutes)
+            )
         }
 
-        return "\(minutes) min"
+        return String(format: WeekFitLocalizedString("common.duration.minutesFormat"), Int64(minutes))
     }
 }

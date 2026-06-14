@@ -51,11 +51,11 @@ struct NotificationSettingsView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     headerSection
 
-                    notificationSection(title: "ACTIVITY") {
+                    notificationSection(title: AppText.Settings.Notifications.activitySection) {
                         notificationRow(
                             icon: "figure.run",
-                            title: "Activity Reminders",
-                            subtitle: "Scheduled activity reminders",
+                            title: AppText.Settings.Notifications.activityRemindersTitle,
+                            subtitle: AppText.Settings.Notifications.activityRemindersSubtitle,
                             isOn: $activityRemindersEnabled
                         )
 
@@ -63,17 +63,17 @@ struct NotificationSettingsView: View {
 
                         notificationRow(
                             icon: "checkmark.circle.fill",
-                            title: "Completion Check-ins",
-                            subtitle: "Confirm completed or skipped",
+                            title: AppText.Settings.Notifications.completionCheckInsTitle,
+                            subtitle: AppText.Settings.Notifications.completionCheckInsSubtitle,
                             isOn: $completionCheckInsEnabled
                         )
                     }
 
-                    notificationSection(title: "WELLNESS") {
+                    notificationSection(title: AppText.Settings.Notifications.wellnessSection) {
                         notificationRow(
                             icon: "heart.fill",
-                            title: "Recovery Suggestions",
-                            subtitle: "Guidance after active days",
+                            title: AppText.Settings.Notifications.recoverySuggestionsTitle,
+                            subtitle: AppText.Settings.Notifications.recoverySuggestionsSubtitle,
                             isOn: $recoverySuggestionsEnabled
                         )
 
@@ -81,8 +81,8 @@ struct NotificationSettingsView: View {
 
                         notificationRow(
                             icon: "drop.fill",
-                            title: "Hydration Reminders",
-                            subtitle: "Light nudges to drink water",
+                            title: AppText.Settings.Notifications.hydrationRemindersTitle,
+                            subtitle: AppText.Settings.Notifications.hydrationRemindersSubtitle,
                             isOn: $hydrationRemindersEnabled
                         )
 
@@ -155,11 +155,11 @@ private extension NotificationSettingsView {
                 .frame(width: 48, height: 48)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Back")
+            .accessibilityLabel(Text(AppText.Common.Action.back))
 
             Spacer()
 
-            Text("Notifications")
+            Text(AppText.Settings.Notifications.title)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
 
@@ -171,7 +171,7 @@ private extension NotificationSettingsView {
     }
 
     func notificationSection<Content: View>(
-        title: String,
+        title: LocalizedStringResource,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -203,8 +203,8 @@ private extension NotificationSettingsView {
 
     func notificationRow(
         icon: String,
-        title: String,
-        subtitle: String,
+        title: LocalizedStringResource,
+        subtitle: LocalizedStringResource,
         isOn: Binding<Bool>
     ) -> some View {
         HStack(spacing: 14) {
@@ -222,15 +222,18 @@ private extension NotificationSettingsView {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(subtitle)
                     .font(.system(size: 13.2, weight: .medium))
                     .foregroundStyle(textSecondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 8)
 
@@ -245,7 +248,7 @@ private extension NotificationSettingsView {
     }
 
     var footerNote: some View {
-        Text("Notifications help WeekFit keep your wellness routine visible without overwhelming your day.")
+        Text(AppText.Settings.Notifications.footerNote)
             .font(.system(size: 13.5, weight: .medium))
             .foregroundStyle(.white.opacity(0.34))
             .lineSpacing(2)

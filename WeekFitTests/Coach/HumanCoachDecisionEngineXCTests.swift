@@ -6,6 +6,97 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
     private let now = CoachTestClock.reference
     private let selectedDate = CoachTestClock.reference
 
+    func testRussianEveningDailyOverviewUsesNarrativePlanOnly() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(.english) }
+
+        let scenarioNow = Calendar.current.date(
+            bySettingHour: 20,
+            minute: 49,
+            second: 0,
+            of: now
+        ) ?? now
+        let output = guidance(
+            [],
+            brain: brain(currentHour: 20, recovery: .stable, readiness: .good),
+            recovery: CoachRecoveryContext(recoveryPercent: 82, sleepHours: 7.4),
+            nutrition: nutrition(water: 2.3, meals: 3),
+            now: scenarioNow
+        )
+
+        let plan = try XCTUnwrap(output.narrativePlan)
+        let story = try XCTUnwrap(output.screenStory)
+
+        XCTAssertEqual(story.title, "Приоритет — сон")
+        XCTAssertEqual(story.myRecommendation, "Завершайте день спокойно и готовьтесь ко сну.")
+        XCTAssertTrue([
+            CoachNarrativeBadgeIntent.windDown.label,
+            CoachNarrativeBadgeIntent.protectSleep.label
+        ].contains(story.stateLabel))
+        XCTAssertEqual(plan.actionIntents, [.prepareForSleep, .windDownNow, .keepEveningCalm])
+        XCTAssertEqual(story.primaryActions.map(\.title), [
+            "Подготовьтесь ко сну",
+            "Начните замедляться",
+            "Сделайте вечер спокойным"
+        ])
+        XCTAssertTrue(story.supportActions.isEmpty)
+
+        let visibleText = visibleTexts(story).joined(separator: " ")
+        XCTAssertNil(
+            visibleText.range(of: "[A-Za-z]", options: .regularExpression),
+            visibleText
+        )
+    }
+
+    func testEnglishEveningDailyOverviewUsesNarrativePlanOnly() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let scenarioNow = Calendar.current.date(
+            bySettingHour: 20,
+            minute: 49,
+            second: 0,
+            of: now
+        ) ?? now
+        let output = guidance(
+            [],
+            brain: brain(currentHour: 20, recovery: .stable, readiness: .good),
+            recovery: CoachRecoveryContext(recoveryPercent: 82, sleepHours: 7.4),
+            nutrition: nutrition(water: 2.3, meals: 3),
+            now: scenarioNow
+        )
+
+        let plan = try XCTUnwrap(output.narrativePlan)
+        let story = try XCTUnwrap(output.screenStory)
+
+        XCTAssertEqual(story.title, "Sleep is the priority")
+        XCTAssertEqual(story.myRead, "The day is steady and does not need extra effort.")
+        XCTAssertEqual(story.myRecommendation, "Close the day calmly and start preparing for sleep.")
+        XCTAssertEqual(plan.actionIntents, [.prepareForSleep, .windDownNow, .keepEveningCalm])
+        XCTAssertEqual(story.primaryActions.map(\.title), [
+            "Prepare for sleep",
+            "Wind down now",
+            "Keep the evening calm"
+        ])
+        XCTAssertTrue(story.supportActions.isEmpty)
+    }
+
+    func testDaytimeDailyOverviewDoesNotUseSleepCopy() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(.english) }
+
+        let output = guidance(
+            [],
+            brain: brain(currentHour: 13, recovery: .stable, readiness: .good),
+            recovery: CoachRecoveryContext(recoveryPercent: 82, sleepHours: 7.4),
+            nutrition: nutrition(water: 2.3, meals: 2)
+        )
+
+        let story = try XCTUnwrap(output.screenStory)
+        XCTAssertNotEqual(story.title, "Приоритет — сон")
+        XCTAssertFalse(story.myRecommendation.localizedCaseInsensitiveContains("сну"))
+        XCTAssertTrue(story.supportActions.isEmpty)
+    }
+
     func testScenario1_perfectMorningNothingPlanned() {
         let decision = resolve(
             [],

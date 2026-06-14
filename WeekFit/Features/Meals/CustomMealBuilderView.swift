@@ -42,9 +42,9 @@ struct CustomMealBuilderView: View {
     let editingMeal: Meals?
     let existingMeals: [Meals]
     let onSave: (Meals) -> Void
-    private let labels: Labels
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @FocusState private var focusedField: FocusedField?
 
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -81,8 +81,6 @@ struct CustomMealBuilderView: View {
         self.editingMeal = editingMeal
         self.existingMeals = existingMeals
         self.onSave = onSave
-        labels = Self.makeLabels(isEditing: editingMeal != nil)
-
         _name = State(initialValue: editingMeal?.title ?? "")
         _servingGrams = State(initialValue: "\(editingMeal?.servingGrams ?? 100)")
         _calories = State(initialValue: Self.fieldText(editingMeal?.calories))
@@ -93,7 +91,12 @@ struct CustomMealBuilderView: View {
         _existingPreviewImage = State(initialValue: nil)
     }
 
+    private var labels: Labels {
+        Self.makeLabels(isEditing: editingMeal != nil)
+    }
+
     var body: some View {
+        let _ = languageManager.selectedLanguage
 
         ZStack {
             background.ignoresSafeArea()
@@ -499,7 +502,7 @@ struct CustomMealBuilderView: View {
     private var nutritionSection: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Nutrition")
+                Text(WeekFitLocalizedString("Nutrition"))
                     .font(.system(size: 17.4, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.28)

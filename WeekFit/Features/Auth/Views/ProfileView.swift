@@ -7,6 +7,7 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var healthManager = HealthManager()
@@ -63,6 +64,9 @@ struct ProfileView: View {
             case .notifications:
                 NotificationSettingsView()
 
+            case .language:
+                LanguageSettingsView()
+
             case .healthAccess:
                 HealthAccessView()
                     .environmentObject(healthManager)
@@ -94,13 +98,13 @@ private extension ProfileView {
                 healthSystemSection
 
                 settingsBlock(
-                    title: "Settings",
+                    title: AppText.Settings.Profile.settingsSection,
                     items: viewModel.mainSettings + viewModel.connectedSystems,
                     showHealthStatus: true
                 )
 
                 settingsBlock(
-                    title: "Support",
+                    title: AppText.Settings.Profile.supportSection,
                     items: viewModel.supportSettings,
                     showHealthStatus: false
                 )
@@ -109,7 +113,7 @@ private extension ProfileView {
 
                 footerSection
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
             .padding(.top, 4)
             .padding(.bottom, 32)
         }
@@ -121,10 +125,10 @@ private extension ProfileView {
             ConfirmationDialogView(
                 icon: "exclamationmark.triangle.fill",
                 iconTint: destructiveRed,
-                title: "Reset local data?",
-                message: "This will delete meals, logs, activities, coach history, cached images, and local preferences stored on this device. This cannot be undone.",
-                secondaryTitle: "Cancel",
-                primaryTitle: "Reset Data",
+                title: WeekFitLocalizedString("settings.profile.resetConfirm.title"),
+                message: WeekFitLocalizedString("settings.profile.resetConfirm.message"),
+                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                primaryTitle: WeekFitLocalizedString("settings.profile.resetConfirm.primary"),
                 isPrimaryDestructive: true,
                 onSecondary: {
                     withDialogAnimation {
@@ -145,9 +149,9 @@ private extension ProfileView {
             ConfirmationDialogView(
                 icon: "exclamationmark.circle.fill",
                 iconTint: destructiveRed,
-                title: "Reset failed",
+                title: WeekFitLocalizedString("settings.profile.resetFailed.title"),
                 message: resetFailureMessage,
-                primaryTitle: "OK",
+                primaryTitle: WeekFitLocalizedString("common.action.ok"),
                 dismissOnBackgroundTap: true,
                 onSecondary: {
                     withDialogAnimation {
@@ -189,7 +193,7 @@ private extension ProfileView {
 
     var headerSection: some View {
         ZStack {
-            Text("Profile")
+            Text(AppText.Settings.Profile.title)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
 
@@ -212,7 +216,7 @@ private extension ProfileView {
                     .frame(width: 46, height: 46)
                 }
                 .buttonStyle(PressableScaleButtonStyle())
-                .accessibilityLabel("Close")
+                .accessibilityLabel(Text(AppText.Common.Action.close))
 
                 Spacer()
             }
@@ -222,7 +226,7 @@ private extension ProfileView {
 
     var healthSystemSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Your system", prominent: true)
+            sectionTitle(AppText.Settings.Profile.systemSection, prominent: true)
             healthSystemCard(viewModel.userProfile)
         }
     }
@@ -235,60 +239,66 @@ private extension ProfileView {
         return Button {
             viewModel.openProfileEditor()
         } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
                     simpleAvatar(initials: profile.initials)
+                        .padding(.top, 1)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(hasName ? cleanName : "Your health system")
+                        Text(hasName ? cleanName : WeekFitLocalizedString("settings.profile.healthSystemFallback"))
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.92)
 
-                        Text(isConnected ? "Recovery system active" : "Health setup needed")
+                        Text(isConnected ? WeekFitLocalizedString("settings.profile.recoverySystemActive") : WeekFitLocalizedString("settings.profile.healthSetupNeeded"))
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundStyle(isConnected ? accentGreen.opacity(0.92) : textSecondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        Text(isConnected ? "Apple Health connected" : "Connect Health for smarter planning")
+                        Text(isConnected ? WeekFitLocalizedString("settings.profile.appleHealthConnected") : WeekFitLocalizedString("settings.profile.connectHealthPlanning"))
                             .font(.system(size: 11.8, weight: .medium))
                             .foregroundStyle(textSecondary.opacity(0.68))
-                            .lineLimit(1)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-
-                    Spacer(minLength: 8)
-
-                    systemStatusBadge(isConnected: isConnected)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(textTertiary)
+                        .padding(.top, 6)
                 }
 
-                HStack(spacing: 8) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 96), spacing: 8)],
+                    alignment: .leading,
+                    spacing: 8
+                ) {
                     compactSignal(
                         icon: "heart.fill",
-                        text: "Health",
+                        text: AppText.Settings.Profile.healthSignal,
                         tint: accentGreen,
                         isHighlighted: false
                     )
 
                     compactSignal(
                         icon: "sparkles",
-                        text: "Adaptive",
+                        text: AppText.Settings.Profile.adaptiveSignal,
                         tint: accentBlue,
                         isHighlighted: true
                     )
 
                     compactSignal(
                         icon: "lock.fill",
-                        text: "Private",
+                        text: AppText.Settings.Profile.privateSignal,
                         tint: accentGreen,
                         isHighlighted: false
                     )
                 }
-                .padding(.leading, 72)
             }
-            .padding(13)
+            .padding(15)
             .background {
                 heroCardBackground(isConnected: isConnected)
             }
@@ -298,7 +308,7 @@ private extension ProfileView {
 
     func compactSignal(
         icon: String,
-        text: String,
+        text: LocalizedStringResource,
         tint: Color,
         isHighlighted: Bool
     ) -> some View {
@@ -310,17 +320,17 @@ private extension ProfileView {
             Text(text)
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(isHighlighted ? 0.86 : 0.74))
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .minimumScaleFactor(0.9)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background {
             Capsule()
-                .fill(isHighlighted ? tint.opacity(0.105) : .white.opacity(0.04))
-                .overlay {
-                    Capsule()
-                        .stroke(isHighlighted ? tint.opacity(0.16) : .white.opacity(0.045), lineWidth: 1)
-                }
+                .fill(isHighlighted ? tint.opacity(0.105) : Color.white.opacity(0.035))
         }
     }
 
@@ -349,15 +359,8 @@ private extension ProfileView {
         }
     }
 
-    func systemStatusBadge(isConnected: Bool) -> some View {
-        Image(systemName: isConnected ? "checkmark.seal.fill" : "exclamationmark.circle.fill")
-            .font(.system(size: 17, weight: .bold))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(isConnected ? accentGreen.opacity(0.9) : textSecondary)
-    }
-
     func settingsBlock(
-        title: String,
+        title: LocalizedStringResource,
         items: [ProfileItem],
         showHealthStatus: Bool
     ) -> some View {
@@ -380,7 +383,7 @@ private extension ProfileView {
         }
     }
 
-    func sectionTitle(_ title: String, prominent: Bool = false) -> some View {
+    func sectionTitle(_ title: LocalizedStringResource, prominent: Bool = false) -> some View {
         Text(title)
             .font(
                 .system(
@@ -390,6 +393,8 @@ private extension ProfileView {
                 )
             )
             .foregroundStyle(prominent ? textPrimary : textPrimary.opacity(0.92))
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     func profileRow(
@@ -403,20 +408,23 @@ private extension ProfileView {
                 Text(displayTitle(for: item))
                     .font(.system(size: 15.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.94)
+                    .fixedSize(horizontal: false, vertical: true)
 
-//                if let subtitle = displaySubtitle(for: item, showHealthStatus: showHealthStatus) {
-//                    Text(subtitle)
-//                        .font(.system(size: 12.6, weight: .medium))
-//                        .foregroundStyle(textSecondary)
-//                        .lineLimit(showHealthStatus ? 2 : 1)
-//                        .fixedSize(horizontal: false, vertical: true)
-//                }
+                if let subtitle = displaySubtitle(for: item, showHealthStatus: showHealthStatus) {
+                    Text(subtitle)
+                        .font(.system(size: 12.6, weight: .medium))
+                        .foregroundStyle(textSecondary)
+                        .lineLimit(showHealthStatus ? 3 : 2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 8)
 
-            if showHealthStatus {
+            if showHealthStatus && !healthManager.isHealthAccessGranted {
                 healthStatusBadge
             }
 
@@ -425,7 +433,8 @@ private extension ProfileView {
                 .foregroundStyle(textTertiary)
         }
         .padding(.horizontal, 16)
-        .frame(height: showHealthStatus ? 72 : 68)
+        .padding(.vertical, 14)
+        .frame(minHeight: showHealthStatus ? 76 : 68)
         .background {
             premiumCardBackground(cornerRadius: 23)
         }
@@ -457,13 +466,6 @@ private extension ProfileView {
                     endPoint: .bottomTrailing
                 )
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(
-                        isConnected ? accentGreen.opacity(0.15) : Color.white.opacity(0.065),
-                        lineWidth: 1
-                    )
-            }
             .shadow(
                 color: isConnected ? accentGreen.opacity(0.048) : .clear,
                 radius: 18,
@@ -483,15 +485,11 @@ private extension ProfileView {
                     endPoint: .bottomTrailing
                 )
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(.white.opacity(0.054), lineWidth: 1)
-            }
     }
 
     var developerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Privacy & Data")
+            sectionTitle(AppText.Settings.Profile.privacyDataSection)
 //            coachDebugToggle
             resetLocalDataButton
         }
@@ -499,28 +497,8 @@ private extension ProfileView {
 
     @ViewBuilder
     var healthStatusBadge: some View {
-        if healthManager.isHealthAccessGranted {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(accentGreen.opacity(0.9))
-                    .frame(width: 5.5, height: 5.5)
-
-                Text("Connected")
-                    .font(.system(size: 11.1, weight: .bold, design: .rounded))
-            }
-            .foregroundStyle(accentGreen.opacity(0.88))
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background {
-                Capsule()
-                    .fill(accentGreen.opacity(0.095))
-                    .overlay {
-                        Capsule()
-                            .stroke(accentGreen.opacity(0.10), lineWidth: 1)
-                    }
-            }
-        } else {
-            Text("Setup")
+        if !healthManager.isHealthAccessGranted {
+            Text(AppText.Settings.Profile.setupBadge)
                 .font(.system(size: 11.1, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.58))
                 .padding(.horizontal, 9)
@@ -528,10 +506,6 @@ private extension ProfileView {
                 .background {
                     Capsule()
                         .fill(.white.opacity(0.05))
-                        .overlay {
-                            Capsule()
-                                .stroke(.white.opacity(0.06), lineWidth: 1)
-                        }
                 }
         }
     }
@@ -542,7 +516,7 @@ private extension ProfileView {
                 showResetConfirmation = true
             }
         } label: {
-            Text(isResettingLocalData ? "Resetting..." : "Reset Local Data")
+            Text(isResettingLocalData ? AppText.Settings.Profile.resettingLocalData : AppText.Settings.Profile.resetLocalData)
                 .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(destructiveRed.opacity(0.62))
                 .frame(maxWidth: .infinity)
@@ -550,10 +524,6 @@ private extension ProfileView {
                 .background {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(destructiveRed.opacity(0.024))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(destructiveRed.opacity(0.10), lineWidth: 1)
-                        }
                 }
         }
         .buttonStyle(PressableScaleButtonStyle())
@@ -604,7 +574,7 @@ private extension ProfileView {
                 .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.64))
 
-            Text("Private by design. Stored on your device.")
+            Text(AppText.Settings.Profile.footerPrivacy)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(textSecondary.opacity(0.44))
         }
@@ -676,14 +646,24 @@ private extension ProfileView {
     }
 
     func isHealthSignalsItem(_ item: ProfileItem) -> Bool {
-        item.title == "Health Signals" || item.title == "Apple Health"
+        item.type == .healthAccess || item.type == .appleHealth
     }
 
     func displayTitle(for item: ProfileItem) -> String {
-        switch item.title {
-        case "Apple Health":
-            return "Health Signals"
-        default:
+        switch item.type {
+        case .notifications:
+            return WeekFitLocalizedString("settings.profile.item.notifications")
+        case .language:
+            return WeekFitLocalizedString("settings.language.title")
+        case .healthAccess, .appleHealth:
+            return WeekFitLocalizedString("settings.profile.item.healthSignals")
+        case .help:
+            return WeekFitLocalizedString("settings.profile.item.helpSupport")
+        case .terms:
+            return WeekFitLocalizedString("settings.profile.item.termsPrivacy")
+        case .privacy:
+            return WeekFitLocalizedString("settings.profile.item.privacy")
+        case .units:
             return item.title
         }
     }
@@ -691,43 +671,49 @@ private extension ProfileView {
     func displaySubtitle(for item: ProfileItem, showHealthStatus: Bool) -> String? {
         if showHealthStatus {
             return healthManager.isHealthAccessGranted
-                ? "Sleep, workouts and recovery connected."
-                : "Connect Health to improve recommendations."
+                ? WeekFitLocalizedString("settings.profile.item.healthSignals.connectedSubtitle")
+                : WeekFitLocalizedString("settings.profile.item.healthSignals.setupSubtitle")
         }
 
-        switch item.title {
-        case "Notifications":
-            return "Recovery and workout reminders"
-
-        case "Help & Support":
-            return "Help, guides and feedback"
-
-        case "Terms & Privacy":
-            return "Privacy and permissions"
-
-        case "Privacy":
-            return "Control how WeekFit handles your data"
-
+        switch item.type {
+        case .notifications:
+            return WeekFitLocalizedString("settings.profile.item.notifications.subtitle")
+        case .language:
+            return String(
+                format: WeekFitLocalizedString("settings.language.currentFormat"),
+                localizedTitle(for: languageManager.selectedLanguage)
+            )
+        case .healthAccess, .appleHealth:
+            return WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
+        case .help:
+            return WeekFitLocalizedString("settings.profile.item.helpSupport.subtitle")
+        case .terms:
+            return WeekFitLocalizedString("settings.profile.item.termsPrivacy.subtitle")
+        case .privacy:
+            return WeekFitLocalizedString("settings.profile.item.privacy.subtitle")
         default:
             return item.subtitle
         }
     }
 
     func rowTint(for item: ProfileItem) -> Color {
-        switch item.title {
-        case "Notifications":
+        switch item.type {
+        case .notifications:
             return accentGreen
 
-        case "Health Signals", "Apple Health":
+        case .language:
+            return accentBlue
+
+        case .healthAccess, .appleHealth:
             return Color(red: 255/255, green: 89/255, blue: 119/255)
 
-        case "Help & Support":
+        case .help:
             return .cyan
 
-        case "Terms & Privacy":
+        case .terms:
             return .orange
 
-        case "Privacy":
+        case .privacy:
             return .indigo
 
         default:
@@ -736,18 +722,27 @@ private extension ProfileView {
     }
 
     func normalizedIcon(for item: ProfileItem) -> String {
-        switch item.title {
-        case "Health Signals", "Apple Health":
+        switch item.type {
+        case .healthAccess, .appleHealth:
             return "heart.fill"
 
-        case "Help & Support":
+        case .help:
             return "questionmark"
 
-        case "Terms & Privacy":
+        case .terms:
             return "doc.text.fill"
 
         default:
             return item.icon
+        }
+    }
+
+    func localizedTitle(for language: AppLanguage) -> String {
+        switch language {
+        case .english:
+            return WeekFitLocalizedString("settings.language.option.english")
+        case .russian:
+            return WeekFitLocalizedString("settings.language.option.russian")
         }
     }
 }

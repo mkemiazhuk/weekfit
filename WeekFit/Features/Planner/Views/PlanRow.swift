@@ -12,9 +12,9 @@ struct PlanRow: View {
     private var subtitleString: String {
         let typeLower = activity.type.lowercased()
         if typeLower == "food" || activity.calories > 0 {
-            return "Meal · \(activity.calories) kcal"
+            return String(format: WeekFitLocalizedString("planner.activitySubtitle.mealCaloriesFormat"), activity.calories)
         } else {
-            return "Duration · \(activity.durationMinutes) min"
+            return String(format: WeekFitLocalizedString("planner.duration.summaryFormat"), activity.durationMinutes)
         }
     }
     
@@ -74,7 +74,7 @@ struct PlanRow: View {
                 
                 // Статус "Logged"
                 if activity.isCompleted {
-                    Text("Logged")
+                    Text(WeekFitLocalizedString("planner.logged"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(red: 0.44, green: 0.77, blue: 0.53))
                         .padding(.horizontal, 12)

@@ -71,6 +71,14 @@ enum CoachNarrativeBadgeIntent: Hashable {
     case windDown
 
     var label: String {
+        if WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+            return russianLabel
+        }
+
+        return englishLabel
+    }
+
+    private var englishLabel: String {
         switch self {
         case .startDay:
             return "START THE DAY"
@@ -104,6 +112,43 @@ enum CoachNarrativeBadgeIntent: Hashable {
             return "PROTECT THE MORNING"
         case .windDown:
             return "WIND DOWN"
+        }
+    }
+
+    private var russianLabel: String {
+        switch self {
+        case .startDay:
+            return "НАЧАТЬ ДЕНЬ"
+        case .prepare:
+            return "ПОДГОТОВКА"
+        case .manageEffort:
+            return "КОНТРОЛЬ УСИЛИЯ"
+        case .keepControlled:
+            return "ДЕРЖАТЬ ПОД КОНТРОЛЕМ"
+        case .hydrate:
+            return "ВОДА"
+        case .fuel:
+            return "ПИТАНИЕ"
+        case .recover:
+            return "ВОССТАНОВЛЕНИЕ"
+        case .protectSleep:
+            return "СОН"
+        case .startEasy:
+            return "ЛЕГКИЙ СТАРТ"
+        case .keepItEasy:
+            return "ЛЕГКО"
+        case .adjustTrainingReadiness:
+            return "АДАПТИРОВАТЬ ГОТОВНОСТЬ"
+        case .reducePlan:
+            return "СНИЗИТЬ ПЛАН"
+        case .goodToGo:
+            return "ВСЁ В ПОРЯДКЕ"
+        case .protectTomorrow:
+            return "ЗАЩИТИТЬ ЗАВТРА"
+        case .protectMorning:
+            return "ЗАЩИТИТЬ УТРО"
+        case .windDown:
+            return "ЗАМЕДЛИТЬСЯ"
         }
     }
 }
@@ -145,6 +190,68 @@ private struct CoachTimeLanguage {
         isAfterMidnightBeforeMorning
             ? "The benefit now comes from downshifting, not staying longer."
             : "The benefit tonight comes from downshifting, not staying longer."
+    }
+}
+
+private struct CoachDailyOverviewNarrativeCopy {
+    static var isRussian: Bool {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru")
+    }
+
+    static var eveningTitle: String {
+        isRussian ? "Приоритет — сон" : "Sleep is the priority"
+    }
+
+    static var eveningRead: String {
+        isRussian
+            ? "День проходит спокойно и не требует дополнительных усилий."
+            : "The day is steady and does not need extra effort."
+    }
+
+    static var eveningRecommendation: String {
+        isRussian
+            ? "Завершайте день спокойно и готовьтесь ко сну."
+            : "Close the day calmly and start preparing for sleep."
+    }
+
+    static var eveningRisk: String {
+        isRussian
+            ? "Не добавляйте нагрузку только потому, что день выглядит спокойным."
+            : "Do not add load just because the day looks calm."
+    }
+
+    static var eveningWhy: String {
+        isRussian
+            ? "Вечером восстановление важнее дополнительных действий: спокойное завершение дня помогает лучше усвоить нагрузку и подготовить завтра."
+            : "In the evening, recovery matters more than doing more. A calm close helps the day absorb and prepares tomorrow."
+    }
+
+    static var stableTitle: String {
+        isRussian ? "Сегодня нет причин менять план" : "No need to change the plan"
+    }
+
+    static var stableRead: String {
+        isRussian
+            ? "День идет ровно, без сигнала срочно что-то исправлять."
+            : "The day is steady, with no signal that needs an urgent correction."
+    }
+
+    static var stableRecommendation: String {
+        isRussian
+            ? "Продолжайте в привычном ритме и держите базовые привычки."
+            : "Keep the normal rhythm and maintain the basics."
+    }
+
+    static var stableRisk: String {
+        isRussian
+            ? "Не добавляйте лишнюю структуру там, где день и так идет нормально."
+            : "Do not add extra structure where the day is already working."
+    }
+
+    static var stableWhy: String {
+        isRussian
+            ? "Стабильный день лучше поддерживать спокойным ритмом, а не превращать в новый список задач."
+            : "A stable day is better supported by a calm rhythm than by turning it into another task list."
     }
 }
 
@@ -280,8 +387,9 @@ struct CoachScreenStory {
         color: Color,
         tone: CoachToneV3
     ) {
+        let renderedTitle = titleOverride ?? decision.title
         let requiredTexts = [
-            decision.title,
+            renderedTitle,
             decision.myRead,
             decision.myRecommendation
         ]
@@ -313,20 +421,31 @@ struct CoachScreenStory {
             primaryActions = Array(candidatePrimaryActions.prefix(3))
             visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
         } else if decision.status == .prepareSession {
-            primaryActions = CoachRenderingContract.visibleActions(
-                candidatePrimaryActions,
-                visibleTexts: &visibleTexts
+            primaryActions = CoachScreenStory.primaryActionsPreservingFallback(
+                candidates: candidatePrimaryActions,
+                filtered: CoachRenderingContract.visibleActions(
+                    candidatePrimaryActions,
+                    visibleTexts: &visibleTexts
+                )
             )
         } else if CoachScreenStory.hasSportSpecificLiveAction(candidatePrimaryActions) {
             primaryActions = Array(candidatePrimaryActions.prefix(3))
             visibleTexts.append(contentsOf: primaryActions.flatMap { [$0.title, $0.subtitle] })
         } else {
-            primaryActions = candidatePrimaryActions
-                .contractFiltered(visibleTexts: &visibleTexts)
+            primaryActions = CoachScreenStory.primaryActionsPreservingFallback(
+                candidates: candidatePrimaryActions,
+                filtered: candidatePrimaryActions.contractFiltered(visibleTexts: &visibleTexts)
+            )
         }
+        let displayPrimaryActions = decision.narrativePlan == nil
+            ? CoachScreenStory.actionsWithoutRequiredTextDuplicate(
+                primaryActions,
+                requiredTexts: requiredTexts + [risk ?? ""]
+            )
+            : primaryActions
 
         let supportActions = CoachScreenStory.supportActions(for: decision)
-            .deduped(against: requiredTexts + primaryActions.flatMap { [$0.title, $0.subtitle] })
+            .deduped(against: requiredTexts + displayPrimaryActions.flatMap { [$0.title, $0.subtitle] })
             .prefix(3)
 
         let activity = CoachScreenStory.uniqueText(
@@ -367,7 +486,7 @@ struct CoachScreenStory {
             for: phase,
             decision: decision
         )
-        let annotatedPrimaryActions = primaryActions.map {
+        let annotatedPrimaryActions = displayPrimaryActions.map {
             $0.withActionProvenance(screenStoryProvenance)
         }
         let annotatedSupportActions = supportActions.map {
@@ -375,7 +494,7 @@ struct CoachScreenStory {
         }
 
         self.stateLabel = decision.narrativePlan?.badgeIntent.label ?? decision.status.label
-        self.title = titleOverride ?? decision.title
+        self.title = renderedTitle
         self.myRead = decision.myRead
         self.myRecommendation = decision.myRecommendation
         self.beCarefulWith = decision.beCarefulWith
@@ -442,12 +561,12 @@ private extension CoachScreenStory {
     }
 
     static func primaryActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
-        if usesFrameOwnedRecoveryActions(decision) {
-            return decision.supportingActions
-        }
-
         if let plan = decision.narrativePlan {
             return plan.actionIntents.map(actionIntent)
+        }
+
+        if usesFrameOwnedRecoveryActions(decision) {
+            return decision.supportingActions
         }
 
         switch decision.status.label {
@@ -504,6 +623,27 @@ private extension CoachScreenStory {
 
         default:
             return decision.supportingActions
+        }
+    }
+
+    static func primaryActionsPreservingFallback(
+        candidates: [CoachSupportingAction],
+        filtered: [CoachSupportingAction]
+    ) -> [CoachSupportingAction] {
+        if !filtered.isEmpty {
+            return filtered
+        }
+
+        return Array(candidates.prefix(3))
+    }
+
+    static func actionsWithoutRequiredTextDuplicate(
+        _ actions: [CoachSupportingAction],
+        requiredTexts: [String]
+    ) -> [CoachSupportingAction] {
+        guard actions.count > 1 else { return actions }
+        return actions.filter { action in
+            !requiredTexts.containsDuplicateIdea(ofAny: [action.title, action.subtitle])
         }
     }
 
@@ -585,12 +725,11 @@ private extension CoachScreenStory {
     }
 
     static func hasSportSpecificLiveAction(_ actions: [CoachSupportingAction]) -> Bool {
-        let titles = Set(actions.map { $0.title.lowercased() })
-        return titles.contains("stay aerobic") ||
-            titles.contains("stay conversational") ||
-            titles.contains("reduce load") ||
-            titles.contains("stay efficient") ||
-            titles.contains("control intensity")
+        actions.contains { action in
+            action.type == .controlIntensity ||
+                action.type == .breathingReset ||
+                action.type == .cooldown
+        }
     }
 
     static func uncertainActiveSessionContext(_ phase: CoachActiveSessionPhase?) -> String {
@@ -626,137 +765,333 @@ private extension CoachScreenStory {
         case .objectiveAction(let type, let title, let subtitle):
             return action(type, title: title, subtitle: subtitle)
         case .drink(let amountRange, let timing):
-            let title = amountRange.map { "Drink \($0) water" } ?? "Sip calmly"
+            let title = amountRange.map {
+                actionIntentCopy(
+                    english: "Drink \($0) water",
+                    russian: "Выпейте \(russianFluidAmount($0)) воды"
+                )
+            } ?? actionIntentCopy(
+                english: "Sip calmly",
+                russian: "Пейте спокойно"
+            )
             return action(
                 .hydrateBeforeSession,
                 title: title,
-                subtitle: timing ?? "Use fluids as support, not a target chase"
+                subtitle: timing.map {
+                    localizedActionIntentGeneratedText(
+                        $0,
+                        russianFallback: "Пейте для самочувствия, не ради цифры"
+                    )
+                } ?? actionIntentCopy(
+                    english: "Use fluids as support, not a target chase",
+                    russian: "Пейте для самочувствия, не ради цифры"
+                )
             )
         case .eat(let macros, let timing):
-            let title = macros.map { "Eat \($0)" } ?? "Eat normally"
+            let title = macros.map {
+                actionIntentCopy(
+                    english: "Eat \($0)",
+                    russian: "Съешьте \(russianMacroText($0))"
+                )
+            } ?? actionIntentCopy(
+                english: "Eat normally",
+                russian: "Ешьте нормально"
+            )
             return action(
                 .lightFueling,
                 title: title,
-                subtitle: timing ?? "Keep it simple and digestible"
+                subtitle: timing.map {
+                    localizedActionIntentGeneratedText(
+                        $0,
+                        russianFallback: "Пусть еда будет простой и легко усваиваемой"
+                    )
+                } ?? actionIntentCopy(
+                    english: "Keep it simple and digestible",
+                    russian: "Пусть еда будет простой и легко усваиваемой"
+                )
             )
         case .keepIntensity(let effort):
             return action(
                 .controlIntensity,
-                title: "Keep effort easy",
-                subtitle: effort
+                title: actionIntentCopy(
+                    english: "Keep effort easy",
+                    russian: "Держите усилие легким"
+                ),
+                subtitle: localizedActionIntentGeneratedText(
+                    effort,
+                    russianFallback: "Держите усилие легким и повторяемым"
+                )
             )
         case .startControlled(let duration):
+            let title = duration.map {
+                actionIntentCopy(
+                    english: "Keep the first \($0) easy",
+                    russian: "Первые \(russianDurationText($0)) держите легкими"
+                )
+            } ?? actionIntentCopy(
+                english: "Start easy",
+                russian: "Начните легко"
+            )
             return action(
                 .controlIntensity,
-                title: duration.map { "Keep the first \($0) easy" } ?? "Start easy",
-                subtitle: duration.map { "Keep the first \($0) easy" } ?? "Let the warm-up settle the effort"
+                title: title,
+                subtitle: duration.map { _ in title } ?? actionIntentCopy(
+                    english: "Let the warm-up settle the effort",
+                    russian: "Пусть разминка задаст усилие"
+                )
             )
         case .bringBottle:
             return action(
                 .steadyHydration,
-                title: "Bring a bottle",
-                subtitle: "Make the session easier to manage"
+                title: actionIntentCopy(
+                    english: "Bring a bottle",
+                    russian: "Возьмите бутылку"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Make the session easier to manage",
+                    russian: "Так тренировку будет легче контролировать"
+                )
             )
         case .sipBeforeLeaving:
             return action(
                 .steadyHydration,
-                title: "Sip more before leaving",
-                subtitle: "Keep fluids moving without rushing"
+                title: actionIntentCopy(
+                    english: "Sip more before leaving",
+                    russian: "Сделайте несколько глотков перед выходом"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Keep fluids moving without rushing",
+                    russian: "Пейте понемногу, без спешки"
+                )
             )
         case .finishWithReserve:
             return action(
                 .cooldown,
-                title: "Finish with reserve",
-                subtitle: "Make recovery easier to start"
+                title: actionIntentCopy(
+                    english: "Finish with reserve",
+                    russian: "Завершите с запасом"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Make recovery easier to start",
+                    russian: "Так организму будет легче восстановиться"
+                )
             )
         case .protectSleep:
             return action(
                 .sleepPriority,
-                title: "Protect sleep",
-                subtitle: "Keep rest as the priority"
+                title: actionIntentCopy(
+                    english: "Protect sleep",
+                    russian: "Сохраните сон"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Keep rest as the priority",
+                    russian: "Сегодня важнее отдых"
+                )
             )
         case .shortenSession:
             return action(
                 .controlIntensity,
-                title: "Shorten if needed",
-                subtitle: "Make the plan fit today's capacity"
+                title: actionIntentCopy(
+                    english: "Shorten if needed",
+                    russian: "Сократите, если нужно"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Make the plan fit today's capacity",
+                    russian: "Подстройте план под сегодняшний ресурс"
+                )
             )
         case .stopIfSymptoms:
             return action(
                 .controlIntensity,
-                title: "Stop if symptoms show up",
-                subtitle: "Safety beats completing the session"
+                title: actionIntentCopy(
+                    english: "Stop if symptoms show up",
+                    russian: "Остановитесь при плохих сигналах"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Safety beats completing the session",
+                    russian: "Безопасность важнее завершить тренировку"
+                )
             )
         case .downshift:
             return action(
                 .cooldown,
-                title: "Downshift",
-                subtitle: "Make the next block easier to recover from"
+                title: actionIntentCopy(
+                    english: "Downshift",
+                    russian: "Сбавьте темп"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Make the next block easier to recover from",
+                    russian: "Так следующий блок будет легче усвоить"
+                )
             )
         case .keepRecoveryEasy:
             return action(
                 .controlIntensity,
-                title: "Keep recovery easy",
-                subtitle: "Finish feeling better than when you started"
+                title: actionIntentCopy(
+                    english: "Keep recovery easy",
+                    russian: "Восстанавливайтесь спокойно"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Finish feeling better than when you started",
+                    russian: "Завершите лучше, чем начали"
+                )
             )
         case .prepareForSleep:
             return action(
                 .sleepPriority,
-                title: "Prepare for sleep",
-                subtitle: "Let the day close cleanly"
+                title: actionIntentCopy(
+                    english: "Prepare for sleep",
+                    russian: "Подготовьтесь ко сну"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Let the day close cleanly",
+                    russian: "Закройте день спокойно"
+                )
             )
         case .keepEveningCalm:
             return action(
                 .downshiftNervousSystem,
-                title: "Keep the evening calm",
-                subtitle: "Lower the cost of the next hour"
+                title: actionIntentCopy(
+                    english: "Keep the evening calm",
+                    russian: "Сделайте вечер спокойным"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Lower the cost of the next hour",
+                    russian: "Снизьте нагрузку следующего часа"
+                )
             )
         case .skipExtraTraining:
             return action(
                 .stayConsistent,
-                title: "Skip extra training",
-                subtitle: "The day does not need another load"
+                title: actionIntentCopy(
+                    english: "Skip extra training",
+                    russian: "Пропустите лишнюю тренировку"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "The day does not need another load",
+                    russian: "Сегодня не нужна еще одна нагрузка"
+                )
             )
         case .leaveTomorrowForTomorrow:
             return action(
                 .mobilityPrep,
-                title: "Leave tomorrow for tomorrow",
-                subtitle: "Do not solve tomorrow tonight"
+                title: actionIntentCopy(
+                    english: "Leave tomorrow for tomorrow",
+                    russian: "Оставьте завтра на завтра"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Do not solve tomorrow tonight",
+                    russian: "Не решайте завтрашний день сегодня вечером"
+                )
             )
         case .windDownNow:
             return action(
                 .cooldown,
-                title: "Wind down now",
-                subtitle: "Shift out of doing mode"
+                title: actionIntentCopy(
+                    english: "Wind down now",
+                    russian: "Начните замедляться"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Shift out of doing mode",
+                    russian: "Выходите из режима дел"
+                )
             )
         case .startHydration:
             return action(
                 .steadyHydration,
-                title: "Start with 300-500 ml",
-                subtitle: "Bring fluids online early"
+                title: actionIntentCopy(
+                    english: "Start with 300-500 ml",
+                    russian: "Начните с 300-500 мл"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Bring fluids online early",
+                    russian: "Начните пить заранее"
+                )
             )
         case .eatNextMeal:
             return action(
                 .lightFueling,
-                title: "Eat normally at next meal",
-                subtitle: "Bring the day online calmly"
+                title: actionIntentCopy(
+                    english: "Eat normally at next meal",
+                    russian: "Поешьте нормально в следующий прием пищи"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Bring the day online calmly",
+                    russian: "Спокойно включите день"
+                )
             )
         case .keepPlanUnchanged:
             return action(
                 .stayConsistent,
-                title: "Keep the plan unchanged",
-                subtitle: "Recovery supports the plan"
+                title: actionIntentCopy(
+                    english: "Keep the plan unchanged",
+                    russian: "Оставьте план без изменений"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "Recovery supports the plan",
+                    russian: "Так план усвоится лучше"
+                )
             )
         case .keepDayFlexible:
             return action(
                 .stayConsistent,
-                title: "Keep the day flexible",
-                subtitle: "No demanding plan needs solving now"
+                title: actionIntentCopy(
+                    english: "Keep the day flexible",
+                    russian: "Оставьте день гибким"
+                ),
+                subtitle: actionIntentCopy(
+                    english: "No demanding plan needs solving now",
+                    russian: "Сейчас не нужно решать тяжелый план"
+                )
             )
         }
     }
 
+    static func actionIntentCopy(english: String, russian: String) -> String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english
+    }
+
+    static func localizedActionIntentGeneratedText(_ text: String, russianFallback: String) -> String {
+        if text.range(of: "\\p{Cyrillic}", options: .regularExpression) != nil {
+            return text
+        }
+
+        let localized = WeekFitLocalizedString(text)
+        if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+            return localized
+        }
+
+        return russianFallback
+    }
+
+    static func russianFluidAmount(_ amount: String) -> String {
+        amount
+            .replacingOccurrences(of: "ml", with: "мл")
+            .replacingOccurrences(of: "L", with: "л")
+    }
+
+    static func russianDurationText(_ duration: String) -> String {
+        duration
+            .replacingOccurrences(of: "minutes", with: "минут")
+            .replacingOccurrences(of: "minute", with: "минуту")
+            .replacingOccurrences(of: "mins", with: "мин")
+            .replacingOccurrences(of: "min", with: "мин")
+    }
+
+    static func russianMacroText(_ macros: String) -> String {
+        macros
+            .replacingOccurrences(of: "carbs", with: "углеводов")
+            .replacingOccurrences(of: "carb", with: "углеводов")
+            .replacingOccurrences(of: "protein", with: "белка")
+            .replacingOccurrences(of: "fat", with: "жиров")
+            .replacingOccurrences(of: "g", with: " г")
+    }
+
     static func supportActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
+        guard decision.narrativePlan == nil else {
+            return []
+        }
+
         let bullets = decision.v5Contract?.priority.supportBullets ?? []
         let priority = decision.v5Contract?.priority
         let plan = decision.narrativePlan
@@ -1481,6 +1816,125 @@ enum CoachDecisionPriority: Int, Comparable {
     }
 }
 
+private func coachLocalizedStoryText(_ text: String, fallback: String) -> String {
+    if text.range(of: "\\p{Cyrillic}", options: .regularExpression) != nil {
+        return text
+    }
+
+    let localized = WeekFitLocalizedString(text)
+    if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+        return localized
+    }
+
+    return fallback
+}
+
+private extension CoachDecisionPriority {
+    var russianFallbackStateLabel: String {
+        switch self {
+        case .supporting:
+            return "ПОДДЕРЖКА"
+        case .planOptimization:
+            return "КОРРЕКТИРОВКА ПЛАНА"
+        case .trainingQuality:
+            return "КАЧЕСТВО ТРЕНИРОВКИ"
+        case .safety:
+            return "ОСТОРОЖНО"
+        }
+    }
+
+    var russianFallbackTitle: String {
+        switch self {
+        case .supporting:
+            return "Держите день ровным"
+        case .planOptimization:
+            return "Адаптируйте план"
+        case .trainingQuality:
+            return "Сохраните качество тренировки"
+        case .safety:
+            return "Снизьте риск сейчас"
+        }
+    }
+
+    var russianFallbackRead: String {
+        switch self {
+        case .supporting:
+            return "День не требует срочного исправления, но базовые привычки все еще важны."
+        case .planOptimization:
+            return "План стоит держать гибким, чтобы нагрузка соответствовала реальной готовности."
+        case .trainingQuality:
+            return "Качество следующей тренировки зависит от спокойного старта, воды, питания и контроля усилия."
+        case .safety:
+            return "Сигналы сегодня просят более низкий потолок и осторожный следующий шаг."
+        }
+    }
+
+    var russianFallbackRecommendation: String {
+        switch self {
+        case .supporting:
+            return "Держите ритм, воду и питание ровно. Лишнюю нагрузку не добавляйте."
+        case .planOptimization:
+            return "Снизьте интенсивность, оставьте план гибким и дайте организму восстановиться."
+        case .trainingQuality:
+            return "Начните легче, держите усилие повторяемым и завершите с запасом."
+        case .safety:
+            return "Сделайте следующий шаг легче, пейте спокойно и остановитесь при плохих сигналах."
+        }
+    }
+
+    var russianFallbackRisk: String {
+        switch self {
+        case .supporting:
+            return "Не добавляйте нагрузку только потому, что день выглядит спокойным."
+        case .planOptimization:
+            return "Не держитесь за исходный план, если сон или самочувствие просят корректировки."
+        case .trainingQuality:
+            return "Не гонитесь за цифрами в первые минуты или когда техника начинает падать."
+        case .safety:
+            return "Не превращайте предупреждающий сигнал в проверку силы воли."
+        }
+    }
+
+    var russianFallbackWhy: String {
+        switch self {
+        case .supporting:
+            return "Ровный день лучше поддерживать простыми привычками, а не лишними исправлениями."
+        case .planOptimization:
+            return "План полезен только тогда, когда организм способен усвоить нагрузку."
+        case .trainingQuality:
+            return "Спокойный старт сохраняет качество движения и помогает быстрее прийти в себя после тренировки."
+        case .safety:
+            return "Снижение риска сегодня помогает сохранить прогресс и не накопить лишний стресс."
+        }
+    }
+
+    var russianFallbackPlanAdjustment: String {
+        switch self {
+        case .supporting:
+            return "План можно оставить простым и без лишних изменений."
+        case .planOptimization:
+            return "Если готовность не улучшится, сделайте тренировку легче или перенесите интенсивность."
+        case .trainingQuality:
+            return "Пусть разминка задаст реальный потолок нагрузки."
+        case .safety:
+            return "Снизьте нагрузку сейчас и вернитесь к плану, когда сигналы станут надежнее."
+        }
+    }
+
+    var russianFallbackActivityContext: String {
+        switch self {
+        case .supporting:
+            return "Контекст активности сейчас не требует дополнительного решения."
+        case .planOptimization:
+            return "Эта активность должна поддержать план, а не добавить лишнюю усталость."
+        case .trainingQuality:
+            return "Первые минуты важнее цели: пусть дыхание, темп и самочувствие задают потолок."
+        case .safety:
+            return "Используйте текущую активность как сигнал для снижения нагрузки, если тело просит."
+        }
+    }
+}
+
 struct CoachSupportingAction {
     let type: CoachSupportActionTypeV3
     let icon: String
@@ -1514,6 +1968,84 @@ struct CoachSupportingAction {
             color: color,
             actionProvenance: provenance
         )
+    }
+}
+
+private func coachLocalizedActionText(_ text: String, fallback: String) -> String {
+    if text.range(of: "\\p{Cyrillic}", options: .regularExpression) != nil {
+        return text
+    }
+
+    let localized = WeekFitLocalizedString(text)
+    if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+        return localized
+    }
+    return fallback
+}
+
+private extension CoachSupportActionTypeV3 {
+    var russianFallbackTitle: String {
+        switch self {
+        case .lightFueling:
+            return "Добавьте легкое питание"
+        case .hydrateBeforeSession:
+            return "Выпейте воды перед тренировкой"
+        case .breathingReset:
+            return "Сбросьте напряжение дыханием"
+        case .mobilityPrep:
+            return "Добавьте легкую мобилити"
+        case .keepDigestionLight:
+            return "Держите еду легкой"
+        case .steadyHydration:
+            return "Пейте воду спокойно"
+        case .sustainEnergy:
+            return "Добавьте энергии"
+        case .controlIntensity:
+            return "Контролируйте интенсивность"
+        case .cooldown:
+            return "Сделайте заминку"
+        case .rehydrateGradually:
+            return "Восполняйте жидкость постепенно"
+        case .lightRecoveryMovement:
+            return "Двигайтесь легко"
+        case .downshiftNervousSystem:
+            return "Снизьте напряжение"
+        case .startRecoveryNutrition:
+            return "Поешьте после нагрузки"
+        case .stayConsistent:
+            return "Сохраняйте рутину"
+        case .recoveryMeal:
+            return "Съешьте нормальную еду после нагрузки"
+        case .electrolyteRecovery:
+            return "Восполните минералы"
+        case .sleepPriority:
+            return "Сохраните сон"
+        }
+    }
+
+    var russianFallbackSubtitle: String {
+        switch self {
+        case .lightFueling, .sustainEnergy:
+            return "Добавьте энергии без лишней тяжести"
+        case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually:
+            return "Пейте для самочувствия, не ради цифры"
+        case .breathingReset, .downshiftNervousSystem:
+            return "Помогите телу перейти в более спокойный режим"
+        case .mobilityPrep, .cooldown, .lightRecoveryMovement:
+            return "Держите нагрузку легкой"
+        case .keepDigestionLight:
+            return "Не добавляйте пищеварительный стресс"
+        case .controlIntensity:
+            return "Пусть готовность задает потолок нагрузки"
+        case .startRecoveryNutrition, .recoveryMeal:
+            return "Дайте организму восстановиться и сохранить качество"
+        case .stayConsistent:
+            return "Дополнительное исправление не нужно"
+        case .electrolyteRecovery:
+            return "Полезно после тепла или сильного потоотделения"
+        case .sleepPriority:
+            return "Сегодняшний сон готовит следующую тренировку"
+        }
     }
 }
 
@@ -1867,11 +2399,38 @@ private struct ActiveSessionCoachingContext {
         self.primaryConstraint = self.constraints.first
     }
 
+    private var isRussian: Bool {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru")
+    }
+
+    private var runningNeedsCaution: Bool {
+        sportProfile == .running &&
+            (
+                constraints.contains(.recovery) ||
+                constraints.contains(.sleep) ||
+                constraints.contains(.tomorrowLoad) ||
+                constraints.contains(.manualStart) ||
+                constraints.contains(.remainingLoad)
+            )
+    }
+
     var status: CoachStatus {
+        if sportProfile == .upperBody || runningNeedsCaution {
+            return .manageEffort
+        }
+
         return constraints.isEmpty ? .keepItEasy : .manageEffort
     }
 
     var title: String {
+        if sportProfile == .upperBody {
+            return isRussian ? "Контролируйте тренировку" : "Control the session"
+        }
+
+        if runningNeedsCaution {
+            return isRussian ? "Снизьте темп бега" : "Keep this run easy"
+        }
+
         if isLateNight {
             return lateNightLoadNeedsProtection ? sportProfile.lateNightTitle : sportProfile.resilientLateNightTitle
         }
@@ -1884,6 +2443,18 @@ private struct ActiveSessionCoachingContext {
     }
 
     var myRead: String {
+        if sportProfile == .upperBody {
+            return isRussian
+                ? "Тренировка уже идет. Сейчас важнее качество движения, техника и запас, а не максимум."
+                : "The workout is already live. Movement quality, technique, and reserve matter more than max effort now."
+        }
+
+        if runningNeedsCaution {
+            return isRussian
+                ? "Бег уже идет. Восстановление влияет на потолок усилия, поэтому сейчас важнее легкий темп и запас."
+                : "The run is already live. Recovery is shaping the effort ceiling, so easy pacing and reserve matter most now."
+        }
+
         if isLateNight {
             if !lateNightLoadNeedsProtection {
                 return "You started \(sportProfile.lateNightActivityName) late, but recovery is holding up well and nothing important needs protecting. Enjoy it without turning it into a test."
@@ -1908,6 +2479,18 @@ private struct ActiveSessionCoachingContext {
     }
 
     func recommendation(phaseRecommendation: String) -> String {
+        if sportProfile == .upperBody {
+            return isRussian
+                ? "Начните спокойно, держите технику чистой и завершите с запасом."
+                : "Start calmly, keep form clean, and finish with reserve."
+        }
+
+        if runningNeedsCaution {
+            return isRussian
+                ? "Тренировка уже началась. Держите бег легким, не добавляйте интенсивность и завершите с запасом."
+                : "The run is already live. Keep effort easy, avoid adding intensity, and finish with reserve."
+        }
+
         if isLateNight {
             if !lateNightLoadNeedsProtection {
                 return "Enjoy the session and let feel guide it. No extra protection is needed tonight."
@@ -1924,6 +2507,18 @@ private struct ActiveSessionCoachingContext {
     }
 
     var beCarefulWith: String {
+        if sportProfile == .upperBody {
+            return isRussian
+                ? "Не повышайте вес или темп, если техника начинает проседать."
+                : "Do not increase load or pace if technique starts to break down."
+        }
+
+        if runningNeedsCaution {
+            return isRussian
+                ? "Не превращайте этот бег в дополнительную нагрузку."
+                : "Do not turn this run into extra training load."
+        }
+
         if isLateNight {
             if !lateNightLoadNeedsProtection {
                 return "Turning a good late ride into a test just because recovery feels strong."
@@ -1952,7 +2547,19 @@ private struct ActiveSessionCoachingContext {
     }
 
     var why: String? {
-        nil
+        if sportProfile == .upperBody {
+            return isRussian
+                ? "Во время силовой тренировки лучший сигнал — стабильное движение и контроль усилия. Это помогает получить пользу без лишнего стресса."
+                : "During a strength session, the best signal is stable movement and controlled effort. That gives you training value without adding unnecessary stress."
+        }
+
+        if runningNeedsCaution {
+            return isRussian
+                ? "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на потолок усилия, но не заменяет текущую тренировку."
+                : "Load has already accumulated today, so recovery affects the effort ceiling but does not replace the current workout."
+        }
+
+        return nil
     }
 
     private var lateNightLoadNeedsProtection: Bool {
@@ -2525,13 +3132,13 @@ private extension HumanCoachDecisionEngine {
         why: String?
     ) -> String {
         var sections = [
-            "My Read\n\(myRead)",
-            "My Recommendation\n\(myRecommendation)",
-            "Be Careful With\n\(beCarefulWith)"
+            "\(WeekFitCoachRuntimeLocalizedString("My Assessment"))\n\(myRead)",
+            "\(WeekFitCoachRuntimeLocalizedString("My Recommendation"))\n\(myRecommendation)",
+            "\(WeekFitCoachRuntimeLocalizedString("Be Careful With"))\n\(beCarefulWith)"
         ]
 
         if let why = why?.trimmingCharacters(in: .whitespacesAndNewlines), !why.isEmpty {
-            sections.append("Why\n\(why)")
+            sections.append("\(WeekFitCoachRuntimeLocalizedString("Why"))\n\(why)")
         }
 
         return sections.joined(separator: "\n\n")
@@ -2577,8 +3184,18 @@ private extension HumanCoachDecisionEngine {
         }
 
         if let plan = decision.narrativePlan {
+            let planFocus: CoachDayFocus = plan.objective == .executeActivity
+                ? .activeActivity
+                : legacyPriority.focus
+            let planMode: CoachingMode = plan.objective == .executeActivity
+                ? .execution
+                : legacyPriority.mode
+            let planHorizon: CoachHorizon = plan.objective == .executeActivity
+                ? .today
+                : legacyPriority.horizon
+
             return CoachDayPriorityResult(
-                focus: legacyPriority.focus,
+                focus: planFocus,
                 level: importance(for: plan.urgency).dayPriorityLevel,
                 reason: plan.sectionIntents.myRead,
                 activity: legacyPriority.activity,
@@ -2586,7 +3203,7 @@ private extension HumanCoachDecisionEngine {
                 priority: plan.priority,
                 strength: legacyPriority.strength,
                 confidence: plan.confidence,
-                mode: legacyPriority.mode,
+                mode: planMode,
                 limiter: coachLimiter(for: plan.primaryLimiter, fallback: legacyPriority.limiter),
                 messageFamily: legacyPriority.messageFamily,
                 priorityScore: legacyPriority.priorityScore,
@@ -2601,8 +3218,10 @@ private extension HumanCoachDecisionEngine {
                 whyThisMatters: decision.why,
                 reasons: legacyPriority.reasons,
                 planChallenge: decision.planChallenge,
-                horizon: legacyPriority.horizon,
-                objective: legacyPriority.objective == .protectTomorrow ? .protectTomorrow : plan.objective,
+                horizon: planHorizon,
+                objective: plan.objective == .executeActivity
+                    ? .executeActivity
+                    : (legacyPriority.objective == .protectTomorrow ? .protectTomorrow : plan.objective),
                 opportunity: legacyPriority.opportunity,
                 interventionValue: legacyPriority.interventionValue,
                 interventionCostNote: legacyPriority.interventionCostNote,
@@ -2703,7 +3322,9 @@ private extension HumanCoachDecisionEngine {
         switch insight.category {
         case .downgradeToday:
             return CoachStatus(label: "ADJUST TODAY", semanticColor: .yellow)
-        case .protectTomorrow, .planNextEvent:
+        case .protectTomorrow:
+            return .protectTomorrow
+        case .planNextEvent:
             return CoachStatus(label: "PLAN AHEAD", semanticColor: .purple)
         case .recoverNow, .sleepPriority:
             return CoachStatus(label: "RECOVERY NOW", semanticColor: .purple)
@@ -2985,23 +3606,23 @@ private extension HumanCoachDecisionEngine {
     static func supportAction(for type: CoachSupportActionTypeV3) -> CoachSupportingAction {
         switch type {
         case .controlIntensity:
-            return CoachSupportingAction(type: type, icon: "speedometer", title: "Keep effort easy", subtitle: "Let readiness set the ceiling", color: Color.orange)
+            return CoachSupportingAction(type: type, icon: "speedometer", title: WeekFitLocalizedString("Keep effort easy"), subtitle: WeekFitLocalizedString("coach.actions.letReadinessSetTheCeiling"), color: CoachPalette.training)
         case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually:
-            return CoachSupportingAction(type: type, icon: "drop.fill", title: "Sip to comfort", subtitle: "Use fluids as support, not the main goal", color: Color.blue)
+            return CoachSupportingAction(type: type, icon: "drop.fill", title: WeekFitLocalizedString("Sip to comfort"), subtitle: WeekFitLocalizedString("Use fluids as support, not the main goal"), color: CoachPalette.hydration)
         case .startRecoveryNutrition, .recoveryMeal, .lightFueling, .sustainEnergy:
-            return CoachSupportingAction(type: type, icon: "fork.knife", title: "Eat normally", subtitle: "Support recovery and training quality", color: WeekFitTheme.meal)
+            return CoachSupportingAction(type: type, icon: "fork.knife", title: WeekFitLocalizedString("Eat normally"), subtitle: WeekFitLocalizedString("Support recovery and training quality"), color: CoachPalette.fueling)
         case .sleepPriority:
-            return CoachSupportingAction(type: type, icon: "moon.fill", title: "Protect sleep", subtitle: "Tonight sets up the next session", color: WeekFitTheme.purple)
+            return CoachSupportingAction(type: type, icon: "moon.fill", title: WeekFitLocalizedString("Protect sleep"), subtitle: WeekFitLocalizedString("Tonight sets up the next session"), color: CoachPalette.recovery)
         case .cooldown, .mobilityPrep, .lightRecoveryMovement:
-            return CoachSupportingAction(type: type, icon: "figure.cooldown", title: "Downshift", subtitle: "Make the next block easier to recover from", color: WeekFitTheme.purple)
+            return CoachSupportingAction(type: type, icon: "figure.cooldown", title: WeekFitLocalizedString("Downshift"), subtitle: WeekFitLocalizedString("Make the next block easier to recover from"), color: CoachPalette.recovery)
         case .stayConsistent:
-            return CoachSupportingAction(type: type, icon: "checkmark.circle.fill", title: "Keep the routine", subtitle: "No extra fix is needed", color: WeekFitTheme.meal)
+            return CoachSupportingAction(type: type, icon: "checkmark.circle.fill", title: WeekFitLocalizedString("Keep the routine"), subtitle: WeekFitLocalizedString("No extra fix is needed"), color: CoachPalette.stable)
         case .breathingReset, .downshiftNervousSystem:
-            return CoachSupportingAction(type: type, icon: "wind", title: "Settle down", subtitle: "Lower stress before the next demand", color: WeekFitTheme.purple)
+            return CoachSupportingAction(type: type, icon: "wind", title: WeekFitLocalizedString("Settle down"), subtitle: WeekFitLocalizedString("Lower stress before the next demand"), color: CoachPalette.recovery)
         case .keepDigestionLight:
-            return CoachSupportingAction(type: type, icon: "leaf.fill", title: "Keep food light", subtitle: "Avoid adding digestive stress", color: WeekFitTheme.meal)
+            return CoachSupportingAction(type: type, icon: "leaf.fill", title: WeekFitLocalizedString("Keep food light"), subtitle: WeekFitLocalizedString("Avoid adding digestive stress"), color: CoachPalette.fueling)
         case .electrolyteRecovery:
-            return CoachSupportingAction(type: type, icon: "sparkles", title: "Replace minerals", subtitle: "Useful after heat or heavy sweat", color: Color.blue)
+            return CoachSupportingAction(type: type, icon: "sparkles", title: WeekFitLocalizedString("Replace minerals"), subtitle: WeekFitLocalizedString("Useful after heat or heavy sweat"), color: CoachPalette.hydration)
         }
     }
 
@@ -3291,6 +3912,10 @@ private struct CoachSituationStory {
         storyTitle: String,
         legacyPriority: CoachDayPriorityResult
     ) -> String {
+        if story.kind == .normalEvening {
+            return storyTitle
+        }
+
         if legacyPriority.focus == .eveningWindDown,
            legacyPriority.limiter == .sleep {
             return legacyPriority.title
@@ -3341,6 +3966,10 @@ private struct CoachSituationStory {
     }
 
     func usesStoryTitleAsPrimaryTitle(legacyPriority: CoachDayPriorityResult) -> Bool {
+        if kind == .normalEvening {
+            return true
+        }
+
         if kind == .manageActiveTraining || kind == .manageActiveSauna {
             return true
         }
@@ -3532,7 +4161,8 @@ private extension CoachNarrativePlan {
             interpretation: i
         )
         let actionIntents = isNoIntervention(story: story, legacyPriority: legacyPriority) &&
-            legacyPriority.focus != .eveningWindDown
+            legacyPriority.focus != .eveningWindDown &&
+            story.kind != .normalEvening
             ? []
             : actionIntents(
                 for: story,
@@ -3553,7 +4183,7 @@ private extension CoachNarrativePlan {
         )
 
         return CoachNarrativePlan(
-            priority: legacyPriority.priority,
+            priority: story.kind == .manageActiveTraining ? .activeSession : legacyPriority.priority,
             objective: objective(
                 for: story,
                 primaryLimiter: primaryLimiter,
@@ -3584,6 +4214,10 @@ private extension CoachNarrativePlan {
         primaryLimiter: CoachNarrativeLimiter,
         legacyPriority: CoachDayPriorityResult
     ) -> CoachObjective {
+        if story.kind == .manageActiveTraining || story.kind == .manageActiveSauna {
+            return .executeActivity
+        }
+
         if primaryLimiter == .hydration || primaryLimiter == .fuel {
             return .buildReadiness
         }
@@ -3693,10 +4327,17 @@ private extension CoachNarrativePlan {
                 }
             } else {
                 append(.prepareForSleep)
-                append(i.isAfterMidnightBeforeMorning ? .windDownNow : .keepEveningCalm)
-                append(.skipExtraTraining)
+                append(.windDownNow)
+                append(.keepEveningCalm)
             }
 
+            return Array(intents.prefix(3))
+        }
+
+        if story.kind == .normalEvening {
+            append(.prepareForSleep)
+            append(.windDownNow)
+            append(.keepEveningCalm)
             return Array(intents.prefix(3))
         }
 
@@ -3794,9 +4435,21 @@ private extension CoachNarrativePlan {
             append(.shortenSession)
 
         case .recoverFromLoad:
-            append(.objectiveAction(type: .recoveryMeal, title: "Eat a normal meal with carbs and protein", subtitle: "Make the ride easier to absorb"))
-            append(.objectiveAction(type: .rehydrateGradually, title: "Drink 300-500 ml over the next hour", subtitle: "Then sip to comfort"))
-            append(.skipExtraTraining)
+            if recoveryNutritionStillNeedsAction(context: i.context) {
+                append(.objectiveAction(type: .recoveryMeal, title: "Eat a normal meal with carbs and protein", subtitle: "Make the ride easier to absorb"))
+            }
+            if recoveryHydrationStillNeedsAction(context: i.context) {
+                append(.objectiveAction(type: .rehydrateGradually, title: "Drink 300-500 ml over the next hour", subtitle: "Then sip to comfort"))
+            }
+            if noRemainingTrainingToday(context: i.context) {
+                append(.keepEveningCalm)
+                if !recoveryHydrationStillNeedsAction(context: i.context) {
+                    append(.windDownNow)
+                }
+                append(.prepareForSleep)
+            } else {
+                append(.skipExtraTraining)
+            }
 
         case .fuelBeforeTraining:
             append(.eat(macros: "30-60g carbs", timing: "Before training"))
@@ -3805,8 +4458,8 @@ private extension CoachNarrativePlan {
 
         case .normalEvening:
             append(.prepareForSleep)
-            append(i.isAfterMidnightBeforeMorning ? .windDownNow : .keepEveningCalm)
-            append(.skipExtraTraining)
+            append(.windDownNow)
+            append(.keepEveningCalm)
 
         case .opportunityDay, .availableDay, .steadyDay:
             let hasFutureActivity = legacyPriority.activity.map { activity in
@@ -3832,6 +4485,34 @@ private extension CoachNarrativePlan {
         }
 
         return Array(intents.prefix(3))
+    }
+
+    private static func recoveryNutritionStillNeedsAction(context: CoachDecisionContext) -> Bool {
+        let calories = context.nutritionContext?.caloriesCurrent ?? context.brain.metrics.calories
+        let protein = context.nutritionContext?.proteinCurrent ?? context.brain.metrics.protein
+        let calorieRatio = CoachSituationStory.safeRatio(calories, context.brain.baseDayGoals.calories)
+        let proteinGoal = context.nutritionContext?.proteinGoal ?? context.brain.baseDayGoals.protein
+        let proteinRatio = CoachSituationStory.safeRatio(protein, proteinGoal)
+
+        return (calorieRatio < 0.90 && calories < 1_800) ||
+            (proteinRatio < 0.90 && protein < 90)
+    }
+
+    private static func recoveryHydrationStillNeedsAction(context: CoachDecisionContext) -> Bool {
+        let water = context.nutritionContext?.waterCurrent ?? context.brain.metrics.waterLiters
+        let waterGoal = context.nutritionContext?.waterGoal ?? context.brain.fullDayGoals.waterLiters
+        let waterRatio = CoachSituationStory.safeRatio(water, waterGoal)
+
+        return (waterRatio < 0.80 && water < 3.0) ||
+            context.brain.hydration == .depleted
+    }
+
+    private static func noRemainingTrainingToday(context: CoachDecisionContext) -> Bool {
+        context.activityContext.activeActivity == nil &&
+            context.activityContext.preparingActivity == nil &&
+            context.activityContext.nextUpcomingActivity == nil &&
+            context.activityContext.laterTodayActivity == nil &&
+            context.dayContext.upcomingTrainingActivities.allSatisfy { $0.isCompleted || $0.isSkipped }
     }
 
     static func heatPreparationActionIntents(for i: HumanCoachInterpretation) -> [CoachActionIntent] {
@@ -3905,18 +4586,42 @@ private extension CoachNarrativePlan {
             text.contains("weights") ||
             text.contains("lifting") {
             return [
-                .objectiveAction(type: .controlIntensity, title: "Reduce load", subtitle: "Keep working weight below normal"),
-                .objectiveAction(type: .breathingReset, title: "Leave reps in reserve", subtitle: "No grinding sets today"),
-                .objectiveAction(type: .cooldown, title: "Avoid failure", subtitle: "Stop before form breaks down")
+                .objectiveAction(
+                    type: .controlIntensity,
+                    title: activeSessionCopy(english: "Keep form clean", russian: "Держите технику"),
+                    subtitle: activeSessionCopy(english: "Do not take sets to failure", russian: "Не доводите подходы до отказа")
+                ),
+                .objectiveAction(
+                    type: .cooldown,
+                    title: activeSessionCopy(english: "Leave reserve", russian: "Оставьте запас"),
+                    subtitle: activeSessionCopy(english: "Stop before form breaks down", russian: "Завершайте подход до потери формы")
+                ),
+                .objectiveAction(
+                    type: .breathingReset,
+                    title: activeSessionCopy(english: "Breathe between sets", russian: "Дышите ровно"),
+                    subtitle: activeSessionCopy(english: "Lower tension before the next set", russian: "Сбрасывайте напряжение между подходами")
+                )
             ]
         }
 
         if text.contains("run") ||
             text.contains("jog") {
             return [
-                .objectiveAction(type: .controlIntensity, title: "Keep effort easy", subtitle: "Stay below today's ceiling"),
-                .objectiveAction(type: .breathingReset, title: "Stay conversational", subtitle: "Let breathing control pace"),
-                .objectiveAction(type: .cooldown, title: "Shorten if needed", subtitle: "Finish fresh")
+                .objectiveAction(
+                    type: .controlIntensity,
+                    title: activeSessionCopy(english: "Keep an easy pace", russian: "Держите легкий темп"),
+                    subtitle: activeSessionCopy(english: "Stay conversational", russian: "Оставайтесь в разговорном усилии")
+                ),
+                .objectiveAction(
+                    type: .breathingReset,
+                    title: activeSessionCopy(english: "Shorten if needed", russian: "Сократите при необходимости"),
+                    subtitle: activeSessionCopy(english: "Better to finish fresh than chase volume", russian: "Лучше закончить свежим, чем добрать объем")
+                ),
+                .objectiveAction(
+                    type: .cooldown,
+                    title: activeSessionCopy(english: "Finish with reserve", russian: "Завершите с запасом"),
+                    subtitle: activeSessionCopy(english: "Make recovery easier to start", russian: "Сделайте восстановление легче")
+                )
             ]
         }
 
@@ -3932,6 +4637,10 @@ private extension CoachNarrativePlan {
         }
 
         return nil
+    }
+
+    static func activeSessionCopy(english: String, russian: String) -> String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english
     }
 
     static func objectivePrimaryActions(
@@ -4319,6 +5028,30 @@ private extension CoachNarrativePlan {
 
 private extension CoachSituationStory {
 
+    static func performanceReadinessHasFutureTrainingContext(
+        _ priority: CoachDayPriorityResult,
+        interpretation i: HumanCoachInterpretation
+    ) -> Bool {
+        if let activity = priority.activity,
+           !activity.isCompleted,
+           !activity.isSkipped,
+           CoachDayActivityContextResolver.isCoachRelevant(activity) {
+            return true
+        }
+
+        if i.context.activityContext.preparingActivity != nil ||
+            i.context.activityContext.nextUpcomingActivity != nil ||
+            i.context.activityContext.laterTodayActivity != nil {
+            return true
+        }
+
+        return i.context.dayContext.upcomingTrainingActivities.contains { activity in
+            activity.date > i.context.dayContext.now &&
+                !activity.isCompleted &&
+                !activity.isSkipped
+        } || i.context.tomorrowDemand.hasDemand
+    }
+
     static func protectTomorrow(_ i: HumanCoachInterpretation) -> CoachSituationStory {
         let isAfterMidnight = i.isAfterMidnightBeforeMorning
         return CoachSituationStory(
@@ -4405,6 +5138,7 @@ private extension CoachSituationStory {
 
         case .performanceReadiness:
             guard i.recoveryIsStrong else { return nil }
+            guard CoachSituationStory.performanceReadinessHasFutureTrainingContext(priority, interpretation: i) else { return nil }
             let hydrationCanLead = hydrationCanLeadNarrative(priority)
             return CoachSituationStory(
                 kind: .prepareForTraining,
@@ -4946,7 +5680,10 @@ private extension CoachSituationStory {
         _ priority: CoachDayPriorityResult,
         interpretation i: HumanCoachInterpretation
     ) -> String {
-        "The useful coaching decision is arriving fresher, not making one support signal the whole story."
+        if priority.focus == .prepareForActivity {
+            return "The next activity is inside its preparation window; timing owns the story."
+        }
+        return "The useful coaching decision is arriving fresher, not making one support signal the whole story."
     }
 
     static func preparationStage(
@@ -5434,33 +6171,32 @@ private extension CoachSituationStory {
     }
 
     static func normalEvening(_ i: HumanCoachInterpretation) -> CoachSituationStory {
-        let time = i.timeLanguage
         if i.highLoadIsAbsorbedTonight {
             return CoachSituationStory(
                 kind: .normalEvening,
                 status: .nothingNeedsFixing,
-                title: "The work is done",
-                myRead: "Recovery is holding up well, sleep is in a good place, and nothing important needs protecting tonight.",
-                myRecommendation: "Enjoy the evening and let the work settle. No extra protection is needed.",
-                beCarefulWith: "Treating a recovered day like a fragile one just because the load was high.",
-                why: nil,
+                title: CoachDailyOverviewNarrativeCopy.eveningTitle,
+                myRead: CoachDailyOverviewNarrativeCopy.eveningRead,
+                myRecommendation: CoachDailyOverviewNarrativeCopy.eveningRecommendation,
+                beCarefulWith: CoachDailyOverviewNarrativeCopy.eveningRisk,
+                why: CoachDailyOverviewNarrativeCopy.eveningWhy,
                 planChallenge: nil,
                 priority: .supporting,
-                actions: [.stayConsistent, .downshiftNervousSystem]
+                actions: [.sleepPriority, .cooldown, .downshiftNervousSystem]
             )
         }
 
         return CoachSituationStory(
             kind: .normalEvening,
             status: .nothingNeedsFixing,
-            title: time.calmNightTitle,
-            myRead: "The useful work now is closing the day calmly.",
-            myRecommendation: time.calmNightRecommendation,
-            beCarefulWith: i.isAfterMidnightBeforeMorning ? "Adding intensity or extra structure overnight." : "Adding intensity or extra structure late.",
-            why: nil,
+            title: CoachDailyOverviewNarrativeCopy.eveningTitle,
+            myRead: CoachDailyOverviewNarrativeCopy.eveningRead,
+            myRecommendation: CoachDailyOverviewNarrativeCopy.eveningRecommendation,
+            beCarefulWith: CoachDailyOverviewNarrativeCopy.eveningRisk,
+            why: CoachDailyOverviewNarrativeCopy.eveningWhy,
             planChallenge: nil,
             priority: .supporting,
-            actions: [.stayConsistent, .downshiftNervousSystem]
+            actions: [.sleepPriority, .cooldown, .downshiftNervousSystem]
         )
     }
 
@@ -5516,11 +6252,11 @@ private extension CoachSituationStory {
         CoachSituationStory(
             kind: .steadyDay,
             status: .goodToGo,
-            title: legacyPriority.detailTitle == "Day overview" ? "Nothing needs chasing" : legacyPriority.detailTitle,
-            myRead: "The day is open enough to stay simple.",
-            myRecommendation: "Keep the next step flexible and maintain normal basics.",
-            beCarefulWith: "Adding structure the day does not need.",
-            why: "Useful coaching is often deciding that no intervention is needed yet.",
+            title: CoachDailyOverviewNarrativeCopy.stableTitle,
+            myRead: CoachDailyOverviewNarrativeCopy.stableRead,
+            myRecommendation: CoachDailyOverviewNarrativeCopy.stableRecommendation,
+            beCarefulWith: CoachDailyOverviewNarrativeCopy.stableRisk,
+            why: CoachDailyOverviewNarrativeCopy.stableWhy,
             planChallenge: nil,
             priority: .supporting,
             actions: [.stayConsistent]

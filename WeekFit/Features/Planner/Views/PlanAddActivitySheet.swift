@@ -5,6 +5,7 @@ import SwiftData
 struct PlanAddActivitySheet: View {
 
     @ObservedObject var viewModel: PlanViewModel
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     let plannedActivities: [PlannedActivity]
     let modelContext: ModelContext
@@ -90,26 +91,28 @@ struct PlanAddActivitySheet: View {
     }
     
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         addActivitySheet
             .sheet(isPresented: $viewModel.showCustomDuration) {
                 customDurationSheet
             }
-            .alert("Time already booked", isPresented: $viewModel.showTimeConflictAlert) {
-                Button("OK", role: .cancel) { }
+            .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
+                Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
             } message: {
                 Text(viewModel.timeConflictMessage)
             }
-            .alert("Delete activity?", isPresented: $showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
+            .alert(WeekFitLocalizedString("planner.delete.title"), isPresented: $showDeleteConfirmation) {
+                Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) { }
 
-                Button("Delete", role: .destructive) {
+                Button(WeekFitLocalizedString("common.action.delete"), role: .destructive) {
                     if let editingActivity = viewModel.editingActivity {
                         deleteActivity(editingActivity)
                         closeAddSheet()
                     }
                 }
             } message: {
-                Text("This activity will be removed from your plan.")
+                Text(AppText.Planner.deleteActivityMessage)
             }
 
             .onAppear {
@@ -173,13 +176,13 @@ private extension PlanAddActivitySheet {
     var sheetHeader: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(viewModel.editingActivity == nil ? "Add activity" : "Edit activity")
+                Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addTitle") : WeekFitLocalizedString("planner.sheet.editTitle"))
                     .font(.system(size: 21.5, weight: .semibold))
                     .foregroundStyle(textPrimary.opacity(0.96))
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
 
-                Text(viewModel.editingActivity == nil ? "What do you want to add?" : "What do you want to edit?")
+                Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addSubtitle") : WeekFitLocalizedString("planner.sheet.editSubtitle"))
                     .font(.system(size: 13.2, weight: .medium))
                     .foregroundStyle(textSecondary.opacity(0.66))
                     .lineLimit(1)
@@ -225,7 +228,7 @@ private extension PlanAddActivitySheet {
             }
             .buttonStyle(.plain)
             .padding(.top, 1)
-            .accessibilityLabel("Close")
+            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
     }
 
@@ -244,7 +247,7 @@ private extension PlanAddActivitySheet {
 
     var activityTypePickerSection: some View {
         VStack(alignment: .leading, spacing: 7) {
-            sheetSectionHeader("Activity")
+            sheetSectionHeader(WeekFitLocalizedString("planner.sheet.activitySection"))
 
             HStack(spacing: 9) {
                 ForEach(PlannerType.allCases, id: \.self) { type in
@@ -257,9 +260,11 @@ private extension PlanAddActivitySheet {
     var itemPickerSection: some View {
         VStack(alignment: .leading, spacing: 7) {
             sheetSectionHeader(
-                viewModel.selectedType == .meal ? "Choose meal" : "Choose activity",
+                viewModel.selectedType == .meal
+                    ? WeekFitLocalizedString("planner.sheet.chooseMeal")
+                    : WeekFitLocalizedString("planner.sheet.chooseActivity"),
                 subtitle: chooseItemSubtitle,
-                trailing: viewModel.selectedType == .meal ? "View all" : nil
+                trailing: viewModel.selectedType == .meal ? WeekFitLocalizedString("planner.sheet.viewAll") : nil
             )
             .padding(.top, 1)
 
@@ -306,11 +311,11 @@ private extension PlanAddActivitySheet {
                 .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("No saved meals")
+                Text(WeekFitLocalizedString("planner.emptyMeal.title"))
                     .font(.system(size: 12.6, weight: .semibold))
                     .foregroundStyle(textPrimary.opacity(0.86))
 
-                Text("Create a meal in Meals Library first")
+                Text(WeekFitLocalizedString("planner.emptyMeal.message"))
                     .font(.system(size: 10.8, weight: .medium))
                     .foregroundStyle(textSecondary.opacity(0.62))
             }
@@ -332,7 +337,7 @@ private extension PlanAddActivitySheet {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .lastTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("When")
+                        Text(AppText.Planner.whenTitle)
                             .font(.system(size: 15.6, weight: .semibold))
                             .foregroundStyle(textPrimary.opacity(0.93))
 
@@ -358,7 +363,7 @@ private extension PlanAddActivitySheet {
     var durationPickerSection: some View {
         if viewModel.selectedType == .workout || viewModel.selectedType == .recovery {
             VStack(alignment: .leading, spacing: 7) {
-                sheetSectionHeader("Duration", subtitle: durationSectionSubtitle)
+                sheetSectionHeader(WeekFitLocalizedString("planner.duration.pickerTitle"), subtitle: durationSectionSubtitle)
                     .padding(.top, 2)
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -439,7 +444,7 @@ private extension PlanAddActivitySheet {
                 Image(systemName: type.icon)
                     .font(.system(size: 10.5, weight: .semibold))
 
-                Text(type.title)
+                Text(localizedTitle(for: type))
                     .font(.system(size: 10.8, weight: .medium, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -487,14 +492,14 @@ private extension PlanAddActivitySheet {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(option.title)
+                    Text(localizedTitle(for: option))
                         .font(.system(size: 11.8, weight: .semibold))
                         .foregroundStyle(textPrimary.opacity(active ? 0.96 : 0.80))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .minimumScaleFactor(0.88)
 
-                    Text(option.subtitle)
+                    Text(localizedSubtitle(for: option))
                         .font(.system(size: 10.2, weight: .medium))
                         .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.42))
                         .lineLimit(1)
@@ -557,7 +562,7 @@ private extension PlanAddActivitySheet {
                         .truncationMode(.tail)
                         .minimumScaleFactor(0.88)
 
-                    Text("\(meal.calories) kcal • P \(meal.protein)g")
+                    Text(String(format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"), meal.calories, meal.protein))
                         .font(.system(size: 11.0, weight: .medium))
                         .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.50))
                         .lineLimit(1)
@@ -657,7 +662,7 @@ private extension PlanAddActivitySheet {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "clock.arrow.circlepath")
-                Text("+1 hour")
+                Text(AppText.Planner.addOneHour)
             }
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(viewModel.selectedType.color.opacity(0.78))
@@ -780,7 +785,7 @@ private extension PlanAddActivitySheet {
                 viewModel.customDuration = minutes
             }
         } label: {
-            Text("\(minutes) min")
+            Text(String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes))
                 .font(.system(size: 12.8, weight: .semibold))
                 .foregroundStyle(active ? viewModel.selectedType.color.opacity(0.72) : textPrimary.opacity(0.58))
                 .frame(width: 68, height: 32)
@@ -803,7 +808,7 @@ private extension PlanAddActivitySheet {
             viewModel.showCustomDuration = true
         } label: {
             HStack(spacing: 5) {
-                Text("Custom")
+                Text(AppText.Planner.customTitle)
                 Image(systemName: "slider.horizontal.3")
             }
             .font(.system(size: 12.6, weight: .semibold))
@@ -835,7 +840,7 @@ private extension PlanAddActivitySheet {
                 Image(systemName: viewModel.editingActivity == nil ? "plus.circle.fill" : "checkmark.circle.fill")
                     .font(.system(size: 14.5, weight: .semibold))
 
-                Text(viewModel.editingActivity == nil ? addButtonTitle : "Save changes")
+                Text(viewModel.editingActivity == nil ? addButtonTitle : WeekFitLocalizedString("planner.saveChanges"))
                     .font(.system(size: 15.2, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
@@ -865,7 +870,7 @@ private extension PlanAddActivitySheet {
         .buttonStyle(.plain)
         .disabled(!canSaveSelectedItem)
         .opacity(canSaveSelectedItem ? 1 : 0.46)
-        .accessibilityLabel(viewModel.editingActivity == nil ? addButtonTitle : "Save changes")
+        .accessibilityLabel(viewModel.editingActivity == nil ? addButtonTitle : WeekFitLocalizedString("planner.saveChanges"))
     }
 }
 
@@ -881,18 +886,18 @@ private extension PlanAddActivitySheet {
                 .padding(.top, 8)
 
             VStack(spacing: 4) {
-                Text("Custom duration")
+                Text(AppText.Planner.customDurationTitle)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text("Fine tune the activity length")
+                Text(AppText.Planner.customDurationSubtitle)
                     .font(.system(size: 13.2, weight: .medium))
                     .foregroundStyle(textSecondary.opacity(0.62))
             }
 
-            Picker("Duration", selection: $viewModel.customDuration) {
+            Picker(WeekFitLocalizedString("planner.duration.pickerLabel"), selection: $viewModel.customDuration) {
                 ForEach(Array(stride(from: 5, through: 240, by: 5)), id: \.self) { minutes in
-                    Text("\(minutes) min")
+                    Text(String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes))
                         .tag(minutes)
                 }
             }
@@ -903,7 +908,7 @@ private extension PlanAddActivitySheet {
                 viewModel.selectedDuration = viewModel.customDuration
                 viewModel.showCustomDuration = false
             } label: {
-                Text("Set \(viewModel.customDuration) min")
+                Text(String(format: WeekFitLocalizedString("planner.duration.setMinutesFormat"), viewModel.customDuration))
                     .font(WeekFitStyle.Font.button)
                     .foregroundStyle(.black.opacity(0.84))
                     .frame(maxWidth: .infinity)
@@ -916,7 +921,7 @@ private extension PlanAddActivitySheet {
             Button {
                 viewModel.showCustomDuration = false
             } label: {
-                Text("Cancel")
+                Text(AppText.Common.Action.cancel)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.78))
             }
@@ -1117,72 +1122,132 @@ private extension PlanAddActivitySheet {
 
     var addButtonTitle: String {
         switch viewModel.selectedType {
-        case .meal: return "Add meal"
-        case .workout: return "Add workout"
-        case .recovery: return "Add recovery"
-        case .habit: return "Add habit"
+        case .meal: return WeekFitLocalizedString("planner.add.meal")
+        case .workout: return WeekFitLocalizedString("planner.add.workout")
+        case .recovery: return WeekFitLocalizedString("planner.add.recovery")
+        case .habit: return WeekFitLocalizedString("planner.add.habit")
         }
     }
 
     var chooseItemSubtitle: String {
         switch viewModel.selectedType {
         case .meal:
-            return viewModel.customMeals.isEmpty ? "Create meals first, then add them here" : "Custom meals you've saved"
+            return viewModel.customMeals.isEmpty
+                ? WeekFitLocalizedString("planner.sheet.chooseMeal.emptySubtitle")
+                : WeekFitLocalizedString("planner.sheet.chooseMeal.savedSubtitle")
         case .workout:
-            return "Choose the movement that fits your day"
+            return WeekFitLocalizedString("planner.sheet.chooseWorkout.subtitle")
         case .recovery:
-            return "Support recovery and keep momentum"
+            return WeekFitLocalizedString("planner.sheet.chooseRecovery.subtitle")
         case .habit:
-            return "Small routines that keep the day on track"
+            return WeekFitLocalizedString("planner.sheet.chooseHabit.subtitle")
         }
     }
 
     var timeSectionSubtitle: String {
-        hasSelectedTimeConflict ? "Choose a free slot" : "Best time for you"
+        hasSelectedTimeConflict
+            ? WeekFitLocalizedString("planner.time.chooseFreeSlot")
+            : WeekFitLocalizedString("planner.time.bestTime")
     }
 
     var durationSectionSubtitle: String {
-        viewModel.selectedType == .recovery ? "Recommended for recovery balance" : "Recommended for energy balance"
+        viewModel.selectedType == .recovery
+            ? WeekFitLocalizedString("planner.duration.recoverySubtitle")
+            : WeekFitLocalizedString("planner.duration.energySubtitle")
     }
 
     var selectedTimeIntelligenceLabel: String {
-        guard let selectedSlot = viewModel.selectedSlot else { return "Choose time" }
-        guard !hasSelectedTimeConflict else { return "Overlap" }
+        guard let selectedSlot = viewModel.selectedSlot else { return WeekFitLocalizedString("planner.time.chooseTime") }
+        guard !hasSelectedTimeConflict else { return WeekFitLocalizedString("planner.time.overlap") }
 
         let hour = calendar.component(.hour, from: selectedSlot)
 
         switch viewModel.selectedType {
         case .meal:
             switch hour {
-            case 6...10: return "Good breakfast window"
-            case 11...14: return "Good lunch window"
-            case 17...21: return "Good dinner window"
-            default: return "Light fuel window"
+            case 6...10: return WeekFitLocalizedString("planner.time.meal.breakfast")
+            case 11...14: return WeekFitLocalizedString("planner.time.meal.lunch")
+            case 17...21: return WeekFitLocalizedString("planner.time.meal.dinner")
+            default: return WeekFitLocalizedString("planner.time.meal.lightFuel")
             }
         case .workout:
             switch hour {
-            case 6...10: return "Strong energy window"
-            case 11...15: return "Balanced training time"
-            case 16...19: return "Good cardio timing"
-            default: return "Keep it gentle"
+            case 6...10: return WeekFitLocalizedString("planner.time.workout.strongEnergy")
+            case 11...15: return WeekFitLocalizedString("planner.time.workout.balanced")
+            case 16...19: return WeekFitLocalizedString("planner.time.workout.cardio")
+            default: return WeekFitLocalizedString("planner.time.workout.gentle")
             }
         case .recovery:
             switch hour {
-            case 6...11: return "Easy reset window"
-            case 12...17: return "Good recovery gap"
-            default: return "Wind-down friendly"
+            case 6...11: return WeekFitLocalizedString("planner.time.recovery.reset")
+            case 12...17: return WeekFitLocalizedString("planner.time.recovery.gap")
+            default: return WeekFitLocalizedString("planner.time.recovery.windDown")
             }
         case .habit:
             switch hour {
-            case 6...11: return "Good morning anchor"
-            case 12...17: return "Steady routine slot"
-            default: return "Calm evening anchor"
+            case 6...11: return WeekFitLocalizedString("planner.time.habit.morning")
+            case 12...17: return WeekFitLocalizedString("planner.time.habit.steady")
+            default: return WeekFitLocalizedString("planner.time.habit.evening")
             }
         }
     }
 
     var selectedTimeStatusText: String {
-        hasSelectedTimeConflict ? "This time overlaps another activity" : selectedTimeIntelligenceLabel
+        hasSelectedTimeConflict
+            ? WeekFitLocalizedString("planner.time.overlapMessage")
+            : selectedTimeIntelligenceLabel
+    }
+
+    func localizedTitle(for type: PlannerType) -> String {
+        switch type {
+        case .meal: return WeekFitLocalizedString("planner.type.meal")
+        case .workout: return WeekFitLocalizedString("planner.type.workout")
+        case .recovery: return WeekFitLocalizedString("planner.type.recovery")
+        case .habit: return WeekFitLocalizedString("planner.type.habit")
+        }
+    }
+
+    func localizedTitle(for option: PlannerOption) -> String {
+        switch option.title {
+        case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
+        case "Running": return WeekFitLocalizedString("planner.option.running")
+        case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")
+        case "Core": return WeekFitLocalizedString("planner.option.core")
+        case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")
+        case "Full Body": return WeekFitLocalizedString("planner.option.fullBody")
+        case "Tennis": return WeekFitLocalizedString("planner.option.tennis")
+        case "Squash": return WeekFitLocalizedString("planner.option.squash")
+        case "Stretching": return WeekFitLocalizedString("planner.option.stretching")
+        case "Walk": return WeekFitLocalizedString("planner.option.walk")
+        case "Sauna": return WeekFitLocalizedString("planner.option.sauna")
+        case "Yoga": return WeekFitLocalizedString("planner.option.yoga")
+        case "Breathing": return WeekFitLocalizedString("planner.option.breathing")
+        case "Drink Water": return WeekFitLocalizedString("planner.option.drinkWater")
+        case "Sleep Routine": return WeekFitLocalizedString("planner.option.sleepRoutine")
+        case "No Screens": return WeekFitLocalizedString("planner.option.noScreens")
+        case "Morning Routine": return WeekFitLocalizedString("planner.option.morningRoutine")
+        case "No saved meals": return WeekFitLocalizedString("planner.emptyMeal.title")
+        default: return option.title
+        }
+    }
+
+    func localizedSubtitle(for option: PlannerOption) -> String {
+        switch option.subtitle {
+        case "Endurance": return WeekFitLocalizedString("planner.option.subtitle.endurance")
+        case "Cardio": return WeekFitLocalizedString("planner.option.subtitle.cardio")
+        case "Strength": return WeekFitLocalizedString("planner.option.subtitle.strength")
+        case "High Intensity": return WeekFitLocalizedString("planner.option.subtitle.highIntensity")
+        case "Mobility": return WeekFitLocalizedString("planner.option.subtitle.mobility")
+        case "Light recovery": return WeekFitLocalizedString("planner.option.subtitle.lightRecovery")
+        case "Relax": return WeekFitLocalizedString("planner.option.subtitle.relax")
+        case "Calm": return WeekFitLocalizedString("planner.option.subtitle.calm")
+        case "Hydration": return WeekFitLocalizedString("planner.option.subtitle.hydration")
+        case "Wind down": return WeekFitLocalizedString("planner.option.subtitle.windDown")
+        case "Focus": return WeekFitLocalizedString("planner.option.subtitle.focus")
+        case "Start day": return WeekFitLocalizedString("planner.option.subtitle.startDay")
+        case "Create a meal first": return WeekFitLocalizedString("planner.emptyMeal.subtitle")
+        default: return option.subtitle
+        }
     }
 
     var hasSelectedTimeConflict: Bool {

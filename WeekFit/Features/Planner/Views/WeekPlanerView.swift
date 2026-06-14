@@ -13,6 +13,7 @@ struct WeekPlannerView: View {
     @ObservedObject var authViewModel: AuthViewModel
     
     @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
 
@@ -39,6 +40,8 @@ struct WeekPlannerView: View {
     
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         GeometryReader { proxy in
             let screenWidth = UIScreen.main.bounds.width
             
@@ -50,8 +53,8 @@ struct WeekPlannerView: View {
 
                 WeekFitScreenContainer {
                     WeekFitScreenHeader(
-                        title: "Plan",
-                        subtitle: "Weekly activities",
+                        title: WeekFitLocalizedString("planner.week.title"),
+                        subtitle: WeekFitLocalizedString("planner.week.subtitle"),
                         initials: userSettings.profileInitials,
                         showAvatar: true
                     ) {
@@ -102,23 +105,24 @@ struct WeekPlannerView: View {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(languageManager)
         }
         .alert(
-            "Delete logged activity?",
+            WeekFitLocalizedString("planner.delete.logged.title"),
             isPresented: $showDeleteConfirmation,
             presenting: activityPendingDelete
         ) { activity in
 
-            Button("Delete", role: .destructive) {
+            Button(WeekFitLocalizedString("common.action.delete"), role: .destructive) {
                 deleteActivity(activity)
             }
 
-            Button("Cancel", role: .cancel) {
+            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) {
                 activityPendingDelete = nil
             }
 
         } message: { activity in
-            Text("This will remove \(activity.title) from your plan.")
+            Text(String(format: WeekFitLocalizedString("planner.delete.activityMessageFormat"), activity.title))
         }
         .onReceive(activityCoordinator.$completedWorkoutsBatch) { workouts in
             guard !workouts.isEmpty else { return }
@@ -140,11 +144,11 @@ struct WeekPlannerView: View {
 
         return VStack(spacing: 22) {
             VStack(spacing: 8) {
-                Text("Confirm activity")
+                Text(AppText.Planner.confirmActivityTitle)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text("Did you complete \(activity.title), or should we mark it as skipped?")
+                Text(String(format: WeekFitLocalizedString("planner.confirm.activityMessageFormat"), activity.title))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.62))
                     .multilineTextAlignment(.center)
@@ -171,7 +175,7 @@ struct WeekPlannerView: View {
                 } label: {
                     HStack {
                         Image(systemName: "xmark.circle")
-                        Text("Skipped")
+                        Text(WeekFitLocalizedString("planner.status.skipped"))
                     }
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.64))
@@ -201,7 +205,7 @@ struct WeekPlannerView: View {
                 } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Done")
+                        Text(AppText.Common.Action.done)
                     }
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.black.opacity(0.84))
@@ -262,8 +266,8 @@ private extension WeekPlannerView {
 
     var segmentedControl: some View {
         HStack(spacing: 0) {
-            segmentButton("Week", .week)
-            segmentButton("Month", .month)
+            segmentButton(WeekFitLocalizedString("planner.week"), .week)
+            segmentButton(WeekFitLocalizedString("planner.month"), .month)
         }
         .padding(4)
         .background(
@@ -306,7 +310,7 @@ private extension WeekPlannerView {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("WEEK OVERVIEW")
+                    Text(WeekFitLocalizedString("planner.weekOverview"))
                         .font(.system(size: 11.5, weight: .bold))
                         .tracking(0.35)
                         .foregroundStyle(.white.opacity(0.42))
@@ -336,10 +340,10 @@ private extension WeekPlannerView {
 
     var legend: some View {
         HStack(spacing: 11) {
-            legendItem("Endurance", Color(hex: "#5E7CFF"))
-            legendItem("High load", Color(hex: "#FF9F43"))
-            legendItem("Mixed", Color(hex: "#FFD166"))
-            legendItem("Recovery", Color(hex: "#59D98E"))
+            legendItem(WeekFitLocalizedString("planner.legend.endurance"), Color(hex: "#5E7CFF"))
+            legendItem(WeekFitLocalizedString("planner.legend.highLoad"), Color(hex: "#FF9F43"))
+            legendItem(WeekFitLocalizedString("planner.legend.mixed"), Color(hex: "#FFD166"))
+            legendItem(WeekFitLocalizedString("planner.legend.recovery"), Color(hex: "#59D98E"))
         }
     }
 
@@ -582,11 +586,11 @@ private extension WeekPlannerView {
 
                 VStack(alignment: .leading, spacing: 3) {
 
-                    Text("Build your day")
+                    Text(AppText.Planner.buildYourDay)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
 
-                    Text("Add training, meals, recovery, hydration, or sleep structure.")
+                    Text(AppText.Planner.buildYourDayMessage)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.52))
                         .lineLimit(1)
@@ -645,16 +649,16 @@ private extension WeekPlannerView {
 
     var monthPlaceholderCard: some View {
         VStack(alignment: .leading, spacing: 13) {
-            Text("MONTH VIEW")
+            Text(AppText.Planner.monthView)
                 .font(.system(size: 11.5, weight: .bold))
                 .tracking(0.35)
                 .foregroundStyle(.white.opacity(0.42))
 
-            Text("Monthly planning is coming next.")
+            Text(AppText.Planner.monthComing)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            Text("For now, your weekly structure is the source of truth for planning.")
+            Text(AppText.Planner.monthSourceOfTruth)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.56))
 
@@ -663,7 +667,7 @@ private extension WeekPlannerView {
                     mode = .week
                 }
             } label: {
-                Text("Back to week")
+                Text(AppText.Planner.backToWeek)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 15)
@@ -691,7 +695,7 @@ private extension WeekPlannerView {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.38))
 
-            Text("Plan your week. Use Coach for real-time guidance.")
+            Text(AppText.Planner.weeklyCoachNote)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.white.opacity(0.38))
                 .lineLimit(1)
@@ -842,10 +846,10 @@ private extension WeekPlannerView {
         let total = firstAmount + secondAmount
 
         if total > 0 {
-            return "Water Log (\(String(format: "%.2g", total))L)"
+            return String(format: WeekFitLocalizedString("planner.waterLog.amountFormat"), String(format: "%.2g", total))
         }
 
-        return "Water Log"
+        return WeekFitLocalizedString("planner.waterLog.title")
     }
 
     private func waterAmount(from title: String) -> Double {
@@ -867,14 +871,14 @@ private extension WeekPlannerView {
     var weekRangeTitle: String {
         guard let first = viewModel.weekDays.first,
               let last = viewModel.weekDays.last else {
-            return viewModel.selectedDate.formatted(.dateTime.month(.abbreviated).day())
+            return localizedMonthDay(viewModel.selectedDate)
         }
 
-        let firstMonth = first.formatted(.dateTime.month(.abbreviated))
-        let lastMonth = last.formatted(.dateTime.month(.abbreviated))
+        let firstMonth = localizedMonth(first)
+        let lastMonth = localizedMonth(last)
 
-        let firstDay = first.formatted(.dateTime.day())
-        let lastDay = last.formatted(.dateTime.day())
+        let firstDay = localizedDay(first)
+        let lastDay = localizedDay(last)
 
         if firstMonth == lastMonth {
             return "\(firstMonth) \(firstDay) – \(lastDay)"
@@ -884,21 +888,45 @@ private extension WeekPlannerView {
     }
 
     var selectedDateHeader: String {
-        viewModel.selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
+        return formatter.string(from: viewModel.selectedDate)
+    }
+
+    private func localizedMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("MMM")
+        return formatter.string(from: date)
+    }
+
+    private func localizedDay(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("d")
+        return formatter.string(from: date)
+    }
+
+    private func localizedMonthDay(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("MMM d")
+        return formatter.string(from: date)
     }
 
     var selectedDayTitle: String {
         switch dayKind(for: viewModel.selectedDate) {
         case .endurance:
-            return "Endurance Day"
+            return WeekFitLocalizedString("planner.dayTitle.endurance")
         case .load:
-            return "High Load Day"
+            return WeekFitLocalizedString("planner.dayTitle.load")
         case .mixed:
-            return "Mixed Day"
+            return WeekFitLocalizedString("planner.dayTitle.mixed")
         case .recovery:
-            return "Recovery Day"
+            return WeekFitLocalizedString("planner.dayTitle.recovery")
         case .open:
-            return "Open Day"
+            return WeekFitLocalizedString("planner.dayTitle.open")
         }
     }
     
@@ -910,20 +938,20 @@ private extension WeekPlannerView {
             let remainingMinutes = minutes % 60
 
             if remainingMinutes == 0 {
-                return "\(hours)h"
+                return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
             }
 
-            return "\(hours)h \(remainingMinutes)m"
+            return String(format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"), hours, remainingMinutes)
         }
 
-        return "\(minutes) min"
+        return String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes)
     }
 
     var selectedDaySubtitle: String {
         let count = selectedDayActivities.count
 
         if count == 0 {
-            return "Shape this day with intention."
+            return WeekFitLocalizedString("planner.daySubtitle.empty")
         }
 
         let workouts = selectedDayActivities.filter { $0.type.lowercased() == "workout" }.count
@@ -933,20 +961,65 @@ private extension WeekPlannerView {
 
         var parts: [String] = []
 
-        if workouts > 0 { parts.append("\(workouts) workout\(workouts == 1 ? "" : "s")") }
-        if meals > 0 { parts.append("\(meals) meal\(meals == 1 ? "" : "s")") }
+        if workouts > 0 { parts.append(workoutCountText(count: workouts)) }
+        if meals > 0 { parts.append(mealCountText(count: meals)) }
         if recovery > 0 {
             parts.append(
-                "\(recovery) recovery \(recovery == 1 ? "activity" : "activities")"
+                String(format: WeekFitLocalizedString("planner.daySubtitle.recoveryFormat"), recovery)
             )
         }
-        if habits > 0 { parts.append("\(habits) habit\(habits == 1 ? "" : "s")") }
+        if habits > 0 { parts.append(String(format: WeekFitLocalizedString("planner.daySubtitle.habitsFormat"), habits)) }
 
         if parts.isEmpty {
-            return "\(count) planned item\(count == 1 ? "" : "s")."
+            return String(format: WeekFitLocalizedString("planner.daySubtitle.plannedItemsFormat"), count)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
         }
 
-        return parts.joined(separator: " • ") + "."
+        return parts.joined(separator: " • ")
+    }
+
+    private var isRussianLocale: Bool {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru")
+    }
+
+    private func workoutCountText(count: Int) -> String {
+        guard isRussianLocale else {
+            return String(format: WeekFitLocalizedString("planner.daySubtitle.workoutsFormat"), count)
+        }
+
+        return "\(count) \(russianPlural(count: count, one: "тренировка", few: "тренировки", many: "тренировок"))"
+    }
+
+    private func mealCountText(count: Int) -> String {
+        guard isRussianLocale else {
+            return String(format: WeekFitLocalizedString("planner.daySubtitle.mealsFormat"), count)
+        }
+
+        return "\(count) \(russianPlural(count: count, one: "прием пищи", few: "приема пищи", many: "приемов пищи"))"
+    }
+
+    private func waterLogCountText(count: Int) -> String {
+        guard isRussianLocale else {
+            return "\(count) water logs"
+        }
+
+        return "\(count) \(russianPlural(count: count, one: "запись", few: "записи", many: "записей"))"
+    }
+
+    private func russianPlural(count: Int, one: String, few: String, many: String) -> String {
+        let mod100 = count % 100
+        if (11...14).contains(mod100) {
+            return many
+        }
+
+        switch count % 10 {
+        case 1:
+            return one
+        case 2...4:
+            return few
+        default:
+            return many
+        }
     }
 
     func dayActivities(for date: Date) -> [PlannedActivity] {
@@ -1038,44 +1111,77 @@ private extension WeekPlannerView {
     func activitySubtitle(_ item: PlannedActivity) -> String {
 
         let duration = formattedDuration(item.durationMinutes)
+        let type = item.type.lowercased()
+        let title = item.title.lowercased()
 
-        switch item.type.lowercased() {
+        if isDrinkActivity(item) {
+            if item.durationMinutes > 0 {
+                return "\(WeekFitLocalizedString("planner.timeline.drink")) • \(duration)"
+            }
+
+            return WeekFitLocalizedString("planner.timeline.drink")
+        }
+
+        switch type {
 
         case "meal":
             if item.calories > 0 {
-                return "Meal • \(item.calories) kcal"
+                return String(format: WeekFitLocalizedString("planner.activitySubtitle.mealCaloriesFormat"), item.calories)
             }
 
-            return "Fueling window"
+            return WeekFitLocalizedString("planner.activitySubtitle.fuelingWindow")
 
         case "workout":
             if item.durationMinutes > 0 {
-                return "Training • \(duration)"
+                return String(format: WeekFitLocalizedString("planner.activitySubtitle.trainingDurationFormat"), duration)
             }
 
-            return "Training"
+            return WeekFitLocalizedString("planner.activitySubtitle.training")
 
         case "recovery":
             if item.durationMinutes > 0 {
-                return "Recovery • \(duration)"
+                return String(format: WeekFitLocalizedString("planner.activitySubtitle.recoveryDurationFormat"), duration)
             }
 
-            return "Recovery"
+            return WeekFitLocalizedString("planner.activitySubtitle.recovery")
 
         case "habit":
             if item.durationMinutes > 0 {
-                return "Routine • \(duration)"
+                return String(format: WeekFitLocalizedString("planner.activitySubtitle.routineDurationFormat"), duration)
             }
 
-            return "Routine"
+            return WeekFitLocalizedString("planner.activitySubtitle.routine")
 
         default:
             if item.durationMinutes > 0 {
-                return "\(item.type) • \(duration)"
+                return "\(localizedPlanTypeLabel(type: type, title: title)) • \(duration)"
             }
 
-            return item.type
+            return localizedPlanTypeLabel(type: type, title: title)
         }
+    }
+
+    private func isDrinkActivity(_ item: PlannedActivity) -> Bool {
+        let type = item.type.lowercased()
+        let title = item.title.lowercased()
+
+        return type.contains("water") ||
+            type.contains("drink") ||
+            title.contains("water") ||
+            title.contains("hydration") ||
+            title.contains("drink")
+    }
+
+    private func localizedPlanTypeLabel(type: String, title: String) -> String {
+        if type == "meal" || title.contains("meal") {
+            return WeekFitLocalizedString("planner.timeline.meal")
+        }
+
+        if type.contains("water") || type.contains("drink") || title.contains("water") || title.contains("drink") {
+            return WeekFitLocalizedString("planner.timeline.drink")
+        }
+
+        return WeekFitCoachRuntimeLocalizedString(type)
     }
     
     func reconcileCompletedAppleWorkout(_ workout: HKWorkout) {
@@ -1381,7 +1487,7 @@ private struct DynamicDayCapsule: View {
                 }
                 .foregroundStyle(isSelected ? kind.color : .white.opacity(0.70))
 
-                Text(date.formatted(.dateTime.day()))
+                Text(dayNumber)
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white.opacity(isSelected ? 0.94 : 0.70))
@@ -1417,7 +1523,17 @@ private struct DynamicDayCapsule: View {
     }
 
     private var dayLabel: String {
-        date.formatted(.dateTime.weekday(.narrow))
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEEEE")
+        return formatter.string(from: date)
+    }
+
+    private var dayNumber: String {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("d")
+        return formatter.string(from: date)
     }
 }
 
@@ -1493,12 +1609,16 @@ private struct DynamicPlanRow: View {
                     .font(.system(size: 14.6, weight: isLive ? .bold : .semibold))
                     .foregroundStyle(.white.opacity(isPending ? 0.58 : 0.96))
                     .lineLimit(1)
+                    .layoutPriority(1)
 
                 Text(subtitle)
                     .font(.system(size: 11.4, weight: .medium))
                     .foregroundStyle(.white.opacity(isPending ? 0.34 : 0.50))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .truncationMode(.tail)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 8)
 
@@ -1510,10 +1630,13 @@ private struct DynamicPlanRow: View {
                             ? .white.opacity(0.58)
                             : .white.opacity(isPending ? 0.54 : 0.88)
                     )
+                    .lineLimit(1)
+                    .layoutPriority(2)
       
                 statusBadge
 
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -1557,60 +1680,9 @@ private struct DynamicPlanRow: View {
 
     @ViewBuilder
     private var iconContent: some View {
-        if activity.type.lowercased() == "meal" {
-            mealIconContent
-                .opacity(isPending ? 0.62 : 0.96)
-        } else {
-            Image(systemName: resolvedIcon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(accent.opacity(isPending ? 0.62 : 0.96))
-        }
-    }
-
-    @ViewBuilder
-    private var mealIconContent: some View {
-        if !mealBuilderImageItems.isEmpty {
-            BuiltMealPlateView(
-                items: mealBuilderImageItems,
-                plateSize: 33,
-                itemScale: 0.24,
-                offsetScale: 0.22,
-                plateOpacity: 0.48,
-                shadowOpacity: 0.10,
-                layoutMode: .compactPreview
-            )
-            .frame(width: 30, height: 30)
-        } else if let assetImageName = activityAssetImageName {
-            Image(assetImageName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 28, height: 28)
-                .clipShape(Circle())
-        } else {
-            AsyncCustomFoodVisualView(
-                filename: activityLocalPhotoFilename,
-                placeholderInitial: mealPlaceholderInitial,
-                size: 28,
-                imageScale: 0.62,
-                fallbackSystemImage: resolvedIcon
-            )
-        }
-    }
-
-    private var activityAssetImageName: String? {
-        let imageName = resolvedMealImageName
-        guard !imageName.isEmpty, UIImage(named: imageName) != nil else { return nil }
-        return imageName
-    }
-
-    private var activityLocalPhotoFilename: String? {
-        let imageName = resolvedMealImageName
-        guard !imageName.isEmpty, UIImage(named: imageName) == nil else { return nil }
-        return imageName
-    }
-
-    private var resolvedMealImageName: String {
-        mealImageName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        Image(systemName: activity.type.lowercased() == "meal" ? "fork.knife" : resolvedIcon)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(accent.opacity(isPending ? 0.62 : 0.96))
     }
     
     private var resolvedIcon: String {
@@ -1768,7 +1840,7 @@ private struct DynamicPlanRow: View {
 
         if activity.source == "appleWorkout",
            status == .logged {
-            return "Synced"
+            return WeekFitLocalizedString("planner.status.synced")
         }
 
         return status.title
@@ -1811,11 +1883,11 @@ private enum PlanDayKind: Equatable {
 
     var label: String {
         switch self {
-        case .endurance: return "Endurance"
-        case .load: return "Load"
-        case .mixed: return "Mixed"
-        case .recovery: return "Recovery"
-        case .open: return "Open"
+        case .endurance: return WeekFitLocalizedString("planner.dayKind.endurance")
+        case .load: return WeekFitLocalizedString("planner.dayKind.load")
+        case .mixed: return WeekFitLocalizedString("planner.dayKind.mixed")
+        case .recovery: return WeekFitLocalizedString("planner.dayKind.recovery")
+        case .open: return WeekFitLocalizedString("planner.dayKind.open")
         }
     }
 
@@ -1852,12 +1924,12 @@ enum PlanActivityStatus {
 
     var title: String {
         switch self {
-        case .upcoming: return "Upcoming"
-        case .live: return "Live"
-        case .pending: return "Pending"
-        case .completed: return "Done"
-        case .skipped: return "Skipped"
-        case .logged: return "Logged"
+        case .upcoming: return WeekFitLocalizedString("planner.status.upcoming")
+        case .live: return WeekFitLocalizedString("planner.status.live")
+        case .pending: return WeekFitLocalizedString("planner.status.pending")
+        case .completed: return WeekFitLocalizedString("planner.status.completed")
+        case .skipped: return WeekFitLocalizedString("planner.status.skipped")
+        case .logged: return WeekFitLocalizedString("planner.status.logged")
         }
     }
     
@@ -1895,10 +1967,38 @@ private extension WeekPlannerView {
     private func timelineTitle(for item: PlanTimelineItem) -> String {
         switch item {
         case .single(let activity):
-            return activity.title
+            return timelineTitle(for: activity)
         case .waterGroup:
-            return "Hydration"
+            return WeekFitLocalizedString("planner.timeline.water")
         }
+    }
+
+    private func timelineTitle(for activity: PlannedActivity) -> String {
+        let trimmedTitle = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedTitle = trimmedTitle.lowercased()
+        let type = activity.type.lowercased()
+
+        if isDrinkActivity(activity) {
+            if normalizedTitle.contains("water") || normalizedTitle.contains("hydration") {
+                return WeekFitLocalizedString("planner.timeline.water")
+            }
+
+            return WeekFitLocalizedString("planner.timeline.drink")
+        }
+
+        if type == "meal" && (trimmedTitle.isEmpty || normalizedTitle == "meal") {
+            return WeekFitLocalizedString("planner.timeline.meal")
+        }
+
+        if normalizedTitle == "water" {
+            return WeekFitLocalizedString("planner.timeline.water")
+        }
+
+        if normalizedTitle == "drink" {
+            return WeekFitLocalizedString("planner.timeline.drink")
+        }
+
+        return WeekFitCoachRuntimeLocalizedString(trimmedTitle)
     }
 
     private func timelineTime(for item: PlanTimelineItem) -> String {
@@ -1920,12 +2020,17 @@ private extension WeekPlannerView {
             let count = activities.count
             let first = activities.first.map { timeTitle($0.date) } ?? ""
             let last = activities.last.map { timeTitle($0.date) } ?? ""
+            let countText = waterLogCountText(count: count)
 
             if first == last {
-                return "\(count) water logs"
+                return isRussianLocale
+                    ? "\(WeekFitLocalizedString("planner.timeline.water")): \(countText)"
+                    : countText
             }
 
-            return "\(count) water logs • \(first)–\(last)"
+            return isRussianLocale
+                ? "\(WeekFitLocalizedString("planner.timeline.water")): \(countText) • \(first)–\(last)"
+                : "\(countText) • \(first)–\(last)"
         }
     }
 }

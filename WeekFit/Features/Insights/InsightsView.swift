@@ -1906,8 +1906,8 @@ final class InsightsViewModel: ObservableObject {
             return "Open Nutrition"
         case .tab(.calendar):
             return "Open Plan"
-        case .tab(.highlights):
-            return "Open Highlights"
+//        case .tab(.highlights):
+//            return "Open Highlights"
         case nil:
             return "Review Details"
         }
@@ -4484,6 +4484,7 @@ struct InsightsView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var coachInputProvider: CoachInputProvider
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
     @StateObject private var viewModel: InsightsViewModel
@@ -4580,11 +4581,14 @@ struct InsightsView: View {
             "\(String(format: "%.1f", nutritionViewModel.currentMetrics?.waterLiters ?? 0))",
             nutritionViewModel.coachStateRefreshID.uuidString,
             coachCoordinator.state.id.uuidString,
-            coachInputProvider.lastInput?.metricsSnapshotID?.uuidString ?? "noCoachInput"
+            coachInputProvider.lastInput?.metricsSnapshotID?.uuidString ?? "noCoachInput",
+            languageManager.selectedLanguage.rawValue
         ].joined(separator: "|")
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack(alignment: .top) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
@@ -4657,6 +4661,7 @@ struct InsightsView: View {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(languageManager)
         }
         .fullScreenCover(item: $selectedDetail) { destination in
             detailView(for: destination)
@@ -4690,7 +4695,7 @@ struct InsightsView: View {
             ProgressView()
                 .tint(WeekFitTheme.meal)
 
-            Text("Reading your latest patterns")
+            Text(WeekFitLocalizedString("insights.loading.readingPatterns"))
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(textSecondary.opacity(0.72))
         }
@@ -4871,8 +4876,8 @@ struct InsightsView: View {
             return "Open Coach"
         case .tab(.today):
             return "Open Today"
-        case .tab(.highlights):
-            return "Open Highlights"
+//        case .tab(.highlights):
+//            return "Open Highlights"
         case .tab(.meals):
             return "Open Nutrition"
         case .tab(.calendar):
@@ -5629,8 +5634,8 @@ private extension InsightsView {
             return "Open Nutrition"
         case .tab(.calendar):
             return "Open Plan"
-        case .tab(.highlights):
-            return "Open Highlights"
+//        case .tab(.highlights):
+//            return "Open Highlights"
         case nil:
             return fallback
         }
@@ -6207,7 +6212,7 @@ private extension InsightsView {
 
     var whyWeBelieveSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Why this matters")
+            Text(WeekFitLocalizedString("Why this matters"))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -6503,7 +6508,7 @@ private extension InsightsView {
 
     var tryThisNextSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Try this next")
+            Text(WeekFitLocalizedString("insights.tryThisNext"))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -6635,7 +6640,7 @@ private extension InsightsView {
 
     var whatWeLearnedSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("What we learned")
+            Text(WeekFitLocalizedString("insights.whatWeLearned"))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -6745,7 +6750,7 @@ private extension InsightsView {
 
     var recoveryTrendSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recovery trend")
+            Text(WeekFitLocalizedString("insights.recoveryTrend"))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -6757,7 +6762,7 @@ private extension InsightsView {
 
     var activityLoadSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Activity load")
+            Text(WeekFitLocalizedString("Activity load"))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -7324,7 +7329,7 @@ private struct PremiumInsightAreaChart: View {
                         Spacer()
                         Text("15d")
                         Spacer()
-                        Text("Today")
+                        Text(WeekFitLocalizedString("Today"))
                     }
                     .frame(width: plotWidth)
                     .font(.system(size: 9.8, weight: .semibold))

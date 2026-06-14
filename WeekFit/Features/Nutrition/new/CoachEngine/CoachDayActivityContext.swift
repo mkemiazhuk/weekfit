@@ -133,7 +133,14 @@ enum CoachDayActivityContextResolver {
         let coachRelevant = CoachCanonicalDayState.coachRelevantActivities(from: dayActivities)
         let visibleScheduleActivities = coachRelevant
 
-        let activeCandidates = coachRelevant.filter { isActive($0, now: now) }
+        let completedActivities = coachRelevant.filter { activity in
+            let state = activity.terminalState(now: now)
+            return state == .completed || state == .partial
+        }
+        let activeCandidates = coachRelevant.filter { activity in
+            isActive(activity, now: now) &&
+                !hasCompletedDuplicate(activity, in: completedActivities)
+        }
         let active = authoritativeActive(from: activeCandidates)
 
         if let active {
@@ -404,6 +411,23 @@ enum CoachDayActivityContextResolver {
         }
 
         return highestPriority(from: activities)
+    }
+
+    private static func hasCompletedDuplicate(
+        _ activity: PlannedActivity,
+        in completedActivities: [PlannedActivity]
+    ) -> Bool {
+        completedActivities.contains { completed in
+            guard completed.id != activity.id else { return false }
+            let sameTitle = completed.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(activity.title.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+            let sameType = completed.type.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(activity.type.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+            let startDelta = abs(completed.date.timeIntervalSince(activity.date))
+            let durationDelta = abs(completed.effectiveDurationMinutes - activity.effectiveDurationMinutes)
+
+            return sameTitle && sameType && startDelta <= 15 * 60 && durationDelta <= 10
+        }
     }
 
     private static func activeIdentityIsCertain(

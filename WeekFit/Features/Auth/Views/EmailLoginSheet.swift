@@ -136,7 +136,7 @@ struct EmailLoginSheet: View {
     private var bottomActions: some View {
         VStack(spacing: 12) {
             if mode == .signIn {
-                Button("Forgot password?") {
+                Button(WeekFitLocalizedString("Forgot password?")) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                         mode = .resetPassword
                         password = ""

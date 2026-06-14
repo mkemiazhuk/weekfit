@@ -1154,8 +1154,8 @@ private extension InsightsStoryEngine {
             return "Open Nutrition"
         case .tab(.calendar):
             return "Open Plan"
-        case .tab(.highlights):
-            return "Open Highlights"
+//        case .tab(.highlights):
+//            return "Open Highlights"
         case nil:
             return "Review Details"
         }

@@ -37,11 +37,11 @@ struct EditUserProfileView: View {
                     avatar
 
                     VStack(spacing: 6) {
-                        Text("Personalize your experience.")
+                        Text(WeekFitLocalizedString("settings.profile.edit.headline"))
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary)
 
-                        Text("This stays local on your device.")
+                        Text(WeekFitLocalizedString("settings.profile.edit.localNote"))
                             .font(.system(size: 13.5, weight: .medium, design: .rounded))
                             .foregroundStyle(textSecondary)
                     }
@@ -51,9 +51,9 @@ struct EditUserProfileView: View {
                 .padding(.top, 8)
 
                 inputField(
-                    title: "Name or nickname",
+                    title: WeekFitLocalizedString("settings.profile.edit.nameField"),
                     text: $name,
-                    placeholder: "Max"
+                    placeholder: WeekFitLocalizedString("settings.profile.edit.namePlaceholder")
                 )
 
                 Spacer()
@@ -61,7 +61,7 @@ struct EditUserProfileView: View {
                 Button {
                     save()
                 } label: {
-                    Text("Save")
+                    Text(AppText.Common.Action.save)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(.black.opacity(canSave ? 0.92 : 0.42))
                         .frame(maxWidth: .infinity)
@@ -119,7 +119,7 @@ struct EditUserProfileView: View {
 
             Spacer()
 
-            Text("Personalization")
+            Text(WeekFitLocalizedString("settings.profile.edit.title"))
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
 
@@ -164,6 +164,8 @@ struct EditUserProfileView: View {
             Text(title)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(textSecondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             TextField(placeholder, text: text)
                 .font(.system(size: 17, weight: .semibold, design: .rounded))

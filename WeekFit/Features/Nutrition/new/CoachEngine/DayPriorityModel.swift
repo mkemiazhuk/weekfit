@@ -460,8 +460,6 @@ struct CoachRecoveryContributorDebug: Hashable {
     ) {
         if isActive {
             active.append(contributor)
-        } else {
-            resolved.append(contributor)
         }
     }
 

@@ -11,19 +11,19 @@ private enum MealIngredientGroup: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .bases: return "Bases"
-        case .proteins: return "Proteins"
-        case .vegetables: return "Vegetables"
-        case .extras: return "Extras"
+        case .bases: return WeekFitLocalizedString("meals.ingredient.category.basePlural")
+        case .proteins: return WeekFitLocalizedString("meals.ingredient.category.proteinPlural")
+        case .vegetables: return WeekFitLocalizedString("meals.ingredient.category.vegetables")
+        case .extras: return WeekFitLocalizedString("meals.ingredient.category.extras")
         }
     }
 
     var singularTitle: String {
         switch self {
-        case .bases: return "base"
-        case .proteins: return "protein"
-        case .vegetables: return "vegetable"
-        case .extras: return "extra"
+        case .bases: return WeekFitLocalizedString("meals.ingredient.category.base").lowercased()
+        case .proteins: return WeekFitLocalizedString("meals.ingredient.category.protein").lowercased()
+        case .vegetables: return WeekFitLocalizedString("meals.ingredient.category.vegetable").lowercased()
+        case .extras: return WeekFitLocalizedString("meals.ingredient.category.extra").lowercased()
         }
     }
 
@@ -38,10 +38,10 @@ private enum MealIngredientGroup: String, CaseIterable, Identifiable {
 
     var chipTitle: String {
         switch self {
-        case .bases: return "Base"
-        case .proteins: return "Protein"
-        case .vegetables: return "Veggies"
-        case .extras: return "Extras"
+        case .bases: return WeekFitLocalizedString("meals.ingredient.category.base")
+        case .proteins: return WeekFitLocalizedString("meals.ingredient.category.protein")
+        case .vegetables: return WeekFitLocalizedString("meals.ingredient.category.vegetablesShort")
+        case .extras: return WeekFitLocalizedString("meals.ingredient.category.extras")
         }
     }
 
@@ -77,6 +77,7 @@ struct MealsView: View {
     let nutritionResult: NutritionResult?
 
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     // MARK: - UX-Контексты логирования
     var isQuickLogMode: Bool = false
@@ -146,15 +147,16 @@ struct MealsView: View {
 
     private var headerSubtitle: String {
         if customMeals.isEmpty {
-            return "Empty"
+            return WeekFitLocalizedString("meals.library.subtitle.empty")
         }
 
         let total = mealItems.count + foodItems.count
-        let format = total == 1 ? "%lld item" : "%lld items"
-        return String(format: WeekFitLocalizedString(format), total)
+        return String(format: WeekFitLocalizedString("common.unit.countFormat"), total)
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack(alignment: .top) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
@@ -195,6 +197,9 @@ struct MealsView: View {
         .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
             updateRecommendationIfNeeded(source: "MealsView.onChange.nutritionCoachStateRefreshID")
         }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            updateRecommendationIfNeeded(source: "MealsView.onChange.language")
+        }
         .safeAreaInset(edge: .bottom) {
             bottomFixedActionArea
         }
@@ -233,6 +238,7 @@ struct MealsView: View {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(languageManager)
             .presentationDetents([.large])
             .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
@@ -294,10 +300,7 @@ struct MealsView: View {
     }
     
     private var selectedDateTitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "E, MMM d"
-        return formatter.string(from: selectedDate)
+        WeekFitShortWeekdayMonthDay(selectedDate)
     }
 
 
@@ -451,7 +454,7 @@ struct MealsView: View {
                 List {
                     if !sortedMealItems.isEmpty {
                         sectionHeader(
-                            title: "Meals",
+                            title: "meals.library.section.meals",
                             count: sortedMealItems.count,
                             icon: "fork.knife"
                         )
@@ -464,7 +467,7 @@ struct MealsView: View {
 
                     if !sortedFoodItems.isEmpty {
                         sectionHeader(
-                            title: "Foods",
+                            title: "meals.library.section.foods",
                             count: sortedFoodItems.count,
                             icon: "takeoutbag.and.cup.and.straw.fill"
                         )
@@ -535,7 +538,7 @@ struct MealsView: View {
                         Button(role: .destructive) {
                             deleteCustomMeal(meal)
                         } label: {
-                            Label("Delete", systemImage: "trash.fill")
+                            Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
                         }
                     }
                 }
@@ -594,7 +597,7 @@ struct MealsView: View {
                     Button(role: .destructive) {
                         deleteCustomMeal(meal)
                     } label: {
-                        Label("Delete", systemImage: "trash.fill")
+                        Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
                     }
                 }
             }

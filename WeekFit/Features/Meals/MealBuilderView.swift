@@ -8,6 +8,7 @@ struct MealBuilderView: View {
     let onCancel: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     @State private var selectedIngredients: [SelectedBuilderIngredient] = []
     @State private var didPrefill = false
@@ -91,6 +92,8 @@ struct MealBuilderView: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             background.ignoresSafeArea()
             ambientBackground
@@ -514,7 +517,7 @@ struct MealBuilderView: View {
                         .foregroundStyle(textSecondary.opacity(0.76))
                         .lineLimit(1)
                 } else {
-                    Text(selectedIngredients.map { "\($0.ingredient.title) (\(amountText($0)))" }.joined(separator: " + "))
+                    Text(selectedIngredients.map { "\($0.ingredient.localizedTitle) (\(amountText($0)))" }.joined(separator: " + "))
                         .font(.system(size: 12.2, weight: .medium))
                         .foregroundStyle(textSecondary.opacity(0.76))
                         .lineLimit(2)
@@ -761,7 +764,7 @@ struct MealBuilderView: View {
                     .frame(width: 42, height: 32)
             }
 
-            Text(ingredient.title)
+            Text(ingredient.localizedTitle)
                 .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold))
                 .foregroundStyle(isSelected ? accent : textPrimary.opacity(0.9))
                 .lineLimit(1)
@@ -788,11 +791,11 @@ struct MealBuilderView: View {
     }
 
     private var mealTitle: String {
-        let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.title
-        let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.title
-        let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.title
-        let extra = selectedIngredients.first { $0.ingredient.category == .extras }?.ingredient.title
-        let drinks = selectedIngredients.first { $0.ingredient.category == .drinks }?.ingredient.title
+        let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.localizedTitle
+        let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.localizedTitle
+        let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.localizedTitle
+        let extra = selectedIngredients.first { $0.ingredient.category == .extras }?.ingredient.localizedTitle
+        let drinks = selectedIngredients.first { $0.ingredient.category == .drinks }?.ingredient.localizedTitle
 
         if let protein, let base { return "\(protein) \(base)" }
         if let base, let extra { return "\(extra) \(base)" }
@@ -942,7 +945,7 @@ struct MealBuilderView: View {
     private func makeMealIngredients() -> [MealsIngredient] {
         selectedIngredients.map { selected in
             MealsIngredient(
-                name: selected.ingredient.title,
+                name: selected.ingredient.localizedTitle,
                 amount: amountText(selected)
             )
         }
@@ -954,7 +957,7 @@ struct MealBuilderView: View {
 
     private func makeSubtitle() -> String {
         selectedIngredients
-            .map { "\($0.ingredient.title) (\(amountText($0)))" }
+            .map { "\($0.ingredient.localizedTitle) (\(amountText($0)))" }
             .joined(separator: " + ")
     }
 
