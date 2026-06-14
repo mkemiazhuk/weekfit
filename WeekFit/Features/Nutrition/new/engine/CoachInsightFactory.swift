@@ -542,9 +542,9 @@ private extension CoachInsightFactory {
         
         if decision.primaryStrategy == .overload {
             result.removeAll {
-                $0.actionLabel == "Add Protein" ||
-                $0.actionLabel == "Add Carbs" ||
-                $0.actionLabel == "Refuel Now"
+                $0.actionID == "add_protein" ||
+                $0.actionID == "add_carbs" ||
+                $0.actionID == "refuel_now"
             }
         }
         
@@ -556,20 +556,20 @@ private extension CoachInsightFactory {
         
         if decision.suppressedActions.contains(.fastCarbs) {
             result.removeAll {
-                $0.actionLabel == "Add Carbs"
+                $0.actionID == "add_carbs"
             }
         }
         
         if decision.suppressWorkoutPush {
             result.removeAll {
-                $0.actionLabel == "Prepare Session" ||
-                ($0.actionLabel == "Add Carbs" && brain.recovery == .compromised)
+                $0.actionID == "prepare_session" ||
+                ($0.actionID == "add_carbs" && brain.recovery == .compromised)
             }
         }
         
         if decision.suppressHeavyFoodAdvice {
             result.removeAll {
-                $0.actionLabel == "Balance Meals" ||
+                $0.actionID == "balance_meals" ||
                 $0.text.lowercased().contains("heavy meal")
             }
         }
@@ -577,7 +577,7 @@ private extension CoachInsightFactory {
         if brain.fuel == .underfueled &&
             (brain.strain == .high || brain.strain == .veryHigh) {
             result.removeAll {
-                $0.actionLabel == "Hydration Done"
+                $0.actionID == "hydration_done"
             }
         }
         
@@ -605,7 +605,7 @@ private extension CoachInsightFactory {
     ) -> Bool {
         let text = insight.text.lowercased()
         
-        return insight.actionLabel == "+500 ml" ||
+        return insight.actionID == "add_500_ml" ||
         text.contains("drink water") ||
         text.contains("sip water") ||
         text.contains("more plain water")
@@ -618,11 +618,11 @@ private extension CoachInsightFactory {
         var result: [DynamicInsight] = []
         
         for insight in insights {
-            guard !seen.contains(insight.actionLabel) else {
+            guard !seen.contains(insight.actionID) else {
                 continue
             }
             
-            seen.insert(insight.actionLabel)
+            seen.insert(insight.actionID)
             result.append(insight)
         }
         
@@ -663,34 +663,34 @@ private extension CoachInsightFactory {
         switch decision.primaryStrategy {
             
         case .supercompensation:
-            if insight.actionLabel == "Add Carbs" || insight.actionLabel == "Add Protein" || insight.actionLabel == "Refuel Now" {
+            if insight.actionID == "add_carbs" || insight.actionID == "add_protein" || insight.actionID == "refuel_now" {
                 return true
             }
             
         case .protectRecovery:
-            if insight.actionLabel == "Add Carbs" &&
+            if insight.actionID == "add_carbs" &&
                 brain.recovery == .compromised {
                 return true
             }
             
         case .prepareWorkout:
-            if insight.actionLabel == "Wind Down" {
+            if insight.actionID == "wind_down" {
                 return true
             }
             
         case .rehydrate:
             if decision.suppressHydrationAdvice &&
-                insight.actionLabel == "+500 ml" {
+                insight.actionID == "add_500_ml" {
                 return true
             }
             
         case .refuel:
-            if insight.actionLabel == "Hydration Done" {
+            if insight.actionID == "hydration_done" {
                 return true
             }
             
         case .maintain:
-            if insight.actionLabel == "+500 ml" &&
+            if insight.actionID == "add_500_ml" &&
                 decision.suppressHydrationAdvice {
                 return true
             }
@@ -791,19 +791,19 @@ private extension CoachInsightFactory {
     static func priority(
         for insight: DynamicInsight
     ) -> Int {
-        switch insight.actionLabel {
-        case "Protect Recovery": return 130
-        case "Refuel Now":       return 120
-        case "Add Protein":      return 105
-        case "Add Carbs":        return 95
-        case "+500 ml":          return 90
-        case "Log Meal":         return 88
-        case "Balance Meals":    return 82
-        case "Wind Down":        return 80
-        case "Update Schedule":  return 70
-        case "Add Minerals":     return 45
-        case "Hydration Done":   return 25
-        case "Stay Consistent":  return 10
+        switch insight.actionID {
+        case "protect_recovery": return 130
+        case "refuel_now":       return 120
+        case "add_protein":      return 105
+        case "add_carbs":        return 95
+        case "add_500_ml":       return 90
+        case "log_meal":         return 88
+        case "balance_meals":    return 82
+        case "wind_down":        return 80
+        case "update_schedule":  return 70
+        case "add_minerals":     return 45
+        case "hydration_done":   return 25
+        case "stay_consistent":  return 10
         default:                 return 0
         }
     }

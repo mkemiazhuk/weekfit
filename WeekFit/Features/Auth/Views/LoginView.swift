@@ -220,13 +220,13 @@ struct LoginView: View {
                 .shadow(color: brandGreen.opacity(0.16), radius: 10)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Feel ready")
+                Text(WeekFitLocalizedString("login.hero.title.line1"))
                     .foregroundStyle(.white)
                     .font(.system(size: 26.5, weight: .bold))
                     .tracking(-0.45)
                     .shadow(color: .black.opacity(0.30), radius: 10, x: 0, y: 3)
 
-                Text("before you train.")
+                Text(WeekFitLocalizedString("login.hero.title.line2"))
                     .foregroundStyle(brandGreen.opacity(0.88))
                     .font(.system(size: 26.5, weight: .bold))
                     .tracking(-0.45)
@@ -234,7 +234,7 @@ struct LoginView: View {
                 .shadow(color: brandGreen.opacity(ambientMotion ? 0.09 : 0.05), radius: 8)
             }
 
-            Text("Recovery, movement and nutrition\nadapted to your day.")
+            Text(WeekFitLocalizedString("login.hero.subtitle"))
                 .font(.system(size: 15.0, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.84))
                 .lineSpacing(5)
@@ -425,7 +425,7 @@ struct LoginView: View {
                 HStack {
                     Spacer()
 
-                    Text("Open WeekFit")
+                    Text(WeekFitLocalizedString("login.action.openWeekFit"))
                         .font(.system(size: 15.0, weight: .semibold))
                         .foregroundStyle(.white)
 
@@ -488,12 +488,12 @@ struct LoginView: View {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 10.2, weight: .semibold))
 
-                    Text("Apple Health helps WeekFit work more accurately.")
+                    Text(WeekFitLocalizedString("login.note.appleHealth"))
                         .font(.system(size: 11.5, weight: .medium))
                 }
                 .foregroundStyle(.white.opacity(0.66))
 
-                Text("Connect it when you're ready.")
+                Text(WeekFitLocalizedString("login.note.connectWhenReady"))
                     .font(.system(size: 11.1, weight: .regular))
                     .foregroundStyle(.white.opacity(0.52))
             }
@@ -565,20 +565,20 @@ struct LoginView: View {
 
     private var termsText: some View {
         VStack(spacing: 2) {
-            Text("By continuing, you agree to WeekFit’s")
+            Text(WeekFitLocalizedString("login.terms.intro"))
                 .font(.system(size: 9.8, weight: .regular))
                 .foregroundStyle(.white.opacity(0.48))
 
             HStack(spacing: 4) {
-                Text("Terms of Service")
+                Text(WeekFitLocalizedString("login.terms.service"))
                     .font(.system(size: 10.2, weight: .medium))
                     .foregroundStyle(.white.opacity(0.66))
 
-                Text("and")
+                Text(WeekFitLocalizedString("login.terms.and"))
                     .font(.system(size: 9.8))
                     .foregroundStyle(.white.opacity(0.46))
 
-                Text("Privacy Policy")
+                Text(WeekFitLocalizedString("login.terms.privacy"))
                     .font(.system(size: 10.2, weight: .medium))
                     .foregroundStyle(.white.opacity(0.66))
             }

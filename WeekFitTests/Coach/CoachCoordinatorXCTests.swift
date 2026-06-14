@@ -36,6 +36,45 @@ final class CoachCoordinatorXCTests: XCTestCase {
         XCTAssertNotNil(refreshing.coachPresentation)
     }
 
+    func testPlaceholderRecoverySleepSnapshotPreservesPreviousFinalStory() {
+        var resolverCalls = 0
+        let coordinator = CoachCoordinator { input in
+            resolverCalls += 1
+            return Self.guidance(for: input)
+        }
+        let ready = coordinator.recomputeIfNeeded(input: makeInput(), reason: "initial")
+        let readyStory = ready.finalStory
+
+        let refreshing = coordinator.recomputeIfNeeded(
+            input: makePlaceholderStartupInput(),
+            reason: "morningStartup.placeholderRecovery"
+        )
+
+        XCTAssertEqual(resolverCalls, 1)
+        XCTAssertEqual(refreshing.id, ready.id)
+        XCTAssertEqual(refreshing.status, .refreshingPrevious)
+        XCTAssertEqual(refreshing.finalStory?.title.resolved, readyStory?.title.resolved)
+        XCTAssertEqual(refreshing.finalStory?.colorFamily, readyStory?.colorFamily)
+    }
+
+    func testPlaceholderRecoverySleepSnapshotDoesNotCreateFirstFinalStory() {
+        var resolverCalls = 0
+        let coordinator = CoachCoordinator { input in
+            resolverCalls += 1
+            return Self.guidance(for: input)
+        }
+
+        let state = coordinator.recomputeIfNeeded(
+            input: makePlaceholderStartupInput(),
+            reason: "morningStartup.placeholderFirst"
+        )
+
+        XCTAssertEqual(resolverCalls, 0)
+        XCTAssertNil(state.finalStory)
+        XCTAssertNil(state.coachPresentation)
+        XCTAssertFalse(state.hasValidGuidance)
+    }
+
     func testIdleWithinSameTimePhaseDoesNotRecompute() {
         var resolverCalls = 0
         let coordinator = CoachCoordinator { input in
@@ -585,6 +624,61 @@ final class CoachCoordinatorXCTests: XCTestCase {
             ),
             nutritionContext: nutritionContext,
             source: "test"
+        )
+    }
+
+    private func makePlaceholderStartupInput() -> CoachInputSnapshot {
+        let placeholderNow = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: now) ?? now
+        let metrics = CoachMetricsBuilder.metrics(
+            protein: 0,
+            carbs: 0,
+            calories: 0,
+            waterLiters: 0,
+            activeCalories: 0,
+            sleepHours: 0
+        )
+        let brain = HumanBrainStateBuilder.make(
+            currentHour: 8,
+            hasAnyFoodLogged: false,
+            waterProgress: 0,
+            sleep: .unknown,
+            hydration: .optimal,
+            fuel: .good,
+            strain: .normal,
+            recovery: .stable,
+            readiness: .low,
+            metrics: metrics
+        )
+        let dayContext = CoachDayContextBuilder.build(
+            activities: [],
+            selectedDate: placeholderNow,
+            now: placeholderNow
+        )
+        let nutrition = CoachNutritionContext(
+            caloriesCurrent: 0,
+            caloriesGoal: CoachMetricsBuilder.standardGoals.calories,
+            proteinCurrent: 0,
+            proteinGoal: CoachMetricsBuilder.standardGoals.protein,
+            carbsCurrent: 0,
+            carbsGoal: CoachMetricsBuilder.standardGoals.carbs,
+            fatsCurrent: 0,
+            fatsGoal: CoachMetricsBuilder.standardGoals.fats,
+            waterCurrent: 0,
+            waterGoal: CoachMetricsBuilder.standardGoals.waterLiters,
+            mealsCount: 0,
+            lastMealTime: nil
+        )
+
+        return CoachInputSnapshot(
+            metricsSnapshotID: UUID(uuidString: "00000000-0000-0000-0000-000000000099"),
+            selectedDate: placeholderNow,
+            now: placeholderNow,
+            brain: brain,
+            plannedActivities: [],
+            dayContext: dayContext,
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 0, sleepHours: 0),
+            nutritionContext: nutrition,
+            source: "test.placeholderStartup"
         )
     }
 

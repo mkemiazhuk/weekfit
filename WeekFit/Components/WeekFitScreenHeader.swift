@@ -108,7 +108,7 @@ struct WeekFitAvatarButton: View {
             .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open profile")
+        .accessibilityLabel(Text(WeekFitLocalizedString("common.openProfile")))
     }
 }
 

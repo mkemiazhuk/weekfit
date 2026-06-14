@@ -12,6 +12,10 @@ final class ActivityNotificationService {
         registerActivityCompletionActions()
     }
 
+    func refreshLocalizedCategories() {
+        registerActivityCompletionActions()
+    }
+
     func requestPermission(
         completion: ((Bool) -> Void)? = nil
     ) {
@@ -137,7 +141,7 @@ final class ActivityNotificationService {
 
         let content = UNMutableNotificationContent()
         content.title = completionTitle(for: activity)
-        content.body = "\(activity.title) • \(activity.durationMinutes) min"
+        content.body = durationBody(for: activity)
         content.sound = .default
         content.categoryIdentifier = "ACTIVITY_COMPLETION"
         content.userInfo = userInfo(for: activity, notificationType: "completionLater")
@@ -175,8 +179,12 @@ final class ActivityNotificationService {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "Upcoming activity"
-        content.body = "\(activity.title) starts in \(minutesBefore) minutes"
+        content.title = WeekFitLocalizedString("notifications.activity.upcoming.title")
+        content.body = String(
+            format: WeekFitLocalizedString("notifications.activity.upcoming.bodyFormat"),
+            activity.title,
+            minutesBefore
+        )
         content.sound = .default
         content.userInfo = userInfo(for: activity, notificationType: "start")
 
@@ -225,7 +233,7 @@ final class ActivityNotificationService {
 
         let content = UNMutableNotificationContent()
         content.title = completionTitle(for: activity)
-        content.body = "\(activity.title) • \(activity.durationMinutes) min"
+        content.body = durationBody(for: activity)
         content.sound = .default
         content.categoryIdentifier = "ACTIVITY_COMPLETION"
         content.userInfo = userInfo(for: activity, notificationType: "completion")
@@ -264,19 +272,19 @@ final class ActivityNotificationService {
     private func registerActivityCompletionActions() {
         let doneAction = UNNotificationAction(
             identifier: NotificationActionID.done,
-            title: "Done",
+            title: WeekFitLocalizedString("common.action.done"),
             options: []
         )
 
         let skipAction = UNNotificationAction(
             identifier: NotificationActionID.skipped,
-            title: "Skip",
+            title: WeekFitLocalizedString("notifications.activity.action.skip"),
             options: []
         )
 
         let laterAction = UNNotificationAction(
             identifier: NotificationActionID.later,
-            title: "Remind later",
+            title: WeekFitLocalizedString("notifications.activity.action.remindLater"),
             options: []
         )
 
@@ -341,16 +349,24 @@ final class ActivityNotificationService {
     private func completionTitle(for activity: PlannedActivity) -> String {
         switch activity.type.lowercased() {
         case "meal":
-            return "Meal completed?"
+            return WeekFitLocalizedString("notifications.activity.completion.meal")
         case "workout":
-            return "Workout completed?"
+            return WeekFitLocalizedString("notifications.activity.completion.workout")
         case "recovery":
-            return "Recovery session finished?"
+            return WeekFitLocalizedString("notifications.activity.completion.recovery")
         case "habit":
-            return "Did you complete this?"
+            return WeekFitLocalizedString("notifications.activity.completion.generic")
         default:
-            return "Did you complete this?"
+            return WeekFitLocalizedString("notifications.activity.completion.generic")
         }
+    }
+
+    private func durationBody(for activity: PlannedActivity) -> String {
+        String(
+            format: WeekFitLocalizedString("notifications.activity.durationBodyFormat"),
+            activity.title,
+            activity.durationMinutes
+        )
     }
 
     private func startNotificationId(for activity: PlannedActivity) -> String {

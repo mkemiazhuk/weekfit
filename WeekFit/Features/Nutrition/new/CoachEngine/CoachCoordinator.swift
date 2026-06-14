@@ -45,6 +45,55 @@ final class CoachCoordinator: ObservableObject {
     }
 
     @discardableResult
+    func forceRecomputeForLanguageChange(reason: String) -> CoachState {
+        guard let latestInput else {
+            return state
+        }
+
+        let fingerprint = CoachInputFingerprint(snapshot: latestInput)
+        let readiness = CoachFinalStoryBuilder.readinessAssessment(latestInput)
+        guard readiness.allowed else {
+            logFinalStoryReadiness(
+                input: latestInput,
+                reason: reason,
+                readiness: readiness,
+                outcome: state.hasValidGuidance ? "blockedPreservePrevious" : "blockedSettling"
+            )
+            state = state.hasValidGuidance
+                ? state.preservingPreviousDuringRefresh()
+                : .settling(reason: "Coach inputs are still syncing.")
+            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: latestInput)
+            return state
+        }
+
+        let guidance = decisionResolver(latestInput)
+        let nextState = CoachState.ready(
+            input: latestInput,
+            fingerprint: fingerprint,
+            guidance: guidance
+        )
+
+        lastResolvedFingerprint = fingerprint
+        recomputeCount += 1
+        lastRecomputeReason = reason
+        state = nextState
+        nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: latestInput)
+
+        logFinalStoryReadiness(
+            input: latestInput,
+            reason: reason,
+            readiness: readiness,
+            outcome: "allowedLanguageRecompute"
+        )
+        CoachLogger.compact(
+            "[CoachState]",
+            "Coach state recomputed for language change reason=\(reason) stateID=\(nextState.id) fingerprint=\(fingerprint.rawValue)"
+        )
+
+        return nextState
+    }
+
+    @discardableResult
     func recomputeIfNeeded(
         input: CoachInputSnapshot,
         reason: String
@@ -54,6 +103,21 @@ final class CoachCoordinator: ObservableObject {
 
         guard fingerprint != lastResolvedFingerprint else {
             skippedUnchangedCount += 1
+            return state
+        }
+
+        let readiness = CoachFinalStoryBuilder.readinessAssessment(input)
+        guard readiness.allowed else {
+            logFinalStoryReadiness(
+                input: input,
+                reason: reason,
+                readiness: readiness,
+                outcome: state.hasValidGuidance ? "blockedPreservePrevious" : "blockedSettling"
+            )
+            state = state.hasValidGuidance
+                ? state.preservingPreviousDuringRefresh()
+                : .settling(reason: "Coach inputs are still syncing.")
+            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
             return state
         }
 
@@ -74,6 +138,12 @@ final class CoachCoordinator: ObservableObject {
         state = nextState
         nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
 
+        logFinalStoryReadiness(
+            input: input,
+            reason: reason,
+            readiness: readiness,
+            outcome: "allowed"
+        )
         CoachLogger.compact(
             "[CoachState]",
             "Coach state changed reason=\(reason) stateID=\(nextState.id) fingerprint=\(fingerprint.rawValue)"
@@ -91,6 +161,28 @@ final class CoachCoordinator: ObservableObject {
             actualLoad: input.actualLoad,
             recoveryContext: input.recoveryContext,
             nutritionContext: input.nutritionContext
+        )
+    }
+
+    private func logFinalStoryReadiness(
+        input: CoachInputSnapshot,
+        reason: String,
+        readiness: CoachFinalStoryReadinessAssessment,
+        outcome: String
+    ) {
+        CoachLogger.compact(
+            "[CoachFinalStoryReadiness]",
+            [
+                "outcome=\(outcome)",
+                "reason=\(reason)",
+                readiness.summary,
+                "rawRecovery=\(input.recoveryContext.recoveryPercent)",
+                "sleepHours=\(String(format: "%.2f", input.recoveryContext.sleepHours))",
+                "brainSleep=\(input.brain.sleep)",
+                "brainReadiness=\(input.brain.readiness)",
+                "activities=\(input.dayContext.allActivities.count)",
+                "source=\(input.source)"
+            ].joined(separator: " ")
         )
     }
 

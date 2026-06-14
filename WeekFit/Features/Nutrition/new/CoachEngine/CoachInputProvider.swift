@@ -27,6 +27,7 @@ final class CoachInputProvider: ObservableObject {
         refreshFromCurrentState(
             selectedDate: selectedDate,
             dayActivities: dayActivities,
+            allPlannedActivities: plannedActivities,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
@@ -37,11 +38,19 @@ final class CoachInputProvider: ObservableObject {
     func refreshFromCurrentState(
         selectedDate: Date,
         dayActivities: [PlannedActivity],
+        allPlannedActivities: [PlannedActivity]? = nil,
         healthManager: HealthManager,
         nutritionViewModel: NutritionViewModel,
         coachCoordinator: CoachCoordinator,
         source: String
     ) {
+        let coachActivities = allPlannedActivities ?? dayActivities
+        Self.logTomorrowPipeline(
+            selectedDate: selectedDate,
+            allActivities: coachActivities,
+            source: source
+        )
+
         let metrics = DailyNutritionMetrics(
             protein: 0,
             carbs: 0,
@@ -99,7 +108,7 @@ final class CoachInputProvider: ObservableObject {
             selectedDate: selectedDate,
             now: Date(),
             brain: snapshot.brain,
-            plannedActivities: dayActivities,
+            plannedActivities: coachActivities,
             actualLoad: CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: healthManager.activeCalories,
@@ -123,5 +132,64 @@ final class CoachInputProvider: ObservableObject {
     static func activities(on date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
         let calendar = Calendar.current
         return activities.filter { calendar.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private static func logTomorrowPipeline(
+        selectedDate: Date,
+        allActivities: [PlannedActivity],
+        source: String
+    ) {
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) else {
+            return
+        }
+
+        let rawTomorrowActivities = activities(on: tomorrow, from: allActivities)
+        let plannedActivitiesTomorrow = rawTomorrowActivities.filter { !$0.isCompleted && !$0.isSkipped }
+        let filteredTomorrowActivities = plannedActivitiesTomorrow.filter {
+            isMeaningfulTrainingActivity($0)
+        }
+        let tomorrowContext = CoachDayContextBuilder.build(
+            activities: allActivities,
+            selectedDate: tomorrow,
+            now: Date()
+        )
+        let tomorrowPlanContext = tomorrowContext.allActivities.isEmpty
+            ? nil
+            : CoachTomorrowPlanContext(dayContext: tomorrowContext)
+        let tomorrowDemand = CoachTomorrowDemandResolver.resolve(tomorrowContext: tomorrowPlanContext)
+
+        CoachLogger.verbose(
+            "[CoachTomorrowPipelineDebug]",
+            """
+            source=\(source) rawTomorrowActivities=\(debugActivities(rawTomorrowActivities)) plannedActivitiesTomorrow=\(debugActivities(plannedActivitiesTomorrow)) filteredTomorrowActivities=\(debugActivities(filteredTomorrowActivities)) tomorrowDemand=\(tomorrowDemand.level.rawValue) upcomingTrainingStress=\(tomorrowContext.upcomingTrainingStressScore) selectedTomorrowProtectionTarget=\(tomorrowDemand.primaryTrainingActivity.map(debugActivity) ?? "nil")
+            """
+        )
+    }
+
+    private static func debugActivities(_ activities: [PlannedActivity]) -> String {
+        "[" + activities.map(debugActivity).joined(separator: " | ") + "]"
+    }
+
+    private static func debugActivity(_ activity: PlannedActivity) -> String {
+        "\(activity.title){type=\(activity.type),duration=\(activity.effectiveDurationMinutes),completed=\(activity.isCompleted),skipped=\(activity.isSkipped)}"
+    }
+
+    private static func isMeaningfulTrainingActivity(_ activity: PlannedActivity) -> Bool {
+        guard !activity.isCompleted, !activity.isSkipped else { return false }
+        let type = activity.type.lowercased()
+        let title = activity.title.lowercased()
+        let imageName = activity.imageName.lowercased()
+        if type == "meal" || type == "drink" || imageName == "hydration" {
+            return false
+        }
+        if type == "workout" || type == "recovery" {
+            return true
+        }
+        return activity.effectiveDurationMinutes >= 20 ||
+            title.contains("run") ||
+            title.contains("cycling") ||
+            title.contains("ride") ||
+            title.contains("bike") ||
+            title.contains("вел")
     }
 }

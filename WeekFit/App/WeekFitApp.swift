@@ -15,6 +15,7 @@ struct WeekFitApp: App {
     @StateObject private var nutritionViewModel = NutritionViewModel()
     @StateObject private var coachCoordinator = CoachCoordinator()
     @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
+    @StateObject private var languageManager = AppLanguageManager()
 
     @State private var backgroundEnteredAt: Date?
 
@@ -34,8 +35,17 @@ struct WeekFitApp: App {
                 .environmentObject(nutritionViewModel)
                 .environmentObject(coachCoordinator)
                 .environmentObject(activityCoordinator)
+                .environmentObject(languageManager)
+                .environment(\.locale, languageManager.locale)
                 .onAppear {
                     activityCoordinator.start()
+                }
+                .onChange(of: languageManager.selectedLanguage) { _, language in
+                    WeekFitSetCurrentLanguage(language)
+                    ActivityNotificationService.shared.refreshLocalizedCategories()
+                    coachCoordinator.forceRecomputeForLanguageChange(reason: "languageChange.\(language.rawValue)")
+                    appSession.triggerHealthRefresh(source: "languageChange")
+                    appSession.triggerCoachRefresh(source: "languageChange")
                 }
                 .onChange(of: scenePhase) {
                     handleScenePhaseChange()

@@ -232,7 +232,7 @@ private extension HealthAccessView {
 
     var topBar: some View {
         ZStack {
-            Text("Health Signals")
+            Text(WeekFitLocalizedString("healthAccess.healthSignals"))
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
 
@@ -264,7 +264,7 @@ private extension HealthAccessView {
                         .shadow(color: .black.opacity(0.24), radius: 14, y: 8)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Back")
+                .accessibilityLabel(Text(AppText.Common.Action.back))
 
                 Spacer()
             }
@@ -439,7 +439,7 @@ private extension HealthAccessView {
     var readinessSection: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Signal readiness")
+                Text(WeekFitLocalizedString("healthAccess.signalReadiness"))
                     .font(.system(size: 13.6, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
 
@@ -561,7 +561,7 @@ private extension HealthAccessView {
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Sleep setup help")
+                    .accessibilityLabel(Text(WeekFitLocalizedString("healthAccess.sleepSetupHelp")))
                 }
 
                 HStack(spacing: 5) {
@@ -598,7 +598,7 @@ private extension HealthAccessView {
 
     var enablementSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("What this enables")
+            Text(WeekFitLocalizedString("healthAccess.whatThisEnables"))
                 .font(.system(size: 13.6, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
                 .padding(.horizontal, 2)
@@ -1248,7 +1248,7 @@ private struct SleepSetupHelpSheet: View {
                     header
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Setup checklist")
+                        Text(WeekFitLocalizedString("healthAccess.setupChecklist"))
                             .font(.system(size: 13.8, weight: .bold, design: .rounded))
                             .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
 
@@ -1298,7 +1298,7 @@ private struct SleepSetupHelpSheet: View {
                             .stroke(.white.opacity(0.046), lineWidth: 1)
                     )
 
-                    Text("Sleep stages and recovery insights may take a few valid nights before they appear consistently.")
+                    Text(WeekFitLocalizedString("healthAccess.sleepStagesAndRecoveryInsightsMayTakeAFew"))
                         .font(.system(size: 12.8, weight: .medium, design: .rounded))
                         .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.60))
                         .lineSpacing(2)
@@ -1307,7 +1307,7 @@ private struct SleepSetupHelpSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Got it")
+                        Text(WeekFitLocalizedString("healthAccess.gotIt"))
                             .font(.system(size: 14.5, weight: .bold, design: .rounded))
                             .foregroundStyle(accent.opacity(0.82))
                             .frame(maxWidth: .infinity)
@@ -1345,11 +1345,11 @@ private struct SleepSetupHelpSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Sleep data not appearing?")
+                Text(WeekFitLocalizedString("healthAccess.sleepDataNotAppearing"))
                     .font(.system(size: 21, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
 
-                Text("WeekFit relies on Apple Health and Apple Watch sleep tracking. Sometimes sleep data is not recorded even if you wear your watch overnight.")
+                Text(WeekFitLocalizedString("healthAccess.weekfitReliesOnAppleHealthAndAppleWatchSleep"))
                     .font(.system(size: 13.4, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
                     .lineSpacing(2)

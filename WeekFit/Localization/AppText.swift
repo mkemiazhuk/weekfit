@@ -27,6 +27,7 @@ enum AppText {
         enum Tab {
             static let today: LocalizedStringResource = "common.tab.today"
             static let coach: LocalizedStringResource = "common.tab.coach"
+            static let highlights: LocalizedStringResource = "common.tab.highlights"
             static let meals: LocalizedStringResource = "common.tab.meals"
             static let plan: LocalizedStringResource = "common.tab.plan"
         }
@@ -69,6 +70,8 @@ enum AppText {
         static let foodsSection: LocalizedStringResource = "today.quickLog.section.foods"
         static let noQuickItemsTitle: LocalizedStringResource = "today.quickLog.empty.quickItems.title"
         static let noQuickItemsMessage: LocalizedStringResource = "today.quickLog.empty.quickItems.message"
+        static let noDrinksTitle: LocalizedStringResource = "today.quickLog.empty.drinks.title"
+        static let quickAddDrinksSubtitle: LocalizedStringResource = "today.quickLog.subtitle.drinks"
         static let drinksSection: LocalizedStringResource = "today.quickLog.section.drinks"
         static let snacksSection: LocalizedStringResource = "today.quickLog.section.snacks"
         static let eveningReviewReady: LocalizedStringResource = "today.eveningReview.ready"
@@ -94,6 +97,13 @@ enum AppText {
         static let enduranceContext: LocalizedStringResource = "today.activity.context.endurance"
         static let recoveryContext: LocalizedStringResource = "today.activity.context.recovery"
         static let routineContext: LocalizedStringResource = "today.activity.context.routine"
+        static let morningFuel: LocalizedStringResource = "today.activity.subtitle.morningFuel"
+        static let energySupport: LocalizedStringResource = "today.activity.subtitle.energySupport"
+        static let nutritionSupport: LocalizedStringResource = "today.activity.subtitle.nutritionSupport"
+        static let trainingSession: LocalizedStringResource = "today.activity.subtitle.trainingSession"
+        static let recoveryBlock: LocalizedStringResource = "today.activity.subtitle.recoveryBlock"
+        static let hydrationSupport: LocalizedStringResource = "today.activity.subtitle.hydrationSupport"
+        static let plannedActivity: LocalizedStringResource = "today.activity.subtitle.plannedActivity"
         static let pendingActionTitle: LocalizedStringResource = "today.pending.title"
         static let coachInsightLabel: LocalizedStringResource = "today.coachInsight.label"
         static let connectHealthInsights: LocalizedStringResource = "today.coachInsight.connectHealth"
@@ -372,6 +382,13 @@ enum AppText {
         }
     }
 
+    enum Highlights {
+        static let title: LocalizedStringResource = "highlights.title"
+        static let last30Days: LocalizedStringResource = "highlights.range.last30Days"
+        static let monthlyStory: LocalizedStringResource = "highlights.monthlyStory"
+        static let loading: LocalizedStringResource = "highlights.loading"
+    }
+
     enum Recovery {
         enum Details {
             static let title: LocalizedStringResource = "recovery.details.title"
@@ -386,6 +403,7 @@ enum AppText {
             static let settingsSection: LocalizedStringResource = "settings.profile.section.settings"
             static let supportSection: LocalizedStringResource = "settings.profile.section.support"
             static let systemSection: LocalizedStringResource = "settings.profile.section.system"
+            static let privacyDataSection: LocalizedStringResource = "settings.profile.section.privacyData"
             static let healthSystemFallback: LocalizedStringResource = "settings.profile.healthSystemFallback"
             static let recoverySystemActive: LocalizedStringResource = "settings.profile.recoverySystemActive"
             static let healthSetupNeeded: LocalizedStringResource = "settings.profile.healthSetupNeeded"
@@ -397,9 +415,16 @@ enum AppText {
             static let connectedBadge: LocalizedStringResource = "settings.profile.badge.connected"
             static let setupBadge: LocalizedStringResource = "settings.profile.badge.setup"
             static let resetLocalData: LocalizedStringResource = "settings.profile.resetLocalData"
+            static let resettingLocalData: LocalizedStringResource = "settings.profile.resettingLocalData"
+            static let resetConfirmTitle: LocalizedStringResource = "settings.profile.resetConfirm.title"
+            static let resetConfirmMessage: LocalizedStringResource = "settings.profile.resetConfirm.message"
+            static let resetConfirmPrimary: LocalizedStringResource = "settings.profile.resetConfirm.primary"
+            static let resetFailedTitle: LocalizedStringResource = "settings.profile.resetFailed.title"
             static let footerPrivacy: LocalizedStringResource = "settings.profile.footer.privacy"
             static let notificationsTitle: LocalizedStringResource = "settings.profile.item.notifications"
+            static let notificationsSubtitle: LocalizedStringResource = "settings.profile.item.notifications.subtitle"
             static let healthSignalsTitle: LocalizedStringResource = "settings.profile.item.healthSignals"
+            static let healthSignalsSubtitle: LocalizedStringResource = "settings.profile.item.healthSignals.subtitle"
             static let helpSupportTitle: LocalizedStringResource = "settings.profile.item.helpSupport"
             static let termsPrivacyTitle: LocalizedStringResource = "settings.profile.item.termsPrivacy"
         }
@@ -407,6 +432,8 @@ enum AppText {
         enum Language {
             static let title: LocalizedStringResource = "settings.language.title"
             static let subtitle: LocalizedStringResource = "settings.language.subtitle"
+            static let currentFormat: LocalizedStringResource = "settings.language.currentFormat"
+            static let footer: LocalizedStringResource = "settings.language.footer"
 
             enum Option {
                 static let english: LocalizedStringResource = "settings.language.option.english"
@@ -477,6 +504,10 @@ func WeekFitWarmLocalizationCache() {
     WeekFitLocalizationCache.refreshFromStorage()
 }
 
+func WeekFitSetCurrentLanguage(_ language: AppLanguage) {
+    WeekFitLocalizationCache.update(language: language)
+}
+
 func WeekFitShortWeekdayMonthDay(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.locale = WeekFitCurrentLocale()
@@ -489,6 +520,592 @@ func WeekFitDisplayString(_ value: String) -> String {
 
     let localized = WeekFitLocalizedString(value)
     return localized == value ? value : localized
+}
+
+func WeekFitCoachRuntimeLocalizedString(_ value: String) -> String {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return value }
+
+    let isRussian = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+    if let pair = WeekFitCoachRuntimeCopy[trimmed] {
+        return WeekFitCoachHumanizedText(isRussian ? WeekFitRussianCoachText(pair.ru) : pair.en)
+    }
+
+    let localized = WeekFitLocalizedString(value)
+    let cleaned = isRussian ? WeekFitRussianCoachText(localized) : localized
+    return WeekFitCoachHumanizedText(cleaned)
+}
+
+private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
+    let copies: [(en: String, ru: String, aliases: [String])] = [
+        (
+            "My Assessment",
+            "Моя оценка",
+            ["My Read"]
+        ),
+        (
+            "My Recommendation",
+            "Что сделать",
+            []
+        ),
+        (
+            "Be Careful With",
+            "Чего избегать",
+            []
+        ),
+        (
+            "Why",
+            "Почему это важно",
+            []
+        ),
+        (
+            "Keep the day flexible",
+            "Оставьте день гибким",
+            []
+        ),
+        (
+            "Keep recovery easy",
+            "Восстанавливайтесь спокойно",
+            ["Восстанавливайтесь легко"]
+        ),
+        (
+            "Eat normally at next meal",
+            "Поешьте нормально в следующий прием пищи",
+            ["Ешьте нормально в следующий прием пищи"]
+        ),
+        (
+            "Small session logged",
+            "Легкая активность записана",
+            []
+        ),
+        (
+            "The day is open enough to stay simple.",
+            "День остается спокойным — не усложняйте его.",
+            ["День достаточно свободный, чтобы оставить его простым."]
+        ),
+        (
+            "Control today's ride",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Control today's run",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Control today's upper body session",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Control today's tennis session",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Control today's squash session",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Today's ride should stay below your normal ceiling.",
+            "Сегодня лучше держать нагрузку ниже привычного максимума.",
+            []
+        ),
+        (
+            "Recovery does not support productive hard running today.",
+            "Сегодня лучше держать нагрузку ниже привычного максимума.",
+            []
+        ),
+        (
+            "Today's session should prioritize quality over load.",
+            "Сегодня лучше держать нагрузку ниже привычного максимума.",
+            []
+        ),
+        (
+            "Recovery does not support long high-intensity rallies today.",
+            "Сегодня лучше держать нагрузку ниже привычного максимума.",
+            []
+        ),
+        (
+            "Squash places high demands on movement and recovery. Today's ceiling is lower than normal.",
+            "Сегодня лучше держать нагрузку ниже привычного максимума.",
+            []
+        ),
+        (
+            "Protect the main effort",
+            "Почему это важно",
+            ["Защитите главное усилие"]
+        ),
+        (
+            "Why this matters",
+            "Почему это важно",
+            []
+        ),
+        (
+            "Fluids are lower than this point of the day usually needs. Rehydrating helps protect energy and readiness.",
+            "Сегодня жидкости меньше, чем обычно требуется к этому времени дня. Восполнение воды поможет сохранить энергию и готовность.",
+            []
+        ),
+        (
+            "Fuel is behind for the current demand. Eating normally now supports steady energy without changing the whole plan.",
+            "Энергии сейчас меньше, чем нужно для текущей нагрузки. Нормальный прием пищи поможет держать день ровным без смены плана.",
+            []
+        ),
+        (
+            "Sleep was not bad, but the body still needs recovery. Extra load now is likely to bring less benefit.",
+            "Сон был неплохим, но организму всё ещё нужно восстановление. Дополнительная нагрузка сейчас принесёт меньше пользы.",
+            []
+        ),
+        (
+            "The current workout is already creating enough load. The useful move now is keeping quality until the finish.",
+            "Текущая тренировка уже создаёт нужную нагрузку. Важно сохранить качество до её завершения.",
+            []
+        ),
+        (
+            "Control the session",
+            "Контролируйте тренировку",
+            []
+        ),
+        (
+            "The workout is already live. Movement quality, technique, and reserve matter more than max effort now.",
+            "Тренировка уже идет. Сейчас важнее качество движения, техника и запас, а не максимум.",
+            []
+        ),
+        (
+            "Start calmly, keep form clean, and finish with reserve.",
+            "Начните спокойно, держите технику чистой и завершите с запасом.",
+            []
+        ),
+        (
+            "Do not increase load or pace if technique starts to break down.",
+            "Не повышайте вес или темп, если техника начинает проседать.",
+            []
+        ),
+        (
+            "During a strength session, the best signal is stable movement and controlled effort. That gives you training value without adding unnecessary stress.",
+            "Во время силовой тренировки лучший сигнал — стабильное движение и контроль усилия. Это помогает получить пользу без лишнего стресса.",
+            []
+        ),
+        (
+            "Keep this run easy",
+            "Снизьте темп бега",
+            []
+        ),
+        (
+            "The run is already live. Keep effort easy, avoid adding intensity, and finish with reserve.",
+            "Тренировка уже началась. Держите бег легким, не добавляйте интенсивность и завершите с запасом.",
+            []
+        ),
+        (
+            "The run is already live. Recovery is shaping the effort ceiling, so easy pacing and reserve matter most now.",
+            "Бег уже идет. Восстановление влияет на потолок усилия, поэтому сейчас важнее легкий темп и запас.",
+            []
+        ),
+        (
+            "Do not turn this run into extra training load.",
+            "Не превращайте этот бег в дополнительную нагрузку.",
+            []
+        ),
+        (
+            "Load has already accumulated today, so recovery affects the effort ceiling but does not replace the current workout.",
+            "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на потолок усилия, но не заменяет текущую тренировку.",
+            []
+        ),
+        (
+            "Keep an easy pace",
+            "Держите легкий темп",
+            []
+        ),
+        (
+            "Stay conversational",
+            "Оставайтесь в разговорном усилии",
+            []
+        ),
+        (
+            "Shorten if needed",
+            "Сократите при необходимости",
+            []
+        ),
+        (
+            "Better to finish fresh than chase volume",
+            "Лучше закончить свежим, чем добрать объем",
+            []
+        ),
+        (
+            "Finish with reserve",
+            "Завершите с запасом",
+            []
+        ),
+        (
+            "Make recovery easier to start",
+            "Сделайте восстановление легче",
+            []
+        ),
+        (
+            "Protect tomorrow's ride",
+            "Защитите завтрашнюю поездку",
+            []
+        ),
+        (
+            "Today's load is already banked, and tomorrow has a long 3.5-hour ride planned.",
+            "Сегодня нагрузка уже накопилась, а завтра запланирована длинная велотренировка на 3.5 часа.",
+            []
+        ),
+        (
+            "Restore fluids, eat normally, and close the evening calmly so you can start tomorrow with reserve.",
+            "Сейчас важнее восстановить жидкость, нормально поесть и завершить вечер спокойно, чтобы завтра стартовать с запасом.",
+            []
+        ),
+        (
+            "Do not add intensity tonight — it can take capacity away from tomorrow's ride.",
+            "Не добавляйте интенсивность сегодня вечером — это может забрать ресурс у завтрашней поездки.",
+            []
+        ),
+        (
+            "A long ride needs freshness, fluids, and energy before it starts. The evening before matters more than doing extra work today.",
+            "Длинная велотренировка требует свежести, воды и энергии заранее. Вечер до неё влияет на качество старта сильнее, чем еще одна нагрузка сегодня.",
+            []
+        ),
+        (
+            "Restore fluids",
+            "Восстановите жидкость",
+            []
+        ),
+        (
+            "Sip gradually instead of catching up at once",
+            "Пейте постепенно, без резкого догоняния",
+            []
+        ),
+        (
+            "Eat normally",
+            "Закройте питание",
+            []
+        ),
+        (
+            "A real meal is better than random snacking",
+            "Нормальная еда важнее случайного перекуса",
+            []
+        ),
+        (
+            "Prepare for sleep",
+            "Готовьтесь ко сну",
+            []
+        ),
+        (
+            "Tomorrow's start depends on tonight",
+            "Завтрашний старт зависит от сегодняшнего вечера",
+            []
+        ),
+        (
+            "The next workout will go better if you arrive settled instead of spending energy too early.",
+            "Следующая тренировка пройдет лучше, если подойти к ней спокойно и не тратить силы заранее.",
+            []
+        ),
+        (
+            "Tomorrow carries real demand. Saving energy today protects the next training day.",
+            "Завтра есть значимая нагрузка. Если сохранить силы сегодня, следующий тренировочный день пройдет лучше.",
+            []
+        ),
+        (
+            "The day does not need a correction right now. A steady rhythm is more useful than adding another task.",
+            "Сейчас день не требует коррекции. Ровный ритм полезнее, чем ещё одна задача.",
+            []
+        ),
+        (
+            "The useful move now is making the evening quieter so sleep can do its job.",
+            "Сейчас полезнее сделать вечер спокойнее, чтобы сон действительно сработал на восстановление.",
+            []
+        ),
+        (
+            "WORKOUT",
+            "ТРЕНИРОВКА",
+            []
+        ),
+        (
+            "GET READY",
+            "ПОДГОТОВКА",
+            []
+        ),
+        (
+            "RECOVERY",
+            "ВОССТАНОВЛЕНИЕ",
+            []
+        ),
+        (
+            "HYDRATION",
+            "ВОДА",
+            []
+        ),
+        (
+            "NUTRITION",
+            "ПИТАНИЕ",
+            []
+        ),
+        (
+            "TOMORROW",
+            "ЗАВТРА",
+            []
+        ),
+        (
+            "EVENING",
+            "ВЕЧЕР",
+            []
+        ),
+        (
+            "ON TRACK",
+            "ВСЕ ПО ПЛАНУ",
+            []
+        ),
+        (
+            "Control today's workout",
+            "Не гонитесь за цифрами",
+            []
+        ),
+        (
+            "Keep the effort comfortable and finish with control.",
+            "Держите комфортный темп и спокойно доведите тренировку до конца.",
+            []
+        ),
+        (
+            "The current workout is already creating enough load.",
+            "Текущая тренировка уже создает достаточную нагрузку.",
+            []
+        ),
+        (
+            "Prepare for training",
+            "Подготовьтесь к тренировке",
+            []
+        ),
+        (
+            "Keep the next step simple and arrive ready.",
+            "Не усложняйте следующий шаг и подойдите к тренировке готовым.",
+            []
+        ),
+        (
+            "Recovery comes next",
+            "Сейчас восстановление",
+            []
+        ),
+        (
+            "The training signal is already in. Recovery now matters more than adding load.",
+            "Тренировочный стимул уже получен. Сейчас восстановление важнее дополнительной нагрузки.",
+            []
+        ),
+        (
+            "Eat normally, drink steadily, and keep the rest of the day easy.",
+            "Поешьте нормально, пейте ровно и оставьте остаток дня спокойным.",
+            []
+        ),
+        (
+            "Today is better for recovery",
+            "Сегодня лучше восстановиться",
+            []
+        ),
+        (
+            "Your body will get more from recovery than from extra load right now.",
+            "Сейчас организму полезнее восстановление, чем дополнительная нагрузка.",
+            []
+        ),
+        (
+            "Keep movement light and let recovery lead the day.",
+            "Держите движение легким и дайте восстановлению вести день.",
+            []
+        ),
+        (
+            "Bring fluids back up",
+            "Восполните воду",
+            []
+        ),
+        (
+            "Fluids are lower than this point of the day usually needs.",
+            "Жидкости сейчас меньше, чем обычно нужно к этому времени дня.",
+            []
+        ),
+        (
+            "Drink steadily now so energy and readiness stay stable.",
+            "Пейте ровно сейчас, чтобы энергия и готовность оставались стабильными.",
+            []
+        ),
+        (
+            "Eat normally at the next meal",
+            "Поешьте нормально в следующий прием пищи",
+            []
+        ),
+        (
+            "Food is behind the demand of the day.",
+            "Питание сейчас отстает от нагрузки дня.",
+            []
+        ),
+        (
+            "A normal meal now supports steady energy without changing the whole plan.",
+            "Нормальный прием пищи поддержит энергию без смены всего плана.",
+            []
+        ),
+        (
+            "Save energy for tomorrow",
+            "Сохраните силы на завтра",
+            []
+        ),
+        (
+            "Tomorrow has enough demand that adding load today would make it harder.",
+            "Завтра будет достаточно нагрузки, и лишняя нагрузка сегодня сделает ее тяжелее.",
+            []
+        ),
+        (
+            "Keep the rest of today easy so tomorrow's training stays useful.",
+            "Оставьте остаток дня спокойным, чтобы завтрашняя тренировка была полезной.",
+            []
+        ),
+        (
+            "Make the evening quieter",
+            "Сделайте вечер спокойнее",
+            []
+        ),
+        (
+            "The most useful move now is letting the day come down.",
+            "Сейчас полезнее дать дню спокойно завершиться.",
+            []
+        ),
+        (
+            "Keep the evening calm so sleep can do its job.",
+            "Сохраните спокойный вечер, чтобы сон сработал на восстановление.",
+            []
+        ),
+        (
+            "No need to change the plan",
+            "Сегодня нет причин менять план",
+            []
+        ),
+        (
+            "The main signals do not ask for a correction right now.",
+            "Главные сигналы сейчас не требуют коррекции.",
+            []
+        ),
+        (
+            "Stay with the plan and keep the basics steady.",
+            "Оставьте план как есть и держите базовые привычки ровно.",
+            []
+        ),
+        (
+            "Support readiness",
+            "Поддержите готовность",
+            []
+        ),
+        (
+            "Drinks are behind for this point of the day.",
+            "Жидкости сейчас меньше, чем обычно нужно к этому времени дня.",
+            []
+        )
+    ]
+
+    var result: [String: (en: String, ru: String)] = [:]
+    for copy in copies {
+        let pair = (en: copy.en, ru: copy.ru)
+        result[copy.en] = pair
+        result[copy.ru] = pair
+        for alias in copy.aliases {
+            result[alias] = pair
+        }
+    }
+    return result
+}()
+
+private func WeekFitRussianCoachText(_ text: String) -> String {
+    var result = text
+    let replacements: [(String, String)] = [
+        ("Cycling", "Велотренировка"),
+        ("cycling", "велотренировка"),
+        ("Ride", "Велотренировка"),
+        ("ride", "велотренировка"),
+        ("Running", "Бег"),
+        ("running", "бег"),
+        ("Run", "Бег"),
+        ("run", "бег"),
+        ("Walk", "Прогулка"),
+        ("walk", "прогулка"),
+        ("Walking", "Прогулка"),
+        ("walking", "прогулка"),
+        ("Strength", "Силовая тренировка"),
+        ("strength", "силовая тренировка"),
+        ("Upper Body", "Верх тела"),
+        ("upper body", "верх тела"),
+        ("Core", "Кор"),
+        ("core", "кор"),
+        ("Breathing", "Дыхание"),
+        ("breathing", "дыхание"),
+        ("Sauna", "Сауна"),
+        ("sauna", "сауна"),
+        ("Stretching", "Растяжка"),
+        ("stretching", "растяжка"),
+        ("Cottage Cheese", "Творог"),
+        ("cottage cheese", "творог"),
+        ("Greek Yogurt", "Греческий йогурт"),
+        ("greek yogurt", "греческий йогурт")
+    ]
+
+    for replacement in replacements {
+        result = result.replacingOccurrences(of: replacement.0, with: replacement.1)
+    }
+
+    result = result
+        .replacingOccurrences(of: "Защитите главное усилие", with: "Почему это важно")
+        .replacingOccurrences(of: "главного усилия", with: "качества движения")
+        .replacingOccurrences(of: "главное усилие", with: "качество движения")
+        .replacingOccurrences(of: "Активная фаза", with: "Тренировка")
+        .replacingOccurrences(of: "АКТИВНАЯ ФАЗА", with: "ТРЕНИРОВКА")
+        .replacingOccurrences(of: "Поддержите восстановление", with: "Восстанавливайтесь спокойно")
+        .replacingOccurrences(of: "Защитите адаптацию", with: "Дайте работе усвоиться")
+        .replacingOccurrences(of: "сессия", with: "тренировка")
+        .replacingOccurrences(of: "Сессия", with: "Тренировка")
+
+    return result
+}
+
+private func WeekFitCoachHumanizedText(_ text: String) -> String {
+    var result = text
+    let replacements: [(String, String)] = [
+        ("Recovery is the main constraint behind this recommendation.", "Recovery is the main reason for this recommendation."),
+        ("Fuel is still light for this effort.", "Food still needs attention before this effort."),
+        ("Fuel is still part of the preparation job.", "Food is still part of preparation."),
+        ("Hydration is improving. Fuel is still the missing piece", "Hydration is improving. Food is still the missing piece"),
+        ("Lower the later ceiling", "Make the later workout easier"),
+        ("Lower tomorrow's ceiling", "Make tomorrow easier"),
+        ("Lower the ceiling", "Make the plan easier"),
+        ("Hold the planned ceiling", "Keep the planned effort"),
+        ("Start below your ceiling", "Start easier than usual"),
+        ("Let readiness set the ceiling", "Let readiness set the effort"),
+        ("Let this session set the ceiling", "Let this workout set the effort"),
+        ("Let the warm-up set the ceiling", "Let the warm-up set the effort"),
+        ("Let body feedback set the ceiling", "Let body feedback set the effort"),
+        ("set the ceiling", "set the effort"),
+        ("sets the ceiling", "sets the effort"),
+        ("normal ceiling", "usual effort"),
+        ("today's ceiling", "today's effort"),
+        ("the ceiling", "the effort"),
+        ("ceiling", "effort"),
+        ("limiting factors", "main things to support"),
+        ("limiting factor", "main thing to support"),
+        ("limiter", "main signal"),
+        ("constraint", "main signal"),
+        ("Constraint", "Main signal"),
+        ("Снизьте завтрашний потолок", "Сделайте завтра легче"),
+        ("Снизьте потолок", "Сделайте план легче"),
+        ("снизьте потолок", "сделайте план легче"),
+        ("задает потолок", "задает темп"),
+        ("задать потолок", "задать темп"),
+        ("потолок нагрузки", "темп нагрузки"),
+        ("потолок", "темп"),
+        ("лимитирующие факторы", "главные сигналы"),
+        ("лимитирующий фактор", "главный сигнал")
+    ]
+
+    for replacement in replacements {
+        result = result.replacingOccurrences(of: replacement.0, with: replacement.1)
+    }
+
+    return result
 }
 
 private func WeekFitDebugLogLocalizationResolution(key: String, locale: Locale, resolved: String) {
@@ -529,11 +1146,15 @@ private enum WeekFitLocalizationCache {
         let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
 
         let resolvedLanguage = AppLanguage(rawValue: storedLanguageCode) ?? .english
-        let locale = Locale(identifier: resolvedLanguage.localeIdentifier)
+        update(language: resolvedLanguage)
+    }
+
+    static func update(language: AppLanguage) {
+        let locale = Locale(identifier: language.localeIdentifier)
 
         lock.lock()
         defer { lock.unlock() }
-        cachedLanguageCode = storedLanguageCode
+        cachedLanguageCode = language.rawValue
         cachedLocale = locale
     }
 }

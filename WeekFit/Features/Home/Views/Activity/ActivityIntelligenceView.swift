@@ -113,12 +113,15 @@ struct ActivityIntelligenceView: View {
     @StateObject private var viewModel = ActivityIntelligenceViewModel()
     @State private var selectedSession: ActivitySessionSnapshot?
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
 
     private var snapshot: ActivityDaySnapshot {
         viewModel.selectedSnapshot
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             ActivityStyle.screenBackground
                 .ignoresSafeArea()
@@ -174,6 +177,15 @@ struct ActivityIntelligenceView: View {
                 healthManager: healthManager,
                 plannedActivities: plannedActivities
             )
+        }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            Task {
+                await viewModel.load(
+                    selectedDate: viewModel.selectedDate,
+                    healthManager: healthManager,
+                    plannedActivities: plannedActivities
+                )
+            }
         }
     }
 
@@ -1216,7 +1228,7 @@ private struct ActivitySessionDetailView: View {
 
     private var routeCard: some View {
         VStack(alignment: .leading, spacing: 11) {
-            SectionLabel("activity.route")
+            SectionLabel(WeekFitLocalizedString("activity.route"))
 
             HStack(spacing: 12) {
                 if isRouteLoading && routePoints.isEmpty {
@@ -1332,8 +1344,8 @@ private struct ActivitySessionDetailView: View {
                 title: detail?.shouldShowElapsedTime == true
                     ? "activity.metric.workoutTime"
                     : "activity.metric.duration",
-                value: MetricFormatter.durationValue(sessionDurationSeconds),
-                unit: MetricFormatter.durationUnit(sessionDurationSeconds),
+                value: MetricFormatter.compactDashboardDuration(sessionDurationSeconds),
+                unit: "",
                 icon: "clock",
                 color: ActivityStyle.activityColor
             )
@@ -1343,8 +1355,8 @@ private struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.elapsedTime",
-                    value: MetricFormatter.durationValue(detail.elapsedDurationSeconds),
-                    unit: MetricFormatter.durationUnit(detail.elapsedDurationSeconds),
+                    value: MetricFormatter.compactDashboardDuration(detail.elapsedDurationSeconds),
+                    unit: "",
                     icon: "timer",
                     color: ActivityStyle.teal
                 )
@@ -2129,23 +2141,22 @@ private enum DurationFormatter {
 }
 
 private enum MetricFormatter {
-    static func durationValue(_ seconds: TimeInterval) -> String {
+    static func compactDashboardDuration(_ seconds: TimeInterval) -> String {
         let minutes = max(1, Int((seconds / 60.0).rounded()))
 
-        guard minutes >= 90 else {
-            return "\(minutes)"
+        guard minutes >= 60 else {
+            return "\(minutes)\(compactMinuteUnit)"
         }
 
-        let hours = minutes / 60
-        let remainder = minutes % 60
-        return remainder == 0 ? "\(hours)" : "\(hours)h \(remainder)"
+        return String(format: "%.1f%@", Double(minutes) / 60.0, compactHourUnit)
     }
 
-    static func durationUnit(_ seconds: TimeInterval) -> String {
-        let minutes = max(1, Int((seconds / 60.0).rounded()))
-        return minutes >= 90 && minutes % 60 == 0
-            ? WeekFitLocalizedString("common.duration.hoursShortUnit")
-            : WeekFitLocalizedString("common.unit.minuteShort")
+    private static var compactMinuteUnit: String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "м" : "m"
+    }
+
+    private static var compactHourUnit: String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "ч" : "h"
     }
 
     static func compactSteps(_ steps: Int) -> String {

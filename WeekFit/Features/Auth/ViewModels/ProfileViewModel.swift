@@ -30,6 +30,9 @@ final class ProfileViewModel: ObservableObject {
         case .notifications:
             destination = .notifications
 
+        case .language:
+            destination = .language
+
         case .healthAccess, .appleHealth:
             destination = .healthAccess
 

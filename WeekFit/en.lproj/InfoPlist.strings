@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFit uses the camera so you can add photos to custom foods.";
+"NSHealthShareUsageDescription" = "WeekFit uses your health and activity data to personalize your daily plan.";
+"NSHealthUpdateUsageDescription" = "WeekFit uses HealthKit permissions only to support personalized health, fitness and recovery insights.";

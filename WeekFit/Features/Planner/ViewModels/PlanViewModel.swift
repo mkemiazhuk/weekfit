@@ -123,7 +123,7 @@ final class PlanViewModel: ObservableObject {
     func plannerOption(for meal: Meals) -> PlannerOption {
         PlannerOption(
             title: meal.title,
-            subtitle: "\(meal.calories) kcal • P \(meal.protein)g",
+            subtitle: String(format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"), meal.calories, meal.protein),
             icon: PlannerType.meal.icon,
             imageName: displayImageName(for: meal)
         )
@@ -308,7 +308,7 @@ final class PlanViewModel: ObservableObject {
                 selectedMealID = nil
                 selectedItem = PlannerOption(
                     title: activity.title,
-                    subtitle: "Logged meal",
+                    subtitle: WeekFitLocalizedString("planner.loggedMeal"),
                     icon: activity.icon,
                     imageName: activity.imageName
                 )
@@ -321,7 +321,7 @@ final class PlanViewModel: ObservableObject {
                 // Если активность полностью кастомная — собираем её на лету с валидным сабтитром
                 selectedItem = PlannerOption(
                     title: activity.title,
-                    subtitle: "Duration · \(activity.durationMinutes) min",
+                    subtitle: String(format: WeekFitLocalizedString("planner.duration.summaryFormat"), activity.durationMinutes),
                     icon: activity.icon,
                     imageName: activity.imageName
                 )
@@ -353,7 +353,7 @@ final class PlanViewModel: ObservableObject {
             newEventBlocksPlannerTime: selectedType.blocksPlannerTime
         ) {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            timeConflictMessage = "This time overlaps with another activity. Choose another 15-minute slot."
+            timeConflictMessage = WeekFitLocalizedString("planner.timeConflict.message")
             showTimeConflictAlert = true
             return
         }
@@ -493,7 +493,7 @@ final class PlanViewModel: ObservableObject {
         ) {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
             invalidDropSlot = newDate
-            timeConflictMessage = "This time overlaps with another activity. Choose another 15-minute slot."
+            timeConflictMessage = WeekFitLocalizedString("planner.timeConflict.message")
             showTimeConflictAlert = true
             return
         }

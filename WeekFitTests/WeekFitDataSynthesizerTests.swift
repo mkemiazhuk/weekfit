@@ -3,6 +3,18 @@ import XCTest
 
 final class WeekFitDataSynthesizerTests: XCTestCase {
 
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLanguage.storageKey)
+        WeekFitWarmLocalizationCache()
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
+        WeekFitWarmLocalizationCache()
+        super.tearDown()
+    }
+
     func testCompensationTrapPrioritizesActivityWhenRecoveryDrops() {
         let story = WeekFitDataSynthesizer.generateMonthlyHighlight(
             from: Self.makeMonthlyMetrics { day in
@@ -66,6 +78,30 @@ final class WeekFitDataSynthesizerTests: XCTestCase {
         XCTAssertEqual(story.trendLabel, "STABLE")
         XCTAssertEqual(story.snapshots.count, 4)
         XCTAssertTrue(story.isEmptyState)
+    }
+
+    func testRussianLocaleLocalizesPresentationWithoutChangingStoryLogic() {
+        UserDefaults.standard.set(AppLanguage.russian.rawValue, forKey: AppLanguage.storageKey)
+        WeekFitWarmLocalizationCache()
+
+        let story = WeekFitDataSynthesizer.generateMonthlyHighlight(
+            from: Self.makeMonthlyMetrics { day in
+                DailyMetrics(
+                    date: Self.date(day),
+                    recoveryScore: day < 15 ? 76 : 68,
+                    activityVolume: day < 15 ? 500 : 620,
+                    nutritionScore: 80,
+                    sleepConsistency: 75
+                )
+            }
+        )
+
+        XCTAssertEqual(story.headline, "Активность выросла, но эффективность падает")
+        XCTAssertEqual(story.primaryMetric, .activity)
+        XCTAssertEqual(story.trend, .down)
+        XCTAssertEqual(story.trendLabel, "НУЖНО ВНИМАНИЕ")
+        XCTAssertEqual(story.focusChartMetric, .activity)
+        XCTAssertFalse(story.isEmptyState)
     }
 
     func testDebugMockDataDemonstratesExecution() {

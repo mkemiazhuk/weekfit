@@ -56,6 +56,12 @@
                     title: "Notifications",
                     subtitle: "Workout and recovery reminders",
                     type: .notifications
+                ),
+                ProfileItem(
+                    icon: "globe",
+                    title: "Language",
+                    subtitle: "Choose the app language",
+                    type: .language
                 )
             ]
         }

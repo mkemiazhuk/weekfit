@@ -5,6 +5,7 @@ struct HighlightsView: View {
 
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
 
@@ -21,11 +22,14 @@ struct HighlightsView: View {
         return [
             activitySignature,
             nutritionViewModel.coachStateRefreshID.uuidString,
-            "\(healthManager.isHealthAccessRequested)"
+            "\(healthManager.isHealthAccessRequested)",
+            languageManager.selectedLanguage.rawValue
         ].joined(separator: "::")
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack(alignment: .top) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
@@ -33,8 +37,8 @@ struct HighlightsView: View {
 
             WeekFitScreenContainer {
                 WeekFitScreenHeader(
-                    title: "Highlights",
-                    subtitle: "Last 30 Days",
+                    title: WeekFitLocalizedString("highlights.title"),
+                    subtitle: WeekFitLocalizedString("highlights.range.last30Days"),
                     initials: userSettings.profileInitials,
                     showAvatar: true
                 ) {
@@ -70,6 +74,7 @@ struct HighlightsView: View {
             }
             .environmentObject(healthManager)
             .environmentObject(nutritionViewModel)
+            .environmentObject(languageManager)
             .presentationDetents([.large])
             .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
@@ -96,7 +101,7 @@ private extension HighlightsView {
                     .background(Circle().fill(metricColor(viewModel.story.primaryMetric).opacity(0.16)))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("MONTHLY STORY")
+                    Text(AppText.Highlights.monthlyStory)
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .tracking(0.42)
                         .foregroundStyle(WeekFitTheme.secondaryText)
@@ -204,7 +209,7 @@ private extension HighlightsView {
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.84))
             }
 
-            Text("View \(metricLabel(snapshot.metric)) Analysis")
+            Text(String(format: WeekFitLocalizedString("highlights.viewMetricAnalysisFormat"), metricLabel(snapshot.metric)))
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText.opacity(0.90))
                 .minimumScaleFactor(0.82)
@@ -243,7 +248,7 @@ private extension HighlightsView {
 
     var whyStoryBlock: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Why \(metricLabel(viewModel.story.primaryMetric))?")
+            Text(String(format: WeekFitLocalizedString("highlights.whyMetricFormat"), metricLabel(viewModel.story.primaryMetric)))
                 .font(.system(size: 13.5, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText.opacity(0.94))
 
@@ -278,42 +283,42 @@ private extension HighlightsView {
         if let sleep, sleep.currentBaseline > 0 {
             switch sleep.trend {
             case .up:
-                signals.append("Sleep schedule became more consistent")
+                signals.append(WeekFitLocalizedString("highlights.signal.sleepMoreConsistent"))
             case .stable:
-                signals.append("Sleep timing stayed consistent")
+                signals.append(WeekFitLocalizedString("highlights.signal.sleepStayedConsistent"))
             case .down:
-                signals.append("Sleep schedule was uneven, but the monthly pattern still held")
+                signals.append(WeekFitLocalizedString("highlights.signal.sleepUnevenHeld"))
             }
         }
 
         if let recovery, recovery.currentBaseline > 0 {
-            signals.append("Recovery held near baseline")
+            signals.append(WeekFitLocalizedString("highlights.signal.recoveryHeld"))
         }
 
         if let activity, activity.currentBaseline > 0 {
             switch activity.trend {
             case .up:
-                signals.append("Activity load increased versus the first half of the month")
+                signals.append(WeekFitLocalizedString("highlights.signal.activityIncreased"))
             case .stable:
-                signals.append("Activity load stayed predictable")
+                signals.append(WeekFitLocalizedString("highlights.signal.activityPredictable"))
             case .down:
-                signals.append("Activity load was lighter than earlier in the month")
+                signals.append(WeekFitLocalizedString("highlights.signal.activityLighter"))
             }
         }
 
         if signals.count < 3, let nutrition, nutrition.currentBaseline > 0 {
             switch nutrition.trend {
             case .up:
-                signals.append("Fueling pattern improved")
+                signals.append(WeekFitLocalizedString("highlights.signal.fuelingImproved"))
             case .stable:
-                signals.append("Fueling stayed consistent")
+                signals.append(WeekFitLocalizedString("highlights.signal.fuelingConsistent"))
             case .down:
-                signals.append("Fueling pattern was mixed")
+                signals.append(WeekFitLocalizedString("highlights.signal.fuelingMixed"))
             }
         }
 
         if signals.isEmpty {
-            signals.append("Not enough data yet")
+            signals.append(WeekFitLocalizedString("highlights.signal.notEnoughData"))
         }
 
         return Array(signals.prefix(3))
@@ -358,7 +363,7 @@ private extension HighlightsView {
             ProgressView()
                 .tint(WeekFitTheme.meal)
 
-            Text("Reading your monthly pattern")
+            Text(AppText.Highlights.loading)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.72))
         }
@@ -397,10 +402,10 @@ private extension HighlightsView {
 
     func metricLabel(_ metric: HealthMetric) -> String {
         switch metric {
-        case .recovery: return "Recovery"
-        case .activity: return "Activity"
-        case .nutrition: return "Nutrition"
-        case .sleep: return "Sleep"
+        case .recovery: return WeekFitLocalizedString("highlights.metric.recovery")
+        case .activity: return WeekFitLocalizedString("highlights.metric.activity")
+        case .nutrition: return WeekFitLocalizedString("highlights.metric.nutrition")
+        case .sleep: return WeekFitLocalizedString("highlights.metric.sleep")
         }
     }
 
@@ -567,9 +572,9 @@ private struct ReferenceBandLabels: View {
     var body: some View {
         GeometryReader { proxy in
             Group {
-                bandLabel("High", y: proxy.size.height * 0.18)
-                bandLabel("Average", y: proxy.size.height * 0.48)
-                bandLabel("Low", y: proxy.size.height * 0.78)
+                bandLabel(WeekFitLocalizedString("health.high"), y: proxy.size.height * 0.18)
+                bandLabel(WeekFitLocalizedString("highlights.chart.average"), y: proxy.size.height * 0.48)
+                bandLabel(WeekFitLocalizedString("health.low"), y: proxy.size.height * 0.78)
             }
         }
         .allowsHitTesting(false)

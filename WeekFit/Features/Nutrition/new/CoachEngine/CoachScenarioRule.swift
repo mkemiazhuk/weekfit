@@ -8,6 +8,80 @@ struct CoachScenarioRule {
     let supportFocus: [String]
     let supportActions: [CoachSupportActionTypeV3]
     let avoidNotes: [String]
+
+    init(
+        stateLabel: String,
+        title: String,
+        message: String,
+        supportFocus: [String],
+        supportActions: [CoachSupportActionTypeV3],
+        avoidNotes: [String]
+    ) {
+        self.stateLabel = coachRuleLocalizedText(stateLabel, fallback: "ТРЕНЕР")
+        self.title = coachRuleLocalizedText(title, fallback: "Держите тренировку под контролем")
+        self.message = coachRuleLocalizedText(
+            message,
+            fallback: "Сделайте следующий шаг легче, держите усилие повторяемым и корректируйте план по самочувствию."
+        )
+        self.supportFocus = coachRuleLocalizedList(
+            supportFocus,
+            fallback: supportActions.isEmpty
+                ? ["Сохраняйте ритм", "Держите усилие легким", "Следуйте плану"]
+                : supportActions.map(\.ruleRussianFallbackTitle)
+        )
+        self.supportActions = supportActions
+        self.avoidNotes = coachRuleLocalizedList(
+            avoidNotes,
+            fallback: ["Не добавляйте лишнюю интенсивность."]
+        )
+    }
+}
+
+private func coachRuleLocalizedText(_ text: String, fallback: String) -> String {
+    let localized = WeekFitLocalizedString(text)
+    if localized != text || !WeekFitCurrentLocale().identifier.hasPrefix("ru") {
+        return localized
+    }
+    return fallback
+}
+
+private func coachRuleLocalizedList(_ values: [String], fallback: [String]) -> [String] {
+    let localized = values
+        .map { coachRuleLocalizedText($0, fallback: "") }
+        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    if !WeekFitCurrentLocale().identifier.hasPrefix("ru") || !localized.isEmpty {
+        return localized
+    }
+
+    return fallback
+}
+
+private extension CoachSupportActionTypeV3 {
+    var ruleRussianFallbackTitle: String {
+        switch self {
+        case .lightFueling, .sustainEnergy:
+            return "Добавьте энергии"
+        case .hydrateBeforeSession, .steadyHydration, .rehydrateGradually:
+            return "Пейте воду спокойно"
+        case .breathingReset, .downshiftNervousSystem:
+            return "Снизьте напряжение"
+        case .mobilityPrep, .cooldown, .lightRecoveryMovement:
+            return "Держите движение легким"
+        case .keepDigestionLight:
+            return "Держите еду легкой"
+        case .controlIntensity:
+            return "Контролируйте интенсивность"
+        case .startRecoveryNutrition, .recoveryMeal:
+            return "Поешьте, чтобы телу было легче восстановиться"
+        case .stayConsistent:
+            return "Сохраняйте рутину"
+        case .electrolyteRecovery:
+            return "Восполните минералы"
+        case .sleepPriority:
+            return "Сохраните сон"
+        }
+    }
 }
 
 struct CoachRecoveryContext {

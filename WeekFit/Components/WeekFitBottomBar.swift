@@ -3,7 +3,7 @@ import SwiftUI
 enum WeekFitTab: Hashable, CaseIterable {
     case today
     case coach
-    case highlights
+//    case highlights
 //    case insights
     case meals
     case calendar
@@ -12,21 +12,21 @@ enum WeekFitTab: Hashable, CaseIterable {
         switch self {
         case .today: return "figure.mind.and.body"
         case .coach: return "brain.head.profile"
-        case .highlights: return "sparkles"
+//        case .highlights: return "sparkles"
 //        case .insights: return "chart.line.uptrend.xyaxis"
         case .meals: return "fork.knife"
         case .calendar: return "calendar"
         }
     }
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
-        case .today: return "Today"
-        case .coach: return "Coach"
-        case .highlights: return "Highlights"
+        case .today: return AppText.Common.Tab.today
+        case .coach: return AppText.Common.Tab.coach
+//        case .highlights: return AppText.Common.Tab.highlights
 //        case .insights: return "Insights"
-        case .meals: return "Nutrition"
-        case .calendar: return "Plan"
+        case .meals: return AppText.Common.Tab.meals
+        case .calendar: return AppText.Common.Tab.plan
         }
     }
 }
@@ -186,7 +186,7 @@ struct WeekFitBottomBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tab.title)
+        .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(active ? [.isSelected] : [])
     }
 
