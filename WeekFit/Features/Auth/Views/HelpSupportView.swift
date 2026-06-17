@@ -16,7 +16,7 @@ struct HelpSupportView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            backgroundGlow
+            ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -46,10 +46,9 @@ struct HelpSupportView: View {
         .sheet(isPresented: $showSupportSheet) {
             supportSheet
                 .presentationDetents([.height(286)])
-                .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.black.opacity(0.96))
                 .presentationBackgroundInteraction(.enabled)
+                .weekFitSheetChrome(cornerRadius: 32)
         }
     }
 }
@@ -85,37 +84,11 @@ private extension HelpSupportView {
     }
 
     var headerSection: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.065))
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                }
-                .frame(width: 48, height: 48)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.back))
-
-            Spacer()
-
-            Text(WeekFitLocalizedString("support.help.title"))
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 48, height: 48)
+        ProfilePremiumHeader(
+            title: WeekFitLocalizedString("support.help.title"),
+            accent: WeekFitStyle.brandGreen
+        ) {
+            dismiss()
         }
     }
 
@@ -430,23 +403,7 @@ private struct SupportRow: View {
             .padding(.horizontal, 17)
             .padding(.vertical, 12)
             .frame(minHeight: 78)
-            .background {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.055),
-                                Color.white.opacity(0.025)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(.white.opacity(0.07), lineWidth: 1)
-                    }
-            }
+            .profilePremiumCard(cornerRadius: 26, glow: iconColor.opacity(0.020))
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -535,7 +492,7 @@ struct SupportDetailView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            backgroundGlow
+            ProfilePremiumBackground(accent: iconColor)
 
             VStack(spacing: 0) {
 
@@ -576,37 +533,11 @@ private extension SupportDetailView {
     }
 
     var headerSection: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.065))
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                }
-                .frame(width: 48, height: 48)
-            }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel(Text(AppText.Common.Action.back))
-
-            Spacer()
-
-            Text(title)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 48, height: 48)
+        ProfilePremiumHeader(
+            title: title,
+            accent: iconColor
+        ) {
+            dismiss()
         }
     }
 
@@ -634,6 +565,8 @@ private extension SupportDetailView {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 10)
         }
@@ -652,30 +585,19 @@ private extension SupportDetailView {
             Text(title)
                 .font(.system(size: 15.5, weight: .semibold))
                 .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(text)
                 .font(.system(size: 13.2, weight: .medium))
                 .foregroundStyle(.white.opacity(0.54))
                 .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.045),
-                            Color.white.opacity(0.024)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(.white.opacity(0.06), lineWidth: 1)
-                }
+            Color.clear
+                .profilePremiumCard(cornerRadius: 22, glow: iconColor.opacity(0.020))
         }
     }
 }

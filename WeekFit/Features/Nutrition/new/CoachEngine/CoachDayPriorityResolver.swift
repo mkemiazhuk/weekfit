@@ -855,6 +855,10 @@ private extension CoachDayPriorityResult {
         priority: CoachDayPriority,
         focus: CoachDayFocus
     ) -> CoachLimiter {
+        if focus == .tomorrowPlanRisk {
+            return .upcomingTraining
+        }
+
         switch limiter {
         case .hydration, .fueling:
             switch priority {
@@ -1227,7 +1231,7 @@ private extension CoachDayPriorityResult {
         case .planChallenge:
             return "Оставьте план гибким и снизьте интенсивность, если готовность не улучшится."
         case .performance:
-            return "Начните легче обычного и дайте разминке определить реальный потолок."
+            return "Начните легче обычного и дайте разминке определить темп."
         case .activeSession:
             return "Держите усилие повторяемым и завершите с запасом."
         case .stable:
@@ -1277,7 +1281,7 @@ private extension CoachDayPriorityResult {
         case .planChallenge:
             return ["Сделайте завтра легче", "Сделайте сон главным", "При необходимости замените интенсивность восстановлением"]
         case .performance:
-            return ["Снизьте потолок", "Оставьте интенсивность гибкой", "Дайте организму восстановиться"]
+            return ["Сделайте план легче", "Оставьте интенсивность гибкой", "Дайте организму восстановиться"]
         case .activeSession:
             return ["Держите усилие ровным", "Корректируйте малыми шагами", "Завершите чисто"]
         case .stable:
@@ -1317,7 +1321,7 @@ private extension CoachDayPriorityResult {
         case .fueling:
             return "Не начинайте требовательную работу, пока питание не закрыто."
         case .activeSession:
-            return "Пусть текущая тренировка задаст реальный потолок нагрузки."
+            return "Пусть текущая тренировка задаст реальный темп нагрузки."
         case .stable:
             return focus == .eveningWindDown ? "Не добавляйте позднюю нагрузку." : "План можно оставить без изменений."
         }
@@ -1858,12 +1862,13 @@ private extension CoachLifecycleDecisionPipeline {
         }
 
         if let longEnduranceTomorrow,
-           resolvedHour(in: context) >= 18,
-           completedTraining {
+           resolvedHour(in: context) >= 18 {
             logTomorrowLoadDebug(
                 activity: longEnduranceTomorrow,
                 selectedAsFutureLoadSignal: true,
-                reason: "evening completed training load before long endurance session"
+                reason: completedTraining
+                    ? "evening completed training load before long endurance session"
+                    : "evening before long endurance session"
             )
             return makeProtectTomorrowInsight(tomorrow: longEnduranceTomorrow, context: context, c: c)
         }
@@ -1872,7 +1877,7 @@ private extension CoachLifecycleDecisionPipeline {
             logTomorrowLoadDebug(
                 activity: tomorrow,
                 selectedAsFutureLoadSignal: false,
-                reason: "conditions not met for evening completed-load future signal"
+                reason: "not selected by legacy evening completed-load insight; V4 may still protect tomorrow from day priority demand"
             )
         }
 
@@ -2034,7 +2039,7 @@ private extension CoachLifecycleDecisionPipeline {
         activity: PlannedActivity,
         source: String
     ) {
-        CoachLogger.verbose(
+        CoachLogger.trace(
             "[CoachTrainingReadinessDebug]",
             """
             source=\(source) activity="\(activity.title)" trainingReadinessScore=\(String(format: "%.1f", assessment.score)) trainingReadinessThreshold=\(String(format: "%.1f", assessment.threshold)) selected=\(assessment.selected) selectedBecause="\(assessment.selectedBecause)" strength=\(assessment.strength) triggerReasons=\(assessment.triggerReasons)
@@ -2182,9 +2187,10 @@ private extension CoachLifecycleDecisionPipeline {
         c: CoachContext
     ) -> CoachPipelineInsight {
         let phase: CoachLifecyclePhase = resolvedHour(in: context) >= 19 ? .wrapUp : .preventive
-        let isLongRide = isLongEnduranceCycling(tomorrow)
+        let isLongEndurance = isLongEnduranceCycling(tomorrow)
+        let enduranceLabel = enduranceActivityLabel(for: tomorrow)
         let durationText = durationHoursText(tomorrow.effectiveDurationMinutes)
-        let title = isLongRide ? "Protect tomorrow's ride" : (phase == .wrapUp ? "Keep tonight easy" : "Protect tomorrow")
+        let title = isLongEndurance ? "Protect tomorrow's \(enduranceLabel)" : (phase == .wrapUp ? "Keep tonight easy" : "Protect tomorrow")
         return CoachPipelineInsight(
             id: "protect_tomorrow.\(phase.rawValue).\(tomorrow.id)",
             category: .protectTomorrow,
@@ -2194,24 +2200,24 @@ private extension CoachLifecycleDecisionPipeline {
             nextImportantEvent: .plannedTomorrow(tomorrow),
             title: title,
             shortSummary: "Ready for tomorrow",
-            coachRead: isLongRide
-                ? "Today's load is already banked, and tomorrow has a long \(durationText)-hour ride planned."
+            coachRead: isLongEndurance
+                ? "Tomorrow has a long \(durationText)-hour \(enduranceLabel) planned, so tonight is part of the session setup."
                 : "Today’s load is already above target, and tomorrow has \(activityName(tomorrow)) planned.",
-            recommendation: isLongRide
+            recommendation: isLongEndurance
                 ? "Restore fluids, eat normally, and close the evening calmly so you can start tomorrow with reserve."
                 : phase == .wrapUp
                 ? "Keep the rest of the evening easy so tomorrow’s planned session has a better chance to feel productive."
                 : "Avoid adding extra training today so tomorrow’s planned session stays productive.",
-            caution: isLongRide
-                ? "Do not add intensity tonight — it can take capacity away from tomorrow's ride."
+            caution: isLongEndurance
+                ? "Do not add intensity tonight — it can take capacity away from tomorrow's \(enduranceLabel)."
                 : "Using a strong day as a reason to add non-planned work.",
-            evidence: isLongRide
-                ? ["A long ride needs freshness, fluids, and energy before it starts. The evening before matters more than doing extra work today."]
+            evidence: isLongEndurance
+                ? ["A long \(enduranceLabel) needs freshness, fluids, and energy before it starts. The evening before matters more than doing extra work today."]
                 : baseEvidence(context: context, c: c) + ["Tomorrow has \(tomorrow.title) planned"],
-            actions: isLongRide ? [
+            actions: isLongEndurance ? [
                 action("Restore fluids", "Sip gradually instead of catching up at once", .steadyHydration),
                 action("Eat normally", "A real meal is better than random snacking", .startRecoveryNutrition),
-                action("Prepare for sleep", "Tomorrow's start depends on tonight", .sleepPriority)
+                action("Prepare tomorrow's \(enduranceLabel)", "Tomorrow's start depends on tonight", .sleepPriority)
             ] : [
                 action("Skip extra training", "Keep the remaining load low", .cooldown),
                 action("Keep evening easy", "Let recovery take over", .downshiftNervousSystem),
@@ -2593,6 +2599,20 @@ private extension CoachLifecycleDecisionPipeline {
             text.contains("ride")
     }
 
+    static func enduranceActivityLabel(for activity: PlannedActivity) -> String {
+        let text = "\(activity.title) \(activity.type)".lowercased()
+        if text.contains("run") || text.contains("running") {
+            return "run"
+        }
+        if text.contains("cycling") ||
+            text.contains("cycl") ||
+            text.contains("bike") ||
+            text.contains("ride") {
+            return "ride"
+        }
+        return "endurance session"
+    }
+
     static func durationHoursText(_ minutes: Int) -> String {
         guard minutes % 60 != 0 else {
             return "\(minutes / 60)"
@@ -2608,7 +2628,7 @@ private extension CoachLifecycleDecisionPipeline {
         CoachLogger.verbose(
             "[TomorrowLoadDebug]",
             """
-            TomorrowLoadDebug tomorrowActivityTitle="\(activity.title)" tomorrowActivityType="\(activity.type)" durationMinutes=\(activity.effectiveDurationMinutes) isLongEndurance=\(isLongEnduranceCycling(activity)) selectedAsFutureLoadSignal=\(selectedAsFutureLoadSignal) reason="\(reason)"
+            TomorrowLoadDebug scope=legacyDayPriorityResolver tomorrowActivityTitle="\(activity.title)" tomorrowActivityType="\(activity.type)" durationMinutes=\(activity.effectiveDurationMinutes) isLongEndurance=\(isLongEnduranceCycling(activity)) selectedAsFutureLoadSignal=\(selectedAsFutureLoadSignal) reason="\(reason)"
             """
         )
     }
@@ -3414,7 +3434,6 @@ private extension CoachDayPriorityResolver {
         }
 
         if context.activityContext.activeActivity == nil,
-           (context.dayContext.hasMeaningfulLoadCompleted || !context.dayContext.completedTrainingActivities.isEmpty),
            localHour(in: context) >= 18,
            CoachLifecycleDecisionPipeline.tomorrowLongEnduranceCandidate(in: context) != nil {
             let futureLoadCandidates = candidates.filter { candidate in
@@ -3945,8 +3964,7 @@ private extension CoachDayPriorityResolver {
         objective: CoachObjective,
         in context: CoachDecisionContext
     ) {
-        guard CoachDebugSettings.logLevel == .verbose ||
-                debugCandidateLoggingEnabled ||
+        guard debugCandidateLoggingEnabled ||
                 ProcessInfo.processInfo.environment["WEEKFIT_COACH_PRIORITY_DEBUG"] == "1" else {
             return
         }
@@ -4168,8 +4186,7 @@ private extension CoachDayPriorityResolver {
         result: Bool,
         in context: CoachDecisionContext
     ) {
-        guard CoachDebugSettings.logLevel == .verbose ||
-                debugCandidateLoggingEnabled ||
+        guard debugCandidateLoggingEnabled ||
                 ProcessInfo.processInfo.environment["WEEKFIT_COACH_PRIORITY_DEBUG"] == "1" else {
             return
         }

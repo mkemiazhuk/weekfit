@@ -21,6 +21,8 @@ enum CoachLogLevel: String, CaseIterable, Identifiable {
 
 enum CoachDebugSettings {
     static let logLevelKey = "coach_log_level"
+    static let pipelineTraceKey = "coach_pipeline_trace_enabled"
+    static let todayDataAuditKey = "today_data_audit_enabled"
 
     static var logLevel: CoachLogLevel {
         get {
@@ -40,6 +42,16 @@ enum CoachDebugSettings {
         set {
             logLevel = newValue ? .verbose : .off
         }
+    }
+
+    static var pipelineTraceEnabled: Bool {
+        UserDefaults.standard.bool(forKey: pipelineTraceKey) ||
+            ProcessInfo.processInfo.environment["WEEKFIT_COACH_PIPELINE_TRACE"] == "1"
+    }
+
+    static var todayDataAuditEnabled: Bool {
+        UserDefaults.standard.bool(forKey: todayDataAuditKey) ||
+            ProcessInfo.processInfo.environment["WEEKFIT_TODAY_DATA_AUDIT"] == "1"
     }
 }
 
@@ -95,6 +107,11 @@ enum CoachLogger {
         emit(tag, message())
     }
 
+    static func trace(_ tag: String, _ message: @autoclosure () -> String) {
+        guard CoachDebugSettings.pipelineTraceEnabled else { return }
+        emit(tag, message())
+    }
+
     static func warning(_ message: @autoclosure () -> String) {
         emit("[CoachWarning]", message())
     }
@@ -115,7 +132,7 @@ enum CoachRefreshDebug {
     private static var burstCount = 0
 
     static func log(_ tag: String, _ message: @autoclosure () -> String) {
-        guard CoachDebug.isVerboseEnabled else { return }
+        guard CoachDebug.isVerboseEnabled && CoachDebugSettings.pipelineTraceEnabled else { return }
 
         let now = Date()
         let entrySequence: Int

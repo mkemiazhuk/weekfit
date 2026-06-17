@@ -12,6 +12,7 @@ struct TodayView: View {
     let onSelectTab: (WeekFitTab) -> Void
     @EnvironmentObject private var appSession: AppSessionState
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     
     @StateObject private var userSettings = WeekFitUserSettings.shared
 
@@ -178,6 +179,21 @@ struct TodayView: View {
         return Double(waterLogsToday.count) * 0.25
     }
 
+    private var hasTodayRecoverySignals: Bool {
+        healthManager.sleepMinutes > 0 ||
+        healthManager.timeInBedMinutes > 0 ||
+        healthManager.hrvSDNN > 0 ||
+        healthManager.restingHeartRate > 0
+    }
+
+    private var shouldShowHealthConnectPrompt: Bool {
+        !hasTodayRecoverySignals &&
+        (
+            !healthManager.isHealthAccessRequested ||
+            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
+        )
+    }
+
     private var timeOfDayGreeting: (text: String, icon: String, iconColor: Color) {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: Date())
@@ -224,8 +240,8 @@ struct TodayView: View {
                    if !healthManager.isHealthAccessRequested {
                        updateNutrition()
                    }
-                   healthRefreshID = UUID()
                 }
+
         }
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
@@ -265,7 +281,21 @@ struct TodayView: View {
             await refreshHealthAndNutritionAsync()
         }
         .onChange(of: plannedActivities) { _, _ in
+            debugTodayDataState(source: "TodayView.onChange.plannedActivities")
             refreshTodayLiveState(refreshHealth: false)
+        }
+        .onChange(of: selectedDate) { oldValue, newValue in
+            debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
+            healthRefreshID = UUID()
+            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.selectedDate")
+        }
+        .onChange(of: appSession.healthRefreshTrigger) { _, _ in
+            debugTodayDataState(source: "TodayView.onChange.healthRefreshTrigger")
+            healthRefreshID = UUID()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            refreshTodayAfterAppBecameActive()
         }
         .onChange(of: returnToTodayTrigger) { _, _ in
             handleReturnToTodayRequest()
@@ -333,8 +363,8 @@ struct TodayView: View {
             .environmentObject(appSession)
             .environmentObject(languageManager)
             .presentationDetents([.large])
-            .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(
             isPresented: $showDirectWorkoutLogSheet,
@@ -355,10 +385,7 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .presentationBackground(
-                Color(red: 0.035, green: 0.043, blue: 0.047)
-            )
-            .presentationCornerRadius(34)
+            .weekFitSheetChrome(cornerRadius: 34)
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
             ZStack {
@@ -443,10 +470,7 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .presentationBackground(
-                Color(red: 0.035, green: 0.043, blue: 0.047)
-            )
-            .presentationCornerRadius(34)
+            .weekFitSheetChrome(cornerRadius: 34)
         }
         .onChange(of: showDirectMealLogSheet) { _, isPresented in
             if isPresented {
@@ -504,10 +528,7 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .presentationBackground(
-                Color(red: 0.035, green: 0.043, blue: 0.047)
-            )
-            .presentationCornerRadius(34)
+            .weekFitSheetChrome(cornerRadius: 34)
         }
     }
     
@@ -857,6 +878,7 @@ struct TodayView: View {
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
         let start = Self.debugStart("todayCoachInsight.update source=\(source)")
+        debugTodayDataState(source: "todayCoachInsight.update.\(source)")
         coachInputProvider.refreshFromCurrentState(
             selectedDate: selectedDate,
             dayActivities: selectedDayActivities,
@@ -869,10 +891,34 @@ struct TodayView: View {
         Self.debugEnd("todayCoachInsight.update source=\(source)", start: start)
     }
 
+    private func debugTodayDataState(source: String) {
+        #if DEBUG
+        guard CoachDebugSettings.todayDataAuditEnabled else { return }
+
+        let calendar = Calendar.current
+        let currentDate = Date()
+        let snapshot = nutritionViewModel.coachMetricsSnapshot
+        let metrics = nutritionViewModel.currentMetrics
+        let result = nutritionViewModel.nutritionResult
+        let selectedActivities = selectedDayActivities
+        let plannedMeals = selectedActivities.filter { $0.type.lowercased() == "meal" }
+        let completedMeals = plannedMeals.filter(\.isCompleted)
+        let activityGoal = automatedActivityGoal
+        let nutritionTarget = (result?.targetCalories ?? 0) + healthManager.activeCalories
+        Self.logger.debug(
+            """
+            [TodayDataAudit] source=\(source, privacy: .public) currentDate=\(currentDate, privacy: .public) selectedDate=\(selectedDate, privacy: .public) selectedIsToday=\(calendar.isDate(selectedDate, inSameDayAs: currentDate), privacy: .public) dailySnapshotDate=\(String(describing: snapshot?.createdAt), privacy: .public) snapshotSource=\(snapshot?.source ?? "nil", privacy: .public) plannedActivities=\(selectedActivities.count, privacy: .public) allPlannedActivities=\(plannedActivities.count, privacy: .public) plannedMeals=\(plannedMeals.count, privacy: .public) completedMeals=\(completedMeals.count, privacy: .public) recoveryInputs sleepMinutes=\(healthManager.sleepMinutes, privacy: .public) sleepHours=\(healthManager.sleepHours, privacy: .public) hrv=\(healthManager.hrvSDNN, privacy: .public) rhr=\(healthManager.restingHeartRate, privacy: .public) recovery=\(healthManager.recoveryPercent, privacy: .public) recoveryBreakdown=\(String(describing: healthManager.recoveryBreakdown), privacy: .public) nutritionInputs hkCalories=\(healthManager.calories, privacy: .public) hkProtein=\(healthManager.protein, privacy: .public) hkCarbs=\(healthManager.carbs, privacy: .public) hkFats=\(healthManager.fats, privacy: .public) hkWater=\(healthManager.waterLiters, privacy: .public) metricsCalories=\(metrics?.calories ?? -1, privacy: .public) metricsProtein=\(metrics?.protein ?? -1, privacy: .public) metricsCarbs=\(metrics?.carbs ?? -1, privacy: .public) metricsWater=\(metrics?.waterLiters ?? -1, privacy: .public) nutritionTarget=\(nutritionTarget, privacy: .public) nutritionPercent=\(nutritionViewModel.nutritionPercent, privacy: .public) activityInputs activeCalories=\(healthManager.activeCalories, privacy: .public) steps=\(healthManager.steps, privacy: .public) exerciseMinutes=\(healthManager.exerciseMinutes, privacy: .public) activityGoal=\(activityGoal, privacy: .public) activityProgress=\(activityGoal > 0 ? healthManager.activeCalories / activityGoal : 0, privacy: .public) lastHealthKitSync=\(String(describing: healthManager.lastHealthKitSyncTime), privacy: .public)
+            """
+        )
+        #endif
+    }
+
     private static let logger = Logger(subsystem: "WeekFit", category: "TodayView")
 
     private static func debugStart(_ label: String) -> CFAbsoluteTime {
         #if DEBUG
+        guard CoachDebugSettings.todayDataAuditEnabled else { return 0 }
+
         let start = CFAbsoluteTimeGetCurrent()
         logger.debug("\(label, privacy: .public) start")
         return start
@@ -883,6 +929,8 @@ struct TodayView: View {
 
     private static func debugEnd(_ label: String, start: CFAbsoluteTime) {
         #if DEBUG
+        guard CoachDebugSettings.todayDataAuditEnabled, start > 0 else { return }
+
         let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000
         logger.debug("\(String(format: "%@ end %.1fms", label, elapsed), privacy: .public)")
         #endif
@@ -909,9 +957,13 @@ struct TodayView: View {
                 assertionFailure("TodayCoachInsight title must match CoachScreenStory title")
             }
         }
-        Self.logger.debug(
-            "TodayCoachInsight language=\(languageManager.selectedLanguage.rawValue, privacy: .public) semanticInsightID=\(insightID, privacy: .public) titleKey=\(semanticTitle, privacy: .public) subtitleKey=\(semanticSubtitle, privacy: .public) localizedTitle=\(localizedTitle, privacy: .public) localizedSubtitle=\(localizedSubtitle, privacy: .public)"
-        )
+        if insightID == "missing" ||
+            semanticTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            semanticSubtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Self.logger.error(
+                "TodayCoachInsight missing metadata language=\(languageManager.selectedLanguage.rawValue, privacy: .public) semanticInsightID=\(insightID, privacy: .public) titleKey=\(semanticTitle, privacy: .public) subtitleKey=\(semanticSubtitle, privacy: .public) localizedTitle=\(localizedTitle, privacy: .public) localizedSubtitle=\(localizedSubtitle, privacy: .public)"
+            )
+        }
         #endif
     }
     
@@ -1211,10 +1263,30 @@ struct TodayView: View {
         let accentColor: Color
         let onTap: () -> Void
 
+        init(
+            row: QuickItemDisplayRow,
+            accentColor: Color,
+            onTap: @escaping () -> Void
+        ) {
+            self.row = row
+            self.accentColor = accentColor
+            self.onTap = onTap
+        }
+
         var body: some View {
             Button {
                 onTap()
             } label: {
+                rowContent {
+                    plusButton
+                }
+            }
+            .buttonStyle(.plain)
+        }
+
+        private func rowContent<Trailing: View>(
+            @ViewBuilder trailing: () -> Trailing
+        ) -> some View {
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(
@@ -1259,21 +1331,7 @@ struct TodayView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Image(systemName: "plus")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(accentColor)
-                        .frame(
-                            width: QuickLogRowMetrics.plusButtonSize,
-                            height: QuickLogRowMetrics.plusButtonSize
-                        )
-                        .background {
-                            Circle()
-                                .fill(accentColor.opacity(0.18))
-                        }
-                        .overlay {
-                            Circle()
-                                .stroke(accentColor.opacity(0.14), lineWidth: 1)
-                        }
+                    trailing()
                 }
                 .padding(.horizontal, QuickLogRowMetrics.horizontalPadding)
                 .frame(height: QuickLogRowMetrics.height)
@@ -1282,8 +1340,24 @@ struct TodayView: View {
                     cardBackground: WeekFitTheme.cardBackground,
                     cornerRadius: QuickLogRowMetrics.cardCornerRadius
                 )
-            }
-            .buttonStyle(.plain)
+        }
+
+        private var plusButton: some View {
+            Image(systemName: "plus")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(accentColor)
+                .frame(
+                    width: QuickLogRowMetrics.plusButtonSize,
+                    height: QuickLogRowMetrics.plusButtonSize
+                )
+                .background {
+                    Circle()
+                        .fill(accentColor.opacity(0.18))
+                }
+                .overlay {
+                    Circle()
+                        .stroke(accentColor.opacity(0.14), lineWidth: 1)
+                }
         }
     }
     
@@ -1477,7 +1551,11 @@ struct TodayView: View {
 
     private var dailyStatusSection: some View {
         let baseGoal = automatedActivityGoal
-        let activityPercent = baseGoal > 0 ? Int((healthManager.activeCalories / baseGoal) * 100) : 0
+        let activityProgress = baseGoal > 0 ? healthManager.activeCalories / baseGoal : 0
+        let activityPercent = Int(activityProgress * 100)
+        let activityDisplayText = healthManager.activeCalories > 0 && activityProgress > 0 && activityProgress < 0.01
+            ? "<1%"
+            : "\(activityPercent)%"
 
         let baseTargetCalories: Double = nutritionViewModel.nutritionResult?.targetCalories ?? 1743.0
         let activeCaloriesBurned: Double = healthManager.activeCalories
@@ -1488,11 +1566,7 @@ struct TodayView: View {
             ? Int((eatenCalories / dynamicNutritionTarget) * 100)
             : 0
 
-        let hasRecoveryData =
-            healthManager.sleepMinutes > 0 ||
-            healthManager.timeInBedMinutes > 0 ||
-            healthManager.hrvSDNN > 0 ||
-            healthManager.restingHeartRate > 0
+        let hasRecoveryData = hasTodayRecoverySignals
 
         let recoveryPercent = healthManager.recoveryPercent
 
@@ -1526,7 +1600,7 @@ struct TodayView: View {
             }
         }()
 
-        let exerciseValueText = compactActivityMetricDuration(healthManager.exerciseMinutes)
+        let exerciseMetric = compactActivityMetricDuration(healthManager.exerciseMinutes)
         let standValueText = healthManager.standHours > 0 ? "\(healthManager.standHours)/12" : "-"
         let vo2ValueText = healthManager.cardioFitnessVO2 > 0 ? String(format: "%.1f", healthManager.cardioFitnessVO2) : "—"
 
@@ -1549,7 +1623,7 @@ struct TodayView: View {
                 Spacer()
             }
 
-            if !healthManager.isHealthAccessGranted {
+            if shouldShowHealthConnectPrompt {
                 VStack(spacing: 16) {
                     HStack(spacing: 14) {
                         ZStack {
@@ -1632,13 +1706,14 @@ struct TodayView: View {
                                 infoText: activityGoalText,
                                 valueText: activityValueText,
                                 value: activityPercent,
+                                centerText: activityDisplayText,
                                 color: activityColor
                             )
 
                             VStack(spacing: 5) {
-                                metricRow(title: WeekFitLocalizedString("today.status.metric.exercise"), value: exerciseValueText, unit: "", color: activityColor)
+                                metricRow(title: WeekFitLocalizedString("today.status.metric.exercise"), value: exerciseMetric.value, unit: exerciseMetric.unit, color: activityColor)
                                 metricRow(title: WeekFitLocalizedString("today.status.metric.stand"), value: standValueText, unit: WeekFitLocalizedString("common.unit.hoursShort"), color: activityColor.opacity(0.7))
-                                metricRow(title: WeekFitLocalizedString("today.status.metric.cardio"), value: vo2ValueText, unit: WeekFitLocalizedString("common.unit.vo2"), color: activityColor.opacity(0.5))
+                                metricRow(title: WeekFitLocalizedString("common.unit.vo2"), value: vo2ValueText, unit: "", color: activityColor.opacity(0.5))
                             }
                             .padding(6)
                             .background {
@@ -1712,7 +1787,7 @@ struct TodayView: View {
 
                             statusRingWidget(
                                 title: WeekFitLocalizedString("today.status.recovery"),
-                                infoText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.syncingHealth") : recoveryStatusText,
+                                infoText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.recovery.sleepSyncPending") : recoveryStatusText,
                                 valueText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.loading") : sleepValueInfoText,
                                 value: recoveryDisplayValue,
                                 color: recoveryColor
@@ -1793,22 +1868,14 @@ struct TodayView: View {
         }
     }
 
-    private func compactActivityMetricDuration(_ minutes: Int) -> String {
+    private func compactActivityMetricDuration(_ minutes: Int) -> (value: String, unit: String) {
         let safeMinutes = max(0, minutes)
 
         if safeMinutes < 60 {
-            return "\(safeMinutes)\(compactMinuteUnit)"
+            return ("\(safeMinutes)", WeekFitLocalizedString("common.unit.minutesShort"))
         }
 
-        return String(format: "%.1f%@", Double(safeMinutes) / 60.0, compactHourUnit)
-    }
-
-    private var compactMinuteUnit: String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "м" : "m"
-    }
-
-    private var compactHourUnit: String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "ч" : "h"
+        return (String(format: "%.1f", Double(safeMinutes) / 60.0), WeekFitLocalizedString("common.unit.hoursShort"))
     }
 
     private func statusRingWidget(
@@ -1816,6 +1883,7 @@ struct TodayView: View {
         infoText: String,
         valueText: String,
         value: Int?,
+        centerText: String? = nil,
         color: Color
     ) -> some View {
         let displayValue = value ?? 0
@@ -1832,7 +1900,7 @@ struct TodayView: View {
                     .frame(width: 72, height: 72)
                     .rotationEffect(.degrees(-90))
 
-                Text(value == nil ? "—" : "\(displayValue)%")
+                Text(value == nil ? "—" : (centerText ?? "\(displayValue)%"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(textPrimary)
             }
@@ -1916,7 +1984,7 @@ struct TodayView: View {
                             .frame(width: 44, height: 44)
                             .overlay(Circle().stroke(activeColor.opacity(0.24), lineWidth: 1))
 
-                        Image(systemName: activeSession.icon.isEmpty ? "figure.run" : activeSession.icon)
+                        Image(systemName: upNextIcon(for: activeSession, isLive: true))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(liveBadgeBronze.opacity(0.86))
                     }
@@ -1971,7 +2039,7 @@ struct TodayView: View {
                                 .frame(width: 44, height: 44)
                                 .overlay(Circle().stroke(neutralStroke, lineWidth: 1))
 
-                            Image(systemName: activity.icon.isEmpty ? "sparkles" : activity.icon)
+                            Image(systemName: upNextIcon(for: activity))
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(textSecondary.opacity(0.86))
                         }
@@ -1984,7 +2052,10 @@ struct TodayView: View {
                             Text(upNextSubtitle(for: activity))
                                 .font(.system(size: 11, weight: .regular))
                                 .foregroundStyle(textTertiary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .layoutPriority(1)
 
                         Spacer()
 
@@ -1995,6 +2066,7 @@ struct TodayView: View {
                             .padding(.vertical, 4)
                             .background(liveBronze.opacity(0.075))
                             .clipShape(Capsule())
+                            .fixedSize(horizontal: true, vertical: false)
 
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .bold))
@@ -2168,7 +2240,7 @@ struct TodayView: View {
                     let insightStateLabel = renderModel.badge
 
                     let _ = debugTodayCoachInsight(
-                        semanticInsight: nil,
+                        semanticInsight: finalStory.todaySemanticInsight,
                         titleKey: finalStory.titleKey,
                         subtitleKey: finalStory.subtitleKey,
                         localizedTitle: insightTitle,
@@ -2263,7 +2335,7 @@ struct TodayView: View {
                     HStack {
                         ProgressView()
                             .padding(.trailing, 8)
-                        Text(AppText.Today.connectHealthInsights)
+                        Text(shouldShowHealthConnectPrompt ? AppText.Today.connectHealthInsights : AppText.Today.recoverySleepSyncPending)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(textSecondary)
                     }
@@ -2278,12 +2350,15 @@ struct TodayView: View {
             missedConfirmationSheet(activity)
                 .presentationDetents([.fraction(0.32)])
                 .presentationDragIndicator(.hidden)
+                .weekFitSheetChrome(cornerRadius: 30)
         }
     }
     
     private func refreshTodayLiveState(refreshHealth: Bool = false) {
         now = Date()
+        debugTodayDataState(source: "refreshTodayLiveState.before refreshHealth=\(refreshHealth)")
         updateNutrition()
+        debugTodayDataState(source: "refreshTodayLiveState.afterNutrition refreshHealth=\(refreshHealth)")
 
         if refreshHealth {
             healthRefreshID = UUID()
@@ -2292,6 +2367,21 @@ struct TodayView: View {
 
     private func handleReturnToTodayRequest() {
         selectedDate = Date()
+        debugTodayDataState(source: "handleReturnToTodayRequest")
+    }
+
+    private func refreshTodayAfterAppBecameActive() {
+        let currentDate = Date()
+        now = currentDate
+
+        if !Calendar.current.isDate(selectedDate, inSameDayAs: currentDate) {
+            selectedDate = currentDate
+            debugTodayDataState(source: "scenePhase.active.dateRolledOver")
+            return
+        }
+
+        debugTodayDataState(source: "scenePhase.active.sameDay")
+        healthRefreshID = UUID()
     }
 
     private func handleLocalDataResetCompleted() {
@@ -2338,53 +2428,83 @@ struct TodayView: View {
         fallback: String
     ) -> String {
 
-        if text.contains("walk") || text.contains("walking") {
+        if text.contains("walk")
+            || text.contains("walking")
+            || text.contains("ходь")
+            || text.contains("прогул") {
             return "figure.walk"
         }
 
-        if text.contains("run") || text.contains("running") {
+        if text.contains("run")
+            || text.contains("running")
+            || text.contains("бег") {
             return "figure.run"
         }
 
         if text.contains("cycling")
             || text.contains("cycle")
             || text.contains("bike")
-            || text.contains("ride") {
+            || text.contains("ride")
+            || text.contains("вел")
+            || text.contains("вело") {
             return "bicycle"
         }
 
-        if text.contains("hike") || text.contains("hiking") {
+        if text.contains("hike")
+            || text.contains("hiking")
+            || text.contains("поход") {
             return "figure.hiking"
         }
 
+        if text.contains("core")
+            || text.contains("abs")
+            || text.contains("abdominal")
+            || text.contains("кор")
+            || text.contains("пресс") {
+            return "figure.core.training"
+        }
+
         if text.contains("upper body")
+            || text.contains("lower body")
+            || text.contains("full body")
             || text.contains("strength")
             || text.contains("gym")
             || text.contains("weights")
-            || text.contains("dumbbell") {
+            || text.contains("dumbbell")
+            || text.contains("сил")
+            || text.contains("зал") {
             return "figure.strengthtraining.traditional"
         }
 
         if text.contains("stretch")
             || text.contains("stretching")
             || text.contains("mobility")
-            || text.contains("flexibility") {
+            || text.contains("flexibility")
+            || text.contains("растяж")
+            || text.contains("мобил") {
             return "figure.flexibility"
         }
 
-        if text.contains("yoga") {
+        if text.contains("yoga")
+            || text.contains("йога") {
             return "figure.mind.and.body"
         }
 
-        if text.contains("breathing") || text.contains("breath") {
+        if text.contains("breathing")
+            || text.contains("breath")
+            || text.contains("дых") {
             return "wind"
         }
 
-        if text.contains("sauna") || text.contains("heat") {
+        if text.contains("sauna")
+            || text.contains("heat")
+            || text.contains("саун") {
             return "flame.fill"
         }
 
-        if text.contains("swim") || text.contains("swimming") {
+        if text.contains("swim")
+            || text.contains("swimming")
+            || text.contains("плав") {
             return "figure.pool.swim"
         }
 
@@ -2499,34 +2619,28 @@ struct TodayView: View {
     }
 
     private func updateNutrition(withExtraWater extra: Double = 0) {
-        let metrics = DailyNutritionMetrics(
-            protein: 0,
-            carbs: 0,
-            fats: 0,
-            fiber: 0,
-            calories: 0,
-            waterLiters: extra,
-            activeCalories: healthManager.activeCalories,
-            sleepHours: healthManager.sleepHours,
-            weightKg: healthManager.weight
+        let dailySnapshot = DailyStateSnapshotBuilder.build(
+            selectedDate: selectedDate,
+            dayActivities: selectedDayActivities,
+            allPlannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            now: now,
+            source: "TodayView.updateNutrition"
         )
-        
-        let profile = UserNutritionProfile.createAutomatic(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm,
-            age: healthManager.age,
-            sex: healthManager.biologicalSex == .male ? .male : .female
-        )
+        var metrics = dailySnapshot.nutritionMetrics
+        if extra > 0 {
+            metrics.waterLiters = max(metrics.waterLiters, healthManager.waterLiters + extra)
+        }
         
         nutritionViewModel.updateNutrition(
             metrics: metrics,
-            profile: profile,
-            plannedActivities: selectedDayActivities,
-            recoveryContext: CoachRecoveryContext(
-                recoveryPercent: Int(healthManager.recoveryPercent),
-                sleepHours: healthManager.sleepHours
-            )
+            profile: dailySnapshot.profile,
+            plannedActivities: dailySnapshot.dayActivities,
+            recoveryContext: dailySnapshot.recoveryContext,
+            debugSource: "TodayView.updateNutrition"
         )
+        debugTodayDataState(source: "updateNutrition")
     }
 
     private func missedConfirmationSheet(_ activity: PlannedActivity) -> some View {
@@ -2618,6 +2732,36 @@ struct TodayView: View {
         return "\(subtitle) · \(context)"
     }
 
+    private func upNextIcon(for activity: PlannedActivity, isLive: Bool = false) -> String {
+        let fallback = activity.icon.isEmpty ? "sparkles" : activity.icon
+        let normalizedType = activity.type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedSource = activity.source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        guard normalizedType == "workout" ||
+            normalizedType == "training" ||
+            normalizedType == "recovery" ||
+            normalizedSource == "appleworkout" else {
+            return fallback
+        }
+
+        let text = [
+            activity.title,
+            activity.type,
+            activity.source,
+            activity.imageName
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        let resolvedIcon = iconForWorkoutInsightText(text, fallback: fallback)
+
+        if isLive && resolvedIcon == "figure.walk" {
+            return "figure.walk.motion"
+        }
+
+        return resolvedIcon
+    }
+
     private func activitySubtitle(_ activity: PlannedActivity) -> String {
         switch activity.type.lowercased() {
 
@@ -2674,9 +2818,22 @@ struct TodayView: View {
     }
 
     private func refreshHealthAndNutritionAsync() async {
-        guard healthManager.isHealthAccessRequested else { return }
+        await MainActor.run {
+            debugTodayDataState(source: "refreshHealthAndNutritionAsync.start")
+        }
+        guard healthManager.isHealthAccessRequested else {
+            await MainActor.run {
+                updateNutrition()
+                debugTodayDataState(source: "refreshHealthAndNutritionAsync.noHealthAccess")
+            }
+            return
+        }
         await healthManager.loadHealthData(for: selectedDate, plannedActivities: selectedDayActivities)
-        await MainActor.run { updateNutrition() }
+        await MainActor.run {
+            updateNutrition()
+            appSession.triggerCoachRefresh(source: "TodayView.healthDataLoaded")
+            debugTodayDataState(source: "refreshHealthAndNutritionAsync.end")
+        }
     }
 
     private var automatedActivityGoal: Double {
@@ -2704,7 +2861,7 @@ struct TodayView: View {
     }
 
     private var selectedDayActivities: [PlannedActivity] {
-        plannedActivities.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }.sorted { $0.date < $1.date }
+        DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
     }
 }
 

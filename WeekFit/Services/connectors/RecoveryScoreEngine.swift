@@ -108,12 +108,12 @@ enum RecoveryScoreEngine {
     }
 
     private static func hrvScore(_ hrv: Double) -> Double {
-        guard hrv > 0 else { return 0.6 }
+        guard hrv > 0 else { return 0.0 }
         return min(hrv / 50.0, 1.0)
     }
 
     private static func restingHeartRateScore(_ rhr: Double) -> Double {
-        guard rhr > 0 else { return 0.6 }
+        guard rhr > 0 else { return 0.0 }
 
         switch rhr {
         case ..<55:

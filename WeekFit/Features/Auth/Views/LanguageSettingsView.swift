@@ -15,7 +15,7 @@ struct LanguageSettingsView: View {
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
-            ambientBackground
+            ProfilePremiumBackground(accent: accentGreen)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
@@ -36,14 +36,7 @@ struct LanguageSettingsView: View {
                                 }
                             }
                         }
-                        .background {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(cardBackground)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .stroke(.white.opacity(0.04), lineWidth: 1)
-                                }
-                        }
+                        .profilePremiumCard(cornerRadius: 24)
                     }
 
                     footerNote
@@ -75,37 +68,11 @@ private extension LanguageSettingsView {
     }
 
     var headerSection: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(rowBackground)
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                }
-                .frame(width: 48, height: 48)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.back))
-
-            Spacer()
-
-            Text(AppText.Settings.Language.title)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 48, height: 48)
+        ProfilePremiumHeader(
+            title: WeekFitLocalizedString("settings.language.title"),
+            accent: accentGreen
+        ) {
+            dismiss()
         }
     }
 

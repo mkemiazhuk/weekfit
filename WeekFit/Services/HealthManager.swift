@@ -2,6 +2,7 @@ import Foundation
 import CoreLocation
 import HealthKit
 internal import Combine
+import OSLog
 
 struct WorkoutHeartRateSample: Identifiable, Hashable {
     let id = UUID()
@@ -133,6 +134,7 @@ struct RecoverySleepSnapshot: Hashable {
 final class HealthManager: ObservableObject {
 
     @Published var isHealthAccessGranted = false
+    @Published private(set) var hasCompletedHealthAccessCheck = false
 
     @Published var activeCalories: Double = 0
     @Published var steps: Int = 0
@@ -166,6 +168,7 @@ final class HealthManager: ObservableObject {
     @Published var calories: Double = 0
     @Published var waterLiters: Double = 0
     @Published var sleepHours: Double = 0
+    @Published private(set) var lastHealthKitSyncTime: Date?
 
     @Published var weight: Double = 0
     @Published var heightCm: Double = 0
@@ -176,6 +179,7 @@ final class HealthManager: ObservableObject {
 
     private let healthStore = HKHealthStore()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
+    private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
     
     
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
@@ -258,8 +262,11 @@ final class HealthManager: ObservableObject {
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
+        hasCompletedHealthAccessCheck = false
+
         guard HKHealthStore.isHealthDataAvailable() else {
             isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
             resetHealthDependentValues()
 //            print("❌ Health data is not available")
             return
@@ -267,6 +274,7 @@ final class HealthManager: ObservableObject {
 
         guard let readTypes = makeReadTypes() else {
             isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
             resetHealthDependentValues()
 //            print("❌ Failed to create HealthKit types")
             return
@@ -281,7 +289,6 @@ final class HealthManager: ObservableObject {
             )
 
             UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
-            isHealthAccessGranted = self.isAuthorized
 
 //            print("✅ HealthKit authorization request completed. Granted: \(isHealthAccessGranted)")
 
@@ -299,6 +306,7 @@ final class HealthManager: ObservableObject {
 
         } catch {
             isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
             resetHealthDependentValues()
 //            print("❌ HealthKit authorization failed:", error.localizedDescription)
         }
@@ -317,21 +325,36 @@ final class HealthManager: ObservableObject {
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
+        #if DEBUG
+        if CoachDebugSettings.todayDataAuditEnabled {
+            Self.logger.debug("loadHealthData start currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) accessRequested=\(self.isHealthAccessRequested, privacy: .public)")
+        }
+        #endif
         // 1. Базовая проверка: включен ли вообще HealthKit на девайсе и нажимал ли юзер кнопку ранее
         guard HKHealthStore.isHealthDataAvailable() && isHealthAccessRequested else {
             await MainActor.run {
                 self.isHealthAccessGranted = false
+                self.hasCompletedHealthAccessCheck = true
                 self.resetHealthDependentValues()
+                #if DEBUG
+                if CoachDebugSettings.todayDataAuditEnabled {
+                    Self.logger.debug("loadHealthData blocked currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) healthAvailable=\(HKHealthStore.isHealthDataAvailable(), privacy: .public) accessRequested=\(self.isHealthAccessRequested, privacy: .public)")
+                }
+                #endif
             }
             return
         }
 
         // 2. Пробиваем реальный статус чтения через наш новый метод микро-запроса
+        await MainActor.run {
+            self.hasCompletedHealthAccessCheck = false
+        }
         let actualAccessGranted = await checkReadAuthorizationStatus()
 
         // 3. Переносим публикацию флага на MainActor, чтобы UI мгновенно перестроился
         await MainActor.run {
             self.isHealthAccessGranted = actualAccessGranted
+            self.hasCompletedHealthAccessCheck = true
         }
 
         // 4. Если доступ действительно есть — загружаем метрики
@@ -339,10 +362,23 @@ final class HealthManager: ObservableObject {
             await loadUserProfile()
             await loadHeaderMetrics(for: date)
             await loadNutritionMetrics(for: date, plannedActivities: plannedActivities)
+            await MainActor.run {
+                self.lastHealthKitSyncTime = Date()
+                #if DEBUG
+                if CoachDebugSettings.todayDataAuditEnabled {
+                    Self.logger.debug("loadHealthData end currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) activeCalories=\(self.activeCalories, privacy: .public) steps=\(self.steps, privacy: .public) sleepMinutes=\(self.sleepMinutes, privacy: .public) sleepHours=\(self.sleepHours, privacy: .public) recovery=\(self.recoveryPercent, privacy: .public) calories=\(self.calories, privacy: .public) protein=\(self.protein, privacy: .public) carbs=\(self.carbs, privacy: .public) water=\(self.waterLiters, privacy: .public) lastSync=\(String(describing: self.lastHealthKitSyncTime), privacy: .public)")
+                }
+                #endif
+            }
         } else {
             // Если галочки были сняты — сбрасываем интерфейс
             await MainActor.run {
                 self.resetHealthDependentValues()
+                #if DEBUG
+                if CoachDebugSettings.todayDataAuditEnabled {
+                    Self.logger.debug("loadHealthData denied currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public)")
+                }
+                #endif
             }
         }
     }
@@ -350,12 +386,34 @@ final class HealthManager: ObservableObject {
     func updateAuthorizationStatus() {
         guard HKHealthStore.isHealthDataAvailable() else {
             isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
             notifyHealthChanged()
             return
         }
 
-        isHealthAccessGranted = self.isAuthorized
-        notifyHealthChanged()
+        guard isHealthAccessRequested else {
+            isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
+            notifyHealthChanged()
+            return
+        }
+
+        hasCompletedHealthAccessCheck = false
+
+        Task {
+            let actualAccessGranted = await checkReadAuthorizationStatus()
+
+            await MainActor.run {
+                self.isHealthAccessGranted = actualAccessGranted
+                self.hasCompletedHealthAccessCheck = true
+
+                if !actualAccessGranted {
+                    self.resetHealthDependentValues()
+                }
+
+                self.notifyHealthChanged()
+            }
+        }
     }
     
     private func notifyHealthChanged() {
@@ -470,6 +528,11 @@ final class HealthManager: ObservableObject {
 
         await loadPremiumRecoveryMetrics(for: date)
         calculateHeaderMetrics()
+        #if DEBUG
+        if CoachDebugSettings.todayDataAuditEnabled {
+            Self.logger.debug("loadHeaderMetrics date=\(date, privacy: .public) activeCalories=\(self.activeCalories, privacy: .public) steps=\(self.steps, privacy: .public) exercise=\(self.exerciseMinutes, privacy: .public) sleepMinutes=\(self.sleepMinutes, privacy: .public) timeInBed=\(self.timeInBedMinutes, privacy: .public) awake=\(self.awakeMinutes, privacy: .public) hrv=\(self.hrvSDNN, privacy: .public) rhr=\(self.restingHeartRate, privacy: .public) recovery=\(self.recoveryPercent, privacy: .public)")
+        }
+        #endif
     }
     
     // Внутри HealthManager.swift — замени старое свойство на этот метод:
@@ -525,15 +588,15 @@ final class HealthManager: ObservableObject {
         let hkWaterLiters = await healthWaterMl / 1000.0
 
         let hasHealthFood = hkProtein > 0 || hkCarbs > 0 || hkFats > 0 || hkFiber > 0 || hkCalories > 0
+        let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
 
         if hasHealthFood {
-            protein = hkProtein
-            carbs = hkCarbs
-            fats = hkFats
-            fiber = hkFiber
-            calories = hkCalories
+            protein = max(hkProtein, fallback.protein)
+            carbs = max(hkCarbs, fallback.carbs)
+            fats = max(hkFats, fallback.fats)
+            fiber = max(hkFiber, fallback.fiber)
+            calories = max(hkCalories, fallback.calories)
         } else {
-            let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
             protein = fallback.protein
             carbs = fallback.carbs
             fats = fallback.fats
@@ -544,6 +607,11 @@ final class HealthManager: ObservableObject {
         let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
         waterLiters = max(hkWaterLiters, plannedWaterLiters)
         sleepHours = Double(sleepMinutes) / 60.0
+        #if DEBUG
+        if CoachDebugSettings.todayDataAuditEnabled {
+            Self.logger.debug("loadNutritionMetrics date=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) hasHealthFood=\(hasHealthFood, privacy: .public) hkCalories=\(hkCalories, privacy: .public) hkProtein=\(hkProtein, privacy: .public) hkCarbs=\(hkCarbs, privacy: .public) hkWater=\(hkWaterLiters, privacy: .public) plannedWater=\(plannedWaterLiters, privacy: .public) publishedCalories=\(self.calories, privacy: .public) publishedProtein=\(self.protein, privacy: .public) publishedCarbs=\(self.carbs, privacy: .public) publishedWater=\(self.waterLiters, privacy: .public)")
+        }
+        #endif
     }
 
     // MARK: - Recovery HRV / RHR

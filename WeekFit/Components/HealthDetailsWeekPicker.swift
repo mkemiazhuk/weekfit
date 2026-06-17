@@ -178,7 +178,10 @@ struct HealthDetailsWeekPicker: View {
     }
 
     private func dayTitle(for date: Date) -> String {
-        return date.formatted(.dateTime.weekday(.narrow))
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEEEE")
+        return formatter.string(from: date)
     }
 
     private func dayNumberBackground(isSelected: Bool, isToday: Bool) -> Color {

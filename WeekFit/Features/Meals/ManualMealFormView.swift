@@ -171,6 +171,7 @@ struct ManualMealFormView: View {
                 processCapturedPhoto(image)
             }
             .ignoresSafeArea()
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .photosPicker(
             isPresented: $showPhotoLibrary,

@@ -104,6 +104,25 @@ struct ActivityDaySnapshot: Identifiable, Hashable {
     )
 }
 
+private enum ActivityWeekdayWidth {
+    case wide
+    case abbreviated
+}
+
+private func localizedDetailsDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = WeekFitCurrentLocale()
+    formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
+    return formatter.string(from: date)
+}
+
+private func localizedWeekday(_ date: Date, width: ActivityWeekdayWidth) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = WeekFitCurrentLocale()
+    formatter.setLocalizedDateFormatFromTemplate(width == .wide ? "EEEE" : "EEE")
+    return formatter.string(from: date)
+}
+
 struct ActivityIntelligenceView: View {
 
     let selectedDate: Date
@@ -190,13 +209,26 @@ struct ActivityIntelligenceView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 13) {
+        HStack(alignment: .center, spacing: 13) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(WeekFitLocalizedString("activity.activityDetails"))
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
+
+                Text(activityDetailsDateTitle)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.56))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .bold))
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.94))
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(Color.white.opacity(0.075)))
@@ -205,20 +237,7 @@ struct ActivityIntelligenceView: View {
                     }
             }
             .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString("activity.activityDetails"))
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
-
-                Text(viewModel.selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
-            }
-
-            Spacer()
+            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -231,6 +250,10 @@ struct ActivityIntelligenceView: View {
                 .fill(Color.white.opacity(0.04))
                 .frame(height: 1)
         }
+    }
+
+    private var activityDetailsDateTitle: String {
+        localizedDetailsDate(viewModel.selectedDate)
     }
 
     private func select(_ date: Date) {
@@ -268,16 +291,16 @@ private struct ActivityHeroCard: View {
                 Text(WeekFitLocalizedString(statusText))
                     .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
                 Text(WeekFitLocalizedString(insightText))
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(2)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 0)
         }
@@ -562,6 +585,10 @@ private struct WeeklyContextCard: View {
     private var hasTypicalBaseline: Bool {
         selectedSnapshot.historicalSameWeekdayPoints.count >= 3
     }
+
+    private var maxWeeklyCalories: Int {
+        max(chartItems.map(\.calories).max() ?? 0, 1)
+    }
     
     private var isToday: Bool {
         Calendar.current.isDate(selectedSnapshot.date, inSameDayAs: Date())
@@ -609,79 +636,132 @@ private struct WeeklyContextCard: View {
             : ActivityStyle.purple
     }
 
+    private var weekDeltaIcon: String {
+        if isEarlyToday {
+            return "clock.fill"
+        }
+
+        guard weekAverage > 0 else { return "minus" }
+
+        return selectedSnapshot.activeCalories >= weekAverage
+            ? "arrow.up.right"
+            : "arrow.down.right"
+    }
+
     private var weekdayName: String {
-        selectedSnapshot.date.formatted(.dateTime.weekday(.wide))
+        localizedWeekday(selectedSnapshot.date, width: .wide)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 14) {
             SectionLabel(WeekFitLocalizedString("activity.thisWeek"))
 
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(weekDeltaText)
-                        .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(deltaColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.76)
+            VStack(alignment: .leading, spacing: 8) {
+                comparisonRow(
+                    text: weekDeltaText,
+                    icon: weekDeltaIcon,
+                    color: deltaColor,
+                    prominence: .primary
+                )
 
-                    if let typicalDeltaText {
-                    Text(typicalDeltaText)
-                            .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.48))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Chart(chartItems) { item in
-                    BarMark(
-                        x: .value("Day", item.label),
-                        y: .value("Calories", item.calories),
-                        width: .fixed(11)
+                if let typicalDeltaText {
+                    comparisonRow(
+                        text: typicalDeltaText,
+                        icon: "calendar",
+                        color: .white.opacity(0.44),
+                        prominence: .secondary
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    .foregroundStyle(
-                        item.isSelected
-                        ? ActivityStyle.activityColor
-                        : Color.white.opacity(0.30)
-                    )
-                    .annotation(position: .top, alignment: .center) {
-                        Text(shortCalories(item.calories))
-                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                item.isSelected
-                                ? ActivityStyle.activityColor.opacity(0.95)
-                                : .white.opacity(0.48)
-                            )
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks { value in
-                        AxisValueLabel {
-                            if let label = value.as(String.self) {
-                                Text(label)
-                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                                    .foregroundStyle(
-                                        isSelectedLabel(label)
-                                        ? ActivityStyle.activityColor.opacity(0.95)
-                                        : .white.opacity(0.42)
-                                    )
-                            }
-                        }
-                    }
-                }
-                .chartYAxis(.hidden)
-                .frame(width: 166, height: 96)
-                .transaction {
-                    $0.animation = nil
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .innerActivityCard(cornerRadius: 16)
+
+            weeklyBarChart
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
         .activityCard(glow: ActivityStyle.activityColor.opacity(0.035))
+    }
+
+    private func comparisonRow(
+        text: String,
+        icon: String,
+        color: Color,
+        prominence: WeeklyComparisonProminence
+    ) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 16, height: 16)
+                .padding(.top, 1)
+
+            Text(text)
+                .font(
+                    .system(
+                        size: prominence == .primary ? ActivityTypography.metricValue : ActivityTypography.helperText,
+                        weight: prominence == .primary ? .bold : .medium,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(color)
+                .lineSpacing(1.5)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var weeklyBarChart: some View {
+        GeometryReader { proxy in
+            let chartHeight = max(proxy.size.height - 34, 1)
+
+            HStack(alignment: .bottom, spacing: 7) {
+                ForEach(chartItems) { item in
+                    VStack(spacing: 4) {
+                        Text(shortCalories(item.calories))
+                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : .white.opacity(0.42))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+
+                        ZStack(alignment: .bottom) {
+                            Capsule()
+                                .fill(Color.white.opacity(item.isSelected ? 0.075 : 0.040))
+                                .frame(width: item.isSelected ? 13 : 10, height: chartHeight)
+
+                            Capsule()
+                                .fill(barFill(for: item))
+                                .frame(width: item.isSelected ? 13 : 10, height: barHeight(for: item.calories, maxHeight: chartHeight))
+                                .shadow(color: item.isSelected ? ActivityStyle.activityColor.opacity(0.18) : .clear, radius: 5, x: 0, y: 2)
+                        }
+
+                        Text(item.label)
+                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : .white.opacity(0.42))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.70)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .frame(height: 112)
+        .padding(.horizontal, 2)
+    }
+
+    private func barHeight(for calories: Int, maxHeight: CGFloat) -> CGFloat {
+        guard calories > 0 else { return 3 }
+        return max(8, maxHeight * CGFloat(calories) / CGFloat(maxWeeklyCalories))
+    }
+
+    private func barFill(for item: WeeklyContextItem) -> LinearGradient {
+        let colors: [Color] = item.isSelected
+        ? [ActivityStyle.activityColor, ActivityStyle.teal.opacity(0.75)]
+        : [Color.white.opacity(0.38), Color.white.opacity(0.18)]
+
+        return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
     }
 
     private func deltaText(
@@ -704,7 +784,7 @@ private struct WeeklyContextCard: View {
     }
 
     private func shortWeekday(for date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated)).uppercased()
+        localizedWeekday(date, width: .abbreviated).uppercased(with: WeekFitCurrentLocale())
     }
 
     private func isSelectedLabel(_ label: String) -> Bool {
@@ -725,6 +805,11 @@ private struct WeeklyContextItem: Identifiable {
     let label: String
     let calories: Int
     let isSelected: Bool
+}
+
+private enum WeeklyComparisonProminence {
+    case primary
+    case secondary
 }
 
 // MARK: - Sessions
@@ -1018,12 +1103,14 @@ private struct ActivitySessionDetailView: View {
 
     private var header: some View {
         HStack(spacing: 13) {
+            Spacer()
+
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .bold))
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.94))
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(Color.white.opacity(0.075)))
@@ -1032,8 +1119,7 @@ private struct ActivitySessionDetailView: View {
                     }
             }
             .buttonStyle(.plain)
-
-            Spacer()
+            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -1105,7 +1191,7 @@ private struct ActivitySessionDetailView: View {
     }
 
     private var activityDateText: String {
-        session.startDate.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        localizedDetailsDate(session.startDate)
     }
 
     private var syncedText: String {

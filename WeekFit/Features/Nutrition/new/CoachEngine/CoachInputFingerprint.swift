@@ -7,6 +7,13 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
         rawValue
     }
 
+    var compactLogValue: String {
+        rawValue
+            .split(separator: "#")
+            .filter { !$0.hasPrefix("activities=") }
+            .joined(separator: "#")
+    }
+
     init(_ rawValue: String) {
         self.rawValue = rawValue
     }

@@ -3,6 +3,7 @@ import HealthKit
 
 enum ActivityReconciler {
     static let pastMatchingWindow: TimeInterval = 60 * 60
+    static let startProximityWindow: TimeInterval = 45 * 60
 
     static func bestMatch(
         for workout: HKWorkout,
@@ -10,9 +11,10 @@ enum ActivityReconciler {
         calendar: Calendar = .current
     ) -> PlannedActivity? {
         let workoutTitle = title(for: workout.workoutActivityType)
+        let workoutStart = workout.startDate
         let workoutEnd = workout.endDate
         let allPlanned = activities.filter { activity in
-            calendar.isDate(activity.date, inSameDayAs: workoutEnd) &&
+            samePlannedWorkoutDay(activity.date, workout: workout, calendar: calendar) &&
             !activity.isSkipped &&
             activity.healthKitWorkoutUUID == nil
         }
@@ -20,22 +22,26 @@ enum ActivityReconciler {
         let plannedBeforeEnd = allPlanned.filter { $0.date <= workoutEnd }
         let plannedAfterEnd = allPlanned.filter { $0.date > workoutEnd }
 
-        let eligible = plannedBeforeEnd.filter { activity in
-            let secondsBeforeEnd = workoutEnd.timeIntervalSince(activity.date)
-            return secondsBeforeEnd >= 0 &&
-            secondsBeforeEnd <= pastMatchingWindow &&
-            matches(activity: activity, workoutType: workout.workoutActivityType) &&
-            durationIsCompatible(activity: activity, workout: workout)
+        let eligible = allPlanned.compactMap { activity -> MatchCandidate? in
+            guard matches(activity: activity, workoutType: workout.workoutActivityType) else {
+                return nil
+            }
+
+            guard let timing = timingMatch(activity: activity, workout: workout) else {
+                return nil
+            }
+
+            return MatchCandidate(
+                activity: activity,
+                score: matchScore(activity: activity, workout: workout, timing: timing)
+            )
         }
 
-        let selected = eligible.min {
-            abs($0.date.timeIntervalSince(workoutEnd)) <
-            abs($1.date.timeIntervalSince(workoutEnd))
-        }
+        let selected = eligible.min { $0.score < $1.score }?.activity
 
         ActivityReconciliationDebug.log(
             syncedActivityTitle: workoutTitle,
-            syncedStart: workout.startDate,
+            syncedStart: workoutStart,
             syncedEnd: workoutEnd,
             plannedCandidatesBeforeEnd: plannedBeforeEnd.map(\.title),
             plannedCandidatesAfterEnd: plannedAfterEnd.map(\.title),
@@ -139,16 +145,12 @@ enum ActivityReconciler {
         activity: PlannedActivity,
         workoutType: HKWorkoutActivityType
     ) -> Bool {
-        let title = activity.title.lowercased()
-        let keywords = normalizedWorkoutKeywords(for: workoutType)
-
-        guard !keywords.isEmpty else {
+        guard let activityFamily = normalizedFamily(for: activity),
+              let workoutFamily = normalizedFamily(for: workoutType) else {
             return false
         }
 
-        return keywords.contains {
-            title.contains($0)
-        }
+        return familiesAreCompatible(activityFamily, workoutFamily)
     }
 
     private static func durationIsCompatible(activity: PlannedActivity, workout: HKWorkout) -> Bool {
@@ -159,44 +161,210 @@ enum ActivityReconciler {
         return abs(plannedMinutes - actualMinutes) <= tolerance
     }
 
-    private static func normalizedWorkoutKeywords(for type: HKWorkoutActivityType) -> [String] {
+    private struct MatchCandidate {
+        let activity: PlannedActivity
+        let score: Double
+    }
+
+    private struct TimingMatch {
+        let overlapSeconds: TimeInterval
+        let startDeltaSeconds: TimeInterval
+    }
+
+    private enum NormalizedActivityFamily {
+        case cycling
+        case running
+        case walking
+        case hiking
+        case strength
+        case core
+        case yoga
+        case stretching
+        case mobility
+        case sauna
+        case breathing
+        case recovery
+        case tennis
+        case squash
+        case swimming
+        case snowboarding
+        case hiit
+    }
+
+    private static func samePlannedWorkoutDay(
+        _ plannedDate: Date,
+        workout: HKWorkout,
+        calendar: Calendar
+    ) -> Bool {
+        calendar.isDate(plannedDate, inSameDayAs: workout.startDate) ||
+        calendar.isDate(plannedDate, inSameDayAs: workout.endDate)
+    }
+
+    private static func timingMatch(activity: PlannedActivity, workout: HKWorkout) -> TimingMatch? {
+        let plannedStart = activity.date
+        let plannedEnd = plannedStart.addingTimeInterval(TimeInterval(max(activity.durationMinutes, 1) * 60))
+        let actualStart = workout.startDate
+        let actualEnd = workout.endDate
+        let overlapSeconds = max(
+            0,
+            min(plannedEnd, actualEnd).timeIntervalSince(max(plannedStart, actualStart))
+        )
+        let startDeltaSeconds = abs(actualStart.timeIntervalSince(plannedStart))
+
+        guard overlapSeconds > 0 || startDeltaSeconds <= startProximityWindow else {
+            return nil
+        }
+
+        return TimingMatch(overlapSeconds: overlapSeconds, startDeltaSeconds: startDeltaSeconds)
+    }
+
+    private static func matchScore(
+        activity: PlannedActivity,
+        workout: HKWorkout,
+        timing: TimingMatch
+    ) -> Double {
+        let overlapBonus = min(timing.overlapSeconds / 60, 60)
+        let durationPenalty = durationIsCompatible(activity: activity, workout: workout) ? 0 : 15
+
+        return (timing.startDeltaSeconds / 60) + Double(durationPenalty) - overlapBonus
+    }
+
+    private static func familiesAreCompatible(
+        _ planned: NormalizedActivityFamily,
+        _ workout: NormalizedActivityFamily
+    ) -> Bool {
+        if planned == workout {
+            return true
+        }
+
+        switch (planned, workout) {
+        case (.core, .strength),
+             (.strength, .core),
+             (.hiit, .strength),
+             (.strength, .hiit):
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func normalizedFamily(for activity: PlannedActivity) -> NormalizedActivityFamily? {
+        let text = [
+            activity.title,
+            activity.type,
+            activity.imageName
+        ]
+            .joined(separator: " ")
+            .lowercased()
+
+        if containsAny(text, ["sauna", "баня", "сауна"]) {
+            return .sauna
+        }
+
+        if containsAny(text, ["breath", "breathing", "meditation", "mind and body", "дых", "медитац"]) {
+            return .breathing
+        }
+
+        if containsAny(text, ["yoga", "йога"]) {
+            return .yoga
+        }
+
+        if containsAny(text, ["stretch", "stretching", "flexibility", "растяж"]) {
+            return .stretching
+        }
+
+        if containsAny(text, ["mobility", "мобил"]) {
+            return .mobility
+        }
+
+        if containsAny(text, ["cycle", "cycling", "bike", "ride", "bicycle", "вел", "вело"]) {
+            return .cycling
+        }
+
+        if containsAny(text, ["run", "running", "бег"]) {
+            return .running
+        }
+
+        if containsAny(text, ["walk", "walking", "ходь"]) {
+            return .walking
+        }
+
+        if containsAny(text, ["hike", "hiking"]) {
+            return .hiking
+        }
+
+        if containsAny(text, ["core", "abs", "abdominal", "кор", "пресс"]) {
+            return .core
+        }
+
+        if containsAny(text, ["full body", "full-body", "upper body", "lower body", "strength", "gym", "dumbbell", "functional strength", "traditional strength", "сил"]) {
+            return .strength
+        }
+
+        if containsAny(text, ["hiit", "high intensity"]) {
+            return .hiit
+        }
+
+        if containsAny(text, ["tennis", "теннис"]) {
+            return .tennis
+        }
+
+        if containsAny(text, ["squash", "сквош"]) {
+            return .squash
+        }
+
+        if containsAny(text, ["swim", "swimming", "pool", "плав"]) {
+            return .swimming
+        }
+
+        if containsAny(text, ["snowboard", "snowboarding", "сноуборд"]) {
+            return .snowboarding
+        }
+
+        if containsAny(text, ["recovery", "cooldown", "cool down", "восстанов", "заминка"]) {
+            return .recovery
+        }
+
+        return nil
+    }
+
+    private static func normalizedFamily(for type: HKWorkoutActivityType) -> NormalizedActivityFamily? {
         switch type {
         case .walking:
-            return ["walk", "walking", "ходь"]
+            return .walking
         case .running:
-            return ["run", "running", "бег"]
+            return .running
         case .cycling:
-            return ["cycle", "cycling", "bike", "ride", "вел", "вело"]
+            return .cycling
         case .hiking:
-            return ["hike", "hiking"]
+            return .hiking
         case .yoga:
-            return ["yoga", "йога"]
+            return .yoga
         case .coreTraining:
-            return ["core", "abs", "abdominal", "кор", "пресс"]
+            return .core
         case .tennis:
-            return ["tennis", "теннис"]
+            return .tennis
         case .squash:
-            return ["squash", "сквош"]
+            return .squash
         case .swimming:
-            return ["swim", "swimming", "pool", "плав"]
+            return .swimming
         case .snowboarding:
-            return ["snowboard", "snowboarding", "сноуборд"]
+            return .snowboarding
         case .traditionalStrengthTraining,
-             .functionalStrengthTraining,
-             .highIntensityIntervalTraining,
+             .functionalStrengthTraining:
+            return .strength
+        case .highIntensityIntervalTraining,
              .crossTraining:
-            return ["workout", "strength", "gym", "training", "трен", "hiit", "сил"]
+            return .hiit
         case .flexibility:
-            return ["stretch", "stretching", "mobility", "flexibility", "растяж"]
-        case .pilates:
-            return ["pilates", "пилатес"]
-        case .mindAndBody:
-            return ["mind", "body", "meditation", "breathing", "breath", "медитац", "дых"]
-        case .cooldown:
-            return ["cooldown", "cool down", "recovery", "заминка", "восстанов"]
+            return .stretching
         default:
-            return []
+            return nil
         }
+    }
+
+    private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
+        needles.contains { text.contains($0) }
     }
 
     private static func noMatchReason(

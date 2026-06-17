@@ -5,6 +5,7 @@ struct HighlightsView: View {
 
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var languageManager: AppLanguageManager
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -74,10 +75,11 @@ struct HighlightsView: View {
             }
             .environmentObject(healthManager)
             .environmentObject(nutritionViewModel)
+            .environmentObject(appSession)
             .environmentObject(languageManager)
             .presentationDetents([.large])
-            .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .task(id: refreshSignature) {
             await viewModel.refresh(

@@ -4,6 +4,16 @@ import XCTest
 final class CoachDynamicPriorityActionTests: XCTestCase {
     private let now = CoachTestClock.reference
 
+    override func setUp() {
+        super.setUp()
+        WeekFitSetCurrentLanguage(.english)
+    }
+
+    override func tearDown() {
+        WeekFitSetCurrentLanguage(.english)
+        super.tearDown()
+    }
+
     func testUnderfedUnderhydratedHighLoadDayKeepsRecoveryStory() throws {
         let scenario = highLoadScenario(calories: 712, protein: 57, water: 2.25)
         let story = try XCTUnwrap(scenario.guidance.screenStory)

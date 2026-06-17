@@ -95,8 +95,8 @@ struct ExpertCoachViewV3: View {
             .environmentObject(appSession)
             .environmentObject(languageManager)
             .presentationDetents([.large])
-            .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
     }
 
@@ -108,6 +108,21 @@ struct ExpertCoachViewV3: View {
             activities: plannedActivitiesForSelectedDate,
             selectedDate: selectedDate,
             now: Date()
+        )
+    }
+
+    private var hasTodayRecoverySignals: Bool {
+        healthManager.sleepMinutes > 0 ||
+        healthManager.timeInBedMinutes > 0 ||
+        healthManager.hrvSDNN > 0 ||
+        healthManager.restingHeartRate > 0
+    }
+
+    private var shouldShowHealthConnectPrompt: Bool {
+        !hasTodayRecoverySignals &&
+        (
+            !healthManager.isHealthAccessRequested ||
+            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
         )
     }
 
@@ -360,8 +375,7 @@ struct ExpertCoachViewV3: View {
             Image(systemName: coachIcon)
                 .font(.system(size: 68, weight: .regular))
                 .foregroundStyle(heroSemanticColor.opacity(0.045))
-                .padding(.top, 18)
-                .padding(.trailing, -28)
+                .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -640,7 +654,7 @@ struct ExpertCoachViewV3: View {
             return "НУЖНА ЭНЕРГИЯ"
 
         case .trainingReadinessWarning:
-            return "СНИЗЬТЕ ПОТОЛОК"
+            return "СБАВЬТЕ ТЕМП"
 
         case .tomorrowPlanRisk:
             return "ЗАВТРА ВАЖНО"
@@ -776,7 +790,7 @@ struct ExpertCoachViewV3: View {
             return "Не начинайте слишком быстро — организму может понадобиться немного больше времени на подготовку."
 
         case .performanceReadiness:
-            return "Не превращайте первые минуты в проверку своих пределов."
+            return "Не делайте первые минуты проверкой своих пределов."
 
         case .postActivityRecovery:
             return "Не ищите дополнительную нагрузку после уже выполненной тренировки."
@@ -825,7 +839,7 @@ struct ExpertCoachViewV3: View {
             return "Восстанавливайтесь"
 
         case .controlIntensity:
-            return "Снизьте темп"
+            return "Не форсируйте"
 
         case .sustainEnergy:
             return "Поддержите энергию"
@@ -949,6 +963,7 @@ struct ExpertCoachViewV3: View {
         let rhr = healthManager.restingHeartRate
 
         let hasSleepData = sleepHours > 0
+        let hasRecoveryData = hasTodayRecoverySignals
         let shortSleep = hasSleepData && sleepHours < 7
         let recoveryGood = recoveryPercent >= 80
         let recoveryOkay = recoveryPercent >= 65
@@ -967,11 +982,21 @@ struct ExpertCoachViewV3: View {
         let hasActivityToday = !plannedActivitiesForSelectedDate.isEmpty
 
         let recoverySubtitle: String = {
+            if !hasRecoveryData {
+                return shouldShowHealthConnectPrompt
+                    ? WeekFitLocalizedString("coach.status.recovery.limited")
+                    : WeekFitLocalizedString("coach.status.recovery.sleepSyncPending")
+            }
+
             if !hasSleepData {
+                if hrv > 0 && rhr > 0 {
+                    return String(format: WeekFitLocalizedString("coach.status.recovery.hrvRhrFormat"), Int(recoveryPercent), Int(hrv), Int(rhr))
+                }
+
                 if recoveryPercent > 0 {
                     return String(format: WeekFitLocalizedString("coach.status.recovery.sleepMissingFormat"), Int(recoveryPercent))
                 }
-                return WeekFitLocalizedString("coach.status.recovery.limited")
+                return WeekFitLocalizedString("coach.status.recovery.sleepSyncPending")
             }
 
             if recoveryGood && shortSleep {
@@ -1271,11 +1296,11 @@ struct ExpertCoachViewV3: View {
                 .background(Circle().fill(Color.white.opacity(0.05)))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(WeekFitLocalizedString("coach.unavailable.title"))
+                Text(WeekFitLocalizedString(shouldShowHealthConnectPrompt ? "coach.unavailable.title" : "coach.unavailable.sleepSync.title"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text(WeekFitLocalizedString("coach.unavailable.message"))
+                Text(WeekFitLocalizedString(shouldShowHealthConnectPrompt ? "coach.unavailable.message" : "coach.unavailable.sleepSync.message"))
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary)
             }
@@ -1836,10 +1861,6 @@ struct ExpertCoachViewV3: View {
         let actions = coachCoordinator.state.coachPresentation?.supportActions ?? []
 
         return AnyView(VStack(alignment: .leading, spacing: 13) {
-            if !actions.isEmpty {
-                primaryActionsSection(actions)
-            }
-
             if let rationale = coachCoordinator.state.rationalePresentation {
                 rationaleSection(rationale)
             }
@@ -1867,41 +1888,280 @@ struct ExpertCoachViewV3: View {
                     color: story.color
                 )
             }
+
+            if !actions.isEmpty {
+                primaryActionsSection(actions)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading))
     }
 
     private func finalStorySupportSection(_ renderModel: CoachFinalStoryRenderModel) -> some View {
         VStack(alignment: .leading, spacing: 13) {
-            if !renderModel.supportActions.isEmpty {
-                primaryActionsSection(renderModel.supportActions)
+            if !renderModel.whyRows.isEmpty {
+                whySection(renderModel)
             }
 
-            if !renderModel.supportSignals.isEmpty {
-                finalStorySupportSignalsSection(renderModel.supportSignals)
+            if !renderModel.supportActions.isEmpty {
+                primaryActionsSection(renderModel.supportActions)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func finalStorySupportSignalsSection(_ signals: [CoachFinalStoryRenderedSupportSignal]) -> some View {
+    private func whySection(_ renderModel: CoachFinalStoryRenderModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: WeekFitLocalizedString("coach.supportSignals"),
-                subtitle: WeekFitLocalizedString("coach.supportSignals.subtitle")
+                title: WeekFitLocalizedString("coach.why"),
+                subtitle: WeekFitLocalizedString("coach.why.subtitle")
+            )
+
+            VStack(spacing: 5) {
+                ForEach(Array(renderModel.whyRows.prefix(3).enumerated()), id: \.offset) { _, row in
+                    coachDecisionRow(
+                        row.title,
+                        color: row.color,
+                        icon: row.icon
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func whySection(_ signals: [CoachFinalStoryRenderedSupportSignal]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            supportGroupHeader(
+                title: WeekFitLocalizedString("coach.why"),
+                subtitle: WeekFitLocalizedString("coach.why.subtitle")
             )
 
             VStack(spacing: 5) {
                 ForEach(Array(signals.prefix(3).enumerated()), id: \.offset) { _, signal in
-                    coachFocusRow(
+                    coachDecisionRow(
                         signal.title,
-                        color: signal.color,
+                        color: semanticWhyColor(title: signal.title, icon: signal.icon, fallback: signal.color),
                         icon: signal.icon
                     )
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private struct CoachWhyRowModel {
+        let title: String
+        let icon: String
+        let color: Color
+    }
+
+    private func whyRows(for renderModel: CoachFinalStoryRenderModel) -> [CoachWhyRowModel] {
+        var rows = decisionWhyRows(for: renderModel)
+
+        let decisionSignalKinds = decisionShapingSignalKinds(for: renderModel)
+        let decisionSignals = renderModel.supportSignals.filter { decisionSignalKinds.contains($0.kind) }
+        rows.append(
+            contentsOf: decisionSignals.map {
+                CoachWhyRowModel(title: $0.title, icon: $0.icon, color: $0.color)
+            }
+        )
+
+        let fallbackCandidates = [
+            (renderModel.whatMattersNow, "lightbulb.fill"),
+            (renderModel.whatToAvoid, "exclamationmark.triangle.fill")
+        ]
+
+        for candidate in fallbackCandidates {
+            let title = candidate.0.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { continue }
+            guard !rows.contains(where: { $0.title.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(title) == .orderedSame }) else {
+                continue
+            }
+
+            rows.append(
+                CoachWhyRowModel(
+                    title: title,
+                    icon: candidate.1,
+                    color: renderModel.color
+                )
+            )
+        }
+
+        return Array(rows.prefix(3))
+    }
+
+    private func decisionWhyRows(for renderModel: CoachFinalStoryRenderModel) -> [CoachWhyRowModel] {
+        switch renderModel.owner {
+        case .stableOverview, .readiness:
+            return [
+                whyRow("Recovery is within the normal range", "Восстановление в обычном диапазоне", icon: "heart.fill", color: CoachPalette.recovery),
+                whyRow("There is enough time before the next activity", "До следующей активности достаточно времени", icon: "clock.fill", color: renderModel.color),
+                whyRow("No major constraints are affecting the day", "Нет крупных ограничений для дня", icon: "checkmark.seal.fill", color: renderModel.color)
+            ]
+
+        case .activityPreparation:
+            return [
+                whyRow("The biggest training load is still ahead", "Главная тренировочная нагрузка ещё впереди", icon: "figure.run", color: renderModel.color),
+                whyRow("Arriving fresh matters most now", "Сейчас важнее выйти свежим", icon: "figure.cooldown", color: renderModel.color),
+                whyRow("A calm start gives you better execution", "Спокойный старт поможет лучше выполнить сессию", icon: "speedometer", color: CoachPalette.warning)
+            ]
+
+        case .activeActivity, .pacingExecution, .sustainableExecution:
+            return [
+                whyRow("The session is already creating enough load", "Сессия уже создает достаточную нагрузку", icon: "figure.run", color: renderModel.color),
+                whyRow("Effort control protects the rest of the day", "Контроль усилия защищает остаток дня", icon: "speedometer", color: CoachPalette.warning),
+                whyRow("Recovery depends on finishing with reserve", "Восстановление зависит от запаса на финише", icon: "heart.fill", color: CoachPalette.recovery)
+            ]
+        case .fuelingDuringActivity:
+            return [
+                whyRow("Energy expenditure is already high", "Расход энергии уже высокий", icon: "flame.fill", color: CoachPalette.activity),
+                whyRow("Fuel intake is behind the workload", "Питание отстаёт от нагрузки", icon: "bolt.fill", color: CoachPalette.fueling)
+            ]
+        case .hydrationExecution:
+            return [
+                whyRow("Fluid intake is behind the session demand", "Воды меньше, чем требует сессия", icon: "drop.fill", color: CoachPalette.hydration),
+                whyRow("The workload is long enough for hydration to affect quality", "Сессия достаточно длинная, чтобы вода влияла на качество", icon: "figure.run", color: CoachPalette.activity)
+            ]
+
+        case .postActivityRecovery, .recovery:
+            return [
+                whyRow("The main load is already done", "Основная нагрузка уже выполнена", icon: "checkmark.circle.fill", color: renderModel.color),
+                whyRow("Recovery matters more than another hard effort", "Восстановление важнее еще одной тяжелой нагрузки", icon: "heart.fill", color: CoachPalette.recovery),
+                whyRow("Extra intensity is unlikely to add benefit", "Дополнительная интенсивность вряд ли даст пользу", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
+            ]
+
+        case .tomorrowProtection:
+            return [
+                whyRow("Tomorrow has a higher-priority training demand", "Завтра есть более важная тренировочная нагрузка", icon: "calendar", color: renderModel.color),
+                whyRow("Extra load today can lower readiness", "Лишняя нагрузка сегодня снизит готовность", icon: "arrow.down.heart.fill", color: CoachPalette.warning),
+                whyRow("Sleep and recovery set up the next session", "Сон и восстановление готовят следующую сессию", icon: "moon.fill", color: CoachPalette.recovery)
+            ]
+
+        case .hydration:
+            return [
+                whyRow("Hydration is directly limiting the decision", "Вода напрямую ограничивает решение", icon: "drop.fill", color: CoachPalette.hydration),
+                whyRow("The next block needs better fluid readiness", "Следующему блоку нужна лучшая готовность по воде", icon: "figure.run", color: renderModel.color),
+                whyRow("Fixing it now reduces avoidable stress", "Если исправить сейчас, лишнего стресса будет меньше", icon: "checkmark.seal.fill", color: renderModel.color)
+            ]
+
+        case .fuel:
+            return [
+                whyRow("Fueling is directly limiting the decision", "Питание напрямую ограничивает решение", icon: "bolt.fill", color: CoachPalette.fueling),
+                whyRow("The next effort needs usable energy", "Следующей нагрузке нужна доступная энергия", icon: "figure.run", color: renderModel.color),
+                whyRow("Low fuel makes intensity less useful", "При низкой энергии интенсивность менее полезна", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
+            ]
+        }
+    }
+
+    private func decisionShapingSignalKinds(for renderModel: CoachFinalStoryRenderModel) -> Set<CoachFinalStorySupportSignal.Kind> {
+        switch renderModel.owner {
+        case .hydration:
+            return [.hydration]
+        case .fuel:
+            return [.fuel]
+        case .postActivityRecovery, .recovery:
+            return [.recovery, .sleep]
+        case .tomorrowProtection:
+            return [.activity, .sleep, .recovery]
+        case .activeActivity, .pacingExecution, .sustainableExecution, .activityPreparation:
+            return [.activity, .recovery, .sleep]
+        case .fuelingDuringActivity:
+            return [.fuel, .activity, .hydration]
+        case .hydrationExecution:
+            return [.hydration, .activity, .fuel]
+        case .readiness, .stableOverview:
+            return [.recovery, .sleep, .activity]
+        }
+    }
+
+    private func whyRow(
+        _ english: String,
+        _ russian: String,
+        icon: String,
+        color: Color
+    ) -> CoachWhyRowModel {
+        CoachWhyRowModel(
+            title: WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english,
+            icon: icon,
+            color: color
+        )
+    }
+
+    private func semanticWhyColor(for row: CoachWhyRowModel) -> Color {
+        semanticWhyColor(title: row.title, icon: row.icon, fallback: row.color)
+    }
+
+    private func semanticWhyColor(
+        title: String,
+        icon: String,
+        fallback: Color
+    ) -> Color {
+        let value = "\(title) \(icon)".lowercased()
+
+        if value.contains("sleep") ||
+            value.contains("сон") ||
+            value.contains("moon") {
+            return Color(red: 0.55, green: 0.40, blue: 0.85)
+        }
+
+        if value.contains("recovery") ||
+            value.contains("восстанов") ||
+            value.contains("heart") {
+            return CoachPalette.recovery
+        }
+
+        if value.contains("time") ||
+            value.contains("clock") ||
+            value.contains("calendar") ||
+            value.contains("врем") ||
+            value.contains("завтра") ||
+            value.contains("следующ") {
+            return Color(red: 0.40, green: 0.62, blue: 0.96)
+        }
+
+        if value.contains("training") ||
+            value.contains("activity") ||
+            value.contains("session") ||
+            value.contains("нагруз") ||
+            value.contains("актив") ||
+            value.contains("figure") ||
+            value.contains("run") {
+            return CoachPalette.stable
+        }
+
+        if value.contains("constraint") ||
+            value.contains("intensity") ||
+            value.contains("warning") ||
+            value.contains("огранич") ||
+            value.contains("интенсив") ||
+            value.contains("stress") ||
+            value.contains("exclamationmark") {
+            return CoachPalette.warning
+        }
+
+        if value.contains("hydration") ||
+            value.contains("water") ||
+            value.contains("drop") ||
+            value.contains("вод") {
+            return CoachPalette.hydration
+        }
+
+        if value.contains("fuel") ||
+            value.contains("nutrition") ||
+            value.contains("energy") ||
+            value.contains("питан") ||
+            value.contains("энерг") ||
+            value.contains("bolt") {
+            return CoachPalette.fueling
+        }
+
+        if value.contains("checkmark") ||
+            value.contains("shield") ||
+            value.contains("seal") {
+            return Color(red: 0.48, green: 0.58, blue: 0.72)
+        }
+
+        return fallback
     }
 
     private var shouldShowOwnerPlanAdjustment: Bool {
@@ -1935,13 +2195,13 @@ struct ExpertCoachViewV3: View {
     private func primaryActionsSection(_ actions: [CoachSupportActionV3]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: WeekFitLocalizedString("coach.primaryActions"),
-                subtitle: WeekFitLocalizedString("coach.doTheseNext")
+                title: WeekFitLocalizedString("coach.whatToDo"),
+                subtitle: WeekFitLocalizedString("coach.whatToDo.subtitle")
             )
 
             VStack(spacing: 5) {
                 ForEach(Array(actions.prefix(3).enumerated()), id: \.offset) { _, action in
-                    coachFocusRow(
+                    coachDecisionRow(
                         finalStory == nil ? coachLocalizedGeneratedText(action.title, fallback: coachFallbackActionTitle(for: action.type)) : action.title,
                         color: ActionSemanticColor.color(for: action),
                         icon: action.icon
@@ -1955,13 +2215,13 @@ struct ExpertCoachViewV3: View {
     private func supportSignalsSection(_ story: CoachScreenStory) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
-                title: WeekFitLocalizedString("coach.supportSignals"),
-                subtitle: WeekFitLocalizedString("coach.supportSignals.subtitle")
+                title: WeekFitLocalizedString("coach.why"),
+                subtitle: WeekFitLocalizedString("coach.why.subtitle")
             )
 
             VStack(spacing: 5) {
                 ForEach(Array(story.supportActions.prefix(3).enumerated()), id: \.offset) { _, action in
-                    coachFocusRow(
+                    coachDecisionRow(
                         coachLocalizedGeneratedText(action.title, fallback: coachFallbackActionTitle(for: action.type)),
                         color: action.color,
                         icon: action.icon
@@ -2208,17 +2468,27 @@ struct ExpertCoachViewV3: View {
         color: Color? = nil,
         icon: String = "checkmark"
     ) -> some View {
-        let rowColor = color ?? coachAccentColor
+        coachDecisionRow(
+            text,
+            color: color ?? coachAccentColor,
+            icon: icon
+        )
+    }
 
-        return HStack(spacing: 10) {
+    private func coachDecisionRow(
+        _ text: String,
+        color: Color,
+        icon: String
+    ) -> some View {
+        HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(rowColor.opacity(0.10))
+                    .fill(color.opacity(0.10))
                     .frame(width: 28, height: 28)
 
                 Image(systemName: icon)
                     .font(.system(size: 11.5, weight: .bold))
-                    .foregroundStyle(rowColor)
+                    .foregroundStyle(color)
             }
 
             Text(text)

@@ -96,6 +96,7 @@ struct PlanAddActivitySheet: View {
         addActivitySheet
             .sheet(isPresented: $viewModel.showCustomDuration) {
                 customDurationSheet
+                    .weekFitSheetChrome(cornerRadius: 30)
             }
             .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
                 Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
@@ -562,7 +563,15 @@ private extension PlanAddActivitySheet {
                         .truncationMode(.tail)
                         .minimumScaleFactor(0.88)
 
-                    Text(String(format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"), meal.calories, meal.protein))
+                    Text(
+                        String(
+                            format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"),
+                            meal.calories,
+                            meal.protein,
+                            meal.carbs,
+                            meal.fats
+                        )
+                    )
                         .font(.system(size: 11.0, weight: .medium))
                         .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.50))
                         .lineLimit(1)
@@ -931,7 +940,6 @@ private extension PlanAddActivitySheet {
         .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
         .presentationDetents([.height(360)])
         .presentationDragIndicator(.hidden)
-        .preferredColorScheme(.dark)
     }
 }
 

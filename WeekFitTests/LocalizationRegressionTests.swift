@@ -6,6 +6,7 @@ final class LocalizationRegressionTests: XCTestCase {
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
+        WeekFitSetCurrentLanguage(.english)
         WeekFitWarmLocalizationCache()
         super.tearDown()
     }
@@ -26,6 +27,56 @@ final class LocalizationRegressionTests: XCTestCase {
             WeekFitLocalizedString("localization.test.missing.key", locale: Locale(identifier: "ru")),
             "localization.test.missing.key"
         )
+    }
+
+    func testRussianCoachCautionLabelUsesNaturalWording() {
+        for key in ["coach.card.watchOutFor", "coach.hero.beCarefulWith"] {
+            XCTAssertEqual(
+                WeekFitLocalizedString(key, locale: Locale(identifier: "ru")),
+                "Чего избегать"
+            )
+            XCTAssertNotEqual(
+                WeekFitLocalizedString(key, locale: Locale(identifier: "ru")),
+                "Осторожнее с"
+            )
+        }
+    }
+
+    func testRussianCoachCopyAvoidsKnownLiteralPhrasesAndTypos() {
+        let expectedCopy = [
+            "coach.actions.doNotStartLaterWorkDry": "Не начинайте позднюю тренировку без воды",
+            "coach.actions.lowerTheLaterCeiling": "Сделайте вечер легче",
+            "coach.engineV3.letTheWarmUpSetTheCeiling.2213": "Пусть разминка задаст темп",
+            "coach.engineV3.lowerTheCeiling.2476": "Сделайте план легче",
+            "coach.engineV3.tonightSetsUpTomorrowSCeiling.2395": "Сон сегодня влияет на завтрашний темп",
+            "coach.fallback.holdThePlannedCeiling": "Держите запланированный темп",
+            "coach.final.recommendation.readiness": "Выберите один лёгкий блок и не добавляйте лишнюю нагрузку.",
+            "coach.theMainWorkIsDoneEatProteinDrinkWater": "Основная тренировка завершена. Съешьте белок, выпейте воды и дайте пульсу успокоиться."
+        ]
+
+        for (key, expected) in expectedCopy {
+            let localized = WeekFitLocalizedString(key, locale: Locale(identifier: "ru"))
+            XCTAssertEqual(localized, expected)
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("тренеров"))
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("потолок"))
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("превращайте"))
+        }
+    }
+
+    func testRussianCoachRuntimeCopyAvoidsLiteralCeilingPhrase() {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let liveRun = WeekFitCoachRuntimeLocalizedString(
+            "The run is already live. Recovery is shaping the effort ceiling, so easy pacing and reserve matter most now."
+        )
+        let accumulatedLoad = WeekFitCoachRuntimeLocalizedString(
+            "Load has already accumulated today, so recovery affects the effort ceiling but does not replace the current workout."
+        )
+
+        XCTAssertFalse(liveRun.localizedCaseInsensitiveContains("потолок"))
+        XCTAssertFalse(accumulatedLoad.localizedCaseInsensitiveContains("потолок"))
+        XCTAssertTrue(liveRun.localizedCaseInsensitiveContains("темп"))
+        XCTAssertTrue(accumulatedLoad.localizedCaseInsensitiveContains("темп"))
     }
 
     func testDynamicInsightActionIDRemainsStableWhenLabelIsDisplayCopy() {

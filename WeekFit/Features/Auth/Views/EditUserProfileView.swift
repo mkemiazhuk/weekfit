@@ -29,105 +29,105 @@ struct EditUserProfileView: View {
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
+            ProfilePremiumBackground(accent: accentGreenBottom)
 
-            VStack(alignment: .leading, spacing: 26) {
-                header
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 26) {
+                    header
 
-                VStack(spacing: 18) {
-                    avatar
+                    VStack(spacing: 18) {
+                        avatar
 
-                    VStack(spacing: 6) {
-                        Text(WeekFitLocalizedString("settings.profile.edit.headline"))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary)
+                        VStack(spacing: 6) {
+                            Text(WeekFitLocalizedString("settings.profile.edit.headline"))
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                        Text(WeekFitLocalizedString("settings.profile.edit.localNote"))
-                            .font(.system(size: 13.5, weight: .medium, design: .rounded))
-                            .foregroundStyle(textSecondary)
-                    }
-                    .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 8)
-
-                inputField(
-                    title: WeekFitLocalizedString("settings.profile.edit.nameField"),
-                    text: $name,
-                    placeholder: WeekFitLocalizedString("settings.profile.edit.namePlaceholder")
-                )
-
-                Spacer()
-
-                Button {
-                    save()
-                } label: {
-                    Text(AppText.Common.Action.save)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.black.opacity(canSave ? 0.92 : 0.42))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background {
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            accentGreenTop.opacity(canSave ? 1 : 0.42),
-                                            accentGreenBottom.opacity(canSave ? 1 : 0.42)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .overlay {
-                                    Capsule()
-                                        .stroke(.white.opacity(0.12), lineWidth: 1)
-                                }
+                            Text(WeekFitLocalizedString("settings.profile.edit.localNote"))
+                                .font(.system(size: 13.5, weight: .medium, design: .rounded))
+                                .foregroundStyle(textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+
+                    inputField(
+                        title: WeekFitLocalizedString("settings.profile.edit.nameField"),
+                        text: $name,
+                        placeholder: WeekFitLocalizedString("settings.profile.edit.namePlaceholder")
+                    )
                 }
-                .disabled(!canSave)
+                .padding(.horizontal, 22)
+                .padding(.top, 24)
+                .padding(.bottom, 110)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 24)
-            .padding(.bottom, 24)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) {
+            saveButton
+                .padding(.horizontal, 22)
+                .padding(.top, 10)
+                .padding(.bottom, 14)
+                .background {
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.0),
+                            Color.black.opacity(0.82)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                }
+        }
         .onAppear {
             name = viewModel.userProfile.fullName
         }
     }
 
     private var header: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.065))
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.92))
-                }
-                .frame(width: 48, height: 48)
-            }
-
-            Spacer()
-
-            Text(WeekFitLocalizedString("settings.profile.edit.title"))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 48, height: 48)
+        ProfilePremiumHeader(
+            title: WeekFitLocalizedString("settings.profile.edit.title"),
+            titleSize: 27,
+            accent: accentGreenBottom
+        ) {
+            dismiss()
         }
+    }
+
+    private var saveButton: some View {
+        Button {
+            save()
+        } label: {
+            Text(AppText.Common.Action.save)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.black.opacity(canSave ? 0.92 : 0.42))
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accentGreenTop.opacity(canSave ? 1 : 0.42),
+                                    accentGreenBottom.opacity(canSave ? 1 : 0.42)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            Capsule()
+                                .stroke(.white.opacity(0.12), lineWidth: 1)
+                        }
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSave)
     }
 
     private var avatar: some View {
@@ -176,12 +176,8 @@ struct EditUserProfileView: View {
                 .padding(.horizontal, 16)
                 .frame(height: 54)
                 .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
+                    Color.clear
+                        .profilePremiumSectionCard(cornerRadius: 20)
                 }
         }
     }

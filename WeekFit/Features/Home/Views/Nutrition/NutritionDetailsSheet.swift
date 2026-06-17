@@ -44,26 +44,27 @@ private extension NutritionDetailsSheet {
 
     var header: some View {
         VStack(spacing: 22) {
-            HStack {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-
-                Spacer()
-
+            HStack(spacing: 13) {
                 Text(AppText.Nutrition.Details.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .frame(width: 42, height: 42)
+                        .background(Circle().fill(Color.white.opacity(0.075)))
+                        .overlay {
+                            Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(AppText.Common.Action.close))
             }
 
             HStack(spacing: 22) {

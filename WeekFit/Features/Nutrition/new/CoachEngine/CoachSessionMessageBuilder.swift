@@ -363,7 +363,7 @@ private extension CoachSessionMessageBuilder {
         "Do not rush": "Не спешите",
         "Do not rush the next shot": "Не спешите со следующим ударом",
         "Do not stay longer than feels good": "Не оставайтесь дольше комфортного",
-        "Do not turn this into training": "Не превращайте это в тренировку",
+        "Do not turn this into training": "Не делайте из этого тренировку",
         "Finish calmly": "Закончите спокойно",
         "Finish feeling better, not tired": "Закончите с ощущением лучше, а не усталости",
         "Finish feeling like you could do more": "Закончите с ощущением, что могли бы сделать еще",

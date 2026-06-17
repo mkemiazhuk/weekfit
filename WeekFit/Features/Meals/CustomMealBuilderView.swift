@@ -174,6 +174,7 @@ struct CustomMealBuilderView: View {
                 processCapturedPhoto(image)
             }
             .ignoresSafeArea()
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .photosPicker(
             isPresented: $showPhotoLibrary,

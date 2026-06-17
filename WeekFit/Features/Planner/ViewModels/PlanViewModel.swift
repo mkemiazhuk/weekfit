@@ -123,7 +123,13 @@ final class PlanViewModel: ObservableObject {
     func plannerOption(for meal: Meals) -> PlannerOption {
         PlannerOption(
             title: meal.title,
-            subtitle: String(format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"), meal.calories, meal.protein),
+            subtitle: String(
+                format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"),
+                meal.calories,
+                meal.protein,
+                meal.carbs,
+                meal.fats
+            ),
             icon: PlannerType.meal.icon,
             imageName: displayImageName(for: meal)
         )

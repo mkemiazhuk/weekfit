@@ -85,6 +85,7 @@ struct WeekFitRootView: View {
             appSession.healthRefreshTrigger.uuidString,
             appSession.coachRefreshTrigger.uuidString,
             appSession.returnToTodayTrigger.uuidString,
+            "\(hasSettledInitialHealthState)",
             plannedActivities
                 .map { activity in
                     [
@@ -205,6 +206,16 @@ struct WeekFitRootView: View {
     }
 
     private func refreshCoachInput(source: String) async {
+        if shouldDeferHiddenCoachRefresh {
+            #if DEBUG
+            CoachRefreshDebug.log(
+                "[CoachInputTrace]",
+                "source=\(source) deferred hidden Coach refresh until first HealthKit access check completes"
+            )
+            #endif
+            return
+        }
+
         await coachInputProvider.refresh(
             selectedDate: Date(),
             plannedActivities: plannedActivities,
@@ -212,7 +223,18 @@ struct WeekFitRootView: View {
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
             source: source,
-            refreshHealth: selectedTab == .coach
+            refreshHealth: selectedTab == .coach && source == "tabChange.coach"
         )
+    }
+
+    private var shouldDeferHiddenCoachRefresh: Bool {
+        selectedTab != .coach &&
+            healthManager.isHealthAccessRequested &&
+            !hasSettledInitialHealthState
+    }
+
+    private var hasSettledInitialHealthState: Bool {
+        healthManager.lastHealthKitSyncTime != nil ||
+            (healthManager.hasCompletedHealthAccessCheck && !healthManager.isHealthAccessGranted)
     }
 }
