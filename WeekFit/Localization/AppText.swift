@@ -121,6 +121,7 @@ enum AppText {
         static let okStatus: LocalizedStringResource = "today.recovery.ok"
         static let needRestStatus: LocalizedStringResource = "today.recovery.needRest"
         static let syncingStatus: LocalizedStringResource = "today.recovery.syncing"
+        static let recoverySleepSyncPending: LocalizedStringResource = "today.recovery.sleepSyncPending"
     }
 
     enum Coach {
@@ -690,7 +691,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Keep this run easy",
-            "Снизьте темп бега",
+            "Не форсируйте бег",
             []
         ),
         (
@@ -700,17 +701,17 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "The run is already live. Recovery is shaping the effort ceiling, so easy pacing and reserve matter most now.",
-            "Бег уже идет. Восстановление влияет на потолок усилия, поэтому сейчас важнее легкий темп и запас.",
+            "Бег уже идет. Восстановление влияет на темп, поэтому сейчас важнее легкий ход и запас.",
             []
         ),
         (
             "Do not turn this run into extra training load.",
-            "Не превращайте этот бег в дополнительную нагрузку.",
+            "Не добавляйте лишнюю нагрузку в этот бег.",
             []
         ),
         (
             "Load has already accumulated today, so recovery affects the effort ceiling but does not replace the current workout.",
-            "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на потолок усилия, но не заменяет текущую тренировку.",
+            "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на темп, но не заменяет текущую тренировку.",
             []
         ),
         (
@@ -1110,6 +1111,9 @@ private func WeekFitCoachHumanizedText(_ text: String) -> String {
 
 private func WeekFitDebugLogLocalizationResolution(key: String, locale: Locale, resolved: String) {
     #if DEBUG
+    let logLocalizationResolution = false
+    guard logLocalizationResolution else { return }
+
     guard key == "coach.humanDecision.time.calmEvening.title" ||
           key == "coach.humanDecision.time.calmEvening.recommendation" ||
           key == "coach.humanDecision.time.calmEvening.careful" ||
@@ -1118,6 +1122,8 @@ private func WeekFitDebugLogLocalizationResolution(key: String, locale: Locale, 
           key == "coach.card.watchOutFor" ||
           key == "coach.primaryActions" ||
           key == "coach.doTheseNext" ||
+          key == "coach.why" ||
+          key == "coach.whatToDo" ||
           key == "common.tab.today" ||
           key == "common.tab.coach" ||
           key == "common.tab.meals" ||

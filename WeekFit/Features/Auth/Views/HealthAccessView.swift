@@ -73,18 +73,18 @@ struct HealthAccessView: View {
 
         var qualityLabel: String {
             if qualityScore >= 4 && hasRecentSleep {
-                return "Excellent"
+                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Отлично" : "Excellent"
             }
 
             if qualityScore >= 3 {
-                return "Good"
+                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Хорошо" : "Good"
             }
 
             if qualityScore >= 2 {
-                return "Partial"
+                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Частично" : "Partial"
             }
 
-            return "Setup needed"
+            return WeekFitLocalizedString("healthAccess.status.needsSetup")
         }
 
         var qualityTint: Color {
@@ -114,7 +114,7 @@ struct HealthAccessView: View {
 
     var body: some View {
         ZStack {
-            backgroundLayer
+            ProfilePremiumBackground(accent: softGreen)
 
             VStack(spacing: 0) {
                 topBar
@@ -151,7 +151,7 @@ struct HealthAccessView: View {
             SleepSetupHelpSheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationCornerRadius(30)
+                .weekFitSheetChrome(cornerRadius: 30)
         }
         .task {
             guard !didAppear else { return }
@@ -231,47 +231,16 @@ private extension HealthAccessView {
     }
 
     var topBar: some View {
-        ZStack {
-            Text(WeekFitLocalizedString("healthAccess.healthSignals"))
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
-
-            HStack {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.primaryText)
-                        .frame(width: 46, height: 46)
-                        .background(
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            WeekFitTheme.cardBackground.opacity(0.82),
-                                            WeekFitTheme.cardSecondary.opacity(0.58)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(.white.opacity(0.075), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.24), radius: 14, y: 8)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(AppText.Common.Action.back))
-
-                Spacer()
-            }
+        ProfilePremiumHeader(
+            title: WeekFitLocalizedString("healthAccess.healthSignals"),
+            titleSize: 27,
+            accent: softGreen
+        ) {
+            dismiss()
         }
         .padding(.horizontal, 24)
         .padding(.top, 6)
-        .padding(.bottom, 2)
+        .padding(.bottom, 6)
     }
 
     var heroSection: some View {
@@ -284,8 +253,9 @@ private extension HealthAccessView {
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .tracking(-0.35)
                         .foregroundStyle(WeekFitTheme.primaryText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.86)
+                        .fixedSize(horizontal: false, vertical: true)
                         .allowsTightening(true)
 
                     if accessState == .connected {
@@ -451,7 +421,7 @@ private extension HealthAccessView {
 
             readinessRow(
                 icon: "applewatch",
-                title: "Apple Watch",
+                title: WeekFitLocalizedString("healthAccess.readiness.appleWatch"),
                 status: watchStatusText,
                 tint: statusTint(for: watchStatusKind),
                 kind: watchStatusKind
@@ -459,7 +429,7 @@ private extension HealthAccessView {
 
             readinessRow(
                 icon: "figure.run",
-                title: "Workout sync",
+                title: WeekFitLocalizedString("healthAccess.readiness.workoutSync"),
                 status: workoutStatusText,
                 tint: statusTint(for: workoutStatusKind),
                 kind: workoutStatusKind
@@ -467,7 +437,7 @@ private extension HealthAccessView {
 
             readinessRow(
                 icon: "heart.text.square.fill",
-                title: "Heart data",
+                title: WeekFitLocalizedString("healthAccess.readiness.heartData"),
                 status: heartRateStatusText,
                 tint: statusTint(for: heartRateStatusKind),
                 kind: heartRateStatusKind
@@ -475,7 +445,7 @@ private extension HealthAccessView {
 
             readinessRow(
                 icon: "moon.fill",
-                title: "Sleep data",
+                title: WeekFitLocalizedString("healthAccess.readiness.sleepData"),
                 status: sleepStatusText,
                 tint: statusTint(for: sleepStatusKind),
                 kind: sleepStatusKind,
@@ -487,7 +457,7 @@ private extension HealthAccessView {
 
             readinessRow(
                 icon: "arrow.triangle.2.circlepath",
-                title: "Last sync",
+                title: WeekFitLocalizedString("healthAccess.readiness.lastSync"),
                 status: syncStatusText,
                 tint: statusTint(for: syncStatusKind),
                 kind: syncStatusKind
@@ -538,7 +508,9 @@ private extension HealthAccessView {
             Text(title)
                 .font(.system(size: 13.7, weight: .semibold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
-                .lineLimit(1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.88)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 8)
 
@@ -574,13 +546,13 @@ private extension HealthAccessView {
                     Text(status)
                         .font(.system(size: 11.7, weight: .semibold, design: .rounded))
                         .foregroundStyle(statusTextTint(for: kind))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.80)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
+                        .multilineTextAlignment(.trailing)
                 }
-                .frame(height: 23)
             }
         }
-        .frame(height: 34)
+        .frame(minHeight: 36)
     }
     
     func statusTextTint(for kind: StatusKind) -> Color {
@@ -606,22 +578,22 @@ private extension HealthAccessView {
             VStack(spacing: 8) {
                 compactBenefitRow(
                     icon: "sparkles",
-                    title: "Smarter daily planning",
-                    subtitle: "Your plan reacts to workouts, steps and recovery.",
+                    title: WeekFitLocalizedString("healthAccess.benefit.smarterPlanning.title"),
+                    subtitle: WeekFitLocalizedString("healthAccess.benefit.smarterPlanning.subtitle"),
                     tint: softBlue
                 )
 
                 compactBenefitRow(
                     icon: "flame.fill",
-                    title: "Adaptive calorie targets",
-                    subtitle: "Calories adjust after real activity.",
+                    title: WeekFitLocalizedString("healthAccess.benefit.adaptiveCalories.title"),
+                    subtitle: WeekFitLocalizedString("healthAccess.benefit.adaptiveCalories.subtitle"),
                     tint: Color.orange.opacity(0.86)
                 )
 
                 compactBenefitRow(
                     icon: "lock.fill",
-                    title: "Private by design",
-                    subtitle: "Permissions stay managed by Apple Health.",
+                    title: WeekFitLocalizedString("healthAccess.benefit.privateByDesign.title"),
+                    subtitle: WeekFitLocalizedString("healthAccess.benefit.privateByDesign.subtitle"),
                     tint: softGreen
                 )
             }
@@ -650,14 +622,16 @@ private extension HealthAccessView {
                 Text(title)
                     .font(.system(size: 14.2, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText.opacity(0.94))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.84)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(subtitle)
                     .font(.system(size: 12.2, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.54))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -707,14 +681,15 @@ private extension HealthAccessView {
                 Text(actionTitle)
                     .font(.system(size: 13.8, weight: .bold, design: .rounded))
                     .tracking(-0.05)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.84)
+                    .multilineTextAlignment(.center)
 
                 Spacer(minLength: 0)
             }
             .foregroundStyle(actionTint.opacity(0.68))
             .frame(maxWidth: .infinity)
-            .frame(height: 43)
+            .frame(minHeight: 43)
             .background(
                 Capsule()
                     .fill(actionTint.opacity(actionFillOpacity))
@@ -826,61 +801,61 @@ private extension HealthAccessView {
     }
 
     var watchStatusText: String {
-        guard accessState == .connected else { return "After access" }
+        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.afterAccess") }
 
         if readiness.isWatchPaired {
-            return "Paired"
+            return WeekFitLocalizedString("healthAccess.status.paired")
         }
 
         if readiness.hasRecentHeartRate || readiness.hasRecentSleep || readiness.hasRecentWorkout {
-            return "Data found"
+            return WeekFitLocalizedString("healthAccess.status.dataFound")
         }
 
-        return "Not detected"
+        return WeekFitLocalizedString("healthAccess.status.notDetected")
     }
 
     var workoutStatusText: String {
-        guard accessState == .connected else { return "Needs access" }
-        return readiness.hasRecentWorkout ? "Ready" : "No workout"
+        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.needsAccess") }
+        return readiness.hasRecentWorkout ? WeekFitLocalizedString("healthAccess.status.ready") : WeekFitLocalizedString("healthAccess.status.noWorkout")
     }
 
     var heartRateStatusText: String {
-        guard accessState == .connected else { return "Needs access" }
-        return readiness.hasRecentHeartRate ? "Available" : "Missing"
+        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.needsAccess") }
+        return readiness.hasRecentHeartRate ? WeekFitLocalizedString("healthAccess.status.available") : WeekFitLocalizedString("healthAccess.status.missing")
     }
 
     var sleepStatusText: String {
-        guard accessState == .connected else { return "Needs access" }
-        return readiness.hasRecentSleep ? "Available" : "Needs setup"
+        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.needsAccess") }
+        return readiness.hasRecentSleep ? WeekFitLocalizedString("healthAccess.status.available") : WeekFitLocalizedString("healthAccess.status.needsSetup")
     }
 
     var syncStatusText: String {
-        guard accessState == .connected else { return "Not synced" }
+        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.notSynced") }
         return formattedLastSync(readiness.lastSyncDate)
     }
 
     func formattedLastSync(_ date: Date?) -> String {
-        guard let date else { return "Not synced yet" }
+        guard let date else { return WeekFitLocalizedString("healthAccess.status.notSyncedYet") }
 
         let seconds = Int(Date().timeIntervalSince(date))
 
         if seconds < 60 {
-            return "Just now"
+            return WeekFitLocalizedString("healthAccess.status.justNow")
         }
 
         let minutes = seconds / 60
 
         if minutes < 60 {
-            return "\(minutes)m ago"
+            return String(format: WeekFitLocalizedString("healthAccess.status.minutesAgoFormat"), Int64(minutes))
         }
 
         let hours = minutes / 60
 
         if hours < 24 {
-            return "\(hours)h ago"
+            return String(format: WeekFitLocalizedString("healthAccess.status.hoursAgoFormat"), Int64(hours))
         }
 
-        return "Needs refresh"
+        return WeekFitLocalizedString("healthAccess.status.needsRefresh")
     }
 }
 
@@ -901,15 +876,15 @@ private extension HealthAccessView {
     var heroTitle: String {
         switch accessState {
         case .connected:
-            return "Health signals active"
+            return WeekFitLocalizedString("healthAccess.hero.connected.title")
         case .needsSettings:
-            return "Health needs access"
+            return WeekFitLocalizedString("healthAccess.hero.needsSettings.title")
         case .unavailable:
-            return "Health unavailable"
+            return WeekFitLocalizedString("healthAccess.hero.unavailable.title")
         case .requesting:
-            return "Opening Health"
+            return WeekFitLocalizedString("healthAccess.hero.requesting.title")
         case .notRequested:
-            return "Connect Health Signals"
+            return WeekFitLocalizedString("healthAccess.hero.notRequested.title")
         }
     }
 
@@ -918,13 +893,13 @@ private extension HealthAccessView {
         case .connected:
             return connectedHeroSubtitle
         case .needsSettings:
-            return "Allow workouts, sleep, heart data and steps to unlock smarter guidance."
+            return WeekFitLocalizedString("healthAccess.hero.needsSettings.subtitle")
         case .unavailable:
-            return "This device does not support Apple Health data access."
+            return WeekFitLocalizedString("healthAccess.hero.unavailable.subtitle")
         case .requesting:
-            return "Confirm access in Apple Health, then return to WeekFit."
+            return WeekFitLocalizedString("healthAccess.hero.requesting.subtitle")
         case .notRequested:
-            return "Let WeekFit adapt planning, calories and recovery to your real day."
+            return WeekFitLocalizedString("healthAccess.hero.notRequested.subtitle")
         }
     }
 
@@ -932,30 +907,30 @@ private extension HealthAccessView {
         let score = readiness.qualityScore
 
         if score >= 4 && readiness.hasRecentSleep {
-            return "Sleep, workouts and recovery are connected."
+            return WeekFitLocalizedString("healthAccess.hero.connected.full")
         }
 
         if score >= 3 {
-            return "WeekFit can personalize your plan. Sleep may need setup."
+            return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
         }
 
         if score >= 2 {
-            return "Some signals are connected. A few sources still need attention."
+            return WeekFitLocalizedString("healthAccess.hero.connected.partial")
         }
 
-        return "Health is connected, but WeekFit needs more data for better insights."
+        return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
     }
 
     var actionTitle: String {
         switch accessState {
         case .notRequested:
-            return "Connect Health Signals"
+            return WeekFitLocalizedString("healthAccess.action.connect")
         case .requesting:
-            return "Opening Apple Health..."
+            return WeekFitLocalizedString("healthAccess.action.opening")
         case .connected, .needsSettings:
-            return "Manage in Apple Health"
+            return WeekFitLocalizedString("healthAccess.action.manage")
         case .unavailable:
-            return "Health Unavailable"
+            return WeekFitLocalizedString("healthAccess.action.unavailable")
         }
     }
 
@@ -1254,38 +1229,38 @@ private struct SleepSetupHelpSheet: View {
 
                         sleepSection(
                             icon: "bed.double.fill",
-                            title: "Set a Sleep Schedule",
-                            detail: "iPhone → Settings → Focus → Sleep\nSet your bedtime and wake-up schedule."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.schedule.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.schedule.detail")
                         )
 
                         sleepSection(
                             icon: "moon.fill",
-                            title: "Enable Sleep Focus",
-                            detail: "Use Sleep Focus overnight so Apple can classify sleep correctly."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.focus.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.focus.detail")
                         )
 
                         sleepSection(
                             icon: "applewatch",
-                            title: "Turn on Sleep Tracking",
-                            detail: "Watch app → Sleep\nEnable Track Sleep with Apple Watch."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.tracking.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.tracking.detail")
                         )
 
                         sleepSection(
                             icon: "lock.fill",
-                            title: "Enable Wrist Detection",
-                            detail: "Watch app → Passcode\nTurn on Wrist Detection."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.wrist.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.wrist.detail")
                         )
 
                         sleepSection(
                             icon: "battery.75percent",
-                            title: "Wear the watch overnight",
-                            detail: "Keep battery above 30% and avoid Low Power Mode while sleeping."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.wear.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.wear.detail")
                         )
 
                         sleepSection(
                             icon: "list.bullet.rectangle",
-                            title: "Still no data?",
-                            detail: "Health → Browse → Sleep → Show All Data\nIf no new entries appear, Apple Watch is not recording sleep yet."
+                            title: WeekFitLocalizedString("healthAccess.sleepSetup.noData.title"),
+                            detail: WeekFitLocalizedString("healthAccess.sleepSetup.noData.detail")
                         )
                     }
                     .padding(16)

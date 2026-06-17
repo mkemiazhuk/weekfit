@@ -370,7 +370,7 @@ private extension CoachFuelingMessageBuilder {
         "Avoid hard effort after heat": "Избегайте тяжелой нагрузки после тепла",
         "Bring water to court": "Возьмите воду на корт",
         "Cool down gradually": "Остывайте постепенно",
-        "Do not turn this into training": "Не превращайте это в тренировку",
+        "Do not turn this into training": "Не делайте из этого тренировку",
         "Drink 300–500 ml water before the run": "Выпейте 300–500 мл воды перед бегом",
         "Drink water before court time": "Выпейте воды перед кортом",
         "Drink water before heat": "Выпейте воды перед теплом",

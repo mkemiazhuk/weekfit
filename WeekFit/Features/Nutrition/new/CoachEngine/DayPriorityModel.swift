@@ -359,6 +359,15 @@ enum CoachContributorLevel: String, Hashable {
             return false
         }
     }
+
+    var isResolvedContributor: Bool {
+        switch self {
+        case .aheadOfTrajectory, .onTrajectory, .slightlyBehind:
+            return true
+        case .meaningfullyBehind, .actionRequired:
+            return false
+        }
+    }
 }
 
 struct CoachRecoveryContributorDebug: Hashable {
@@ -433,9 +442,9 @@ struct CoachRecoveryContributorDebug: Hashable {
         var active: [CoachContributor] = []
         var resolved: [CoachContributor] = []
 
-        Self.classify(.underfueled, isActive: calorieLevel.isActiveContributor, active: &active, resolved: &resolved)
-        Self.classify(.hydrationBehind, isActive: hydrationLevel.isActiveContributor, active: &active, resolved: &resolved)
-        Self.classify(.proteinBehind, isActive: proteinLevel.isActiveContributor, active: &active, resolved: &resolved)
+        Self.classify(.underfueled, level: calorieLevel, active: &active, resolved: &resolved)
+        Self.classify(.hydrationBehind, level: hydrationLevel, active: &active, resolved: &resolved)
+        Self.classify(.proteinBehind, level: proteinLevel, active: &active, resolved: &resolved)
 
         return CoachRecoveryContributorDebug(
             activeContributors: active,
@@ -454,12 +463,14 @@ struct CoachRecoveryContributorDebug: Hashable {
 
     private static func classify(
         _ contributor: CoachContributor,
-        isActive: Bool,
+        level: CoachContributorLevel,
         active: inout [CoachContributor],
         resolved: inout [CoachContributor]
     ) {
-        if isActive {
+        if level.isActiveContributor {
             active.append(contributor)
+        } else if level.isResolvedContributor {
+            resolved.append(contributor)
         }
     }
 

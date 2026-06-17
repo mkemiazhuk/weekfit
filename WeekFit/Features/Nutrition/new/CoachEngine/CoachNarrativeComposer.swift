@@ -86,7 +86,7 @@ private extension CoachNarrativeStrategy {
         case .protectAdaptation:
             return "Полезная работа уже сделана. Сейчас важнее дать телу адаптироваться."
         case .reduceRisk:
-            return "Готовность сегодня требует более низкого потолка и аккуратного выбора нагрузки."
+            return "Готовность сегодня просит более спокойного темпа и аккуратного выбора нагрузки."
         case .preserveKeySession:
             return "Главная тренировка важнее лишнего объема вокруг нее."
         case .recoverNow:
@@ -120,7 +120,7 @@ private extension CoachNarrativeStrategy {
         case .preserveKeySession:
             return "Не тратьте силы до главной тренировки."
         case .recoverNow:
-            return "Не превращайте восстановительный день в еще одну тренировку."
+            return "Не добавляйте тренировку там, где день уже просит восстановления."
         case .keepPlanCalm:
             return "Не добавляйте структуру, которая сегодня не нужна."
         }
@@ -131,7 +131,7 @@ private extension CoachNarrativeStrategy {
         case .protectAdaptation, .recoverNow:
             return "Прогресс приходит, когда после нагрузки есть место для восстановления."
         case .reduceRisk:
-            return "Снижение потолка сегодня помогает сохранить качество и не накапливать лишний стресс."
+            return "Более спокойный темп сегодня помогает сохранить качество и не накапливать лишний стресс."
         case .preserveKeySession:
             return "Главная тренировка требует свежести, а не дополнительной нагрузки перед ней."
         case .keepPlanCalm:

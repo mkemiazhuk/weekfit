@@ -75,38 +75,39 @@ struct NutritionDetailsView: View {
                 .padding(.top, 9)
                 .padding(.bottom, 8)
 
-                VStack(spacing: 9) {
-                    NutritionHeroCard(
-                        nutritionScore: nutritionScore,
-                        statusText: nutritionStatusText,
-                        insightText: nutritionInsightText
-                    )
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 9) {
+                        NutritionHeroCard(
+                            nutritionScore: nutritionScore,
+                            statusText: nutritionStatusText,
+                            insightText: nutritionInsightText
+                        )
 
-                    MacroRingsCard(
-                        protein: protein,
-                        carbs: carbs,
-                        fats: fats,
-                        fiber: fiber,
-                        proteinGoal: proteinGoal,
-                        carbsGoal: carbsGoal,
-                        fatsGoal: fatsGoal,
-                        fiberGoal: fiberGoal
-                    )
+                        MacroRingsCard(
+                            protein: protein,
+                            carbs: carbs,
+                            fats: fats,
+                            fiber: fiber,
+                            proteinGoal: proteinGoal,
+                            carbsGoal: carbsGoal,
+                            fatsGoal: fatsGoal,
+                            fiberGoal: fiberGoal
+                        )
 
-                    MealTimelineCard(
-                        meals: meals,
-                        proteinColor: proteinColor,
-                        carbsColor: carbsColor,
-                        fatColor: fatColor,
-                        fiberColor: fiberColor
-                    )
+                        MealTimelineCard(
+                            meals: meals,
+                            proteinColor: proteinColor,
+                            carbsColor: carbsColor,
+                            fatColor: fatColor,
+                            fiberColor: fiberColor
+                        )
 
-                    noteCard
+                        noteCard
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 5)
+                    .padding(.bottom, 36)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 5)
-
-                Spacer(minLength: 0)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -114,13 +115,26 @@ struct NutritionDetailsView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 13) {
+        HStack(alignment: .center, spacing: 13) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppText.Nutrition.Details.title)
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
+
+                Text(nutritionDetailsDateTitle)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.56))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .bold))
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.94))
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(Color.white.opacity(0.075)))
@@ -129,20 +143,7 @@ struct NutritionDetailsView: View {
                     }
             }
             .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppText.Nutrition.Details.title)
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
-
-                Text(nutritionDetailsDateTitle)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
-            }
-
-            Spacer()
+            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -318,16 +319,16 @@ private struct NutritionHeroCard: View {
                 Text(statusText)
                     .font(.system(size: NutritionTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
                 Text(insightText)
                     .font(.system(size: NutritionTypography.heroText, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(2)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 0)
         }

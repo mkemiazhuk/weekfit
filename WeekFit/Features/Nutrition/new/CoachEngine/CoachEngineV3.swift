@@ -51,9 +51,8 @@ enum CoachEngineV3 {
         memoLock.lock()
         if inputSignature == lastMemoSignature, let cached = lastMemoGuidance {
             memoLock.unlock()
-            CoachLogger.compactThrottled(
+            CoachLogger.trace(
                 "[CoachRefreshSkipped]",
-                key: "coachEngine.memo.unchanged",
                 "Coach refresh skipped: unchanged fingerprint source=CoachEngineV3.decide"
             )
             return cached
@@ -93,7 +92,7 @@ enum CoachEngineV3 {
             nutritionContext: nutritionContext,
             readiness: timingReadiness
         )
-        CoachLogger.compact(
+        CoachLogger.trace(
             "[BrainStateSourceDebug]",
             "mappingSource=CoachEngineV3.decide brainStateUsedByCoachContext sleep=\(brain.sleep) recovery=\(brain.recovery) readiness=\(brain.readiness) brainStateUsedByPriorityResolver sleep=\(decisionContext.brain.sleep) recovery=\(decisionContext.brain.recovery) readiness=\(decisionContext.brain.readiness) sourceTimestamp=\(brain.now.timeIntervalSince1970) snapshotID=unavailable"
         )
@@ -407,7 +406,7 @@ private extension CoachEngineV3 {
         let filteredTomorrowActivities = context.tomorrowContext?.dayContext.upcomingTrainingActivities ?? []
         let tomorrowDemand = context.tomorrowDemand
 
-        CoachLogger.verbose(
+        CoachLogger.trace(
             "[CoachTomorrowPipelineDebug]",
             "stage=engine rawTomorrowActivities=\(debugTomorrowActivities(rawTomorrowActivities)) plannedActivitiesTomorrow=\(debugTomorrowActivities(plannedActivitiesTomorrow)) filteredTomorrowActivities=\(debugTomorrowActivities(filteredTomorrowActivities)) tomorrowDemand=\(tomorrowDemand.level.rawValue) upcomingTrainingStress=\(context.tomorrowContext?.dayContext.upcomingTrainingStressScore ?? 0) selectedTomorrowProtectionTarget=\(debugTomorrowActivity(selected.focus == .tomorrowPlanRisk ? selected.activity : tomorrowDemand.primaryTrainingActivity))"
         )
@@ -428,14 +427,16 @@ private extension CoachEngineV3 {
     ) {
         let intent = CoachIntentResolver.resolve(context)
         let activity = selected.activity ?? context.activityContext.coachFocusActivity
+        let activityState = activity.map { $0.terminalState(now: context.dayContext.now).rawValue } ?? "none"
+        let phase = debugPhaseName(context.activityContext.phase)
         let signature = [
             "\(intent)",
             "\(selected.priority)",
             "\(selected.focus)",
             "\(selected.limiter)",
-            selected.title,
             activity?.id ?? "none",
-            selected.supportBullets.joined(separator: "|")
+            activityState,
+            phase
         ].joined(separator: "#")
 
         decisionLogLock.lock()
@@ -451,7 +452,8 @@ private extension CoachEngineV3 {
             """
             intent=\(intent) \
             activity=\(activity.map(debugActivityName) ?? "none") \
-            title=\(selected.title) \
+            activityState=\(activityState) \
+            phase=\(phase) \
             priority=\(selected.priority)/\(selected.focus) \
             limiter=\(selected.limiter)
             """
@@ -461,6 +463,19 @@ private extension CoachEngineV3 {
     static func debugActivityName(_ activity: PlannedActivity) -> String {
         let title = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
         return title.isEmpty ? activity.type : title
+    }
+
+    static func debugPhaseName(_ phase: CoachActivityPhaseV3) -> String {
+        switch phase {
+        case .active:
+            return "active"
+        case .preparing:
+            return "preparing"
+        case .recovering:
+            return "recovering"
+        case .stable:
+            return "stable"
+        }
     }
 
     #if DEBUG
@@ -927,7 +942,7 @@ private extension CoachSupportActionTypeV3 {
         case .keepDigestionLight:
             return "Не добавляйте пищеварительный стресс"
         case .controlIntensity:
-            return "Пусть готовность задает потолок нагрузки"
+            return "Пусть готовность задаёт темп нагрузки"
         case .startRecoveryNutrition, .recoveryMeal:
             return "Дайте организму восстановиться и сохранить качество"
         case .stayConsistent:

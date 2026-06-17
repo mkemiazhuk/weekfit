@@ -4480,6 +4480,7 @@ struct InsightsDayRecord {
 struct InsightsView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
+    @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
@@ -4661,7 +4662,11 @@ struct InsightsView: View {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(healthManager)
+            .environmentObject(nutritionViewModel)
+            .environmentObject(appSession)
             .environmentObject(languageManager)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .fullScreenCover(item: $selectedDetail) { destination in
             detailView(for: destination)

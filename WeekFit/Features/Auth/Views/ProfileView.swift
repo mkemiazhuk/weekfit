@@ -36,7 +36,7 @@ struct ProfileView: View {
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
-            ambientBackground
+            ProfilePremiumBackground(accent: accentGreen)
 
             profileContent
                 .blur(radius: isShowingDialog ? 3 : 0)
@@ -192,34 +192,11 @@ private extension ProfileView {
     }
 
     var headerSection: some View {
-        ZStack {
-            Text(AppText.Settings.Profile.title)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-
-            HStack {
-                Button {
-                    dismiss()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(.white.opacity(0.055))
-                            .overlay {
-                                Circle()
-                                    .stroke(.white.opacity(0.075), lineWidth: 1)
-                            }
-
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.92))
-                    }
-                    .frame(width: 46, height: 46)
-                }
-                .buttonStyle(PressableScaleButtonStyle())
-                .accessibilityLabel(Text(AppText.Common.Action.close))
-
-                Spacer()
-            }
+        ProfilePremiumHeader(
+            title: WeekFitLocalizedString("settings.profile.title"),
+            accent: accentGreen
+        ) {
+            dismiss()
         }
         .padding(.top, 2)
     }
@@ -455,36 +432,16 @@ private extension ProfileView {
     }
 
     func heroCardBackground(isConnected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        isConnected ? accentGreen.opacity(0.12) : Color.white.opacity(0.052),
-                        Color.white.opacity(0.026)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .shadow(
-                color: isConnected ? accentGreen.opacity(0.048) : .clear,
-                radius: 18,
-                y: 8
+        Color.clear
+            .profilePremiumCard(
+                cornerRadius: 28,
+                glow: isConnected ? accentGreen.opacity(0.055) : .clear
             )
     }
 
     func premiumCardBackground(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.042),
-                        Color.white.opacity(0.020)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+        Color.clear
+            .profilePremiumCard(cornerRadius: cornerRadius)
     }
 
     var developerSection: some View {

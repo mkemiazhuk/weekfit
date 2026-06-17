@@ -15,7 +15,7 @@ final class CoachInputProvider: ObservableObject {
         source: String,
         refreshHealth: Bool = false
     ) async {
-        let dayActivities = Self.activities(on: selectedDate, from: plannedActivities)
+        let dayActivities = DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
 
         if refreshHealth {
             await healthManager.loadHealthData(
@@ -45,39 +45,35 @@ final class CoachInputProvider: ObservableObject {
         source: String
     ) {
         let coachActivities = allPlannedActivities ?? dayActivities
-        Self.logTomorrowPipeline(
+        let dailySnapshot = DailyStateSnapshotBuilder.build(
             selectedDate: selectedDate,
-            allActivities: coachActivities,
+            dayActivities: dayActivities,
+            allPlannedActivities: coachActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            source: source
+        )
+        Self.logTomorrowPipeline(
+            selectedDate: dailySnapshot.selectedDate,
+            allActivities: dailySnapshot.allPlannedActivities,
             source: source
         )
 
-        let metrics = DailyNutritionMetrics(
-            protein: 0,
-            carbs: 0,
-            fats: 0,
-            fiber: 0,
-            calories: 0,
-            waterLiters: 0,
-            activeCalories: healthManager.activeCalories,
-            sleepHours: healthManager.sleepHours,
-            weightKg: healthManager.weight
-        )
-
-        let profile = UserNutritionProfile.createAutomatic(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm,
-            age: healthManager.age,
-            sex: healthManager.biologicalSex == .male ? .male : .female
+        Self.logInputSeed(
+            source: source,
+            selectedDate: dailySnapshot.selectedDate,
+            dayActivities: dailySnapshot.dayActivities,
+            coachActivities: dailySnapshot.allPlannedActivities,
+            metrics: dailySnapshot.nutritionMetrics,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
         )
 
         nutritionViewModel.updateNutrition(
-            metrics: metrics,
-            profile: profile,
-            plannedActivities: dayActivities,
-            recoveryContext: CoachRecoveryContext(
-                recoveryPercent: Int(healthManager.recoveryPercent),
-                sleepHours: healthManager.sleepHours
-            ),
+            metrics: dailySnapshot.nutritionMetrics,
+            profile: dailySnapshot.profile,
+            plannedActivities: dailySnapshot.dayActivities,
+            recoveryContext: dailySnapshot.recoveryContext,
             debugSource: "CoachInputProvider.\(source)"
         )
 
@@ -89,49 +85,62 @@ final class CoachInputProvider: ObservableObject {
             return
         }
 
-        let plannedActivityGoal = dayActivities.reduce(0.0) { partial, activity in
-            partial + Double(max(0, CoachActivityContextResolverV3.activityCalories(activity)))
-        }
-        let profileActivityGoal = ActivityGoalEngine.calculate(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm,
-            age: healthManager.age,
-            sex: healthManager.biologicalSex,
-            recoveryPercent: Int(healthManager.recoveryPercent),
-            sleepHours: healthManager.sleepHours,
-            vo2Max: healthManager.cardioFitnessVO2
-        )
-        let automatedActivityGoal = max(300, plannedActivityGoal, profileActivityGoal)
-
-        let input = CoachInputSnapshot(
-            metricsSnapshotID: snapshot.id,
-            selectedDate: selectedDate,
-            now: Date(),
-            brain: snapshot.brain,
-            plannedActivities: coachActivities,
-            actualLoad: CoachActualLoadSnapshot(
-                source: .healthKitSamplesWithAppGoalEstimate,
-                activeCalories: healthManager.activeCalories,
-                exerciseMinutes: healthManager.exerciseMinutes,
-                standHours: healthManager.standHours,
-                activityGoalCalories: automatedActivityGoal,
-                activityProgress: healthManager.activeCalories / automatedActivityGoal
-            ),
-            planSource: .swiftDataPlannedActivity,
-            recoveryContext: snapshot.recoveryContext,
-            nutritionContext: snapshot.nutritionContext,
+        let input = dailySnapshot.makeCoachInput(
+            from: snapshot,
             source: "CoachInputProvider.\(source)"
         )
 
         coachCoordinator.updateInput(input)
-        _ = coachCoordinator.recomputeIfNeeded(reason: source)
+        let nextState = coachCoordinator.recomputeIfNeeded(reason: source)
+        Self.logDecisionRefresh(
+            source: source,
+            input: input,
+            state: nextState
+        )
         lastInput = input
         lastRefreshReason = source
     }
 
     static func activities(on date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
-        let calendar = Calendar.current
-        return activities.filter { calendar.isDate($0.date, inSameDayAs: date) }
+        DailyStateSnapshotBuilder.activities(on: date, from: activities)
+    }
+
+    private static func logInputSeed(
+        source: String,
+        selectedDate: Date,
+        dayActivities: [PlannedActivity],
+        coachActivities: [PlannedActivity],
+        metrics: DailyNutritionMetrics,
+        healthManager: HealthManager,
+        nutritionViewModel: NutritionViewModel
+    ) {
+        #if DEBUG
+        let current = nutritionViewModel.currentMetrics
+        let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
+        CoachLogger.trace(
+            "[CoachInputTrace]",
+            """
+            source=\(source) selectedDate=\(selectedDate) dayActivities=\(dayActivities.count) coachActivities=\(coachActivities.count) seedCalories=\(String(format: "%.0f", metrics.calories)) seedProtein=\(String(format: "%.0f", metrics.protein)) seedCarbs=\(String(format: "%.0f", metrics.carbs)) seedWater=\(String(format: "%.2f", metrics.waterLiters)) healthCalories=\(String(format: "%.0f", healthManager.calories)) healthWater=\(String(format: "%.2f", healthManager.waterLiters)) currentCalories=\(String(format: "%.0f", current?.calories ?? -1.0)) currentWater=\(String(format: "%.2f", current?.waterLiters ?? -1.0)) coachCalories=\(String(format: "%.0f", coach?.caloriesCurrent ?? -1.0)) coachWater=\(String(format: "%.2f", coach?.waterCurrent ?? -1.0))
+            """
+        )
+        #endif
+    }
+
+    private static func logDecisionRefresh(
+        source: String,
+        input: CoachInputSnapshot,
+        state: CoachState
+    ) {
+        #if DEBUG
+        let nutrition = input.nutritionContext
+        let model = input.dayPriorityModel
+        CoachLogger.trace(
+            "[CoachDecisionTrace]",
+            """
+            source=\(source) stateID=\(state.id) selectedDate=\(input.selectedDate) now=\(input.now) priority=\(state.guidance?.priority.priority) focus=\(state.guidance?.priority.focus) owner=\(state.finalStory?.owner) dayGoal=\(model.dayGoal.rawValue) tomorrowDemand=\(model.tomorrowDemand.rawValue) activeCalories=\(String(format: "%.0f", input.actualLoad.activeCalories)) nutritionCalories=\(String(format: "%.0f", nutrition?.caloriesCurrent ?? -1.0)) nutritionWater=\(String(format: "%.2f", nutrition?.waterCurrent ?? -1.0)) activities=\(input.plannedActivities.count) sourceSnapshot=\(input.metricsSnapshotID?.uuidString ?? "nil")
+            """
+        )
+        #endif
     }
 
     private static func logTomorrowPipeline(
@@ -158,7 +167,7 @@ final class CoachInputProvider: ObservableObject {
             : CoachTomorrowPlanContext(dayContext: tomorrowContext)
         let tomorrowDemand = CoachTomorrowDemandResolver.resolve(tomorrowContext: tomorrowPlanContext)
 
-        CoachLogger.verbose(
+        CoachLogger.trace(
             "[CoachTomorrowPipelineDebug]",
             """
             source=\(source) rawTomorrowActivities=\(debugActivities(rawTomorrowActivities)) plannedActivitiesTomorrow=\(debugActivities(plannedActivitiesTomorrow)) filteredTomorrowActivities=\(debugActivities(filteredTomorrowActivities)) tomorrowDemand=\(tomorrowDemand.level.rawValue) upcomingTrainingStress=\(tomorrowContext.upcomingTrainingStressScore) selectedTomorrowProtectionTarget=\(tomorrowDemand.primaryTrainingActivity.map(debugActivity) ?? "nil")

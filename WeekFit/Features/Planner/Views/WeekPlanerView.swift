@@ -13,6 +13,9 @@ struct WeekPlannerView: View {
     @ObservedObject var authViewModel: AuthViewModel
     
     @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
+    @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var healthManager: HealthManager
+    @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
@@ -105,7 +108,11 @@ struct WeekPlannerView: View {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(healthManager)
+            .environmentObject(nutritionViewModel)
+            .environmentObject(appSession)
             .environmentObject(languageManager)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .alert(
             WeekFitLocalizedString("planner.delete.logged.title"),
@@ -136,6 +143,7 @@ struct WeekPlannerView: View {
             plannerConfirmationSheet(activity)
                 .presentationDetents([.fraction(0.32)])
                 .presentationDragIndicator(.visible)
+                .weekFitSheetChrome(cornerRadius: 30)
         }
     }
     
@@ -1697,7 +1705,7 @@ private struct DynamicPlanRow: View {
           }
 
           if title.contains("tea") {
-              return "teapot.fill"
+              return "cup.and.saucer.fill"
           }
 
           if title.contains("water")

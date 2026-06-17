@@ -199,7 +199,7 @@ private struct CoachDailyOverviewNarrativeCopy {
     }
 
     static var eveningTitle: String {
-        isRussian ? "Приоритет — сон" : "Sleep is the priority"
+        isRussian ? "Защитите сон сегодня" : "Protect sleep tonight"
     }
 
     static var eveningRead: String {
@@ -210,8 +210,8 @@ private struct CoachDailyOverviewNarrativeCopy {
 
     static var eveningRecommendation: String {
         isRussian
-            ? "Завершайте день спокойно и готовьтесь ко сну."
-            : "Close the day calmly and start preparing for sleep."
+            ? "Закройте день спокойно и без лишних задач."
+            : "Close the day calmly without adding extra tasks."
     }
 
     static var eveningRisk: String {
@@ -916,12 +916,12 @@ private extension CoachScreenStory {
             return action(
                 .cooldown,
                 title: actionIntentCopy(
-                    english: "Downshift",
-                    russian: "Сбавьте темп"
+                    english: "Do not force it",
+                    russian: "Не форсируйте"
                 ),
                 subtitle: actionIntentCopy(
-                    english: "Make the next block easier to recover from",
-                    russian: "Так следующий блок будет легче усвоить"
+                    english: "Keep it steady and adjust from how you feel",
+                    russian: "Держите ровно и корректируйте по самочувствию"
                 )
             )
         case .keepRecoveryEasy:
@@ -1865,7 +1865,7 @@ private extension CoachDecisionPriority {
         case .trainingQuality:
             return "Качество следующей тренировки зависит от спокойного старта, воды, питания и контроля усилия."
         case .safety:
-            return "Сигналы сегодня просят более низкий потолок и осторожный следующий шаг."
+            return "Сигналы сегодня просят более спокойный темп и осторожный следующий шаг."
         }
     }
 
@@ -1891,7 +1891,7 @@ private extension CoachDecisionPriority {
         case .trainingQuality:
             return "Не гонитесь за цифрами в первые минуты или когда техника начинает падать."
         case .safety:
-            return "Не превращайте предупреждающий сигнал в проверку силы воли."
+            return "Не делайте предупреждающий сигнал проверкой силы воли."
         }
     }
 
@@ -1915,7 +1915,7 @@ private extension CoachDecisionPriority {
         case .planOptimization:
             return "Если готовность не улучшится, сделайте тренировку легче или перенесите интенсивность."
         case .trainingQuality:
-            return "Пусть разминка задаст реальный потолок нагрузки."
+            return "Пусть разминка задаст реальный темп нагрузки."
         case .safety:
             return "Снизьте нагрузку сейчас и вернитесь к плану, когда сигналы станут надежнее."
         }
@@ -1928,7 +1928,7 @@ private extension CoachDecisionPriority {
         case .planOptimization:
             return "Эта активность должна поддержать план, а не добавить лишнюю усталость."
         case .trainingQuality:
-            return "Первые минуты важнее цели: пусть дыхание, темп и самочувствие задают потолок."
+            return "Первые минуты важнее цели: пусть дыхание, темп и самочувствие задают ритм."
         case .safety:
             return "Используйте текущую активность как сигнал для снижения нагрузки, если тело просит."
         }
@@ -2036,7 +2036,7 @@ private extension CoachSupportActionTypeV3 {
         case .keepDigestionLight:
             return "Не добавляйте пищеварительный стресс"
         case .controlIntensity:
-            return "Пусть готовность задает потолок нагрузки"
+            return "Пусть готовность задаёт темп нагрузки"
         case .startRecoveryNutrition, .recoveryMeal:
             return "Дайте организму восстановиться и сохранить качество"
         case .stayConsistent:
@@ -2428,7 +2428,7 @@ private struct ActiveSessionCoachingContext {
         }
 
         if runningNeedsCaution {
-            return isRussian ? "Снизьте темп бега" : "Keep this run easy"
+            return isRussian ? "Не форсируйте бег" : "Keep this run easy"
         }
 
         if isLateNight {
@@ -2451,7 +2451,7 @@ private struct ActiveSessionCoachingContext {
 
         if runningNeedsCaution {
             return isRussian
-                ? "Бег уже идет. Восстановление влияет на потолок усилия, поэтому сейчас важнее легкий темп и запас."
+                ? "Бег уже идет. Восстановление влияет на темп, поэтому сейчас важнее легкий ход и запас."
                 : "The run is already live. Recovery is shaping the effort ceiling, so easy pacing and reserve matter most now."
         }
 
@@ -2515,7 +2515,7 @@ private struct ActiveSessionCoachingContext {
 
         if runningNeedsCaution {
             return isRussian
-                ? "Не превращайте этот бег в дополнительную нагрузку."
+                ? "Не добавляйте лишнюю нагрузку в этот бег."
                 : "Do not turn this run into extra training load."
         }
 
@@ -2555,7 +2555,7 @@ private struct ActiveSessionCoachingContext {
 
         if runningNeedsCaution {
             return isRussian
-                ? "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на потолок усилия, но не заменяет текущую тренировку."
+                ? "Сегодня уже накопилась нагрузка, поэтому восстановление влияет на темп, но не заменяет текущую тренировку."
                 : "Load has already accumulated today, so recovery affects the effort ceiling but does not replace the current workout."
         }
 
@@ -3616,7 +3616,7 @@ private extension HumanCoachDecisionEngine {
         case .cooldown, .mobilityPrep, .lightRecoveryMovement:
             return CoachSupportingAction(type: type, icon: "figure.cooldown", title: WeekFitLocalizedString("Downshift"), subtitle: WeekFitLocalizedString("Make the next block easier to recover from"), color: CoachPalette.recovery)
         case .stayConsistent:
-            return CoachSupportingAction(type: type, icon: "checkmark.circle.fill", title: WeekFitLocalizedString("Keep the routine"), subtitle: WeekFitLocalizedString("No extra fix is needed"), color: CoachPalette.stable)
+            return CoachSupportingAction(type: type, icon: "checkmark.circle.fill", title: WeekFitLocalizedString("Keep the routine"), subtitle: WeekFitLocalizedString("Do not add a new correction today"), color: CoachPalette.stable)
         case .breathingReset, .downshiftNervousSystem:
             return CoachSupportingAction(type: type, icon: "wind", title: WeekFitLocalizedString("Settle down"), subtitle: WeekFitLocalizedString("Lower stress before the next demand"), color: CoachPalette.recovery)
         case .keepDigestionLight:
@@ -3820,6 +3820,10 @@ private struct CoachSituationStory {
             return adjustPlannedTraining(i)
         }
 
+        if i.heatHydrationNeedsAttention {
+            return hydrateAroundHeat(i)
+        }
+
         if i.shouldPrepareForTrainingAhead {
             return prepareForTraining(i)
         }
@@ -3830,10 +3834,6 @@ private struct CoachSituationStory {
 
         if i.shouldLeadWithRecoveryDay {
             return recoveryDay(i)
-        }
-
-        if i.heatHydrationNeedsAttention {
-            return hydrateAroundHeat(i)
         }
 
         if i.shouldLeadWithHydrationSetup(legacyPriority) {
@@ -4316,6 +4316,11 @@ private extension CoachNarrativePlan {
             intents.append(intent)
         }
 
+        if i.heatHydrationNeedsAttention,
+           i.activeTraining == nil {
+            return Array(heatPreparationActionIntents(for: i).prefix(3))
+        }
+
         if legacyPriority.focus == .eveningWindDown {
             if story.kind == .protectTomorrow || legacyPriority.tomorrowProtection.active {
                 append(.protectSleep)
@@ -4435,15 +4440,20 @@ private extension CoachNarrativePlan {
             append(.shortenSession)
 
         case .recoverFromLoad:
-            if recoveryNutritionStillNeedsAction(context: i.context) {
+            let recoveryContributorDebug = CoachRecoveryContributorDebug.resolve(context: i.context)
+            let fuelingIsActive = recoveryContributorDebug.activeContributors.contains(.underfueled) ||
+                recoveryContributorDebug.activeContributors.contains(.proteinBehind)
+            let hydrationNeedsAction = recoveryContributorDebug.activeContributors.contains(.hydrationBehind) ||
+                recoveryHydrationStillNeedsAction(context: i.context)
+            if fuelingIsActive {
                 append(.objectiveAction(type: .recoveryMeal, title: "Eat a normal meal with carbs and protein", subtitle: "Make the ride easier to absorb"))
             }
-            if recoveryHydrationStillNeedsAction(context: i.context) {
-                append(.objectiveAction(type: .rehydrateGradually, title: "Drink 300-500 ml over the next hour", subtitle: "Then sip to comfort"))
+            if hydrationNeedsAction {
+                append(.objectiveAction(type: .rehydrateGradually, title: "Drink 300-500 ml fluid", subtitle: "Over the next hour, then sip to comfort"))
             }
             if noRemainingTrainingToday(context: i.context) {
                 append(.keepEveningCalm)
-                if !recoveryHydrationStillNeedsAction(context: i.context) {
+                if !hydrationNeedsAction {
                     append(.windDownNow)
                 }
                 append(.prepareForSleep)

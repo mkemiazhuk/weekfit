@@ -87,13 +87,26 @@ struct RecoveryDetailsView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 13) {
+        HStack(alignment: .center, spacing: 13) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(WeekFitLocalizedString("recovery.details.title"))
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
+
+                Text(recoveryDetailsDateTitle)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.56))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .bold))
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.94))
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(Color.white.opacity(0.075)))
@@ -102,20 +115,7 @@ struct RecoveryDetailsView: View {
                     }
             }
             .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString("recovery.details.title"))
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
-
-                Text(recoveryDetailsDateTitle)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
-            }
-
-            Spacer()
+            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -160,16 +160,16 @@ private struct RecoveryHeroCard: View {
                 Text(statusText)
                     .font(.system(size: RecoveryTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
                 Text(snapshot.insightText)
                     .font(.system(size: RecoveryTypography.heroText, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(2)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 0)
         }
@@ -360,7 +360,7 @@ private struct SleepDetailsCard: View {
         VStack(alignment: .leading, spacing: 13) {
             SectionLabel(WeekFitLocalizedString("recovery.details.section.sleepDetails"))
 
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.asleep"), value: RecoveryFormat.duration(snapshot.asleepMinutes), icon: "moon.zzz.fill", color: RecoveryStyle.recoveryColor)
                 compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.inBed"), value: RecoveryFormat.duration(snapshot.timeInBedMinutes), icon: "bed.double.fill", color: RecoveryStyle.purple)
                 compactSleepMetric(title: WeekFitLocalizedString("recovery.details.sleep.awake"), value: RecoveryFormat.duration(snapshot.awakeMinutes), icon: "eye.fill", color: RecoveryStyle.amber)
@@ -387,7 +387,7 @@ private struct SleepDetailsCard: View {
         icon: String,
         color: Color
     ) -> some View {
-        HStack(spacing: 7) {
+        VStack(spacing: 6) {
             ZStack {
                 Circle()
                     .fill(color.opacity(0.14))
@@ -398,11 +398,13 @@ private struct SleepDetailsCard: View {
                     .foregroundStyle(color)
             }
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 2) {
                 Text(title)
-                    .font(.system(size: RecoveryTypography.metricSecondary, weight: .medium, design: .rounded))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.50))
-                    .lineLimit(1)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
 
                 Text(value)
                     .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
@@ -412,7 +414,13 @@ private struct SleepDetailsCard: View {
                     .monospacedDigit()
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.026))
+        }
     }
 }
 

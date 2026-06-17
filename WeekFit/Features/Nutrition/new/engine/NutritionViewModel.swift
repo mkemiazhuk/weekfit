@@ -79,12 +79,19 @@ final class NutritionViewModel: ObservableObject {
         let hasLoggedMeals = plannedActivities.contains { $0.type.lowercased() == "meal" && $0.isCompleted }
         
         let completedMeals = CoachCanonicalDayState.completedMeals(from: plannedActivities)
+        let mealCalories = Double(completedMeals.reduce(0) { $0 + $1.calories })
+        let mealProtein = Double(completedMeals.reduce(0) { $0 + $1.protein })
+        let mealCarbs = Double(completedMeals.reduce(0) { $0 + $1.carbs })
+        let mealFats = Double(completedMeals.reduce(0) { $0 + $1.fats })
+        let mealFiber = Double(completedMeals.reduce(0) { $0 + $1.fiber })
 
-        updatedMetrics.calories = Double(completedMeals.reduce(0) { $0 + $1.calories })
-        updatedMetrics.protein = Double(completedMeals.reduce(0) { $0 + $1.protein })
-        updatedMetrics.carbs = Double(completedMeals.reduce(0) { $0 + $1.carbs })
-        updatedMetrics.fats = Double(completedMeals.reduce(0) { $0 + $1.fats })
-        updatedMetrics.fiber = Double(completedMeals.reduce(0) { $0 + $1.fiber })
+        if !completedMeals.isEmpty {
+            updatedMetrics.calories = max(updatedMetrics.calories, mealCalories)
+            updatedMetrics.protein = max(updatedMetrics.protein, mealProtein)
+            updatedMetrics.carbs = max(updatedMetrics.carbs, mealCarbs)
+            updatedMetrics.fats = max(updatedMetrics.fats, mealFats)
+            updatedMetrics.fiber = max(updatedMetrics.fiber, mealFiber)
+        }
         
         if isEarlyMorning && !hasLoggedMeals {
             updatedMetrics.calories = 0.0
@@ -95,7 +102,8 @@ final class NutritionViewModel: ObservableObject {
 //            print("🌙 [Circadian Shield] Deep night block activated. Enforcing pristine zeros for the new calendar day.")
         } else {
             let waterLogsCount = plannedActivities.filter { $0.imageName == "hydration" && $0.isCompleted }.count
-            updatedMetrics.waterLiters = (Double(waterLogsCount) * 0.25) + manualWaterLiters
+            let loggedWaterLiters = (Double(waterLogsCount) * 0.25) + manualWaterLiters
+            updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
         }
 
         let automaticProfile = UserNutritionProfile.createAutomatic(
@@ -120,9 +128,8 @@ final class NutritionViewModel: ObservableObject {
         )
 
         guard nextSignature != lastNutritionStateSignature else {
-            CoachLogger.compactThrottled(
+            CoachLogger.trace(
                 "[CoachRefreshSkipped]",
-                key: "nutrition.unchanged.\(debugSource)",
                 "Coach refresh skipped: unchanged fingerprint source=NutritionViewModel.updateNutrition.\(debugSource)"
             )
             return
@@ -159,6 +166,10 @@ final class NutritionViewModel: ObservableObject {
         CoachRefreshDebug.log(
             "[CoachRefreshDebug]",
             "NutritionViewModel.updateNutrition source=\(debugSource) snapshot=\(nextSnapshot.id) activities=\(plannedActivities.count) uniqueActivities=\(uniqueActivityIDs.count) duplicateActivities=\(duplicateActivitiesCount) hydrationActivities=\(hydrationActivitiesCount) meals=\(completedMeals.count) earlyMorning=\(isEarlyMorning) manualWater=\(String(format: "%.2f", manualWaterLiters)) \(CoachRefreshDebug.hydrationSummary(current: updatedMetrics.waterLiters, goal: waterGoal)) recoveryPercent=\(resolvedRecoveryContext.recoveryPercent) sleepHours=\(String(format: "%.2f", resolvedRecoveryContext.sleepHours)) coachStateRefreshID \(CoachRefreshDebug.uuidChange(oldValue: oldRefreshID, newValue: newRefreshID))"
+        )
+        CoachRefreshDebug.log(
+            "[TodayNutritionInputs]",
+            "source=NutritionViewModel.updateNutrition.\(debugSource) incomingCalories=\(String(format: "%.0f", metrics.calories)) incomingProtein=\(String(format: "%.0f", metrics.protein)) incomingCarbs=\(String(format: "%.0f", metrics.carbs)) mealCalories=\(String(format: "%.0f", mealCalories)) mealProtein=\(String(format: "%.0f", mealProtein)) mealCarbs=\(String(format: "%.0f", mealCarbs)) finalCalories=\(String(format: "%.0f", updatedMetrics.calories)) finalProtein=\(String(format: "%.0f", updatedMetrics.protein)) finalCarbs=\(String(format: "%.0f", updatedMetrics.carbs)) activeCalories=\(String(format: "%.0f", updatedMetrics.activeCalories)) sleepHours=\(String(format: "%.2f", updatedMetrics.sleepHours))"
         )
         #endif
         coachStateRefreshID = newRefreshID
@@ -345,7 +356,7 @@ final class NutritionViewModel: ObservableObject {
             decision: adjustedDecision
         )
 
-        CoachLogger.compact(
+        CoachLogger.trace(
             "[BrainStateMappingDebug]",
             """
             rawRecovery=\(recoveryContext.recoveryPercent) sleepHours=\(String(format: "%.2f", recoveryContext.sleepHours)) fatigueScore=\(String(format: "%.1f", mapping.fatigueScore)) completedTrainingStress=\(mapping.completedTrainingStress) recent7DayTrainingLoad=\(mapping.recent7DayTrainingLoad) mappedBrainSleep=\(mapping.sleep) mappedBrainRecovery=\(mapping.recovery) mappedBrainReadiness=\(mapping.readiness) mappingReasons=\(mapping.reasons)

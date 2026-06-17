@@ -6,6 +6,16 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
     private let now = CoachTestClock.reference
     private let selectedDate = CoachTestClock.reference
 
+    override func setUp() {
+        super.setUp()
+        WeekFitSetCurrentLanguage(.english)
+    }
+
+    override func tearDown() {
+        WeekFitSetCurrentLanguage(.english)
+        super.tearDown()
+    }
+
     func testSupportSignalDoesNotDuplicateTitleAndAction() {
         let signal = CoachSupportSignal(
             kind: .sleep,

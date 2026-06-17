@@ -6,6 +6,16 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
     private let now = CoachTestClock.reference
     private let selectedDate = CoachTestClock.reference
 
+    override func setUp() {
+        super.setUp()
+        WeekFitSetCurrentLanguage(.english)
+    }
+
+    override func tearDown() {
+        WeekFitSetCurrentLanguage(.english)
+        super.tearDown()
+    }
+
     func testRussianEveningDailyOverviewUsesNarrativePlanOnly() throws {
         WeekFitSetCurrentLanguage(.russian)
         defer { WeekFitSetCurrentLanguage(.english) }
@@ -27,8 +37,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let plan = try XCTUnwrap(output.narrativePlan)
         let story = try XCTUnwrap(output.screenStory)
 
-        XCTAssertEqual(story.title, "Приоритет — сон")
-        XCTAssertEqual(story.myRecommendation, "Завершайте день спокойно и готовьтесь ко сну.")
+        XCTAssertEqual(story.title, "Защитите сон сегодня")
+        XCTAssertEqual(story.myRecommendation, "Закройте день спокойно и без лишних задач.")
         XCTAssertTrue([
             CoachNarrativeBadgeIntent.windDown.label,
             CoachNarrativeBadgeIntent.protectSleep.label
@@ -68,9 +78,9 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let plan = try XCTUnwrap(output.narrativePlan)
         let story = try XCTUnwrap(output.screenStory)
 
-        XCTAssertEqual(story.title, "Sleep is the priority")
+        XCTAssertEqual(story.title, "Protect sleep tonight")
         XCTAssertEqual(story.myRead, "The day is steady and does not need extra effort.")
-        XCTAssertEqual(story.myRecommendation, "Close the day calmly and start preparing for sleep.")
+        XCTAssertEqual(story.myRecommendation, "Close the day calmly without adding extra tasks.")
         XCTAssertEqual(plan.actionIntents, [.prepareForSleep, .windDownNow, .keepEveningCalm])
         XCTAssertEqual(story.primaryActions.map(\.title), [
             "Prepare for sleep",
@@ -3425,6 +3435,8 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
     }
 
     func testActiveSessionScreenStoryPreservesResolverActivitySpecificTitle() throws {
+        WeekFitSetCurrentLanguage(.english)
+
         let upperBody = workout(title: "Upper Body", minutesFromNow: -10, duration: 45, completed: false)
         upperBody.source = "today"
 

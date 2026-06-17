@@ -77,6 +77,8 @@ struct MealsView: View {
     let nutritionResult: NutritionResult?
 
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var healthManager: HealthManager
+    @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     // MARK: - UX-Контексты логирования
@@ -218,6 +220,7 @@ struct MealsView: View {
                     selectedMeal = nil
                 }
             )
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(item: $selectedFood) { food in
             CustomFoodDetailsView(
@@ -233,15 +236,19 @@ struct MealsView: View {
                     onMealLogged?()
                 }
             )
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
                 ProfileView()
             }
+            .environmentObject(healthManager)
+            .environmentObject(nutritionViewModel)
+            .environmentObject(appSession)
             .environmentObject(languageManager)
             .presentationDetents([.large])
-            .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(isPresented: $showCreationChooser) {
             MealCreationChooserSheet { route in
@@ -253,9 +260,8 @@ struct MealsView: View {
                 }
             }
             .presentationDetents([.height(270)])
-            .presentationBackground(WeekFitTheme.backgroundColor)
-            .presentationCornerRadius(36)
             .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(item: $creationRoute) { route in
             switch route {
@@ -264,16 +270,16 @@ struct MealsView: View {
                     saveMealToLibrary(newMeal)
                 }
                 .presentationDetents([.large])
-                .presentationCornerRadius(36)
                 .presentationDragIndicator(.hidden)
+                .weekFitSheetChrome(cornerRadius: 36)
 
             case .manualFood:
                 CustomMealBuilderView(existingMeals: customMeals) { newMeal in
                     saveMealToLibrary(newMeal)
                 }
                 .presentationDetents([.large])
-                .presentationCornerRadius(36)
                 .presentationDragIndicator(.hidden)
+                .weekFitSheetChrome(cornerRadius: 36)
             }
         }
     }

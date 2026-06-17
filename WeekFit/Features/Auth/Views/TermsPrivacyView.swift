@@ -17,6 +17,7 @@ struct TermsPrivacyView: View {
         ZStack {
             background
                 .ignoresSafeArea()
+            ProfilePremiumBackground(accent: accentGreen)
 
             VStack(spacing: 0) {
                 fixedHeader
@@ -52,43 +53,17 @@ private extension TermsPrivacyView {
                 .frame(height: 1)
         }
         .background(
-            Color.black
+            Color.black.opacity(0.74)
                 .ignoresSafeArea(edges: .top)
         )
     }
 
     var headerSection: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.065))
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.08), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                }
-                .frame(width: 48, height: 48)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.back))
-
-            Spacer()
-
-            Text(localizedLegalCopy("Terms & Privacy"))
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 48, height: 48)
+        ProfilePremiumHeader(
+            title: localizedLegalCopy("Terms & Privacy"),
+            accent: accentGreen
+        ) {
+            dismiss()
         }
     }
 
@@ -225,14 +200,7 @@ private extension TermsPrivacyView {
             footerLink
         }
         .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(.white.opacity(0.04), lineWidth: 1)
-                }
-        }
+        .profilePremiumCard(cornerRadius: 22, glow: accentGreen.opacity(0.025))
     }
 
     var topIcon: some View {
@@ -271,11 +239,13 @@ private extension TermsPrivacyView {
             Text(localizedLegalCopy("Your data stays in your control"))
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(localizedLegalCopy("WeekFit uses the health, activity, nutrition, recovery, and planner data you allow or enter to make the app more useful. You can change Apple Health permissions anytime in Apple Health or iOS Settings."))
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(textSecondary)
                 .lineSpacing(2.5)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(localizedLegalCopy("Last updated: May 2026"))
                 .font(.system(size: 12.5, weight: .semibold))
@@ -294,6 +264,7 @@ private extension TermsPrivacyView {
             Text(localizedLegalCopy(title))
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(paragraphs, id: \.self) { paragraph in
@@ -301,6 +272,7 @@ private extension TermsPrivacyView {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(textSecondary)
                         .lineSpacing(2.5)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -323,6 +295,7 @@ private extension TermsPrivacyView {
                 .font(.system(size: 14.5, weight: .semibold))
                 .foregroundStyle(accentGreen.opacity(0.82))
                 .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 2)
     }

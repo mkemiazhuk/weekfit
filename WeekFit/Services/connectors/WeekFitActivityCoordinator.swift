@@ -16,6 +16,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
     private let healthSync = HealthKitWorkoutSyncService.shared
 
     private var cancellables = Set<AnyCancellable>()
+    private var reconciledWorkoutUUIDs = Set<String>()
 
     private init() {
         bind()
@@ -54,7 +55,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
         let timeDistance = abs(activity.date.timeIntervalSince(liveWorkout.startedAt))
         guard timeDistance <= 2 * 60 * 60 else { return false }
 
-        return matches(activity: activity, workoutType: liveWorkout.workoutType)
+        return ActivityReconciler.matches(activity: activity, workoutType: liveWorkout.workoutType)
     }
 
     func resolvedStatus(
@@ -77,50 +78,6 @@ final class WeekFitActivityCoordinator: ObservableObject {
         return sameType && closeStart
     }
 
-    private func matches(
-        activity: PlannedActivity,
-        workoutType: HKWorkoutActivityType
-    ) -> Bool {
-        let title = activity.title.lowercased()
-
-        switch workoutType {
-        case .cycling:
-            return title.contains("cycle")
-                || title.contains("cycling")
-                || title.contains("bike")
-                || title.contains("ride")
-                || title.contains("вел")
-                || title.contains("вело")
-
-        case .running:
-            return title.contains("run")
-                || title.contains("running")
-                || title.contains("бег")
-
-        case .walking:
-            return title.contains("walk")
-                || title.contains("walking")
-                || title.contains("ходь")
-
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining,
-             .highIntensityIntervalTraining,
-             .crossTraining:
-            return title.contains("workout")
-                || title.contains("strength")
-                || title.contains("gym")
-                || title.contains("training")
-                || title.contains("трен")
-
-        case .yoga:
-            return title.contains("yoga")
-                || title.contains("йога")
-
-        default:
-            return false
-        }
-    }
-    
     func reconcileCompletedWorkouts(
         with activities: [PlannedActivity],
         modelContext: ModelContext
@@ -145,9 +102,14 @@ final class WeekFitActivityCoordinator: ObservableObject {
     ) {
         let workoutUUID = workout.uuid.uuidString
 
+        guard !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+            return
+        }
+
         guard !activities.contains(where: {
             $0.healthKitWorkoutUUID == workoutUUID || $0.id == workoutUUID
         }) else {
+            reconciledWorkoutUUIDs.insert(workoutUUID)
             return
         }
 
@@ -159,14 +121,13 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
             activity.isCompleted = true
             activity.isSkipped = false
-            activity.source = "appleWorkout"
             activity.healthKitWorkoutUUID = workoutUUID
-            activity.date = workout.startDate
-            activity.durationMinutes = actualMinutes
             activity.actualDurationMinutes = actualMinutes
         } else {
             let imported = ActivityReconciler.importedActivity(for: workout)
             modelContext.insert(imported)
         }
+
+        reconciledWorkoutUUIDs.insert(workoutUUID)
     }
 }
