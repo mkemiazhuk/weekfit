@@ -57,6 +57,8 @@ struct CoachFinalStoryRenderModel {
     let supportActions: [CoachSupportActionV3]
     let whyRows: [CoachFinalStoryRenderedReason]
     let supportSignals: [CoachFinalStoryRenderedSupportSignal]
+    let confidence: Double
+    let dataReadinessState: CoachFinalStoryDataReadinessState
     /// Assessment line for the hero card; empty when Why already covers context.
     let displaySubtitle: String
     /// Avoidance line for the hero card; empty when it repeats recommendation or Why.
@@ -183,6 +185,8 @@ struct CoachFinalStoryRenderModel {
         self.supportActions = Array(filteredActions.prefix(limits.actions))
         self.whyRows = whyRows
         self.supportSignals = CoachFinalStoryRenderModel.visibleSupportSignals(for: story)
+        self.confidence = story.confidence
+        self.dataReadinessState = story.dataReadinessState
 
         let resolvedDisplaySubtitle: String
         let readCandidate = whatHappened.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -740,5 +744,27 @@ extension CoachFinalStoryRenderModel {
             normalized.contains("supports this story") ||
             normalized.contains("supports this conclusion") ||
             normalized.contains("is part of the decision")
+    }
+}
+
+extension CoachFinalStoryRenderModel {
+    var todayDoNowLine: String {
+        let recommendation = primaryRecommendation.trimmingCharacters(in: .whitespacesAndNewlines)
+        return recommendation.isEmpty ? whatToDoNext : recommendation
+    }
+
+    var todayAvoidLine: String {
+        let avoid = displayAvoid.trimmingCharacters(in: .whitespacesAndNewlines)
+        return avoid.isEmpty ? avoidRecommendation : avoid
+    }
+
+    var todayConfidenceLine: String {
+        if dataReadinessState == .settling {
+            return WeekFitLocalizedString("today.coach.card.limitedConfidence")
+        }
+        if confidence >= 0.75 {
+            return WeekFitLocalizedString("today.coach.card.highConfidence")
+        }
+        return WeekFitLocalizedString("today.coach.card.moderateConfidence")
     }
 }

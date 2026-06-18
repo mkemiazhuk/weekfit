@@ -840,45 +840,11 @@ struct CoachState: Identifiable {
     }
 
     private static func v4FinalGuardIsRecoveryTierOnly(_ activity: PlannedActivity) -> Bool {
-        let tokens = [
-            activity.type,
-            activity.title,
-            activity.icon,
-            activity.imageName
-        ]
-        .joined(separator: " ")
-        .lowercased()
-
-        return tokens.contains("walk") ||
-            tokens.contains("walking") ||
-            tokens.contains("stretch") ||
-            tokens.contains("yoga") ||
-            tokens.contains("breath")
+        CoachActivityClassification.isRecoveryTier(activity)
     }
 
     private static func v4FinalGuardIsSignificantWorkout(_ activity: PlannedActivity) -> Bool {
-        guard !v4FinalGuardIsRecoveryTierOnly(activity) else { return false }
-        let tokens = [
-            activity.type,
-            activity.title,
-            activity.icon,
-            activity.imageName
-        ]
-        .joined(separator: " ")
-        .lowercased()
-
-        return tokens.contains("cycling") ||
-            tokens.contains("bicycle") ||
-            tokens.contains("running") ||
-            tokens.contains("run") ||
-            tokens.contains("tennis") ||
-            tokens.contains("squash") ||
-            tokens.contains("upper body") ||
-            tokens.contains("lower body") ||
-            tokens.contains("full body") ||
-            tokens.contains("core") ||
-            tokens.contains("strength") ||
-            tokens.contains("workout")
+        CoachActivityClassification.isSignificantWorkout(activity)
     }
 
     private static func logV4FinalGuardEvaluated(
