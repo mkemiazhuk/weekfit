@@ -1,11 +1,13 @@
 import Foundation
 import HealthKit
+import OSLog
+import WeekFitPlanner
 
-enum ActivityReconciler {
-    static let pastMatchingWindow: TimeInterval = 60 * 60
-    static let startProximityWindow: TimeInterval = 45 * 60
+public enum ActivityReconciler {
+    public static let pastMatchingWindow: TimeInterval = 60 * 60
+    public static let startProximityWindow: TimeInterval = 45 * 60
 
-    static func bestMatch(
+    public static func bestMatch(
         for workout: HKWorkout,
         in activities: [PlannedActivity],
         calendar: Calendar = .current
@@ -57,7 +59,7 @@ enum ActivityReconciler {
         return selected
     }
 
-    static func importedActivity(for workout: HKWorkout) -> PlannedActivity {
+    public static func importedActivity(for workout: HKWorkout) -> PlannedActivity {
         let imported = PlannedActivity(
             healthKitWorkoutUUID: workout.uuid.uuidString,
             date: workout.startDate,
@@ -77,7 +79,7 @@ enum ActivityReconciler {
         return imported
     }
 
-    static func applySyncedWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
+    public static func applySyncedWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
         let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
 
         activity.date = workout.startDate
@@ -92,7 +94,7 @@ enum ActivityReconciler {
         activity.icon = icon(for: workout.workoutActivityType)
     }
 
-    static func title(for type: HKWorkoutActivityType) -> String {
+    public static func title(for type: HKWorkoutActivityType) -> String {
         switch type {
         case .cycling:
             return "Cycling"
@@ -124,7 +126,7 @@ enum ActivityReconciler {
         }
     }
 
-    static func icon(for type: HKWorkoutActivityType) -> String {
+    public static func icon(for type: HKWorkoutActivityType) -> String {
         switch type {
         case .cycling:
             return "bicycle"
@@ -156,7 +158,7 @@ enum ActivityReconciler {
         }
     }
 
-    static func matches(
+    public static func matches(
         activity: PlannedActivity,
         workoutType: HKWorkoutActivityType
     ) -> Bool {
@@ -404,6 +406,8 @@ enum ActivityReconciler {
 }
 
 enum ActivityReconciliationDebug {
+    private static let logger = Logger(subsystem: "WeekFit", category: "ActivityReconciliation")
+
     static func log(
         syncedActivityTitle: String,
         syncedStart: Date,
@@ -414,9 +418,10 @@ enum ActivityReconciliationDebug {
         ignoredFutureCandidates: [String],
         reason: String
     ) {
-        CoachLogger.verbose(
-            "[ActivityReconciliationDebug]",
-            "syncedActivityTitle=\"\(syncedActivityTitle)\" syncedStart=\(syncedStart) syncedEnd=\(syncedEnd) plannedCandidatesBeforeEnd=\(plannedCandidatesBeforeEnd) plannedCandidatesAfterEnd=\(plannedCandidatesAfterEnd) selectedMatch=\(selectedMatch ?? "nil") ignoredFutureCandidates=\(ignoredFutureCandidates) reason=\"\(reason)\""
+        #if DEBUG
+        logger.debug(
+            "syncedActivityTitle=\"\(syncedActivityTitle, privacy: .public)\" syncedStart=\(syncedStart, privacy: .public) syncedEnd=\(syncedEnd, privacy: .public) plannedCandidatesBeforeEnd=\(plannedCandidatesBeforeEnd, privacy: .public) plannedCandidatesAfterEnd=\(plannedCandidatesAfterEnd, privacy: .public) selectedMatch=\(selectedMatch ?? "nil", privacy: .public) ignoredFutureCandidates=\(ignoredFutureCandidates, privacy: .public) reason=\"\(reason, privacy: .public)\""
         )
+        #endif
     }
 }

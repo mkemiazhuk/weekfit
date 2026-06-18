@@ -25,9 +25,9 @@ struct ExpertCoachViewV3: View {
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
     @StateObject private var lifecycleTracker = CoachScreenLifecycleTracker()
+    @StateObject private var screenViewModel = CoachScreenViewModel()
 
     @State private var showProfile = false
-    @State private var selectedDate = Date()
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -39,8 +39,6 @@ struct ExpertCoachViewV3: View {
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let green = WeekFitTheme.meal
-    
-    @State private var pendingFuelItem: FastFuelItem?
 
     init(authViewModel: AuthViewModel) {
         _ = authViewModel
@@ -104,26 +102,18 @@ struct ExpertCoachViewV3: View {
     // MARK: - Coach V3 Binding
     
     private var dayContext: CoachDayContext {
-        CoachDayContextBuilder.build(
-            activities: plannedActivitiesForSelectedDate,
-            selectedDate: selectedDate,
-            now: Date()
+        screenViewModel.dayContext(
+            selectedDate: screenViewModel.selectedDate,
+            allPlannedActivities: plannedActivities
         )
     }
 
     private var hasTodayRecoverySignals: Bool {
-        healthManager.sleepMinutes > 0 ||
-        healthManager.timeInBedMinutes > 0 ||
-        healthManager.hrvSDNN > 0 ||
-        healthManager.restingHeartRate > 0
+        screenViewModel.hasTodayRecoverySignals(healthManager: healthManager)
     }
 
     private var shouldShowHealthConnectPrompt: Bool {
-        !hasTodayRecoverySignals &&
-        (
-            !healthManager.isHealthAccessRequested ||
-            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
-        )
+        screenViewModel.shouldShowHealthConnectPrompt(healthManager: healthManager)
     }
 
     private var guidance: CoachGuidanceV3 {
@@ -331,7 +321,7 @@ struct ExpertCoachViewV3: View {
     }
 
     private var selectedDateTitle: String {
-        WeekFitShortWeekdayMonthDay(selectedDate)
+        screenViewModel.selectedDateTitle(for: screenViewModel.selectedDate)
     }
 
     // MARK: - Coach Card
@@ -1232,10 +1222,9 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachDayContext: CoachDayActivityContext {
-        CoachActivityContextResolverV3.resolveDayContext(
-            activities: plannedActivitiesForSelectedDate,
-            selectedDate: selectedDate,
-            now: Date(),
+        screenViewModel.coachDayContext(
+            selectedDate: screenViewModel.selectedDate,
+            allPlannedActivities: plannedActivities,
             brain: nutritionViewModel.coachMetricsSnapshot?.brain
         )
     }
@@ -2752,7 +2741,7 @@ struct ExpertCoachViewV3: View {
         let brain = snapshot.brain
         let activityContext = CoachActivityContextResolverV3.resolveDayContext(
             activities: plannedActivitiesForSelectedDate,
-            selectedDate: selectedDate,
+            selectedDate: screenViewModel.selectedDate,
             now: Date(),
             brain: brain
         )
@@ -2774,9 +2763,9 @@ struct ExpertCoachViewV3: View {
     #endif
 
     private var plannedActivitiesForSelectedDate: [PlannedActivity] {
-        CoachCanonicalDayState.selectedDayActivities(
-            from: plannedActivities,
-            selectedDate: selectedDate
+        screenViewModel.plannedActivities(
+            for: screenViewModel.selectedDate,
+            from: plannedActivities
         )
     }
     
