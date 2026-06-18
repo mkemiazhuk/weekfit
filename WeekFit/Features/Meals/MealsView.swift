@@ -78,6 +78,7 @@ struct MealsView: View {
 
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var healthManager: HealthManager
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var languageManager: AppLanguageManager
 
@@ -323,7 +324,8 @@ struct MealsView: View {
         guard signature != lastRecommendationSignature else { return }
 
         let nextRecommendation: MealRecommendation?
-        if let guidance = nutritionViewModel.coachGuidanceSnapshot?.guidance {
+        if let guidance = coachCoordinator.state.guidance
+            ?? nutritionViewModel.coachGuidanceSnapshot?.guidance {
             nextRecommendation = MealRecommendationEngine.make(
                 guidance: guidance,
                 meals: mealItems,
@@ -343,7 +345,7 @@ struct MealsView: View {
         let snapshot = nutritionViewModel.coachMetricsSnapshot
         let goals = snapshot?.result.goals ?? nutritionResult?.goals
         let metrics = snapshot?.metrics
-        let guidanceID = nutritionViewModel.coachGuidanceSnapshot?.id.uuidString ?? "guidance=nil"
+        let guidanceID = coachCoordinator.state.id.uuidString
         let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
         let activitySignature = plannedActivitiesForSelectedDate
             .sorted { $0.id < $1.id }

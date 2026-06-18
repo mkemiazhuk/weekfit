@@ -108,7 +108,8 @@ final class AuthService {
             throw AuthError.userNotFound
         }
 
-        print("Password reset email sent to:", email)
+        // Password reset is handled by the auth backend when production auth ships.
+        _ = email
     }
 
     // MARK: - Apple Sign In

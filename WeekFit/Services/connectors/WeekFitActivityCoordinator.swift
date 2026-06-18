@@ -84,6 +84,17 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         try? modelContext.save()
+        clearCompletedWorkoutsBatch()
+    }
+
+    func clearCompletedWorkoutsBatch() {
+        completedWorkoutsBatch = []
+        healthSync.clearCompletedWorkoutsBatch()
+    }
+
+    func resetReconciliationState() {
+        reconciledWorkoutUUIDs.removeAll()
+        clearCompletedWorkoutsBatch()
     }
 
     func reconcileCompletedAppleWorkout(

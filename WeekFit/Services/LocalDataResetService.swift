@@ -36,6 +36,9 @@ final class LocalDataResetService {
 
         clearUserDefaults()
 
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        HealthKitWorkoutSyncService.shared.resetSyncState()
+
         WeekFitUserSettings.shared.refreshFromStorage()
         print("[LocalDataReset] Refreshed in-memory user settings")
 
