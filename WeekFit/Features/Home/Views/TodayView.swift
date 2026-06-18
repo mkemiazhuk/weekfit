@@ -18,8 +18,7 @@ struct TodayView: View {
     @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @StateObject private var confirmationState = ActivityConfirmationState.shared
-    
-    @State private var healthRefreshID = UUID()
+    @StateObject private var todayViewModel = TodayViewModel()
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -36,7 +35,6 @@ struct TodayView: View {
     @State private var showProfile = false
     @State private var showContent = false
     @State private var livePulse = false
-    @State private var now = Date()
     @State private var showWaterToast = false
     
     @State private var activityToConfirm: PlannedActivity? = nil
@@ -47,6 +45,13 @@ struct TodayView: View {
     private let textPrimary = Color.white
     private let textSecondary = Color.white.opacity(0.65)
     private let textTertiary = Color.white.opacity(0.35)
+
+    private var healthRefreshBinding: Binding<UUID> {
+        Binding(
+            get: { todayViewModel.healthRefreshID },
+            set: { todayViewModel.healthRefreshID = $0 }
+        )
+    }
     
     @State private var showDirectWorkoutLogSheet = false
     @State private var showDirectRecoveryLogSheet = false
@@ -236,7 +241,7 @@ struct TodayView: View {
 
             todayScreen
                 .onAppear {
-                   now = Date()
+                   todayViewModel.now = Date()
                    preloadQuickFoodLogDataIfNeeded()
                    preloadQuickDrinkLogDataIfNeeded()
                    if !healthManager.isHealthAccessRequested {
@@ -279,7 +284,7 @@ struct TodayView: View {
         .onAppear {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) { showContent = true }
         }
-        .task(id: healthRefreshID) {
+        .task(id: todayViewModel.healthRefreshID) {
             await refreshHealthAndNutritionAsync()
         }
         .onChange(of: plannedActivities) { _, _ in
@@ -288,11 +293,11 @@ struct TodayView: View {
         }
         .onChange(of: selectedDate) { oldValue, newValue in
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
-            healthRefreshID = UUID()
+            todayViewModel.triggerHealthRefresh()
         }
         .onChange(of: appSession.healthRefreshTrigger) { _, _ in
             debugTodayDataState(source: "TodayView.onChange.healthRefreshTrigger")
-            healthRefreshID = UUID()
+            todayViewModel.triggerHealthRefresh()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
@@ -315,13 +320,13 @@ struct TodayView: View {
 
             await MainActor.run {
                 let value = Date()
-                now = value
+                todayViewModel.now = value
 
                 let calendar = Calendar.current
                 if !calendar.isDate(selectedDate, inSameDayAs: value) {
                     withAnimation(.smooth) {
                         selectedDate = value
-                        healthRefreshID = UUID()
+                        todayViewModel.triggerHealthRefresh()
                     }
                 }
 
@@ -363,7 +368,7 @@ struct TodayView: View {
                 cardBackground: WeekFitTheme.cardBackground,
                 textSecondary: WeekFitTheme.secondaryText,
                 isPresented: $showDirectWorkoutLogSheet,
-                refreshID: $healthRefreshID
+                refreshID: healthRefreshBinding
             )
             .presentationDetents([
                 .fraction(0.45),
@@ -863,18 +868,16 @@ struct TodayView: View {
     }
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
-        let start = Self.debugStart("todayCoachInsight.update source=\(source)")
         debugTodayDataState(source: "todayCoachInsight.update.\(source)")
-        coachInputProvider.refreshFromCurrentState(
+        todayViewModel.refreshCoachInsight(
             selectedDate: selectedDate,
-            dayActivities: selectedDayActivities,
-            allPlannedActivities: plannedActivities,
+            plannedActivities: plannedActivities,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
-            source: "TodayView.\(source)"
+            coachInputProvider: coachInputProvider,
+            source: source
         )
-        Self.debugEnd("todayCoachInsight.update source=\(source)", start: start)
     }
 
     private func debugTodayDataState(source: String) {
@@ -982,7 +985,7 @@ struct TodayView: View {
         try? modelContext.save()
 
         showDirectMealLogSheet = false
-        healthRefreshID = UUID()
+        todayViewModel.triggerHealthRefresh()
     }
 
     private func logDrinkItem(_ item: QuickItem) {
@@ -1026,7 +1029,7 @@ struct TodayView: View {
 
         showDirectDrinkLogSheet = false
         updateNutrition()
-        healthRefreshID = UUID()
+        todayViewModel.triggerHealthRefresh()
     }
     
     private struct QuickMealDisplayRow: Identifiable, Equatable {
@@ -1395,7 +1398,7 @@ struct TodayView: View {
         try? modelContext.save()
 
         showDirectMealLogSheet = false
-        healthRefreshID = UUID()
+        todayViewModel.triggerHealthRefresh()
     }
     
 
@@ -1911,7 +1914,7 @@ struct TodayView: View {
     }
 
     private var upNextSection: some View {
-        let now = self.now
+        let now = todayViewModel.now
         let liveBronze = Color(red: 0.60, green: 0.52, blue: 0.39)
         let liveBadgeBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
         let neutralIconFill = Color.white.opacity(0.065)
@@ -2145,7 +2148,7 @@ struct TodayView: View {
     }
 
     private var coachInsightSection: some View {
-        let now = self.now
+        let now = todayViewModel.now
 
         // 1. Поиск пропущенных активностей, требующих подтверждения
         let pendingActivity = selectedDayActivities.first { activity in
@@ -2273,36 +2276,10 @@ struct TodayView: View {
                                         .foregroundStyle(textSecondary.opacity(0.82))
                                         .lineSpacing(2)
                                         .multilineTextAlignment(.leading)
-                                        .lineLimit(3)
+                                        .lineLimit(2)
                                         .layoutPriority(1)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
-
-                                if !renderModel.todayDoNowLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text(String(format: WeekFitLocalizedString("today.coach.card.doNowFormat"), renderModel.todayDoNowLine))
-                                        .font(.system(size: 12.5, weight: .semibold))
-                                        .foregroundStyle(textPrimary.opacity(0.9))
-                                        .lineSpacing(2)
-                                        .multilineTextAlignment(.leading)
-                                        .lineLimit(3)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-
-                                if !renderModel.todayAvoidLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text(String(format: WeekFitLocalizedString("today.coach.card.avoidFormat"), renderModel.todayAvoidLine))
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundStyle(textSecondary.opacity(0.78))
-                                        .lineSpacing(2)
-                                        .multilineTextAlignment(.leading)
-                                        .lineLimit(2)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-
-                                Text(renderModel.todayConfidenceLine)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(textTertiary)
-                                    .lineLimit(2)
-                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .layoutPriority(1)
@@ -2369,14 +2346,15 @@ struct TodayView: View {
     }
     
     private func refreshTodayLiveState(refreshHealth: Bool = false) {
-        now = Date()
         debugTodayDataState(source: "refreshTodayLiveState.before refreshHealth=\(refreshHealth)")
-        updateNutrition()
+        todayViewModel.refreshTodayLiveState(
+            refreshHealth: refreshHealth,
+            selectedDate: selectedDate,
+            plannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
+        )
         debugTodayDataState(source: "refreshTodayLiveState.afterNutrition refreshHealth=\(refreshHealth)")
-
-        if refreshHealth {
-            healthRefreshID = UUID()
-        }
     }
 
     private func handleReturnToTodayRequest() {
@@ -2386,7 +2364,7 @@ struct TodayView: View {
 
     private func refreshTodayAfterAppBecameActive() {
         let currentDate = Date()
-        now = currentDate
+        todayViewModel.now = currentDate
 
         if !Calendar.current.isDate(selectedDate, inSameDayAs: currentDate) {
             selectedDate = currentDate
@@ -2395,7 +2373,7 @@ struct TodayView: View {
         }
 
         debugTodayDataState(source: "scenePhase.active.sameDay")
-        healthRefreshID = UUID()
+        todayViewModel.triggerHealthRefresh()
     }
 
     private func handleLocalDataResetCompleted() {
@@ -2417,8 +2395,8 @@ struct TodayView: View {
 
         nutritionViewModel.resetLocalState()
         handleReturnToTodayRequest()
-        now = Date()
-        healthRefreshID = UUID()
+        todayViewModel.now = Date()
+        todayViewModel.triggerHealthRefresh()
     }
     
     private func workoutInsightIcon(
@@ -2633,26 +2611,12 @@ struct TodayView: View {
     }
 
     private func updateNutrition(withExtraWater extra: Double = 0) {
-        let dailySnapshot = DailyStateSnapshotBuilder.build(
+        todayViewModel.updateNutrition(
             selectedDate: selectedDate,
-            dayActivities: selectedDayActivities,
-            allPlannedActivities: plannedActivities,
+            plannedActivities: plannedActivities,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
-            now: now,
-            source: "TodayView.updateNutrition"
-        )
-        var metrics = dailySnapshot.nutritionMetrics
-        if extra > 0 {
-            metrics.waterLiters = max(metrics.waterLiters, healthManager.waterLiters + extra)
-        }
-        
-        nutritionViewModel.updateNutrition(
-            metrics: metrics,
-            profile: dailySnapshot.profile,
-            plannedActivities: dailySnapshot.dayActivities,
-            recoveryContext: dailySnapshot.recoveryContext,
-            debugSource: "TodayView.updateNutrition"
+            extraWater: extra
         )
         debugTodayDataState(source: "updateNutrition")
     }
@@ -2685,7 +2649,7 @@ struct TodayView: View {
                            activity.source = "planner"
                        }
                         try? modelContext.save()
-                        healthRefreshID = UUID()
+                        todayViewModel.triggerHealthRefresh()
                         activityToConfirm = nil
                     }
                 } label: {
@@ -2709,7 +2673,7 @@ struct TodayView: View {
                            activity.source = "planner"
                        }
                         try? modelContext.save()
-                        healthRefreshID = UUID()
+                        todayViewModel.triggerHealthRefresh()
                         activityToConfirm = nil
                     }
                 } label: {
@@ -2835,17 +2799,17 @@ struct TodayView: View {
         await MainActor.run {
             debugTodayDataState(source: "refreshHealthAndNutritionAsync.start")
         }
-        guard healthManager.isHealthAccessRequested else {
-            await MainActor.run {
-                updateNutrition()
+        await todayViewModel.refreshHealthAndNutrition(
+            selectedDate: selectedDate,
+            plannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            appSession: appSession
+        )
+        await MainActor.run {
+            if !healthManager.isHealthAccessRequested {
                 debugTodayDataState(source: "refreshHealthAndNutritionAsync.noHealthAccess")
             }
-            return
-        }
-        await healthManager.loadHealthData(for: selectedDate, plannedActivities: selectedDayActivities)
-        await MainActor.run {
-            updateNutrition()
-            appSession.triggerCoachRefresh(source: "TodayView.healthDataLoaded")
             debugTodayDataState(source: "refreshHealthAndNutritionAsync.end")
         }
     }
@@ -2880,7 +2844,7 @@ struct TodayView: View {
     }
 
     private var selectedDayActivities: [PlannedActivity] {
-        DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
+        todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
     }
 }
 

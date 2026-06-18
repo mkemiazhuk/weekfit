@@ -1,16 +1,11 @@
 import Foundation
 
-enum WorkoutElevationGainCalculator {
-    /// Minimum sustained climb before it counts toward gain.
-    /// Filters barometer/GPS jitter on flat routes.
-    static let minimumClimbMeters = 2.5
+public enum WorkoutElevationGainCalculator {
+    public static let minimumClimbMeters = 2.5
+    public static let smoothingWindow = 5
+    public static let maximumVerticalAccuracyMeters = 25.0
 
-    static let smoothingWindow = 5
-
-    /// Ignore altitude samples with very poor vertical accuracy.
-    static let maximumVerticalAccuracyMeters = 25.0
-
-    static func calculate(from points: [WorkoutRoutePoint]) -> Double? {
+    public static func calculate(from points: [WorkoutRoutePoint]) -> Double? {
         guard points.count > 1 else { return nil }
 
         let smoothed = smoothedAltitudes(from: points)

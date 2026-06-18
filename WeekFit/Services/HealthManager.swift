@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import HealthKit
+import WeekFitWorkoutMetrics
 internal import Combine
 import OSLog
 
@@ -8,14 +9,6 @@ struct WorkoutHeartRateSample: Identifiable, Hashable {
     let id = UUID()
     let timestamp: Date
     let beatsPerMinute: Double
-}
-
-struct WorkoutRoutePoint: Hashable {
-    let latitude: Double
-    let longitude: Double
-    let altitude: Double
-    let verticalAccuracy: Double?
-    let timestamp: Date
 }
 
 struct WorkoutHealthDetailSnapshot: Hashable {

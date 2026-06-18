@@ -1,6 +1,6 @@
 import HealthKit
 import XCTest
-@testable import WeekFit
+@testable import WeekFitWorkoutMetrics
 
 final class WorkoutElevationGainResolverTests: XCTestCase {
 

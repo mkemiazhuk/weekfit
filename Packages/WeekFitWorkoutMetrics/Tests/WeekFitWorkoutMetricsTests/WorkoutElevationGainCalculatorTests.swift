@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import WeekFit
+@testable import WeekFitWorkoutMetrics
 
 final class WorkoutElevationGainCalculatorTests: XCTestCase {
 

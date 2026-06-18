@@ -15,7 +15,6 @@ xcuserdata/
 *.xcuserstate
 
 # SwiftPM
-Packages/
 Package.resolved
 
 # macOS
