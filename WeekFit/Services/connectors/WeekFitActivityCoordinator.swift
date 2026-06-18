@@ -23,6 +23,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
     }
 
     func start() {
+        watchBridge.start()
         healthSync.start()
     }
     
@@ -43,7 +44,6 @@ final class WeekFitActivityCoordinator: ObservableObject {
             .sink { [weak self] workouts in
                 guard !workouts.isEmpty else { return }
 
-//                print("📦 Coordinator received workouts batch:", workouts.count)
                 self?.completedWorkoutsBatch = workouts
             }
             .store(in: &cancellables)
@@ -67,15 +67,6 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         return baseStatus
-    }
-
-    private func matchesCurrentLiveWorkout(_ workout: HKWorkout) -> Bool {
-        guard let liveWorkout else { return false }
-
-        let sameType = liveWorkout.workoutType == workout.workoutActivityType
-        let closeStart = abs(workout.startDate.timeIntervalSince(liveWorkout.startedAt)) <= 10 * 60
-
-        return sameType && closeStart
     }
 
     func reconcileCompletedWorkouts(
@@ -102,14 +93,32 @@ final class WeekFitActivityCoordinator: ObservableObject {
     ) {
         let workoutUUID = workout.uuid.uuidString
 
-        guard !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+        if let linkedPlanned = activities.first(where: {
+            $0.healthKitWorkoutUUID == workoutUUID && $0.id != workoutUUID
+        }) {
+            ActivityReconciler.applySyncedWorkout(workout, to: linkedPlanned)
+            reconciledWorkoutUUIDs.insert(workoutUUID)
             return
         }
 
-        guard !activities.contains(where: {
-            $0.healthKitWorkoutUUID == workoutUUID || $0.id == workoutUUID
-        }) else {
+        if let standalone = activities.first(where: {
+            $0.id == workoutUUID || ($0.healthKitWorkoutUUID == workoutUUID && $0.source == "appleWorkout")
+        }) {
+            if let planned = ActivityReconciler.bestMatch(
+                for: workout,
+                in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID }
+            ) {
+                modelContext.delete(standalone)
+                ActivityReconciler.applySyncedWorkout(workout, to: planned)
+            } else {
+                ActivityReconciler.applySyncedWorkout(workout, to: standalone)
+            }
+
             reconciledWorkoutUUIDs.insert(workoutUUID)
+            return
+        }
+
+        guard !reconciledWorkoutUUIDs.contains(workoutUUID) else {
             return
         }
 
@@ -117,12 +126,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
             for: workout,
             in: activities
         ) {
-            let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
-
-            activity.isCompleted = true
-            activity.isSkipped = false
-            activity.healthKitWorkoutUUID = workoutUUID
-            activity.actualDurationMinutes = actualMinutes
+            ActivityReconciler.applySyncedWorkout(workout, to: activity)
         } else {
             let imported = ActivityReconciler.importedActivity(for: workout)
             modelContext.insert(imported)

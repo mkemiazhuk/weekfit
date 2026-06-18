@@ -60,6 +60,7 @@ struct ProfileView: View {
             switch destination {
             case .editProfile:
                 EditUserProfileView(viewModel: viewModel)
+                    .environmentObject(appSession)
 
             case .notifications:
                 NotificationSettingsView()
@@ -212,6 +213,10 @@ private extension ProfileView {
         let cleanName = profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasName = !cleanName.isEmpty
         let isConnected = healthManager.isHealthAccessGranted
+        let needsBodyGoal = viewModel.bodyGoalNeedsSetup(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
 
         return Button {
             viewModel.openProfileEditor()
@@ -234,7 +239,13 @@ private extension ProfileView {
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text(isConnected ? WeekFitLocalizedString("settings.profile.appleHealthConnected") : WeekFitLocalizedString("settings.profile.connectHealthPlanning"))
+                        Text(
+                            needsBodyGoal
+                                ? WeekFitLocalizedString("settings.profile.healthSystem.bodyGoalPrompt")
+                                : (isConnected
+                                    ? WeekFitLocalizedString("settings.profile.appleHealthConnected")
+                                    : WeekFitLocalizedString("settings.profile.connectHealthPlanning"))
+                        )
                             .font(.system(size: 11.8, weight: .medium))
                             .foregroundStyle(textSecondary.opacity(0.68))
                             .lineLimit(3)

@@ -1317,6 +1317,40 @@
         }
       }
     },
+    "activity.route.expandHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the full route map"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает карту маршрута"
+          }
+        }
+      }
+    },
+    "activity.route.viewMap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View route map"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть карту маршрута"
+          }
+        }
+      }
+    },
     "activity.score" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -55037,6 +55071,244 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Персонализация"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Body Goal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цель по весу"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.setupSubtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose your goal — Health has no weight or height yet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите цель — в Health пока нет веса или роста"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.autoSubtitleFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (from Health)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (из Health)"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.missingHealthNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Health does not have your weight or height yet. Pick the goal that fits you — calories and activity targets will follow it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В Apple Health пока нет веса или роста. Выберите цель — от неё посчитаются калории и активность."
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.footerWithHealth" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your choice overrides the automatic recommendation from Health."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш выбор заменяет автоматическую рекомендацию из Health."
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.footerWithoutHealth" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect Health later to refine targets automatically."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключите Health позже — цели станут точнее автоматически."
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.suggestionFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Based on your Health data, we would suggest: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По данным Health мы бы предложили: %@"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.lose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lose weight"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снижать вес"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.lose.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moderate calorie deficit, higher protein"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Умеренный дефицит калорий, больше белка"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.maintain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintain weight"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поддерживать вес"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.maintain.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Balanced intake for stable weight"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Баланс калорий для стабильного веса"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.gain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gain muscle"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наращивать массу"
+          }
+        }
+      }
+    },
+    "settings.profile.bodyGoal.option.gain.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small surplus with extra protein"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Небольшой профицит и больше белка"
+          }
+        }
+      }
+    },
+    "settings.profile.healthSystem.bodyGoalPrompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open personalization to choose your body goal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте персонализацию и выберите цель по весу"
           }
         }
       }

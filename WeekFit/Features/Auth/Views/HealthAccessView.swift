@@ -1117,7 +1117,7 @@ private extension HealthAccessView {
 
     func readWatchInfo() async -> (isPaired: Bool, isAppInstalled: Bool) {
         await MainActor.run {
-            guard WCSession.isSupported() else {
+            guard WatchConnectivitySupport.shouldActivateSession else {
                 return (false, false)
             }
 

@@ -153,11 +153,12 @@ final class ActivityReconcilerXCTests: XCTestCase {
         )
 
         XCTAssertTrue(planned.isCompleted)
-        XCTAssertEqual(planned.source, "planner")
-        XCTAssertEqual(planned.date, plannedDate)
-        XCTAssertEqual(planned.durationMinutes, 60)
+        XCTAssertEqual(planned.source, "appleWorkout")
+        XCTAssertEqual(planned.date, synced.startDate)
+        XCTAssertEqual(planned.durationMinutes, 50)
         XCTAssertEqual(planned.actualDurationMinutes, 50)
         XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+        XCTAssertEqual(planned.title, "Cycling")
     }
 
     func testDifferentActivityTypeDoesNotMatch() {

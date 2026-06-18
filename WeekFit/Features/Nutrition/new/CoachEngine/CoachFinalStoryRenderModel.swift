@@ -57,6 +57,10 @@ struct CoachFinalStoryRenderModel {
     let supportActions: [CoachSupportActionV3]
     let whyRows: [CoachFinalStoryRenderedReason]
     let supportSignals: [CoachFinalStoryRenderedSupportSignal]
+    /// Assessment line for the hero card; empty when Why already covers context.
+    let displaySubtitle: String
+    /// Avoidance line for the hero card; empty when it repeats recommendation or Why.
+    let displayAvoid: String
 
     var color: Color { colorFamily.color }
 
@@ -126,7 +130,9 @@ struct CoachFinalStoryRenderModel {
         self.whatToAvoid = whatToAvoid
         let heroDomains = Self.semanticDomains(in: visibleHeroTexts)
             .union(Self.semanticDomains(in: [story.primaryAction.title.resolved]))
-        let shouldSuppressSemanticDuplicates = story.owner == .activityPreparation && heroDomains.contains("heat") ||
+        let compactHero = Self.usesCompactHero(for: story.owner)
+        let shouldSuppressSemanticDuplicates = compactHero ||
+            (story.owner == .activityPreparation && heroDomains.contains("heat")) ||
             story.owner == .tomorrowProtection
         let occupiedHeroDomains: Set<String> = {
             if story.owner == .activityPreparation && heroDomains.contains("heat") {
@@ -140,11 +146,11 @@ struct CoachFinalStoryRenderModel {
         }()
         var seenWhyRows = Set<String>()
         var seenWhyDomains = occupiedHeroDomains
-        let whyRows = story.reasons.compactMap { reason -> CoachFinalStoryRenderedReason? in
+        let filteredWhyRows = story.reasons.compactMap { reason -> CoachFinalStoryRenderedReason? in
             let title = reason.text.resolved.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty else { return nil }
             let normalizedTitle = Self.normalized(title)
-            guard !visibleHeroTexts.contains(where: { Self.normalized($0) == normalizedTitle }) else {
+            guard !visibleHeroTexts.contains(where: { Self.textsOverlap(normalizedTitle, Self.normalized($0)) }) else {
                 return nil
             }
             let reasonDomains = Self.semanticDomains(for: reason.kind, title: title)
@@ -164,18 +170,55 @@ struct CoachFinalStoryRenderModel {
                 colorFamily: reason.colorFamily
             )
         }
-        .prefix(3)
-        .map { $0 }
+        let limits = Self.presentationLimits(for: story.owner)
+        let whyRows = Array(filteredWhyRows.prefix(limits.why))
         let primaryActionTitle = story.primaryAction.title.resolved
         self.primaryActionTitle = primaryActionTitle
         self.primaryActionIcon = story.primaryAction.icon
-        self.supportActions = Self.visibleSupportActions(
+        let filteredActions = Self.visibleSupportActions(
             story.supportActions,
             avoiding: visibleHeroTexts + whyRows.map(\.title),
             avoidingDomains: seenWhyDomains
         )
+        self.supportActions = Array(filteredActions.prefix(limits.actions))
         self.whyRows = whyRows
         self.supportSignals = CoachFinalStoryRenderModel.visibleSupportSignals(for: story)
+
+        let resolvedDisplaySubtitle: String
+        let readCandidate = whatHappened.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            : whatHappened.trimmingCharacters(in: .whitespacesAndNewlines)
+        if readCandidate.isEmpty {
+            resolvedDisplaySubtitle = ""
+        } else if story.owner == .postActivityRecovery ||
+            story.owner == .activityPreparation ||
+            story.owner == .pacingExecution ||
+            story.owner == .sustainableExecution ||
+            story.owner == .fuelingDuringActivity ||
+            story.owner == .hydrationExecution ||
+            story.owner == .activeActivity ||
+            story.owner == .tomorrowProtection ||
+            story.owner == .recovery {
+            resolvedDisplaySubtitle = readCandidate
+        } else {
+            if Self.textsOverlap(Self.normalized(readCandidate), Self.normalized(title)) ||
+                whyRows.contains(where: { Self.textsOverlap(Self.normalized(readCandidate), Self.normalized($0.title)) }) {
+                resolvedDisplaySubtitle = ""
+            } else {
+                resolvedDisplaySubtitle = readCandidate
+            }
+        }
+        self.displaySubtitle = resolvedDisplaySubtitle
+
+        let avoidCandidate = avoidRecommendation.trimmingCharacters(in: .whitespacesAndNewlines)
+        if avoidCandidate.isEmpty ||
+            Self.textsOverlap(Self.normalized(avoidCandidate), Self.normalized(primaryRecommendation)) ||
+            (!resolvedDisplaySubtitle.isEmpty && Self.textsOverlap(Self.normalized(avoidCandidate), Self.normalized(resolvedDisplaySubtitle))) ||
+            whyRows.contains(where: { Self.textsOverlap(Self.normalized(avoidCandidate), Self.normalized($0.title)) }) {
+            self.displayAvoid = ""
+        } else {
+            self.displayAvoid = avoidCandidate
+        }
         #if DEBUG
         let usedFallback = primaryRecommendation != story.primaryRecommendation.resolved ||
             avoidRecommendation != story.avoidRecommendation.resolved ||
@@ -260,6 +303,33 @@ extension CoachFinalStory {
 }
 
 extension CoachFinalStoryRenderModel {
+    private static func usesCompactHero(for owner: CoachFinalStoryOwner) -> Bool {
+        switch owner {
+        case .pacingExecution, .sustainableExecution, .fuelingDuringActivity, .hydrationExecution,
+             .activeActivity:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func presentationLimits(for owner: CoachFinalStoryOwner) -> (why: Int, actions: Int) {
+        switch owner {
+        case .pacingExecution:
+            return (2, 1)
+        case .sustainableExecution, .fuelingDuringActivity, .hydrationExecution:
+            return (2, 2)
+        case .postActivityRecovery:
+            return (0, 2)
+        case .activeActivity:
+            return (2, 2)
+        case .activityPreparation:
+            return (2, 2)
+        default:
+            return (3, 3)
+        }
+    }
+
     static func uniqueHeroText(
         _ preferred: String,
         fallbackCandidates: [String],

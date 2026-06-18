@@ -257,7 +257,7 @@ struct TodayView: View {
                 protein: nutritionProtein(for: nutritionDetailsDate),
                 carbs: nutritionCarbs(for: nutritionDetailsDate),
                 fats: nutritionFats(for: nutritionDetailsDate),
-                fiber: nutritionFats(for: nutritionDetailsDate),
+                fiber: nutritionFiber(for: nutritionDetailsDate),
                 proteinGoal: proteinGoal,
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
@@ -1730,7 +1730,7 @@ struct TodayView: View {
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-                        nutritionDetailsDate = selectedDate
+                        nutritionDetailsDate = Date()
 
                         showNutritionDetails = true
                     } label: {
@@ -1787,7 +1787,7 @@ struct TodayView: View {
 
                             statusRingWidget(
                                 title: WeekFitLocalizedString("today.status.recovery"),
-                                infoText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.recovery.sleepSyncPending") : recoveryStatusText,
+                                infoText: recoveryDisplayValue == nil ? "" : recoveryStatusText,
                                 valueText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.loading") : sleepValueInfoText,
                                 value: recoveryDisplayValue,
                                 color: recoveryColor
@@ -1914,9 +1914,11 @@ struct TodayView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(color)
 
-                Text(infoText)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(textTertiary)
+                if !infoText.isEmpty {
+                    Text(infoText)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(textTertiary)
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -2837,14 +2839,19 @@ struct TodayView: View {
     }
 
     private var automatedActivityGoal: Double {
-        ActivityGoalEngine.calculate(
+        let goal = ProfileService().resolvedNutritionGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+        return ActivityGoalEngine.calculate(
             weightKg: healthManager.weight,
             heightCm: healthManager.heightCm,
             age: healthManager.age,
             sex: healthManager.biologicalSex,
             recoveryPercent: healthManager.recoveryPercent,
             sleepHours: healthManager.sleepHours,
-            vo2Max: healthManager.cardioFitnessVO2
+            vo2Max: healthManager.cardioFitnessVO2,
+            goal: goal
         )
     }
 

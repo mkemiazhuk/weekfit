@@ -106,14 +106,10 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
         }
 
-        let automaticProfile = UserNutritionProfile.createAutomatic(
-            weightKg: profile.weightKg, heightCm: profile.heightCm, age: profile.age, sex: profile.sex
-        )
-
         // Передача сквозного контекста в обновленный NutritionCoreEngine
         let nextNutritionResult = NutritionCoreEngine.calculate(
             from: updatedMetrics,
-            profile: automaticProfile,
+            profile: profile,
             activities: plannedActivities
         )
         let resolvedRecoveryContext = recoveryContext ??
@@ -121,7 +117,7 @@ final class NutritionViewModel: ObservableObject {
             CoachRecoveryContext(recoveryPercent: 0, sleepHours: updatedMetrics.sleepHours)
         let nextSignature = nutritionStateSignature(
             metrics: updatedMetrics,
-            profile: automaticProfile,
+            profile: profile,
             result: nextNutritionResult,
             plannedActivities: plannedActivities,
             recoveryContext: resolvedRecoveryContext
@@ -138,7 +134,7 @@ final class NutritionViewModel: ObservableObject {
         lastNutritionStateSignature = nextSignature
         let nextSnapshot = makeCoachMetricsSnapshot(
             metrics: updatedMetrics,
-            profile: automaticProfile,
+            profile: profile,
             result: nextNutritionResult,
             plannedActivities: plannedActivities,
             completedMeals: completedMeals,
@@ -147,7 +143,7 @@ final class NutritionViewModel: ObservableObject {
             source: debugSource
         )
         self.currentMetrics = updatedMetrics
-        self.currentProfile = automaticProfile
+        self.currentProfile = profile
         self.nutritionResult = nextSnapshot.result
         self.coachMetricsSnapshot = nextSnapshot
         let oldRefreshID = coachStateRefreshID

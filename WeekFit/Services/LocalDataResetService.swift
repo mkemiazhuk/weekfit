@@ -73,6 +73,8 @@ final class LocalDataResetService {
                 ProfileService.Keys.displayName,
                 ProfileService.Keys.email,
                 ProfileService.Keys.initials,
+                ProfileService.Keys.nutritionGoal,
+                ProfileService.Keys.nutritionGoalIsManual,
                 CustomMealStore.storageKey,
                 CustomIngredientStore.storageKey,
                 AppLanguage.storageKey,

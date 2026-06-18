@@ -11,11 +11,7 @@ final class WatchWorkoutEventSender: NSObject {
     }
 
     func start() {
-        guard WCSession.isSupported() else { return }
-
-        let session = WCSession.default
-        session.delegate = self
-        session.activate()
+        WatchConnectivitySupport.activateSession(delegate: self)
     }
 
     func sendStarted(
@@ -73,15 +69,9 @@ final class WatchWorkoutEventSender: NSObject {
     }
 
     private func send(_ message: [String: Any]) {
+        guard WatchConnectivitySupport.isLiveBridgeAvailable else { return }
+
         let session = WCSession.default
-
-        guard session.activationState == .activated else {
-            return
-        }
-
-        guard session.isPaired, session.isWatchAppInstalled else {
-            return
-        }
 
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil)
