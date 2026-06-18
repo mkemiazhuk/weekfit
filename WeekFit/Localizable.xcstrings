@@ -61538,7 +61538,21 @@
       }
     },
     "today.quickActions.liveActivity" : {
-      "extractionState" : "manual"
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В эфире"
+          }
+        }
+      }
     },
     "today.quickActions.logDrinks" : {
       "extractionState" : "manual",

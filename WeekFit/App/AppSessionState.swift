@@ -1,24 +1,30 @@
 import Foundation
 internal import Combine
 
+@MainActor
 final class AppSessionState: ObservableObject {
 
-    @Published var returnToTodayTrigger = UUID()
-    @Published var healthRefreshTrigger = UUID()
-    @Published var coachRefreshTrigger = UUID()
-    @Published var localDataResetTrigger = UUID()
+    @Published private(set) var returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)
+    @Published private(set) var healthRefreshEvent = AppRefreshEvent(kind: .healthRefresh)
+    @Published private(set) var coachRefreshEvent = AppRefreshEvent(kind: .coachRefresh)
+    @Published private(set) var localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
 
     private var pendingHealthRefreshSources: [String] = []
     private var pendingCoachRefreshSources: [String] = []
     private var isHealthRefreshScheduled = false
     private var isCoachRefreshScheduled = false
 
+    var returnToTodayTrigger: UUID { returnToTodayEvent.token }
+    var healthRefreshTrigger: UUID { healthRefreshEvent.token }
+    var coachRefreshTrigger: UUID { coachRefreshEvent.token }
+    var localDataResetTrigger: UUID { localDataResetEvent.token }
+
     func triggerReturnToToday() {
-        returnToTodayTrigger = UUID()
+        returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)
     }
 
     func triggerLocalDataResetCompleted() {
-        localDataResetTrigger = UUID()
+        localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
     }
 
     func triggerHealthRefresh(source: String = "unspecified") {
@@ -62,15 +68,15 @@ final class AppSessionState: ObservableObject {
         pendingHealthRefreshSources.removeAll()
         isHealthRefreshScheduled = false
 
-        let oldValue = healthRefreshTrigger
-        let newValue = UUID()
+        let oldValue = healthRefreshEvent.token
+        let newEvent = AppRefreshEvent(kind: .healthRefresh, sources: sources)
         #if DEBUG
         CoachRefreshDebug.log(
             "[CoachRefreshTrigger]",
-            "AppSession.healthRefreshTrigger sources=\(summarizeRefreshSources(sources)) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue))"
+            "AppSession.healthRefreshEvent sources=\(summarizeRefreshSources(sources)) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newEvent.token))"
         )
         #endif
-        healthRefreshTrigger = newValue
+        healthRefreshEvent = newEvent
     }
 
     private func flushCoachRefresh() {
@@ -78,15 +84,15 @@ final class AppSessionState: ObservableObject {
         pendingCoachRefreshSources.removeAll()
         isCoachRefreshScheduled = false
 
-        let oldValue = coachRefreshTrigger
-        let newValue = UUID()
+        let oldValue = coachRefreshEvent.token
+        let newEvent = AppRefreshEvent(kind: .coachRefresh, sources: sources)
         #if DEBUG
         CoachRefreshDebug.log(
             "[CoachRefreshTrigger]",
-            "AppSession.coachRefreshTrigger sources=\(summarizeRefreshSources(sources)) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newValue))"
+            "AppSession.coachRefreshEvent sources=\(summarizeRefreshSources(sources)) \(CoachRefreshDebug.uuidChange(oldValue: oldValue, newValue: newEvent.token))"
         )
         #endif
-        coachRefreshTrigger = newValue
+        coachRefreshEvent = newEvent
     }
 
     private func summarizeRefreshSources(_ sources: [String]) -> String {

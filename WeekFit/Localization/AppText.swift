@@ -345,7 +345,7 @@ enum AppText {
     }
 
     enum Planner {
-        static let weekOverview: LocalizedStringResource = "planner.week.overview"
+        static let weekOverview: LocalizedStringResource = "planner.weekOverview"
         static let buildYourDay: LocalizedStringResource = "planner.empty.title"
         static let buildYourDayMessage: LocalizedStringResource = "planner.empty.message"
         static let monthView: LocalizedStringResource = "planner.month.title"

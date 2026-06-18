@@ -3,6 +3,7 @@ import Charts
 import HealthKit
 import CoreLocation
 import MapKit
+import WeekFitWorkoutMetrics
 internal import Combine
 
 struct ActivityHistoricalPoint: Identifiable, Hashable {
