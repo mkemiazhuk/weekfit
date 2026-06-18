@@ -15,11 +15,7 @@ final class WatchLiveWorkoutBridge: NSObject, ObservableObject {
     }
 
     func start() {
-        guard WCSession.isSupported() else { return }
-
-        let session = WCSession.default
-        session.delegate = self
-        session.activate()
+        WatchConnectivitySupport.activateSession(delegate: self)
     }
 
     private func handle(_ message: [String: Any]) {

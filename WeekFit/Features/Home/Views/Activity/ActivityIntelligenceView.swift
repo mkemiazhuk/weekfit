@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import HealthKit
 import CoreLocation
+import MapKit
 internal import Combine
 
 struct ActivityHistoricalPoint: Identifiable, Hashable {
@@ -902,6 +903,7 @@ private struct ActivitySessionDetailView: View {
     @State private var loadedDetail: ActivitySessionDetailSnapshot?
     @State private var isHeartRateLoading = false
     @State private var isRouteLoading = false
+    @State private var isRouteMapPresented = false
     @State private var remainingSupplementalLoads = 0
 
     private var detail: ActivitySessionDetailSnapshot? {
@@ -1096,6 +1098,13 @@ private struct ActivitySessionDetailView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $isRouteMapPresented) {
+            WorkoutRouteDetailMapView(
+                points: routePoints,
+                color: session.color,
+                title: session.title
+            )
+        }
         .task(id: session.id) {
             await loadSupplementalDetails()
         }
@@ -1319,15 +1328,38 @@ private struct ActivitySessionDetailView: View {
             HStack(spacing: 12) {
                 if isRouteLoading && routePoints.isEmpty {
                     SessionDetailSkeletonLine(color: session.color)
-                        .frame(height: 112)
+                        .frame(height: 132)
                         .frame(maxWidth: .infinity)
                         .innerActivityCard(cornerRadius: 15)
                 } else {
-                    RoutePreviewView(points: routePoints, color: session.color)
-                        .frame(height: 112)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        .innerActivityCard(cornerRadius: 15)
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        isRouteMapPresented = true
+                    } label: {
+                        WorkoutRouteMapPreview(points: routePoints, color: session.color)
+                            .frame(height: 132)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                session.color.opacity(0.55),
+                                                Color.white.opacity(0.14),
+                                                session.color.opacity(0.22)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            }
+                            .shadow(color: session.color.opacity(0.18), radius: 10, y: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(WeekFitLocalizedString("activity.route.viewMap")))
+                    .accessibilityHint(Text(WeekFitLocalizedString("activity.route.expandHint")))
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -1569,7 +1601,7 @@ private struct ActivitySessionDetailView: View {
             let interval = end.timestamp.timeIntervalSince(start.timestamp)
             guard interval > 0, interval <= 120 else { return nil }
 
-            let distance = RoutePreviewView.distance(from: start, to: end)
+            let distance = WorkoutRouteGeometry.distance(from: start, to: end)
             let speed = distance / interval * 3.6
             return speed.isFinite && speed > 0 ? speed : nil
         }
@@ -2024,27 +2056,54 @@ private struct DonutSegment: Identifiable {
     let color: Color
 }
 
-private struct RoutePreviewView: View {
-    let points: [WorkoutRoutePoint]
-    let color: Color
-
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    ActivityStyle.blue.opacity(0.18),
-                    ActivityStyle.teal.opacity(0.08),
-                    Color.white.opacity(0.025)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Canvas { context, size in
-                drawMapGrid(in: &context, size: size)
-                drawRoute(in: &context, size: size)
-            }
+private enum WorkoutRouteGeometry {
+    static func coordinates(from points: [WorkoutRoutePoint]) -> [CLLocationCoordinate2D] {
+        points.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         }
+    }
+
+    static func downsampledCoordinates(
+        from points: [WorkoutRoutePoint],
+        maximumCount: Int
+    ) -> [CLLocationCoordinate2D] {
+        guard points.count > maximumCount, maximumCount > 1 else {
+            return coordinates(from: points)
+        }
+
+        let stride = Double(points.count - 1) / Double(maximumCount - 1)
+
+        return (0..<maximumCount).map { index in
+            let sourceIndex = min(Int((Double(index) * stride).rounded()), points.count - 1)
+            let point = points[sourceIndex]
+            return CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+        }
+    }
+
+    static func mapRegion(
+        for points: [WorkoutRoutePoint],
+        paddingFactor: Double = 1.22
+    ) -> MKCoordinateRegion? {
+        guard
+            let minLatitude = points.map(\.latitude).min(),
+            let maxLatitude = points.map(\.latitude).max(),
+            let minLongitude = points.map(\.longitude).min(),
+            let maxLongitude = points.map(\.longitude).max()
+        else {
+            return nil
+        }
+
+        let center = CLLocationCoordinate2D(
+            latitude: (minLatitude + maxLatitude) / 2,
+            longitude: (minLongitude + maxLongitude) / 2
+        )
+        let latitudeDelta = max((maxLatitude - minLatitude) * paddingFactor, 0.0025)
+        let longitudeDelta = max((maxLongitude - minLongitude) * paddingFactor, 0.0025)
+
+        return MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
+        )
     }
 
     static func distance(from start: WorkoutRoutePoint, to end: WorkoutRoutePoint) -> Double {
@@ -2052,70 +2111,244 @@ private struct RoutePreviewView: View {
         let endLocation = CLLocation(latitude: end.latitude, longitude: end.longitude)
         return startLocation.distance(from: endLocation)
     }
+}
 
-    private func drawMapGrid(in context: inout GraphicsContext, size: CGSize) {
-        var gridPath = Path()
+private struct WorkoutRouteMapPreview: View {
+    let points: [WorkoutRoutePoint]
+    let color: Color
 
-        for offset in stride(from: -size.width, through: size.width * 2, by: 42) {
-            gridPath.move(to: CGPoint(x: offset, y: size.height))
-            gridPath.addLine(to: CGPoint(x: offset + size.height, y: 0))
-        }
-
-        context.stroke(
-            gridPath,
-            with: .color(Color.white.opacity(0.045)),
-            lineWidth: 1
-        )
+    private var coordinates: [CLLocationCoordinate2D] {
+        WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
     }
 
-    private func drawRoute(in context: inout GraphicsContext, size: CGSize) {
-        guard points.count > 1 else { return }
+    private var mapRegion: MKCoordinateRegion? {
+        WorkoutRouteGeometry.mapRegion(for: points, paddingFactor: 1.18)
+    }
 
-        let minLatitude = points.map(\.latitude).min() ?? 0
-        let maxLatitude = points.map(\.latitude).max() ?? 0
-        let minLongitude = points.map(\.longitude).min() ?? 0
-        let maxLongitude = points.map(\.longitude).max() ?? 0
-        let latitudeSpan = max(maxLatitude - minLatitude, 0.000_001)
-        let longitudeSpan = max(maxLongitude - minLongitude, 0.000_001)
-        let inset: CGFloat = 13
-        let drawingSize = CGSize(
-            width: max(size.width - inset * 2, 1),
-            height: max(size.height - inset * 2, 1)
-        )
-
-        var path = Path()
-        var firstPoint = CGPoint.zero
-        var lastPoint = CGPoint.zero
-
-        for (index, point) in points.enumerated() {
-            let x = inset + CGFloat((point.longitude - minLongitude) / longitudeSpan) * drawingSize.width
-            let y = inset + (1 - CGFloat((point.latitude - minLatitude) / latitudeSpan)) * drawingSize.height
-            let position = CGPoint(x: x, y: y)
-
-            if index == 0 {
-                firstPoint = position
-                path.move(to: position)
+    var body: some View {
+        ZStack {
+            if let mapRegion {
+                Map(initialPosition: .region(mapRegion), interactionModes: []) {
+                    routeContent
+                }
+                .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+                .colorScheme(.dark)
             } else {
-                path.addLine(to: position)
-                lastPoint = position
+                ActivityStyle.cardBackground
+            }
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.34),
+                    Color.clear,
+                    Color.black.opacity(0.28)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .allowsHitTesting(false)
+
+            VStack {
+                Spacer()
+
+                HStack {
+                    Spacer()
+
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .padding(7)
+                        .background {
+                            Circle()
+                                .fill(.black.opacity(0.52))
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                                }
+                        }
+                        .padding(8)
+                }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    @MapContentBuilder
+    private var routeContent: some MapContent {
+        MapPolyline(coordinates: coordinates)
+            .stroke(
+                LinearGradient(
+                    colors: [color.opacity(0.92), color, ActivityStyle.teal.opacity(0.95)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+            )
+
+        if let start = coordinates.first {
+            Annotation("", coordinate: start, anchor: .center) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 9, height: 9)
+                    .overlay {
+                        Circle()
+                            .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                    }
             }
         }
 
-        context.stroke(
-            path,
-            with: .color(color.opacity(0.98)),
-            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-        )
+        if let finish = coordinates.last, coordinates.count > 1 {
+            Annotation("", coordinate: finish, anchor: .center) {
+                Circle()
+                    .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                    .background(Circle().fill(color.opacity(0.35)))
+                    .frame(width: 11, height: 11)
+            }
+        }
+    }
+}
 
-        context.fill(
-            Path(ellipseIn: CGRect(x: firstPoint.x - 4, y: firstPoint.y - 4, width: 8, height: 8)),
-            with: .color(color)
-        )
-        context.stroke(
-            Path(ellipseIn: CGRect(x: lastPoint.x - 5, y: lastPoint.y - 5, width: 10, height: 10)),
-            with: .color(.white.opacity(0.86)),
-            lineWidth: 2
-        )
+private struct WorkoutRouteDetailMapView: View {
+    let points: [WorkoutRoutePoint]
+    let color: Color
+    let title: String
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
+    private var coordinates: [CLLocationCoordinate2D] {
+        WorkoutRouteGeometry.coordinates(from: points)
+    }
+
+    var body: some View {
+        ZStack {
+            ActivityStyle.screenBackground
+                .ignoresSafeArea()
+
+            Map(position: $cameraPosition) {
+                routeContent
+            }
+            .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+            .mapControls {
+                MapCompass()
+                MapScaleView()
+                MapUserLocationButton()
+            }
+            .colorScheme(.dark)
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                header
+                Spacer()
+            }
+        }
+        .preferredColorScheme(.dark)
+        .onAppear {
+            if let region = WorkoutRouteGeometry.mapRegion(for: points) {
+                cameraPosition = .region(region)
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(WeekFitLocalizedString("activity.details.route.title"))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.58))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .overlay {
+                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(AppText.Common.Action.close))
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background {
+            LinearGradient(
+                colors: [
+                    ActivityStyle.screenBackground.opacity(0.96),
+                    ActivityStyle.screenBackground.opacity(0.72),
+                    .clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .top)
+        }
+    }
+
+    @MapContentBuilder
+    private var routeContent: some MapContent {
+        MapPolyline(coordinates: coordinates)
+            .stroke(
+                LinearGradient(
+                    colors: [color.opacity(0.95), color, ActivityStyle.teal],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
+            )
+
+        if let start = coordinates.first {
+            Annotation("", coordinate: start, anchor: .center) {
+                RouteEndpointMarker(color: color, style: .start)
+            }
+        }
+
+        if let finish = coordinates.last, coordinates.count > 1 {
+            Annotation("", coordinate: finish, anchor: .center) {
+                RouteEndpointMarker(color: color, style: .finish)
+            }
+        }
+    }
+}
+
+private struct RouteEndpointMarker: View {
+    enum Style {
+        case start
+        case finish
+    }
+
+    let color: Color
+    let style: Style
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(style == .start ? 1 : 0.28))
+                .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
+
+            Circle()
+                .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
+
+            if style == .finish {
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .shadow(color: color.opacity(0.35), radius: 6, y: 2)
     }
 }
 

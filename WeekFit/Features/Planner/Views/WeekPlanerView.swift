@@ -1340,9 +1340,11 @@ private extension WeekPlannerView {
         if item.isCompleted {
             let loggedSources = ["today", "appleWorkout", "healthKit", "appleWatch"]
 
-            return loggedSources.contains(item.source)
-                ? .logged
-                : .completed
+            if item.isWatchSynced || loggedSources.contains(item.source) {
+                return .logged
+            }
+
+            return .completed
         }
 
         if item.date > now {
@@ -1816,7 +1818,7 @@ private struct DynamicPlanRow: View {
     private var statusBadge: some View {
         HStack(spacing: 4) {
 
-            if activity.source == "appleWorkout" {
+            if activity.isWatchSynced {
                 Image(systemName: "applewatch")
                     .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(accent.opacity(0.52))
@@ -1846,7 +1848,7 @@ private struct DynamicPlanRow: View {
 
     private var statusText: String {
 
-        if activity.source == "appleWorkout",
+        if activity.isWatchSynced,
            status == .logged {
             return WeekFitLocalizedString("planner.status.synced")
         }

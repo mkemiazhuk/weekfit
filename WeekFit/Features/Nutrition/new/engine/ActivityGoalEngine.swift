@@ -9,7 +9,8 @@ enum ActivityGoalEngine {
         sex: BiologicalSex,
         recoveryPercent: Int,
         sleepHours: Double,
-        vo2Max: Double
+        vo2Max: Double,
+        goal: NutritionGoal = .maintenance
     ) -> Double {
 
         let weight = max(weightKg, 40.0)
@@ -30,6 +31,18 @@ enum ActivityGoalEngine {
         let bmr = 10.0 * weight + 6.25 * height - 5.0 * safeAge + sexBonus
 
         var factor: Double = 0.32
+
+        switch goal {
+        case .fatLoss:
+            // Deficit comes from nutrition; nudge movement only when recovery supports it.
+            if recoveryPercent >= 70, sleepHours >= 6.5 {
+                factor += 0.02
+            }
+        case .maintenance:
+            break
+        case .muscleGain:
+            factor += 0.05
+        }
 
         if recoveryPercent >= 85 {
             factor += 0.05

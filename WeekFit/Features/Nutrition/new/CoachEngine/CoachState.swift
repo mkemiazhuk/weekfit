@@ -1158,11 +1158,15 @@ enum CoachFinalStoryBuilder {
         let completedSeriousTrainingToday: Bool
         let completedRecoveryVolumeToday: Int
         let nextImportantActivityToday: PlannedActivity?
+        let focusActivity: PlannedActivity?
+        let referenceNow: Date
+        let recoveryPercent: Int
         let hoursUntilNextImportantActivity: Double?
         let timeToNextImportantSession: CoachV4TimeToSessionWindow
         let tomorrowDemand: CoachTomorrowDemand
         let shouldProtectUpcomingSession: Bool
         let shouldProtectTomorrow: Bool
+        let tomorrowRecoveryPlanSummary: CoachTomorrowPlanReadBuilder.RecoveryPlanSummary?
     }
 
     private struct CoachV4DecisionFrame {
@@ -1348,7 +1352,7 @@ enum CoachFinalStoryBuilder {
         private static func base(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
             CoachV4PlaybookOutput(
                 hero: frame.hero,
-                assessment: frame.assessment,
+                assessment: holisticAssessment(frame: frame, tactical: frame.assessment),
                 situation: frame.situation,
                 primaryAction: frame.primaryAction,
                 avoidance: frame.avoidance,
@@ -1457,203 +1461,261 @@ enum CoachFinalStoryBuilder {
             return output(frame: frame, hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: saunaExtras(frame))
         }
 
+        private static func catalogAction(_ copy: CoachEnduranceDuringPostCopyCatalog.ActionCopy) -> CoachActionRecommendation {
+            action(
+                copy.type,
+                copy.title.english,
+                copy.subtitle.english,
+                copy.title.russian,
+                copy.subtitle.russian
+            )
+        }
+
+        private static func catalogReasons(_ copies: [CoachEnduranceDuringPostCopyCatalog.ReasonCopy]) -> [CoachV4Reason] {
+            copies.map {
+                reason($0.kind, $0.english, $0.russian, icon: $0.icon, colorFamily: $0.colorFamily)
+            }
+        }
+
+        private static func holisticReadContext(from frame: CoachV4DecisionFrame) -> CoachHolisticReadBuilder.Context {
+            let next = frame.dayLoadContext.nextImportantActivityToday
+            return CoachHolisticReadBuilder.Context(
+                owner: frame.storyOwner,
+                isPreSession: frame.sessionPhase == .pre,
+                isDuringSession: frame.sessionPhase == .during,
+                isPostSession: frame.sessionPhase == .post,
+                recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                completedSeriousTrainingToday: frame.dayLoadContext.completedSeriousTrainingToday,
+                sleepLimited: frame.primaryLimiter == .sleep,
+                recoveryLimited: frame.primaryLimiter == .recovery,
+                hydrationLimited: frame.primaryLimiter == .hydration,
+                fuelLimited: frame.primaryLimiter == .fueling,
+                nextActivityTitle: next.map { CoachFinalStoryBuilder.displayName($0) },
+                hoursUntilNextActivity: frame.dayLoadContext.hoursUntilNextImportantActivity,
+                hasUpcomingSessionToday: frame.dayLoadContext.nextImportantActivityToday != nil,
+                shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                shouldProtectUpcomingSession: frame.dayLoadContext.shouldProtectUpcomingSession,
+                tomorrowRecoveryPlanSummary: frame.dayLoadContext.tomorrowRecoveryPlanSummary,
+                timePhase: frame.dayLoadContext.timePhase
+            )
+        }
+
+        private static func holisticAssessment(
+            frame: CoachV4DecisionFrame,
+            tacticalEN: String,
+            tacticalRU: String
+        ) -> CoachFinalStoryText {
+            let read = CoachHolisticReadBuilder.compose(
+                context: holisticReadContext(from: frame),
+                tactical: CoachHolisticReadBuilder.Copy(english: tacticalEN, russian: tacticalRU)
+            )
+            return CoachFinalStoryBuilder.dynamicText(read.english, russian: read.russian)
+        }
+
+        private static func holisticAssessment(
+            frame: CoachV4DecisionFrame,
+            tactical: CoachFinalStoryText
+        ) -> CoachFinalStoryText {
+            holisticAssessment(
+                frame: frame,
+                tacticalEN: tactical.fallback,
+                tacticalRU: tactical.russianFallback
+            )
+        }
+
+        private static func catalogPlaybook(
+            window: CoachEnduranceDuringPostCopyCatalog.WindowCopy,
+            phase: CoachEnduranceDuringPostCopyCatalog.Phase,
+            frame: CoachV4DecisionFrame
+        ) -> CoachV4PlaybookOutput {
+            let activity = frame.dayLoadContext.focusActivity
+            let longSession = frame.durationBand == .longOver120
+            let elapsed = CoachEnduranceDuringPostCopyCatalog.elapsedMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let remaining = CoachEnduranceDuringPostCopyCatalog.remainingMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let minutesSinceEnd = frame.sessionPhase == .post
+                ? CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                : 0
+            let catalogExtras = CoachEnduranceDuringPostCopyCatalog.extras(
+                for: phase,
+                activity: activity,
+                longSession: longSession,
+                minutesSinceEnd: minutesSinceEnd
+            )
+            let reasons = CoachEnduranceDuringPostCopyCatalog.reasons(
+                for: phase,
+                activity: activity,
+                elapsedMinutes: elapsed,
+                remainingMinutes: remaining,
+                recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                minutesSinceEnd: minutesSinceEnd
+            )
+            return playbookOnlyOutput(
+                hero: CoachFinalStoryBuilder.dynamicText(window.hero.english, russian: window.hero.russian),
+                assessment: holisticAssessment(
+                    frame: frame,
+                    tacticalEN: window.assessment.english,
+                    tacticalRU: window.assessment.russian
+                ),
+                situation: CoachFinalStoryBuilder.dynamicText(window.situation.english, russian: window.situation.russian),
+                primary: catalogAction(window.primary),
+                avoidance: CoachFinalStoryBuilder.dynamicText(window.avoidance.english, russian: window.avoidance.russian),
+                extras: catalogExtras.map(catalogAction),
+                reasons: catalogReasons(reasons)
+            )
+        }
+
         private static func endurance(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
-            if frame.sessionPhase == .pre,
-               frame.durationBand != .shortUnder60 {
-                return preEndurance(frame)
+            if frame.sessionPhase == .pre {
+                return preSession(frame)
             }
 
-            let hero: CoachFinalStoryText
-            let assessment: CoachFinalStoryText
-            let situation: CoachFinalStoryText
-            let primary: CoachActionRecommendation
-            let avoidance: CoachFinalStoryText
+            let activity = frame.dayLoadContext.focusActivity
+            let longSession = frame.durationBand == .longOver120
 
             switch (frame.sessionPhase, frame.durationBand) {
-            case (.pre, .shortUnder60):
-                hero = CoachFinalStoryBuilder.dynamicText("Start controlled", russian: "Начните под контролем")
-                assessment = CoachFinalStoryBuilder.dynamicText("This is short enough to execute well if readiness stays stable.", russian: "Это достаточно короткая сессия, если готовность остаётся стабильной.")
-                situation = CoachFinalStoryBuilder.dynamicText("Use the warm-up to check legs, breathing, and control.", russian: "Разминку используйте для проверки ног, дыхания и контроля.")
-                primary = action(.controlIntensity, "Start 10 minutes easy", "Then decide if planned effort fits", "Начните 10 минут легко", "Потом решите, подходит ли плановое усилие")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not rush the opening minutes.", russian: "Не спешите в первые минуты.")
-            case (.pre, .medium60To120), (.pre, .longOver120), (.pre, .none):
-                return preEndurance(frame)
             case (.during, _):
                 switch frame.storyOwner {
                 case .fuelingDuringActivity:
-                    return fuelingDuringEndurance(frame)
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .fueling, activity: activity, longSession: longSession)
+                    return catalogPlaybook(window: window, phase: .fueling, frame: frame)
                 case .hydrationExecution:
-                    return hydrationDuringEndurance(frame)
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .hydration, activity: activity, longSession: longSession)
+                    return catalogPlaybook(window: window, phase: .hydration, frame: frame)
                 case .pacingExecution:
-                    hero = CoachFinalStoryBuilder.dynamicText("Settle into the effort", russian: "Войдите в рабочий ритм")
-                    assessment = CoachFinalStoryBuilder.dynamicText("The session has started; the first job is to let breathing, legs, and heart rate settle.", russian: "Сессия началась; сейчас нужно дать дыханию, ногам и пульсу стабилизироваться.")
-                    situation = CoachFinalStoryBuilder.dynamicText("Use the opening block as a warm-up, not a fitness test.", russian: "Используйте первый блок как разминку, а не проверку формы.")
-                    primary = action(.controlIntensity, "Keep the next 10 minutes easy", "Let effort rise only after the body settles", "Следующие 10 минут держите легко", "Добавляйте усилие только после стабилизации")
-                    avoidance = CoachFinalStoryBuilder.dynamicText("Do not test fitness in the opening block.", russian: "Не проверяйте форму в начале.")
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .pacing, activity: activity, longSession: longSession)
+                    return catalogPlaybook(window: window, phase: .pacing, frame: frame)
                 case .sustainableExecution:
-                    hero = CoachFinalStoryBuilder.dynamicText("Build a steady rhythm", russian: "Постройте ровный ритм")
-                    assessment = CoachFinalStoryBuilder.dynamicText("The warm-up window is over; now the session needs repeatable effort and regular intake.", russian: "Разминочное окно прошло; теперь нужны повторяемое усилие, вода и питание по графику.")
-                    situation = CoachFinalStoryBuilder.dynamicText("This is where you make the rest of the ride predictable.", russian: "Сейчас вы делаете остаток сессии предсказуемым.")
-                    primary = action(.sustainEnergy, "Take carbs every 20-30 minutes", "Start the schedule before hunger appears", "Принимайте углеводы каждые 20-30 минут", "Начните график до появления голода")
-                    avoidance = CoachFinalStoryBuilder.dynamicText("Do not wait for hunger before starting the fueling schedule.", russian: "Не ждите голода, чтобы начать питание.")
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .sustainable, activity: activity, longSession: longSession)
+                    return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
                 default:
-                    hero = CoachFinalStoryBuilder.dynamicText("Build a steady rhythm", russian: "Постройте ровный ритм")
-                    assessment = CoachFinalStoryBuilder.dynamicText("The useful job now is repeatable execution inside the whole day.", russian: "Сейчас важна повторяемая работа в контексте всего дня.")
-                    situation = CoachFinalStoryBuilder.dynamicText("Keep the session predictable rather than chasing spikes.", russian: "Держите сессию предсказуемой, без скачков.")
-                    primary = action(.controlIntensity, "Keep effort repeatable", "Leave enough reserve for the rest of the session", "Держите усилие повторяемым", "Оставьте запас на остаток сессии")
-                    avoidance = CoachFinalStoryBuilder.dynamicText("Do not turn one good block into a harder plan.", russian: "Не превращайте один хороший блок в более тяжёлый план.")
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .sustainable, activity: activity, longSession: longSession)
+                    return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
                 }
             case (.post, .longOver120):
-                hero = CoachFinalStoryBuilder.dynamicText("The main work is complete", russian: "Главная работа завершена")
-                assessment = CoachFinalStoryBuilder.dynamicText("This long session created meaningful training stress.", russian: "Эта длинная сессия дала заметную тренировочную нагрузку.")
-                situation = CoachFinalStoryBuilder.dynamicText("Recovery now determines how much benefit you keep.", russian: "Теперь восстановление определяет, сколько пользы сохранится.")
-                primary = action(.recoveryMeal, "Eat 25-40 g protein and 60-100 g carbs", "Within the next hour", "Получите 25-40 г белка и 60-100 г углеводов", "В течение ближайшего часа")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not add another hard session today.", russian: "Не добавляйте сегодня ещё одну тяжёлую сессию.")
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachEnduranceDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let window = CoachEnduranceDuringPostCopyCatalog.window(
+                    for: .postLong,
+                    activity: activity,
+                    longSession: true,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext
+                )
+                return catalogPlaybook(window: window, phase: .postLong, frame: frame)
             case (.post, .medium60To120):
-                hero = CoachFinalStoryBuilder.dynamicText("Start recovery now", russian: "Начните восстановление")
-                assessment = CoachFinalStoryBuilder.dynamicText("This session was meaningful enough to deserve recovery support.", russian: "Эта сессия достаточно значимая, чтобы поддержать восстановление.")
-                situation = CoachFinalStoryBuilder.dynamicText("Food and fluids matter more than extra work now.", russian: "Еда и вода сейчас важнее дополнительной нагрузки.")
-                primary = action(.recoveryMeal, "Add 25-40 g protein", "Before the next hour ends", "Добавьте 25-40 г белка", "До конца ближайшего часа")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not stack extra intensity onto this session.", russian: "Не накладывайте дополнительную интенсивность поверх этой сессии.")
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachEnduranceDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let window = CoachEnduranceDuringPostCopyCatalog.window(
+                    for: .postMedium,
+                    activity: activity,
+                    longSession: false,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext
+                )
+                return catalogPlaybook(window: window, phase: .postMedium, frame: frame)
             case (.post, .shortUnder60), (.post, .none):
-                hero = CoachFinalStoryBuilder.dynamicText("Close the session cleanly", russian: "Спокойно завершите сессию")
-                assessment = CoachFinalStoryBuilder.dynamicText("This was controlled endurance work, not a full recovery demand by itself.", russian: "Это была контролируемая работа на выносливость, но сама по себе она не требует жёсткого восстановления.")
-                situation = CoachFinalStoryBuilder.dynamicText("A short cooldown and normal meals are enough unless the day was already heavy.", russian: "Короткой заминки и обычного питания достаточно, если день не был тяжёлым.")
-                primary = action(.cooldown, "Cool down 5-10 minutes easy", "Let the body come down", "Сделайте 5-10 минут лёгкой заминки", "Дайте телу спокойно снизить нагрузку")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not add extra volume just because the session felt good.", russian: "Не добавляйте объём только потому, что сессия прошла хорошо.")
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachEnduranceDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let window = CoachEnduranceDuringPostCopyCatalog.window(
+                    for: .postShort,
+                    activity: activity,
+                    longSession: false,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext
+                )
+                return catalogPlaybook(window: window, phase: .postShort, frame: frame)
+            case (.pre, _):
+                return preSession(frame)
             case (.none, _):
                 return base(frame)
             }
-
-            return output(frame: frame, hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: enduranceExtras(frame))
         }
 
-        private static func preEndurance(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
+        private static func preSession(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
+            let activity = frame.dayLoadContext.nextImportantActivityToday
             let longSession = frame.durationBand == .longOver120
-            let sessionName = longSession ? "long ride" : "endurance session"
-            let russianSessionName = longSession ? "длинная велосессия" : "сессия на выносливость"
+            let copy = CoachSessionPrepCopyCatalog.copy(for: activity, longSession: longSession)
 
-            let hero: CoachFinalStoryText
-            let assessment: CoachFinalStoryText
-            let situation: CoachFinalStoryText
-            let primary: CoachActionRecommendation
-            let avoidance: CoachFinalStoryText
-            let extras: [CoachActionRecommendation]
-
+            let window: CoachSessionPrepCopyCatalog.PrepWindowCopy
             switch frame.dayLoadContext.timeToNextImportantSession {
             case .fourPlusHours:
-                hero = CoachFinalStoryBuilder.dynamicText("Build toward the \(sessionName)", russian: "\(capitalized(russianSessionName)) — главный ориентир")
-                assessment = CoachFinalStoryBuilder.dynamicText("\(capitalized(sessionName)) is still several hours away, and recovery is not blocking it.", russian: "\(capitalized(russianSessionName)) ещё через несколько часов, восстановление её не блокирует.")
-                situation = CoachFinalStoryBuilder.dynamicText("Use this window to plan food, bottles, and a quiet lead-in.", russian: "Используйте это время для еды, воды и спокойного подведения к старту.")
-                primary = action(.lightFueling, "Plan the carb meal", "Finish it 2-3 hours before the session", "Запланируйте углеводный приём пищи", "Завершите его за 2-3 часа до старта")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not add a second workout before the important session.", russian: "Не добавляйте вторую тренировку перед главной сессией.")
-                extras = [
-                    action(.hydrateBeforeSession, "Start steady hydration", "Keep sipping before the final hour", "Начните ровную гидратацию", "Пейте постепенно до последнего часа"),
-                    action(.controlIntensity, "Keep the lead-in quiet", "Save freshness for the session", "Сделайте подводку спокойной", "Сохраните свежесть для сессии")
-                ]
-
+                window = copy.fourPlusHours
             case .twoToFourHours:
-                hero = CoachFinalStoryBuilder.dynamicText("Set up the \(sessionName)", russian: "Подведите себя к \(russianSessionName)")
-                assessment = CoachFinalStoryBuilder.dynamicText("\(capitalized(sessionName)) is the main training demand later today.", russian: "\(capitalized(russianSessionName)) — главная тренировочная нагрузка позже сегодня.")
-                situation = CoachFinalStoryBuilder.dynamicText("The useful move now is to finish fueling and keep the controlled start coming.", russian: "Сейчас полезно закрыть питание и сохранить спокойный старт впереди.")
-                primary = action(.lightFueling, "Finish fueling for a controlled start", "Then keep activity low", "Закройте питание для спокойного старта", "Потом держите активность низкой")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not turn the waiting time into extra training.", russian: "Не делайте из ожидания дополнительную тренировку.")
-                extras = [
-                    action(.hydrateBeforeSession, "Finish steady hydration", "Avoid needing to catch up at the start", "Доведите воду до нормы", "Не догоняйте её на старте"),
-                    action(.controlIntensity, "Reduce unnecessary movement", "Arrive fresher, not busier", "Сократите лишнее движение", "Выйдите свежее, а не занятым")
-                ]
-
+                window = copy.twoToFourHours
             case .sixtyTo120Minutes:
-                hero = CoachFinalStoryBuilder.dynamicText("Move into preparation mode", russian: "Переходите в режим подготовки")
-                assessment = CoachFinalStoryBuilder.dynamicText("The main work is close; keep the next steps simple.", russian: "Главная работа уже близко; следующие шаги должны быть простыми.")
-                situation = CoachFinalStoryBuilder.dynamicText("This is the final useful window for a small top-up, bottles, and equipment.", russian: "Это финальное полезное окно для небольшого пополнения, воды и экипировки.")
-                primary = action(.hydrateBeforeSession, "Check bottles and take small sips", "Keep the stomach comfortable", "Проверьте бутылки и пейте маленькими глотками", "Оставьте желудок комфортным")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not force a full meal this close to the start.", russian: "Не форсируйте полноценный приём пищи так близко к старту.")
-                extras = [
-                    action(.lightFueling, "Use only a light carb top-up", "If you are actually hungry", "Добавьте только лёгкие углеводы", "Если реально голодно"),
-                    action(.mobilityPrep, "Check kit and route", "Remove decisions before the start", "Проверьте форму и маршрут", "Уберите решения перед стартом")
-                ]
-
+                window = copy.sixtyTo120Minutes
             case .fifteenTo60Minutes:
-                hero = CoachFinalStoryBuilder.dynamicText("Be fresh at the start", russian: "Подойдите к старту свежим")
-                assessment = CoachFinalStoryBuilder.dynamicText("The main work is close; keep the next steps simple.", russian: "Главная работа уже близко; следующие шаги должны быть простыми.")
-                situation = CoachFinalStoryBuilder.dynamicText("The meal window has passed; focus on final hydration, kit, and a calm start.", russian: "Окно для еды уже прошло; сейчас важны вода, экипировка и спокойный старт.")
-                primary = action(.hydrateBeforeSession, "Finish final hydration", "Small sips only", "Закончите финальную гидратацию", "Только маленькими глотками")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not try to fix fueling with a full meal now.", russian: "Не пытайтесь исправить питание полноценной едой прямо сейчас.")
-                extras = [
-                    action(.mobilityPrep, "Check equipment", "Pack nutrition, then start warm-up 10-15 minutes before the ride", "Проверьте экипировку", "Соберите питание, затем начните лёгкую разминку за 10-15 минут до старта")
-                ]
-
+                window = copy.fifteenTo60Minutes
             case .under15Minutes:
-                hero = CoachFinalStoryBuilder.dynamicText("Start the warm-up now", russian: "Начинайте разминку сейчас")
-                assessment = CoachFinalStoryBuilder.dynamicText("\(capitalized(sessionName)) is about to start; the useful choices are execution choices now.", russian: "\(capitalized(russianSessionName)) вот-вот начнётся; сейчас важны решения по выполнению.")
-                situation = CoachFinalStoryBuilder.dynamicText("Begin calmly and let the body find working rhythm before any pressure.", russian: "Начните спокойно и дайте организму войти в рабочий ритм до любого давления.")
-                primary = action(.controlIntensity, "Start warm-up now", "Keep the first 10-15 minutes easy", "Начните разминку сейчас", "Первые 10-15 минут держите легко")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not chase intensity from the first minutes.", russian: "Не гонитесь за интенсивностью с первых минут.")
-                extras = [
-                    action(.steadyHydration, "Take only a few sips", "No last-minute chugging", "Сделайте только несколько глотков", "Без воды залпом в последнюю минуту"),
-                    action(.controlIntensity, "Keep the first 20-30 minutes controlled", "Let the rhythm come to you", "Первые 20-30 минут держите под контролем", "Пусть ритм придёт сам")
-                ]
-
+                window = copy.under15Minutes
             case .none:
-                hero = CoachFinalStoryBuilder.dynamicText("Prepare endurance calmly", russian: "Спокойно подготовьтесь к выносливости")
-                assessment = CoachFinalStoryBuilder.dynamicText("The useful move is to start controlled and let readiness show itself.", russian: "Полезный ход — начать спокойно и дать готовности проявиться.")
-                situation = CoachFinalStoryBuilder.dynamicText("Use the first minutes as a check, not a test.", russian: "Первые минуты — проверка, а не тест.")
-                primary = action(.controlIntensity, "Start 10 minutes easy", "Then settle into the plan", "Начните 10 минут легко", "Затем входите в план")
-                avoidance = CoachFinalStoryBuilder.dynamicText("Do not force the first block.", russian: "Не форсируйте первый блок.")
-                extras = []
+                window = copy.fifteenTo60Minutes
             }
 
             return playbookOnlyOutput(
-                hero: hero,
-                assessment: assessment,
-                situation: situation,
-                primary: primary,
-                avoidance: avoidance,
-                extras: extras,
-                reasons: preEnduranceReasons(frame)
-            )
-        }
-
-        private static func fuelingDuringEndurance(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
-            playbookOnlyOutput(
-                hero: CoachFinalStoryBuilder.dynamicText("Protect energy availability", russian: "Защитите доступную энергию"),
-                assessment: CoachFinalStoryBuilder.dynamicText("You are spending energy faster than you are replacing it.", russian: "Вы тратите энергию быстрее, чем восполняете её."),
-                situation: CoachFinalStoryBuilder.dynamicText("The next useful move is fueling, not another pacing cue.", russian: "Сейчас полезнее питание, а не ещё одна подсказка про темп."),
-                primary: action(.sustainEnergy, "Consume 30-60 g carbohydrates", "Within the next 15 minutes", "Примите 30-60 г углеводов", "В течение ближайших 15 минут"),
-                avoidance: CoachFinalStoryBuilder.dynamicText("Waiting for hunger is already too late in a long session.", russian: "В длинной сессии ждать голода уже поздно."),
-                extras: [
-                    action(.sustainEnergy, "Repeat carbs every 20-30 minutes", "Keep intake ahead of demand", "Повторяйте углеводы каждые 20-30 минут", "Держите питание впереди расхода"),
-                    action(.steadyHydration, "Drink 300-500 ml over 20 minutes", "Pair fluid with the fueling block", "Выпейте 300-500 мл за 20 минут", "Совместите воду с блоком питания")
-                ],
-                reasons: [
-                    reason(.training, "Energy expenditure is already high.", "Расход энергии уже высокий.", icon: "flame.fill", colorFamily: .activity),
-                    reason(.fuel, "Fuel intake is behind the workload.", "Питание отстаёт от нагрузки.", icon: "bolt.fill", colorFamily: .fuel),
-                    reason(.time, "The remaining work still needs usable energy.", "Оставшейся работе нужна доступная энергия.", icon: "clock.fill", colorFamily: .ready)
-                ]
-            )
-        }
-
-        private static func hydrationDuringEndurance(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
-            playbookOnlyOutput(
-                hero: CoachFinalStoryBuilder.dynamicText("Bring fluid intake back on track", russian: "Верните воду в рабочий график"),
-                assessment: CoachFinalStoryBuilder.dynamicText("Fluid intake is falling behind the workload.", russian: "Питьё отстаёт от нагрузки."),
-                situation: CoachFinalStoryBuilder.dynamicText("A controlled bottle block now protects quality before thirst takes over.", russian: "Контролируемый блок воды сейчас защитит качество до сильной жажды."),
-                primary: action(.steadyHydration, "Drink 300-500 ml", "During the next 20 minutes", "Выпейте 300-500 мл", "В течение ближайших 20 минут"),
-                avoidance: CoachFinalStoryBuilder.dynamicText("Dehydration will reduce quality before fatigue feels obvious.", russian: "Обезвоживание снизит качество раньше, чем усталость станет явной."),
-                extras: [
-                    action(.steadyHydration, "Finish one bottle before the next hour", "Small sips, not one large drink", "Закончите одну бутылку до следующего часа", "Маленькими глотками, не залпом"),
-                    action(.sustainEnergy, "Take carbs with the next drink", "Keep stomach and energy steady", "Добавьте углеводы со следующим питьём", "Держите желудок и энергию ровно")
-                ],
-                reasons: [
-                    reason(.hydration, "Fluid intake is behind the session demand.", "Воды меньше, чем требует сессия.", icon: "drop.fill", colorFamily: .hydration),
-                    reason(.training, "The workload is long enough for hydration to affect quality.", "Сессия достаточно длинная, чтобы вода влияла на качество.", icon: "figure.run", colorFamily: .activity),
-                    reason(.constraint, "Catching up later is harder than steady drinking now.", "Позже догонять сложнее, чем пить ровно сейчас.", icon: "exclamationmark.triangle.fill", colorFamily: .warning)
-                ]
+                hero: CoachFinalStoryBuilder.dynamicText(window.hero.english, russian: window.hero.russian),
+                assessment: holisticAssessment(
+                    frame: frame,
+                    tacticalEN: window.assessment.english,
+                    tacticalRU: window.assessment.russian
+                ),
+                situation: CoachFinalStoryBuilder.dynamicText(window.situation.english, russian: window.situation.russian),
+                primary: action(
+                    window.primary.type,
+                    window.primary.title.english,
+                    window.primary.subtitle.english,
+                    window.primary.title.russian,
+                    window.primary.subtitle.russian
+                ),
+                avoidance: CoachFinalStoryBuilder.dynamicText(window.avoidance.english, russian: window.avoidance.russian),
+                extras: window.extras.map {
+                    action($0.type, $0.title.english, $0.subtitle.english, $0.title.russian, $0.subtitle.russian)
+                },
+                reasons: preSessionReasons(frame)
             )
         }
 
         private static func strength(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
+            if frame.sessionPhase == .pre {
+                return preSession(frame)
+            }
+
             let post = frame.sessionPhase == .post
             let hero = post
                 ? CoachFinalStoryBuilder.dynamicText("Recover from strength", russian: "Восстановитесь после силовой")
@@ -1675,12 +1737,54 @@ enum CoachFinalStoryBuilder {
                 ]
                 : []
             if post {
-                return playbookOnlyOutput(hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: extras, reasons: defaultReasons(frame))
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: frame.dayLoadContext.focusActivity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postTiming = CoachEnduranceDuringPostCopyCatalog.PostTiming.from(minutesSinceEnd: minutesSinceEnd)
+                let postHero = postTiming == .stale
+                    ? CoachFinalStoryBuilder.dynamicText(
+                        CoachTimeOfDayFraming.strengthPostStaleHero(timePhase: frame.dayLoadContext.timePhase).english,
+                        russian: CoachTimeOfDayFraming.strengthPostStaleHero(timePhase: frame.dayLoadContext.timePhase).russian
+                    )
+                    : postTiming == .settled
+                    ? CoachFinalStoryBuilder.dynamicText("Strength work behind you", russian: "Силовая позади")
+                    : hero
+                let postAssessment = postTiming == .stale
+                    ? CoachFinalStoryBuilder.dynamicText(
+                        "The heavy work is hours behind you now — sleep and a calm evening matter most.",
+                        russian: "Тяжёлая работа уже несколько часов позади — сейчас важнее сон и спокойный вечер."
+                    )
+                    : postTiming == .settled
+                    ? CoachFinalStoryBuilder.dynamicText(
+                        "Strength is done for now — protect the rest of the day.",
+                        russian: "Силовая на сегодня сделана — берегите остаток дня."
+                    )
+                    : assessment
+                let postPrimary = postTiming == .immediate
+                    ? primary
+                    : action(.sleepPriority, "Keep the rest of the day easy", "No need to keep acting like the session just ended", "Остаток дня держите лёгким", "Не нужно жить так, будто сессия только что закончилась")
+                let postExtras = postTiming == .immediate ? extras : [
+                    action(.sleepPriority, "Protect sleep tonight", "That is where strength recovery finishes", "Берегите сон сегодня", "Там завершается восстановление после силовой")
+                ]
+                return playbookOnlyOutput(
+                    hero: postHero,
+                    assessment: holisticAssessment(frame: frame, tactical: postAssessment),
+                    situation: situation,
+                    primary: postPrimary,
+                    avoidance: avoidance,
+                    extras: postExtras,
+                    reasons: []
+                )
             }
             return output(frame: frame, hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: extras)
         }
 
         private static func racket(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
+            if frame.sessionPhase == .pre {
+                return preSession(frame)
+            }
+
             let hero = CoachFinalStoryBuilder.dynamicText("Control the court load", russian: "Контролируйте нагрузку на корте")
             let assessment = CoachFinalStoryBuilder.dynamicText("Racket sessions can become hard through repeated accelerations.", russian: "Игровые сессии могут стать тяжёлыми из-за повторных ускорений.")
             let situation = CoachFinalStoryBuilder.dynamicText("Keep movement sharp without chasing every extra point.", russian: "Держите движение резким, но не гонитесь за каждым лишним очком.")
@@ -1701,7 +1805,7 @@ enum CoachFinalStoryBuilder {
             let actions = CoachFinalStoryBuilder.dedupedRecommendations([primary] + extras + frame.actions)
             return CoachV4PlaybookOutput(
                 hero: hero,
-                assessment: assessment,
+                assessment: holisticAssessment(frame: frame, tactical: assessment),
                 situation: situation,
                 primaryAction: primary,
                 avoidance: avoidance,
@@ -1719,7 +1823,7 @@ enum CoachFinalStoryBuilder {
             extras: [CoachActionRecommendation],
             reasons: [CoachV4Reason]
         ) -> CoachV4PlaybookOutput {
-            let actions = CoachFinalStoryBuilder.dedupedRecommendations([primary] + extras)
+            let actions = CoachFinalStoryBuilder.dedupedRecommendations(extras)
             return CoachV4PlaybookOutput(
                 hero: hero,
                 assessment: assessment,
@@ -1731,48 +1835,62 @@ enum CoachFinalStoryBuilder {
             )
         }
 
-        private static func preEnduranceReasons(_ frame: CoachV4DecisionFrame) -> [CoachV4Reason] {
+        private static func preSessionReasons(_ frame: CoachV4DecisionFrame) -> [CoachV4Reason] {
             var reasons: [CoachV4Reason] = []
-            let longSession = frame.durationBand == .longOver120
-            let trainingText = longSession
-                ? ("This ride is the biggest training stimulus left today.", "Эта велосессия станет главным тренировочным стимулом дня.")
-                : ("This session is the main training demand left today.", "Эта сессия — главная тренировочная нагрузка до конца дня.")
 
             if frame.dayLoadContext.timeToNextImportantSession == .under15Minutes {
-                reasons.append(reason(.time, "Start time is almost here.", "Старт уже почти сейчас.", icon: "clock.fill", colorFamily: .ready))
+                reasons.append(reason(.time, "Start is almost here.", "Старт уже на носу.", icon: "clock.fill", colorFamily: .ready))
             } else if let minutes = frame.dayLoadContext.hoursUntilNextImportantActivity.map({ Int(($0 * 60).rounded()) }) {
-                let capped = max(minutes, 1)
-                reasons.append(reason(.time, "Less than \(capped) minutes remain before the start.", "До старта осталось меньше \(capped) минут.", icon: "clock.fill", colorFamily: .ready))
+                let timeCopy = timeUntilStartReason(minutes: max(minutes, 1))
+                reasons.append(reason(.time, timeCopy.english, timeCopy.russian, icon: "clock.fill", colorFamily: .ready))
             }
 
             if frame.primaryLimiter == .recovery {
                 reasons.append(reason(.recovery, "Recovery is the limiting factor today.", "Восстановление сегодня ограничивает нагрузку.", icon: "heart.fill", colorFamily: .recovery))
             } else {
-                reasons.append(reason(.recovery, "Recovery is high enough to use the planned session.", "Восстановление достаточно высокое для плановой сессии.", icon: "heart.fill", colorFamily: .recovery))
+                reasons.append(reason(.recovery, "Recovery looks good enough for the planned session.", "Сегодня восстановление позволяет идти по плану.", icon: "heart.fill", colorFamily: .recovery))
             }
 
-            reasons.append(reason(.training, trainingText.0, trainingText.1, icon: "figure.run", colorFamily: .activity))
-            return Array(reasons.prefix(3))
+            return reasons
+        }
+
+        private static func timeUntilStartReason(minutes: Int) -> (english: String, russian: String) {
+            let m = max(minutes, 1)
+            if m < 15 {
+                return ("Start is almost here.", "Старт уже на носу.")
+            }
+            if m < 75 {
+                return (
+                    "Start is in about \(m) minutes.",
+                    "До старта \(russianMinutesUntil(m))."
+                )
+            }
+            if m < 105 {
+                return ("Start is in about an hour.", "До старта примерно час.")
+            }
+            return (
+                "Start is in about \(m) minutes.",
+                "До старта \(russianMinutesUntil(m))."
+            )
+        }
+
+        private static func russianMinutesUntil(_ minutes: Int) -> String {
+            let n = max(minutes, 1)
+            let mod10 = n % 10
+            let mod100 = n % 100
+            let word: String
+            if mod10 == 1 && mod100 != 11 {
+                word = "минута"
+            } else if (2...4).contains(mod10) && !(12...14).contains(mod100) {
+                word = "минуты"
+            } else {
+                word = "минут"
+            }
+            return "ещё \(n) \(word)"
         }
 
         private static func defaultReasons(_ frame: CoachV4DecisionFrame) -> [CoachV4Reason] {
             var reasons: [CoachV4Reason] = []
-
-            if frame.storyOwner == .pacingExecution {
-                return [
-                    reason(.time, "The session is still in the opening block.", "Сессия ещё в стартовом блоке.", icon: "clock.fill", colorFamily: .ready),
-                    reason(.training, "Early control sets up the rest of the ride.", "Ранний контроль задаёт качество остатка сессии.", icon: "figure.run", colorFamily: .activity),
-                    reason(.recovery, "Recovery is available, so there is no need to force proof now.", "Восстановление доступно, поэтому сейчас не нужно ничего доказывать.", icon: "heart.fill", colorFamily: .recovery)
-                ]
-            }
-
-            if frame.storyOwner == .sustainableExecution {
-                return [
-                    reason(.time, "The warm-up window has passed.", "Разминочное окно уже прошло.", icon: "clock.fill", colorFamily: .ready),
-                    reason(.training, "The remaining work needs a repeatable rhythm.", "Оставшейся работе нужен повторяемый ритм.", icon: "figure.run", colorFamily: .activity),
-                    reason(.fuel, "Fueling and fluid timing start to matter now.", "Сейчас уже важны график питания и воды.", icon: "bolt.fill", colorFamily: .fuel)
-                ]
-            }
 
             if frame.activityClass == .heat || frame.activityFamily == .sauna {
                 if frame.sessionPhase == .pre,
@@ -1965,10 +2083,15 @@ enum CoachFinalStoryBuilder {
     }
 
     private static func coachActionText(_ recommendation: CoachActionRecommendation) -> CoachFinalStoryText {
-        dynamicText(
-            "\(recommendation.englishTitle). \(recommendation.englishSubtitle).",
-            russian: "\(recommendation.russianTitle). \(recommendation.russianSubtitle)."
-        )
+        let englishSubtitle = recommendation.englishSubtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let russianSubtitle = recommendation.russianSubtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let english = englishSubtitle.isEmpty
+            ? recommendation.englishTitle
+            : "\(recommendation.englishTitle). \(englishSubtitle)."
+        let russian = russianSubtitle.isEmpty
+            ? recommendation.russianTitle
+            : "\(recommendation.russianTitle). \(russianSubtitle)."
+        return dynamicText(english, russian: russian)
     }
 
     private static func localizedTitle(_ recommendation: CoachActionRecommendation) -> String {
@@ -2458,7 +2581,8 @@ enum CoachFinalStoryBuilder {
             input: input,
             guidance: guidance,
             timePhase: timePhase,
-            seriousCompleted: seriousCompleted
+            seriousCompleted: seriousCompleted,
+            focusActivity: active ?? upcoming ?? seriousCompleted ?? latestCompleted
         )
         let lowRecovery = lowRecoveryOrReadiness(input)
         let sleepLimited = input.brain.sleep == .short || input.brain.sleep == .veryShort || input.recoveryContext.sleepHours > 0 && input.recoveryContext.sleepHours < 6.5
@@ -3412,7 +3536,8 @@ enum CoachFinalStoryBuilder {
         input: CoachInputSnapshot,
         guidance: CoachGuidanceV3,
         timePhase: CoachFinalDecisionTimeOfDay,
-        seriousCompleted: PlannedActivity?
+        seriousCompleted: PlannedActivity?,
+        focusActivity: PlannedActivity?
     ) -> CoachV4DayLoadContext {
         let nextImportant = nextImportantActivityToday(input: input, guidance: guidance)
         let hoursUntilNext = nextImportant.map { max(0, $0.date.timeIntervalSince(input.now) / 3600) }
@@ -3424,6 +3549,9 @@ enum CoachFinalStoryBuilder {
             completedSeriousTrainingToday: seriousCompleted != nil || input.dayContext.completedTrainingStressScore >= 4,
             completedRecoveryVolumeToday: input.dayContext.completedActivityVolumeMinutes - input.dayContext.completedTrainingMinutes,
             nextImportantActivityToday: nextImportant,
+            focusActivity: focusActivity,
+            referenceNow: input.now,
+            recoveryPercent: input.recoveryContext.recoveryPercent,
             hoursUntilNextImportantActivity: hoursUntilNext,
             timeToNextImportantSession: coachV4TimeToSessionWindow(hoursUntilSession: hoursUntilNext),
             tomorrowDemand: tomorrowDemand,
@@ -3434,7 +3562,8 @@ enum CoachFinalStoryBuilder {
                     input.brain.sleep == .short ||
                     input.brain.sleep == .veryShort
             ),
-            shouldProtectTomorrow: tomorrowDemand == .hard || guidance.priority.focus == .tomorrowPlanRisk
+            shouldProtectTomorrow: tomorrowDemand == .hard || guidance.priority.focus == .tomorrowPlanRisk,
+            tomorrowRecoveryPlanSummary: CoachTomorrowPlanReadBuilder.recoveryPlanSummary(input: input)
         )
     }
 
@@ -3606,6 +3735,13 @@ enum CoachFinalStoryBuilder {
         return kind == .workout &&
             (text.contains("strength") ||
                 text.contains("upper") ||
+                text.contains("lower") ||
+                text.contains("full body") ||
+                text.contains("full-body") ||
+                text.contains("fullbody") ||
+                text.contains("leg") ||
+                text.contains("push") ||
+                text.contains("pull") ||
                 text.contains("gym") ||
                 text.contains("lift") ||
                 text.contains("weight"))
@@ -3727,23 +3863,23 @@ enum CoachFinalStoryBuilder {
             )
         case .pacingExecution:
             return supportAction(
-                .controlIntensity,
-                title: localizedAction(english: "Keep the next 10 minutes easy", russian: "Следующие 10 минут держите легко"),
-                subtitle: localizedAction(english: "Let effort rise only after the body settles", russian: "Добавляйте усилие только после стабилизации"),
+                .steadyHydration,
+                title: localizedAction(english: "Sip from your bottle", russian: "Глоток из бутылки"),
+                subtitle: localizedAction(english: "Small mouthfuls only", russian: "Только маленькими глотками"),
                 colorFamily: colorFamily
             )
         case .sustainableExecution:
             return supportAction(
-                .sustainEnergy,
-                title: localizedAction(english: "Take carbs every 20-30 minutes", russian: "Принимайте углеводы каждые 20-30 минут"),
-                subtitle: localizedAction(english: "Pair each fueling block with small sips", russian: "Сочетайте каждый блок питания с маленькими глотками"),
+                .steadyHydration,
+                title: localizedAction(english: "Drink with each fueling block", russian: "Пейте с каждым приёмом пищи"),
+                subtitle: localizedAction(english: "Small sips, not a full bottle at once", russian: "Маленькими глотками, не залпом"),
                 colorFamily: colorFamily
             )
         case .postActivityRecovery:
             return supportAction(
-                .recoveryMeal,
-                title: localizedAction(english: "Eat within 1 hour", russian: "Не откладывайте питание больше чем на час"),
-                subtitle: localizedAction(english: "Start recovery with the next meal", russian: "Начните восстановление с ближайшего приёма пищи"),
+                .sleepPriority,
+                title: localizedAction(english: "Protect sleep tonight", russian: "Берегите сон сегодня"),
+                subtitle: localizedAction(english: "That is where recovery finishes", russian: "Там завершается восстановление"),
                 colorFamily: colorFamily
             )
         case .recovery:
@@ -4964,7 +5100,7 @@ enum CoachFinalStoryBuilder {
         guidance: CoachGuidanceV3
     ) -> CoachFinalDecisionContext {
         let selected = selectedCoachActivity(input: input, guidance: guidance)
-        let selectedUpNext = selected.flatMap { activity -> PlannedActivity? in
+        let selectedFutureActivity = selected.flatMap { activity -> PlannedActivity? in
             guard !activity.isCompleted,
                   !activity.isSkipped,
                   activity.date > input.now else {
@@ -4972,6 +5108,10 @@ enum CoachFinalStoryBuilder {
             }
             return activity
         }
+        let shouldUsePreparationUpNext = guidance.priority.focus == .prepareForActivity ||
+            guidance.priority.focus == .nextActivityLater
+        let selectedUpNext = selectedFutureActivity ??
+            (shouldUsePreparationUpNext ? nextImportantActivityToday(input: input, guidance: guidance) : nil)
 
         return CoachFinalDecisionContext(
             selectedCoachActivity: selected,
@@ -5238,6 +5378,7 @@ enum CoachFinalStoryBuilder {
                 humanStory.title.resolved,
                 humanStory.whatHappened.resolved,
                 humanStory.whatMattersNow.resolved,
+                humanStory.whatToDoNext.resolved,
                 humanStory.whatToAvoid.resolved
             ] + reasons.map { $0.text.resolved }
         ).map(finalCopyNormalizedText))
@@ -5264,6 +5405,20 @@ enum CoachFinalStoryBuilder {
                 )
             )
             if actions.count == 3 { break }
+        }
+
+        if actions.isEmpty {
+            let fallback = fallbackSupportAction(
+                owner: frame.storyOwner,
+                colorFamily: colorFamily
+            )
+            let normalizedTitle = finalCopyNormalizedText(fallback.title)
+            let normalizedSubtitle = finalCopyNormalizedText(fallback.subtitle)
+            if !normalizedTitle.isEmpty,
+               !finalCopyTextOverlapsAny(normalizedTitle, in: seen),
+               normalizedSubtitle.isEmpty || !finalCopyTextOverlapsAny(normalizedSubtitle, in: seen) {
+                actions.append(fallback)
+            }
         }
 
         return actions
@@ -5576,7 +5731,7 @@ enum CoachFinalStoryBuilder {
             return [.training, .constraint, .recovery, .time, .fuel]
         case .activityPreparation:
             return context.hasFutureActivityContext
-                ? [.training, .constraint, .time, .hydration, .sleep]
+                ? [.training, .constraint, .time, .hydration, .sleep, .recovery]
                 : [.stability, .recovery, .constraint]
         case .postActivityRecovery, .recovery:
             return [.training, .recovery, .constraint, .sleep]

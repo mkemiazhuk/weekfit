@@ -212,6 +212,17 @@ extension PlannedActivity {
         isCompleted && !isSkipped && !isPartialCompletion
     }
 
+    var isWatchSynced: Bool {
+        if healthKitWorkoutUUID?.isEmpty == false {
+            return true
+        }
+
+        let normalizedSource = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalizedSource == "appleworkout" ||
+            normalizedSource == "applewatch" ||
+            normalizedSource == "healthkit"
+    }
+
     func terminalState(now: Date) -> PlannedActivityTerminalState {
         if isSkipped {
             return .cancelled

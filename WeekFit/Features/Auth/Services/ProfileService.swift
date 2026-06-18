@@ -8,6 +8,12 @@
         func loadSupportSettings() -> [ProfileItem]
         func loadConnectedSystems() -> [ProfileItem]
 
+        func loadManualNutritionGoal() -> NutritionGoal?
+        func isManualNutritionGoal() -> Bool
+        func saveManualNutritionGoal(_ goal: NutritionGoal)
+        func bodyGoalNeedsSetup(weightKg: Double, heightCm: Double) -> Bool
+        func resolvedNutritionGoal(weightKg: Double, heightCm: Double) -> NutritionGoal
+
         func signOut()
     }
 
@@ -19,6 +25,14 @@
             static let displayName = "weekfit.profile.displayName"
             static let email = "weekfit.profile.email"
             static let initials = "weekfit.profile.initials"
+            static let nutritionGoal = "weekfit.profile.nutritionGoal"
+            static let nutritionGoalIsManual = "weekfit.profile.nutritionGoalIsManual"
+        }
+
+        private let defaults: UserDefaults
+
+        init(defaults: UserDefaults = .standard) {
+            self.defaults = defaults
         }
 
         func loadUserProfile() -> UserProfile {
@@ -64,6 +78,54 @@
                     type: .language
                 )
             ]
+        }
+
+        func loadManualNutritionGoal() -> NutritionGoal? {
+            guard let rawValue = defaults.string(forKey: Keys.nutritionGoal) else { return nil }
+            return NutritionGoal(rawValue: rawValue)
+        }
+
+        func isManualNutritionGoal() -> Bool {
+            defaults.bool(forKey: Keys.nutritionGoalIsManual)
+        }
+
+        func saveManualNutritionGoal(_ goal: NutritionGoal) {
+            defaults.set(goal.rawValue, forKey: Keys.nutritionGoal)
+            defaults.set(true, forKey: Keys.nutritionGoalIsManual)
+        }
+
+        func bodyGoalNeedsSetup(weightKg: Double, heightCm: Double) -> Bool {
+            UserNutritionProfile.needsManualBodyGoalSelection(
+                weightKg: weightKg,
+                heightCm: heightCm,
+                manualGoal: loadManualNutritionGoal(),
+                isManualGoal: isManualNutritionGoal()
+            )
+        }
+
+        func resolvedNutritionGoal(weightKg: Double, heightCm: Double) -> NutritionGoal {
+            UserNutritionProfile.resolveGoal(
+                weightKg: weightKg,
+                heightCm: heightCm,
+                manualGoal: loadManualNutritionGoal(),
+                isManualGoal: isManualNutritionGoal()
+            )
+        }
+
+        func makeNutritionProfile(
+            weightKg: Double,
+            heightCm: Double,
+            age: Int,
+            sex: BiologicalSex
+        ) -> UserNutritionProfile {
+            UserNutritionProfile.resolve(
+                weightKg: weightKg,
+                heightCm: heightCm,
+                age: age,
+                sex: sex,
+                manualGoal: loadManualNutritionGoal(),
+                isManualGoal: isManualNutritionGoal()
+            )
         }
 
         func loadConnectedSystems() -> [ProfileItem] {

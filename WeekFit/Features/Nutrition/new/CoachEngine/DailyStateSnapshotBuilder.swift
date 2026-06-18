@@ -57,11 +57,11 @@ enum DailyStateSnapshotBuilder {
             sleepHours: healthManager.sleepHours,
             weightKg: healthManager.weight
         )
-        let profile = UserNutritionProfile.createAutomatic(
+        let profile = ProfileService().makeNutritionProfile(
             weightKg: healthManager.weight,
             heightCm: healthManager.heightCm,
             age: healthManager.age,
-            sex: healthManager.biologicalSex == .male ? .male : .female
+            sex: healthManager.biologicalSex
         )
         let plannedActivityGoal = resolvedDayActivities.reduce(0.0) { partial, activity in
             partial + Double(max(0, CoachActivityContextResolverV3.activityCalories(activity)))
@@ -73,7 +73,8 @@ enum DailyStateSnapshotBuilder {
             sex: healthManager.biologicalSex,
             recoveryPercent: Int(healthManager.recoveryPercent),
             sleepHours: healthManager.sleepHours,
-            vo2Max: healthManager.cardioFitnessVO2
+            vo2Max: healthManager.cardioFitnessVO2,
+            goal: profile.goal
         )
         let automatedActivityGoal = max(300, plannedActivityGoal, profileActivityGoal)
 
@@ -115,11 +116,11 @@ enum DailyStateSnapshotBuilder {
         let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
 
         return DailyNutritionMetrics(
-            protein: max(healthManager.protein, current?.protein ?? 0, coach?.proteinCurrent ?? 0),
-            carbs: max(healthManager.carbs, current?.carbs ?? 0, coach?.carbsCurrent ?? 0),
-            fats: max(healthManager.fats, current?.fats ?? 0, coach?.fatsCurrent ?? 0),
-            fiber: max(healthManager.fiber, current?.fiber ?? 0),
-            calories: max(healthManager.calories, current?.calories ?? 0, coach?.caloriesCurrent ?? 0),
+            protein: healthManager.protein,
+            carbs: healthManager.carbs,
+            fats: healthManager.fats,
+            fiber: healthManager.fiber,
+            calories: healthManager.calories,
             waterLiters: max(healthManager.waterLiters, current?.waterLiters ?? 0, coach?.waterCurrent ?? 0),
             activeCalories: healthManager.activeCalories,
             sleepHours: healthManager.sleepHours,

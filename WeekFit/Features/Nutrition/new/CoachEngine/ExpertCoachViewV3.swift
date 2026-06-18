@@ -340,7 +340,7 @@ struct ExpertCoachViewV3: View {
         let story = finalStoryRenderModel == nil ? coachScreenStory : nil
         let presentation = finalStoryRenderModel == nil ? coachCoordinator.state.coachPresentation : nil
         let renderedTitle = coachRenderedTitle
-        let renderedRead = finalStoryRenderModel?.subtitle ?? coachUniqueHeroText(
+        let renderedRead = finalStoryRenderModel?.displaySubtitle ?? coachUniqueHeroText(
             coachOneStoryHeroText(
                 presentation?.message ?? story?.myRead ?? coachHeroReadFallback,
                 role: .assessment,
@@ -358,7 +358,7 @@ struct ExpertCoachViewV3: View {
             fallback: coachHeroRecommendationFallback,
             avoiding: [coachDisplayStateLabel, renderedTitle, renderedRead]
         )
-        let renderedRisk = finalStoryRenderModel?.avoidRecommendation ?? coachUniqueHeroText(
+        let renderedRisk = finalStoryRenderModel?.displayAvoid ?? coachUniqueHeroText(
             coachOneStoryHeroText(
                 presentation?.avoidNotes.first ?? story?.beCarefulWith ?? coachHeroRiskFallback,
                 role: .caution,
@@ -370,6 +370,7 @@ struct ExpertCoachViewV3: View {
         let shouldShowRisk = finalStoryRenderModel != nil
             ? !renderedRisk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             : (presentation?.avoidNotes.isEmpty == false || story?.shouldShowBeCarefulWith == true)
+        let shouldShowRead = !renderedRead.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
@@ -390,10 +391,12 @@ struct ExpertCoachViewV3: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        coachHeroTextBlock(
-                            label: WeekFitLocalizedString("coach.hero.myRead"),
-                            text: renderedRead
-                        )
+                        if shouldShowRead {
+                            coachHeroTextBlock(
+                                label: WeekFitLocalizedString("coach.hero.myRead"),
+                                text: renderedRead
+                            )
+                        }
 
                         coachHeroTextBlock(
                             label: WeekFitLocalizedString("coach.hero.myRecommendation"),

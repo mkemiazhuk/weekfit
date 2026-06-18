@@ -14,6 +14,7 @@ struct WorkoutRoutePoint: Hashable {
     let latitude: Double
     let longitude: Double
     let altitude: Double
+    let verticalAccuracy: Double?
     let timestamp: Date
 }
 
@@ -183,7 +184,8 @@ final class HealthManager: ObservableObject {
     
     
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
-        max(
+        let goal = ProfileService().resolvedNutritionGoal(weightKg: weight, heightCm: heightCm)
+        return max(
             ActivityGoalEngine.calculate(
                 weightKg: weight,
                 heightCm: heightCm,
@@ -191,7 +193,8 @@ final class HealthManager: ObservableObject {
                 sex: biologicalSex,
                 recoveryPercent: metrics.recoveryPercent,
                 sleepHours: metrics.sleepHours,
-                vo2Max: metrics.vo2Max
+                vo2Max: metrics.vo2Max,
+                goal: goal
             ),
             1
         )
@@ -1188,7 +1191,7 @@ final class HealthManager: ObservableObject {
 
         let completedMealActivities = plannedActivities.filter { activity in
             guard calendar.isDate(activity.date, inSameDayAs: date) else { return false }
-            guard hasActivityPassed(activity.date, for: date) else { return false }
+            guard activity.isCompleted, !activity.isSkipped else { return false }
             let type = activity.type.normalized
             return (type == "meal" || type == "drink") && !isHydrationActivityByText(activity)
         }
@@ -1230,7 +1233,7 @@ final class HealthManager: ObservableObject {
 
         let completedActivities = plannedActivities.filter { activity in
             guard calendar.isDate(activity.date, inSameDayAs: date) else { return false }
-            return hasActivityPassed(activity.date, for: date)
+            return activity.isCompleted && !activity.isSkipped
         }
 
         let hydrationActivities = completedActivities.filter { activity in
@@ -1241,15 +1244,6 @@ final class HealthManager: ObservableObject {
 
         let totalMl = hydrationActivities.count * 250
         return Double(totalMl) / 1000.0
-    }
-
-    private func hasActivityPassed(_ activityDate: Date, for selectedDate: Date) -> Bool {
-        let calendar = Calendar.current
-        let now = Date()
-
-        if calendar.isDateInToday(selectedDate) { return activityDate < now }
-        if selectedDate < calendar.startOfDay(for: now) { return true }
-        return false
     }
 
     private func matchMeal(for activity: PlannedActivity, in meals: [Meals]) -> Meals? {
@@ -1408,7 +1402,10 @@ final class HealthManager: ObservableObject {
             maxHeartRate: maxHeartRate,
             heartRateSamples: loadedHeartRateSamples,
             routePoints: loadedRoutePoints,
-            elevationGain: elevationGain(from: loadedRoutePoints),
+            elevationGain: WorkoutElevationGainResolver.resolve(
+                from: workout,
+                routePoints: loadedRoutePoints
+            ),
             steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
             cadence: nil
         )
@@ -1447,7 +1444,10 @@ final class HealthManager: ObservableObject {
             maxHeartRate: loadedHeartRate.maxHeartRate,
             heartRateSamples: loadedHeartRate.heartRateSamples,
             routePoints: loadedRoute.routePoints,
-            elevationGain: loadedRoute.elevationGain,
+            elevationGain: WorkoutElevationGainResolver.resolve(
+                from: workout,
+                routePoints: loadedRoute.routePoints
+            ),
             steps: loadedMetrics.steps,
             cadence: loadedMetrics.cadence
         )
@@ -1586,7 +1586,7 @@ final class HealthManager: ObservableObject {
             maxHeartRate: nil,
             heartRateSamples: [],
             routePoints: points,
-            elevationGain: elevationGain(from: points),
+            elevationGain: WorkoutElevationGainResolver.resolve(from: workout, routePoints: points),
             steps: nil,
             cadence: nil
         )
@@ -1808,6 +1808,7 @@ final class HealthManager: ObservableObject {
                         latitude: $0.coordinate.latitude,
                         longitude: $0.coordinate.longitude,
                         altitude: $0.altitude,
+                        verticalAccuracy: $0.verticalAccuracy >= 0 ? $0.verticalAccuracy : nil,
                         timestamp: $0.timestamp
                     )
                 })
@@ -1821,16 +1822,6 @@ final class HealthManager: ObservableObject {
         }
     }
 
-    private func elevationGain(from points: [WorkoutRoutePoint]) -> Double? {
-        guard points.count > 1 else { return nil }
-
-        let gain = zip(points, points.dropFirst()).reduce(0.0) { total, pair in
-            let delta = pair.1.altitude - pair.0.altitude
-            return delta > 0 ? total + delta : total
-        }
-
-        return gain > 0 ? gain : nil
-    }
     
     func loadHourlyActiveCalories(for date: Date) async -> [Double] {
         guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {

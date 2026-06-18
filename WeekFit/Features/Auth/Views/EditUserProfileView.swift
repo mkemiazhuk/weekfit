@@ -3,17 +3,19 @@ import SwiftUI
 struct EditUserProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appSession: AppSessionState
     @ObservedObject var viewModel: ProfileViewModel
+    @StateObject private var healthManager = HealthManager()
 
     @State private var name: String = ""
+    @State private var selectedGoal: NutritionGoal = .maintenance
 
     private let background = Color.black
-    private let cardBackground = Color.white.opacity(0.055)
     private let textPrimary = Color.white
     private let textSecondary = Color.white.opacity(0.54)
     private let accentGreenTop = Color(red: 0.70, green: 0.88, blue: 0.72)
     private let accentGreenBottom = Color(red: 0.58, green: 0.79, blue: 0.62)
-    
+
     private var cleanName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -24,6 +26,28 @@ struct EditUserProfileView: View {
 
     private var avatarInitial: String {
         ProfileService.makeInitials(from: cleanName)
+    }
+
+    private var hasHealthBiometrics: Bool {
+        UserNutritionProfile.hasSufficientHealthDataForAutoGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+    }
+
+    private var suggestedGoal: NutritionGoal? {
+        guard hasHealthBiometrics else { return nil }
+        return UserNutritionProfile.suggestedGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+    }
+
+    private var showsBodyGoalSection: Bool {
+        viewModel.shouldShowBodyGoalSetting(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
     }
 
     var body: some View {
@@ -59,6 +83,14 @@ struct EditUserProfileView: View {
                         text: $name,
                         placeholder: WeekFitLocalizedString("settings.profile.edit.namePlaceholder")
                     )
+
+                    if showsBodyGoalSection {
+                        BodyGoalPickerSection(
+                            selectedGoal: $selectedGoal,
+                            hasHealthBiometrics: hasHealthBiometrics,
+                            suggestedGoal: suggestedGoal
+                        )
+                    }
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 24)
@@ -83,6 +115,10 @@ struct EditUserProfileView: View {
                     )
                     .ignoresSafeArea(edges: .bottom)
                 }
+        }
+        .task {
+            await loadHealthProfile()
+            syncSelectedGoal()
         }
         .onAppear {
             name = viewModel.userProfile.fullName
@@ -182,6 +218,24 @@ struct EditUserProfileView: View {
         }
     }
 
+    private func loadHealthProfile() async {
+        let actualAccess = await healthManager.checkReadAuthorizationStatus()
+        await MainActor.run {
+            healthManager.isHealthAccessGranted = actualAccess
+        }
+
+        guard actualAccess else { return }
+        await healthManager.loadUserProfile()
+    }
+
+    private func syncSelectedGoal() {
+        let resolvedGoal = ProfileService().resolvedNutritionGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+        selectedGoal = resolvedGoal
+    }
+
     private func save() {
         let updatedProfile = UserProfile(
             initials: avatarInitial,
@@ -190,6 +244,13 @@ struct EditUserProfileView: View {
         )
 
         viewModel.updateUserProfile(updatedProfile)
+
+        if showsBodyGoalSection {
+            viewModel.saveBodyGoal(selectedGoal)
+            appSession.triggerCoachRefresh(source: "bodyGoalChanged")
+            appSession.triggerHealthRefresh(source: "bodyGoalChanged")
+        }
+
         dismiss()
     }
 }

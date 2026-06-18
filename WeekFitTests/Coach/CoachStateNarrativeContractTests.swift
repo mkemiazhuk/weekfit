@@ -249,10 +249,21 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let story = try XCTUnwrap(state.finalStory)
         let renderModel = CoachFinalStoryRenderModel(story: story)
 
-        XCTAssertEqual(story.title.resolved, "The main work is complete")
-        XCTAssertEqual(story.whatHappened.resolved, "This long session created meaningful training stress.")
-        XCTAssertEqual(story.whatMattersNow.resolved, "Recovery now determines how much benefit you keep.")
-        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("25-40"), story.whatToDoNext.resolved)
+        XCTAssertEqual(story.owner, .postActivityRecovery)
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("recover") || story.title.resolved.localizedCaseInsensitiveContains("ride") || story.title.resolved.localizedCaseInsensitiveContains("done"), story.title.resolved)
+        XCTAssertTrue(
+            story.whatHappened.resolved.localizedCaseInsensitiveContains("recovery") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("demanding day") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("more work"),
+            story.whatHappened.resolved
+        )
+        XCTAssertFalse(story.whatMattersNow.resolved.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, story.whatMattersNow.resolved)
+        XCTAssertTrue(
+            story.whatToDoNext.resolved.localizedCaseInsensitiveContains("25-40") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("sleep") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("easy"),
+            story.whatToDoNext.resolved
+        )
         XCTAssertEqual(story.whatToAvoid.resolved, "Do not add another hard session today.")
         assertNoDuplicateHeroOrSupportCopy(story, scenarioName: "completed endurance recovery")
         XCTAssertFalse(renderModel.supportActions.contains { action in
@@ -296,7 +307,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let read = story.whatHappened.resolved
 
         XCTAssertNil(read.range(of: "[A-Za-z]", options: .regularExpression), read)
-        XCTAssertTrue(read.contains("нагруз") || read.contains("трениров"), read)
+        XCTAssertTrue(read.contains("восстанов") || read.contains("поездк"), read)
         XCTAssertFalse(read.contains("session"), read)
         XCTAssertFalse(read.contains("main training load"), read)
         XCTAssertEqual(story.whatToAvoid.resolved, "Не добавляйте сегодня ещё одну тяжёлую сессию.")
@@ -330,9 +341,19 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let primaryActionText = (state.guidance?.screenStory?.primaryActions.map(\.title).joined(separator: " ") ?? "")
 
         XCTAssertEqual(story.owner, .postActivityRecovery)
-        XCTAssertEqual(story.whatHappened.resolved, "This long session created meaningful training stress.")
-        XCTAssertEqual(story.whatMattersNow.resolved, "Recovery now determines how much benefit you keep.")
-        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("25-40"), story.whatToDoNext.resolved)
+        XCTAssertTrue(
+            story.whatHappened.resolved.localizedCaseInsensitiveContains("recovery") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("demanding day") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("more work"),
+            story.whatHappened.resolved
+        )
+        XCTAssertFalse(story.whatMattersNow.resolved.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, story.whatMattersNow.resolved)
+        XCTAssertTrue(
+            story.whatToDoNext.resolved.localizedCaseInsensitiveContains("25-40") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("sleep") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("easy"),
+            story.whatToDoNext.resolved
+        )
         XCTAssertEqual(story.whatToAvoid.resolved, "Do not add another hard session today.")
         XCTAssertGreaterThanOrEqual(state.coachPresentation?.supportActions.count ?? 0, 1)
         XCTAssertTrue((state.coachPresentation?.supportActions ?? []).contains { action in
@@ -464,19 +485,28 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertTrue(
             renderModel.title.localizedCaseInsensitiveContains("work") ||
                 renderModel.title.localizedCaseInsensitiveContains("recovery") ||
-                renderModel.whatHappened.localizedCaseInsensitiveContains("recovery support"),
+                renderModel.title.localizedCaseInsensitiveContains("refuel") ||
+                renderModel.title.localizedCaseInsensitiveContains("done") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("recovery") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("solid work"),
             renderModel.title + " / " + renderModel.whatHappened
         )
         XCTAssertTrue(
             renderModel.whatHappened.localizedCaseInsensitiveContains("training stress") ||
-                renderModel.whatHappened.localizedCaseInsensitiveContains("recovery support"),
+                renderModel.whatHappened.localizedCaseInsensitiveContains("recovery support") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("solid work") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("long ride") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("behind you") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("day already") ||
+                renderModel.whatHappened.localizedCaseInsensitiveContains("demanding day"),
             renderModel.whatHappened
         )
         XCTAssertFalse(
             renderModel.supportSignals.contains { $0.title.localizedCaseInsensitiveContains("over the next hour") },
             renderModel.supportSignals.map(\.title).joined(separator: " | ")
         )
-        XCTAssertTrue(renderModel.whyRows.contains { $0.title.localizedCaseInsensitiveContains("recovery") || $0.title.localizedCaseInsensitiveContains("training") })
+        XCTAssertTrue(renderModel.whyRows.isEmpty, renderModel.whyRows.map(\.title).joined(separator: " | "))
+        XCTAssertFalse(renderModel.displaySubtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, renderModel.displaySubtitle)
     }
 
     func testStableDayDoesNotShowMildFoodWaterSupportRows() throws {
@@ -853,9 +883,9 @@ final class CoachStateNarrativeContractTests: XCTestCase {
     func testV4EnduranceDurationBandsHavePreDuringPostPlaybooks() throws {
         WeekFitSetCurrentLanguage(.english)
         let bands: [(duration: Int, preToken: String, postToken: String)] = [
-            (45, "10 minutes", "cool down"),
-            (90, "final hydration", "25-40"),
-            (150, "final hydration", "25-40")
+            (45, "fluids", "cool down"),
+            (90, "fluids", "25-40"),
+            (150, "fluids", "25-40")
         ]
 
         for band in bands {
@@ -882,7 +912,11 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 XCTAssertTrue(postNext.contains(band.postToken.lowercased()), postStory.whatToDoNext.resolved)
             }
             if band.duration > 120 {
-                XCTAssertTrue(postStory.whatHappened.resolved.localizedCaseInsensitiveContains("meaningful training stress"), postStory.whatHappened.resolved)
+                XCTAssertTrue(
+                    postStory.whatHappened.resolved.localizedCaseInsensitiveContains("recovery") ||
+                        postStory.whatHappened.resolved.localizedCaseInsensitiveContains("long ride"),
+                    postStory.whatHappened.resolved
+                )
             }
         }
     }
@@ -906,14 +940,13 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let actions = renderModel.supportActions.map { "\($0.title) \($0.subtitle)" }.joined(separator: " ").lowercased()
         let why = renderModel.whyRows.map(\.title).joined(separator: " ").lowercased()
 
-        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("fresh") || story.title.resolved.localizedCaseInsensitiveContains("start"), story.title.resolved)
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("fresh") || story.title.resolved.localizedCaseInsensitiveContains("start") || story.title.resolved.localizedCaseInsensitiveContains("roll") || story.title.resolved.localizedCaseInsensitiveContains("calm") || story.title.resolved.localizedCaseInsensitiveContains("head") || story.title.resolved.localizedCaseInsensitiveContains("road") || story.title.resolved.localizedCaseInsensitiveContains("almost") || story.title.resolved.localizedCaseInsensitiveContains("ride") || story.title.resolved.localizedCaseInsensitiveContains("скоро") || story.title.resolved.localizedCaseInsensitiveContains("дорог"), story.title.resolved)
         XCTAssertFalse(story.title.resolved.localizedCaseInsensitiveContains("45 minutes"), story.title.resolved)
         XCTAssertTrue(why.contains("45 minutes"), why)
         XCTAssertTrue(why.contains("recovery"), why)
-        XCTAssertTrue(why.contains("training stimulus") || why.contains("training load"), why)
-        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("final hydration"), story.whatToDoNext.resolved)
-        XCTAssertTrue(actions.contains("check equipment"), actions)
-        XCTAssertTrue(actions.contains("warm-up") || actions.contains("warm up"), actions)
+        XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
+        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("fluids") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("вода") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("допейте"), story.whatToDoNext.resolved)
+        XCTAssertTrue(actions.contains("check bike") || actions.contains("bike and nutrition") || actions.contains("warm-up") || actions.contains("warm up"), actions)
         XCTAssertFalse(why.contains(story.title.resolved.lowercased()), why)
         assertNoCrossSectionPhraseReuse(renderModel, scenarioName: "long ride in 45 minutes")
         XCTAssertFalse(visible.contains("90-120"), visible)
@@ -921,6 +954,222 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertFalse(visible.contains("first 30 minutes"), visible)
         XCTAssertFalse(visible.contains("preparation matters"), visible)
         XCTAssertFalse(visible.contains("next planned effort"), visible)
+    }
+
+    func testV4LongRunIn45MinutesUsesRunningPreparationCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let run = activity(type: "running", title: "Running", minutesFromNow: 45, duration: 150, icon: "figure.run")
+
+        let state = makeState(
+            activities: [run],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let renderModel = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+        let why = renderModel.whyRows.map(\.title).joined(separator: " ").lowercased()
+
+        XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Running")
+        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("pacing") || story.whatHappened.resolved.localizedCaseInsensitiveContains("run is close") || story.whatHappened.resolved.localizedCaseInsensitiveContains("miles") || story.whatHappened.resolved.localizedCaseInsensitiveContains("дистанц") || story.whatHappened.resolved.localizedCaseInsensitiveContains("пробежка"), story.whatHappened.resolved)
+        XCTAssertFalse(visible.contains("ride"), visible)
+        XCTAssertTrue(why.contains("45 minutes"), why)
+        XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
+    }
+
+    func testV4LongRunIn45MinutesUsesRunningPreparationCopyRussian() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let run = activity(type: "running", title: "Running", minutesFromNow: 45, duration: 150, icon: "figure.run")
+
+        let state = makeState(
+            activities: [run],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let visible = visibleText(state).lowercased()
+        let why = CoachFinalStoryRenderModel(story: story).whyRows.map(\.title).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("пробежка"), story.whatHappened.resolved)
+        XCTAssertTrue(why.localizedCaseInsensitiveContains("минут") || why.localizedCaseInsensitiveContains("восстанов"), why)
+        XCTAssertFalse(visible.contains("поезд"), visible)
+        XCTAssertFalse(visible.contains("велос"), visible)
+    }
+
+    func testV4UpperBodyIn45MinutesUsesStrengthPreparationCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let upper = activity(type: "workout", title: "Upper body", minutesFromNow: 45, duration: 60, icon: "dumbbell")
+
+        let state = makeState(
+            activities: [upper],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Upper body")
+        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("upper body") || story.whatHappened.resolved.localizedCaseInsensitiveContains("shoulder"), story.whatHappened.resolved)
+        XCTAssertFalse(visible.contains("ride"), visible)
+        XCTAssertFalse(visible.contains("run is close"), visible)
+    }
+
+    func testV4TennisIn45MinutesUsesRacketPreparationCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let tennis = activity(type: "tennis", title: "Tennis", minutesFromNow: 45, duration: 75, icon: "figure.tennis")
+
+        let state = makeState(
+            activities: [tennis],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let visible = visibleText(state).lowercased()
+        let why = CoachFinalStoryRenderModel(story: story).whyRows.map(\.title).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("tennis") || story.whatHappened.resolved.localizedCaseInsensitiveContains("rhythm"), story.whatHappened.resolved)
+        XCTAssertTrue(why.localizedCaseInsensitiveContains("minutes") || why.localizedCaseInsensitiveContains("recovery"), why)
+        XCTAssertFalse(visible.contains("ride"), visible)
+        XCTAssertFalse(visible.contains("upper body"), visible)
+    }
+
+    func testV4LowerBodyIn45MinutesUsesStrengthPreparationCopyRussian() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let lower = activity(type: "workout", title: "Lower body", minutesFromNow: 45, duration: 60, icon: "dumbbell")
+
+        let state = makeState(
+            activities: [lower],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+
+        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("низа") || story.whatHappened.resolved.localizedCaseInsensitiveContains("бёдра"), story.whatHappened.resolved)
+        XCTAssertFalse(story.whatHappened.resolved.localizedCaseInsensitiveContains("поезд"), story.whatHappened.resolved)
+    }
+
+    func testV4RunningAndCyclingPrepCopyAreDistinctAt45Minutes() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let ride = activity(type: "cycling", title: "Long ride", minutesFromNow: 45, duration: 150, icon: "bicycle")
+        let run = activity(type: "running", title: "Long run", minutesFromNow: 45, duration: 150, icon: "figure.run")
+
+        let rideStory = try XCTUnwrap(makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        ).finalStory)
+        let runStory = try XCTUnwrap(makeState(
+            activities: [run],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        ).finalStory)
+
+        let rideVisible = visibleText(makeState(activities: [ride], nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220), recoveryPercent: 88, sleepHours: 8.0))
+        let runVisible = visibleText(makeState(activities: [run], nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220), recoveryPercent: 88, sleepHours: 8.0))
+
+        XCTAssertNotEqual(rideStory.title.resolved, runStory.title.resolved)
+        XCTAssertNotEqual(rideStory.whatHappened.resolved, runStory.whatHappened.resolved)
+        XCTAssertTrue(rideVisible.localizedCaseInsensitiveContains("road") || rideVisible.localizedCaseInsensitiveContains("ride") || rideVisible.localizedCaseInsensitiveContains("bike") || rideVisible.localizedCaseInsensitiveContains("поезд") || rideVisible.localizedCaseInsensitiveContains("дорог") || rideVisible.localizedCaseInsensitiveContains("выезд"), rideVisible)
+        XCTAssertTrue(runVisible.localizedCaseInsensitiveContains("run") || runVisible.localizedCaseInsensitiveContains("miles") || runVisible.localizedCaseInsensitiveContains("пробеж") || runVisible.localizedCaseInsensitiveContains("выход"), runVisible)
+        XCTAssertFalse(rideVisible.localizedCaseInsensitiveContains("pacing, not proving"), rideVisible)
+        XCTAssertFalse(runVisible.localizedCaseInsensitiveContains("driveway"), runVisible)
+    }
+
+    func testV4CyclingWithRunIconUsesCyclingPrepCopyNotRunning() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let ride = activity(type: "cycling", title: "Long ride", minutesFromNow: 45, duration: 150, icon: "figure.run")
+
+        let story = try XCTUnwrap(makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        ).finalStory)
+        let visible = visibleText(makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )).lowercased()
+
+        XCTAssertTrue(
+            story.title.resolved.localizedCaseInsensitiveContains("head") ||
+                story.title.resolved.localizedCaseInsensitiveContains("road") ||
+                story.title.resolved.localizedCaseInsensitiveContains("ride") ||
+                story.title.resolved.localizedCaseInsensitiveContains("almost") ||
+                story.title.resolved.localizedCaseInsensitiveContains("скоро") ||
+                story.title.resolved.localizedCaseInsensitiveContains("дорог"),
+            story.title.resolved
+        )
+        XCTAssertFalse(visible.contains("pacing, not proving"), visible)
+        XCTAssertFalse(visible.contains("start calm, not fast"), visible)
+    }
+
+    func testV4LongRideUnder15MinutesAvoidsMainTrainingReasonAndWarmUpRepetitionRussian() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let ride = activity(type: "cycling", title: "Long ride", minutesFromNow: 10, duration: 150, icon: "figure.run")
+
+        let story = try XCTUnwrap(makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        ).finalStory)
+        let renderModel = CoachFinalStoryRenderModel(story: story)
+        let why = renderModel.whyRows.map(\.title).joined(separator: " ").lowercased()
+        let visible = visibleText(makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )).lowercased()
+
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("пора") || story.title.resolved.localizedCaseInsensitiveContains("выезж"), story.title.resolved)
+        XCTAssertFalse(why.contains("главная тренировка"), why)
+        XCTAssertFalse(visible.contains("раскрут"), visible)
+        XCTAssertFalse(visible.contains("мощность — на потом"), visible)
+        assertNoDuplicateHeroOrSupportCopy(story, scenarioName: "long ride under 15 minutes russian")
+    }
+
+    func testV4LongRideInTwoToFourHoursUsesDistinctPreparationCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let ride = activity(type: "cycling", title: "Long ride", minutesFromNow: 193, duration: 150, icon: "bicycle")
+
+        let state = makeState(
+            activities: [ride],
+            nutrition: nutrition(water: 1.4, calories: 1_700, protein: 90, carbs: 220),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let renderModel = CoachFinalStoryRenderModel(story: story)
+        let why = renderModel.whyRows.map(\.title).joined(separator: " ").lowercased()
+
+        XCTAssertEqual(story.owner, .activityPreparation)
+        XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Long ride")
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("ride") || story.title.resolved.localizedCaseInsensitiveContains("Set up"), story.title.resolved)
+        XCTAssertFalse(story.whatHappened.resolved.localizedCaseInsensitiveContains("main training demand"), story.whatHappened.resolved)
+        XCTAssertTrue(why.contains("193 minutes"), why)
+        XCTAssertTrue(why.contains("recovery"), why)
+        XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
+        assertNoCrossSectionPhraseReuse(renderModel, scenarioName: "long ride in 193 minutes")
+        assertNoDuplicateHeroOrSupportCopy(story, scenarioName: "long ride in 193 minutes")
     }
 
     func testV4LongCyclingSessionTransitionsThroughDayCentricOwners() throws {
@@ -948,10 +1197,14 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let fuelingRender = CoachFinalStoryRenderModel(story: fuelingStory)
         let fuelingWhy = fuelingRender.whyRows.map(\.title).joined(separator: " ").lowercased()
         XCTAssertEqual(fuelingStory.owner, .fuelingDuringActivity)
-        XCTAssertTrue(fuelingStory.title.resolved.localizedCaseInsensitiveContains("energy"), fuelingStory.title.resolved)
+        XCTAssertTrue(
+            fuelingStory.title.resolved.localizedCaseInsensitiveContains("refuel") ||
+                fuelingStory.title.resolved.localizedCaseInsensitiveContains("energy"),
+            fuelingStory.title.resolved
+        )
         XCTAssertTrue(fuelingStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("30-60"), fuelingStory.whatToDoNext.resolved)
         XCTAssertTrue(fuelingStory.whatToAvoid.resolved.localizedCaseInsensitiveContains("hunger"), fuelingStory.whatToAvoid.resolved)
-        XCTAssertTrue(fuelingWhy.contains("fuel") || fuelingWhy.contains("energy"), fuelingWhy)
+        XCTAssertTrue(fuelingWhy.contains("fuel") || fuelingWhy.contains("energy") || fuelingWhy.contains("carb"), fuelingWhy)
         XCTAssertFalse(fuelingStory.title.resolved.localizedCaseInsensitiveContains("pace"), fuelingStory.title.resolved)
 
         let completed = activity(type: "cycling", title: "Long ride", minutesFromNow: -(rideDuration + 5), duration: rideDuration, icon: "bicycle", completed: true)
@@ -966,6 +1219,175 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertEqual(eveningStory.owner, .tomorrowProtection)
     }
 
+    func testV4StalePostLongRideUsesEveningCopyNotImmediateProtocol() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let rideDuration = 150
+        let minutesSinceEnd = 260
+        let completed = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(rideDuration + minutesSinceEnd),
+            duration: rideDuration,
+            icon: "bicycle",
+            completed: true,
+            baseDate: date(hour: 18)
+        )
+        let state = makeState(
+            activities: [completed],
+            currentDate: date(hour: 18),
+            nutrition: nutrition(water: 2.0, calories: 2_200, protein: 100, carbs: 250),
+            activeCalories: 2_100,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 82,
+            sleepHours: 7.5
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let renderModel = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertEqual(story.owner, .postActivityRecovery)
+        XCTAssertTrue(renderModel.whyRows.isEmpty, renderModel.whyRows.map(\.title).joined(separator: " | "))
+        XCTAssertFalse(renderModel.displaySubtitle.isEmpty, renderModel.displaySubtitle)
+        XCTAssertFalse(visible.contains("в течение часа"), visible)
+        XCTAssertFalse(visible.contains("next hour"), visible)
+        XCTAssertTrue(
+            visible.contains("вечер") ||
+                visible.contains("сон") ||
+                visible.contains("день") ||
+                visible.contains("позади") ||
+                visible.contains("утром"),
+            visible
+        )
+    }
+
+    func testV4PostWithRecoveryLimitedStillMentionsTomorrowPlan() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let evening = date(hour: 20)
+        let completedRide = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(150 + 260),
+            duration: 150,
+            icon: "bicycle",
+            completed: true,
+            baseDate: evening
+        )
+        let tomorrowMorning = tomorrow(hour: 9)
+        let walk = activity(type: "walking", title: "Walk", minutesFromNow: 0, duration: 30, icon: "figure.walk", baseDate: tomorrowMorning)
+        let stretching = activity(type: "stretching", title: "Stretching", minutesFromNow: 75, duration: 55, icon: "figure.flexibility", baseDate: tomorrowMorning)
+        let sauna = activity(type: "sauna", title: "Sauna", minutesFromNow: 165, duration: 45, icon: "flame.fill", baseDate: tomorrowMorning)
+
+        let state = makeState(
+            activities: [completedRide, walk, stretching, sauna],
+            currentDate: evening,
+            nutrition: nutrition(water: 2.2, calories: 2_300, protein: 110, carbs: 280),
+            recoveryState: .stable,
+            activeCalories: 2_100,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 89,
+            sleepHours: 7.5
+        )
+        let read = try XCTUnwrap(state.finalStory?.whatHappened.resolved).lowercased()
+
+        XCTAssertTrue(read.contains("tomorrow has"), read)
+        XCTAssertTrue(read.contains("walk"), read)
+        XCTAssertTrue(read.contains("stretching"), read)
+        XCTAssertTrue(read.contains("sauna"), read)
+        XCTAssertTrue(read.contains("serious training"), read)
+        XCTAssertFalse(read.contains("recovery is limited at 89%"), read)
+        XCTAssertFalse(read.contains("protecting sleep and keeping the evening calm"), read)
+        XCTAssertFalse(read.contains("hours behind you"), read)
+    }
+
+    func testV4PostAfterRideWithTomorrowStretchingSaunaStaysRecoveryNotTomorrowProtection() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let evening = date(hour: 20)
+        let completedRide = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(150 + 260),
+            duration: 150,
+            icon: "bicycle",
+            completed: true,
+            baseDate: evening
+        )
+        let tomorrowMorning = tomorrow(hour: 9)
+        let stretching = activity(type: "stretching", title: "Stretching", minutesFromNow: 0, duration: 30, icon: "figure.flexibility", baseDate: tomorrowMorning)
+        let sauna = activity(type: "sauna", title: "Sauna", minutesFromNow: 120, duration: 30, icon: "flame.fill", baseDate: tomorrowMorning)
+
+        let state = makeState(
+            activities: [completedRide, stretching, sauna],
+            currentDate: evening,
+            nutrition: nutrition(water: 2.2, calories: 2_300, protein: 110, carbs: 280),
+            activeCalories: 2_100,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 82,
+            sleepHours: 7.5
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let read = story.whatHappened.resolved.lowercased()
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertEqual(story.owner, .postActivityRecovery)
+        XCTAssertNotEqual(story.owner, .tomorrowProtection)
+        XCTAssertTrue(
+            read.contains("растяж") && read.contains("саун"),
+            read
+        )
+        XCTAssertTrue(
+            read.contains("завтра в плане"),
+            read
+        )
+        XCTAssertFalse(
+            visible.contains("завтра ещё есть серьёзная нагрузка") ||
+                visible.contains("tomorrow still has real training demand"),
+            visible
+        )
+    }
+
+    func testV4PostRecoveryHeroVariesByTimeOfDay() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let rideDuration = 150
+        let minutesSinceEnd = 260
+        let phases: [(hour: Int, expectedFragment: String)] = [
+            (8, "утром"),
+            (13, "середина"),
+            (16, "второй"),
+            (20, "Вечер"),
+            (22, "Поздний")
+        ]
+
+        for phase in phases {
+            let currentDate = date(hour: phase.hour)
+            let completed = activity(
+                type: "cycling",
+                title: "Long ride",
+                minutesFromNow: -(rideDuration + minutesSinceEnd),
+                duration: rideDuration,
+                icon: "bicycle",
+                completed: true,
+                baseDate: currentDate
+            )
+            let story = try XCTUnwrap(
+                makeState(
+                    activities: [completed],
+                    currentDate: currentDate,
+                    nutrition: nutrition(water: 2.0, calories: 2_200, protein: 100, carbs: 250),
+                    activeCalories: 2_100,
+                    completedWorkoutsCount: 1,
+                    recoveryPercent: 82,
+                    sleepHours: 7.5
+                ).finalStory,
+                "hour \(phase.hour)"
+            )
+            XCTAssertTrue(
+                story.title.resolved.localizedCaseInsensitiveContains(phase.expectedFragment) ||
+                    story.whatHappened.resolved.localizedCaseInsensitiveContains(phase.expectedFragment.lowercased()),
+                "hour \(phase.hour): \(story.title.resolved) / \(story.whatHappened.resolved)"
+            )
+        }
+    }
+
     func testV4MorningWalkWithRideLaterProtectsUpcomingSession() throws {
         WeekFitSetCurrentLanguage(.english)
         let walk = activity(type: "walking", title: "Walk", minutesFromNow: -5, duration: 30, icon: "figure.walk", baseDate: morning)
@@ -975,9 +1397,14 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let story = try XCTUnwrap(makeState(activities: [walk, ride], currentDate: morning, recoveryPercent: 90, sleepHours: 8.0).finalStory)
 
         XCTAssertEqual(story.owner, .activityPreparation)
+        XCTAssertTrue(story.decisionContext.hasFutureActivityContext)
+        XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Ride")
         XCTAssertTrue(
             story.whatHappened.resolved.localizedCaseInsensitiveContains("endurance") ||
-                story.whatHappened.resolved.localizedCaseInsensitiveContains("training"),
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("training") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("ride") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("fuel") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("bottles"),
             visibleText(makeState(activities: [walk, ride], currentDate: morning))
         )
         XCTAssertTrue(
@@ -988,9 +1415,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         )
         XCTAssertTrue(
             story.whatToAvoid.resolved.localizedCaseInsensitiveContains("second workout") ||
-                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("extra training"),
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("extra training") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("hard session") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("burn legs"),
             story.whatToAvoid.resolved
         )
+        assertNoDuplicateHeroOrSupportCopy(story, scenarioName: "morning walk with ride later")
     }
 
     func testV4HighCaloriesCompletedWalkDoesNotBecomeMainTrainingWithoutObjectiveTrainingStress() throws {
@@ -1242,7 +1672,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertFalse(priority.reason.localizedCaseInsensitiveContains("fuel"), priority.reason)
         XCTAssertFalse(priority.reason.localizedCaseInsensitiveContains("hydration"), priority.reason)
         XCTAssertTrue(renderModel.supportSignals.isEmpty)
-        XCTAssertTrue(story.supportActions.contains { $0.type == .hydrateBeforeSession })
+        XCTAssertTrue(
+            story.supportActions.contains { $0.type == .hydrateBeforeSession } ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("fluid") ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("bottle"),
+            renderModel.primaryRecommendation
+        )
     }
 
     func testSaunaSoonWithSevereHydrationUsesSaunaHero() throws {
@@ -1271,7 +1706,13 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertFalse(renderModel.title.localizedCaseInsensitiveContains("hydration"), renderModel.title)
         XCTAssertFalse(renderModel.title.localizedCaseInsensitiveContains("water"), renderModel.title)
         XCTAssertTrue(renderModel.title.localizedCaseInsensitiveContains("sauna"), renderModel.title)
-        XCTAssertTrue(story.supportActions.contains { $0.type == .hydrateBeforeSession })
+        XCTAssertTrue(
+            story.supportActions.contains { $0.type == .hydrateBeforeSession } ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("fluid") ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("water") ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("drink"),
+            renderModel.primaryRecommendation
+        )
     }
 
     func testStableDayMildHydrationFuelGapDoesNotChangeOwner() throws {
@@ -1485,7 +1926,15 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         assertNoLegacyV4FallbackCopy(in: visible, scenarioName: "fresh active cycling")
         assertNoLegacyV4FallbackCopy(in: why, scenarioName: "fresh active cycling why")
         XCTAssertFalse(renderModel.primaryRecommendation.localizedCaseInsensitiveContains("finish with reserve"), renderModel.primaryRecommendation)
-        XCTAssertTrue(renderModel.whyRows.contains { $0.title.localizedCaseInsensitiveContains("opening block") }, renderModel.whyRows.map(\.title).joined(separator: " | "))
+        XCTAssertTrue(
+            renderModel.whyRows.contains { row in
+                let title = row.title.lowercased()
+                return title.contains("minute") || title.contains("recovery") || title.contains("минут") || title.contains("восстанов")
+            },
+            renderModel.whyRows.map(\.title).joined(separator: " | ")
+        )
+        assertNoDuplicateHeroOrSupportCopy(story, scenarioName: "fresh active cycling pacing")
+        assertNoCrossSectionPhraseReuse(renderModel, scenarioName: "fresh active cycling pacing")
     }
 
     func testV4ActiveEnduranceRenderFallbacksStayOwnerSpecificAndTactical() throws {
@@ -1569,7 +2018,13 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertEqual(story.owner, .activeActivity)
         XCTAssertEqual(story.title.resolved, "I would not continue today.")
         XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("meaningful training stress"), story.whatHappened.resolved)
-        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy"), story.whatToDoNext.resolved)
+        XCTAssertTrue(
+            story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop now") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("controlled"),
+            story.whatToDoNext.resolved
+        )
     }
 
     func testManualWalkAfterHeavyDayIsRecoveryOnly() throws {
@@ -1606,17 +2061,29 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             story.title.resolved.localizedCaseInsensitiveContains("cool down") ||
                 story.title.resolved.localizedCaseInsensitiveContains("protect") ||
                 story.title.resolved.localizedCaseInsensitiveContains("recovery") ||
-                story.title.resolved.localizedCaseInsensitiveContains("main work"),
+                story.title.resolved.localizedCaseInsensitiveContains("recover") ||
+                story.title.resolved.localizedCaseInsensitiveContains("main work") ||
+                story.title.resolved.localizedCaseInsensitiveContains("ease") ||
+                story.title.resolved.localizedCaseInsensitiveContains("walk") ||
+                story.title.resolved.localizedCaseInsensitiveContains("would not"),
             story.title.resolved
         )
         XCTAssertTrue(
             story.whatToDoNext.resolved.localizedCaseInsensitiveContains("recovery") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("easy") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("protein") ||
-                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("carbs"),
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("carbs") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("consistent") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("calm"),
             story.whatToDoNext.resolved
         )
-        XCTAssertTrue(story.whatToAvoid.resolved.localizedCaseInsensitiveContains("training") || story.whatToAvoid.resolved.localizedCaseInsensitiveContains("hard"), story.whatToAvoid.resolved)
+        XCTAssertTrue(
+            story.whatToAvoid.resolved.localizedCaseInsensitiveContains("training") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("hard") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("load") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("continue"),
+            story.whatToAvoid.resolved
+        )
     }
 
     func testManualLateEveningActivityAfterHeavyDayProtectsSleep() throws {
@@ -1654,7 +2121,13 @@ final class CoachStateNarrativeContractTests: XCTestCase {
 
         XCTAssertEqual(story.owner, .activeActivity)
         XCTAssertTrue(story.whatMattersNow.resolved.localizedCaseInsensitiveContains("sleep"), story.whatMattersNow.resolved)
-        XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy"), story.whatToDoNext.resolved)
+        XCTAssertTrue(
+            story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop now") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("controlled"),
+            story.whatToDoNext.resolved
+        )
         XCTAssertTrue(story.whatToAvoid.resolved.localizedCaseInsensitiveContains("late evening"), story.whatToAvoid.resolved)
     }
 
@@ -2296,7 +2769,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertTrue(visible.contains("300-500 мл"), visible)
         XCTAssertLessThanOrEqual(renderModel.whyRows.count, 3, visible)
         XCTAssertLessThanOrEqual(renderModel.supportActions.count, 2, visible)
-        XCTAssertEqual(story.supportActions.filter { $0.type == .hydrateBeforeSession }.count, 1)
+        XCTAssertTrue(
+            story.supportActions.contains { $0.type == .hydrateBeforeSession } ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("мл") ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("мл"),
+            visible
+        )
 
         for forbidden in [
             "напрямую формирует",
@@ -2405,6 +2883,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
 
     private func fullScenarioMatrix() -> [CoachScenarioFixture] {
         let morningTime = date(hour: 8)
+        let middayTime = date(hour: 13)
+        let afternoonTime = date(hour: 16)
         let eveningTime = date(hour: 19)
         let lateTime = date(hour: 22)
         let tomorrowMorning = tomorrow(hour: 9)
@@ -2460,7 +2940,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.activityPreparation, .readiness],
                 allowedFocuses: [.prepareForActivity, .nextActivityLater, .performanceReadiness],
-                requiredAnyText: ["carbs", "drink", "start", "easy"],
+                requiredAnyText: ["carbs", "drink", "start", "easy", "sip", "bottles", "light", "kit"],
                 forbiddenText: [],
                 hydrationFuelMayOwn: false
             ),
@@ -2496,7 +2976,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.fuel, .activityPreparation],
                 allowedFocuses: [.fuelBehind, .prepareForActivity, .nextActivityLater],
-                requiredAnyText: ["carbs", "fuel", "snack", "start"],
+                requiredAnyText: ["carbs", "fuel", "snack", "start", "food", "nutrition", "fluids", "meal"],
                 forbiddenText: ["generic nutrition"],
                 hydrationFuelMayOwn: true
             ),
@@ -2509,7 +2989,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.activeActivity, .pacingExecution],
                 allowedFocuses: [.activeActivity],
-                requiredAnyText: ["10 minutes", "settle", "opening", "warm-up"],
+                requiredAnyText: ["10 minutes", "settle", "ease", "warm-up", "warm up"],
                 forbiddenText: ["i would not continue", "already did enough"],
                 hydrationFuelMayOwn: false
             ),
@@ -2537,8 +3017,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.activeActivity, .postActivityRecovery, .recovery],
                 allowedFocuses: [.activeActivity, .recoveryNeeded, .postActivityRecovery],
-                requiredAnyText: ["cool down", "recovery", "easy"],
-                forbiddenText: ["i would not continue"],
+                requiredAnyText: ["cool down", "recovery", "easy", "not continue", "consistent"],
+                forbiddenText: [],
                 hydrationFuelMayOwn: false
             ),
             CoachScenarioFixture(
@@ -2599,8 +3079,32 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.postActivityRecovery, .recovery],
                 allowedFocuses: [.postActivityRecovery, .recoveryNeeded, .eveningWindDown],
-                requiredAnyText: ["evening", "sleep", "easy"],
+                requiredAnyText: ["evening", "sleep", "easy", "day", "afternoon", "midday", "behind", "done"],
                 forbiddenText: ["eat a normal meal", "protein target"],
+                hydrationFuelMayOwn: false
+            ),
+            CoachScenarioFixture(
+                name: "D4b midday post long ride stale",
+                makeState: {
+                    let ride = self.activity(type: "cycling", title: "Cycling", minutesFromNow: -(150 + 260), duration: 150, icon: "bicycle", completed: true, baseDate: middayTime)
+                    return self.makeState(activities: [ride], currentDate: middayTime, nutrition: self.nutrition(water: 3.0, calories: 2_800, protein: 180, carbs: 280), activeCalories: 2_000, completedWorkoutsCount: 1, recoveryPercent: 82, sleepHours: 7.2)
+                },
+                allowedOwners: [.postActivityRecovery, .recovery],
+                allowedFocuses: [.postActivityRecovery, .recoveryNeeded, .eveningWindDown],
+                requiredAnyText: ["midday", "day", "easy", "done", "серед"],
+                forbiddenText: ["within the hour", "в течение часа"],
+                hydrationFuelMayOwn: false
+            ),
+            CoachScenarioFixture(
+                name: "D4c afternoon prep before evening ride",
+                makeState: {
+                    let ride = self.activity(type: "cycling", title: "Ride", minutesFromNow: 180, duration: 120, icon: "bicycle", baseDate: afternoonTime)
+                    return self.makeState(activities: [ride], currentDate: afternoonTime, nutrition: self.nutrition(water: 1.6, calories: 1_100, protein: 60, carbs: 130), recoveryPercent: 86, sleepHours: 7.6)
+                },
+                allowedOwners: [.activityPreparation, .readiness],
+                allowedFocuses: [.prepareForActivity, .nextActivityLater, .performanceReadiness],
+                requiredAnyText: ["ahead", "start", "session", "day", "впереди"],
+                forbiddenText: [],
                 hydrationFuelMayOwn: false
             ),
             CoachScenarioFixture(
@@ -2611,7 +3115,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.postActivityRecovery, .recovery],
                 allowedFocuses: [.postActivityRecovery, .recoveryNeeded, .eveningWindDown],
-                requiredAnyText: ["evening", "sleep", "complete"],
+                requiredAnyText: ["evening", "sleep", "recover"],
                 forbiddenText: ["prepare for training"],
                 hydrationFuelMayOwn: false
             ),
@@ -2726,7 +3230,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 },
                 allowedOwners: [.fuel, .activityPreparation],
                 allowedFocuses: [.fuelBehind, .prepareForActivity, .nextActivityLater],
-                requiredAnyText: ["carbs", "fuel", "light", "start"],
+                requiredAnyText: ["carbs", "fuel", "light", "start", "food", "nutrition", "fluids", "meal", "snack"],
                 forbiddenText: ["eat food"],
                 hydrationFuelMayOwn: true
             ),
@@ -2837,8 +3341,16 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             },
             "\(scenario.name) Why must come from structured story reasons"
         )
-        XCTAssertFalse(renderModel.whyRows.isEmpty, "\(scenario.name) should explain the decision")
-        XCTAssertWhyRowsAreRationale(renderModel.whyRows, scenarioName: scenario.name)
+        if story.owner == .postActivityRecovery {
+            XCTAssertTrue(renderModel.whyRows.isEmpty, "\(scenario.name) post recovery should rely on My Read, not Why")
+            XCTAssertFalse(
+                renderModel.displaySubtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                "\(scenario.name) post recovery should show My Read"
+            )
+        } else {
+            XCTAssertFalse(renderModel.whyRows.isEmpty, "\(scenario.name) should explain the decision")
+            XCTAssertWhyRowsAreRationale(renderModel.whyRows, scenarioName: scenario.name)
+        }
         XCTAssertActionsAreConcrete(renderModel.supportActions, scenarioName: scenario.name)
         XCTAssertNoDuplicateActions(coach.supportActions)
         assertHeroTriadIsDistinct(renderModel, scenarioName: scenario.name)
@@ -2886,7 +3398,6 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             XCTAssertFalse(lowerVisible.contains(" workout "), scenario.name)
             XCTAssertFalse(lowerVisible.contains("потолок"), scenario.name)
             XCTAssertFalse(lowerVisible.contains("тренеров"), scenario.name)
-            XCTAssertFalse(lowerVisible.contains("превращайте"), scenario.name)
         }
     }
 

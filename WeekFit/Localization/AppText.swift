@@ -374,6 +374,8 @@ enum AppText {
             static let logTitle: LocalizedStringResource = "activity.details.log.title"
             static let heartRateTitle: LocalizedStringResource = "activity.details.heartRate.title"
             static let routeTitle: LocalizedStringResource = "activity.details.route.title"
+            static let routeViewMap: LocalizedStringResource = "activity.route.viewMap"
+            static let routeExpandHint: LocalizedStringResource = "activity.route.expandHint"
             static let zonesTitle: LocalizedStringResource = "activity.details.zones.title"
             static let emptyTitle: LocalizedStringResource = "activity.details.empty.title"
             static let emptyMessage: LocalizedStringResource = "activity.details.empty.message"
@@ -428,6 +430,15 @@ enum AppText {
             static let healthSignalsSubtitle: LocalizedStringResource = "settings.profile.item.healthSignals.subtitle"
             static let helpSupportTitle: LocalizedStringResource = "settings.profile.item.helpSupport"
             static let termsPrivacyTitle: LocalizedStringResource = "settings.profile.item.termsPrivacy"
+            static let bodyGoalTitle: LocalizedStringResource = "settings.profile.bodyGoal.title"
+        }
+
+        enum BodyGoal {
+            static let title: LocalizedStringResource = "settings.profile.bodyGoal.title"
+            static let setupSubtitle: LocalizedStringResource = "settings.profile.bodyGoal.setupSubtitle"
+            static let missingHealthNote: LocalizedStringResource = "settings.profile.bodyGoal.missingHealthNote"
+            static let footerWithHealth: LocalizedStringResource = "settings.profile.bodyGoal.footerWithHealth"
+            static let footerWithoutHealth: LocalizedStringResource = "settings.profile.bodyGoal.footerWithoutHealth"
         }
 
         enum Language {

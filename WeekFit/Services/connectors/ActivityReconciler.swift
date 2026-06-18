@@ -77,6 +77,21 @@ enum ActivityReconciler {
         return imported
     }
 
+    static func applySyncedWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
+        let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
+
+        activity.date = workout.startDate
+        activity.durationMinutes = actualMinutes
+        activity.actualDurationMinutes = actualMinutes
+        activity.isCompleted = true
+        activity.isSkipped = false
+        activity.healthKitWorkoutUUID = workout.uuid.uuidString
+        activity.source = "appleWorkout"
+        activity.type = "workout"
+        activity.title = title(for: workout.workoutActivityType)
+        activity.icon = icon(for: workout.workoutActivityType)
+    }
+
     static func title(for type: HKWorkoutActivityType) -> String {
         switch type {
         case .cycling:

@@ -4,7 +4,9 @@ import SwiftData
 struct WeekFitRootView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
@@ -65,12 +67,19 @@ struct WeekFitRootView: View {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
                 showContent = true
             }
+            reconcileWatchWorkouts(source: "root.onAppear")
         }
         .onChange(of: selectedTab) { oldValue, newValue in
             handleTabChange(from: oldValue, to: newValue)
         }
         .onChange(of: appSession.returnToTodayTrigger) { _, _ in
             returnToToday()
+        }
+        .onChange(of: activityCoordinator.completedWorkoutsBatch) { _, _ in
+            reconcileWatchWorkouts(source: "root.onChange.completedWorkoutsBatch")
+        }
+        .onChange(of: watchSyncPlannerSignature) { _, _ in
+            reconcileWatchWorkouts(source: "root.onChange.plannedActivities")
         }
         .task(id: coachRefreshSignature) {
             await refreshCoachInput(source: "rootTask")
@@ -236,5 +245,22 @@ struct WeekFitRootView: View {
     private var hasSettledInitialHealthState: Bool {
         healthManager.lastHealthKitSyncTime != nil ||
             (healthManager.hasCompletedHealthAccessCheck && !healthManager.isHealthAccessGranted)
+    }
+
+    private var watchSyncPlannerSignature: String {
+        plannedActivities
+            .map { "\($0.id):\($0.healthKitWorkoutUUID ?? ""):\($0.isCompleted)" }
+            .joined(separator: "|")
+    }
+
+    private func reconcileWatchWorkouts(source: String) {
+        guard !activityCoordinator.completedWorkoutsBatch.isEmpty else { return }
+
+        activityCoordinator.reconcileCompletedWorkouts(
+            with: plannedActivities,
+            modelContext: modelContext
+        )
+        appSession.triggerHealthRefresh(source: source)
+        appSession.triggerCoachRefresh(source: source)
     }
 }

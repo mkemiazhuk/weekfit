@@ -73,4 +73,17 @@ final class ProfileViewModel: ObservableObject {
         userProfile = service.loadUserProfile()
         WeekFitUserSettings.shared.refreshFromStorage()
     }
+
+    func bodyGoalNeedsSetup(weightKg: Double, heightCm: Double) -> Bool {
+        service.bodyGoalNeedsSetup(weightKg: weightKg, heightCm: heightCm)
+    }
+
+    func shouldShowBodyGoalSetting(weightKg: Double, heightCm: Double) -> Bool {
+        service.isManualNutritionGoal() ||
+            service.bodyGoalNeedsSetup(weightKg: weightKg, heightCm: heightCm)
+    }
+
+    func saveBodyGoal(_ goal: NutritionGoal) {
+        service.saveManualNutritionGoal(goal)
+    }
 }
