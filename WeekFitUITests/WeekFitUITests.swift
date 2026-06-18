@@ -23,6 +23,14 @@ final class WeekFitUITests: XCTestCase {
     }
 
     @MainActor
+    func testTodayTabLaunches() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
+    @MainActor
     func testExample() throws {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()

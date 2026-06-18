@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-enum TimelineEventKind {
+public enum TimelineEventKind: Sendable {
     case food
     case drink
     case workout
@@ -16,7 +16,7 @@ enum TimelineEventKind {
     case plannedActivity
 }
 
-enum PlannedActivityTerminalState: String {
+public enum PlannedActivityTerminalState: String, Sendable {
     case planned
     case active
     case completed
@@ -25,35 +25,35 @@ enum PlannedActivityTerminalState: String {
 }
 
 @Model
-final class PlannedActivity {
-    @Attribute(.unique) var id: String
-    
-    var healthKitWorkoutUUID: String?
+public final class PlannedActivity {
+    @Attribute(.unique) public var id: String
 
-    var date: Date
-    var type: String
-    var title: String
-    var durationMinutes: Int
-    var icon: String
-    var imageName: String = ""
+    public var healthKitWorkoutUUID: String?
 
-    var colorRed: Double
-    var colorGreen: Double
-    var colorBlue: Double
+    public var date: Date
+    public var type: String
+    public var title: String
+    public var durationMinutes: Int
+    public var icon: String
+    public var imageName: String = ""
 
-    var calories: Int = 0
-    var protein: Int = 0
-    var carbs: Int = 0
-    var fats: Int = 0
-    var fiber: Int = 0
+    public var colorRed: Double
+    public var colorGreen: Double
+    public var colorBlue: Double
 
-    var isCompleted: Bool = false
-    var isSkipped: Bool = false
-    var source: String = "planner"
-    
-    var actualDurationMinutes: Int?
+    public var calories: Int = 0
+    public var protein: Int = 0
+    public var carbs: Int = 0
+    public var fats: Int = 0
+    public var fiber: Int = 0
 
-    init(
+    public var isCompleted: Bool = false
+    public var isSkipped: Bool = false
+    public var source: String = "planner"
+
+    public var actualDurationMinutes: Int?
+
+    public init(
         id: String = UUID().uuidString,
         healthKitWorkoutUUID: String? = nil,
         date: Date,
@@ -96,7 +96,7 @@ final class PlannedActivity {
     }
 }
 
-extension PlannedActivity {
+public extension PlannedActivity {
     var color: Color {
         Color(red: colorRed, green: colorGreen, blue: colorBlue)
     }
@@ -174,21 +174,47 @@ extension PlannedActivity {
     }
 }
 
-struct DisplayActivity: Identifiable {
-    let id: String
-    let timeString: String
-    let title: String
-    let subtitle: String
-    let icon: String
-    let color: Color
-    let calories: Int
-    let isWater: Bool
-    let totalWaterVolume: Double?
-    let isCompleted: Bool
-    let originalActivities: [PlannedActivity]
+public struct DisplayActivity: Identifiable, Sendable {
+    public let id: String
+    public let timeString: String
+    public let title: String
+    public let subtitle: String
+    public let icon: String
+    public let color: Color
+    public let calories: Int
+    public let isWater: Bool
+    public let totalWaterVolume: Double?
+    public let isCompleted: Bool
+    public let originalActivities: [PlannedActivity]
+
+    public init(
+        id: String,
+        timeString: String,
+        title: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        calories: Int,
+        isWater: Bool,
+        totalWaterVolume: Double?,
+        isCompleted: Bool,
+        originalActivities: [PlannedActivity]
+    ) {
+        self.id = id
+        self.timeString = timeString
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.color = color
+        self.calories = calories
+        self.isWater = isWater
+        self.totalWaterVolume = totalWaterVolume
+        self.isCompleted = isCompleted
+        self.originalActivities = originalActivities
+    }
 }
 
-extension PlannedActivity {
+public extension PlannedActivity {
     var effectiveDurationMinutes: Int {
         if isCompleted, let actualDurationMinutes, actualDurationMinutes > 0 {
             return actualDurationMinutes

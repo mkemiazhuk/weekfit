@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		5552A8C62FE4968100A4172A /* WeekFitWorkoutMetrics in Frameworks */ = {isa = PBXBuildFile; productRef = A10000022FB2403E006A4D20 /* WeekFitWorkoutMetrics */; };
 		5552A8C72FE4968100A4172B /* WeekFitCoachCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000042FB2403E006A4D22 /* WeekFitCoachCore */; };
+		5552A8C82FE4968100A4172C /* WeekFitPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = A10000062FB2403E006A4D24 /* WeekFitPlanner */; };
+		5552A8C92FE4968100A4172D /* WeekFitHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000082FB2403E006A4D26 /* WeekFitHealthKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +61,8 @@
 			files = (
 				5552A8C62FE4968100A4172A /* WeekFitWorkoutMetrics in Frameworks */,
 				5552A8C72FE4968100A4172B /* WeekFitCoachCore in Frameworks */,
+				5552A8C82FE4968100A4172C /* WeekFitPlanner in Frameworks */,
+				5552A8C92FE4968100A4172D /* WeekFitHealthKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +125,8 @@
 			packageProductDependencies = (
 				A10000022FB2403E006A4D20 /* WeekFitWorkoutMetrics */,
 				A10000042FB2403E006A4D22 /* WeekFitCoachCore */,
+				A10000062FB2403E006A4D24 /* WeekFitPlanner */,
+				A10000082FB2403E006A4D26 /* WeekFitHealthKit */,
 			);
 			productName = WeekFit;
 			productReference = 55E7BBE52FB2403E006A4D20 /* WeekFit.app */;
@@ -208,6 +214,8 @@
 			packageReferences = (
 				A10000012FB2403E006A4D20 /* XCLocalSwiftPackageReference "Packages/WeekFitWorkoutMetrics" */,
 				A10000032FB2403E006A4D21 /* XCLocalSwiftPackageReference "Packages/WeekFitCoachCore" */,
+				A10000052FB2403E006A4D23 /* XCLocalSwiftPackageReference "Packages/WeekFitPlanner" */,
+				A10000072FB2403E006A4D25 /* XCLocalSwiftPackageReference "Packages/WeekFitHealthKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 55E7BBE62FB2403E006A4D20 /* Products */;
@@ -610,6 +618,14 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/WeekFitCoachCore;
 		};
+		A10000052FB2403E006A4D23 /* XCLocalSwiftPackageReference "Packages/WeekFitPlanner" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WeekFitPlanner;
+		};
+		A10000072FB2403E006A4D25 /* XCLocalSwiftPackageReference "Packages/WeekFitHealthKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WeekFitHealthKit;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -622,6 +638,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A10000032FB2403E006A4D21 /* XCLocalSwiftPackageReference "Packages/WeekFitCoachCore" */;
 			productName = WeekFitCoachCore;
+		};
+		A10000062FB2403E006A4D24 /* WeekFitPlanner */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000052FB2403E006A4D23 /* XCLocalSwiftPackageReference "Packages/WeekFitPlanner" */;
+			productName = WeekFitPlanner;
+		};
+		A10000082FB2403E006A4D26 /* WeekFitHealthKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000072FB2403E006A4D25 /* XCLocalSwiftPackageReference "Packages/WeekFitHealthKit" */;
+			productName = WeekFitHealthKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

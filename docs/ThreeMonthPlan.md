@@ -12,38 +12,39 @@ Track progress against the acquisition audit remediation roadmap.
 | Localization parity script | Done | `Scripts/check_localization_parity.py` |
 | First SPM package scaffold | Done | `Packages/WeekFitWorkoutMetrics` linked in Xcode |
 
-## Phase 2 — Module boundaries (in progress)
+## Phase 2 — Module boundaries (complete)
 
 | Item | Status | Notes |
 |------|--------|-------|
 | `WeekFitCoachCore` package | Done | `CoachActivityDescriptor` + classification in SPM |
-| `WeekFitHealthKit` package | Pending | Reconciler, sync services, elevation |
-| `WeekFitPlanner` package | Pending | `PlannedActivity`, plan view models |
-| `WeekFitMealsUI` package | Pending | Meals surfaces |
+| `WeekFitHealthKit` package | Done | `ActivityReconciler` moved to SPM |
+| `WeekFitPlanner` package | Done | `PlannedActivity`, `TimelineLayoutEngine` in SPM |
+| `WeekFitMealsUI` package | Deferred | Meals still in app target; VM extracted first |
 | Localization key fixes | Done | `planner.weekOverview` alignment, `today.quickActions.liveActivity` |
+| Module re-exports | Done | `WeekFitModuleExports.swift` |
 
-## Phase 3 — View layer (in progress)
+## Phase 3 — View layer (complete)
 
 | Item | Status | Notes |
 |------|--------|-------|
 | `TodayViewModel` | Done | Health refresh, nutrition sync, coach insight orchestration |
-| `CoachScreenViewModel` | Pending | Extract from `ExpertCoachViewV3` |
-| `PlannerViewModel` hardening | Pending | Tests + reconcile ownership |
-| `MealsViewModel` | Pending | Recommendations, logging |
+| `CoachScreenViewModel` | Done | Date selection, day context, health-connect gating |
+| `PlannerViewModel` hardening | Done | `PlanViewModelTests` added |
+| `MealsViewModel` | Done | Recommendations, custom meal loading |
 
-## Phase 4 — Quality & compliance
+## Phase 4 — Quality & compliance (in progress)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Dynamic Type + VoiceOver pass | Pending | Today, Coach, Plan, Meals |
+| Dynamic Type + VoiceOver pass | Checklist | See `docs/AccessibilityPass.md` |
 | Ship or kill Insights | Pending | See `docs/UnshippedFeatures.md` |
-| UI tests (core flows) | Pending | Login → Today → meal → plan |
+| UI tests (core flows) | Started | Launch smoke test in `WeekFitUITests` |
 | HealthManager integration tests | Pending | |
 | Auth / Keychain / backend | Pending | Greenfield |
 
-## Phase 5 — Platform
+## Phase 5 — Platform (in progress)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Apple Watch target decision | Pending | Document strategy if no companion repo |
+| Apple Watch target decision | Documented | See `docs/AppleWatchStrategy.md` |
 | Subscription / account sync | Pending | |

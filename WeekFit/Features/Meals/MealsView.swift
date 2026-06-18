@@ -87,6 +87,7 @@ struct MealsView: View {
     var onMealLogged: (() -> Void)? = nil
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
+    @StateObject private var mealsViewModel = MealsViewModel()
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -94,18 +95,13 @@ struct MealsView: View {
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
 
-    @State private var customMeals: [Meals] = []
-
     @State private var showCreationChooser = false
     @State private var creationRoute: MealCreationRoute?
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
     @State private var showContent = false
-    @State private var cachedRecommendation: MealRecommendation?
-    @State private var lastRecommendationSignature = ""
 
     @State private var showProfile = false
-    @State private var selectedDate = Date()
 
     private let background = WeekFitTheme.backgroundColor
     private let cardSecondary = WeekFitTheme.cardSecondary
@@ -116,11 +112,11 @@ struct MealsView: View {
     // MARK: - Library groups
     
     private var mealItems: [Meals] {
-        customMeals.filter { $0.isRecipeMeal && resolvedLibraryType($0) != .ingredient }
+        mealsViewModel.customMeals.filter { $0.isRecipeMeal && resolvedLibraryType($0) != .ingredient }
     }
 
     private var foodItems: [Meals] {
-        customMeals.filter { $0.isFoodProduct }
+        mealsViewModel.customMeals.filter { $0.isFoodProduct }
     }
 
     private var shouldShowRecommendation: Bool {
@@ -149,7 +145,7 @@ struct MealsView: View {
     }
 
     private var headerSubtitle: String {
-        if customMeals.isEmpty {
+        if mealsViewModel.customMeals.isEmpty {
             return WeekFitLocalizedString("meals.library.subtitle.empty")
         }
 
@@ -191,7 +187,7 @@ struct MealsView: View {
                 updateRecommendationIfNeeded(source: "MealsView.onAppear.loadCustomMeals")
             }
         }
-        .onChange(of: customMeals) { _, _ in
+        .onChange(of: mealsViewModel.customMeals) { _, _ in
             updateRecommendationIfNeeded(source: "MealsView.onChange.customMeals")
         }
         .onChange(of: plannedActivities) { _, _ in
@@ -226,7 +222,7 @@ struct MealsView: View {
         .sheet(item: $selectedFood) { food in
             CustomFoodDetailsView(
                 food: food,
-                existingMeals: customMeals,
+                existingMeals: mealsViewModel.customMeals,
                 isQuickLogMode: self.isQuickLogMode,
                 onFoodUpdated: { updatedFood in
                     saveMealToLibrary(updatedFood)
@@ -275,7 +271,7 @@ struct MealsView: View {
                 .weekFitSheetChrome(cornerRadius: 36)
 
             case .manualFood:
-                CustomMealBuilderView(existingMeals: customMeals) { newMeal in
+                CustomMealBuilderView(existingMeals: mealsViewModel.customMeals) { newMeal in
                     saveMealToLibrary(newMeal)
                 }
                 .presentationDetents([.large])
@@ -288,134 +284,39 @@ struct MealsView: View {
     @MainActor
     private func loadCustomMealsAsync() async {
         let storage = userSettings.customMealsStorage
+        let result = await mealsViewModel.loadCustomMealsAsync(storage: storage)
+        mealsViewModel.applyLoadedCustomMeals(result.meals)
 
-        let result = await Task.detached(priority: .utility) {
-            let loadedMeals = CustomMealStore.load(from: storage)
-            let migratedMeals = loadedMeals.map { MealPhotoStore.ensureThumbnail(for: $0) }
-            let encoded = migratedMeals != loadedMeals
-                ? CustomMealStore.encode(migratedMeals)
-                : nil
-
-            return (migratedMeals, encoded)
-        }.value
-
-        customMeals = result.0
-
-        if let encoded = result.1 {
+        if let encoded = result.encodedStorage {
             userSettings.setCustomMealsStorage(encoded)
         }
     }
-    
+
     private var selectedDateTitle: String {
-        WeekFitShortWeekdayMonthDay(selectedDate)
+        mealsViewModel.selectedDateTitle(for: mealsViewModel.selectedDate)
     }
 
-
     private var plannedActivitiesForSelectedDate: [PlannedActivity] {
-        let calendar = Calendar.current
-
-        return plannedActivities.filter { activity in
-            calendar.isDate(activity.date, inSameDayAs: selectedDate)
-        }
+        mealsViewModel.plannedActivitiesForSelectedDate(
+            selectedDate: mealsViewModel.selectedDate,
+            from: plannedActivities
+        )
     }
 
     private func updateRecommendationIfNeeded(source: String) {
-        let signature = recommendationSignature()
-        guard signature != lastRecommendationSignature else { return }
-
-        let nextRecommendation: MealRecommendation?
-        if let guidance = coachCoordinator.state.guidance
-            ?? nutritionViewModel.coachGuidanceSnapshot?.guidance {
-            nextRecommendation = MealRecommendationEngine.make(
-                guidance: guidance,
-                meals: mealItems,
-                now: Date()
-            )
-        } else {
-            nextRecommendation = nil
-        }
-
-        lastRecommendationSignature = signature
-        if cachedRecommendation != nextRecommendation {
-            cachedRecommendation = nextRecommendation
-        }
-    }
-
-    private func recommendationSignature() -> String {
-        let snapshot = nutritionViewModel.coachMetricsSnapshot
-        let goals = snapshot?.result.goals ?? nutritionResult?.goals
-        let metrics = snapshot?.metrics
-        let guidanceID = coachCoordinator.state.id.uuidString
-        let day = Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970
-        let activitySignature = plannedActivitiesForSelectedDate
-            .sorted { $0.id < $1.id }
-            .map { activity in
-                [
-                    activity.id,
-                    "\(Int(activity.date.timeIntervalSince1970 / 60))",
-                    activity.type,
-                    activity.title,
-                    "\(activity.durationMinutes)",
-                    "\(activity.calories)",
-                    "\(activity.protein)",
-                    "\(activity.carbs)",
-                    "\(activity.fats)",
-                    "\(activity.fiber)",
-                    "\(activity.isCompleted)",
-                    "\(activity.isSkipped)",
-                    activity.imageName
-                ].joined(separator: ":")
-            }
-            .joined(separator: "|")
-        let mealSignature = mealItems
-            .sorted { $0.id < $1.id }
-            .map { meal in
-                [
-                    meal.id,
-                    meal.title,
-                    "\(meal.calories)",
-                    "\(meal.protein)",
-                    "\(meal.carbs)",
-                    "\(meal.fats)",
-                    "\(meal.fiber)"
-                ].joined(separator: ":")
-            }
-            .joined(separator: "|")
-
-        return [
-            sourceNutritionSignature(),
-            snapshot?.id.uuidString ?? "snapshot=nil",
-            guidanceID,
-            "\(Int(day / 86_400))",
-            String(format: "%.1f", metrics?.calories ?? -1),
-            String(format: "%.1f", metrics?.protein ?? -1),
-            String(format: "%.1f", metrics?.carbs ?? -1),
-            String(format: "%.1f", metrics?.fats ?? -1),
-            String(format: "%.1f", metrics?.waterLiters ?? -1),
-            String(format: "%.1f", goals?.calories ?? -1),
-            String(format: "%.1f", goals?.protein ?? -1),
-            String(format: "%.1f", goals?.carbs ?? -1),
-            String(format: "%.1f", goals?.fats ?? -1),
-            String(format: "%.1f", goals?.waterLiters ?? -1),
-            activitySignature,
-            mealSignature
-        ].joined(separator: "#")
-    }
-
-    private func sourceNutritionSignature() -> String {
-        if let snapshot = nutritionViewModel.coachMetricsSnapshot {
-            return "snapshot:\(snapshot.id)"
-        }
-
-        if nutritionResult?.brain != nil {
-            return "input"
-        }
-
-        return "missing"
+        mealsViewModel.updateRecommendationIfNeeded(
+            source: source,
+            selectedDate: mealsViewModel.selectedDate,
+            plannedActivities: plannedActivities,
+            mealItems: mealItems,
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator,
+            nutritionResult: nutritionResult
+        )
     }
 
     private var visibleRecommendation: MealRecommendation? {
-        cachedRecommendation
+        mealsViewModel.cachedRecommendation
     }
 
 
@@ -818,7 +719,7 @@ struct MealsView: View {
 
     private func deleteCustomMeal(_ meal: Meals) {
         withAnimation(.easeInOut(duration: 0.22)) {
-            customMeals = CustomMealStore.remove(meal, from: customMeals)
+            mealsViewModel.customMeals = CustomMealStore.remove(meal, from: mealsViewModel.customMeals)
             saveCustomMeals()
         }
         MealPhotoStore.deletePhotoSet(
@@ -830,7 +731,7 @@ struct MealsView: View {
 
     private func saveMealToLibrary(_ meal: Meals) {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-            customMeals = CustomMealStore.upsert(meal, into: customMeals)
+            mealsViewModel.customMeals = CustomMealStore.upsert(meal, into: mealsViewModel.customMeals)
             saveCustomMeals()
         }
 
@@ -865,7 +766,7 @@ struct MealsView: View {
     private func loadCustomMeals() {
         let loadedMeals = CustomMealStore.load(from: userSettings.customMealsStorage)
         let migratedMeals = loadedMeals.map { MealPhotoStore.ensureThumbnail(for: $0) }
-        customMeals = migratedMeals
+        mealsViewModel.customMeals = migratedMeals
 
         if migratedMeals != loadedMeals {
             userSettings.setCustomMealsStorage(CustomMealStore.encode(migratedMeals))
@@ -873,7 +774,7 @@ struct MealsView: View {
     }
 
     private func saveCustomMeals() {
-        userSettings.setCustomMealsStorage(CustomMealStore.encode(customMeals))
+        userSettings.setCustomMealsStorage(CustomMealStore.encode(mealsViewModel.customMeals))
     }
     
     private var createActionTitle: String {
@@ -1370,7 +1271,7 @@ private struct CircleIconButton: View {
 }
 
 
-private struct MealRecommendation: Equatable {
+struct MealRecommendation: Equatable {
     let meal: Meals
 
     let badge: String
@@ -1389,7 +1290,7 @@ private struct MealRecommendation: Equatable {
     }
 }
 
-private enum MealRecommendationEngine {
+enum MealRecommendationEngine {
 
     static func make(
         guidance: CoachGuidanceV3,

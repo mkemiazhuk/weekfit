@@ -52602,9 +52602,6 @@
         }
       }
     },
-    "planner.week.overview" : {
-
-    },
     "planner.week.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
