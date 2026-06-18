@@ -104,6 +104,18 @@ final class WeekFitActivityCoordinator: ObservableObject {
     ) {
         let workoutUUID = workout.uuid.uuidString
 
+        if let persisted = importedWorkoutIfExists(
+            uuid: workoutUUID,
+            modelContext: modelContext
+        ),
+           !activities.contains(where: {
+               $0.id == persisted.id || $0.healthKitWorkoutUUID == workoutUUID
+           }) {
+            ActivityReconciler.applySyncedWorkout(workout, to: persisted)
+            reconciledWorkoutUUIDs.insert(workoutUUID)
+            return
+        }
+
         if let linkedPlanned = activities.first(where: {
             $0.healthKitWorkoutUUID == workoutUUID && $0.id != workoutUUID
         }) {
@@ -144,5 +156,17 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         reconciledWorkoutUUIDs.insert(workoutUUID)
+    }
+
+    private func importedWorkoutIfExists(
+        uuid: String,
+        modelContext: ModelContext
+    ) -> PlannedActivity? {
+        let descriptor = FetchDescriptor<PlannedActivity>(
+            predicate: #Predicate { activity in
+                activity.healthKitWorkoutUUID == uuid || activity.id == uuid
+            }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 }

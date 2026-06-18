@@ -384,29 +384,11 @@ final class CoachCoordinator: ObservableObject {
     }
 
     private func finalVisibleIsRecoveryTierActivity(_ activity: PlannedActivity) -> Bool {
-        let text = "\(activity.type) \(activity.title) \(activity.icon) \(activity.imageName)".lowercased()
-        return text.contains("walk") ||
-            text.contains("walking") ||
-            text.contains("stretch") ||
-            text.contains("yoga") ||
-            text.contains("breath")
+        CoachActivityClassification.isRecoveryTier(activity)
     }
 
     private func finalVisibleIsSignificantWorkout(_ activity: PlannedActivity) -> Bool {
-        guard !finalVisibleIsRecoveryTierActivity(activity) else { return false }
-        let text = "\(activity.type) \(activity.title) \(activity.icon) \(activity.imageName)".lowercased()
-        return text.contains("cycling") ||
-            text.contains("bicycle") ||
-            text.contains("running") ||
-            text.contains("run") ||
-            text.contains("tennis") ||
-            text.contains("squash") ||
-            text.contains("upper body") ||
-            text.contains("lower body") ||
-            text.contains("full body") ||
-            text.contains("core") ||
-            text.contains("strength") ||
-            text.contains("workout")
+        CoachActivityClassification.isSignificantWorkout(activity)
     }
 
     private func logFinalStoryReadiness(

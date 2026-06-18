@@ -8,6 +8,7 @@ import OSLog
 struct TodayView: View {
 
     @ObservedObject var authViewModel: AuthViewModel
+    @Binding var selectedDate: Date
     let returnToTodayTrigger: UUID
     let onSelectTab: (WeekFitTab) -> Void
     @EnvironmentObject private var appSession: AppSessionState
@@ -34,7 +35,6 @@ struct TodayView: View {
     
     @State private var showProfile = false
     @State private var showContent = false
-    @State private var selectedDate = Date()
     @State private var livePulse = false
     @State private var now = Date()
     @State private var showWaterToast = false
@@ -72,10 +72,12 @@ struct TodayView: View {
 
     init(
         authViewModel: AuthViewModel,
+        selectedDate: Binding<Date>,
         returnToTodayTrigger: UUID = UUID(),
         onSelectTab: @escaping (WeekFitTab) -> Void = { _ in }
     ) {
         self.authViewModel = authViewModel
+        self._selectedDate = selectedDate
         self.returnToTodayTrigger = returnToTodayTrigger
         self.onSelectTab = onSelectTab
     }
@@ -287,7 +289,6 @@ struct TodayView: View {
         .onChange(of: selectedDate) { oldValue, newValue in
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
             healthRefreshID = UUID()
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.selectedDate")
         }
         .onChange(of: appSession.healthRefreshTrigger) { _, _ in
             debugTodayDataState(source: "TodayView.onChange.healthRefreshTrigger")
@@ -326,12 +327,6 @@ struct TodayView: View {
 
                 updateTodayCoachInsightIfNeeded(source: "CoachCoordinator.checkpoint")
             }
-        }
-        .onChange(of: nutritionViewModel.coachStateRefreshID) { _, _ in
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.nutritionCoachStateRefreshID")
-        }
-        .onChange(of: languageManager.selectedLanguage) { _, _ in
-            updateTodayCoachInsightIfNeeded(source: "TodayView.onChange.language")
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {
@@ -2278,10 +2273,36 @@ struct TodayView: View {
                                         .foregroundStyle(textSecondary.opacity(0.82))
                                         .lineSpacing(2)
                                         .multilineTextAlignment(.leading)
-                                        .lineLimit(2)
+                                        .lineLimit(3)
                                         .layoutPriority(1)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
+
+                                if !renderModel.todayDoNowLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(String(format: WeekFitLocalizedString("today.coach.card.doNowFormat"), renderModel.todayDoNowLine))
+                                        .font(.system(size: 12.5, weight: .semibold))
+                                        .foregroundStyle(textPrimary.opacity(0.9))
+                                        .lineSpacing(2)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(3)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                if !renderModel.todayAvoidLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(String(format: WeekFitLocalizedString("today.coach.card.avoidFormat"), renderModel.todayAvoidLine))
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(textSecondary.opacity(0.78))
+                                        .lineSpacing(2)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Text(renderModel.todayConfidenceLine)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(textTertiary)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .layoutPriority(1)

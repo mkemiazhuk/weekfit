@@ -15,6 +15,7 @@ struct WeekFitRootView: View {
     @StateObject private var planViewModel = PlanViewModel()
     @StateObject private var coachInputProvider = CoachInputProvider()
     @State private var selectedTab: WeekFitTab = .today
+    @State private var todaySelectedDate = Date()
     @State private var todayResetTrigger = UUID()
     @State private var showContent = false
 
@@ -95,6 +96,7 @@ struct WeekFitRootView: View {
             appSession.coachRefreshTrigger.uuidString,
             appSession.returnToTodayTrigger.uuidString,
             "\(hasSettledInitialHealthState)",
+            "\(Int(Calendar.current.startOfDay(for: coachRefreshDate).timeIntervalSince1970 / 86_400))",
             plannedActivities
                 .map { activity in
                     [
@@ -119,6 +121,7 @@ struct WeekFitRootView: View {
         case .today:
             TodayView(
                 authViewModel: authViewModel,
+                selectedDate: $todaySelectedDate,
                 returnToTodayTrigger: todayResetTrigger,
                 onSelectTab: selectTab
             )
@@ -199,6 +202,7 @@ struct WeekFitRootView: View {
     }
 
     private func returnToToday() {
+        todaySelectedDate = Date()
         todayResetTrigger = UUID()
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             selectedTab = .today
@@ -226,7 +230,7 @@ struct WeekFitRootView: View {
         }
 
         await coachInputProvider.refresh(
-            selectedDate: Date(),
+            selectedDate: coachRefreshDate,
             plannedActivities: plannedActivities,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
@@ -234,6 +238,10 @@ struct WeekFitRootView: View {
             source: source,
             refreshHealth: selectedTab == .coach && source == "tabChange.coach"
         )
+    }
+
+    private var coachRefreshDate: Date {
+        selectedTab == .today ? todaySelectedDate : Date()
     }
 
     private var shouldDeferHiddenCoachRefresh: Bool {

@@ -3,6 +3,8 @@ import SwiftUI
 import SwiftData
 
 @MainActor
+/// Legacy nutrition metrics pipeline. `status`, `recommendation`, and `activeInsights`
+/// are internal brain-state outputs only — user-facing coach copy comes from `CoachCoordinator`.
 enum NutritionCoreEngine {
     
     static func calculate(

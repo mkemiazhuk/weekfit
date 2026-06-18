@@ -57,7 +57,8 @@ struct DynamicInsight: Identifiable {
     }
 }
 
-// Твой обновленный результирующий контейнер
+// Metrics-pipeline container. Do not use `status` / `recommendation` / `activeInsights`
+// for user-facing coach UI — canonical coach output lives in `CoachCoordinator.state`.
 struct NutritionResult {
     let score: Double
     let status: String
