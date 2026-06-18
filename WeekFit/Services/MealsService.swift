@@ -10,10 +10,14 @@ struct MealNutritionTarget {
 @MainActor
 final class MealsService {
 
-    private let healthManager = HealthManager()
+    private let healthManager: HealthManager
     private let repository = NutritionRepository()
 
     private var lastPlanIDs = Set<String>()
+
+    init(healthManager: HealthManager) {
+        self.healthManager = healthManager
+    }
 
     func getMealsPlan() async -> [Meals] {
         await healthManager.loadHealthData()

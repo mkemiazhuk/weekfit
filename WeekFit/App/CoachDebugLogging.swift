@@ -113,15 +113,21 @@ enum CoachLogger {
     }
 
     static func warning(_ message: @autoclosure () -> String) {
+        #if DEBUG
         emit("[CoachWarning]", message())
+        #endif
     }
 
     static func error(_ message: @autoclosure () -> String) {
+        #if DEBUG
         emit("[CoachError]", message())
+        #endif
     }
 
     private static func emit(_ tag: String, _ message: String) {
+        #if DEBUG
         print("\(tag) \(message)")
+        #endif
     }
 }
 

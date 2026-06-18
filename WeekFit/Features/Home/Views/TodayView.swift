@@ -303,15 +303,6 @@ struct TodayView: View {
         .onChange(of: appSession.localDataResetTrigger) { _, _ in
             handleLocalDataResetCompleted()
         }
-        .onChange(of: WeekFitActivityCoordinator.shared.completedWorkoutsBatch) { _, _ in
-            WeekFitActivityCoordinator.shared.reconcileCompletedWorkouts(
-                with: plannedActivities,
-                modelContext: modelContext
-            )
-
-            appSession.healthRefreshTrigger = UUID()
-            healthRefreshID = UUID()
-        }
         .task(id: coachCoordinator.nextScheduledCheckpoint) {
             guard let checkpoint = coachCoordinator.nextScheduledCheckpoint else { return }
             let delay = checkpoint.timeIntervalSinceNow

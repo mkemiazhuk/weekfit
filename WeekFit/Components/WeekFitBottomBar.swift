@@ -3,6 +3,7 @@ import SwiftUI
 enum WeekFitTab: Hashable, CaseIterable {
     case today
     case coach
+    // Highlights and Insights are intentionally unshipped — see docs/UnshippedFeatures.md
 //    case highlights
 //    case insights
     case meals

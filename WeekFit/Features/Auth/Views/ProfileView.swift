@@ -8,9 +8,9 @@ struct ProfileView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var healthManager: HealthManager
 
     @StateObject private var viewModel = ProfileViewModel()
-    @StateObject private var healthManager = HealthManager()
     @State private var showResetConfirmation = false
     @State private var showResetFailure = false
     @State private var resetFailureMessage = ""
@@ -61,6 +61,7 @@ struct ProfileView: View {
             case .editProfile:
                 EditUserProfileView(viewModel: viewModel)
                     .environmentObject(appSession)
+                    .environmentObject(healthManager)
 
             case .notifications:
                 NotificationSettingsView()

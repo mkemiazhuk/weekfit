@@ -4,8 +4,8 @@ struct EditUserProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var healthManager: HealthManager
     @ObservedObject var viewModel: ProfileViewModel
-    @StateObject private var healthManager = HealthManager()
 
     @State private var name: String = ""
     @State private var selectedGoal: NutritionGoal = .maintenance

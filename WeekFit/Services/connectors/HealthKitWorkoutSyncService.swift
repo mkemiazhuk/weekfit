@@ -215,6 +215,17 @@ final class HealthKitWorkoutSyncService: ObservableObject {
 
 //        print("✅ completedWorkoutsBatch updated:", candidates.count)
     }
+
+    func clearCompletedWorkoutsBatch() {
+        completedWorkoutsBatch = []
+    }
+
+    func resetSyncState() {
+        seenWorkoutIDs.removeAll()
+        anchor = nil
+        latestCompletedWorkout = nil
+        clearCompletedWorkoutsBatch()
+    }
     
     private func fetchRecentCompletedWorkoutsFallback() {
 //        print("🛟 Running recent workout fallback fetch")

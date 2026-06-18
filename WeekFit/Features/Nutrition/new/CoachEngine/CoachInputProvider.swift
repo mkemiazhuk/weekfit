@@ -92,6 +92,15 @@ final class CoachInputProvider: ObservableObject {
 
         coachCoordinator.updateInput(input)
         let nextState = coachCoordinator.recomputeIfNeeded(reason: source)
+        if let guidance = nextState.guidance,
+           let metricsSnapshotID = input.metricsSnapshotID {
+            nutritionViewModel.commitCoachGuidance(
+                guidance,
+                metricsSnapshotID: metricsSnapshotID,
+                inputSignature: CoachInputFingerprint(snapshot: input).rawValue,
+                source: "CoachInputProvider.\(source)"
+            )
+        }
         Self.logDecisionRefresh(
             source: source,
             input: input,

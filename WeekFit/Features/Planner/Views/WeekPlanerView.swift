@@ -131,14 +131,6 @@ struct WeekPlannerView: View {
         } message: { activity in
             Text(String(format: WeekFitLocalizedString("planner.delete.activityMessageFormat"), activity.title))
         }
-        .onReceive(activityCoordinator.$completedWorkoutsBatch) { workouts in
-            guard !workouts.isEmpty else { return }
-
-            for workout in workouts {
-//                аprint("🧷 Planner received completed workout:", workout.uuid)
-                reconcileCompletedAppleWorkout(workout)
-            }
-        }
         .sheet(item: $activityToConfirm) { activity in
             plannerConfirmationSheet(activity)
                 .presentationDetents([.fraction(0.32)])
