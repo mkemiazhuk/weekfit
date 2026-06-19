@@ -37,9 +37,9 @@ Track progress against the acquisition audit remediation roadmap.
 | Item | Status | Notes |
 |------|--------|-------|
 | Dynamic Type + VoiceOver pass | Checklist | See `docs/AccessibilityPass.md` |
-| Ship or kill Insights | Pending | See `docs/UnshippedFeatures.md` |
-| UI tests (core flows) | Started | Launch smoke test in `WeekFitUITests` |
-| HealthManager integration tests | Pending | |
+| Ship or kill Insights | Done | Kill until QA sprint — see `docs/UnshippedFeatures.md` |
+| UI tests (core flows) | Done | `-ui-testing` launch arg + tab navigation tests |
+| HealthManager integration tests | Done | `HealthManagerIntegrationTests` |
 | Auth / Keychain / backend | Pending | Greenfield |
 
 ## Phase 5 — Platform (in progress)

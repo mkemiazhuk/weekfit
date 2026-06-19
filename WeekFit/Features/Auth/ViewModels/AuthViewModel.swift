@@ -126,6 +126,13 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    func applyUITestBypassIfNeeded() {
+        guard WeekFitUITestSupport.isActive else { return }
+        isLoggedIn = true
+        isLoading = false
+        errorMessage = nil
+    }
+
     private func cleanError(_ error: Error) -> String {
         let message = error.localizedDescription
 

@@ -482,6 +482,7 @@ struct LoginView: View {
             .padding(.horizontal, 14)
             .scaleEffect(ambientMotion ? 1.003 : 1.0)
             .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: ambientMotion)
+            .accessibilityIdentifier("login.openWeekFit")
 
             VStack(spacing: 4) {
                 HStack(spacing: 6) {

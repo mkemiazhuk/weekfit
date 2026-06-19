@@ -100,6 +100,8 @@ struct WeekPlannerView: View {
             .clipped()
         }
         .preferredColorScheme(.dark)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("screen.plan")
         .animation(
             .spring(response: 0.42, dampingFraction: 0.90, blendDuration: 0.08),
             value: viewModel.showAddActivity

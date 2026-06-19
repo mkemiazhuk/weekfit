@@ -178,6 +178,8 @@ struct MealsView: View {
             }
             .opacity(showContent ? 1 : 0)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("screen.meals")
         .onAppear {
             guard !showContent else { return }
             showContent = true

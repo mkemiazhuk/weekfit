@@ -70,6 +70,8 @@ struct ExpertCoachViewV3: View {
             }
         }
         .preferredColorScheme(.dark)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("screen.coach")
         .onAppear {
             #if DEBUG
             CoachRefreshDebug.log(

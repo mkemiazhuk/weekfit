@@ -250,6 +250,8 @@ struct TodayView: View {
                 }
 
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("screen.today")
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
                 selectedDate: selectedDate,
