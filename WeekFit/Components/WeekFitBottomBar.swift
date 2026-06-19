@@ -105,6 +105,7 @@ struct WeekFitBottomBar: View {
         }
         .padding(.bottom, 10)
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("tabBar.main")
     }
 
     private func tabItem(_ tab: WeekFitTab) -> some View {
@@ -187,8 +188,18 @@ struct WeekFitBottomBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("tab.\(tabAccessibilityName(tab))")
         .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(active ? [.isSelected] : [])
+    }
+
+    private func tabAccessibilityName(_ tab: WeekFitTab) -> String {
+        switch tab {
+        case .today: return "today"
+        case .coach: return "coach"
+        case .meals: return "meals"
+        case .calendar: return "plan"
+        }
     }
 
     private func handleTap(_ tab: WeekFitTab) {

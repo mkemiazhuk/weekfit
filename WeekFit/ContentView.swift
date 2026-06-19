@@ -12,5 +12,8 @@ struct ContentView: View {
                 LoginView(authViewModel: authViewModel)
             }
         }
+        .onAppear {
+            authViewModel.applyUITestBypassIfNeeded()
+        }
     }
 }
