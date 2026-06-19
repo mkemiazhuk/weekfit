@@ -103,9 +103,11 @@ final class AuthViewModel: ObservableObject {
             do {
                 let user = try await authService.handleAppleCredential(credential)
 
+                #if DEBUG
                 print("Apple User ID:", user.id)
                 print("Email:", user.email ?? "No email")
                 print("First Name:", user.firstName ?? "No name")
+                #endif
 
                 isLoggedIn = true
             } catch {

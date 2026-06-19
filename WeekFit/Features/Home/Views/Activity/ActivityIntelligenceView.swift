@@ -3,6 +3,8 @@ import Charts
 import HealthKit
 import CoreLocation
 import MapKit
+import OSLog
+import UIKit
 import WeekFitWorkoutMetrics
 internal import Combine
 
@@ -2114,30 +2116,170 @@ private enum WorkoutRouteGeometry {
     }
 }
 
+private enum WorkoutRouteSnapshotRenderer {
+    private static let logger = Logger(subsystem: "WeekFit", category: "WorkoutRouteSnapshot")
+
+    static func render(
+        points: [WorkoutRoutePoint],
+        routeColor: UIColor,
+        size: CGSize,
+        scale: CGFloat
+    ) async -> UIImage? {
+        guard size.width > 1, size.height > 1 else { return nil }
+
+        let coordinates = WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
+        guard coordinates.count >= 2,
+              let region = WorkoutRouteGeometry.mapRegion(for: points, paddingFactor: 1.18) else {
+            return nil
+        }
+
+        let options = MKMapSnapshotter.Options()
+        options.region = region
+        options.size = size
+        options.scale = scale
+        options.mapType = .standard
+        options.traitCollection = UITraitCollection(userInterfaceStyle: .dark)
+
+        let snapshotter = MKMapSnapshotter(options: options)
+        return await withCheckedContinuation { continuation in
+            snapshotter.start { snapshot, error in
+                guard let snapshot, error == nil else {
+                    // Apple MapKit may also emit unrelated console noise such as "default.csv",
+                    // PerfPowerTelemetry, PPSClientDonation, GeoGL, and GeoCodec messages.
+                    // Those are known system-framework logs, not missing WeekFit bundle resources.
+                    if let error {
+                        logger.error(
+                            "Workout route snapshot failed points=\(points.count, privacy: .public) error=\(String(describing: error), privacy: .public)"
+                        )
+                    } else {
+                        logger.error(
+                            "Workout route snapshot failed points=\(points.count, privacy: .public) reason=empty snapshot"
+                        )
+                    }
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(
+                    returning: drawRoute(on: snapshot, coordinates: coordinates, color: routeColor)
+                )
+            }
+        }
+    }
+
+    private static func drawRoute(
+        on snapshot: MKMapSnapshotter.Snapshot,
+        coordinates: [CLLocationCoordinate2D],
+        color: UIColor
+    ) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: snapshot.image.size)
+        return renderer.image { _ in
+            snapshot.image.draw(at: .zero)
+
+            let path = UIBezierPath()
+            for (index, coordinate) in coordinates.enumerated() {
+                let point = snapshot.point(for: coordinate)
+                if index == 0 {
+                    path.move(to: point)
+                } else {
+                    path.addLine(to: point)
+                }
+            }
+            path.lineWidth = max(3, snapshot.image.size.width / 80)
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            color.setStroke()
+            path.stroke()
+
+            if let start = coordinates.first {
+                drawMarker(
+                    at: snapshot.point(for: start),
+                    fill: color,
+                    radius: max(4.5, snapshot.image.size.width / 90),
+                    stroke: UIColor.white.withAlphaComponent(0.92),
+                    strokeWidth: 2
+                )
+            }
+            if let finish = coordinates.last, coordinates.count > 1 {
+                drawMarker(
+                    at: snapshot.point(for: finish),
+                    fill: color.withAlphaComponent(0.35),
+                    radius: max(5.5, snapshot.image.size.width / 75),
+                    stroke: UIColor.white.withAlphaComponent(0.95),
+                    strokeWidth: 2
+                )
+            }
+        }
+    }
+
+    private static func drawMarker(
+        at point: CGPoint,
+        fill: UIColor,
+        radius: CGFloat,
+        stroke: UIColor,
+        strokeWidth: CGFloat
+    ) {
+        let rect = CGRect(
+            x: point.x - radius,
+            y: point.y - radius,
+            width: radius * 2,
+            height: radius * 2
+        )
+        let circle = UIBezierPath(ovalIn: rect)
+        fill.setFill()
+        circle.fill()
+        stroke.setStroke()
+        circle.lineWidth = strokeWidth
+        circle.stroke()
+    }
+}
+
 private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
 
-    private var coordinates: [CLLocationCoordinate2D] {
-        WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
-    }
-
-    private var mapRegion: MKCoordinateRegion? {
-        WorkoutRouteGeometry.mapRegion(for: points, paddingFactor: 1.18)
-    }
+    @Environment(\.displayScale) private var displayScale
+    @State private var snapshot: UIImage?
 
     var body: some View {
-        ZStack {
-            if let mapRegion {
-                Map(initialPosition: .region(mapRegion), interactionModes: []) {
-                    routeContent
+        GeometryReader { proxy in
+            ZStack {
+                Group {
+                    if let snapshot {
+                        Image(uiImage: snapshot)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        ActivityStyle.cardBackground
+                    }
                 }
-                .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
-                .colorScheme(.dark)
-            } else {
-                ActivityStyle.cardBackground
-            }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
 
+                mapPreviewChrome
+            }
+            .task(id: snapshotTaskID(size: proxy.size)) {
+                guard proxy.size.width > 1, proxy.size.height > 1 else { return }
+                let image = await WorkoutRouteSnapshotRenderer.render(
+                    points: points,
+                    routeColor: UIColor(color),
+                    size: proxy.size,
+                    scale: displayScale
+                )
+                snapshot = image
+            }
+        }
+    }
+
+    private func snapshotTaskID(size: CGSize) -> String {
+        let width = Int(size.width.rounded())
+        let height = Int(size.height.rounded())
+        let first = points.first.map { "\($0.latitude),\($0.longitude)" } ?? "none"
+        let last = points.last.map { "\($0.latitude),\($0.longitude)" } ?? "none"
+        return "\(width)x\(height)-\(points.count)-\(first)-\(last)"
+    }
+
+    private var mapPreviewChrome: some View {
+        ZStack {
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.34),
@@ -2171,40 +2313,6 @@ private struct WorkoutRouteMapPreview: View {
                 }
             }
             .allowsHitTesting(false)
-        }
-    }
-
-    @MapContentBuilder
-    private var routeContent: some MapContent {
-        MapPolyline(coordinates: coordinates)
-            .stroke(
-                LinearGradient(
-                    colors: [color.opacity(0.92), color, ActivityStyle.teal.opacity(0.95)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
-            )
-
-        if let start = coordinates.first {
-            Annotation("", coordinate: start, anchor: .center) {
-                Circle()
-                    .fill(color)
-                    .frame(width: 9, height: 9)
-                    .overlay {
-                        Circle()
-                            .stroke(Color.white.opacity(0.92), lineWidth: 2)
-                    }
-            }
-        }
-
-        if let finish = coordinates.last, coordinates.count > 1 {
-            Annotation("", coordinate: finish, anchor: .center) {
-                Circle()
-                    .stroke(Color.white.opacity(0.95), lineWidth: 2)
-                    .background(Circle().fill(color.opacity(0.35)))
-                    .frame(width: 11, height: 11)
-            }
         }
     }
 }

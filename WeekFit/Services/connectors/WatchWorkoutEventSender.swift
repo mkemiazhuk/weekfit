@@ -1,10 +1,13 @@
 import Foundation
+import OSLog
 import WatchConnectivity
 import HealthKit
 
 final class WatchWorkoutEventSender: NSObject {
 
     static let shared = WatchWorkoutEventSender()
+
+    private static let logger = Logger(subsystem: "WeekFit", category: "WatchWorkoutEventSender")
 
     private override init() {
         super.init()
@@ -80,7 +83,7 @@ final class WatchWorkoutEventSender: NSObject {
         do {
             try session.updateApplicationContext(message)
         } catch {
-            print("Failed to update application context:", error)
+            Self.logger.error("Failed to update application context error=\(String(describing: error), privacy: .public)")
         }
     }
 }

@@ -1,6 +1,7 @@
 import Foundation
 import CoreImage
 import ImageIO
+import OSLog
 import UIKit
 
 enum CustomMealStore {
@@ -148,6 +149,8 @@ enum CustomMealValidation {
 }
 
 enum MealPhotoStore {
+    nonisolated private static let logger = Logger(subsystem: "WeekFit", category: "MealPhotoStore")
+
     nonisolated static let directoryName = "MealPhotos"
     nonisolated static let thumbnailPixelSize: CGFloat = 512
     nonisolated(unsafe) private static let imageCache = NSCache<NSString, UIImage>()
@@ -373,12 +376,16 @@ enum MealPhotoStore {
 
         let directory = photosDirectory
         guard FileManager.default.fileExists(atPath: directory.path) else {
-            print("[LocalDataReset] Meal photo directory did not exist: \(directory.path)")
+            #if DEBUG
+            logger.debug("Meal photo directory did not exist during reset")
+            #endif
             return
         }
 
         try FileManager.default.removeItem(at: directory)
-        print("[LocalDataReset] Cleared meal photo directory: \(directory.path)")
+        #if DEBUG
+        logger.debug("Cleared meal photo directory")
+        #endif
     }
 
     nonisolated static func url(for filename: String) -> URL {

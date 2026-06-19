@@ -1,9 +1,12 @@
 import Foundation
+import OSLog
 import UserNotifications
 
 final class ActivityNotificationService {
 
     static let shared = ActivityNotificationService()
+
+    private static let logger = Logger(subsystem: "WeekFit", category: "ActivityNotificationService")
 
     private let center = UNUserNotificationCenter.current()
     private let calendar = Calendar.current
@@ -21,10 +24,12 @@ final class ActivityNotificationService {
     ) {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error {
-                print("Notification permission error:", error)
+                Self.logger.error("Notification permission request failed error=\(String(describing: error), privacy: .public)")
             }
 
-            print("Notification permission granted:", granted)
+            #if DEBUG
+            Self.logger.debug("Notification permission granted=\(granted, privacy: .public)")
+            #endif
 
             DispatchQueue.main.async {
                 completion?(granted)
@@ -48,7 +53,9 @@ final class ActivityNotificationService {
         center.removeAllPendingNotificationRequests()
         center.removeAllDeliveredNotifications()
 
-        print("🔕 All notifications cancelled")
+        #if DEBUG
+        Self.logger.debug("All notifications cancelled")
+        #endif
     }
 
     // MARK: - Main Sync API
@@ -68,7 +75,7 @@ final class ActivityNotificationService {
             guard let self else { return }
 
             guard isAuthorized else {
-                print("⚠️ Notifications not authorized. Skipping scheduling.")
+                Self.logger.warning("Notifications not authorized; skipping scheduling")
                 return
             }
 
@@ -154,9 +161,11 @@ final class ActivityNotificationService {
 
         center.add(request) { error in
             if let error {
-                print("Failed to schedule later completion check:", error)
+                Self.logger.error("Failed to schedule later completion check error=\(String(describing: error), privacy: .public)")
             } else {
-                print("Later completion check scheduled:", activity.title, laterDate)
+                #if DEBUG
+                Self.logger.debug("Later completion check scheduled title=\(activity.title, privacy: .public)")
+                #endif
             }
         }
     }
@@ -174,7 +183,9 @@ final class ActivityNotificationService {
         ) ?? activity.date
 
         guard reminderDate > Date() else {
-            print("Start reminder date is in the past. Notification skipped.")
+            #if DEBUG
+            Self.logger.debug("Start reminder date is in the past; notification skipped")
+            #endif
             return
         }
 
@@ -196,9 +207,11 @@ final class ActivityNotificationService {
 
         center.add(request) { error in
             if let error {
-                print("Failed to schedule start reminder:", error)
+                Self.logger.error("Failed to schedule start reminder error=\(String(describing: error), privacy: .public)")
             } else {
-                print("Start reminder scheduled:", activity.title, reminderDate)
+                #if DEBUG
+                Self.logger.debug("Start reminder scheduled title=\(activity.title, privacy: .public)")
+                #endif
             }
         }
     }
@@ -227,7 +240,9 @@ final class ActivityNotificationService {
         }
 
         guard confirmationDate > Date() else {
-            print("Completion check date is in the past. Notification skipped.")
+            #if DEBUG
+            Self.logger.debug("Completion check date is in the past; notification skipped")
+            #endif
             return
         }
 
@@ -246,9 +261,11 @@ final class ActivityNotificationService {
 
         center.add(request) { error in
             if let error {
-                print("Failed to schedule completion check:", error)
+                Self.logger.error("Failed to schedule completion check error=\(String(describing: error), privacy: .public)")
             } else {
-                print("Completion check scheduled:", activity.title, confirmationDate)
+                #if DEBUG
+                Self.logger.debug("Completion check scheduled title=\(activity.title, privacy: .public)")
+                #endif
             }
         }
     }

@@ -1,5 +1,10 @@
 import SwiftUI
 import SwiftData
+import OSLog
+
+private enum ProfileViewLogging {
+    static let logger = Logger(subsystem: "WeekFit", category: "ProfileView")
+}
 
 struct ProfileView: View {
 
@@ -604,7 +609,7 @@ private extension ProfileView {
 
             dismiss()
         } catch {
-            print("[LocalDataReset][Failure] UI reset flow: \(error)")
+            ProfileViewLogging.logger.error("Local data reset UI flow failed error=\(String(describing: error), privacy: .public)")
             resetFailureMessage = error.localizedDescription
             withDialogAnimation {
                 showResetFailure = true

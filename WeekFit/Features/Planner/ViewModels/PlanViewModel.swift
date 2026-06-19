@@ -1,9 +1,12 @@
 import SwiftUI
 import SwiftData
+import OSLog
 internal import Combine
 
 @MainActor
 final class PlanViewModel: ObservableObject {
+
+    private static let logger = Logger(subsystem: "WeekFit", category: "PlanViewModel")
 
     // MARK: - Timeline constants
     let timelineStartHour = 5
@@ -404,7 +407,7 @@ final class PlanViewModel: ObservableObject {
                     completionCheckInsEnabled: completionCheckInsEnabled
                 )
             } catch {
-                print("Failed to update planned activity:", error)
+                Self.logger.error("Failed to update planned activity error=\(String(describing: error), privacy: .public)")
             }
         } else {
             let activity = PlannedActivity(
@@ -434,7 +437,7 @@ final class PlanViewModel: ObservableObject {
                     completionCheckInsEnabled: completionCheckInsEnabled
                 )
             } catch {
-                print("Failed to save planned activity:", error)
+                Self.logger.error("Failed to save planned activity error=\(String(describing: error), privacy: .public)")
             }
         }
 
@@ -472,7 +475,7 @@ final class PlanViewModel: ObservableObject {
         do {
             try modelContext.save()
         } catch {
-            print("Failed to delete activity:", error)
+            Self.logger.error("Failed to delete activity error=\(String(describing: error), privacy: .public)")
         }
 
         closeAddSheet()
@@ -517,7 +520,7 @@ final class PlanViewModel: ObservableObject {
                 completionCheckInsEnabled: completionCheckInsEnabled
             )
         } catch {
-            print("Failed to move planned activity:", error)
+            Self.logger.error("Failed to move planned activity error=\(String(describing: error), privacy: .public)")
         }
     }
 

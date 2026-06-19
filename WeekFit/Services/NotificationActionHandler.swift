@@ -1,9 +1,12 @@
 import Foundation
+import OSLog
 import UserNotifications
 
 final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegate {
 
     static let shared = NotificationActionHandler()
+
+    private static let logger = Logger(subsystem: "WeekFit", category: "NotificationActionHandler")
 
     private override init() {}
 
@@ -19,7 +22,7 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
             let title = userInfo[ActivityNotificationKey.activityTitle] as? String,
             let timestamp = userInfo[ActivityNotificationKey.activityDate] as? TimeInterval
         else {
-            print("Notification action missing activity data:", userInfo)
+            Self.logger.warning("Notification action missing activity data")
             return
         }
 

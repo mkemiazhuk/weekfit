@@ -1,7 +1,12 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import OSLog
 import UIKit
+
+private enum WeekPlannerViewLogging {
+    static let logger = Logger(subsystem: "WeekFit", category: "WeekPlannerView")
+}
 
 struct WeekPlannerView: View {
 
@@ -248,7 +253,7 @@ struct WeekPlannerView: View {
         do {
             try modelContext.save()
         } catch {
-            print("❌ Failed to delete planned activity:", error)
+            WeekPlannerViewLogging.logger.error("Failed to delete planned activity error=\(String(describing: error), privacy: .public)")
         }
 
         activityPendingDelete = nil
