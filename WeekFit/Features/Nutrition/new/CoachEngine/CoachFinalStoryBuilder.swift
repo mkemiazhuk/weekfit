@@ -324,10 +324,22 @@ enum CoachFinalStoryBuilder {
                 return base(frame)
             }
             if frame.trainPermission == .noTraining {
+                if frame.sessionPhase == .during,
+                   isLightRecoveryV4Family(frame.activityFamily) {
+                    return recoveryModality(frame)
+                }
                 return base(frame)
             }
             if frame.sessionPhase == .during,
+               frame.trainPermission == .recoveryOnly,
+               isLightRecoveryV4Family(frame.activityFamily) {
+                return recoveryModality(frame)
+            }
+            if frame.sessionPhase == .during,
                frame.trainPermission == .trainControlled || frame.primaryLimiter == .recovery || frame.primaryLimiter == .accumulatedFatigue {
+                if isLightRecoveryV4Family(frame.activityFamily) {
+                    return recoveryModality(frame)
+                }
                 return base(frame)
             }
 
@@ -393,11 +405,15 @@ enum CoachFinalStoryBuilder {
                     : CoachFinalStoryBuilder.dynamicText("This is low-strain work inside the bigger training day.", russian: "Это лёгкая работа в рамках тренировочного дня.")
                 situation = hasNext
                     ? CoachFinalStoryBuilder.dynamicText("Save energy for the session ahead.", russian: "Сохраните силы на следующую тренировку.")
+                    : frame.dayLoadContext.completedSeriousTrainingToday
+                    ? CoachFinalStoryBuilder.dynamicText("Use this only to cool down and keep the rest of the day calm.", russian: "Только как заминка — остаток дня спокойно.")
                     : CoachFinalStoryBuilder.dynamicText("Stay comfortable and finish with more control than you started.", russian: "Оставайтесь в комфорте и завершите с запасом.")
                 primary = hasNext
                     ? action(.controlIntensity, "Keep it easy", "Save energy for the session ahead", "Держите легко", "Сохраните силы для следующей тренировки")
+                    : frame.dayLoadContext.completedSeriousTrainingToday
+                    ? action(.controlIntensity, "Keep it easy", "Use this only to cool down", "Держите легко", "Только как заминка")
                     : action(.controlIntensity, "Stay conversational", "Keep effort relaxed the whole time", "Темп, в котором можете разговаривать", "Всё время без напряжения")
-                avoidance = hasNext
+                avoidance = hasNext || frame.dayLoadContext.completedSeriousTrainingToday
                     ? CoachFinalStoryBuilder.dynamicText("Do not turn this into training.", russian: "Сегодня лучше не превращать это в тренировку.")
                     : CoachFinalStoryBuilder.dynamicText("Do not compete with the recovery work.", russian: "Не превращайте это в соревнование с отдыхом.")
 
@@ -1874,6 +1890,20 @@ enum CoachFinalStoryBuilder {
         )
 
         let permission: CoachV4TrainPermission = {
+            if let active,
+               CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(active) {
+                if lightRecoveryActiveHeavyDayContext(input: input, guidance: guidance) {
+                    return .noTraining
+                }
+                if lightRecoveryActiveRequiresProtection(
+                    input: input,
+                    guidance: guidance,
+                    active: active,
+                    upcoming: upcoming
+                ) {
+                    return .recoveryOnly
+                }
+            }
             if completedSerious && active.map(isRecoveryActivityV4) != true { return active == nil ? .recoveryOnly : .noTraining }
             if hasTomorrowDemand && (timePhase == .evening || timePhase == .lateEvening || lowRecovery) { return .noTraining }
             if active != nil && lowRecovery { return .trainControlled }
@@ -2078,7 +2108,11 @@ enum CoachFinalStoryBuilder {
            let active,
            !selectedIsSignificant,
            CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(active) {
-            return .activeActivity
+            return resolvedOwnerForActiveLightRecoveryModality(
+                input: input,
+                guidance: guidance,
+                active: active
+            )
         }
 
         if sessionPhase == .during,
@@ -3148,7 +3182,18 @@ enum CoachFinalStoryBuilder {
             }
 
         case .activeActivity, .pacingExecution, .sustainableExecution:
-            if lowRecoveryOrReadiness(input) {
+            if let activity = activeActivity(input: input, guidance: guidance),
+               CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity) {
+                append(.recoveryDay) { recommendation in
+                    recommendation.type == .lightRecoveryMovement ||
+                        recommendation.type == .controlIntensity ||
+                        recommendation.englishTitle.localizedCaseInsensitiveContains("comfortable") ||
+                        recommendation.englishTitle.localizedCaseInsensitiveContains("Walk") ||
+                        recommendation.englishTitle.localizedCaseInsensitiveContains("Do not turn") ||
+                        recommendation.englishTitle.localizedCaseInsensitiveContains("Finish without") ||
+                        recommendation.englishTitle.localizedCaseInsensitiveContains("mobility")
+                }
+            } else if lowRecoveryOrReadiness(input) {
                 append(.lowRecoveryPoorReadiness) { recommendation in
                     recommendation.englishTitle.contains("10-15") ||
                         recommendation.englishTitle.contains("Reassess") ||
@@ -3157,13 +3202,9 @@ enum CoachFinalStoryBuilder {
                 }
             }
             if let activity = activeActivity(input: input, guidance: guidance),
-               isEnduranceLike(activity) {
+               isEnduranceLike(activity),
+               !CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity) {
                 append(.duringEnduranceSession)
-            } else {
-                append(.duringEnduranceSession) { recommendation in
-                    recommendation.englishTitle.contains("steady rhythm") ||
-                        recommendation.englishTitle.contains("increasing intensity")
-                }
             }
 
         case .postActivityRecovery:
@@ -3494,6 +3535,80 @@ enum CoachFinalStoryBuilder {
             input.brain.readiness == .compromised ||
             input.brain.sleep == .short ||
             input.brain.sleep == .veryShort
+    }
+
+    private static func isLightRecoveryV4Family(_ family: CoachV4ActivityFamily) -> Bool {
+        switch family {
+        case .breathing, .stretching, .yoga, .mobility, .walk:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func lightRecoveryActiveHeavyDayContext(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> Bool {
+        recentlyCompletedSeriousTraining(input: input, guidance: guidance) != nil ||
+            dayAlreadyHasHighLoad(input) ||
+            input.dayContext.hasMeaningfulLoadCompleted ||
+            input.dayContext.completedTrainingStressScore >= 2
+    }
+
+    private static func lightRecoveryActiveRequiresProtection(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3,
+        active: PlannedActivity?,
+        upcoming: PlannedActivity?
+    ) -> Bool {
+        guard let active,
+              CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(active) else {
+            return false
+        }
+
+        if lowRecoveryOrReadiness(input) {
+            return true
+        }
+        if hasSleepDeficitEvidence(input) {
+            return true
+        }
+        if lightRecoveryActiveHeavyDayContext(input: input, guidance: guidance) {
+            return true
+        }
+
+        let model = input.dayPriorityModel
+        if model.dayGoal == .overload ||
+            model.dayStressLevel == .overload ||
+            model.dayStressLevel == .high {
+            return true
+        }
+
+        if let upcoming, isSignificantCoachActivityV4(upcoming) {
+            return true
+        }
+        if nextImportantActivityToday(input: input, guidance: guidance) != nil {
+            return true
+        }
+
+        return false
+    }
+
+    private static func resolvedOwnerForActiveLightRecoveryModality(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3,
+        active: PlannedActivity
+    ) -> CoachFinalStoryOwner {
+        if lowRecoveryOrReadiness(input) {
+            return .recovery
+        }
+        if lightRecoveryActiveHeavyDayContext(input: input, guidance: guidance) {
+            return .activeActivity
+        }
+        if coachV4ActivityFamily(for: active) == .walk {
+            return .activeActivity
+        }
+        return .stableOverview
     }
 
     private static func coachV4ActivityFamily(for activity: PlannedActivity) -> CoachV4ActivityFamily {
@@ -6011,6 +6126,15 @@ enum CoachFinalStoryBuilder {
         input: CoachInputSnapshot,
         guidance: CoachGuidanceV3
     ) -> CoachFinalStoryOwner {
+        if let active = activeActivity(input: input, guidance: guidance),
+           CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(active) {
+            return resolvedOwnerForActiveLightRecoveryModality(
+                input: input,
+                guidance: guidance,
+                active: active
+            )
+        }
+
         if guidance.priority.focus == .activeActivity ||
             activeActivity(input: input, guidance: guidance) != nil {
             return .activeActivity
