@@ -110,7 +110,7 @@ enum CoachNarrativeAuditor {
         var findings: [CoachNarrativeAuditFinding] = []
 
         findings += localizationFindings(in: snapshot)
-        findings += ownerFindings(story: story, expectation: expectation)
+        findings += ownerFindings(story: story, render: render, expectation: expectation)
         findings += sectionPresenceFindings(render: render, story: story)
         findings += duplicateFindings(render: render, story: story)
         findings += workoutContextFindings(story: story, render: render, expectation: expectation)
@@ -236,9 +236,17 @@ enum CoachNarrativeAuditor {
 
     private static func ownerFindings(
         story: CoachFinalStory,
+        render: CoachFinalStoryRenderModel,
         expectation: CoachNarrativeScenarioExpectation
     ) -> [CoachNarrativeAuditFinding] {
         guard !expectation.allowedOwners.contains(story.owner) else { return [] }
+        if allowsReadinessOwnerForHydrationSupport(
+            story: story,
+            render: render,
+            expectation: expectation
+        ) {
+            return []
+        }
         return [
             CoachNarrativeAuditFinding(
                 flag: .inconsistentCopy,
@@ -246,6 +254,51 @@ enum CoachNarrativeAuditor {
                 detail: "owner=\(story.owner.rawValue), expected one of \(expectation.allowedOwners.map(\.rawValue).joined(separator: ", "))"
             )
         ]
+    }
+
+    private static func allowsReadinessOwnerForHydrationSupport(
+        story: CoachFinalStory,
+        render: CoachFinalStoryRenderModel,
+        expectation: CoachNarrativeScenarioExpectation
+    ) -> Bool {
+        guard expectation.hasHydrationGap,
+              story.owner == .readiness,
+              story.primaryFocus == .trainingReadinessWarning else {
+            return false
+        }
+        return hydrationEvidenceVisibleInSupportSections(render: render)
+    }
+
+    private static func hydrationEvidenceVisibleInSupportSections(
+        render: CoachFinalStoryRenderModel
+    ) -> Bool {
+        let visible = (
+            [
+                render.primaryRecommendation,
+                render.displayAvoid.isEmpty ? render.avoidRecommendation : render.displayAvoid
+            ] + render.whyRows.map(\.title)
+        )
+            .joined(separator: " ")
+            .lowercased()
+        let hydrationPhrases = ["water", "hydration", "drink", "fluid", "sip", "dehydrated", "low on water"]
+        return hydrationPhrases.contains(where: { visible.contains($0) })
+    }
+
+    private static func encouragesIntensity(_ text: String) -> Bool {
+        let permissive = ["push intensity", "go harder", "turn it up", "train normally"]
+        if permissive.contains(where: { text.contains($0) }) {
+            return true
+        }
+        guard text.contains("add intensity") else {
+            return false
+        }
+        let negated = [
+            "do not add intensity",
+            "don't add intensity",
+            "avoid adding intensity",
+            "not add intensity"
+        ]
+        return !negated.contains(where: { text.contains($0) })
     }
 
     private static func sectionPresenceFindings(
@@ -437,8 +490,7 @@ enum CoachNarrativeAuditor {
         ].joined(separator: " ").lowercased()
 
         if expectation.recoveryTier == .low || expectation.recoveryTier == .depleted {
-            let pushPhrases = ["go harder", "push intensity", "add intensity", "turn it up"]
-            if pushPhrases.contains(where: { visible.contains($0) }) {
+            if encouragesIntensity(visible) {
                 findings.append(
                     CoachNarrativeAuditFinding(
                         flag: .contradiction,
