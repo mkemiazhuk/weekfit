@@ -397,7 +397,11 @@ enum CoachFinalStoryBuilder {
                 avoidance = CoachFinalStoryBuilder.dynamicText("Do not turn this into training.", russian: "Сегодня лучше не превращать это в тренировку.")
 
             case .during:
-                hero = CoachFinalStoryBuilder.dynamicText("Keep this relaxed", russian: "Пусть будет спокойно")
+                if frame.dayLoadContext.completedSeriousTrainingToday || frame.trainPermission == .noTraining {
+                    hero = CoachFinalStoryBuilder.dynamicText("Use this only to cool down.", russian: "Это только как заминка.")
+                } else {
+                    hero = CoachFinalStoryBuilder.dynamicText("Keep this relaxed", russian: "Пусть будет спокойно")
+                }
                 assessment = hasNext
                     ? CoachFinalStoryBuilder.dynamicText("The important \(nextName) is still ahead, so this \(name.english) should stay easy.", russian: "Главная тренировка ещё впереди — \(name.russian) лучше лёгкой.")
                     : frame.dayLoadContext.completedSeriousTrainingToday
