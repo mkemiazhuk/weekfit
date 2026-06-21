@@ -397,7 +397,7 @@ enum CoachFinalStoryBuilder {
                 avoidance = CoachFinalStoryBuilder.dynamicText("Do not turn this into training.", russian: "Сегодня лучше не превращать это в тренировку.")
 
             case .during:
-                hero = CoachFinalStoryBuilder.dynamicText("Keep \(name.english) relaxed", russian: "Пусть \(name.russian) будет спокойной")
+                hero = CoachFinalStoryBuilder.dynamicText("Keep this relaxed", russian: "Пусть будет спокойно")
                 assessment = hasNext
                     ? CoachFinalStoryBuilder.dynamicText("The important \(nextName) is still ahead, so this \(name.english) should stay easy.", russian: "Главная тренировка ещё впереди — \(name.russian) лучше лёгкой.")
                     : frame.dayLoadContext.completedSeriousTrainingToday
@@ -2736,6 +2736,11 @@ enum CoachFinalStoryBuilder {
                 return dynamicText(calm.english, russian: calm.russian)
             }
             return dynamicText("Finished \(name) — take it easy next", russian: "\(label) сделана — дальше без спешки")
+        }
+        if CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity),
+           activity.date <= now,
+           coachV4EndDate(for: activity) >= now {
+            return dynamicText("Keep the movement light", russian: "Движение — без лишней нагрузки")
         }
         if activity.date > now || coachV4EndDate(for: activity) > now {
             return dynamicText("Next up: \(name)", russian: "Дальше: \(label)")
