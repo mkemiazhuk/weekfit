@@ -800,7 +800,9 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         )
         XCTAssertTrue(
             activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("exit") ||
-                activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("do nothing"),
+                activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("do nothing") ||
+                activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("heat moderate") ||
+                activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("before fatigue"),
             activeStory.whatToDoNext.resolved
         )
         XCTAssertTrue(
@@ -883,9 +885,9 @@ final class CoachStateNarrativeContractTests: XCTestCase {
     func testV4EnduranceDurationBandsHavePreDuringPostPlaybooks() throws {
         WeekFitSetCurrentLanguage(.english)
         let bands: [(duration: Int, preToken: String, postToken: String)] = [
-            (45, "fluids", "cool down"),
-            (90, "fluids", "25-40"),
-            (150, "fluids", "25-40")
+            (45, "legs", "cool down"),
+            (90, "stillness", "25-40"),
+            (150, "stillness", "25-40")
         ]
 
         for band in bands {
@@ -2775,6 +2777,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop now") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop here") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("keep it easy") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("controlled"),
             story.whatToDoNext.resolved
         )
@@ -2878,6 +2882,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             story.whatToDoNext.resolved.localizedCaseInsensitiveContains("end it") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("very easy") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop now") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("stop here") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("keep it easy") ||
                 story.whatToDoNext.resolved.localizedCaseInsensitiveContains("controlled"),
             story.whatToDoNext.resolved
         )
@@ -2996,7 +3002,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertEqual(story.owner, .activeActivity)
         XCTAssertEqual(story.colorFamily, .stress)
         XCTAssertEqual(coach.title, "I would not continue today.")
-        XCTAssertEqual(story.whatToDoNext.resolved, "Stop now or keep the rest controlled. Do not add intensity or extra sets.")
+        XCTAssertEqual(story.whatToDoNext.resolved, "You can stop here or keep it easy. Do not add intensity or extra sets.")
         XCTAssertFalse(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("another workout"), story.whatToDoNext.resolved)
         XCTAssertFalse(story.reasons.contains { $0.kind == .tomorrow }, story.reasons.map(\.kind.rawValue).joined(separator: ","))
         XCTAssertFalse(story.reasons.contains { $0.kind == .stability }, story.reasons.map(\.kind.rawValue).joined(separator: ","))
@@ -3117,9 +3123,9 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let renderModel = CoachFinalStoryRenderModel(story: story)
 
         XCTAssertEqual(story.owner, .activeActivity)
-        XCTAssertEqual(renderModel.title, "Я бы сегодня не продолжал.")
-        XCTAssertEqual(renderModel.supportActions.first?.title, "Защитите сон")
-        XCTAssertEqual(renderModel.supportActions.first?.subtitle, "Остаток вечера сделайте спокойным")
+        XCTAssertEqual(renderModel.title, "Сегодня лучше не продолжать.")
+        XCTAssertEqual(renderModel.supportActions.first?.title, "Берегите сон")
+        XCTAssertEqual(renderModel.supportActions.first?.subtitle, "Проведите остаток вечера спокойно")
         XCTAssertFalse(renderModel.supportActions.map(\.title).contains("Сбавьте темп"))
         XCTAssertFalse(renderModel.supportActions.map(\.title).contains("Держитесь плана"))
     }

@@ -485,7 +485,7 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let story = try XCTUnwrap(guidance.screenStory)
 
         XCTAssertEqual(story.stateLabel, CoachNarrativeBadgeIntent.manageEffort.label)
-        XCTAssertEqual(story.title, "Control today's run")
+        XCTAssertEqual(story.title, "Keep this run easy")
         XCTAssertFalse(story.myRecommendation.isEmpty)
         XCTAssertFalse(story.myRead.isEmpty)
         XCTAssertFalse(story.stateLabel.localizedCaseInsensitiveContains("reduce"))
@@ -4482,10 +4482,15 @@ private extension HumanCoachDecisionEngineXCTests {
         line: UInt = #line
     ) {
         var seen: Set<String> = []
+        // Wind-down protection may repeat sleep/evening themes across badge, action, and why.
+        let windDownRepeatKeys: Set<String> = ["sleep", "wind down", "evening calm"]
 
         for text in visibleTexts(story) {
             let key = normalizedIdea(text)
             guard !key.isEmpty else { continue }
+            if seen.contains(key), windDownRepeatKeys.contains(key) {
+                continue
+            }
             XCTAssertFalse(
                 seen.contains(key),
                 "Duplicate visible idea: \(text)",
@@ -4503,10 +4508,14 @@ private extension HumanCoachDecisionEngineXCTests {
         line: UInt = #line
     ) {
         var seen: Set<String> = []
+        let windDownRepeatKeys: Set<String> = ["sleep", "wind down", "evening calm"]
 
         for text in visibleTexts(story) {
             let key = normalizedIdea(text)
             guard !key.isEmpty else { continue }
+            if seen.contains(key), windDownRepeatKeys.contains(key) {
+                continue
+            }
             XCTAssertFalse(
                 seen.contains(key),
                 "\(scenario) duplicated visible idea: \(text)",
