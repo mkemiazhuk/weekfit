@@ -6043,6 +6043,15 @@ private extension CoachSituationStory {
         let phaseRecommendation = i.activeTrainingPhaseRecommendation
         let activeContext = ActiveSessionCoachingContext(priority: priority, interpretation: i)
 
+        if let overloadStory = overloadAwareActiveSessionStory(
+            interpretation: i,
+            priority: priority,
+            activeContext: activeContext,
+            phaseRecommendation: phaseRecommendation
+        ) {
+            return overloadStory
+        }
+
         if i.isVeryPoorState {
             return CoachSituationStory(
                 kind: .manageActiveTraining,
@@ -6069,6 +6078,52 @@ private extension CoachSituationStory {
             planChallenge: activeContext.planChallenge,
             priority: .trainingQuality,
             actions: activeContext.actions
+        )
+    }
+
+    private static func overloadAwareActiveSessionStory(
+        interpretation i: HumanCoachInterpretation,
+        priority: CoachDayPriorityResult,
+        activeContext: ActiveSessionCoachingContext,
+        phaseRecommendation _: String
+    ) -> CoachSituationStory? {
+        let frame = i.context.dayDecisionFrame
+        guard frame.shouldOwnNarrative,
+              frame.planStatus.requiresPlanChange,
+              let active = i.activeTraining,
+              CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(active) else {
+            return nil
+        }
+
+        let isRussian = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+        let activeName = activeContext.activeName
+        let title = isRussian
+            ? "Держите \(activeName) легкой"
+            : "Keep this \(activeName) light"
+        let myRead = isRussian
+            ? "Сегодня нагрузка уже высокая. Держите \(activeName) лёгкой и сохраните восстановление."
+            : "Today's load is already high. Keep \(activeName) easy and save recovery for what still matters."
+        let recommendation = isRussian
+            ? "Держите темп разговорным, остановитесь раньше при необходимости и не добавляйте интенсивность."
+            : "Stay conversational, stop early if needed, and do not add intensity."
+        let careful = isRussian
+            ? "Не превращайте это в дополнительную тренировку перед запланированной работой."
+            : "Do not turn this into extra training before the planned work still ahead."
+        let why = isRussian
+            ? "Сегодня день перегружен, поэтому даже лёгкое движение должно поддерживать восстановление, а не добавлять стресс."
+            : "Today is already overloaded, so even light movement should support recovery—not add strain."
+
+        return CoachSituationStory(
+            kind: .manageActiveTraining,
+            status: .keepItEasy,
+            title: title,
+            myRead: myRead,
+            myRecommendation: recommendation,
+            beCarefulWith: careful,
+            why: why,
+            planChallenge: nil,
+            priority: .trainingQuality,
+            actions: [.controlIntensity, .cooldown, .lightRecoveryMovement]
         )
     }
 

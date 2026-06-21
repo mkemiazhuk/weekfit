@@ -7,6 +7,16 @@
 
 ---
 
+## Policy decision (accepted 2026-06-21)
+
+### A. Prep window + authoritative replace frame
+When `dayDecisionFrame.shouldOwnNarrative == true` and `planStatus.requiresPlanChange == true`, the replace/plan-change story owns Today and Coach hero. **Fixed** in `CoachFinalStoryBuilder`: `coachV4StoryOwner` no longer maps prep-window significant work to `.activityPreparation`; hero/assessment use composed frame narrative and skip holistic read merge.
+
+### B. Active session + overload
+Active session keeps LIVE ownership (`activeSession` / `activeActivity`). Priority is **not** elevated to `planChallenge` while the user is moving. Active story must be overload-aware: easy/stop-here copy, no normal training execution framing; why/careful may mention overload/recovery risk. **Fixed** in `HumanCoachDecisionEngine.overloadAwareActiveSessionStory`; test contract updated accordingly.
+
+---
+
 ## Executive summary
 
 Overload safety is **split across two layers** today:

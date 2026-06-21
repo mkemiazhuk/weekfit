@@ -186,6 +186,7 @@ enum CoachFinalStoryBuilder {
         let avoidance: CoachFinalStoryText
         let actions: [CoachActionRecommendation]
         let reasons: [CoachV4Reason]
+        let preservesAuthoritativePlanChangeNarrative: Bool
     }
 
     private struct CoachV4PlaybookOutput {
@@ -347,9 +348,12 @@ enum CoachFinalStoryBuilder {
         }
 
         private static func base(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
-            CoachV4PlaybookOutput(
+            let assessment = frame.preservesAuthoritativePlanChangeNarrative
+                ? frame.assessment
+                : holisticAssessment(frame: frame, tactical: frame.assessment)
+            return CoachV4PlaybookOutput(
                 hero: frame.hero,
-                assessment: holisticAssessment(frame: frame, tactical: frame.assessment),
+                assessment: assessment,
                 situation: frame.situation,
                 primaryAction: frame.primaryAction,
                 avoidance: frame.avoidance,
@@ -1930,6 +1934,7 @@ enum CoachFinalStoryBuilder {
             reasonEnglish: "No useful change is needed right now",
             reasonRussian: "Сейчас нет полезного изменения"
         )
+        let preservesAuthoritativePlanChangeNarrative = authoritativePlanChangeNarrative(guidance: guidance) != nil
 
         let baseFrame = CoachV4DecisionFrame(
             storyOwner: storyOwner,
@@ -1979,7 +1984,8 @@ enum CoachFinalStoryBuilder {
                 seriousTrainingState: seriousState
             ),
             actions: actions,
-            reasons: []
+            reasons: [],
+            preservesAuthoritativePlanChangeNarrative: preservesAuthoritativePlanChangeNarrative
         )
 
         let playbook = CoachV4ActivityPlaybook.resolve(baseFrame)
@@ -2003,8 +2009,40 @@ enum CoachFinalStoryBuilder {
             primaryAction: playbook.primaryAction,
             avoidance: playbook.avoidance,
             actions: playbook.actions,
-            reasons: playbook.reasons
+            reasons: playbook.reasons,
+            preservesAuthoritativePlanChangeNarrative: baseFrame.preservesAuthoritativePlanChangeNarrative
         )
+    }
+
+    private struct AuthoritativePlanChangeNarrative {
+        let title: String
+        let message: String
+    }
+
+    private static func authoritativePlanChangeNarrative(
+        guidance: CoachGuidanceV3
+    ) -> AuthoritativePlanChangeNarrative? {
+        guard let frame = guidance.dayDecisionFrame,
+              frame.shouldOwnNarrative,
+              frame.planStatus.requiresPlanChange else {
+            return nil
+        }
+
+        let title = guidance.screenStory?.title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = guidance.screenStory?.myRead
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedTitle = (title?.isEmpty == false ? title : nil) ?? {
+            let fallback = frame.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            return fallback.isEmpty ? nil : fallback
+        }()
+        let resolvedMessage = (message?.isEmpty == false ? message : nil) ?? {
+            let fallback = frame.diagnosisText.trimmingCharacters(in: .whitespacesAndNewlines)
+            return fallback.isEmpty ? nil : fallback
+        }()
+
+        guard let resolvedTitle, let resolvedMessage else { return nil }
+        return AuthoritativePlanChangeNarrative(title: resolvedTitle, message: resolvedMessage)
     }
 
     private static func coachV4StoryOwner(
@@ -2091,6 +2129,10 @@ enum CoachFinalStoryBuilder {
 
         if selectedIsTomorrow && (baseOwner == .tomorrowProtection || dayLoadContext.shouldProtectTomorrow) {
             return .tomorrowProtection
+        }
+
+        if authoritativePlanChangeNarrative(guidance: guidance) != nil {
+            return .readiness
         }
 
         if sessionPhase == .pre,
@@ -2524,6 +2566,10 @@ enum CoachFinalStoryBuilder {
         permission: CoachV4TrainPermission,
         seriousTrainingState: CoachV4SeriousTrainingState
     ) -> CoachFinalStoryText {
+        if let narrative = authoritativePlanChangeNarrative(guidance: guidance) {
+            return dynamicText(narrative.title, russian: narrative.title)
+        }
+
         if owner == .activeActivity,
            let activity = activeActivity(input: input, guidance: guidance) {
             switch activeSessionAssessment(activity: activity, guidance: guidance, input: input) {
@@ -2707,6 +2753,10 @@ enum CoachFinalStoryBuilder {
         limiter: CoachLimiter,
         permission: CoachV4TrainPermission
     ) -> CoachFinalStoryText {
+        if let narrative = authoritativePlanChangeNarrative(guidance: guidance) {
+            return dynamicText(narrative.message, russian: narrative.message)
+        }
+
         if let completed = seriousCompleted {
             let labels = recoveryActivityName(completed)
             return dynamicText(
@@ -5893,6 +5943,9 @@ enum CoachFinalStoryBuilder {
 
         if guidance.priority.focus == .prepareForActivity ||
             guidance.priority.focus == .nextActivityLater {
+            if authoritativePlanChangeNarrative(guidance: guidance) != nil {
+                return .readiness
+            }
             return .activityPreparation
         }
 

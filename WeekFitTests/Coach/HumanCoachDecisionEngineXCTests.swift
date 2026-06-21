@@ -1228,14 +1228,28 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
 
         XCTAssertEqual(frame.planStatus, .replace)
         XCTAssertEqual(frame.primaryDriver, .accumulatedFatigue)
-        XCTAssertEqual(output.priority.priority, .planChallenge)
-        XCTAssertEqual(output.priority.focus, .trainingReadinessWarning)
+        XCTAssertEqual(output.priority.priority, .activeSession)
+        XCTAssertEqual(output.priority.focus, .activeActivity)
         if case .active = output.phase {
             XCTAssertTrue(true)
         } else {
             XCTFail("Expected active phase to own presentation")
         }
         XCTAssertTrue(story.primaryActions.contains { $0.actionProvenance == .activeSessionExecution })
+        let visible = visibleTexts(story).joined(separator: " ").lowercased()
+        XCTAssertTrue(
+            story.title.localizedCaseInsensitiveContains("light") ||
+            story.title.localizedCaseInsensitiveContains("easy") ||
+            story.title.localizedCaseInsensitiveContains("stop")
+        )
+        XCTAssertFalse(visible.contains("steady and finish with reserve"))
+        XCTAssertFalse(visible.contains("control today's walk"))
+        XCTAssertTrue(
+            visible.contains("load") ||
+            visible.contains("recovery") ||
+            visible.contains("overloaded") ||
+            visible.contains("strain")
+        )
     }
 
     func testTomorrowDemandCanDriveRecoveryWhenTodayIsAlreadyLoaded() throws {
