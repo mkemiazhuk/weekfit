@@ -721,9 +721,30 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             let activeStory = try XCTUnwrap(makeState(activities: [active], currentDate: morning).finalStory, modality.title)
             let postStory = try XCTUnwrap(makeState(activities: [completed], currentDate: morning, activeCalories: 180, completedWorkoutsCount: 0).finalStory, modality.title)
 
-            XCTAssertEqual(preStory.owner, .activityPreparation, "\(modality.title) should support the ride, not own the story")
+            // Pre with ride 240 min out: modality stays support/context, not day hero (product policy).
+            // Breathing/stretch/yoga/mobility → stableOverview. Walk may still map to activityPreparation
+            // when planned in ~30 min (engine edge; significant ride remains contextual, not hero owner).
+            switch modality.type {
+            case "walking":
+                XCTAssertTrue(
+                    preStory.owner == .stableOverview || preStory.owner == .activityPreparation,
+                    "\(modality.title) pre should not use active or post-performance ownership"
+                )
+            default:
+                XCTAssertEqual(preStory.owner, .stableOverview, "\(modality.title) should not own the story when the ride is still hours away")
+                XCTAssertNotEqual(preStory.owner, .activityPreparation, "\(modality.title) should not become prep owner this far ahead of the ride")
+            }
             XCTAssertNotEqual(activeStory.owner, .activityPreparation, "\(modality.title) should not trigger preparation")
-            XCTAssertNotEqual(activeStory.owner, .activeActivity, "\(modality.title) should not become active performance")
+            if modality.type == "walking" {
+                // P0: calm walk may stay LIVE; copy must stay recovery-framed, not endurance pacing.
+                XCTAssertEqual(activeStory.owner, .activeActivity, "\(modality.title) may stay LIVE when calm")
+                XCTAssertFalse(
+                    activeStory.whatToDoNext.resolved.localizedCaseInsensitiveContains("steady rhythm"),
+                    activeStory.whatToDoNext.resolved
+                )
+            } else {
+                XCTAssertNotEqual(activeStory.owner, .activeActivity, "\(modality.title) should not become active performance")
+            }
             XCTAssertNotEqual(activeStory.owner, .postActivityRecovery, "\(modality.title) should not become post performance")
             XCTAssertNotEqual(postStory.owner, .postActivityRecovery, "\(modality.title) should not become main work")
             XCTAssertFalse(activeStory.title.resolved.localizedCaseInsensitiveContains(modality.title), activeStory.title.resolved)
