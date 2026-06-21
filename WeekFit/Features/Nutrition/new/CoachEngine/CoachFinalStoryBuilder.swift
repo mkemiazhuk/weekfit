@@ -443,7 +443,7 @@ enum CoachFinalStoryBuilder {
                 situation = frame.dayLoadContext.shouldProtectTomorrow
                     ? CoachFinalStoryBuilder.dynamicText("Go easy tonight — tomorrow has training.", russian: "Сегодня вечером сохраните силы — завтра тренировка.")
                     : CoachFinalStoryBuilder.dynamicText("Drink enough water and sauna will help. Skip it and it will cost you.", russian: "С водой сауна скорее всего поможет. Без воды — заберёт силы.")
-                primary = action(.hydrateBeforeSession, "Drink 300-500 ml water", "In the hour before sauna", "Попейте воды воды", "В час перед сауной")
+                primary = action(.hydrateBeforeSession, "Drink 300-500 ml water", "In the hour before sauna", "Попейте воды", "В час перед сауной")
                 avoidance = CoachFinalStoryBuilder.dynamicText("Don't go in thirsty or push through fatigue.", russian: "С жаждой лучше не заходить — усталость не терпите.")
             case .during:
                 hero = CoachFinalStoryBuilder.dynamicText("Keep the heat moderate", russian: "Тепло лучше умеренное")
@@ -1294,9 +1294,10 @@ enum CoachFinalStoryBuilder {
             if isHeatActivity(activity) {
                 return dynamicText("Make sauna easier", russian: "Сауну лучше сделать легче")
             }
+            let name = localizedActivityName(for: activity, grammaticalCase: .dative)
             return dynamicText(
-                "Prepare for \(displayName(activity).lowercased())",
-                russian: "Постарайтесь подготовиться к следующей тренировке"
+                "Prepare for \(name.english)",
+                russian: "Постарайтесь подготовиться к \(name.russian)"
             )
         }
 
@@ -2589,9 +2590,10 @@ enum CoachFinalStoryBuilder {
             if isHeatActivity(activity) {
                 return dynamicText("Make sauna easier", russian: "Сауну лучше сделать легче")
             }
+            let name = localizedActivityName(for: activity, grammaticalCase: .dative)
             return dynamicText(
-                "Prepare for \(displayName(activity).lowercased())",
-                russian: "Постарайтесь подготовиться к следующей тренировке"
+                "Prepare for \(name.english)",
+                russian: "Постарайтесь подготовиться к \(name.russian)"
             )
         }
 
@@ -2626,10 +2628,10 @@ enum CoachFinalStoryBuilder {
            finalDecisionTimeOfDay(input.now) == .morning,
            !hasCompletedPlannedActivityToday(input) {
             if let next = nextUpcomingPlanActivityToday(input) ?? nextUpcomingRecoveryPlanActivity(input) ?? nextImportantActivityToday(input: input, guidance: guidance) {
-                let name = displayName(next).lowercased()
+                let name = localizedActivityName(for: next)
                 return dynamicText(
-                    "Today's plan starts with \(name)",
-                    russian: "Сегодня по плану начинается: \(displayName(next))"
+                    "Today's plan starts with \(name.english)",
+                    russian: "Сегодня по плану начинается: \(name.russian)"
                 )
             }
             return calmMorningHeroText(input)
@@ -2642,19 +2644,19 @@ enum CoachFinalStoryBuilder {
                     return hero
                 }
                 if let next = nextUpcomingPlanActivityToday(input) ?? nextUpcomingRecoveryPlanActivity(input) ?? nextImportantActivityToday(input: input, guidance: guidance) {
-                    let name = displayName(next).lowercased()
+                    let name = localizedActivityName(for: next)
                     return dynamicText(
-                        "Today's plan starts with \(name)",
-                        russian: "Сегодня по плану начинается: \(displayName(next))"
+                        "Today's plan starts with \(name.english)",
+                        russian: "Сегодня по плану начинается: \(name.russian)"
                     )
                 }
                 return calmMorningHeroText(input)
             }
             if let next = nextUpcomingPlanActivityToday(input) ?? nextUpcomingRecoveryPlanActivity(input) ?? nextImportantActivityToday(input: input, guidance: guidance) {
-                let name = displayName(next).lowercased()
+                let name = localizedActivityName(for: next)
                 return dynamicText(
-                    "Next up is \(name)",
-                    russian: "Дальше по плану: \(displayName(next))"
+                    "Next up is \(name.english)",
+                    russian: "Дальше по плану: \(name.russian)"
                 )
             }
             return dynamicText("Today's going fine", russian: "День идёт ровно")
@@ -2662,10 +2664,10 @@ enum CoachFinalStoryBuilder {
         if owner == .stableOverview || owner == .readiness,
            recoveryDayMorningPlanningContext(input: input, guidance: guidance) {
             if let next = nextUpcomingPlanActivityToday(input) ?? nextUpcomingRecoveryPlanActivity(input) {
-                let name = displayName(next).lowercased()
+                let name = localizedActivityName(for: next)
                 return dynamicText(
-                    "Today's plan starts with \(name)",
-                    russian: "Сегодня по плану начинается: \(displayName(next))"
+                    "Today's plan starts with \(name.english)",
+                    russian: "Сегодня по плану начинается: \(name.russian)"
                 )
             }
             return dynamicText("Morning's going fine", russian: "Утро идёт ровно")
@@ -3405,12 +3407,12 @@ enum CoachFinalStoryBuilder {
         guard hasSignificantWorkoutContext(input: input, guidance: guidance, selected: upcoming) else {
             return nil
         }
-        let name = displayName(upcoming).lowercased()
+        let name = localizedActivityName(for: upcoming, grammaticalCase: .dative)
         return CoachActionRecommendation(
             type: .stayConsistent,
-            englishTitle: "Stay ready for the \(name)",
+            englishTitle: "Stay ready for the \(name.english)",
             englishSubtitle: "Keep food, fluids, and the rest of the morning calm",
-            russianTitle: "Будьте готовы к \(displayName(upcoming))",
+            russianTitle: "Будьте готовы к \(name.russian)",
             russianSubtitle: "Еда, вода и спокойное утро помогут"
         )
     }
@@ -5078,6 +5080,110 @@ enum CoachFinalStoryBuilder {
         input.recoveryContext.recoveryPercent >= 85 &&
             input.recoveryContext.sleepHours >= 7.0 &&
             (input.brain.recovery == .strong || input.brain.readiness == .good)
+    }
+
+    private enum ActivityNameGrammaticalCase {
+        case nominative
+        case dative
+        case accusative
+        case genitive
+    }
+
+    private struct LocalizedActivityName {
+        let english: String
+        let russian: String
+    }
+
+    private static func localizedActivityName(
+        for activity: PlannedActivity,
+        grammaticalCase: ActivityNameGrammaticalCase = .nominative
+    ) -> LocalizedActivityName {
+        let text = "\(activity.title) \(activity.type)".lowercased()
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+
+        struct Forms {
+            let english: String
+            let nominative: String
+            let dative: String
+            let accusative: String
+            let genitive: String
+        }
+
+        let forms: Forms? = {
+            if kind == .heat || text.contains("sauna") || text.contains("саун") || text.contains("steam") {
+                return Forms(
+                    english: "sauna",
+                    nominative: "сауна",
+                    dative: "сауне",
+                    accusative: "сауну",
+                    genitive: "сауны"
+                )
+            }
+            if text.contains("run") || text.contains("jog") || text.contains("бег") || text.contains("пробеж") {
+                return Forms(
+                    english: "run",
+                    nominative: "бег",
+                    dative: "пробежке",
+                    accusative: "бег",
+                    genitive: "бега"
+                )
+            }
+            if text.contains("cycl") || text.contains("bike") || text.contains("ride") || text.contains("вел") {
+                return Forms(
+                    english: "ride",
+                    nominative: "заезд",
+                    dative: "заезду",
+                    accusative: "заезд",
+                    genitive: "заезда"
+                )
+            }
+            if text.contains("walk") || text.contains("walking") || text.contains("прогул") {
+                return Forms(
+                    english: "walk",
+                    nominative: "прогулка",
+                    dative: "прогулке",
+                    accusative: "прогулку",
+                    genitive: "прогулки"
+                )
+            }
+            if text.contains("stretch") || text.contains("растяж") {
+                return Forms(
+                    english: "stretching",
+                    nominative: "растяжка",
+                    dative: "растяжке",
+                    accusative: "растяжку",
+                    genitive: "растяжки"
+                )
+            }
+            if text.contains("strength") || text.contains("workout") || text.contains("gym") || text.contains("силов") {
+                return Forms(
+                    english: "strength work",
+                    nominative: "силовая",
+                    dative: "силовой",
+                    accusative: "силовую",
+                    genitive: "силовой"
+                )
+            }
+            return nil
+        }()
+
+        guard let forms else {
+            let fallback = displayName(activity).lowercased()
+            return LocalizedActivityName(english: fallback, russian: fallback)
+        }
+
+        let russian: String
+        switch grammaticalCase {
+        case .nominative:
+            russian = forms.nominative
+        case .dative:
+            russian = forms.dative
+        case .accusative:
+            russian = forms.accusative
+        case .genitive:
+            russian = forms.genitive
+        }
+        return LocalizedActivityName(english: forms.english, russian: russian)
     }
 
     private static func displayName(_ activity: PlannedActivity) -> String {
