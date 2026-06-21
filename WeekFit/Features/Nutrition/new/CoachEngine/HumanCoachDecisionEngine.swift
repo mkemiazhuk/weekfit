@@ -443,9 +443,14 @@ struct CoachScreenStory {
                 requiredTexts: requiredTexts + [risk ?? ""]
             )
             : primaryActions
+        let partitionedHydrationSupport = CoachScreenStory.partitionPrepHydrationSupportActions(
+            primaryActions: displayPrimaryActions,
+            decision: decision
+        )
+        let finalPrimaryActions = partitionedHydrationSupport.primary
 
-        let supportActions = CoachScreenStory.supportActions(for: decision)
-            .deduped(against: requiredTexts + displayPrimaryActions.flatMap { [$0.title, $0.subtitle] })
+        let supportActions = (partitionedHydrationSupport.support + CoachScreenStory.supportActions(for: decision))
+            .deduped(against: requiredTexts + finalPrimaryActions.flatMap { [$0.title, $0.subtitle] })
             .prefix(3)
 
         let activity = CoachScreenStory.uniqueText(
@@ -486,7 +491,7 @@ struct CoachScreenStory {
             for: phase,
             decision: decision
         )
-        let annotatedPrimaryActions = displayPrimaryActions.map {
+        let annotatedPrimaryActions = finalPrimaryActions.map {
             $0.withActionProvenance(screenStoryProvenance)
         }
         let annotatedSupportActions = supportActions.map {
@@ -1088,10 +1093,6 @@ private extension CoachScreenStory {
     }
 
     static func supportActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
-        guard decision.narrativePlan == nil else {
-            return []
-        }
-
         let bullets = decision.v5Contract?.priority.supportBullets ?? []
         let priority = decision.v5Contract?.priority
         let plan = decision.narrativePlan
@@ -1176,6 +1177,73 @@ private extension CoachScreenStory {
         }
 
         return actions
+    }
+
+    private static func isHydrationSupportAction(_ action: CoachSupportingAction) -> Bool {
+        if action.type.isHydrationSupportIntent {
+            return true
+        }
+        let title = action.title.lowercased()
+        return title.contains("water") ||
+            title.contains("bottle") ||
+            title.contains("fluid") ||
+            title.contains("sip") ||
+            title.contains("hydrat")
+    }
+
+    private static func shouldMoveHydrationActionsToSupport(for decision: HumanCoachDecision) -> Bool {
+        guard let plan = decision.narrativePlan,
+              let priority = decision.v5Contract?.priority else {
+            return false
+        }
+
+        if plan.primaryLimiter == .hydration && priority.strength == .critical {
+            return false
+        }
+
+        let prepContext = decision.status == .prepareSession ||
+            priority.focus == .prepareForActivity ||
+            priority.focus == .nextActivityLater ||
+            plan.badgeIntent == .prepare ||
+            plan.objective == .prepareActivity
+        guard prepContext else { return false }
+
+        let supportText = priority.supportBullets.joined(separator: " ").lowercased()
+        let hydrationRelevant = plan.secondaryLimiters.contains(.hydration) ||
+            supportText.contains("hydration") ||
+            supportText.contains("water") ||
+            supportText.contains("300-500") ||
+            supportText.contains("bottle")
+        guard hydrationRelevant else { return false }
+
+        // Inside the tight prep window, hydration may stay in primary actions.
+        if priority.focus == .prepareForActivity {
+            return false
+        }
+
+        return true
+    }
+
+    private static func partitionPrepHydrationSupportActions(
+        primaryActions: [CoachSupportingAction],
+        decision: HumanCoachDecision
+    ) -> (primary: [CoachSupportingAction], support: [CoachSupportingAction]) {
+        guard shouldMoveHydrationActionsToSupport(for: decision) else {
+            return (primaryActions, [])
+        }
+
+        var primary: [CoachSupportingAction] = []
+        var support: [CoachSupportingAction] = []
+
+        for action in primaryActions {
+            if isHydrationSupportAction(action) {
+                support.append(action)
+            } else {
+                primary.append(action)
+            }
+        }
+
+        return (primary, support)
     }
 
     static func prepareSessionActions(for decision: HumanCoachDecision) -> [CoachSupportingAction] {
@@ -4364,6 +4432,13 @@ private extension CoachNarrativePlan {
                 for intent in objectivePrimaryActions(for: i, legacyPriority: legacyPriority) {
                     append(intent)
                 }
+                appendPrepHydrationSupportIntents(
+                    append: append,
+                    legacyPriority: legacyPriority,
+                    primaryLimiter: primaryLimiter,
+                    secondaryLimiters: secondaryLimiters,
+                    interpretation: i
+                )
             }
 
         case .manageActiveTraining:
@@ -4490,11 +4565,43 @@ private extension CoachNarrativePlan {
             }
         }
 
-        for action in story.actions where primaryLimiter == .hydration || !action.isHydrationSupportIntent {
+        for action in story.actions {
+            if action.isHydrationSupportIntent {
+                guard primaryLimiter == .hydration || secondaryLimiters.contains(.hydration) else { continue }
+            }
             append(intent(for: action))
         }
 
         return Array(intents.prefix(3))
+    }
+
+    private static func appendPrepHydrationSupportIntents(
+        append: (CoachActionIntent) -> Void,
+        legacyPriority: CoachDayPriorityResult,
+        primaryLimiter: CoachNarrativeLimiter,
+        secondaryLimiters: [CoachNarrativeLimiter],
+        interpretation i: HumanCoachInterpretation
+    ) {
+        guard secondaryLimiters.contains(.hydration) || i.hydrationIsEmptyOrBehind else { return }
+        guard primaryLimiter != .hydration || legacyPriority.strength != .critical else { return }
+
+        let timing = legacyPriority.focus == .nextActivityLater
+            ? "Over the next hour"
+            : "Do it now, then sip calmly"
+        let stage = CoachSituationStory.preparationStage(legacyPriority, interpretation: i)
+
+        switch stage {
+        case .missingHydration, .missingFuelAndHydration:
+            append(.drink(amountRange: "300-500 ml", timing: timing))
+            append(.bringBottle)
+        case .improvingHydration:
+            append(.bringBottle)
+        default:
+            if legacyPriority.focus == .nextActivityLater || i.hydrationIsEmptyOrBehind {
+                append(.drink(amountRange: "300-500 ml", timing: timing))
+                append(.bringBottle)
+            }
+        }
     }
 
     private static func recoveryNutritionStillNeedsAction(context: CoachDecisionContext) -> Bool {
