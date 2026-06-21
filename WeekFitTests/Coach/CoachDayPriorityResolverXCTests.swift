@@ -3963,9 +3963,17 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         let scenarioNow = fixedDate(hour: 19)
         let later = recoveryActivity("Walk", hour: 20, minute: 0, duration: 30)
         let tomorrow = workout("Long Ride", dayOffset: 1, hour: 9, duration: 150)
+        let brain = emptyEveningBrain(hour: 19, hydrationRatio: 0.44, nutritionRatio: 0.52)
+        let activities = [later, tomorrow]
+        let context = activityContext(
+            activities,
+            brain: brain,
+            now: scenarioNow,
+            selectedDate: scenarioNow
+        )
         let priority = resolve(
-            [later, tomorrow],
-            brain: emptyEveningBrain(hour: 19, hydrationRatio: 0.44, nutritionRatio: 0.52),
+            activities,
+            brain: brain,
             now: scenarioNow,
             selectedDate: scenarioNow,
             recovery: CoachRecoveryContext(recoveryPercent: 78, sleepHours: 7.0),
@@ -3974,7 +3982,11 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
 
         XCTAssertNotEqual(priority.title, "Evening reset")
         XCTAssertNotEqual(priority.title, "Set up tomorrow")
-        XCTAssertEqual(priority.activity?.id, later.id)
+        // Empty-evening mode must not win while a coach-relevant activity remains later today.
+        // priority.activity may reference tomorrow demand; anchor the guard on day context instead of UUID identity.
+        XCTAssertEqual(context.laterTodayActivity?.title, later.title)
+        XCTAssertEqual(context.laterTodayActivity?.type, later.type)
+        XCTAssertEqual(nextActivityName(activities, at: scenarioNow), later.title)
     }
 
     private var steadyNutrition: CoachNutritionContext {
