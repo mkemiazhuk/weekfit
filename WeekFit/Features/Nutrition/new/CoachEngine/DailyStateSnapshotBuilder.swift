@@ -115,13 +115,17 @@ enum DailyStateSnapshotBuilder {
         let current = nutritionViewModel.currentMetrics
         let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
 
+        func highest(_ healthKit: Double, _ viewModel: Double?, _ coachValue: Double?) -> Double {
+            max(healthKit, viewModel ?? 0, coachValue ?? 0)
+        }
+
         return DailyNutritionMetrics(
-            protein: healthManager.protein,
-            carbs: healthManager.carbs,
-            fats: healthManager.fats,
-            fiber: healthManager.fiber,
-            calories: healthManager.calories,
-            waterLiters: max(healthManager.waterLiters, current?.waterLiters ?? 0, coach?.waterCurrent ?? 0),
+            protein: highest(healthManager.protein, current?.protein, coach?.proteinCurrent),
+            carbs: highest(healthManager.carbs, current?.carbs, coach?.carbsCurrent),
+            fats: highest(healthManager.fats, current?.fats, coach?.fatsCurrent),
+            fiber: highest(healthManager.fiber, current?.fiber, nil),
+            calories: highest(healthManager.calories, current?.calories, coach?.caloriesCurrent),
+            waterLiters: highest(healthManager.waterLiters, current?.waterLiters, coach?.waterCurrent),
             activeCalories: healthManager.activeCalories,
             sleepHours: healthManager.sleepHours,
             weightKg: healthManager.weight
