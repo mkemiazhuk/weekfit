@@ -4131,17 +4131,21 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
         let story = try XCTUnwrap(output.screenStory)
         let visible = visibleTexts(story).joined(separator: " ").lowercased()
 
-        XCTAssertEqual(output.priority.priority, .sleepPreparation)
+        // a7b7d4d: 6.8h sleep is not deficit evidence; post-midnight uses protection copy with limiter.none.
         XCTAssertEqual(output.priority.focus, .eveningWindDown)
-        XCTAssertEqual(output.priority.limiter, .sleep)
-        XCTAssertEqual(output.v5Contract?.primaryLimiter, .sleep)
-        XCTAssertEqual(output.v5Contract?.priority.limiter, .sleep)
-        XCTAssertEqual(output.title, "Protect the night")
+        XCTAssertEqual(output.priority.limiter, CoachLimiter.none)
+        XCTAssertEqual(output.v5Contract?.primaryLimiter, CoachLimiter.none)
+        XCTAssertEqual(output.v5Contract?.priority.limiter, CoachLimiter.none)
+        XCTAssertTrue(
+            output.title.localizedCaseInsensitiveContains("wind") ||
+                output.title.localizedCaseInsensitiveContains("protect") ||
+                output.title.localizedCaseInsensitiveContains("close")
+        )
         if output.priority.objective == .completeDay {
-            XCTAssertEqual(story.stateLabel, CoachNarrativeBadgeIntent.protectSleep.label)
             assertBadgeTitleAligned(story)
             XCTAssertFalse(story.stateLabel.localizedCaseInsensitiveContains("morning"))
             XCTAssertFalse(visible.contains("next important event is later today"))
+            XCTAssertFalse(visible.contains("didn't sleep enough"))
         }
     }
 

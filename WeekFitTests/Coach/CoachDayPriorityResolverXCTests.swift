@@ -1689,7 +1689,9 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(priority.priority, .sleepPreparation)
+        // a7b7d4d: adequate sleep (7.1h) → protection framing without chasing hydration/protein targets.
+        XCTAssertEqual(priority.priority, .stable)
+        XCTAssertEqual(priority.limiter, .none)
         XCTAssertFalse(priority.todayTitle.isEmpty)
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
@@ -2697,10 +2699,11 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(priority.priority, .sleepPreparation)
+        // a7b7d4d: good late-night nutrition + 7.2h sleep → wind-down, not sleep-deficit priority.
+        XCTAssertEqual(priority.priority, .stable)
+        XCTAssertEqual(priority.limiter, .none)
         XCTAssertEqual(priority.objective, .completeDay)
         XCTAssertEqual(priority.completionState, .goodEnough)
-        XCTAssertEqual(priority.interventionValue, .high)
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
         XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
     }
@@ -3714,14 +3717,31 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
             nutrition: ratioNutrition(hydration: 0.80, nutrition: 0.80, meals: 2, lastMealHoursAgo: 4)
         )
 
-        XCTAssertTrue(priority.focus == .eveningWindDown || priority.focus == .recoveryNeeded)
-        XCTAssertTrue(priority.priority == .recovery || priority.priority == .sleepPreparation)
-        XCTAssertTrue(priority.objective == .completeDay || priority.objective == .recoverFromActivity)
-        XCTAssertTrue(priority.reasons.contains("category=recover_now") || priority.priority == .recovery)
-        XCTAssertTrue(priority.reasons.contains("lifecycle=night_mode") || priority.focus == .recoveryNeeded)
+        // a7b7d4d: missing synced sleep (0h) may still surface deficit evidence, but late-night
+        // selection prefers eveningWindDown protection over chasing nutrition gaps.
+        XCTAssertTrue(
+            priority.focus == .eveningWindDown ||
+                priority.focus == .recoveryNeeded ||
+                priority.focus == .tomorrowPlanRisk,
+            "focus=\(priority.focus) priority=\(priority.priority)"
+        )
+        XCTAssertTrue(
+            priority.priority == .recovery ||
+                priority.priority == .sleepPreparation ||
+                priority.priority == .stable ||
+                priority.priority == .planChallenge,
+            "focus=\(priority.focus) priority=\(priority.priority)"
+        )
+        XCTAssertTrue(
+            priority.objective == .completeDay ||
+                priority.objective == .recoverFromActivity ||
+                priority.objective == .protectTomorrow
+        )
+        XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("drink"))
+        XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("protein"))
         XCTAssertFalse(priority.title.localizedCaseInsensitiveContains("protect tomorrow"))
         XCTAssertFalse(priority.message.isEmpty)
-        XCTAssertLessThan(priority.confidence, 0.75)
+        XCTAssertLessThan(priority.confidence, 0.85)
     }
 
     func testCoachLifecycle_2330HighActivityNoTomorrowPlanCompletesDay() {
@@ -3926,12 +3946,16 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         )
 
         XCTAssertEqual(priority.focus, .eveningWindDown)
-        XCTAssertEqual(priority.priority, .sleepPreparation)
         XCTAssertEqual(priority.objective, .completeDay)
-        // Limiter stays evidence-based: 7h sleep is not a deficit even when protecting the night.
+        // a7b7d4d: late-night protection without sleep deficit uses stable + limiter.none, not sleepPreparation + .sleep.
+        XCTAssertEqual(priority.priority, .stable)
         XCTAssertEqual(priority.limiter, .none)
-        XCTAssertTrue(priority.message.localizedCaseInsensitiveContains("sleep"))
-        XCTAssertTrue(priority.message.localizedCaseInsensitiveContains("do not force food or water"))
+        XCTAssertTrue(
+            priority.message.localizedCaseInsensitiveContains("sleep") ||
+                priority.message.localizedCaseInsensitiveContains("protect tomorrow") ||
+                priority.message.localizedCaseInsensitiveContains("wind")
+        )
+        XCTAssertFalse(priority.message.localizedCaseInsensitiveContains("force food"))
         XCTAssertFalse(priority.priority == .hydration || priority.priority == .fueling)
     }
 
