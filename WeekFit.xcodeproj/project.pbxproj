@@ -36,9 +36,22 @@
 		55E7BBFC2FB24040006A4D20 /* WeekFitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WeekFitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5552B9D62FE69F0000A4172A /* Exceptions for "WeekFit" folder in "WeekFit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 55E7BBE42FB2403E006A4D20 /* WeekFit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		55E7BBE72FB2403E006A4D20 /* WeekFit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5552B9D62FE69F0000A4172A /* Exceptions for "WeekFit" folder in "WeekFit" target */,
+			);
 			path = WeekFit;
 			sourceTree = "<group>";
 		};
@@ -421,12 +434,16 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6.0;
+				CURRENT_PROJECT_VERSION = 6.4;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFit/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WeekFit;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit writes workouts and activity records to Apple Health so your fitness history remains accurate and synchronized across apps and devices.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -456,12 +473,16 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6.0;
+				CURRENT_PROJECT_VERSION = 6.4;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFit/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WeekFit;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit writes workouts and activity records to Apple Health so your fitness history remains accurate and synchronized across apps and devices.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -63,6 +63,7 @@ struct NutritionResult {
     let score: Double
     let status: String
     let goals: NutritionGoals
+    let baseDayGoals: NutritionGoals
     let targetCalories: Double
     let consumedCalories: Double
     let recommendation: String

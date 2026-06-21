@@ -84,10 +84,6 @@ final class UserNutritionProfile {
             return manualGoal
         }
 
-        if hasSufficientHealthDataForAutoGoal(weightKg: weightKg, heightCm: heightCm) {
-            return suggestedGoal(weightKg: weightKg, heightCm: heightCm)
-        }
-
         return manualGoal ?? .maintenance
     }
 

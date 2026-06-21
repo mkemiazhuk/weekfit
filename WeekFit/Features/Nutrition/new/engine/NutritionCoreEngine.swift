@@ -48,6 +48,7 @@ enum NutritionCoreEngine {
                 decision: decision
             ),
             goals: goals.fullDay,
+            baseDayGoals: goals.baseDay,
             targetCalories: goals.fullDay.calories,
             consumedCalories: metrics.calories,
             recommendation: CoachCopy.summary(

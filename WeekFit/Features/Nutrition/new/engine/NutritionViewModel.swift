@@ -47,12 +47,17 @@ final class NutritionViewModel: ObservableObject {
 
     /// Safe UI calculation output mapping directly to HomeView Daily Status circles
     var nutritionPercent: Int {
-        if let result = nutritionResult {
-            let totalConsumed = currentMetrics?.calories ?? 0.0
-            let targetGoal = result.targetCalories
-            return targetGoal > 0 ? Int((totalConsumed / targetGoal) * 100) : 0
-        }
-        return 0
+        NutritionBudgetCalculator.make(
+            from: nutritionResult,
+            consumed: currentMetrics?.calories ?? 0
+        ).progressPercent
+    }
+
+    var nutritionBudget: NutritionBudget {
+        NutritionBudgetCalculator.make(
+            from: nutritionResult,
+            consumed: currentMetrics?.calories ?? 0
+        )
     }
 
     // MARK: - Core Update Pipeline
@@ -101,8 +106,7 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.waterLiters = 0.0
 //            print("🌙 [Circadian Shield] Deep night block activated. Enforcing pristine zeros for the new calendar day.")
         } else {
-            let waterLogsCount = plannedActivities.filter { $0.imageName == "hydration" && $0.isCompleted }.count
-            let loggedWaterLiters = (Double(waterLogsCount) * 0.25) + manualWaterLiters
+            let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
             updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
         }
 
@@ -366,6 +370,7 @@ final class NutritionViewModel: ObservableObject {
                 decision: adjustedDecision
             ),
             goals: result.goals,
+            baseDayGoals: result.baseDayGoals,
             targetCalories: result.targetCalories,
             consumedCalories: result.consumedCalories,
             recommendation: CoachCopy.summary(

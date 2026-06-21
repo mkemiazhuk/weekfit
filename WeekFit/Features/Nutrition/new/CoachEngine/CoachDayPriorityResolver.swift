@@ -1699,7 +1699,7 @@ enum CoachLifecycleDecisionPipeline {
         )
         let nutritionProgress = ratio(
             nutrition?.caloriesCurrent ?? context.brain.metrics.calories,
-            context.brain.baseDayGoals.calories
+            nutrition?.caloriesGoal ?? context.brain.fullDayGoals.calories
         )
         let recentLoad = recent7DayTrainingLoad(in: context)
         let hour = resolvedHour(in: context)
@@ -3034,7 +3034,8 @@ enum CoachDayPriorityResolver {
             .filter { !limitedResult.reasons.contains($0) }
         let loadDebugLines = decisionFrame.loadSourceDebug.debugLines.filter { !limitedResult.reasons.contains($0) }
         let confidenceDebugLines = context.contextConfidence.debugLines.filter { !limitedResult.reasons.contains($0) }
-        return limitedResult.withReasons(limitedResult.reasons + contributorLines + loadDebugLines + confidenceDebugLines)
+        let reasoned = limitedResult.withReasons(limitedResult.reasons + contributorLines + loadDebugLines + confidenceDebugLines)
+        return CoachLightRecoveryStableDayPolicy.normalizedPriorityResult(reasoned, context: context)
     }
 }
 
@@ -3120,18 +3121,30 @@ private extension CoachDayPriorityResolver {
                 objective = .buildReadiness
                 interventionValue = .high
             case .complete:
-                priority = .recovery
-                focus = .recoveryNeeded
-                strength = .high
-                mode = .recovery
-                objective = .recoverFromActivity
-                interventionValue = .useful
+                if lightRecoveryOnlyDayWithoutIndependentDeficit(in: context) {
+                    priority = .stable
+                    focus = .dailyOverview
+                    strength = .medium
+                    mode = .reinforcement
+                    objective = .completeDay
+                    interventionValue = .none
+                } else {
+                    priority = .recovery
+                    focus = .recoveryNeeded
+                    strength = .high
+                    mode = .recovery
+                    objective = .recoverFromActivity
+                    interventionValue = .useful
+                }
             case .valid:
                 return nil
             }
         }
 
-        limiter = limiterForPrimaryDriver(frame.primaryDriver)
+        limiter = frame.planStatus == .complete &&
+            lightRecoveryOnlyDayWithoutIndependentDeficit(in: context)
+            ? .none
+            : limiterForPrimaryDriver(frame.primaryDriver)
 
         let riskDebugLines = frame.remainingActivityRisk?.debugLines ?? []
         let loadDebugLines = frame.loadSourceDebug.debugLines
@@ -4501,7 +4514,7 @@ private extension CoachDayPriorityResolver {
                     strength: .high,
                     confidence: 0.86,
                     mode: .recovery,
-                    limiter: .sleep,
+                    limiter: hasSleepDeficitEvidence(context) ? .sleep : .none,
                     messageFamily: .sleep,
                     todayTitle: "Close the day",
                     todayMessage: lateNight ? "Sleep beats target chasing." : "Keep the evening calm.",
@@ -7059,19 +7072,49 @@ private extension CoachDayPriorityResolver {
             intervention = .low
             completion = .goodEnough
         } else if lateNight && (sleepLimited || recoveryLimited || hasTomorrowDemand || hydrationBehindNow || fuelBehindNow || recentOverload || noBasicsLogged) {
-            limiter = .sleep
-            title = "Protect the night"
-            todayTitle = "Protect sleep"
-            todayMessage = "Start fresh tomorrow."
-            message = "The useful move now is sleep. Do not force food or water late; take a small sip only if thirsty and start fresh tomorrow."
-            support = ["Do not chase missed targets", "Small sip only if thirsty", "Start fresh tomorrow"]
-            priority = .sleepPreparation
-            mode = .recovery
-            strength = .high
-            baseScore = 94
-            objective = .completeDay
-            intervention = .low
-            completion = .goodEnough
+            if sleepLimited {
+                limiter = .sleep
+                title = "Protect the night"
+                todayTitle = "Protect sleep"
+                todayMessage = "Start fresh tomorrow."
+                message = "The useful move now is sleep. Do not force food or water late; take a small sip only if thirsty and start fresh tomorrow."
+                support = ["Do not chase missed targets", "Small sip only if thirsty", "Start fresh tomorrow"]
+                priority = .sleepPreparation
+                mode = .recovery
+                strength = .high
+                baseScore = 94
+                objective = .completeDay
+                intervention = .low
+                completion = .goodEnough
+            } else if recoveryLimited {
+                limiter = .recovery
+                title = "Wind the day down"
+                todayTitle = "Wind the day down"
+                todayMessage = "Nothing needs to be pushed tonight."
+                message = "Recovery still needs protection tonight. Keep the evening calm."
+                support = ["Keep the evening calm", "Avoid extra intensity", "Protect sleep"]
+                priority = .recovery
+                mode = .recovery
+                strength = .high
+                baseScore = 92
+                objective = .completeDay
+                intervention = .low
+                completion = .goodEnough
+            } else {
+                limiter = .none
+                title = "Wind the day down"
+                todayTitle = "Wind the day down"
+                todayMessage = "Nothing needs to be pushed tonight."
+                message = "Recovery looked solid today. The main job now is to protect tomorrow."
+                support = ["Keep the evening calm", "Close the day quietly", "Protect sleep"]
+                priority = .stable
+                mode = .reinforcement
+                strength = .medium
+                baseScore = 93
+                objective = .completeDay
+                intervention = .low
+                completion = .goodEnough
+            }
         } else if tomorrowHard && highLoadToday {
             limiter = .upcomingTraining
             title = "Protect tomorrow"
@@ -7339,6 +7382,21 @@ private extension CoachDayPriorityResolver {
     ) -> Bool {
         let minutesSinceEnd = Int(context.dayContext.now.timeIntervalSince(activityEnd(activity)) / 60)
         return minutesSinceEnd >= 0 && minutesSinceEnd <= maximumMinutes
+    }
+
+    private static func lightRecoveryOnlyDayWithoutIndependentDeficit(
+        in context: CoachDecisionContext
+    ) -> Bool {
+        let completed = context.dayContext.completedActivities.filter {
+            CoachLightRecoveryStableDayPolicy.isActuallyCompleted($0, now: context.dayContext.now)
+        }
+        guard !completed.isEmpty else { return false }
+        guard completed.allSatisfy(CoachLightRecoveryStableDayPolicy.isLightRecoveryModality) else { return false }
+        guard context.dayContext.completedTrainingStressScore < 2 else { return false }
+        guard !context.dayContext.hasMeaningfulLoadCompleted else { return false }
+        guard !recoveryIsLow(context), !sleepIsPoor(context) else { return false }
+        guard context.tomorrowDemand.isHard == false else { return false }
+        return true
     }
 
     private static func highReadinessOpportunityCandidate(in context: CoachDecisionContext) -> PriorityCandidate? {
@@ -8513,6 +8571,10 @@ private extension CoachDayPriorityResolver {
         }
 
         return context.brain.sleep == .short || context.brain.sleep == .veryShort
+    }
+
+    static func hasSleepDeficitEvidence(_ context: CoachDecisionContext) -> Bool {
+        sleepIsPoor(context) || isVeryLowSleep(context)
     }
 
     static func isRecoveryBlock(_ context: CoachDecisionContext) -> Bool {

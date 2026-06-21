@@ -3,15 +3,20 @@ import XCTest
 
 final class UserNutritionProfileResolveTests: XCTestCase {
 
-    func testAutoGoalFromBMI_whenHealthDataPresent() {
-        let goal = UserNutritionProfile.resolveGoal(
+    func testSuggestedGoalFromBMI_isHintOnlyNotAutoApplied() {
+        let suggested = UserNutritionProfile.suggestedGoal(
+            weightKg: 90,
+            heightCm: 180
+        )
+        let resolved = UserNutritionProfile.resolveGoal(
             weightKg: 90,
             heightCm: 180,
             manualGoal: nil,
             isManualGoal: false
         )
 
-        XCTAssertEqual(goal, .fatLoss)
+        XCTAssertEqual(suggested, .fatLoss)
+        XCTAssertEqual(resolved, .maintenance)
     }
 
     func testManualGoalOverridesBMI() {

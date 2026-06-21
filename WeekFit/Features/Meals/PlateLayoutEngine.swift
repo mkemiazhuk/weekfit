@@ -275,6 +275,21 @@ enum PlateLayoutEngine {
             return CGSize(width: 0, height: metrics.standaloneYOffset)
         }
 
+        if metrics.isCompact {
+            let slot = slotOffset(
+                for: candidate.category,
+                index: categoryIndex,
+                count: categoryCount,
+                totalCount: totalCount,
+                metrics: metrics
+            )
+            let spreadScale = compactSpreadScale(totalCount: totalCount)
+            return CGSize(
+                width: slot.width * spreadScale,
+                height: slot.height * spreadScale
+            )
+        }
+
         let slot = slotOffset(
             for: candidate.category,
             index: categoryIndex,
@@ -307,6 +322,19 @@ enum PlateLayoutEngine {
         }
 
         return CGSize(width: x, height: y)
+    }
+
+    private static func compactSpreadScale(totalCount: Int) -> CGFloat {
+        switch totalCount {
+        case 0...2:
+            return 0.52
+        case 3...4:
+            return 0.64
+        case 5...6:
+            return 0.72
+        default:
+            return 0.78
+        }
     }
 
     private static func slotOffset(
@@ -642,7 +670,7 @@ private struct LayoutMetrics {
     var slotScale: CGFloat {
         switch mode {
         case .compactPreview:
-            return min(max(plateSize / 280, 0.18), 0.42)
+            return min(max(plateSize / 200, 0.24), 0.46)
         case .preview:
             return 0.72
         case .detail, .builder:
@@ -686,7 +714,7 @@ private struct LayoutMetrics {
     var horizontalRadiusRatio: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.27
+            return 0.24
         case .preview:
             return 0.33
         case .detail, .builder:
@@ -697,7 +725,7 @@ private struct LayoutMetrics {
     var verticalRadiusRatio: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.22
+            return 0.20
         case .preview:
             return 0.28
         case .detail, .builder:
@@ -730,7 +758,7 @@ private struct LayoutMetrics {
     var spreadMultiplier: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.25
+            return 0.20
         case .preview:
             return 1.0
         case .detail, .builder:
@@ -741,7 +769,7 @@ private struct LayoutMetrics {
     var maxSpread: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.9
+            return 0.65
         case .preview:
             return 4.5
         case .detail, .builder:
@@ -763,7 +791,7 @@ private struct LayoutMetrics {
     var rotationMultiplier: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.30
+            return 0.45
         case .preview:
             return 0.75
         case .detail, .builder:
@@ -774,7 +802,7 @@ private struct LayoutMetrics {
     var maxRotation: Double {
         switch mode {
         case .compactPreview:
-            return 6
+            return 4
         case .preview:
             return 11
         case .detail, .builder:
@@ -796,7 +824,7 @@ private struct LayoutMetrics {
     var sameCategorySpacing: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.24
+            return 0.08
         case .preview:
             return 0.40
         case .detail, .builder:
@@ -807,7 +835,7 @@ private struct LayoutMetrics {
     var crossCategorySpacing: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.18
+            return 0.10
         case .preview:
             return 0.30
         case .detail, .builder:
@@ -818,7 +846,7 @@ private struct LayoutMetrics {
     var sameCategoryMaxPush: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.9
+            return 0.35
         case .preview:
             return 5
         case .detail, .builder:
@@ -829,7 +857,7 @@ private struct LayoutMetrics {
     var crossCategoryMaxPush: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.5
+            return 0.25
         case .preview:
             return 3.5
         case .detail, .builder:
@@ -840,7 +868,7 @@ private struct LayoutMetrics {
     var collisionPushMultiplier: CGFloat {
         switch mode {
         case .compactPreview:
-            return 0.14
+            return 0.10
         case .preview:
             return 0.40
         case .detail, .builder:
@@ -886,13 +914,13 @@ private struct LayoutMetrics {
     }
 
     var groupCenteringStrength: CGFloat {
-        mode == .compactPreview ? 0.56 : 0
+        mode == .compactPreview ? 0.48 : 0
     }
 
     var maxGroupCorrection: CGFloat {
         switch mode {
         case .compactPreview:
-            return max(3, plateSize * 0.055)
+            return max(2, plateSize * 0.18)
         case .preview:
             return max(4, plateSize * 0.04)
         case .detail, .builder:

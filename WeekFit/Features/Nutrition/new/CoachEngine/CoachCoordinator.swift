@@ -73,16 +73,10 @@ final class CoachCoordinator: ObservableObject {
             guidance: guidance,
             reason: reason
         )
-        let nextState = applyStableRecoveryActivityVisibleOverride(
-            rawState,
-            input: latestInput,
-            guidance: guidance
-        )
-
         lastResolvedFingerprint = fingerprint
         recomputeCount += 1
         lastRecomputeReason = reason
-        state = nextState
+        state = rawState
         nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: latestInput)
 
         logFinalStoryReadiness(
@@ -91,13 +85,13 @@ final class CoachCoordinator: ObservableObject {
             readiness: readiness,
             outcome: "allowedLanguageRecompute"
         )
-        logVisibleFinalState(state: nextState, guidance: guidance, reason: reason)
+        logVisibleFinalState(state: rawState, guidance: guidance, reason: reason)
         CoachLogger.compact(
             "[CoachState]",
-            "Coach state recomputed for language change reason=\(reason) stateID=\(nextState.id) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(nextState.finalStory?.owner.rawValue ?? "nil") title=\"\(nextState.finalStory?.title.resolved ?? "nil")\""
+            "Coach state recomputed for language change reason=\(reason) stateID=\(rawState.id) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(rawState.finalStory?.owner.rawValue ?? "nil") title=\"\(rawState.finalStory?.title.resolved ?? "nil")\""
         )
 
-        return nextState
+        return rawState
     }
 
     @discardableResult
@@ -135,20 +129,15 @@ final class CoachCoordinator: ObservableObject {
             guidance: guidance,
             reason: reason
         )
-        let nextState = applyStableRecoveryActivityVisibleOverride(
-            rawState,
-            input: input,
-            guidance: guidance
-        )
         logContextDebug(
             input: input,
-            state: nextState
+            state: rawState
         )
 
         lastResolvedFingerprint = fingerprint
         recomputeCount += 1
         lastRecomputeReason = reason
-        state = nextState
+        state = rawState
         nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
 
         logFinalStoryReadiness(
@@ -157,13 +146,13 @@ final class CoachCoordinator: ObservableObject {
             readiness: readiness,
             outcome: "allowed"
         )
-        logVisibleFinalState(state: nextState, guidance: guidance, reason: reason)
+        logVisibleFinalState(state: rawState, guidance: guidance, reason: reason)
         CoachLogger.compact(
             "[CoachState]",
-            "Coach state changed reason=\(reason) stateID=\(nextState.id) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(nextState.finalStory?.owner.rawValue ?? "nil") title=\"\(nextState.finalStory?.title.resolved ?? "nil")\""
+            "Coach state changed reason=\(reason) stateID=\(rawState.id) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(rawState.finalStory?.owner.rawValue ?? "nil") title=\"\(rawState.finalStory?.title.resolved ?? "nil")\""
         )
 
-        return nextState
+        return rawState
     }
 
     private static func defaultDecisionResolver(input: CoachInputSnapshot) -> CoachGuidanceV3 {
@@ -187,208 +176,6 @@ final class CoachCoordinator: ObservableObject {
             "[CoachV4VisibleFinal]",
             "reason=\(reason) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(state.finalStory?.owner.rawValue ?? "nil") title=\"\(state.finalStory?.title.resolved ?? "nil")\""
         )
-    }
-
-    private func applyStableRecoveryActivityVisibleOverride(
-        _ state: CoachState,
-        input: CoachInputSnapshot,
-        guidance: CoachGuidanceV3
-    ) -> CoachState {
-        guard let visibleStory = state.finalStory,
-              guidance.priority.priority == .stable,
-              guidance.priority.focus == .dailyOverview,
-              finalVisiblePhaseIsStable(guidance),
-              let activity = finalVisibleCompletedRecoveryActivity(input: input, guidance: guidance),
-              (visibleStory.owner == .recovery ||
-                visibleStory.owner == .postActivityRecovery ||
-                visibleStory.title.resolved.localizedCaseInsensitiveContains("Recovery matters most now") ||
-                visibleStory.title.resolved.localizedCaseInsensitiveContains("recovery"))
-        else {
-            return state
-        }
-
-        let title = finalVisibleText(
-            "You already added some easy movement",
-            russian: "Немного движения сегодня уже есть"
-        )
-        let assessment = finalVisibleText(
-            "You already added a little easy movement today.",
-            russian: "Сегодня уже было немного лёгкого движения."
-        )
-        let recommendation = finalVisibleText(
-            "Nothing else needs special attention now.",
-            russian: "Сейчас ничего ещё не требует особого внимания."
-        )
-        let risk = finalVisibleText("", russian: "")
-        let guardedStory = CoachFinalStory(
-            owner: .stableOverview,
-            primaryFocus: .dailyOverview,
-            titleKey: visibleStory.titleKey,
-            subtitleKey: visibleStory.subtitleKey,
-            badgeState: finalVisibleText("STEADY", russian: "РОВНО"),
-            heroState: finalVisibleText("Open day", russian: "Спокойный день"),
-            colorFamily: .stable,
-            icon: "checkmark.seal.fill",
-            primaryRecommendationKey: visibleStory.primaryRecommendationKey,
-            avoidRecommendationKey: visibleStory.avoidRecommendationKey,
-            title: title,
-            subtitle: assessment,
-            primaryRecommendation: recommendation,
-            avoidRecommendation: risk,
-            whatHappened: assessment,
-            whatMattersNow: finalVisibleText(
-                "\(activity.title) counts as easy movement, not training stress.",
-                russian: "\(activity.title) — это лёгкое движение, а не тренировочная нагрузка."
-            ),
-            whatToDoNext: recommendation,
-            whatToAvoid: risk,
-            reasons: [],
-            supportSignals: visibleStory.supportSignals.filter { $0.kind != .recovery },
-            upNextContext: nil,
-            confidence: visibleStory.confidence,
-            dataReadinessState: visibleStory.dataReadinessState,
-            primaryAction: CoachFinalStoryAction(
-                title: recommendation,
-                icon: "checkmark.circle.fill"
-            ),
-            supportActions: [],
-            decisionContext: visibleStory.decisionContext
-        )
-
-        CoachLogger.compact(
-            "[CoachV4HardOverride]",
-            "applied=true reason=stableCompletedRecoveryActivity ownerBefore=\(visibleStory.owner.rawValue) titleBefore=\"\(visibleStory.title.resolved)\" ownerAfter=\(guardedStory.owner.rawValue) titleAfter=\"\(guardedStory.title.resolved)\""
-        )
-
-        let avoidNotes = guardedStory.avoidRecommendation.resolved.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? []
-            : [guardedStory.avoidRecommendation.resolved]
-        return CoachState(
-            id: state.id,
-            createdAt: state.createdAt,
-            status: state.status,
-            input: state.input,
-            fingerprint: state.fingerprint,
-            guidance: state.guidance,
-            finalStory: guardedStory,
-            todayPresentation: CoachTodayPresentation(
-                title: guardedStory.title.resolved,
-                message: guardedStory.subtitle.resolved,
-                icon: guardedStory.icon,
-                color: guardedStory.color
-            ),
-            coachPresentation: CoachScreenPresentation(
-                stateLabel: guardedStory.badgeState.resolved,
-                title: guardedStory.title.resolved,
-                message: guardedStory.subtitle.resolved,
-                recommendation: guardedStory.primaryRecommendation.resolved,
-                icon: guardedStory.icon,
-                color: guardedStory.color,
-                supportActions: guardedStory.supportActions,
-                avoidNotes: avoidNotes
-            ),
-            rationalePresentation: state.rationalePresentation
-        )
-    }
-
-    private func finalVisibleText(_ english: String, russian: String) -> CoachFinalStoryText {
-        CoachFinalStoryText(
-            key: "",
-            fallback: english,
-            russianFallback: russian,
-            parameters: [],
-            russianParameters: []
-        )
-    }
-
-    private func finalVisiblePhaseIsStable(_ guidance: CoachGuidanceV3) -> Bool {
-        if case .stable = guidance.phase {
-            return true
-        }
-        return false
-    }
-
-    private func finalVisibleRecoveryActivity(
-        input: CoachInputSnapshot,
-        guidance: CoachGuidanceV3
-    ) -> PlannedActivity? {
-        var candidates: [PlannedActivity] = []
-        if let activity = guidance.priority.activity {
-            candidates.append(activity)
-        }
-        switch guidance.phase {
-        case .active(let activity, _),
-             .preparing(let activity, _, _),
-             .recovering(let activity, _, _):
-            candidates.append(activity)
-        case .stable:
-            break
-        }
-        if let activity = input.dayContext.lastCompletedActivity {
-            candidates.append(activity)
-        }
-        candidates.append(contentsOf: input.dayContext.completedActivities)
-        candidates.append(contentsOf: input.plannedActivities)
-        return candidates.first(where: finalVisibleIsRecoveryTierActivity)
-    }
-
-    private func finalVisibleCompletedRecoveryActivity(
-        input: CoachInputSnapshot,
-        guidance: CoachGuidanceV3
-    ) -> PlannedActivity? {
-        var candidates: [PlannedActivity] = []
-        if let activity = guidance.priority.activity {
-            candidates.append(activity)
-        }
-        switch guidance.phase {
-        case .active(let activity, _),
-             .preparing(let activity, _, _),
-             .recovering(let activity, _, _):
-            candidates.append(activity)
-        case .stable:
-            break
-        }
-        if let activity = input.dayContext.lastCompletedActivity {
-            candidates.append(activity)
-        }
-        candidates.append(contentsOf: input.dayContext.completedActivities)
-        candidates.append(contentsOf: input.plannedActivities)
-
-        return candidates.first { activity in
-            finalVisibleIsRecoveryTierActivity(activity) &&
-                activity.terminalState(now: input.now) == .completed
-        }
-    }
-
-    private func finalVisibleHasIndependentRecoveryDeficit(
-        input: CoachInputSnapshot,
-        guidance: CoachGuidanceV3
-    ) -> Bool {
-        if input.recoveryContext.recoveryPercent > 0 && input.recoveryContext.recoveryPercent < 65 { return true }
-        if input.recoveryContext.sleepHours > 0 && input.recoveryContext.sleepHours < 6.5 { return true }
-        if input.brain.sleep == .short || input.brain.sleep == .veryShort { return true }
-        if input.brain.readiness == .low || input.brain.readiness == .compromised { return true }
-        if input.brain.recovery == .compromised || input.brain.recovery == .vulnerable { return true }
-        return guidance.priority.limiter == .sleep ||
-            guidance.priority.limiter == .trainingReadiness ||
-            guidance.priority.limiter == .accumulatedFatigue
-    }
-
-    private func finalVisibleHasSignificantWorkoutContext(input: CoachInputSnapshot) -> Bool {
-        input.plannedActivities.contains { activity in
-            guard finalVisibleIsSignificantWorkout(activity) else { return false }
-            if activity.isCompleted { return true }
-            if activity.isActive(at: input.now) { return true }
-            return activity.date >= input.now && Calendar.current.isDate(activity.date, inSameDayAs: input.now)
-        }
-    }
-
-    private func finalVisibleIsRecoveryTierActivity(_ activity: PlannedActivity) -> Bool {
-        CoachActivityClassification.isRecoveryTier(activity)
-    }
-
-    private func finalVisibleIsSignificantWorkout(_ activity: PlannedActivity) -> Bool {
-        CoachActivityClassification.isSignificantWorkout(activity)
     }
 
     private func logFinalStoryReadiness(

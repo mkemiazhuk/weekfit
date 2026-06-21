@@ -1235,7 +1235,9 @@ final class HealthManager: ObservableObject {
             return false
         }
 
-        let totalMl = hydrationActivities.count * 250
+        let totalMl = hydrationActivities.reduce(0) { total, activity in
+            total + QuickLogActivityPortions.hydrationVolumeMilliliters(for: activity)
+        }
         return Double(totalMl) / 1000.0
     }
 
@@ -1316,6 +1318,16 @@ final class HealthManager: ObservableObject {
     ) async {
         guard isHealthAccessRequested else { return }
         await loadHealthData(for: date, plannedActivities: plannedActivities)
+    }
+
+    func loadWorkout(
+        id: UUID,
+        near date: Date,
+        calendar: Calendar = .current
+    ) async -> HKWorkout? {
+        let start = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date)) ?? date
+        let end = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: date)) ?? date
+        return await loadWorkoutSample(id: id, start: start, end: end)
     }
 
     func loadWorkoutSamples(for date: Date) async -> [HKWorkout] {

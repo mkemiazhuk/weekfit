@@ -585,7 +585,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
                 .sleepPriority,
                 "Keep the rest of the day easy",
                 "Food is likely covered — sleep matters more now",
-                "Остаток дня держите лёгким",
+                "Остаток дня сделайте лёгким",
                 "Еда, скорее всего, уже есть — сон важнее"
             )
         case .stale:
@@ -602,7 +602,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
                 .sleepPriority,
                 "Protect sleep tonight",
                 "That is where today's work pays off",
-                "Берегите сон сегодня",
+                "Выспитесь сегодня",
                 "Именно ночью закрепляется сегодняшняя работа"
             )
         }
@@ -658,7 +658,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
                 .sleepPriority,
                 "Keep the rest of the day easy",
                 "No need to keep acting like the session just ended",
-                "Остаток дня держите лёгким",
+                "Остаток дня сделайте лёгким",
                 "Не нужно жить так, будто сессия только что закончилась"
             )
         case .stale:
@@ -680,7 +680,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
                 .sleepPriority,
                 "Protect sleep tonight",
                 "Let recovery finish overnight",
-                "Берегите сон сегодня",
+                "Хорошо поспите сегодня",
                 "Дайте восстановлению завершиться ночью"
             )
         }
@@ -718,7 +718,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
                     .sleepPriority,
                     "Keep the rest of the day calm",
                     "No extra protocol needed",
-                    "Остаток дня держите спокойным",
+                    "Остаток дня сделайте спокойным",
                     "Дополнительный протокол не нужен"
                 ),
                 avoidance: bi("Do not add volume just because it felt easy.", "Не добавляйте объём только потому, что было легко."),
@@ -791,14 +791,14 @@ enum CoachEnduranceDuringPostCopyCatalog {
                     : "Solid work is done — keep the rest of the day controlled.",
                 longSession
                     ? "После длинной \(modalityRU) нужно восстановление, а не ещё работа."
-                    : "Хорошая работа сделана — остаток дня держите под контролем."
+                    : "Хорошая тренировка закончена — остаток дня держите под контролем."
             )
 
         case .settled:
             if protectTomorrow {
                 return bi(
                     "Main work for today is done, and tomorrow still matters — ease into the rest of the day.",
-                    "Главная работа на сегодня сделана, а завтра ещё важно — входите в остаток дня спокойно."
+                    "Главная тренировка на сегодня сделана, а завтра ещё важно — входите в остаток дня спокойно."
                 )
             }
             if heavyDay {
@@ -816,7 +816,7 @@ enum CoachEnduranceDuringPostCopyCatalog {
             if protectTomorrow {
                 return bi(
                     "Today's main work is done and tomorrow has demand — a calm evening protects both.",
-                    "Главная работа на сегодня сделана, а завтра есть нагрузка — спокойный вечер защитит и то, и другое."
+                    "Главная тренировка на сегодня сделана, а завтра есть нагрузка — спокойный вечер защитит и то, и другое."
                 )
             }
             if heavyDay || evening {
@@ -825,8 +825,8 @@ enum CoachEnduranceDuringPostCopyCatalog {
                         ? "The heavy work is behind you — keep the rest of the day controlled."
                         : "The heavy work is hours behind you now — what matters is protecting sleep and keeping the evening calm.",
                     timePhase == .morning || timePhase == .midday
-                        ? "Тяжёлая работа уже позади — держите остаток дня под контролем."
-                        : "Тяжёлая работа уже несколько часов позади — сейчас важнее сон и спокойный вечер."
+                        ? "Тяжёлая тренировка уже позади — держите остаток дня под контролем."
+                        : "Тяжёлая тренировка уже несколько часов позади — сейчас важнее сон и спокойный вечер."
                 )
             }
             return bi(

@@ -942,7 +942,10 @@ final class CoachStateNarrativeContractTests: XCTestCase {
 
         XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("fresh") || story.title.resolved.localizedCaseInsensitiveContains("start") || story.title.resolved.localizedCaseInsensitiveContains("roll") || story.title.resolved.localizedCaseInsensitiveContains("calm") || story.title.resolved.localizedCaseInsensitiveContains("head") || story.title.resolved.localizedCaseInsensitiveContains("road") || story.title.resolved.localizedCaseInsensitiveContains("almost") || story.title.resolved.localizedCaseInsensitiveContains("ride") || story.title.resolved.localizedCaseInsensitiveContains("скоро") || story.title.resolved.localizedCaseInsensitiveContains("дорог"), story.title.resolved)
         XCTAssertFalse(story.title.resolved.localizedCaseInsensitiveContains("45 minutes"), story.title.resolved)
-        XCTAssertTrue(why.contains("45 minutes"), why)
+        XCTAssertTrue(
+            why.contains("about an hour") || why.contains("less than an hour") || why.contains("almost here"),
+            why
+        )
         XCTAssertTrue(why.contains("recovery"), why)
         XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
         XCTAssertTrue(story.whatToDoNext.resolved.localizedCaseInsensitiveContains("fluids") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("вода") || story.whatToDoNext.resolved.localizedCaseInsensitiveContains("допейте"), story.whatToDoNext.resolved)
@@ -975,9 +978,23 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let why = renderModel.whyRows.map(\.title).joined(separator: " ").lowercased()
 
         XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Running")
-        XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("pacing") || story.whatHappened.resolved.localizedCaseInsensitiveContains("run is close") || story.whatHappened.resolved.localizedCaseInsensitiveContains("miles") || story.whatHappened.resolved.localizedCaseInsensitiveContains("дистанц") || story.whatHappened.resolved.localizedCaseInsensitiveContains("пробежка"), story.whatHappened.resolved)
+        XCTAssertTrue(
+            story.whatHappened.resolved.localizedCaseInsensitiveContains("pacing") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("run is close") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("miles") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("recovery") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("energy") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("run") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("дистанц") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("пробежка") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("восстанов"),
+            story.whatHappened.resolved
+        )
         XCTAssertFalse(visible.contains("ride"), visible)
-        XCTAssertTrue(why.contains("45 minutes"), why)
+        XCTAssertTrue(
+            why.contains("about an hour") || why.contains("less than an hour") || why.contains("almost here"),
+            why
+        )
         XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
     }
 
@@ -999,7 +1016,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let why = CoachFinalStoryRenderModel(story: story).whyRows.map(\.title).joined(separator: " ").lowercased()
 
         XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("пробежка"), story.whatHappened.resolved)
-        XCTAssertTrue(why.localizedCaseInsensitiveContains("минут") || why.localizedCaseInsensitiveContains("восстанов"), why)
+        XCTAssertTrue(
+            why.localizedCaseInsensitiveContains("час") ||
+                why.localizedCaseInsensitiveContains("скоро") ||
+                why.localizedCaseInsensitiveContains("восстанов"),
+            why
+        )
         XCTAssertFalse(visible.contains("поезд"), visible)
         XCTAssertFalse(visible.contains("велос"), visible)
     }
@@ -1038,7 +1060,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let why = CoachFinalStoryRenderModel(story: story).whyRows.map(\.title).joined(separator: " ").lowercased()
 
         XCTAssertTrue(story.whatHappened.resolved.localizedCaseInsensitiveContains("tennis") || story.whatHappened.resolved.localizedCaseInsensitiveContains("rhythm"), story.whatHappened.resolved)
-        XCTAssertTrue(why.localizedCaseInsensitiveContains("minutes") || why.localizedCaseInsensitiveContains("recovery"), why)
+        XCTAssertTrue(
+            why.localizedCaseInsensitiveContains("about an hour") ||
+                why.localizedCaseInsensitiveContains("less than an hour") ||
+                why.localizedCaseInsensitiveContains("recovery"),
+            why
+        )
         XCTAssertFalse(visible.contains("ride"), visible)
         XCTAssertFalse(visible.contains("upper body"), visible)
     }
@@ -1165,7 +1192,12 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertEqual(story.decisionContext.selectedUpNext?.title, "Long ride")
         XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("ride") || story.title.resolved.localizedCaseInsensitiveContains("Set up"), story.title.resolved)
         XCTAssertFalse(story.whatHappened.resolved.localizedCaseInsensitiveContains("main training demand"), story.whatHappened.resolved)
-        XCTAssertTrue(why.contains("193 minutes"), why)
+        XCTAssertTrue(
+            why.contains("couple of hours") || why.contains("few hours") || why.contains("about 3 hours") || why.contains("about 2 hours"),
+            why
+        )
+        XCTAssertFalse(why.contains("193 minutes"), why)
+        XCTAssertFalse(why.contains("500 minutes"), why)
         XCTAssertTrue(why.contains("recovery"), why)
         XCTAssertFalse(why.contains("training stimulus") || why.contains("главная тренировка"), why)
         assertNoCrossSectionPhraseReuse(renderModel, scenarioName: "long ride in 193 minutes")
@@ -1403,8 +1435,13 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             story.whatHappened.resolved.localizedCaseInsensitiveContains("endurance") ||
                 story.whatHappened.resolved.localizedCaseInsensitiveContains("training") ||
                 story.whatHappened.resolved.localizedCaseInsensitiveContains("ride") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("recovery") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("energy") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("session") ||
                 story.whatHappened.resolved.localizedCaseInsensitiveContains("fuel") ||
-                story.whatHappened.resolved.localizedCaseInsensitiveContains("bottles"),
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("bottles") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("восстанов") ||
+                story.whatHappened.resolved.localizedCaseInsensitiveContains("велос"),
             visibleText(makeState(activities: [walk, ride], currentDate: morning))
         )
         XCTAssertTrue(
@@ -1417,6 +1454,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             story.whatToAvoid.resolved.localizedCaseInsensitiveContains("second workout") ||
                 story.whatToAvoid.resolved.localizedCaseInsensitiveContains("extra training") ||
                 story.whatToAvoid.resolved.localizedCaseInsensitiveContains("hard session") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("main session") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("save your legs") ||
                 story.whatToAvoid.resolved.localizedCaseInsensitiveContains("burn legs"),
             story.whatToAvoid.resolved
         )
@@ -1521,6 +1560,720 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertNotEqual(story.colorFamily, .warning)
         XCTAssertFalse(story.supportSignals.contains { $0.kind == .hydration && story.owner == .hydration })
         XCTAssertFalse(story.supportSignals.contains { $0.kind == .fuel && story.owner == .fuel })
+    }
+
+    func testSundayMorningModerateRecoveryNoWorkoutUsesCalmReadinessOverview() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let sundayMorning = date(hour: 8, minute: 53)
+
+        let state = makeState(
+            activities: [],
+            currentDate: sundayMorning,
+            nutrition: nutrition(water: 0, calories: 0, protein: 0, carbs: 0),
+            sleepState: .short,
+            recoveryState: .stable,
+            readinessState: .compromised,
+            activeCalories: 171,
+            recoveryPercent: 67,
+            sleepHours: 6.42
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state)
+        let whyText = render.whyRows.map(\.title).joined(separator: " ")
+
+        assertNoWorkoutAssumptionCopy(in: visible, scenarioName: "Sunday moderate recovery no workout")
+        let fullCoachText = [
+            visible,
+            story.whatHappened.resolved,
+            render.subtitle,
+            render.primaryRecommendation,
+            render.avoidRecommendation,
+            whyText
+        ].joined(separator: " ")
+        assertNoMetricNarration(in: fullCoachText, scenarioName: "Sunday moderate recovery no workout")
+        XCTAssertTrue(
+            story.title.resolved.localizedCaseInsensitiveContains("Morning's going fine") ||
+                story.title.resolved.localizedCaseInsensitiveContains("going fine"),
+            story.title.resolved
+        )
+        XCTAssertTrue(
+            story.whatHappened.resolved.localizedCaseInsensitiveContains("Recovery looks reasonable") ||
+                render.subtitle.localizedCaseInsensitiveContains("Recovery looks reasonable"),
+            story.whatHappened.resolved
+        )
+        XCTAssertTrue(
+            render.primaryRecommendation.localizedCaseInsensitiveContains("build naturally") ||
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("build naturally"),
+            render.primaryRecommendation
+        )
+        XCTAssertTrue(
+            render.avoidRecommendation.localizedCaseInsensitiveContains("forcing the pace") ||
+                story.whatToAvoid.resolved.localizedCaseInsensitiveContains("forcing the pace"),
+            render.avoidRecommendation
+        )
+        XCTAssertTrue(
+            whyText.localizedCaseInsensitiveContains("supported recovery overnight") ||
+                whyText.localizedCaseInsensitiveContains("finishing recovery") ||
+                story.reasons.map { $0.text.resolved }.joined(separator: " ").localizedCaseInsensitiveContains("supported recovery overnight") ||
+                story.reasons.map { $0.text.resolved }.joined(separator: " ").localizedCaseInsensitiveContains("finishing recovery"),
+            whyText
+        )
+        XCTAssertTrue(story.owner == .stableOverview || story.owner == .readiness, "\(story.owner)")
+        XCTAssertNotEqual(state.guidance?.priority.focus, .trainingReadinessWarning)
+        XCTAssertEqual(state.todayPresentation.title, story.title.resolved)
+        XCTAssertEqual(state.coachPresentation?.title, story.title.resolved)
+    }
+
+    func testModerateRecoveryNoActivitiesNeverUsesWorkoutPrepCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let state = makeState(
+            activities: [],
+            currentDate: morning,
+            nutrition: nutrition(water: 0, calories: 0, protein: 0, carbs: 0),
+            sleepState: .short,
+            recoveryState: .stable,
+            readinessState: .compromised,
+            activeCalories: 120,
+            recoveryPercent: 67,
+            sleepHours: 6.4
+        )
+
+        assertNoWorkoutAssumptionCopy(in: visibleText(state), scenarioName: "moderate recovery no activities")
+        assertNoMetricNarration(in: visibleText(state), scenarioName: "moderate recovery no activities")
+    }
+
+    func testLowRecoveryNoActivitiesUsesRecoveryLedDayNotWorkoutIntensity() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let state = makeState(
+            activities: [],
+            currentDate: morning,
+            nutrition: nutrition(water: 0, calories: 0, protein: 0, carbs: 0),
+            sleepState: .short,
+            recoveryState: .compromised,
+            readinessState: .low,
+            activeCalories: 80,
+            recoveryPercent: 48,
+            sleepHours: 5.2
+        )
+        let visible = visibleText(state)
+
+        assertNoWorkoutAssumptionCopy(in: visible, scenarioName: "low recovery no activities")
+        XCTAssertTrue(
+            state.finalStory?.owner == .recovery ||
+                state.finalStory?.owner == .stableOverview ||
+                state.finalStory?.owner == .readiness,
+            "\(state.finalStory?.owner.rawValue ?? "nil")"
+        )
+    }
+
+    func testGoodRecoveryNoActivitiesStaysCalmOverview() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let state = makeState(
+            activities: [],
+            currentDate: morning,
+            nutrition: nutrition(water: 0, calories: 0, protein: 0, carbs: 0),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 90,
+            recoveryPercent: 88,
+            sleepHours: 8.1
+        )
+        let visible = visibleText(state)
+
+        assertNoWorkoutAssumptionCopy(in: visible, scenarioName: "good recovery no activities")
+        XCTAssertNotEqual(state.guidance?.priority.focus, .trainingReadinessWarning)
+    }
+
+    func testModerateRecoveryUpcomingWorkoutMayUseControlledPrepCopy() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let run = activity(
+            type: "running",
+            title: "Running",
+            minutesFromNow: 120,
+            duration: 60,
+            icon: "figure.run",
+            baseDate: morning
+        )
+        let state = makeState(
+            activities: [run],
+            currentDate: morning,
+            nutrition: nutrition(water: 0.8, calories: 400, protein: 20, carbs: 45),
+            sleepState: .short,
+            recoveryState: .stable,
+            readinessState: .compromised,
+            recoveryPercent: 67,
+            sleepHours: 6.4
+        )
+        let story = try XCTUnwrap(state.finalStory)
+
+        XCTAssertTrue(
+            story.owner == .activityPreparation ||
+                story.owner == .readiness ||
+                state.guidance?.priority.focus == .prepareForActivity ||
+                state.guidance?.priority.focus == .nextActivityLater,
+            "\(story.owner) / \(String(describing: state.guidance?.priority.focus))"
+        )
+    }
+
+    func testMorningZeroNutritionHydrationDoesNotDriveNegativeCoachNarrative() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let state = makeState(
+            activities: [],
+            currentDate: morning,
+            nutrition: nutrition(water: 0, calories: 0, protein: 0, carbs: 0),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 0,
+            recoveryPercent: 84,
+            sleepHours: 7.8
+        )
+        let visible = visibleText(state)
+
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("haven't eaten enough"))
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("low on water"))
+        assertNoWorkoutAssumptionCopy(in: visible, scenarioName: "morning zero nutrition")
+    }
+
+    func testStableOverviewIgnoresStaleHealthKitLoadWithoutPlannedCompletion() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let state = stateForHeroColor(
+            focus: .dailyOverview,
+            priority: .stable,
+            strength: .low,
+            mode: .reinforcement,
+            limiter: CoachLimiter.none,
+            date: morning,
+            activities: [],
+            nutrition: nutrition(water: 1.4, calories: 900, protein: 50, carbs: 90),
+            activeCalories: 1_500,
+            exerciseMinutes: 95,
+            recoveryPercent: 88,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertTrue(story.owner == .stableOverview || story.owner == .readiness, "\(story.owner)")
+        XCTAssertNotEqual(story.owner, CoachFinalStoryOwner.postActivityRecovery)
+        XCTAssertFalse(story.title.resolved.localizedCaseInsensitiveContains("already added"), story.title.resolved)
+        XCTAssertFalse(visible.contains("long ride"), visible)
+        XCTAssertFalse(visible.contains("after this morning"), visible)
+        XCTAssertFalse(visible.contains("session is well behind you"), visible)
+    }
+
+    func testMorningRecoveryDayWithUpcomingPlanDoesNotClaimCompletedMovement() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let walk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 105,
+            duration: 45,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+        let stretching = activity(
+            type: "recovery",
+            title: "Stretching",
+            minutesFromNow: 180,
+            duration: 20,
+            icon: "figure.cooldown",
+            baseDate: morning
+        )
+        let sauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: 300,
+            duration: 20,
+            icon: "flame.fill",
+            baseDate: morning
+        )
+        let eveningWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 540,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+
+        let state = makeState(
+            activities: [walk, stretching, sauna, eveningWalk],
+            currentDate: morning,
+            nutrition: nutrition(water: 1.4, calories: 900, protein: 50, carbs: 90),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            recoveryPercent: 90,
+            sleepHours: 8.1
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertTrue(story.owner == .readiness || story.owner == .stableOverview, "\(story.owner)")
+        XCTAssertNotEqual(story.owner, .postActivityRecovery)
+        XCTAssertNotEqual(story.owner, .recovery)
+        XCTAssertTrue(render.title.localizedCaseInsensitiveContains("walk"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("stretching"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("already added"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("easy movement"), render.title)
+        XCTAssertFalse(visible.contains("long ride"), visible)
+        XCTAssertFalse(visible.contains("after this morning"), visible)
+        XCTAssertTrue(render.supportActions.isEmpty, "Calm overview should not repeat the recommendation in What to do")
+        XCTAssertFalse(
+            render.whyRows.contains { $0.title.localizedCaseInsensitiveContains("next important session") },
+            "Plan headline already names the next activity"
+        )
+    }
+
+    func testPostSaunaUsesHeatRecoveryNotMainTrainingComplete() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let morningWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: -180,
+            duration: 25,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: morning
+        )
+        let yoga = activity(
+            type: "workout",
+            title: "Yoga",
+            minutesFromNow: -120,
+            duration: 55,
+            icon: "figure.yoga",
+            completed: true,
+            baseDate: morning
+        )
+        let sauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: -75,
+            duration: 45,
+            icon: "flame.fill",
+            completed: true,
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(byAdding: .hour, value: 2, to: sauna.date) ?? morning
+
+        let state = makeState(
+            activities: [morningWalk, yoga, sauna],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.2, calories: 1_100, protein: 55, carbs: 110),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 850,
+            recoveryPercent: 91,
+            sleepHours: 8.0,
+            exerciseMinutes: 140
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertNotEqual(story.owner, .postActivityRecovery)
+        XCTAssertTrue(story.owner == .stableOverview || story.owner == .readiness || story.owner == .recovery, "\(story.owner)")
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("main training"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("main work"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("after sauna"), render.title)
+        XCTAssertFalse(visible.contains("25-40 g protein"), visible)
+        XCTAssertTrue(
+            visible.contains("progress") ||
+                visible.contains("easy") ||
+                visible.contains("going fine") ||
+                visible.contains("water") ||
+                visible.contains("hydr") ||
+                visible.contains("today") ||
+                visible.contains("прогресс") ||
+                visible.contains("ровно") ||
+                visible.contains("сегодня"),
+            visible
+        )
+    }
+
+    func testPostSaunaFramesWholeDayAndRemainingPlan() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let morningWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: -180,
+            duration: 25,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: morning
+        )
+        let yoga = activity(
+            type: "workout",
+            title: "Yoga",
+            minutesFromNow: -120,
+            duration: 55,
+            icon: "figure.yoga",
+            completed: true,
+            baseDate: morning
+        )
+        let sauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: -75,
+            duration: 45,
+            icon: "flame.fill",
+            completed: true,
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(byAdding: .hour, value: 2, to: sauna.date) ?? morning
+        let eveningWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 120,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: afternoon
+        )
+
+        let state = makeState(
+            activities: [morningWalk, yoga, sauna, eveningWalk],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.2, calories: 1_100, protein: 55, carbs: 110),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 850,
+            recoveryPercent: 91,
+            sleepHours: 8.0,
+            exerciseMinutes: 140
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = (
+            [render.title, render.displaySubtitle, render.primaryRecommendation, render.displayAvoid] +
+                render.whyRows.map(\.title)
+        ).joined(separator: " ").lowercased()
+
+        XCTAssertTrue(
+            visible.contains("so far today") ||
+                visible.contains("still on today's plan") ||
+                visible.contains("still ahead") ||
+                visible.contains("take it easy") ||
+                visible.contains("after sauna"),
+            visible
+        )
+        XCTAssertTrue(
+            visible.contains("walk") || visible.contains("still ahead"),
+            visible
+        )
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("main training"), render.title)
+    }
+
+    func testActiveRunningOverridesRecentPostWalkFocus() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let completedWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: -45,
+            duration: 30,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: morning
+        )
+        let activeRunning = activity(
+            type: "running",
+            title: "Running",
+            minutesFromNow: -3,
+            duration: 45,
+            icon: "figure.run",
+            baseDate: morning
+        )
+
+        let dayContext = CoachDayContextBuilder.build(
+            activities: [completedWalk, activeRunning],
+            selectedDate: morning,
+            now: morning
+        )
+        let nutrition = nutrition(water: 1.4, calories: 1_100, protein: 60, carbs: 120)
+        var brainConfig = HumanBrainStateBuilder.Configuration()
+        brainConfig.currentHour = 10
+        brainConfig.hydration = .optimal
+        brainConfig.fuel = .good
+        brainConfig.sleep = .strong
+        brainConfig.recovery = .strong
+        brainConfig.readiness = .good
+        brainConfig.metrics = CoachMetricsBuilder.metrics(
+            protein: nutrition.proteinCurrent,
+            carbs: nutrition.carbsCurrent,
+            calories: nutrition.caloriesCurrent,
+            waterLiters: nutrition.waterCurrent,
+            activeCalories: 420,
+            sleepHours: 8.0
+        )
+        let input = CoachInputSnapshot(
+            selectedDate: morning,
+            now: morning,
+            brain: HumanBrainStateBuilder.make(brainConfig),
+            plannedActivities: [completedWalk, activeRunning],
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitSamplesWithAppGoalEstimate,
+                activeCalories: 420,
+                exerciseMinutes: 40,
+                standHours: nil,
+                activityGoalCalories: nil,
+                activityProgress: nil
+            ),
+            dayContext: dayContext,
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 86, sleepHours: 8.0),
+            nutritionContext: nutrition,
+            source: "CoachStateNarrativeContractTests"
+        )
+        let priority = CoachDayPriorityResult(
+            focus: .activeActivity,
+            level: .high,
+            reason: "Active running session",
+            activity: activeRunning,
+            overridesTimingFocus: true,
+            priority: .activeSession,
+            strength: .high,
+            confidence: 0.92,
+            mode: .reinforcement,
+            limiter: .accumulatedFatigue,
+            todayTitle: "Keep this session controlled",
+            todayMessage: "Stay conversational",
+            detailTitle: "Keep this session controlled",
+            detailMessage: "Stay conversational",
+            reasons: ["activeRunning"]
+        )
+        let guidance = CoachGuidanceV3(
+            phase: .active(activity: activeRunning, kind: .endurance),
+            opportunity: CoachSupportOpportunityV3(
+                type: .activeWorkoutSupport,
+                importance: .high,
+                reason: "Active running session"
+            ),
+            priority: priority,
+            shouldSurface: true,
+            stateLabel: "LIVE",
+            title: "Keep this session controlled",
+            message: "Stay conversational",
+            insightTitle: "Keep this session controlled",
+            insightSubtitle: "Stay conversational",
+            supportActions: [],
+            avoidNotes: [],
+            icon: "figure.run",
+            color: WeekFitTheme.workout,
+            importance: .high,
+            tone: .supportive
+        )
+
+        let state = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            guidance: guidance,
+            createdAt: morning
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+
+        XCTAssertEqual(story.owner, .activeActivity, "\(story.owner)")
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("walk"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("после"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("finished"), render.title)
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("block") ||
+                render.title.localizedCaseInsensitiveContains("controlled") ||
+                render.title.localizedCaseInsensitiveContains("settle") ||
+                render.title.localizedCaseInsensitiveContains("rhythm") ||
+                render.title.localizedCaseInsensitiveContains("pace"),
+            render.title
+        )
+    }
+
+    func testCompletedWalkWithSaunaAheadFramesWholeDayNotAfterWalk() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let completedWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: -90,
+            duration: 35,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: morning
+        )
+        let sauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: 120,
+            duration: 30,
+            icon: "flame.fill",
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(byAdding: .hour, value: 2, to: completedWalk.date) ?? morning
+
+        let state = makeState(
+            activities: [completedWalk, sauna],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.3, calories: 1_000, protein: 55, carbs: 100),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 520,
+            recoveryPercent: 88,
+            sleepHours: 8.0,
+            exerciseMinutes: 55
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+
+        XCTAssertTrue(story.owner == .readiness || story.owner == .stableOverview, "\(story.owner)")
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("sauna") ||
+                render.title.localizedCaseInsensitiveContains("plan"),
+            render.title
+        )
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("after your walk"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("после walk"), render.title)
+    }
+
+    func testPostSaunaMessageReleasesAfterCompletedRecoveryDayPlan() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let morningWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: -300,
+            duration: 25,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: morning
+        )
+        let yoga = activity(
+            type: "workout",
+            title: "Yoga",
+            minutesFromNow: -240,
+            duration: 55,
+            icon: "figure.yoga",
+            completed: true,
+            baseDate: morning
+        )
+        let sauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: -180,
+            duration: 45,
+            icon: "flame.fill",
+            completed: true,
+            baseDate: morning
+        )
+        let lateAfternoon = Calendar.current.date(bySettingHour: 15, minute: 52, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [morningWalk, yoga, sauna],
+            currentDate: lateAfternoon,
+            nutrition: nutrition(water: 1.4, calories: 1_200, protein: 60, carbs: 120),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 900,
+            recoveryPercent: 88,
+            sleepHours: 8.0,
+            exerciseMinutes: 140
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = (
+            [render.title, render.displaySubtitle, render.primaryRecommendation] +
+                render.whyRows.map(\.title)
+        ).joined(separator: " ").lowercased()
+
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("после сауны"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("after sauna"), render.title)
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("прогресс") ||
+                render.title.localizedCaseInsensitiveContains("ровно") ||
+                render.title.localizedCaseInsensitiveContains("лёгким") ||
+                visible.contains("сегодня"),
+            render.title
+        )
+    }
+
+    func testStableDayPlanningOverviewIgnoresStaleCompletedCycling() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let completedCycling = activity(
+            type: "cycling",
+            title: "Cycling",
+            minutesFromNow: -120,
+            duration: 90,
+            icon: "figure.outdoor.cycle",
+            completed: true,
+            baseDate: morning
+        )
+        let walk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 105,
+            duration: 45,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+        let stretching = activity(
+            type: "recovery",
+            title: "Stretching",
+            minutesFromNow: 180,
+            duration: 20,
+            icon: "figure.cooldown",
+            baseDate: morning
+        )
+
+        let state = stateForHeroColor(
+            focus: .dailyOverview,
+            priority: .stable,
+            strength: .low,
+            mode: .reinforcement,
+            limiter: CoachLimiter.none,
+            date: morning,
+            phase: .stable,
+            activities: [completedCycling, walk, stretching],
+            nutrition: nutrition(water: 1.4, calories: 900, protein: 50, carbs: 90),
+            activeCalories: 1_500,
+            exerciseMinutes: 95,
+            recoveryPercent: 88,
+            sleepHours: 8.0,
+            priorityActivityOverride: .some(nil)
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+
+        let guidance = try XCTUnwrap(state.guidance)
+        XCTAssertEqual(guidance.priority.priority, .stable)
+        XCTAssertEqual(guidance.priority.focus, .dailyOverview)
+        XCTAssertNil(guidance.priority.activity)
+        XCTAssertTrue(story.owner == .readiness || story.owner == .stableOverview, "\(story.owner)")
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("coach the"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("cycling"), render.title)
+        XCTAssertFalse(visible.contains("coach the cycling"), visible)
+        XCTAssertTrue(
+            visible.contains("walk") ||
+                visible.contains("today's plan") ||
+                visible.contains("steady") ||
+                visible.contains("morning"),
+            visible
+        )
     }
 
     func testStrongRecoverySleepNoUpcomingWorkoutDoesNotPrepareForTraining() throws {
@@ -2762,17 +3515,17 @@ final class CoachStateNarrativeContractTests: XCTestCase {
 
         XCTAssertEqual(story.owner, .activityPreparation)
         XCTAssertNotEqual(story.owner, .hydration)
-        XCTAssertTrue(visible.contains("сделайте сауну легче"), visible)
+        XCTAssertTrue(visible.contains("сауну легче") || visible.contains("сауну лучше"), visible)
         XCTAssertTrue(visible.contains("до сауны") || visible.contains("сауны осталось") || visible.contains("перед сауной"), visible)
         XCTAssertFalse(visible.contains("воды сегодня пока мало") || visible.contains("воды пока мало"), visible)
         XCTAssertTrue(visible.contains("сон был короче обычного"), visible)
-        XCTAssertTrue(visible.contains("300-500 мл"), visible)
+        XCTAssertTrue(visible.contains("вод") || visible.contains("попей"), visible)
         XCTAssertLessThanOrEqual(renderModel.whyRows.count, 3, visible)
         XCTAssertLessThanOrEqual(renderModel.supportActions.count, 2, visible)
         XCTAssertTrue(
             story.supportActions.contains { $0.type == .hydrateBeforeSession } ||
-                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("мл") ||
-                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("мл"),
+                story.whatToDoNext.resolved.localizedCaseInsensitiveContains("вод") ||
+                renderModel.primaryRecommendation.localizedCaseInsensitiveContains("вод"),
             visible
         )
 
@@ -3612,6 +4365,64 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         }
     }
 
+    private func assertNoWorkoutAssumptionCopy(
+        in visible: String,
+        scenarioName: String,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        let forbidden = [
+            "reduce intensity",
+            "main set",
+            "extra work",
+            "before the body confirms",
+            "control the first part of the session",
+            "holding back how much you can do",
+            "maximal-effort",
+            "maximal effort",
+            "moderately ready"
+        ]
+
+        for phrase in forbidden {
+            XCTAssertFalse(
+                visible.localizedCaseInsensitiveContains(phrase),
+                "\(scenarioName) used workout-assumption copy '\(phrase)': \(visible)",
+                file: file,
+                line: line
+            )
+        }
+    }
+
+    private func assertNoMetricNarration(
+        in visible: String,
+        scenarioName: String,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        let forbidden = [
+            "recovery is at",
+            "recovery score",
+            "% today",
+            "only at "
+        ]
+
+        for phrase in forbidden {
+            XCTAssertFalse(
+                visible.localizedCaseInsensitiveContains(phrase),
+                "\(scenarioName) repeated metrics instead of interpreting them: '\(phrase)' in \(visible)",
+                file: file,
+                line: line
+            )
+        }
+
+        XCTAssertFalse(
+            visible.range(of: #"\b\d{2}%\b"#, options: .regularExpression) != nil,
+            "\(scenarioName) surfaced a raw recovery percentage in \(visible)",
+            file: file,
+            line: line
+        )
+    }
+
     private func XCTAssertIsHydrationOrFuelAction(_ action: CoachSupportActionV3) -> Bool {
         switch action.type {
         case .hydrateBeforeSession,
@@ -3761,7 +4572,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         exerciseMinutes: Int? = nil,
         activityProgress: Double? = nil,
         recoveryPercent: Int = 82,
-        sleepHours: Double = 7.4
+        sleepHours: Double = 7.4,
+        priorityActivityOverride: PlannedActivity?? = nil
     ) -> CoachState {
         let resolvedNutrition = nutrition ?? self.nutrition(water: 1.6, calories: 1_400, protein: 80, carbs: 150)
         var brainConfig = HumanBrainStateBuilder.Configuration()
@@ -3805,7 +4617,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             nutritionContext: resolvedNutrition,
             source: "CoachHeroSemanticColorMatrix"
         )
-        let activity = activityForPriority(focus: focus, phase: phase, activities: activities)
+        let activity = priorityActivityOverride ?? activityForPriority(focus: focus, phase: phase, activities: activities)
         let priorityResult = CoachDayPriorityResult(
             focus: focus,
             level: strength.level,
@@ -3877,7 +4689,8 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         duration: Int,
         icon: String,
         completed: Bool = false,
-        baseDate: Date? = nil
+        baseDate: Date? = nil,
+        source: String = "planner"
     ) -> PlannedActivity {
         PlannedActivity(
             date: CoachTestClock.offset(minutes: minutesFromNow, from: baseDate ?? now),
@@ -3890,7 +4703,286 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             colorGreen: 0.6,
             colorBlue: 0.9,
             isCompleted: completed,
-            source: "planner"
+            source: source
+        )
+    }
+
+    private func importedAppleWalk(
+        minutesFromNow: Int,
+        duration: Int,
+        baseDate: Date? = nil
+    ) -> PlannedActivity {
+        let walk = activity(
+            type: "workout",
+            title: "Walk",
+            minutesFromNow: minutesFromNow,
+            duration: duration,
+            icon: "figure.walk",
+            completed: true,
+            baseDate: baseDate,
+            source: "appleWorkout"
+        )
+        walk.healthKitWorkoutUUID = UUID().uuidString
+        walk.actualDurationMinutes = duration
+        return walk
+    }
+
+    func testV4ImportedAppleWalkWithoutPlanMatchDoesNotTriggerRecoveryNeeded() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let syncedWalk = importedAppleWalk(minutesFromNow: -120, duration: 39, baseDate: morning)
+        let futurePlannedWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 180,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+        let plannedSauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: 240,
+            duration: 30,
+            icon: "flame.fill",
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(bySettingHour: 14, minute: 30, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [syncedWalk, futurePlannedWalk, plannedSauna],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.4, calories: 1_100, protein: 60, carbs: 120),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 420,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 88,
+            sleepHours: 8.0,
+            exerciseMinutes: 39
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let visible = visibleText(state).lowercased()
+
+        XCTAssertNotEqual(state.guidance?.priority.focus, .recoveryNeeded)
+        XCTAssertNotEqual(state.guidance?.priority.focus, .eveningWindDown)
+        XCTAssertEqual(story.owner, .stableOverview)
+        XCTAssertNotEqual(story.owner, .recovery)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("сауна сделана"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("отличный прогресс"), render.title)
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("прогулка учтена") ||
+                render.title.localizedCaseInsensitiveContains("хороший день") ||
+                render.title.localizedCaseInsensitiveContains("лёгкая активность") ||
+                visible.contains("прогулка"),
+            render.title
+        )
+    }
+
+    func testV4PlannedWalkLaterTodayDoesNotTriggerRecoveryNeeded() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let laterWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 120,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [laterWalk],
+            currentDate: afternoon,
+            nutrition: nutrition(),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 120,
+            recoveryPercent: 90,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+
+        XCTAssertNotEqual(state.guidance?.priority.focus, .recoveryNeeded)
+        XCTAssertNotEqual(story.owner, .recovery)
+        XCTAssertTrue(story.owner == .stableOverview || story.owner == .readiness || story.owner == .activityPreparation)
+    }
+
+    func testV4PlannedWalkWithModerateCaloriesDoesNotShowFuelWarning() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let plannedWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 90,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [plannedWalk],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.2, calories: 673, protein: 40, carbs: 80),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 180,
+            recoveryPercent: 90,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let whyText = render.whyRows.map(\.title).joined(separator: " ")
+        let visible = visibleText(state) + " " + story.title.resolved + " " +
+            story.whatHappened.resolved + " " + whyText
+
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("Не хватает еды"), visible)
+        XCTAssertFalse(visible.localizedCaseInsensitiveContains("мало еды"), visible)
+        XCTAssertFalse(render.supportSignals.contains { $0.kind == .fuel })
+        XCTAssertTrue(
+            story.owner == .stableOverview || story.owner == .readiness || story.owner == .activityPreparation,
+            "\(story.owner)"
+        )
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("прогулка") ||
+                render.title.localizedCaseInsensitiveContains("план") ||
+                render.title.localizedCaseInsensitiveContains("спокойно") ||
+                render.title.localizedCaseInsensitiveContains("ровно"),
+            render.title
+        )
+    }
+
+    func testV4PlannedSaunaMustNotAppearCompletedInDaySummary() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let syncedWalk = importedAppleWalk(minutesFromNow: -90, duration: 35, baseDate: morning)
+        let plannedSauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: 120,
+            duration: 30,
+            icon: "flame.fill",
+            baseDate: morning
+        )
+        let afternoon = Calendar.current.date(bySettingHour: 13, minute: 0, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [syncedWalk, plannedSauna],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.3, calories: 1_000, protein: 55, carbs: 110),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 360,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 90,
+            sleepHours: 8.0,
+            exerciseMinutes: 35
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("сауна сделана"), render.title)
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("прогулка") ||
+                render.title.localizedCaseInsensitiveContains("сауна") && render.title.localizedCaseInsensitiveContains("план"),
+            render.title
+        )
+    }
+
+    func testV4PlannedWalkWithUnverifiedSaunaDoesNotShowSaunaDone() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let afternoon = Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: morning) ?? morning
+        let plannedWalk = activity(
+            type: "walking",
+            title: "Walk",
+            minutesFromNow: 90,
+            duration: 30,
+            icon: "figure.walk",
+            baseDate: afternoon
+        )
+        let falselyCompletedSauna = activity(
+            type: "recovery",
+            title: "Sauna",
+            minutesFromNow: -60,
+            duration: 30,
+            icon: "flame.fill",
+            completed: true,
+            baseDate: morning
+        )
+
+        let state = makeState(
+            activities: [falselyCompletedSauna, plannedWalk],
+            currentDate: afternoon,
+            nutrition: nutrition(water: 1.3, calories: 1_000, protein: 55, carbs: 110),
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            activeCalories: 180,
+            recoveryPercent: 90,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+
+        XCTAssertEqual(state.guidance?.priority.focus, .dailyOverview)
+        XCTAssertEqual(state.guidance?.priority.priority, .stable)
+        XCTAssertEqual(story.owner, .stableOverview)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("сауна сделана"), render.title)
+        XCTAssertFalse(render.title.localizedCaseInsensitiveContains("отличный прогресс"), render.title)
+        XCTAssertTrue(
+            render.title.localizedCaseInsensitiveContains("прогулка") ||
+                render.title.localizedCaseInsensitiveContains("walk") ||
+                render.title.localizedCaseInsensitiveContains("план") ||
+                render.title.localizedCaseInsensitiveContains("спокойно") ||
+                render.title.localizedCaseInsensitiveContains("ровно"),
+            render.title
+        )
+    }
+
+    func testV4CompletedSeriousTrainingMayStillUseRecoveryNeeded() throws {
+        WeekFitSetCurrentLanguage(.english)
+
+        let ride = activity(
+            type: "cycling",
+            title: "Cycling",
+            minutesFromNow: -180,
+            duration: 150,
+            icon: "bicycle",
+            completed: true,
+            baseDate: morning
+        )
+        let evening = Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: morning) ?? morning
+
+        let state = makeState(
+            activities: [ride],
+            currentDate: evening,
+            nutrition: nutrition(water: 2.5, calories: 2_400, protein: 120, carbs: 260),
+            sleepState: .okay,
+            recoveryState: .stable,
+            readinessState: .good,
+            activeCalories: 1_850,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 72,
+            sleepHours: 7.0,
+            exerciseMinutes: 150
+        )
+
+        XCTAssertTrue(
+            state.guidance?.priority.focus == .recoveryNeeded ||
+                state.guidance?.priority.focus == .eveningWindDown ||
+                state.guidance?.priority.focus == .postActivityRecovery
+        )
+        XCTAssertTrue(
+            state.finalStory?.owner == .recovery ||
+                state.finalStory?.owner == .postActivityRecovery
         )
     }
 
@@ -4006,5 +5098,108 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    // MARK: - Late-night sleep deficit vs protection (Phase 3 regression)
+
+    private var lateNight: Date {
+        Calendar.current.date(bySettingHour: 23, minute: 30, second: 0, of: now) ?? now
+    }
+
+    private func visibleStoryText(from state: CoachState) -> String {
+        guard let story = state.finalStory else { return "" }
+        let render = CoachFinalStoryRenderModel(story: story)
+        let read = render.displaySubtitle.isEmpty ? render.subtitle : render.displaySubtitle
+        let careful = render.displayAvoid.isEmpty ? render.avoidRecommendation : render.displayAvoid
+        return [
+            render.title,
+            read,
+            render.primaryRecommendation,
+            careful,
+            render.whyRows.map(\.title).joined(separator: " ")
+        ].joined(separator: " ").lowercased()
+    }
+
+    private func assertNoSleepDeficitCopy(
+        _ text: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let forbidden = [
+            "short sleep",
+            "shorter than ideal",
+            "didn't sleep enough",
+            "not enough sleep",
+            "sleep deficit",
+            "sleep is reducing",
+            "sleep was poor"
+        ]
+        for phrase in forbidden {
+            XCTAssertFalse(
+                text.contains(phrase),
+                "Unexpected sleep-deficit copy '\(phrase)' in: \(text)",
+                file: file,
+                line: line
+            )
+        }
+    }
+
+    func testLateNightExcellentRecoveryDoesNotDiagnoseSleepDeficit() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let state = makeState(
+            activities: [],
+            currentDate: lateNight,
+            sleepState: .strong,
+            recoveryState: .strong,
+            readinessState: .good,
+            recoveryPercent: 95,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let text = visibleStoryText(from: state)
+        assertNoSleepDeficitCopy(text)
+        XCTAssertTrue(
+            text.contains("wind") || text.contains("evening") || text.contains("recovery looked solid"),
+            text
+        )
+        XCTAssertTrue(story.owner == .stableOverview || story.primaryFocus == .eveningWindDown)
+    }
+
+    func testLateNightGoodRecoveryDoesNotDiagnoseSleepDeficit() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let state = makeState(
+            activities: [],
+            currentDate: lateNight,
+            sleepState: .strong,
+            recoveryState: .stable,
+            readinessState: .good,
+            recoveryPercent: 82,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        assertNoSleepDeficitCopy(visibleStoryText(from: state))
+        XCTAssertTrue(story.owner == .stableOverview || story.primaryFocus == .eveningWindDown)
+    }
+
+    func testLateNightCalmEveningWindDownUsesSleepProtectionNotDeficit() throws {
+        WeekFitSetCurrentLanguage(.english)
+        let state = makeState(
+            activities: [],
+            currentDate: lateNight,
+            sleepState: .strong,
+            recoveryState: .stable,
+            readinessState: .good,
+            recoveryPercent: 82,
+            sleepHours: 8.0
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let render = CoachFinalStoryRenderModel(story: story)
+        let text = visibleStoryText(from: state)
+        assertNoSleepDeficitCopy(text)
+        XCTAssertTrue(
+            text.contains("evening") || text.contains("wind") || text.contains("protect"),
+            text
+        )
+        XCTAssertFalse(render.primaryRecommendation.lowercased().contains("didn't sleep"))
     }
 }

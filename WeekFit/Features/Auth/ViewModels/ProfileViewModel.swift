@@ -78,8 +78,16 @@ final class ProfileViewModel: ObservableObject {
         service.bodyGoalNeedsSetup(weightKg: weightKg, heightCm: heightCm)
     }
 
+    func hasManualNutritionGoal() -> Bool {
+        service.isManualNutritionGoal()
+    }
+
     func shouldShowBodyGoalSetting(weightKg: Double, heightCm: Double) -> Bool {
-        service.isManualNutritionGoal() ||
+        UserNutritionProfile.hasSufficientHealthDataForAutoGoal(
+            weightKg: weightKg,
+            heightCm: heightCm
+        ) ||
+            service.isManualNutritionGoal() ||
             service.bodyGoalNeedsSetup(weightKg: weightKg, heightCm: heightCm)
     }
 

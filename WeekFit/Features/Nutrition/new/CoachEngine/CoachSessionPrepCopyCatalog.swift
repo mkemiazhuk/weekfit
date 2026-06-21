@@ -137,72 +137,72 @@ enum CoachSessionPrepCopyCatalog {
 
     private static func runningCopy(longSession: Bool) -> SessionPrepCopy {
         SessionPrepCopy(
-            mainTraining: bi("This run is the main training demand left today.", "Эта пробежка — главная нагрузка до конца дня."),
-            longTraining: bi("This run is the biggest training stimulus left today.", "Эта пробежка — главная тренировка дня."),
+            mainTraining: bi("Most of what's left today rides on this run.", "Это главная тренировка, которая у тебя ещё осталась сегодня."),
+            longTraining: bi("This is the session that will ask the most of you today.", "Самая длинная и тяжёлая тренировка на сегодня — этот забег."),
             fourPlusHours: window(
-                hero: bi("Save your legs for the run", "Берегите ноги к пробежке"),
-                assessment: bi("There is still time — arrive ready, not already tired.", "Время ещё есть — приходите готовым, а не уже уставшим."),
-                situation: bi("Plan a carb meal and easy movement; keep hard steps out of the legs.", "Запланируйте углеводный приём и лёгкое движение; не тратьте ноги заранее."),
-                primary: prep(.lightFueling, "Eat a carb-focused meal", "Finish it 2-3 hours before you head out", "Сделайте углеводный приём пищи", "За 2-3 часа до выхода"),
-                avoidance: bi("Do not add extra hard miles today.", "Не добавляйте сегодня лишние тяжёлые километры."),
+                hero: bi("Most of the work is still ahead", "Основная работа ещё не началась"),
+                assessment: bi("You've got hours before you need to be sharp — the day should feel calm, not busy.", "До старта ещё много времени — день можно не забивать."),
+                situation: bi("What you do now shapes how fresh your legs feel at the start.", "От того, как ты себя ведёшь сейчас, зависит, как ноги будут на старте."),
+                primary: prep(.lightFueling, "A meal 2–3 hours out gives your body time to settle", "Heavy legs at mile one usually trace back to rushing this window", "Поесть за 2–3 часа до выхода — еда успеет усвоиться", "Если на первом километре ноги тяжёлые — часто это от еды впритык"),
+                avoidance: bi("Nothing useful comes from spending legs early.", "Ноги до забега гонять не нужно."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Start steady hydration", "Sip through the afternoon", "Начните пить ровно", "Пейте понемногу до вечера"),
-                    prep(.controlIntensity, "Keep the day on your feet light", "Save spring for the run", "Держите дневную активность лёгкой", "Сохраните пружину для пробежки")
+                    prep(.hydrateBeforeSession, "A dry mouth before a long run is a signal you've been running behind", "The body usually tells you before the app does", "Если во рту сухо перед длинным забегом — ты уже отстаёшь", "Лучше попить сейчас, а не на старте"),
+                    prep(.mobilityPrep, "Everything important should already be ready", "Shoes, route, layer — decided, not debated at the door", "Обувь, маршрут, что на себе — уже решено", "Чтобы на выходе не думать о мелочах")
                 ]
             ),
             twoToFourHours: window(
-                hero: bi("Ease into run prep", "Спокойно подведитесь к пробежке"),
-                assessment: bi("The run is still later — fuel and calm legs matter more than extra work.", "Пробежка ещё впереди — питание и спокойные ноги важнее лишней активности."),
-                situation: bi("Close the main meal, sip water, and keep the afternoon quiet.", "Закройте основной приём пищи, пейте воду и сохраните послеобеденное время спокойным."),
-                primary: prep(.lightFueling, "Finish fueling for an even start", "Then stay off hard stairs and sprints", "Закройте питание для ровного старта", "Без лестниц и рывков до выхода"),
-                avoidance: bi("Do not turn waiting time into a second workout.", "Не превращайте ожидание во вторую тренировку."),
+                hero: bi("The run is still a few hours out", "До пробежки ещё несколько часов"),
+                assessment: bi("Legs feel fine now — that's exactly what you want to protect.", "Ноги сейчас нормальные — так и оставь."),
+                situation: bi("The afternoon is where runners accidentally burn matches.", "Многие в середине дня случайно убивают ноги — лестницы, спурты, лишняя активность."),
+                primary: prep(.lightFueling, "How you eat in this window sets the tone for the opening miles", "A settled stomach beats a last-minute scramble", "Как поешь сейчас — так начнёшь первые километры", "Лучше поесть раньше, чем хватать на выходе"),
+                avoidance: bi("Extra steps now rarely help the run later.", "Лишняя активность сейчас забегу не поможет."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Top up fluids", "Small sips, not a big bottle at once", "Допейте воду", "Маленькими глотками, не залпом"),
-                    prep(.mobilityPrep, "Loosen hips and ankles", "Five easy minutes is enough", "Разомните бёдра и голеностоп", "Пять лёгких минут достаточно")
+                    prep(.hydrateBeforeSession, "Thirst creeping in now is worth noticing", "Not urgent — just a signal to slow down the day", "Если жажда уже есть — не откладывай", "Не срочно, просто лучше не игнорировать"),
+                    prep(.mobilityPrep, "Fresh legs are worth protecting", "Five easy minutes of movement is often enough", "Не гоняй ноги без нужды", "Пару минут лёгкой разминки — достаточно")
                 ]
             ),
             sixtyTo120Minutes: window(
-                hero: bi("Light feet, clear plan", "Лёгкие ноги, ясный план"),
-                assessment: bi("Under an hour to the run — heavy legs and rush beat fresh pacing.", "До пробежки меньше часа — тяжёлые ноги и суета хуже свежего темпа."),
-                situation: bi("Last window for shoes, a small top-up, and a relaxed warm-up plan.", "Последнее окно для обуви, лёгкого перекуса и спокойного плана разминки."),
-                primary: prep(.hydrateBeforeSession, "Top up fluids", "Small sips, light stomach", "Допейте воду", "Маленькими глотками, лёгкий желудок"),
-                avoidance: bi("Do not test fresh legs on stairs or short sprints.", "Не проверяйте свежие ноги на лестнице или коротких рывках."),
+                hero: bi("About an hour out", "Около часа до старта"),
+                assessment: bi("Nerves and restlessness often show up here — that's normal.", "Нервничать и не сидеть на месте — нормально, скоро выход."),
+                situation: bi("Small decisions now remove big distractions later.", "Мелочи сейчас решить — меньше отвлекаться потом."),
+                primary: prep(.mobilityPrep, "Let the legs wake up without waking up fatigue", "Movement now is about readiness, not effort", "Немного разомни ноги, не до усталости", "Сейчас это про подготовку, а не про работу"),
+                avoidance: bi("Fresh legs are worth protecting — stairs and sprints won't prove anything now.", "Лестницы и спурты ничего не докажут — ноги пригодятся на дистанции."),
                 extras: [
-                    prep(.lightFueling, "Use only a light snack", "If hunger is real, not boredom", "Лёгкий перекус", "Только если голод настоящий"),
-                    prep(.mobilityPrep, "Check shoes and route", "Remove decisions before the first step", "Проверьте обувь и маршрут", "Уберите решения перед первым шагом")
+                    prep(.lightFueling, "Hunger that's real, not boredom", "A light bite only if the stomach is actually asking", "Голод или скука", "Перекус — только если реально голоден"),
+                    prep(.mobilityPrep, "Route and shoes settled in your mind", "Fewer decisions at the first step", "Маршрут и обувь уже знаешь", "На первом шаге не решать ничего нового")
                 ]
             ),
             fifteenTo60Minutes: window(
-                hero: bi("Head out soon", "Скоро выход"),
-                assessment: bi("The run is close — save energy for the miles ahead.", "Пробежка уже близко — берегите силы на дистанцию."),
-                situation: bi("Sip water, lace up, and leave without rushing.", "Допейте воду, обуйтесь и выходите без спешки."),
-                primary: prep(.hydrateBeforeSession, "Top up fluids", "Small sips only", "Допейте воду", "Только маленькими глотками"),
-                avoidance: bi("Do not try to fix nutrition with a full meal now.", "Не пытайтесь наесться полноценной едой прямо сейчас."),
+                hero: bi("The run is close now", "Пробежка уже скоро"),
+                assessment: bi("Energy feels available — that's the trap of starting too fast.", "Энергия есть — и именно на этом часто разгоняются слишком быстро."),
+                situation: bi("The goal is to arrive fresh, not busy.", "Постарайся сохранить то, что есть сейчас — без суеты."),
+                primary: prep(.controlIntensity, "What you feel in your legs right now is what you're carrying onto the road", "Stillness preserves what pace will need", "Как ноги чувствуются сейчас — с такими и выйдешь", "Покой сейчас — больше сил потом"),
+                avoidance: bi("A full meal at this point changes the problem, not solves it.", "Плотно поесть сейчас не решит проблему — только добавит дискомфорт."),
                 extras: [
-                    prep(.mobilityPrep, "Check shoes and route", "Laces, surface, and distance settled", "Проверьте обувь и маршрут", "Шнурки, покрытие и дистанция"),
-                    prep(.controlIntensity, "Easy warm-up before you leave", "10–15 minutes is enough", "Лёгкая разминка перед выходом", "10–15 минут достаточно")
+                    prep(.mobilityPrep, "Laces, surface, distance — already decided", "No negotiating with yourself at the curb", "Шнурки, покрытие, дистанция — уже решены", "У подъезда не торговаться с самим собой"),
+                    prep(.controlIntensity, "A quiet warm-up often beats a rushed one", "Ten minutes of ease is plenty", "Спокойная разминка лучше суетной", "Десять минут — достаточно")
                 ]
             ),
             under15Minutes: window(
-                hero: bi("Time to start", "Пора выходить"),
+                hero: bi("Time to move", "Пора выходить"),
                 assessment: bi(
-                    longSession ? "Long run ahead — a calm start protects the miles to come." : "Run starts now — a calm start beats a fast one.",
-                    longSession ? "Впереди длинная пробежка — спокойный старт сохранит силы на километры впереди." : "Пора выходить — спокойный старт лучше резкого."
+                    longSession ? "A long run rewards patience more than any other session." : "Good sessions usually start slower than expected.",
+                    longSession ? "На длинном забеге все сначала стартуют быстрее, чем надо." : "Большинство начинают быстрее, чем планировали."
                 ),
-                situation: bi("Route, shoes, and breathing — then start without rush.", "Маршрут, обувь и дыхание — и стартуйте без спешки."),
+                situation: bi("Let the body settle into the work.", "Первые минуты — просто разойтись, не разгоняться."),
                 primary: prep(
                     .controlIntensity,
-                    "Open slower than planned",
-                    "You can always speed up later",
-                    "Стартуйте медленнее плана",
-                    "Ускориться всегда успеете"
+                    "The first minutes should feel easy",
+                    "Strong sessions start with patience",
+                    "Первые минуты должны быть лёгкими",
+                    "Не спеши. Тренировка никуда не денется."
                 ),
                 avoidance: bi(
-                    longSession ? "Do not compare the opening hour to your finish pace." : "Do not sprint the first kilometre.",
-                    longSession ? "Не сравнивайте первый час с финишным темпом." : "Не рваните первый километр."
+                    longSession ? "The opening hour is not the finish — comparing them is a common mistake." : "Winning the first kilometre rarely wins the session.",
+                    longSession ? "Первый час — это не финиш." : "Первый километр редко решает всю тренировку."
                 ),
                 extras: [
-                    prep(.steadyHydration, "Sip if thirsty", "A few mouthfuls is enough", "Если хочется пить — пару глотков", "Полный объём сейчас не обязателен")
+                    prep(.steadyHydration, "Dry mouth on the first kilometer is a late fix", "The body usually warned you earlier", "Если пересохло в начале — поздно", "Если жажда уже была — не оставляй до старта")
                 ]
             )
         )
@@ -210,75 +210,75 @@ enum CoachSessionPrepCopyCatalog {
 
     private static func cyclingCopy(longSession: Bool) -> SessionPrepCopy {
         SessionPrepCopy(
-            mainTraining: bi("This ride is the main training demand left today.", "Эта поездка — главная нагрузка до конца дня."),
-            longTraining: bi("This ride is the biggest training stimulus left today.", "Эта поездка — главная тренировка дня."),
+            mainTraining: bi("Most of what's left today rides on this ride.", "Это главная тренировка, которая у тебя ещё осталась сегодня."),
+            longTraining: bi("This is the session that will ask the most of you today.", "Самая длинная и тяжёлая тренировка на сегодня — эта поездка."),
             fourPlusHours: window(
-                hero: bi("Build toward the ride", "Подготовьте выезд"),
+                hero: bi("Most of the work is still ahead", "Основная работа ещё не началась"),
                 assessment: bi(
-                    longSession ? "Still hours out — food and rest matter more than extra miles now." : "Still hours out — food and bottles come first.",
-                    longSession ? "До выезда ещё несколько часов — еда и отдых важнее лишних километров." : "До выезда ещё несколько часов — сначала еда и бутылки."
+                    longSession ? "Hours before the pedals matter — the day should feel open, not loaded." : "Still hours out — that's a gift most riders waste.",
+                    longSession ? "До поездки ещё несколько часов — день можно не забивать." : "До выезда ещё несколько часов — не трать их на лишнюю активность."
                 ),
-                situation: bi("Plan a meal, fill bottles, and keep the rest of the day easy.", "Запланируйте еду, наполните бутылки и сохраните день спокойным."),
-                primary: prep(.lightFueling, "Plan a carb meal", "Finish it 2-3 hours before you leave", "Запланируйте углеводный приём пищи", "За 2–3 часа до выезда"),
-                avoidance: bi("Do not spend your legs on another hard session first.", "Не потратьте ноги на другую тяжёлую тренировку раньше."),
+                situation: bi("What you do now shapes how your legs feel when you clip in.", "От того, как ты себя ведёшь сейчас, зависит, как ноги будут, когда защёлкнешь педали."),
+                primary: prep(.lightFueling, "A meal 2–3 hours out gives your body time to settle", "Gut discomfort at hour two usually starts here", "Поесть за 2–3 часа до выезда — еда успеет усвоиться", "Дискомфорт на втором часу часто начинается, если поел впритык"),
+                avoidance: bi("Nothing useful comes from rushing now.", "Сейчас спешить нечего."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Fill bottles early", "Start sipping well before the ride", "Наполните бутылки заранее", "Начните пить задолго до выезда"),
-                    prep(.mobilityPrep, "Check bike and kit", "Tyres, nutrition, and tools ready", "Проверьте велосипед и экипировку", "Шины, питание и инструменты")
+                    prep(.hydrateBeforeSession, "Bottles ready before you roll out", "Fixing logistics on the road costs more than time", "Фляги готовы до выезда", "На дороге чинить и искать — хуже, чем дома"),
+                    prep(.mobilityPrep, "Tyre pressure and devices — small things that pull focus", "Sorted now means flow later", "Давление в шинах и заряд — мелочи, но отвлекают", "Лучше проверить сейчас")
                 ]
             ),
             twoToFourHours: window(
-                hero: bi("Set up the ride", "Соберите выезд"),
-                assessment: bi("The ride is still later — on-bike fuel starts with what you eat now.", "Поездка ещё впереди — питание на ходу начинается с того, что съедите сейчас."),
-                situation: bi("Pack food, check the bike, and keep the next hours quiet.", "Соберите еду, проверьте велосипед и сохраните ближайшие часы спокойными."),
-                primary: prep(.lightFueling, "Finish your pre-ride meal", "Then keep activity low", "Закройте еду перед выездом", "Потом держите активность низкой"),
-                avoidance: bi("Do not use waiting time as extra training.", "Не превращайте ожидание в дополнительную тренировку."),
+                hero: bi("The ride is still a few hours out", "До поездки ещё несколько часов"),
+                assessment: bi("The ride is still later — what you put in now shows up on the road.", "Поездка не скоро — то, что сделаешь сейчас, почувствуешь на дороге."),
+                situation: bi("Calm legs and a settled mind beat one more hard effort.", "Спокойные ноги и ясная голова лучше, чем ещё одно жёсткое усилие."),
+                primary: prep(.lightFueling, "How you eat in this window sets the tone for the opening miles", "On-bike comfort starts well before you clip in", "Как поешь сейчас — так начнёшь первые километры", "Комфорт на ходу начинается задолго до педалей"),
+                avoidance: bi("Extra miles now rarely help the ride later.", "Лишние километры сейчас поездке не помогут."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Top up fluids", "Small sips through the next hour", "Допейте воду", "Понемногу в течение часа"),
-                    prep(.mobilityPrep, "Check bike and kit", "Nothing left to fix at the door", "Проверьте велосипед и экипировку", "Чтобы у двери ничего не чинить")
+                    prep(.hydrateBeforeSession, "If you're already thirsty, the ride will remind you", "Worth noticing, not panicking about", "Если жажда уже есть — поездка напомнит", "Не паниковать, но лучше не откладывать"),
+                    prep(.mobilityPrep, "Bike and kit sorted before the door", "Nothing left to fix at departure", "Велосипед и сборы — до двери", "На выезде ничего чинить")
                 ]
             ),
             sixtyTo120Minutes: window(
-                hero: bi("Almost time to go", "Скоро выезд"),
-                assessment: bi("About an hour left — gear and fluids beat last-minute rushing.", "До выезда около часа — сборы и вода важнее суеты."),
-                situation: bi("Pack on-bike food, check bottles, and stay off hard efforts.", "Положите еду на велосипед, проверьте бутылки и без жёсткой нагрузки."),
-                primary: prep(.hydrateBeforeSession, "Check bottles and sip steadily", "Keep your stomach comfortable", "Проверьте бутылки и пейте понемногу", "Чтобы желудок оставался комфортным"),
-                avoidance: bi("Do not force a heavy meal this close to the ride.", "Не пытайтесь плотно поесть так близко к выезду."),
+                hero: bi("About an hour out", "Около часа до выезда"),
+                assessment: bi("Anticipation often shows up as restlessness — that's the ride approaching.", "Нетерпение — нормально, поездка близко."),
+                situation: bi("Small logistics now prevent big interruptions later.", "Мелочи сейчас — меньше прерываний потом."),
+                primary: prep(.mobilityPrep, "Everything important should already be ready", "Route, kit, bottles — decided, not debated", "Маршрут, сборы, фляги — уже решено", "Не обсуждать на выезде"),
+                avoidance: bi("A heavy stomach this close to rolling out rarely ends well.", "Плотно поесть так близко к выезду — плохая идея."),
                 extras: [
-                    prep(.lightFueling, "Light snack only", "If you are actually hungry", "Лёгкий перекус", "Только если реально голодно"),
-                    prep(.mobilityPrep, "Check route and kit", "Decide it before you leave", "Проверьте маршрут и сборы", "Решите это до выезда")
+                    prep(.lightFueling, "Hunger that's real, not nerves", "A light bite only if the stomach is asking", "Голод или нервы", "Перекус — только если реально голоден"),
+                    prep(.mobilityPrep, "On-bike food where it belongs", "Reaching for it mid-ride should feel automatic", "Еда на велосипеде на месте", "Чтобы на ходу не искать")
                 ]
             ),
             fifteenTo60Minutes: window(
-                hero: bi("Almost time to ride", "Скоро выезд"),
-                assessment: bi("The ride is close — save energy for the road ahead.", "Поездка уже близко — берегите силы для дороги."),
-                situation: bi("Sip water, check kit, and leave without rushing.", "Сделайте пару глотков, проверьте сборы и выезжайте без спешки."),
-                primary: prep(.hydrateBeforeSession, "Top up fluids", "Small sips only", "Допейте воду", "Только маленькими глотками"),
-                avoidance: bi("Do not try to fix nutrition with a full meal now.", "Не пытайтесь наесться полноценной едой прямо сейчас."),
+                hero: bi("The ride is close now", "Поездка уже скоро"),
+                assessment: bi("Fresh legs feel eager — that's exactly when riders go too hard early.", "Ноги живые — и именно тогда многие гонят слишком рано."),
+                situation: bi("The goal is to arrive fresh, not busy.", "Постарайся сохранить то, что есть сейчас — без суеты."),
+                primary: prep(.controlIntensity, "What you feel in your legs now is what you're rolling out with", "Stillness preserves what pace will need", "Как ноги сейчас — с такими и выедешь", "Покой сейчас — больше сил потом"),
+                avoidance: bi("A full meal at this point changes the problem, not solves it.", "Плотно поесть сейчас не решит проблему — только добавит дискомфорт."),
                 extras: [
-                    prep(.mobilityPrep, "Check bike and nutrition", "Tyres, bottles, and food ready", "Проверьте велосипед и питание", "Шины, бутылки и еда"),
-                    prep(.controlIntensity, "Easy warm-up before you leave", "10–15 minutes is enough", "Лёгкая разминка перед выездом", "10–15 минут достаточно")
+                    prep(.mobilityPrep, "Tyres, bottles, route — already in your head", "Fewer surprises at the first corner", "Шины, фляги, маршрут — уже в голове", "Меньше сюрпризов на первом повороте"),
+                    prep(.controlIntensity, "A quiet warm-up often beats a rushed one", "Ten minutes of ease is plenty", "Спокойная разминка лучше суетной", "Десять минут — достаточно")
                 ]
             ),
             under15Minutes: window(
-                hero: bi("Time to head out", "Пора выезжать"),
+                hero: bi("Time to roll out", "Время выезжать"),
                 assessment: bi(
-                    longSession ? "Long ride ahead — a calm start protects the hours to come." : "Ride starts now — a calm start beats a fast one.",
-                    longSession ? "Впереди длинная поездка — спокойный старт сохранит силы на часы впереди." : "Пора выезжать — спокойный старт лучше резкого."
+                    longSession ? "A long ride rewards patience more than any other session." : "Good sessions usually start slower than expected.",
+                    longSession ? "На длинной поездке все сначала стартуют быстрее, чем надо." : "Большинство начинают быстрее, чем планировали."
                 ),
-                situation: bi("Bottles, route, and kit — then roll out without rush.", "Бутылки, маршрут и сборы — и выезжайте без спешки."),
+                situation: bi("Let the body settle into the work.", "Первые минуты — просто крутить, не разгоняться."),
                 primary: prep(
                     .controlIntensity,
-                    "Keep the first 15 minutes easy",
-                    "Working pace can wait",
-                    "Первый четверть часа — легко",
+                    "The first minutes should feel easy",
+                    "Working pace can wait — it always does",
+                    "Первые минуты должны быть лёгкими",
                     "Рабочий темп подождёт"
                 ),
                 avoidance: bi(
-                    longSession ? "Do not compare the opening hour to your finish pace." : "Do not sprint away from the first corner.",
-                    longSession ? "Не сравнивайте первый час с финишным темпом." : "Не рваните с первого поворота."
+                    longSession ? "The opening hour is not the finish — comparing them is a common mistake." : "Sprinting from the first corner rarely wins the session.",
+                    longSession ? "Первый час — это не финиш." : "Спурт с первого поворота редко выигрывает тренировку."
                 ),
                 extras: [
-                    prep(.steadyHydration, "Sip if thirsty", "A few mouthfuls is enough", "Если хочется пить — пару глотков", "Полную бутылку сейчас не обязательно")
+                    prep(.steadyHydration, "Dry mouth in the first hour is a late fix", "The body usually warned you earlier", "Если пересохло в начале — поздно", "Если жажда уже была — не оставляй до старта")
                 ]
             )
         )
@@ -291,12 +291,12 @@ enum CoachSessionPrepCopyCatalog {
             labelRU: "тренировка верха",
             longLabelEN: "long upper body session",
             longLabelRU: "длинная тренировка верха",
-            closeEN: "Upper body work is close — warm shoulders, not max out.",
-            closeRU: "Тренировка верха уже близко — разогрейте плечи, а не выкладывайтесь в разминке.",
-            mobilityEN: "Open shoulders and upper back",
-            mobilityRU: "Разомните плечи и верх спины",
-            under15EN: "Keep the first sets submaximal",
-            under15RU: "Первые подходы держите субмаксимальными"
+            closeEN: "Upper body work is close — shoulders should feel awake, not worked.",
+            closeRU: "Тренировка верха скоро — плечи должны быть живыми, не разогретыми до максимума.",
+            mobilityEN: "Shoulders and upper back waking up",
+            mobilityRU: "Разомни плечи и верх спины",
+            under15EN: "First sets with room left in the tank",
+            under15RU: "Первые подходы — не на полную"
         )
     }
 
@@ -307,12 +307,12 @@ enum CoachSessionPrepCopyCatalog {
             labelRU: "тренировка низа",
             longLabelEN: "long lower body session",
             longLabelRU: "длинная тренировка низа",
-            closeEN: "Lower body work is close — wake up hips, not fatigue.",
-            closeRU: "Тренировка низа уже близко — разбудите бёдра, а не усталость.",
-            mobilityEN: "Open hips and ankles",
-            mobilityRU: "Разомните бёдра и голеностоп",
-            under15EN: "Keep the first sets controlled",
-            under15RU: "Первые подходы держите под контролем"
+            closeEN: "Lower body work is close — hips should feel ready, not heavy.",
+            closeRU: "Тренировка низа скоро — бёдра должны быть живыми, не забитыми.",
+            mobilityEN: "Hips and ankles waking up",
+            mobilityRU: "Разомни бёдра и голеностоп",
+            under15EN: "First sets with control, not ambition",
+            under15RU: "Первые подходы — спокойно, без разгона"
         )
     }
 
@@ -323,12 +323,12 @@ enum CoachSessionPrepCopyCatalog {
             labelRU: "тренировка всего тела",
             longLabelEN: "long full body session",
             longLabelRU: "длинная тренировка всего тела",
-            closeEN: "Full body work is close — arrive warm, not wired.",
-            closeRU: "Тренировка всего тела уже близко — приходите разогретым, а не перевозбуждённым.",
-            mobilityEN: "Run through the full warm-up plan",
-            mobilityRU: "Пройдите полный план разминки",
-            under15EN: "Keep early sets well inside your limit",
-            under15RU: "Ранние подходы держите с запасом"
+            closeEN: "Full body work is close — warm and ready, not wired.",
+            closeRU: "Тренировка всего тела скоро — разогретый, но не перевозбуждённый.",
+            mobilityEN: "Full warm-up — the body notices when you skip",
+            mobilityRU: "Полная разминка — если пропустить, потом чувствуется",
+            under15EN: "Early sets well inside your limit",
+            under15RU: "Ранние подходы — с запасом"
         )
     }
 
@@ -339,12 +339,12 @@ enum CoachSessionPrepCopyCatalog {
             labelRU: "силовая",
             longLabelEN: "long strength session",
             longLabelRU: "длинная силовая",
-            closeEN: "Strength work is close — technique first, load second.",
-            closeRU: "Силовая уже близко — сначала техника, потом вес.",
-            mobilityEN: "Prep the joints you will load",
-            mobilityRU: "Подготовьте суставы под нагрузку",
-            under15EN: "Leave 1-2 reps in reserve on early sets",
-            under15RU: "В ранних подходах оставьте 1-2 повтора в запасе"
+            closeEN: "Strength work is close — technique before load, always.",
+            closeRU: "Силовая скоро — сначала техника, потом вес.",
+            mobilityEN: "Joints that will work today",
+            mobilityRU: "Суставы, которые будут работать",
+            under15EN: "Leave 1–2 reps in reserve on early sets",
+            under15RU: "В первых подходах оставь 1–2 повтора в запасе"
         )
     }
 
@@ -361,63 +361,63 @@ enum CoachSessionPrepCopyCatalog {
         under15EN: String,
         under15RU: String
     ) -> SessionPrepCopy {
-        let main = bi("This \(labelEN) is the main training demand left today.", "Эта \(labelRU) — главная нагрузка до конца дня.")
-        let long = bi("This \(longLabelEN) is the biggest training stimulus left today.", "Эта \(longLabelRU) — главная тренировка дня.")
+        let main = bi("Most of what's left today rides on this \(labelEN).", "Это главная тренировка, которая у тебя ещё осталась сегодня — \(labelRU).")
+        let long = bi("This is the session that will ask the most of you today.", "Самая тяжёлая тренировка на сегодня — \(longLabelRU).")
 
         return SessionPrepCopy(
             mainTraining: main,
             longTraining: long,
             fourPlusHours: window(
-                hero: bi("Protect quality for later", "Сохраните качество на потом"),
-                assessment: bi("There is still time — use it to arrive fresh for the lifts.", "Время ещё есть — используйте его, чтобы прийти на подходы свежим."),
-                situation: bi("Eat normally, hydrate, and avoid extra fatigue before the gym.", "Ешьте нормально, пейте воду и не копите усталость до зала."),
-                primary: prep(.lightFueling, "Plan a solid meal", "Finish it 2-3 hours before training", "Запланируйте полноценный приём пищи", "За 2-3 часа до тренировки"),
-                avoidance: bi("Do not pre-fatigue the muscles you need later.", "Не уставьте мышцы, которые понадобятся позже."),
+                hero: bi("Today is about quality, not proving anything", "Сегодня не надо доказывать — просто сделай нормально"),
+                assessment: bi("Hours before the gym — the day should feel calm, not busy.", "До зала ещё несколько часов — день можно не забивать."),
+                situation: bi("What you do now shapes how sharp you feel under the bar.", "От того, как ты себя ведёшь сейчас, зависит, как будешь чувствовать себя под штангой."),
+                primary: prep(.lightFueling, "A meal 2–3 hours out gives your body time to settle", "Heavy sets on a rushed stomach rarely feel right", "Поесть за 2–3 часа до тренировки — еда успеет усвоиться", "Тяжёлые подходы на несуспевшей еде — плохая идея"),
+                avoidance: bi("Pre-fatiguing the muscles you'll need later is a quiet way to lose a session.", "Устать в мышцах до зала — тихий способ испортить тренировку."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Stay hydrated", "Sip through the day", "Пейте воду", "Понемногу в течение дня"),
-                    prep(.controlIntensity, "Keep the day lighter", "Save focus for the session", "Сделайте день легче", "Сохраните концентрацию на тренировку")
+                    prep(.hydrateBeforeSession, "A flat session sometimes starts with a flat morning", "Energy and fluids tend to move together", "Плоская тренировка часто начинается с плоского утра", "Если мало пил — обычно чувствуется"),
+                    prep(.controlIntensity, "A lighter day often produces a sharper session", "Focus is finite — spend it in the gym", "Лёгкий день часто даёт лучшую тренировку", "Силы конечны — потрать их в зале")
                 ]
             ),
             twoToFourHours: window(
-                hero: bi("Set up the session", "Подведите к тренировке"),
-                assessment: bi("The session is still later — food and calm nerves beat extra work.", "Тренировка ещё впереди — еда и спокойные нервы важнее лишней активности."),
-                situation: bi("Close the main meal and mentally walk through the first lifts.", "Закройте основной приём пищи и мысленно пройдите первые упражнения."),
-                primary: prep(.lightFueling, "Finish fueling", "Then keep the lead-in quiet", "Закройте питание", "Потом сохраните спокойную подводку"),
-                avoidance: bi("Do not squeeze in another hard session first.", "Не впишите перед этим ещё одну тяжёлую сессию."),
+                hero: bi("The session is still a few hours out", "До тренировки ещё несколько часов"),
+                assessment: bi("Calm nerves and a settled body beat one more hard effort.", "Спокойные нервы и собранное тело лучше, чем ещё одно жёсткое усилие."),
+                situation: bi("Mental rehearsal of the first lifts costs nothing and helps plenty.", "Мысленно пройти первые упражнения — бесплатно и помогает."),
+                primary: prep(.lightFueling, "How you eat in this window sets the tone for the opening sets", "A settled stomach beats a last-minute scramble", "Как поешь сейчас — так начнёшь первые подходы", "Лучше поесть раньше, чем хватать перед залом"),
+                avoidance: bi("Squeezing in another hard session first rarely helps this one.", "Вписать перед этим ещё одну тяжёлую тренировку — редко помогает."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Top up fluids", "Small sips are enough", "Допейте воду", "Достаточно нескольких глотков"),
-                    prep(.mobilityPrep, mobilityEN, "Five to ten easy minutes", mobilityRU, "Пять-десять лёгких минут")
+                    prep(.hydrateBeforeSession, "Thirst creeping in now is worth noticing", "Not urgent — just a signal to slow down the day", "Если жажда уже есть — не откладывай", "Не срочно, просто лучше не игнорировать"),
+                    prep(.mobilityPrep, mobilityEN, "Five to ten easy minutes is often enough", mobilityRU, "Пять–десять лёгких минут часто достаточно")
                 ]
             ),
             sixtyTo120Minutes: window(
-                hero: bi("Get the gym ready", "Подготовьте зал"),
-                assessment: bi("Under an hour to start — setup and warm-up beat rushing the first set.", "До старта меньше часа — сборы и разминка лучше спешки в первом подходе."),
-                situation: bi("Last window to load bars, check equipment, and plan the warm-up.", "Последнее окно — загрузить штанги, проверить инвентарь и спланировать разминку."),
-                primary: prep(.mobilityPrep, "Start mobility now", "Target the joints for today's lifts", "Начните мобильность сейчас", "На суставы сегодняшних упражнений"),
-                avoidance: bi("Do not jump into working weight cold.", "Не выходите на рабочий вес без подготовки."),
+                hero: bi("About an hour out", "Около часа до старта"),
+                assessment: bi("Anticipation often shows up as restlessness — that's the session approaching.", "Нетерпение — нормально, тренировка близко."),
+                situation: bi("Everything important should already be ready.", "Если всё собрано и готово — этого достаточно."),
+                primary: prep(.mobilityPrep, "Let the joints wake up before the load arrives", "Movement now is about readiness, not effort", "Разомни суставы до нагрузки", "Сейчас это про подготовку, а не про работу"),
+                avoidance: bi("Working weight on cold joints is where sessions go sideways.", "Рабочий вес на холодных суставах — частая ошибка."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Sip water", "Stay comfortable, not overfull", "Пейте воду", "Комфортно, без переполнения"),
-                    prep(.mobilityPrep, "Check setup and equipment", "Bars, clips, and bench ready", "Проверьте зону и инвентарь", "Штанги, замки и скамья готовы")
+                    prep(.hydrateBeforeSession, "A heavy stomach before heavy sets rarely feels right", "Light and settled beats full and rushed", "Полный желудок перед тяжёлыми подходами — плохая идея", "Лёгкое и усвоённое лучше, чем полное и наспех"),
+                    prep(.mobilityPrep, "Bars, clips, bench — sorted before you need them", "Fewer interruptions between warm-up and work", "Штанги, замки, скамья — готовы до того, как понадобятся", "Меньше прерываний между разминкой и работой")
                 ]
             ),
             fifteenTo60Minutes: window(
-                hero: bi("Warm up with intent", "Разминайтесь осознанно"),
+                hero: bi("The session is close now", "Тренировка уже скоро"),
                 assessment: bi(closeEN, closeRU),
-                situation: bi("No big meal now — mobility, equipment, and calm focus.", "Без плотной еды сейчас — мобильность, инвентарь и спокойный фокус."),
-                primary: prep(.mobilityPrep, "Start warm-up now", "Build into the first working sets gradually", "Начните разминку сейчас", "Плавно выходите на первые рабочие подходы"),
-                avoidance: bi("Do not chase numbers before the body is ready.", "Не гонитесь за цифрами, пока тело не готово."),
+                situation: bi("The goal is to arrive fresh, not busy.", "Постарайся сохранить то, что есть сейчас — без суеты."),
+                primary: prep(.mobilityPrep, "Build into the first working sets gradually", "Strong sessions start with patience", "Плавно выходи на первые рабочие подходы", "Не спеши. Тренировка никуда не денется."),
+                avoidance: bi("Chasing numbers before the body is ready is how ego steals sessions.", "Гоняться за цифрами, пока тело не готово — знакомая ошибка."),
                 extras: [
-                    prep(.mobilityPrep, "Check setup and equipment", "Then finish warm-up before the clock hits zero", "Проверьте зону и инвентарь", "Завершите разминку до старта")
+                    prep(.mobilityPrep, "Setup and equipment — already in your head", "Warm-up finished before the clock hits zero", "Зона и инвентарь — уже в голове", "Разминка завершена до старта")
                 ]
             ),
             under15Minutes: window(
                 hero: bi("First sets set the tone", "Первые подходы задают тон"),
-                assessment: bi("The session starts now — quality beats load in the opening block.", "Тренировка начинается — в первом блоке качество важнее веса."),
-                situation: bi("Use the warm-up to confirm control, not to prove strength.", "Используйте разминку для проверки контроля, а не силы."),
-                primary: prep(.controlIntensity, under15EN, "Build load only if form stays clean", under15RU, "Добавляйте вес только при чистой технике"),
-                avoidance: bi("Do not let ego pick the first working weight.", "Не позволяйте эго выбрать первый рабочий вес."),
+                assessment: bi("The session starts now — quality in the opening block matters more than load.", "Тренировка начинается — в первом блоке важнее техника, чем вес."),
+                situation: bi("The warm-up confirms control — it doesn't prove strength.", "Разминка — проверить контроль, а не выкладываться."),
+                primary: prep(.controlIntensity, under15EN, "Add load only when form stays clean", under15RU, "Добавляй вес только когда техника чистая"),
+                avoidance: bi("Ego picking the first working weight is a familiar mistake.", "Взять слишком тяжёлый первый рабочий вес — знакомая ошибка."),
                 extras: [
-                    prep(.steadyHydration, "Sip if needed", "No big drinks between sets yet", "Глоток при необходимости", "Без больших порций между подходами")
+                    prep(.steadyHydration, "Between sets, small sips beat big gulps", "The stomach has work to do already", "Между подходами — маленькие глотки, не большие", "Желудку уже есть чем заняться")
                 ]
             )
         )
@@ -428,8 +428,8 @@ enum CoachSessionPrepCopyCatalog {
             longSession: longSession,
             sportEN: "tennis",
             sportRU: "теннис",
-            closeEN: "Tennis is close — find rhythm before the first point.",
-            closeRU: "Теннис уже близко — найдите ритм до первого розыгрыша.",
+            closeEN: "Tennis is close — rhythm should arrive before the first point.",
+            closeRU: "Теннис скоро — ритм лучше найти до первого розыгрыша.",
             rallyEN: "the first point",
             rallyRU: "первым розыгрышем"
         )
@@ -440,8 +440,8 @@ enum CoachSessionPrepCopyCatalog {
             longSession: longSession,
             sportEN: "squash",
             sportRU: "сквош",
-            closeEN: "Squash is close — control breathing before the first rally.",
-            closeRU: "Сквош уже близко — настройте дыхание до первого розыгрыша.",
+            closeEN: "Squash is close — breathing should settle before the first rally.",
+            closeRU: "Сквош скоро — дыхание лучше успокоить до первого розыгрыша.",
             rallyEN: "the first rally",
             rallyRU: "первым розыгрышем"
         )
@@ -457,59 +457,59 @@ enum CoachSessionPrepCopyCatalog {
         rallyRU: String
     ) -> SessionPrepCopy {
         SessionPrepCopy(
-            mainTraining: bi("This \(sportEN) session is the main training demand left today.", "Этот \(sportRU) — главная нагрузка до конца дня."),
-            longTraining: bi("This \(sportEN) session is the biggest training stimulus left today.", "Этот \(sportRU) — главная тренировка дня."),
+            mainTraining: bi("Most of what's left today rides on this \(sportEN) session.", "Это главная тренировка, которая у тебя ещё осталась сегодня — \(sportRU)."),
+            longTraining: bi("This is the session that will ask the most of you today.", "Самая тяжёлая тренировка на сегодня — \(sportRU)."),
             fourPlusHours: window(
-                hero: bi("Save legs for the court", "Берегите ноги к корту"),
-                assessment: bi("There is still time — arrive fresh for repeated accelerations.", "Время ещё есть — приходите свежим под повторные ускорения."),
-                situation: bi("Eat, hydrate, and keep the day from becoming extra leg work.", "Поезжайте, пейте и не превращайте день в лишнюю нагрузку на ноги."),
-                primary: prep(.lightFueling, "Plan a balanced meal", "Finish it 2-3 hours before the court", "Запланируйте сбалансированный приём пищи", "За 2-3 часа до корта"),
-                avoidance: bi("Do not drain legs before the match.", "Не опустошите ноги до игры."),
+                hero: bi("Fresh legs are worth protecting", "Не гоняй ноги без нужды"),
+                assessment: bi("Hours before the court — the day should feel calm, not busy.", "До корта ещё несколько часов — день можно не забивать."),
+                situation: bi("Court sports punish legs that were spent earlier in the day.", "На корте ноги быстро устают — если их уже погонял до игры."),
+                primary: prep(.lightFueling, "A meal 2–3 hours out gives your body time to settle", "Repeated accelerations need fuel that arrived early", "Поесть за 2–3 часа до корта — еда успеет усвоиться", "На корте много ускорений — лучше поесть раньше"),
+                avoidance: bi("Draining legs before the court is a quiet way to lose sharpness.", "Вымотать ноги до игры — плохая идея."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Start steady hydration", "Court heat adds demand later", "Начните пить ровно", "Жара на корте добавит нагрузку"),
-                    prep(.controlIntensity, "Keep the lead-in light", "Save spring for the court", "Сделайте подводку лёгкой", "Сохраните пружину для корта")
+                    prep(.hydrateBeforeSession, "Court heat finds dehydration fast", "What you feel now shows up under pressure later", "На корте в жару быстро чувствуется, если мало пил", "Лучше не откладывать"),
+                    prep(.controlIntensity, "A lighter day often produces a sharper court session", "Spring in the legs is built in quiet hours", "Лёгкий день — ноги живее на корте", "Не трать силы на лишнюю активность")
                 ]
             ),
             twoToFourHours: window(
-                hero: bi("Set up for the court", "Подготовьтесь к корту"),
-                assessment: bi("The session is still later — timing and calm legs matter now.", "Игра ещё впереди — сейчас важны тайминг и спокойные ноги."),
-                situation: bi("Pack racket gear, sip water, and avoid unnecessary hard movement.", "Соберите экипировку, пейте воду и без лишней жёсткой активности."),
-                primary: prep(.hydrateBeforeSession, "Finish hydration", "Then keep activity low", "Доведите воду до нормы", "Потом держите активность низкой"),
-                avoidance: bi("Do not turn waiting time into conditioning.", "Не превращайте ожидание в кондиционирование."),
+                hero: bi("The court is still a few hours out", "До корта ещё несколько часов"),
+                assessment: bi("Calm legs and settled timing beat one more hard effort.", "Спокойные ноги лучше, чем ещё одно жёсткое усилие."),
+                situation: bi("Everything important should already be ready.", "Если ракетка, обувь и всё остальное готово — достаточно."),
+                primary: prep(.mobilityPrep, "Calves and hips waking up", "Court movement starts from the legs", "Разомни икры и бёдра", "На корте всё начинается с ног"),
+                avoidance: bi("Waiting time turned into conditioning is a familiar trap.", "Превратить ожидание в тренировку — знакомая ошибка."),
                 extras: [
-                    prep(.mobilityPrep, "Loosen calves and hips", "Court movement starts from the legs", "Разомните икры и бёдра", "Движение на корте начинается с ног"),
-                    prep(.mobilityPrep, "Check racket and shoes", "Grip, strings, and court shoes ready", "Проверьте ракетку и обувь", "Хват, струны и кроссовки готовы")
+                    prep(.hydrateBeforeSession, "Thirst creeping in now is worth noticing", "Court sessions rarely forgive running behind", "Если жажда уже есть — не откладывай", "На корте это быстро чувствуется"),
+                    prep(.mobilityPrep, "Racket and shoes — grip, strings, court shoes sorted", "Fewer decisions before \(rallyEN)", "Ракетка и обувь готовы", "Меньше решений перед \(rallyRU)")
                 ]
             ),
             sixtyTo120Minutes: window(
-                hero: bi("Court prep mode", "Режим подготовки к корту"),
-                assessment: bi("Under an hour to play — gear, fluids, and a calm warm-up beat rushing.", "До игры меньше часа — экипировка, вода и спокойная разминка лучше суеты."),
-                situation: bi("Last window for racket check, shoes, and light movement prep.", "Последнее окно — проверить ракетку, обувь и лёгкую разминку."),
-                primary: prep(.hydrateBeforeSession, "Top up fluids", "Small sips, comfortable stomach", "Допейте воду", "Маленькими глотками, лёгкий желудок"),
-                avoidance: bi("Do not force a heavy meal this close to the court.", "Не пытайтесь плотно поесть так близко к корту."),
+                hero: bi("About an hour out", "Около часа до игры"),
+                assessment: bi("Anticipation often shows up as restlessness — that's the court approaching.", "Нетерпение — нормально, скоро на корт."),
+                situation: bi("Small logistics now prevent big distractions later.", "Мелочи сейчас — меньше отвлекаться потом."),
+                primary: prep(.mobilityPrep, "Court rhythm builds gradually, not in one burst", "The first minutes are for finding timing", "Ритм на корте — постепенно, не в один рывок", "Первые минуты — просто войти в игру"),
+                avoidance: bi("A heavy stomach this close to the court rarely ends well.", "Плотно поесть так близко к корту — плохая идея."),
                 extras: [
-                    prep(.mobilityPrep, "Check racket and shoes", "Remove decisions before \(rallyEN)", "Проверьте ракетку и обувь", "Уберите решения перед \(rallyRU)"),
-                    prep(.controlIntensity, "Start dynamic warm-up", "Build court rhythm gradually", "Начните динамическую разминку", "Постепенно входите в кортовый ритм")
+                    prep(.lightFueling, "Hunger that's real, not nerves", "A light bite only if the stomach is asking", "Голод или нервы", "Перекус — только если реально голоден"),
+                    prep(.controlIntensity, "Dynamic warm-up — ease into court rhythm", "Strong sessions start with patience", "Динамическая разминка — без разгона", "Не спеши. Игра никуда не денется.")
                 ]
             ),
             fifteenTo60Minutes: window(
-                hero: bi("Step onto court calm", "Выходите на корт спокойно"),
+                hero: bi("The court is close now", "Корт уже скоро"),
                 assessment: bi(closeEN, closeRU),
-                situation: bi("Sip water, check strings and shoes, and keep the warm-up controlled.", "Сделайте глоток воды, проверьте струны и обувь, разминку держите под контролем."),
-                primary: prep(.mobilityPrep, "Start warm-up now", "Use the first minutes to find rhythm", "Начните разминку сейчас", "Первые минуты — для поиска ритма"),
-                avoidance: bi("Do not spike intensity before the first rally.", "Не поднимайте интенсивность до первого розыгрыша."),
+                situation: bi("The goal is to arrive fresh, not busy.", "Постарайся сохранить то, что есть сейчас — без суеты."),
+                primary: prep(.mobilityPrep, "First minutes for rhythm, not intensity", "Let the body settle into court movement", "Первые минуты — для ритма, не для скорости", "Просто войти в движение на корте"),
+                avoidance: bi("Spiking intensity before the first rally rarely helps timing.", "Разгоняться до первого розыгрыша — редко помогает."),
                 extras: [
-                    prep(.mobilityPrep, "Check racket and shoes", "Then finish warm-up before play starts", "Проверьте ракетку и обувь", "Завершите разминку до начала игры")
+                    prep(.mobilityPrep, "Racket and shoes — already in your head", "Warm-up finished before play starts", "Ракетка и обувь — уже в голове", "Разминка до начала игры")
                 ]
             ),
             under15Minutes: window(
-                hero: bi("Find rhythm early", "Найдите ритм сразу"),
-                assessment: bi("Play starts soon — first games are for timing, not all-out points.", "Игра скоро начнётся — первые геймы для тайминга, а не для максимума."),
-                situation: bi("Stay relaxed between movements and let the body accelerate selectively.", "Оставайтесь расслабленным между движениями и ускоряйтесь выборочно."),
-                primary: prep(.controlIntensity, "Keep the opening block controlled", "Choose the hard rallies selectively", "Первый блок держите под контролем", "Выбирайте тяжёлые розыгрыши"),
-                avoidance: bi("Do not let competition override recovery.", "Не позволяйте азарту перебить восстановление."),
+                hero: bi("Find rhythm early", "Ритм с самого начала"),
+                assessment: bi("Play starts soon — first games are for timing, not all-out points.", "Игра скоро — первые геймы для тайминга, не для максимума."),
+                situation: bi("Relaxation between movements — acceleration comes selectively.", "Между движениями — расслабление, ускоряйся выборочно."),
+                primary: prep(.controlIntensity, "The opening block stays controlled", "Hard rallies chosen selectively, not by default", "Первые розыгрыши — спокойно", "Жёсткие — выборочно, не каждый"),
+                avoidance: bi("Competition overriding recovery is how matches get decided early.", "Если азарт перебивает отдых — матч часто решается рано."),
                 extras: [
-                    prep(.steadyHydration, "Take a few sips", "No big drinks right before play", "Сделайте несколько глотков", "Без больших порций прямо перед игрой")
+                    prep(.steadyHydration, "Dry mouth under pressure is a late fix", "The body usually warned you earlier", "Если пересохло под давлением — поздно", "Если жажда уже была — не оставляй до старта")
                 ]
             )
         )
@@ -517,59 +517,59 @@ enum CoachSessionPrepCopyCatalog {
 
     private static func generalCopy(longSession: Bool) -> SessionPrepCopy {
         SessionPrepCopy(
-            mainTraining: bi("This session is the main training demand left today.", "Эта сессия — главная нагрузка до конца дня."),
-            longTraining: bi("This session is the biggest training stimulus left today.", "Эта сессия — главная тренировка дня."),
+            mainTraining: bi("Most of what's left today rides on this session.", "Это главная тренировка, которая у тебя ещё осталась сегодня."),
+            longTraining: bi("This is the session that will ask the most of you today.", "Самая тяжёлая тренировка на сегодня — именно эта."),
             fourPlusHours: window(
-                hero: bi("Build toward the session", "Подведите к тренировке"),
-                assessment: bi("There is still time — use it to arrive ready.", "Время ещё есть — используйте его, чтобы прийти готовым."),
-                situation: bi("Plan food, hydration, and a quiet lead-in.", "Запланируйте еду, воду и спокойную подводку."),
-                primary: prep(.lightFueling, "Plan the main meal", "Finish it 2-3 hours before the session", "Запланируйте основной приём пищи", "За 2-3 часа до старта"),
-                avoidance: bi("Do not add a second hard session first.", "Не добавляйте перед этим вторую тяжёлую сессию."),
+                hero: bi("Most of the work is still ahead", "Основная работа ещё не началась"),
+                assessment: bi("Hours before the start — the day should feel calm, not busy.", "До старта ещё несколько часов — день можно не забивать."),
+                situation: bi("What you do now shapes how you feel when it counts.", "От того, как ты себя ведёшь сейчас, зависит, как будешь чувствовать себя на старте."),
+                primary: prep(.lightFueling, "A meal 2–3 hours out gives your body time to settle", "Rushed fueling usually shows up as discomfort, not energy", "Поесть за 2–3 часа до старта — еда успеет усвоиться", "Если поел впритык — обычно дискомфорт, а не энергия"),
+                avoidance: bi("Adding a second hard session first rarely helps this one.", "Добавить перед этим ещё одну тяжёлую тренировку — редко помогает."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Start steady hydration", "Sip before the final hour", "Начните пить ровно", "Пейте до последнего часа"),
-                    prep(.controlIntensity, "Keep the lead-in quiet", "Save freshness for the work ahead", "Сделайте подводку спокойной", "Сохраните свежесть к нагрузке")
+                    prep(.hydrateBeforeSession, "A flat morning sometimes becomes a flat session", "Energy and fluids tend to move together", "Плоская тренировка часто начинается с плоского утра", "Если мало пил — обычно чувствуется"),
+                    prep(.controlIntensity, "A quieter day often produces a sharper session", "Freshness is built in calm hours", "Тихий день часто даёт лучшую тренировку", "Не трать силы на лишнюю активность")
                 ]
             ),
             twoToFourHours: window(
-                hero: bi("Set up the session", "Соберите подготовку"),
-                assessment: bi("The session is still later today — the lead-in matters now.", "Тренировка ещё позже сегодня — сейчас важна спокойная подводка."),
-                situation: bi("Close fueling, hydrate, and keep unnecessary movement low.", "Закройте питание, пейте воду и сократите лишнее движение."),
-                primary: prep(.lightFueling, "Finish fueling for a controlled start", "Then keep activity low", "Закройте питание для спокойного старта", "Потом держите активность низкой"),
-                avoidance: bi("Do not turn waiting time into extra training.", "Не делайте из ожидания дополнительную тренировку."),
+                hero: bi("The session is still a few hours out", "До тренировки ещё несколько часов"),
+                assessment: bi("Calm body and settled mind beat one more hard effort.", "Спокойное тело и ясная голова лучше, чем ещё одно жёсткое усилие."),
+                situation: bi("Nothing useful comes from rushing now.", "Сейчас спешить нечего."),
+                primary: prep(.lightFueling, "How you eat in this window sets the tone for the opening", "A settled stomach beats a last-minute scramble", "Как поешь сейчас — так начнёшь", "Лучше поесть раньше, чем хватать перед стартом"),
+                avoidance: bi("Waiting time turned into training is a familiar trap.", "Превратить ожидание в тренировку — знакомая ошибка."),
                 extras: [
-                    prep(.hydrateBeforeSession, "Finish steady hydration", "Avoid catching up at the start", "Доведите воду до нормы", "Не догоняйте её на старте"),
-                    prep(.mobilityPrep, "Check equipment", "Remove decisions before the start", "Проверьте экипировку", "Уберите решения перед стартом")
+                    prep(.hydrateBeforeSession, "Thirst creeping in now is worth noticing", "Catching up at the start rarely works well", "Если жажда уже есть — не откладывай", "Догонять на старте редко работает"),
+                    prep(.mobilityPrep, "Everything important should already be ready", "Fewer decisions when the clock matters", "Если всё готово — достаточно", "Меньше решений, когда важны минуты")
                 ]
             ),
             sixtyTo120Minutes: window(
-                hero: bi("Shift into prep mode", "Переходите к подготовке"),
-                assessment: bi("About an hour to start — keep the prep simple.", "До старта около часа — не усложняйте подготовку."),
-                situation: bi("Last good window for gear, fluids, and a light top-up.", "Последнее удобное окно — сборы, вода и лёгкий перекус."),
-                primary: prep(.hydrateBeforeSession, "Top up fluids", "Small sips, comfortable stomach", "Допейте воду", "Маленькими глотками, лёгкий желудок"),
-                avoidance: bi("Do not force a full meal this close to the start.", "Не пытайтесь плотно поесть так близко к старту."),
+                hero: bi("About an hour out", "Около часа до старта"),
+                assessment: bi("Anticipation often shows up as restlessness — that's the session approaching.", "Нетерпение — нормально, тренировка близко."),
+                situation: bi("Small logistics now prevent big distractions later.", "Мелочи сейчас — меньше отвлекаться потом."),
+                primary: prep(.mobilityPrep, "Everything important should already be ready", "Gear sorted — mind on the work ahead", "Если всё собрано — достаточно", "Голова на работе впереди"),
+                avoidance: bi("A heavy stomach this close to the start rarely ends well.", "Плотно поесть так близко к старту — плохая идея."),
                 extras: [
-                    prep(.lightFueling, "Use only a light top-up", "If you are actually hungry", "Лёгкий перекус", "Если реально голодно"),
-                    prep(.mobilityPrep, "Check equipment", "Everything ready before the clock runs down", "Проверьте экипировку", "Всё готово до старта")
+                    prep(.lightFueling, "Hunger that's real, not nerves", "A light bite only if the stomach is asking", "Голод или нервы", "Перекус — только если реально голоден"),
+                    prep(.mobilityPrep, "Equipment settled before the clock runs down", "No scrambling when it's time to move", "Экипировка готова до старта", "Без суеты, когда пора выходить")
                 ]
             ),
             fifteenTo60Minutes: window(
-                hero: bi("Arrive ready", "Выйдите на старт готовым"),
-                assessment: bi("The session is close — keep the prep simple.", "Тренировка уже близко — не усложняйте подготовку."),
-                situation: bi("The meal window has passed; sip, check gear, and stay calm.", "Окно для еды прошло — допейте, проверьте сборы и оставайтесь спокойным."),
-                primary: prep(.hydrateBeforeSession, "Finish final hydration", "Small sips only", "Допейте воду перед стартом", "Только маленькими глотками"),
-                avoidance: bi("Do not fix fueling with a full meal now.", "Не пытайтесь наесться полноценной едой прямо сейчас."),
+                hero: bi("The session is close now", "Тренировка уже скоро"),
+                assessment: bi("Energy feels available — that's the trap of starting too fast.", "Энергия есть — и именно на этом часто разгоняются слишком быстро."),
+                situation: bi("The goal is to arrive fresh, not busy.", "Постарайся сохранить то, что есть сейчас — без суеты."),
+                primary: prep(.controlIntensity, "What you feel right now is what you're bringing to the start", "Stillness preserves what the session will need", "Как чувствуешь себя сейчас — с таким и выйдешь", "Покой сейчас — больше сил потом"),
+                avoidance: bi("A full meal at this point changes the problem, not solves it.", "Плотно поесть сейчас не решит проблему — только добавит дискомфорт."),
                 extras: [
-                    prep(.mobilityPrep, "Check equipment", "Then start warm-up 10-15 minutes before the start", "Проверьте экипировку", "Затем разминка за 10–15 минут до старта")
+                    prep(.mobilityPrep, "Gear and warm-up — already in your head", "Ten to fifteen minutes of ease is plenty", "Сборы и разминка — уже в голове", "Десять–пятнадцать минут — достаточно")
                 ]
             ),
             under15Minutes: window(
-                hero: bi("Time to start", "Пора начинать"),
-                assessment: bi("Session starts now — how you open matters more than how hard you go.", "Тренировка начинается — важнее как вы стартуете, а не насколько жёстко."),
-                situation: bi("Gear checked, mind calm — then begin without rush.", "Сборы проверены, голова спокойна — начинайте без спешки."),
-                primary: prep(.controlIntensity, "First 10–15 minutes easy", "Build only when the body feels ready", "Первые 10–15 минут легко", "Ускоряйтесь, когда тело готово"),
+                hero: bi("Time to move", "Время начинать"),
+                assessment: bi("How you open matters more than how hard you go.", "Важнее как стартуешь, а не насколько жёстко."),
+                situation: bi("Let the body settle into the work.", "Первые минуты — просто войти в работу, не разгоняться."),
+                primary: prep(.controlIntensity, "The first minutes should feel easy", "Strong sessions start with patience", "Первые минуты должны быть лёгкими", "Не спеши. Тренировка никуда не денется."),
                 avoidance: bi("A hard opening is hard to undo.", "Жёсткий старт потом трудно откатить."),
                 extras: [
-                    prep(.steadyHydration, "Sip if thirsty", "A few mouthfuls is enough", "Если хочется пить — пару глотков", "Полный объём сейчас не обязателен")
+                    prep(.steadyHydration, "Dry mouth early on is a late fix", "The body usually warned you earlier", "Если пересохло в начале — поздно", "Если жажда уже была — не оставляй до старта")
                 ]
             )
         )
