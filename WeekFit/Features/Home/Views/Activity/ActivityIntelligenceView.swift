@@ -896,7 +896,7 @@ private struct SessionRow: View {
 
 // MARK: - Session Detail
 
-private struct ActivitySessionDetailView: View {
+struct ActivitySessionDetailView: View {
     let session: ActivitySessionSnapshot
     @ObservedObject var healthManager: HealthManager
 
@@ -905,6 +905,8 @@ private struct ActivitySessionDetailView: View {
     @State private var isHeartRateLoading = false
     @State private var isRouteLoading = false
     @State private var isRouteMapPresented = false
+    @State private var isRoutePreviewEnabled = true
+    @State private var isClosing = false
     @State private var remainingSupplementalLoads = 0
 
     private var detail: ActivitySessionDetailSnapshot? {
@@ -1106,6 +1108,10 @@ private struct ActivitySessionDetailView: View {
                 title: session.title
             )
         }
+        .onDisappear {
+            isRouteMapPresented = false
+            isRoutePreviewEnabled = false
+        }
         .task(id: session.id) {
             await loadSupplementalDetails()
         }
@@ -1117,7 +1123,7 @@ private struct ActivitySessionDetailView: View {
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                dismiss()
+                closeDetail()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
@@ -1141,6 +1147,18 @@ private struct ActivitySessionDetailView: View {
             Rectangle()
                 .fill(Color.white.opacity(0.04))
                 .frame(height: 1)
+        }
+    }
+
+    private func closeDetail() {
+        guard !isClosing else { return }
+
+        isClosing = true
+        isRouteMapPresented = false
+        isRoutePreviewEnabled = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            dismiss()
         }
     }
 
@@ -1332,7 +1350,7 @@ private struct ActivitySessionDetailView: View {
                         .frame(height: 132)
                         .frame(maxWidth: .infinity)
                         .innerActivityCard(cornerRadius: 15)
-                } else {
+                } else if isRoutePreviewEnabled {
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         isRouteMapPresented = true
@@ -1361,6 +1379,11 @@ private struct ActivitySessionDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(WeekFitLocalizedString("activity.route.viewMap")))
                     .accessibilityHint(Text(WeekFitLocalizedString("activity.route.expandHint")))
+                } else {
+                    SessionDetailSkeletonLine(color: session.color)
+                        .frame(height: 132)
+                        .frame(maxWidth: .infinity)
+                        .innerActivityCard(cornerRadius: 15)
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -2114,6 +2137,30 @@ private enum WorkoutRouteGeometry {
     }
 }
 
+private struct RouteMapRenderGate<Content: View>: View {
+
+    @State private var canRender = false
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        GeometryReader { proxy in
+            if canRender, proxy.size.width > 2, proxy.size.height > 2 {
+                content()
+            } else {
+                ActivityStyle.cardBackground
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.async {
+                canRender = true
+            }
+        }
+        .onDisappear {
+            canRender = false
+        }
+    }
+}
+
 private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
@@ -2128,14 +2175,16 @@ private struct WorkoutRouteMapPreview: View {
 
     var body: some View {
         ZStack {
-            if let mapRegion {
-                Map(initialPosition: .region(mapRegion), interactionModes: []) {
-                    routeContent
+            RouteMapRenderGate {
+                if let mapRegion {
+                    Map(initialPosition: .region(mapRegion), interactionModes: []) {
+                        routeContent
+                    }
+                    .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+                    .colorScheme(.dark)
+                } else {
+                    ActivityStyle.cardBackground
                 }
-                .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
-                .colorScheme(.dark)
-            } else {
-                ActivityStyle.cardBackground
             }
 
             LinearGradient(
@@ -2216,6 +2265,8 @@ private struct WorkoutRouteDetailMapView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var canRenderMap = false
+    @State private var isDismissing = false
 
     private var coordinates: [CLLocationCoordinate2D] {
         WorkoutRouteGeometry.coordinates(from: points)
@@ -2226,17 +2277,19 @@ private struct WorkoutRouteDetailMapView: View {
             ActivityStyle.screenBackground
                 .ignoresSafeArea()
 
-            Map(position: $cameraPosition) {
-                routeContent
+            if canRenderMap, !isDismissing {
+                Map(position: $cameraPosition) {
+                    routeContent
+                }
+                .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                    MapUserLocationButton()
+                }
+                .colorScheme(.dark)
+                .ignoresSafeArea()
             }
-            .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
-            .mapControls {
-                MapCompass()
-                MapScaleView()
-                MapUserLocationButton()
-            }
-            .colorScheme(.dark)
-            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
@@ -2248,6 +2301,14 @@ private struct WorkoutRouteDetailMapView: View {
             if let region = WorkoutRouteGeometry.mapRegion(for: points) {
                 cameraPosition = .region(region)
             }
+
+            DispatchQueue.main.async {
+                canRenderMap = true
+            }
+        }
+        .onDisappear {
+            canRenderMap = false
+            isDismissing = false
         }
     }
 
@@ -2267,7 +2328,7 @@ private struct WorkoutRouteDetailMapView: View {
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                dismiss()
+                closeRouteMap()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
@@ -2295,6 +2356,15 @@ private struct WorkoutRouteDetailMapView: View {
                 endPoint: .bottom
             )
             .ignoresSafeArea(edges: .top)
+        }
+    }
+
+    private func closeRouteMap() {
+        isDismissing = true
+        canRenderMap = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            dismiss()
         }
     }
 

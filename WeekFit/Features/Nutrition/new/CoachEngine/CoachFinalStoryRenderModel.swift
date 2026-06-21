@@ -310,7 +310,7 @@ extension CoachFinalStoryRenderModel {
     private static func usesCompactHero(for owner: CoachFinalStoryOwner) -> Bool {
         switch owner {
         case .pacingExecution, .sustainableExecution, .fuelingDuringActivity, .hydrationExecution,
-             .activeActivity:
+             .activeActivity, .readiness, .stableOverview:
             return true
         default:
             return false
@@ -319,6 +319,8 @@ extension CoachFinalStoryRenderModel {
 
     private static func presentationLimits(for owner: CoachFinalStoryOwner) -> (why: Int, actions: Int) {
         switch owner {
+        case .readiness, .stableOverview:
+            return (2, 0)
         case .pacingExecution:
             return (2, 1)
         case .sustainableExecution, .fuelingDuringActivity, .hydrationExecution:
@@ -386,28 +388,28 @@ extension CoachFinalStoryRenderModel {
             )
         case .postActivityRecovery, .recovery:
             return localized(
-                english: "Prioritize recovery now: food, water, and an easy evening.",
-                russian: "Сейчас главный ход — восстановление: еда, вода и спокойный вечер."
+                english: "Focus on food, water, and an easy evening.",
+                russian: "Сейчас главное — еда, вода и спокойный вечер."
             )
         case .hydration:
             return localized(
-                english: "Drink gradually and keep the next block easier.",
-                russian: "Пейте постепенно и сделайте следующий блок легче."
+                english: "Drink steadily and keep the next part easy.",
+                russian: "Пейте постепенно и держите следующую часть лёгкой."
             )
         case .fuel:
             return localized(
-                english: "Add usable energy before asking for more effort.",
-                russian: "Добавьте энергии, прежде чем требовать от себя больше."
+                english: "Eat something before you ask for more effort.",
+                russian: "Поешьте, прежде чем требовать от себя больше."
             )
         case .tomorrowProtection:
             return localized(
-                english: "Spend less today so tomorrow starts cleaner.",
-                russian: "Потратьте меньше сегодня, чтобы завтра начать свежее."
+                english: "Do less today so tomorrow starts fresher.",
+                russian: "Сделайте меньше сегодня, чтобы завтра начать свежее."
             )
         case .readiness, .stableOverview:
             return localized(
-                english: "Keep the plan simple and avoid adding extra intensity.",
-                russian: "Держите план простым и не добавляйте лишнюю интенсивность."
+                english: "Keep the plan simple — no extra intensity.",
+                russian: "Держите план простым — без лишней интенсивности."
             )
         }
     }

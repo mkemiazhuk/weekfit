@@ -1,5 +1,6 @@
 import SwiftUI
 import HealthKit
+import WeekFitPlanner
 
 final class ActivityIntelligenceSnapshotProvider {
 
@@ -83,7 +84,7 @@ final class ActivityIntelligenceSnapshotProvider {
             distanceKm: dayMetrics.distanceKm,
             vo2Max: dayMetrics.vo2Max,
             recoveryPercent: dayMetrics.recoveryPercent,
-            sessions: workoutSamples.map { workoutSnapshot(from: $0) },
+            sessions: workoutSamples.map { makeSnapshot(from: $0) },
             hourlyActivityPoints: hourlyCalories.enumerated().map {
                 ActivityTimelinePoint(hour: $0.offset, activeCalories: $0.element)
             },
@@ -91,7 +92,7 @@ final class ActivityIntelligenceSnapshotProvider {
         )
     }
 
-    private func workoutSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
+    func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
         let durationMinutes = max(1, Int(workout.duration / 60.0))
         let icon = workoutIcon(for: workout.workoutActivityType)
@@ -128,6 +129,75 @@ final class ActivityIntelligenceSnapshotProvider {
                 cadence: nil
             )
         )
+    }
+
+    func makePlannedActivitySnapshot(_ activity: PlannedActivity) -> ActivitySessionSnapshot {
+        let durationMinutes = max(1, activity.effectiveDurationMinutes)
+        let endDate = Calendar.current.date(
+            byAdding: .minute,
+            value: durationMinutes,
+            to: activity.date
+        ) ?? activity.date
+        let activityType = inferredWorkoutType(for: activity)
+        let icon = activity.icon.isEmpty ? "figure.mixed.cardio" : activity.icon
+        let source = activity.isWatchSynced ? "Apple Watch" : activity.source
+
+        return ActivitySessionSnapshot(
+            workoutID: activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
+            title: activity.title,
+            startDate: activity.date,
+            durationMinutes: durationMinutes,
+            icon: icon,
+            color: activity.color,
+            detail: ActivitySessionDetailSnapshot(
+                title: activity.title,
+                activityType: activityType,
+                startDate: activity.date,
+                endDate: endDate,
+                durationMinutes: durationMinutes,
+                workoutDurationSeconds: TimeInterval(durationMinutes * 60),
+                elapsedDurationSeconds: endDate.timeIntervalSince(activity.date),
+                source: source,
+                icon: icon,
+                color: activity.color,
+                activeCalories: nil,
+                distanceKm: nil,
+                averageHeartRate: nil,
+                maxHeartRate: nil,
+                heartRateSamples: [],
+                routePoints: [],
+                elevationGain: nil,
+                steps: nil,
+                cadence: nil
+            )
+        )
+    }
+
+    private func inferredWorkoutType(for activity: PlannedActivity) -> HKWorkoutActivityType {
+        let title = activity.title.lowercased()
+
+        if title.contains("run") { return .running }
+        if title.contains("walk") { return .walking }
+        if title.contains("cycl") || title.contains("bike") || title.contains("ride") { return .cycling }
+        if title.contains("hike") { return .hiking }
+        if title.contains("swim") { return .swimming }
+        if title.contains("yoga") { return .yoga }
+        if title.contains("tennis") { return .tennis }
+        if title.contains("squash") { return .squash }
+        if title.contains("strength") || title.contains("core") || title.contains("body") {
+            return .traditionalStrengthTraining
+        }
+        if title.contains("stretch") || title.contains("breath") { return .mindAndBody }
+        if title.contains("sauna") { return .other }
+
+        switch activity.type.lowercased() {
+        case "workout":
+            return .other
+        case "recovery":
+            return .mindAndBody
+        default:
+            return .other
+        }
     }
 
     private func workoutTitle(for type: HKWorkoutActivityType) -> String {

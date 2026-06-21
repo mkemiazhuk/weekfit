@@ -6795,21 +6795,7 @@ private struct HumanCoachInterpretation {
     }
 
     func preparationTimingText(_ minutes: Int) -> String {
-        switch minutes {
-        case ..<45:
-            return "about \(max(minutes, 1)) minutes"
-        case 45..<90:
-            return "about an hour"
-        case 90..<150:
-            let hours = minutes / 60
-            let remainder = minutes % 60
-            if remainder == 0 {
-                return "about \(hours)h"
-            }
-            return "about \(hours)h \(remainder)m"
-        default:
-            return "later today"
-        }
+        CoachNaturalTimePhrase.preparationLead(minutes: minutes).english
     }
 
     var activeTrainingName: String {

@@ -35,7 +35,8 @@ struct TodayView: View {
     @State private var showProfile = false
     @State private var showContent = false
     @State private var livePulse = false
-    @State private var showWaterToast = false
+    @State private var drinksQuickLogToast: String?
+    @State private var foodQuickLogToast: String?
     
     @State private var activityToConfirm: PlannedActivity? = nil
 
@@ -63,6 +64,7 @@ struct TodayView: View {
     @State private var quickLogDrinks: [QuickItem] = []
     @State private var quickLogSnackRows: [QuickItemDisplayRow] = []
     @State private var quickLogDrinkRows: [QuickItemDisplayRow] = []
+    @State private var quickLogSession = QuickLogSessionStore()
     @State private var quickItemUsage: [String: Int] = [:]
     @State private var didPreloadQuickFood = false
     @State private var didPreloadQuickDrinks = false
@@ -182,8 +184,7 @@ struct TodayView: View {
     private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
     
     private var currentWater: Double {
-        let waterLogsToday = selectedDayActivities.filter { $0.imageName == "hydration" }
-        return Double(waterLogsToday.count) * 0.25
+        QuickLogActivityPortions.totalWaterLiters(from: selectedDayActivities)
     }
 
     private var hasTodayRecoverySignals: Bool {
@@ -418,11 +419,23 @@ struct TodayView: View {
                                     )
                                 } else {
                                     ForEach(quickLogMealRows) { row in
-                                        QuickMealLogRow(
-                                            row: row
-                                        ) {
-                                            logQuickMeal(row.meal)
-                                        }
+                                        let profile = QuickLogNutritionProfile.from(meal: row.meal)
+                                        let selection = quickLogSession.selection(for: row.id)
+                                        QuickLogMealRow(
+                                            row: row,
+                                            accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
+                                            selection: selection,
+                                            displayQuantity: selection.effectivePortions(for: profile),
+                                            onPlusTap: {
+                                                handleQuickAdd(profile: profile)
+                                            },
+                                            onIncrement: {
+                                                handleQuickIncrement(profile: profile)
+                                            },
+                                            onDecrement: {
+                                                handleQuickDecrement(profile: profile)
+                                            }
+                                        )
                                     }
                                 }
 
@@ -441,12 +454,23 @@ struct TodayView: View {
                                             .padding(.top, 2)
 
                                         ForEach(quickLogSnackRows) { row in
-                                            QuickItemLogRow(
+                                            let profile = QuickLogNutritionProfile.from(item: row.item)
+                                            let selection = quickLogSession.selection(for: row.id)
+                                            QuickLogItemRow(
                                                 row: row,
-                                                accentColor: Color(red: 0.50, green: 0.74, blue: 0.54)
-                                            ) {
-                                                logSnackItem(row.item)
-                                            }
+                                                accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
+                                                selection: selection,
+                                                displayQuantity: selection.effectivePortions(for: profile),
+                                                onPlusTap: {
+                                                    handleQuickAdd(profile: profile, quickItem: row.item)
+                                                },
+                                                onIncrement: {
+                                                    handleQuickIncrement(profile: profile)
+                                                },
+                                                onDecrement: {
+                                                    handleQuickDecrement(profile: profile)
+                                                }
+                                            )
                                         }
                                     }
                                 }
@@ -464,10 +488,15 @@ struct TodayView: View {
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
             .weekFitSheetChrome(cornerRadius: 34)
+            .onAppear {
+                configureQuickLogSheetDismiss(closeMealSheet: true)
+            }
         }
         .onChange(of: showDirectMealLogSheet) { _, isPresented in
             if isPresented {
                 prepareQuickNutritionLogData()
+            } else {
+                quickLogSession.reset()
             }
         }
         .onChange(of: userSettings.customMealsStorage) { _, _ in
@@ -501,12 +530,23 @@ struct TodayView: View {
                                     .padding(.top, 2)
 
                                 ForEach(quickLogDrinkRows) { row in
-                                    QuickItemLogRow(
+                                    let profile = QuickLogNutritionProfile.from(item: row.item)
+                                    let selection = quickLogSession.selection(for: row.id)
+                                    QuickLogItemRow(
                                         row: row,
-                                        accentColor: Color(red: 0.25, green: 0.55, blue: 0.95)
-                                    ) {
-                                        logDrinkItem(row.item)
-                                    }
+                                        accentColor: Color(red: 0.25, green: 0.55, blue: 0.95),
+                                        selection: selection,
+                                        displayQuantity: selection.effectivePortions(for: profile),
+                                        onPlusTap: {
+                                            handleQuickAdd(profile: profile, quickItem: row.item)
+                                        },
+                                        onIncrement: {
+                                            handleQuickIncrement(profile: profile)
+                                        },
+                                        onDecrement: {
+                                            handleQuickDecrement(profile: profile)
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -522,6 +562,16 @@ struct TodayView: View {
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
             .weekFitSheetChrome(cornerRadius: 34)
+            .onAppear {
+                configureQuickLogSheetDismiss(closeMealSheet: false)
+            }
+        }
+        .onChange(of: showDirectDrinkLogSheet) { _, isPresented in
+            if isPresented {
+                prepareQuickDrinkLogData()
+            } else {
+                quickLogSession.reset()
+            }
         }
     }
     
@@ -958,400 +1008,111 @@ struct TodayView: View {
         #endif
     }
     
-    private func logSnackItem(_ item: QuickItem) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        
-        incrementQuickItemUsage(item)
-
-        let quickLogActivity = PlannedActivity(
-            id: UUID().uuidString,
-            date: Date(),
-            type: "meal",
-            title: item.title,
-            durationMinutes: 5,
-            icon: item.icon,
-            imageName: item.imageName,
-            colorRed: 0.50,
-            colorGreen: 0.74,
-            colorBlue: 0.54,
-            calories: item.calories,
-            protein: item.protein,
-            carbs: item.carbs,
-            fats: item.fats,
-            isCompleted: true,
-            isSkipped: false,
-            source: "today"
-        )
-
-        modelContext.insert(quickLogActivity)
-        try? modelContext.save()
-
-        showDirectMealLogSheet = false
-        todayViewModel.triggerHealthRefresh()
+    private func quickItem(for profile: QuickLogNutritionProfile) -> QuickItem? {
+        quickLogSnacks.first(where: { $0.id == profile.id })
+            ?? quickLogDrinks.first(where: { $0.id == profile.id })
     }
 
-    private func logDrinkItem(_ item: QuickItem) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        incrementQuickItemUsage(item)
-
-        let isWater = item.id == "drink_water" || item.title.lowercased() == "water"
-        let quickLogActivity = PlannedActivity(
-            id: UUID().uuidString,
-            date: Date(),
-            type: "drink",
-            title: item.title,
-            durationMinutes: 5,
-            icon: item.icon,
-            imageName: isWater ? "hydration" : item.imageName,
-            colorRed: 0.25,
-            colorGreen: 0.55,
-            colorBlue: 0.95,
-            calories: item.calories,
-            protein: item.protein,
-            carbs: item.carbs,
-            fats: item.fats,
-            isCompleted: true,
-            isSkipped: false,
-            source: "today"
-        )
-
-        modelContext.insert(quickLogActivity)
-        try? modelContext.save()
-
-        if isWater {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.65)) {
-                showWaterToast = true
+    private func configureQuickLogSheetDismiss(closeMealSheet: Bool) {
+        quickLogSession.onSheetDismissRequest = { itemID in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            presentQuickLogToast(for: itemID, isDrinkSheet: !closeMealSheet)
+            if closeMealSheet {
+                showDirectMealLogSheet = false
+            } else {
+                showDirectDrinkLogSheet = false
             }
+        }
+    }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                withAnimation { showWaterToast = false }
+    private func presentQuickLogToast(for itemID: String, isDrinkSheet: Bool) {
+        guard let profile = quickLogProfile(for: itemID) else { return }
+
+        let selection = quickLogSession.selection(for: itemID)
+        guard selection.isSelected else { return }
+
+        let message = QuickLogToastMessage.make(profile: profile, selection: selection)
+
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.65)) {
+            if isDrinkSheet {
+                drinksQuickLogToast = message
+            } else {
+                foodQuickLogToast = message
             }
         }
 
-        showDirectDrinkLogSheet = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation {
+                if isDrinkSheet {
+                    drinksQuickLogToast = nil
+                } else {
+                    foodQuickLogToast = nil
+                }
+            }
+        }
+    }
+
+    private func quickLogProfile(for itemID: String) -> QuickLogNutritionProfile? {
+        if let meal = quickLogMeals.first(where: { $0.id == itemID }) {
+            return QuickLogNutritionProfile.from(meal: meal)
+        }
+
+        if let item = quickLogSnacks.first(where: { $0.id == itemID })
+            ?? quickLogDrinks.first(where: { $0.id == itemID }) {
+            return QuickLogNutritionProfile.from(item: item)
+        }
+
+        return nil
+    }
+
+    private func handleQuickAdd(profile: QuickLogNutritionProfile, quickItem: QuickItem? = nil) {
+        let wasSelected = quickLogSession.selection(for: profile.id).isSelected
+        let selection = quickLogSession.quickAdd(profile: profile)
+        if !wasSelected, let quickItem {
+            incrementQuickItemUsage(quickItem)
+        }
+        syncQuickLogSelection(profile: profile, selection: selection, quickItem: quickItem)
+    }
+
+    private func handleQuickIncrement(profile: QuickLogNutritionProfile) {
+        quickLogSession.increment(profile: profile)
+        let selection = quickLogSession.selection(for: profile.id)
+        syncQuickLogSelection(profile: profile, selection: selection, quickItem: quickItem(for: profile))
+    }
+
+    private func handleQuickDecrement(profile: QuickLogNutritionProfile) {
+        let previousActivityID = quickLogSession.selection(for: profile.id).loggedActivityID
+        quickLogSession.decrement(profile: profile)
+        let selection = quickLogSession.selection(for: profile.id)
+        var syncSelection = selection
+        if !selection.isSelected {
+            syncSelection.loggedActivityID = previousActivityID
+        }
+        syncQuickLogSelection(profile: profile, selection: syncSelection, quickItem: quickItem(for: profile))
+    }
+
+    private func syncQuickLogSelection(
+        profile: QuickLogNutritionProfile,
+        selection: QuickLogSelection,
+        quickItem: QuickItem? = nil
+    ) {
+        let activityID = QuickLogActivitySync.sync(
+            profile: profile,
+            selection: selection,
+            plannedActivities: plannedActivities,
+            modelContext: modelContext
+        )
+
+        if let activityID {
+            quickLogSession.attachActivityID(activityID, to: profile.id)
+        } else {
+            quickLogSession.clearActivityID(for: profile.id)
+        }
+
         updateNutrition()
         todayViewModel.triggerHealthRefresh()
     }
-    
-    private struct QuickMealDisplayRow: Identifiable, Equatable {
-        let meal: Meals
-        let title: String
-        let subtitle: String
-        let macroText: String
-        let usesAssetImage: Bool
-        let sortedBuilderImageItems: [MealBuilderImageItem]
-        let localPhotoFilename: String?
-        let isFoodProduct: Bool
-        let placeholderInitial: String
 
-        var id: String { meal.id }
-    }
-
-    private struct QuickMealLogRow: View {
-        let row: QuickMealDisplayRow
-        let onTap: () -> Void
-
-        private let accent = Color(red: 0.50, green: 0.74, blue: 0.54)
-        private let textPrimary = WeekFitTheme.primaryText
-        private let textSecondary = WeekFitTheme.secondaryText
-        private let cardSecondary = WeekFitTheme.cardSecondary
-        private let cardBackground = WeekFitTheme.cardBackground
-
-        var body: some View {
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                onTap()
-            } label: {
-                HStack(spacing: 12) {
-                    mealImage
-                        .frame(
-                            width: QuickLogRowMetrics.imageSize,
-                            height: QuickLogRowMetrics.imageSize
-                        )
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.title)
-                            .font(QuickSheetTypography.title)
-                            .foregroundStyle(textPrimary)
-                            .tracking(-0.35)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-
-                        Text(row.subtitle)
-                            .font(QuickSheetTypography.subtitle)
-                            .foregroundStyle(textSecondary.opacity(0.56))
-                            .lineLimit(1)
-
-                        Text(row.macroText)
-                            .font(QuickSheetTypography.meta)
-                            .foregroundStyle(textSecondary.opacity(0.62))
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    plusButton
-                }
-                .padding(.horizontal, QuickLogRowMetrics.horizontalPadding)
-                .frame(height: QuickLogRowMetrics.height)
-                .quickLogCardBackground(
-                    cardSecondary: cardSecondary,
-                    cardBackground: cardBackground,
-                    cornerRadius: QuickLogRowMetrics.cardCornerRadius
-                )
-            }
-            .buttonStyle(.plain)
-            .shadow(color: accent.opacity(0.035), radius: 12, y: 5)
-        }
-
-        private var plusButton: some View {
-            Image(systemName: "plus")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(accent)
-                .frame(
-                    width: QuickLogRowMetrics.plusButtonSize,
-                    height: QuickLogRowMetrics.plusButtonSize
-                )
-                .background {
-                    Circle()
-                        .fill(accent.opacity(0.18))
-                }
-                .overlay {
-                    Circle()
-                        .stroke(accent.opacity(0.14), lineWidth: 1)
-                }
-        }
-
-        private var mealImage: some View {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                    style: .continuous
-                )
-                .fill(Color.white.opacity(0.04))
-
-                mealImageContent
-
-                quickFoodImageTone
-            }
-            .frame(width: QuickLogRowMetrics.imageSize, height: QuickLogRowMetrics.imageSize)
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                    style: .continuous
-                )
-            )
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                    style: .continuous
-                )
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
-            }
-        }
-
-        private var imageContentSize: CGFloat {
-            row.isFoodProduct
-                ? QuickLogRowMetrics.imageSize * 0.68
-                : QuickLogRowMetrics.imageSize * 0.92
-        }
-
-        private var imageContentCornerRadius: CGFloat {
-            QuickLogRowMetrics.imageCornerRadius * 0.70
-        }
-
-        private var quickFoodImageTone: some View {
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.04),
-                    Color.black.opacity(0.16)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .blendMode(.multiply)
-            .allowsHitTesting(false)
-        }
-
-        @ViewBuilder
-        private var mealImageContent: some View {
-            if row.isFoodProduct {
-                AsyncMealPhotoView(filename: row.localPhotoFilename) { image in
-                    if let image {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(
-                                width: imageContentSize,
-                                height: imageContentSize
-                            )
-                            .clipShape(
-                                RoundedRectangle(
-                                    cornerRadius: imageContentCornerRadius,
-                                    style: .continuous
-                                )
-                            )
-                            .saturation(0.88)
-                            .contrast(0.92)
-                            .brightness(-0.035)
-                    } else {
-                        CustomFoodVisualView(
-                            image: nil,
-                            placeholderInitial: row.placeholderInitial,
-                            size: imageContentSize,
-                            imageScale: 0.62
-                        )
-                    }
-                }
-            } else if !row.sortedBuilderImageItems.isEmpty {
-                builtMealImage(row.sortedBuilderImageItems)
-            } else if row.usesAssetImage {
-                Image(row.meal.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(
-                        width: imageContentSize,
-                        height: imageContentSize
-                    )
-                    .saturation(0.94)
-                    .contrast(0.96)
-            } else {
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 20))
-                    .foregroundColor(WeekFitTheme.tertiaryText)
-            }
-        }
-
-        private func builtMealImage(_ items: [MealBuilderImageItem]) -> some View {
-            return ZStack {
-                Color.black.opacity(0.10)
-
-                BuiltMealPlateView(
-                    items: items,
-                    plateSize: imageContentSize,
-                    itemScale: 0.33,
-                    offsetScale: 0.30,
-                    plateOpacity: 0.42,
-                    shadowOpacity: 0.12,
-                    layoutMode: .compactPreview
-                )
-            }
-            .frame(width: imageContentSize, height: imageContentSize)
-        }
-    }
-
-    private struct QuickItemDisplayRow: Identifiable, Equatable {
-        let item: QuickItem
-        let subtitleText: String
-        let metaText: String?
-        let usesAssetImage: Bool
-
-        var id: String { item.id }
-    }
-
-    private struct QuickItemLogRow: View {
-        let row: QuickItemDisplayRow
-        let accentColor: Color
-        let onTap: () -> Void
-
-        init(
-            row: QuickItemDisplayRow,
-            accentColor: Color,
-            onTap: @escaping () -> Void
-        ) {
-            self.row = row
-            self.accentColor = accentColor
-            self.onTap = onTap
-        }
-
-        var body: some View {
-            Button {
-                onTap()
-            } label: {
-                rowContent {
-                    plusButton
-                }
-            }
-            .buttonStyle(.plain)
-        }
-
-        private func rowContent<Trailing: View>(
-            @ViewBuilder trailing: () -> Trailing
-        ) -> some View {
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(
-                            cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                            style: .continuous
-                        )
-                        .fill(Color.white.opacity(0.045))
-                        .frame(
-                            width: QuickLogRowMetrics.imageSize,
-                            height: QuickLogRowMetrics.imageSize
-                        )
-
-                        if row.usesAssetImage {
-                            Image(row.item.imageName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 38, height: 38)
-                        } else {
-                            Image(systemName: row.item.icon)
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(accentColor)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.item.title)
-                            .font(QuickSheetTypography.title)
-                            .foregroundStyle(.white.opacity(0.95))
-                            .lineLimit(1)
-
-                        Text(row.subtitleText)
-                            .font(QuickSheetTypography.subtitle)
-                            .foregroundStyle(.white.opacity(0.50))
-                            .lineLimit(1)
-
-                        if let metaText = row.metaText {
-                            Text(metaText)
-                                .font(QuickSheetTypography.meta)
-                                .foregroundStyle(.white.opacity(0.56))
-                                .lineLimit(1)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    trailing()
-                }
-                .padding(.horizontal, QuickLogRowMetrics.horizontalPadding)
-                .frame(height: QuickLogRowMetrics.height)
-                .quickLogCardBackground(
-                    cardSecondary: WeekFitTheme.cardSecondary,
-                    cardBackground: WeekFitTheme.cardBackground,
-                    cornerRadius: QuickLogRowMetrics.cardCornerRadius
-                )
-        }
-
-        private var plusButton: some View {
-            Image(systemName: "plus")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(accentColor)
-                .frame(
-                    width: QuickLogRowMetrics.plusButtonSize,
-                    height: QuickLogRowMetrics.plusButtonSize
-                )
-                .background {
-                    Circle()
-                        .fill(accentColor.opacity(0.18))
-                }
-                .overlay {
-                    Circle()
-                        .stroke(accentColor.opacity(0.14), lineWidth: 1)
-                }
-        }
-    }
-    
     private var todayScreen: some View {
         WeekFitScreenContainer {
 
@@ -1372,37 +1133,6 @@ struct TodayView: View {
         .opacity(showContent ? 1 : 0)
 
     }
-    
-    private func logQuickMeal(_ meal: Meals) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        let quickLogActivity = PlannedActivity(
-            id: UUID().uuidString,
-            date: Date(),
-            type: "meal",
-            title: meal.title,
-            durationMinutes: 15,
-            icon: "fork.knife",
-            imageName: meal.imageName,
-            colorRed: 0.50,
-            colorGreen: 0.74,
-            colorBlue: 0.54,
-            calories: meal.calories,
-            protein: meal.protein,
-            carbs: meal.carbs,
-            fats: meal.fats,
-            isCompleted: true,
-            isSkipped: false,
-            source: "today"
-        )
-
-        modelContext.insert(quickLogActivity)
-        try? modelContext.save()
-
-        showDirectMealLogSheet = false
-        todayViewModel.triggerHealthRefresh()
-    }
-    
 
     private var ambientBackground: some View {
         WeekFitTheme.todayAmbient
@@ -2532,7 +2262,7 @@ struct TodayView: View {
                     label: WeekFitLocalizedString("today.quickActions.logDrinks"),
                     subLabel: String(format: "%.1f/%.1fL", currentWater, waterGoal),
                     color: Color(red: 0.25, green: 0.55, blue: 0.95),
-                    showsWaterToast: showWaterToast
+                    toastMessage: drinksQuickLogToast
                 ) {
                     preloadQuickDrinkLogDataIfNeeded()
                     showDirectDrinkLogSheet = true
@@ -2542,7 +2272,8 @@ struct TodayView: View {
                     icon: "fork.knife",
                     label: WeekFitLocalizedString("today.quickActions.logFood"),
                     subLabel: WeekFitLocalizedString("today.quickActions.mealsSnacks"),
-                    color: Color(red: 0.95, green: 0.65, blue: 0.12)
+                    color: Color(red: 0.95, green: 0.65, blue: 0.12),
+                    toastMessage: foodQuickLogToast
                 ) {
                     selectedLogTab = .meals
                     preloadQuickFoodLogDataIfNeeded()
@@ -2571,7 +2302,7 @@ struct TodayView: View {
         subLabel: String,
         color: Color,
         liveIndicatorColor: Color? = nil,
-        showsWaterToast: Bool = false,
+        toastMessage: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 6) {
@@ -2586,12 +2317,18 @@ struct TodayView: View {
                         .frame(width: 30, height: 30)
                     Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color).frame(width: 30, height: 30)
                     
-                    if showsWaterToast {
-                        Text("+0.25L")
-                            .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
-                            .padding(.horizontal, 6).padding(.vertical, 3)
-                            .background(Color(red: 0.25, green: 0.55, blue: 0.95)).clipShape(Capsule())
-                            .offset(y: -34).transition(.move(edge: .top).combined(with: .opacity))
+                    if let toastMessage {
+                        Text(toastMessage)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(color.opacity(0.92))
+                            .clipShape(Capsule())
+                            .offset(y: -34)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
             }

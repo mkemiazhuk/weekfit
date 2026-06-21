@@ -1,0 +1,858 @@
+import SwiftUI
+import WeekFitPlanner
+
+enum PlanTimelineLayout {
+    static let timeWidth: CGFloat = 44
+    static let columnWidth: CGFloat = 20
+    static let timeToTimelineSpacing: CGFloat = 4
+    static let timelineToCardSpacing: CGFloat = 7
+    static let nodeSize: CGFloat = 9
+    static let nodeVerticalPadding: CGFloat = 3
+    static let lineWidth: CGFloat = 1.0
+    static let rowSpacing: CGFloat = 13
+    static let cardCornerRadius: CGFloat = 15
+    static let avatarSize: CGFloat = 34
+    static let avatarContentSize: CGFloat = 25
+    static let cardHorizontalPadding: CGFloat = 13
+    static let cardVerticalPadding: CGFloat = 11
+    static let titleFontSize: CGFloat = 16
+    static let metadataFontSize: CGFloat = 11.5
+    static let activityIconFontSize: CGFloat = 14
+}
+
+struct PlanTimelineNowDivider: View {
+
+    @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Color.clear
+                .frame(width: timeColumnWidth + PlanTimelineLayout.timeToTimelineSpacing)
+
+            Circle()
+                .fill(Color.white.opacity(0.22))
+                .frame(width: 4, height: 4)
+
+            Text(WeekFitLocalizedString("planner.timeline.now"))
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.45)
+                .textCase(.uppercase)
+                .foregroundStyle(Color.white.opacity(0.30))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.07))
+                .frame(height: 0.5)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 2)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(WeekFitLocalizedString("planner.timeline.now"))
+    }
+}
+
+struct PlanTimelineRow: View {
+
+    let activity: PlannedActivity
+    let displayTitle: String
+    let metadata: PlanTimelineRowMetadata
+    let customMeals: [Meals]
+    let time: String
+    let category: PlanTimelineCategory
+    let status: PlanActivityStatus
+    let emphasis: PlanTimelineVisualEmphasis
+    let nextEmphasis: PlanTimelineVisualEmphasis?
+    let isFirst: Bool
+    let isLast: Bool
+    let connectorAbove: CGFloat
+
+    @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
+    @State private var livePulse = false
+
+    private var accent: Color { category.color }
+
+    private var isLive: Bool {
+        status == .live
+    }
+
+    private var isPending: Bool {
+        status == .pending
+    }
+
+    private var rowOpacity: Double {
+        switch emphasis {
+        case .past:
+            return 0.88
+        case .skipped:
+            return 0.58
+        case .upcoming, .active, .next:
+            return 1.0
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            timeLabel
+
+            Color.clear
+                .frame(width: PlanTimelineLayout.timeToTimelineSpacing)
+
+            timelineColumn
+
+            Color.clear
+                .frame(width: PlanTimelineLayout.timelineToCardSpacing)
+
+            activityCard
+        }
+        .opacity(rowOpacity)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: status)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: activity.isCompleted)
+    }
+
+    private var timeLabel: some View {
+        Text(time)
+            .font(.system(size: 11.5, weight: timeFontWeight, design: .monospaced))
+            .foregroundStyle(timeColor)
+            .frame(width: timeColumnWidth, alignment: .trailing)
+            .padding(.top, 10)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .accessibilityHidden(true)
+    }
+
+    private var timeFontWeight: Font.Weight {
+        switch emphasis {
+        case .next:
+            return .semibold
+        case .active:
+            return .semibold
+        default:
+            return .medium
+        }
+    }
+
+    private var timeColor: Color {
+        if isLive {
+            return accent.opacity(0.95)
+        }
+
+        switch emphasis {
+        case .next:
+            return accent.opacity(0.88)
+        case .active:
+            return isPending
+                ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.88)
+                : accent.opacity(0.90)
+        case .upcoming:
+            return .white.opacity(0.58)
+        case .past:
+            return .white.opacity(0.44)
+        case .skipped:
+            return .white.opacity(0.28)
+        }
+    }
+
+    private var timelineColumn: some View {
+        VStack(spacing: 0) {
+            if isFirst && connectorAbove == 0 {
+                Color.clear.frame(height: 8)
+            } else {
+                timelineLine(opacity: lineOpacityAbove)
+                    .frame(height: max(10, connectorAbove + 8))
+            }
+
+            PlanTimelineNode(
+                accent: accent,
+                status: status,
+                emphasis: emphasis,
+                livePulse: $livePulse
+            )
+            .padding(.vertical, PlanTimelineLayout.nodeVerticalPadding)
+
+            if isLast {
+                Color.clear.frame(height: 6)
+            } else {
+                timelineLine(opacity: lineOpacityBelow)
+                    .frame(minHeight: 12)
+                    .frame(maxHeight: .infinity)
+            }
+        }
+        .frame(width: PlanTimelineLayout.columnWidth)
+    }
+
+    private func timelineLine(opacity: Double) -> some View {
+        Rectangle()
+            .fill(accent.opacity(opacity))
+            .frame(width: PlanTimelineLayout.lineWidth)
+    }
+
+    private var lineOpacityAbove: Double {
+        lineOpacity(for: emphasis)
+    }
+
+    private var lineOpacityBelow: Double {
+        guard let nextEmphasis else {
+            return lineOpacity(for: emphasis) * 0.75
+        }
+        return (lineOpacity(for: emphasis) + lineOpacity(for: nextEmphasis)) / 2
+    }
+
+    private func lineOpacity(for emphasis: PlanTimelineVisualEmphasis) -> Double {
+        switch emphasis {
+        case .past:
+            return 0.26
+        case .skipped:
+            return 0.16
+        case .upcoming:
+            return 0.34
+        case .active:
+            return 0.42
+        case .next:
+            return 0.48
+        }
+    }
+
+    private var activityCard: some View {
+        HStack(spacing: 11) {
+            iconView
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(displayTitle)
+                    .font(.system(size: PlanTimelineLayout.titleFontSize, weight: titleFontWeight))
+                    .foregroundStyle(titleColor)
+                    .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+
+                if !metadata.isEmpty {
+                    metadataLine
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(chevronColor)
+                .padding(.leading, 2)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, PlanTimelineLayout.cardHorizontalPadding)
+        .padding(.vertical, PlanTimelineLayout.cardVerticalPadding)
+        .background {
+            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                .fill(cardFill)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                .stroke(cardStroke, lineWidth: cardStrokeWidth)
+        }
+        .shadow(
+            color: cardShadowColor,
+            radius: cardShadowRadius,
+            y: cardShadowY
+        )
+        .shadow(
+            color: nextGlowColor,
+            radius: emphasis == .next ? 10 : 0,
+            y: emphasis == .next ? 2 : 0
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var titleFontWeight: Font.Weight {
+        switch emphasis {
+        case .next, .active:
+            return isLive ? .semibold : .semibold
+        case .upcoming:
+            return .medium
+        case .past:
+            return .medium
+        case .skipped:
+            return .regular
+        }
+    }
+
+    private var chevronColor: Color {
+        switch emphasis {
+        case .next:
+            return .white.opacity(0.42)
+        case .active, .upcoming:
+            return .white.opacity(0.34)
+        case .past:
+            return .white.opacity(0.28)
+        case .skipped:
+            return .white.opacity(0.18)
+        }
+    }
+
+    private var metadataLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if let primary = metadata.primary, !primary.isEmpty {
+                Text(primary)
+            }
+
+            if metadata.showsWatchIcon {
+                if metadata.primary != nil {
+                    metadataDot
+                }
+                Image(systemName: "applewatch")
+                    .font(.system(size: 9, weight: .semibold))
+                if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+                    Text(sourceLabel)
+                }
+            } else if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+                if metadata.primary != nil {
+                    metadataDot
+                }
+                Text(sourceLabel)
+            }
+        }
+        .font(.system(size: PlanTimelineLayout.metadataFontSize, weight: .regular))
+        .foregroundStyle(metadataColor)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var metadataDot: some View {
+        Text("·")
+            .foregroundStyle(metadataColor.opacity(0.72))
+    }
+
+    private var accessibilityLabelText: String {
+        var parts: [String] = [time, displayTitle]
+        if status == .skipped {
+            parts.append(WeekFitLocalizedString("planner.status.skipped"))
+        }
+        if let primary = metadata.primary, !primary.isEmpty {
+            parts.append(primary)
+        }
+        if metadata.showsWatchIcon {
+            parts.append(
+                String(
+                    format: WeekFitLocalizedString("planner.timeline.accessibility.appleWatchSyncedFormat"),
+                    WeekFitLocalizedString("planner.timeline.source.appleWatch")
+                )
+            )
+        } else if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+            parts.append(sourceLabel)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private var titleColor: Color {
+        switch emphasis {
+        case .next:
+            return .white.opacity(0.96)
+        case .active:
+            return .white.opacity(0.92)
+        case .upcoming:
+            return .white.opacity(0.84)
+        case .past:
+            return .white.opacity(0.74)
+        case .skipped:
+            return .white.opacity(0.38)
+        }
+    }
+
+    private var metadataColor: Color {
+        switch emphasis {
+        case .next:
+            return .white.opacity(0.46)
+        case .active, .upcoming:
+            return .white.opacity(0.40)
+        case .past:
+            return .white.opacity(0.38)
+        case .skipped:
+            return .white.opacity(0.24)
+        }
+    }
+
+    private var cardFill: Color {
+        if isLive {
+            return accent.opacity(0.08)
+        }
+
+        switch emphasis {
+        case .next:
+            return Color.white.opacity(0.042)
+        case .active:
+            return Color.white.opacity(0.034)
+        case .upcoming:
+            return Color.white.opacity(0.028)
+        case .past:
+            return Color.white.opacity(0.024)
+        case .skipped:
+            return Color.white.opacity(0.014)
+        }
+    }
+
+    private var cardStroke: Color {
+        if isLive {
+            return accent.opacity(0.26)
+        }
+
+        switch emphasis {
+        case .next:
+            return accent.opacity(0.22)
+        case .active:
+            return isPending
+                ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.20)
+                : accent.opacity(0.16)
+        case .upcoming:
+            return Color.white.opacity(0.07)
+        case .past:
+            return Color.white.opacity(0.058)
+        case .skipped:
+            return Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.16)
+        }
+    }
+
+    private var cardStrokeWidth: CGFloat {
+        switch emphasis {
+        case .next:
+            return 0.75
+        case .active:
+            return isLive ? 0.85 : 0.65
+        default:
+            return 0.55
+        }
+    }
+
+    private var cardShadowColor: Color {
+        switch emphasis {
+        case .next:
+            return Color.black.opacity(0.20)
+        case .active, .upcoming:
+            return Color.black.opacity(0.16)
+        case .past:
+            return Color.black.opacity(0.12)
+        case .skipped:
+            return Color.black.opacity(0.08)
+        }
+    }
+
+    private var cardShadowRadius: CGFloat {
+        switch emphasis {
+        case .next:
+            return 8
+        case .active, .upcoming:
+            return 6
+        case .past:
+            return 5
+        case .skipped:
+            return 3
+        }
+    }
+
+    private var cardShadowY: CGFloat {
+        switch emphasis {
+        case .past, .skipped:
+            return 2
+        default:
+            return 3
+        }
+    }
+
+    private var nextGlowColor: Color {
+        emphasis == .next ? accent.opacity(0.10) : .clear
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if let foodVisual = PlanTimelineNutritionVisualResolver.resolve(
+            for: activity,
+            customMeals: customMeals
+        ) {
+            PlanTimelineNutritionAvatar(
+                visual: foodVisual,
+                accent: accent,
+                backgroundOpacity: iconBackgroundOpacity,
+                foregroundOpacity: iconForegroundOpacity,
+                size: PlanTimelineLayout.avatarSize,
+                contentSize: PlanTimelineLayout.avatarContentSize
+            )
+        } else {
+            ZStack {
+                Circle()
+                    .fill(accent.opacity(iconBackgroundOpacity))
+                    .frame(width: PlanTimelineLayout.avatarSize, height: PlanTimelineLayout.avatarSize)
+
+                Image(systemName: resolvedIcon)
+                    .font(.system(size: PlanTimelineLayout.activityIconFontSize, weight: .semibold))
+                    .foregroundStyle(accent.opacity(iconForegroundOpacity))
+            }
+        }
+    }
+
+    private var iconBackgroundOpacity: Double {
+        if isLive { return 0.20 }
+
+        switch emphasis {
+        case .next:
+            return 0.16
+        case .active:
+            return 0.14
+        case .upcoming:
+            return 0.11
+        case .past:
+            return 0.09
+        case .skipped:
+            return 0.05
+        }
+    }
+
+    private var iconForegroundOpacity: Double {
+        if isLive { return 0.95 }
+
+        switch emphasis {
+        case .next:
+            return 0.92
+        case .active, .upcoming:
+            return 0.84
+        case .past:
+            return 0.70
+        case .skipped:
+            return 0.42
+        }
+    }
+
+    private var resolvedIcon: String {
+        PlanTimelineIconResolver.icon(for: activity)
+    }
+}
+
+// MARK: - Timeline Node
+
+private struct PlanTimelineNode: View {
+
+    let accent: Color
+    let status: PlanActivityStatus
+    let emphasis: PlanTimelineVisualEmphasis
+    @Binding var livePulse: Bool
+
+    private var isFilled: Bool {
+        status == .completed || status == .logged || status == .live || status == .skipped
+    }
+
+    private var isSkipped: Bool {
+        status == .skipped
+    }
+
+    var body: some View {
+        ZStack {
+            if isSkipped {
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.42, blue: 0.42).opacity(skippedNodeFillOpacity))
+                    .frame(width: nodeDiameter, height: nodeDiameter)
+
+                Image(systemName: "xmark")
+                    .font(.system(size: 5.5, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+            } else if isFilled {
+                Circle()
+                    .fill(accent.opacity(filledOpacity))
+                    .frame(width: nodeDiameter, height: nodeDiameter)
+                    .scaleEffect(status == .live && livePulse ? 1.06 : 1.0)
+                    .shadow(
+                        color: accent.opacity(filledShadowOpacity),
+                        radius: status == .live ? 4 : 1.5
+                    )
+
+                if status == .completed || status == .logged {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 5, weight: .bold))
+                        .foregroundStyle(Color.black.opacity(checkmarkOpacity))
+                }
+            } else {
+                Circle()
+                    .strokeBorder(
+                        accent.opacity(emptyStrokeOpacity),
+                        lineWidth: emptyStrokeWidth
+                    )
+                    .frame(width: nodeDiameter, height: nodeDiameter)
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(emptyFillOpacity))
+                    )
+            }
+        }
+        .frame(width: PlanTimelineLayout.columnWidth, height: nodeDiameter + PlanTimelineLayout.nodeVerticalPadding * 2 + 1)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: status)
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
+        .onAppear {
+            guard status == .live else { return }
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                livePulse = true
+            }
+        }
+        .onChange(of: status) { _, newValue in
+            if newValue == .live {
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                    livePulse = true
+                }
+            } else {
+                livePulse = false
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var filledOpacity: Double {
+        if status == .live { return 0.95 }
+
+        switch emphasis {
+        case .past:
+            return 0.82
+        default:
+            return 0.88
+        }
+    }
+
+    private var skippedNodeFillOpacity: Double {
+        switch emphasis {
+        case .skipped:
+            return 0.72
+        case .past:
+            return 0.58
+        default:
+            return 0.66
+        }
+    }
+
+    private var filledShadowOpacity: Double {
+        if status == .live { return 0.28 }
+
+        switch emphasis {
+        case .past:
+            return 0.12
+        case .skipped:
+            return 0.06
+        default:
+            return 0.12
+        }
+    }
+
+    private var checkmarkOpacity: Double {
+        switch emphasis {
+        case .past:
+            return 0.76
+        case .skipped:
+            return 0.58
+        default:
+            return 0.72
+        }
+    }
+
+    private var emptyStrokeOpacity: Double {
+        switch emphasis {
+        case .next:
+            return 0.72
+        case .active, .upcoming:
+            return 0.56
+        case .past, .skipped:
+            return 0.24
+        }
+    }
+
+    private var emptyStrokeWidth: CGFloat {
+        emphasis == .next ? 1.55 : 1.35
+    }
+
+    private var emptyFillOpacity: Double {
+        emphasis == .next ? 0.22 : 0.16
+    }
+
+    private var nodeDiameter: CGFloat {
+        if status == .live { return 10 }
+        if emphasis == .next && !isFilled { return 10 }
+        return PlanTimelineLayout.nodeSize
+    }
+}
+
+// MARK: - Icon Resolver
+
+enum PlanTimelineIconResolver {
+
+    static func icon(for activity: PlannedActivity) -> String {
+        let title = activity.title.lowercased()
+        let type = activity.type.lowercased()
+
+        if title.contains("coffee") || title.contains("espresso")
+            || title.contains("cappuccino") || title.contains("latte")
+            || title.contains("tea") {
+            return "cup.and.saucer.fill"
+        }
+
+        if title.contains("water") || title.contains("hydration") || title.contains("drink") {
+            return "drop.fill"
+        }
+
+        if title.contains("banana") || title.contains("meal") || type == "meal" {
+            return "fork.knife"
+        }
+
+        if title.contains("sauna") || title.contains("heat") {
+            return "flame.fill"
+        }
+
+        if title.contains("walk") || type.contains("walk") {
+            return "figure.walk"
+        }
+
+        if title.contains("hike") || type.contains("hike") {
+            return "figure.hiking"
+        }
+
+        if title.contains("running") || title.contains("run")
+            || type.contains("running") || type.contains("run") {
+            return "figure.run"
+        }
+
+        if title.contains("cycling") || title.contains("cycle")
+            || title.contains("bike") || title.contains("ride")
+            || type.contains("cycling") || type.contains("cycle")
+            || type.contains("bike") || type.contains("ride") {
+            return "bicycle"
+        }
+
+        if title.contains("yoga") || type.contains("yoga") {
+            return "figure.mind.and.body"
+        }
+
+        if title.contains("breathing") || title.contains("breath")
+            || type.contains("breathing") || type.contains("breath") {
+            return "wind"
+        }
+
+        if title.contains("stretching") || title.contains("stretch")
+            || title.contains("mobility")
+            || type.contains("stretching") || type.contains("stretch")
+            || type.contains("mobility") {
+            return "figure.flexibility"
+        }
+
+        if title.contains("upper body") {
+            return "figure.strengthtraining.traditional"
+        }
+
+        if title.contains("strength") || title.contains("gym")
+            || title.contains("training") || title.contains("workout")
+            || type.contains("workout") {
+            return "dumbbell.fill"
+        }
+
+        if title.contains("sleep") || title.contains("bedtime") {
+            return "bed.double.fill"
+        }
+
+        if title.contains("no screens") || title.contains("screen") {
+            return "iphone.slash"
+        }
+
+        if title.contains("morning routine") || title.contains("morning") {
+            return "sunrise.fill"
+        }
+
+        if title.contains("routine") || type == "habit" {
+            return "checkmark.circle"
+        }
+
+        if type == "recovery" {
+            return "leaf.fill"
+        }
+
+        return activity.icon.isEmpty ? "sparkles" : activity.icon
+    }
+}
+
+// MARK: - Previews
+
+#if DEBUG
+private enum PlanTimelinePreviewFactory {
+
+    static func row(
+        title: String,
+        time: String,
+        status: PlanActivityStatus,
+        emphasis: PlanTimelineVisualEmphasis,
+        completed: Bool = false,
+        category: PlanTimelineCategory = .activity
+    ) -> some View {
+        PlanTimelineRow(
+            activity: PlannedActivity(
+                date: Date(),
+                type: "habit",
+                title: title,
+                durationMinutes: 30,
+                icon: "bed.double.fill",
+                colorRed: 0.66,
+                colorGreen: 0.58,
+                colorBlue: 0.86,
+                isCompleted: completed
+            ),
+            displayTitle: title,
+            metadata: PlanTimelineRowMetadata(
+                primary: emphasis == .past ? "39 min" : nil,
+                sourceLabel: nil,
+                showsWatchIcon: false
+            ),
+            customMeals: [],
+            time: time,
+            category: category,
+            status: status,
+            emphasis: emphasis,
+            nextEmphasis: emphasis == .past ? .next : nil,
+            isFirst: false,
+            isLast: false,
+            connectorAbove: 0
+        )
+    }
+}
+
+#Preview("Plan Timeline Emphasis") {
+    ZStack {
+        Color.black.ignoresSafeArea()
+
+        VStack(spacing: 0) {
+            PlanTimelinePreviewFactory.row(
+                title: "Water",
+                time: "14:09",
+                status: .logged,
+                emphasis: .past,
+                completed: true,
+                category: .nutrition
+            )
+            PlanTimelinePreviewFactory.row(
+                title: "Apple",
+                time: "14:41",
+                status: .logged,
+                emphasis: .past,
+                completed: true,
+                category: .nutrition
+            )
+            PlanTimelinePreviewFactory.row(
+                title: "Walk",
+                time: "17:31",
+                status: .logged,
+                emphasis: .past,
+                completed: true
+            )
+            PlanTimelineNowDivider()
+            PlanTimelinePreviewFactory.row(
+                title: "Sleep Routine",
+                time: "22:30",
+                status: .upcoming,
+                emphasis: .next
+            )
+        }
+        .padding(.horizontal, 12)
+    }
+    .preferredColorScheme(.dark)
+}
+#endif

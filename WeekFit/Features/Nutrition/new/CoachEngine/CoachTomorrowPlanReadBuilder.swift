@@ -80,7 +80,7 @@ enum CoachTomorrowPlanReadBuilder {
             if title != "Recovery activity" {
                 return (title.lowercased(), title.lowercased())
             }
-            return ("recovery work", "восстановительная активность")
+            return ("recovery work", "лёгкая активность")
         }
     }
 

@@ -1022,8 +1022,12 @@ enum CoachActivityContextResolverV3 {
             type.contains("walk") ||
             type.contains("hike")
 
-        if isRun || isRide || isSwim || (isWalkOrHike && activity.durationMinutes >= 60) {
+        if isRun || isRide || isSwim {
             return .endurance
+        }
+
+        if isWalkOrHike {
+            return activity.durationMinutes >= 60 ? .endurance : .recovery
         }
 
         let isRacketSport =

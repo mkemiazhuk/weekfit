@@ -9,7 +9,10 @@
     "calories": 0,
     "protein": 0,
     "carbs": 0,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250
   },
   {
     "id": "drink_coffee",
@@ -21,7 +24,10 @@
     "calories": 5,
     "protein": 0,
     "carbs": 0,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 240,
+    "servingUnit": "milliliters",
+    "mlPerServing": 240
   },
   {
     "id": "drink_tea",
@@ -33,7 +39,10 @@
     "calories": 2,
     "protein": 0,
     "carbs": 0,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 240,
+    "servingUnit": "milliliters",
+    "mlPerServing": 240
   },
   {
     "id": "drink_milk",
@@ -45,7 +54,10 @@
     "calories": 120,
     "protein": 8,
     "carbs": 12,
-    "fats": 5
+    "fats": 5,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250
   },
   {
     "id": "drink_orange_juice",
@@ -57,7 +69,10 @@
     "calories": 110,
     "protein": 2,
     "carbs": 26,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250
   },
   {
     "id": "drink_protein_shake",
@@ -69,7 +84,10 @@
     "calories": 180,
     "protein": 30,
     "carbs": 5,
-    "fats": 3
+    "fats": 3,
+    "defaultServingAmount": 330,
+    "servingUnit": "milliliters",
+    "mlPerServing": 330
   },
   {
     "id": "drink_tomato_juice",
@@ -81,7 +99,10 @@
     "calories": 57,
     "protein": 4,
     "carbs": 9,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250
   },
   {
     "id": "snack_banana",
@@ -93,7 +114,10 @@
     "calories": 105,
     "protein": 1,
     "carbs": 27,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 118
   },
   {
     "id": "snack_apple",
@@ -105,7 +129,10 @@
     "calories": 95,
     "protein": 0,
     "carbs": 25,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 182
   },
   {
     "id": "snack_orange",
@@ -117,7 +144,10 @@
     "calories": 80,
     "protein": 1,
     "carbs": 19,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 131
   },
   {
     "id": "snack_greek_yogurt",
@@ -129,7 +159,10 @@
     "calories": 150,
     "protein": 15,
     "carbs": 8,
-    "fats": 5
+    "fats": 5,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 170
   },
   {
     "id": "snack_protein_bar",
@@ -141,7 +174,10 @@
     "calories": 220,
     "protein": 20,
     "carbs": 22,
-    "fats": 7
+    "fats": 7,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 60
   },
   {
     "id": "snack_mixed_nuts",
@@ -153,7 +189,10 @@
     "calories": 190,
     "protein": 6,
     "carbs": 7,
-    "fats": 16
+    "fats": 16,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 28
   },
   {
     "id": "snack_dark_chocolate",
@@ -165,7 +204,10 @@
     "calories": 170,
     "protein": 2,
     "carbs": 13,
-    "fats": 12
+    "fats": 12,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 30
   },
   {
     "id": "snack_rice_cakes",
@@ -177,6 +219,9 @@
     "calories": 70,
     "protein": 1,
     "carbs": 14,
-    "fats": 0
+    "fats": 0,
+    "defaultServingAmount": 1,
+    "servingUnit": "portion",
+    "gramsPerServing": 18
   }
 ]

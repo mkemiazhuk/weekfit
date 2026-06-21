@@ -4450,13 +4450,7 @@ struct InsightsDayRecord {
     }
 
     private var plannedWaterLiters: Double {
-        let waterLogs = activities.filter { activity in
-            activity.isCompleted &&
-            !activity.isSkipped &&
-            (activity.imageName == "hydration" || activity.source.lowercased() == "waterlog")
-        }
-
-        return Double(waterLogs.count) * 0.25
+        QuickLogActivityPortions.totalWaterLiters(from: activities)
     }
 
     private var completedNutritionActivities: [PlannedActivity] {

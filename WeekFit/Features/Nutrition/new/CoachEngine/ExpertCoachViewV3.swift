@@ -712,7 +712,7 @@ struct ExpertCoachViewV3: View {
             return "Сегодняшняя готовность выглядит неплохо, но начните спокойно и дайте телу войти в ритм."
 
         case .postActivityRecovery:
-            return "Главная работа уже сделана. Сейчас больше пользы даст восстановление, а не новая нагрузка."
+            return "Главная тренировка уже сделана. Сейчас больше пользы даст восстановление, а не новая нагрузка."
 
         case .recoveryNeeded:
             return "Организму нужно чуть больше времени. Не всегда нужно делать больше — иногда лучше сделать меньше."
@@ -1469,15 +1469,14 @@ struct ExpertCoachViewV3: View {
 
         // NUTRITION
 
-        let dynamicNutritionTarget: Double =
-            baseTargetCalories + activeCaloriesBurned
-
-        let eatenCalories: Double =
-            nutritionViewModel.currentMetrics?.calories ?? 0
+        let nutritionBudget = NutritionBudgetCalculator.make(
+            from: nutritionViewModel.nutritionResult,
+            consumed: nutritionViewModel.currentMetrics?.calories ?? 0
+        )
 
         let nutritionRatio =
-            dynamicNutritionTarget > 0
-            ? eatenCalories / dynamicNutritionTarget
+            nutritionBudget.totalCalories > 0
+            ? nutritionBudget.progressRatio
             : 1
 
         let nutritionScore: Double
@@ -1988,28 +1987,28 @@ struct ExpertCoachViewV3: View {
         switch renderModel.owner {
         case .stableOverview, .readiness:
             return [
-                whyRow("Recovery is within the normal range", "Восстановление в обычном диапазоне", icon: "heart.fill", color: CoachPalette.recovery),
-                whyRow("There is enough time before the next activity", "До следующей активности достаточно времени", icon: "clock.fill", color: renderModel.color),
-                whyRow("No major constraints are affecting the day", "Нет крупных ограничений для дня", icon: "checkmark.seal.fill", color: renderModel.color)
+                whyRow("Recovery looks normal", "Восстановление в норме", icon: "heart.fill", color: CoachPalette.recovery),
+                whyRow("Plenty of time before the next activity", "До следующей активности достаточно времени", icon: "clock.fill", color: renderModel.color),
+                whyRow("Nothing big is holding the day back", "Ничего серьёзного не мешает дню", icon: "checkmark.seal.fill", color: renderModel.color)
             ]
 
         case .activityPreparation:
             return [
-                whyRow("The biggest training load is still ahead", "Главная тренировочная нагрузка ещё впереди", icon: "figure.run", color: renderModel.color),
-                whyRow("Arriving fresh matters most now", "Сейчас важнее выйти свежим", icon: "figure.cooldown", color: renderModel.color),
-                whyRow("A calm start gives you better execution", "Спокойный старт поможет лучше выполнить сессию", icon: "speedometer", color: CoachPalette.warning)
+                whyRow("The hardest workout is still ahead", "Самая тяжёлая тренировка ещё впереди", icon: "figure.run", color: renderModel.color),
+                whyRow("Starting fresh helps most right now", "Сейчас лучше всего выйти свежим", icon: "figure.cooldown", color: renderModel.color),
+                whyRow("A calm start usually goes better", "Спокойный старт обычно идёт лучше", icon: "speedometer", color: CoachPalette.warning)
             ]
 
         case .activeActivity, .pacingExecution, .sustainableExecution:
             return [
-                whyRow("The session is already creating enough load", "Сессия уже создает достаточную нагрузку", icon: "figure.run", color: renderModel.color),
-                whyRow("Effort control protects the rest of the day", "Контроль усилия защищает остаток дня", icon: "speedometer", color: CoachPalette.warning),
-                whyRow("Recovery depends on finishing with reserve", "Восстановление зависит от запаса на финише", icon: "heart.fill", color: CoachPalette.recovery)
+                whyRow("This session is already enough load", "Этой тренировки уже достаточно", icon: "figure.run", color: renderModel.color),
+                whyRow("Holding back now saves you for later", "Сдержанность сейчас сбережёт силы на потом", icon: "speedometer", color: CoachPalette.warning),
+                whyRow("You'll recover better if you finish with something left", "Восстановитесь лучше, если закончите с запасом", icon: "heart.fill", color: CoachPalette.recovery)
             ]
         case .fuelingDuringActivity:
             return [
                 whyRow("Energy expenditure is already high", "Расход энергии уже высокий", icon: "flame.fill", color: CoachPalette.activity),
-                whyRow("Fuel intake is behind the workload", "Питание отстаёт от нагрузки", icon: "bolt.fill", color: CoachPalette.fueling)
+                whyRow("Fuel intake is behind the workload", "Питание отстаёт от тренировки", icon: "bolt.fill", color: CoachPalette.fueling)
             ]
         case .hydrationExecution:
             return [
@@ -2019,30 +2018,30 @@ struct ExpertCoachViewV3: View {
 
         case .postActivityRecovery, .recovery:
             return [
-                whyRow("The main load is already done", "Основная нагрузка уже выполнена", icon: "checkmark.circle.fill", color: renderModel.color),
-                whyRow("Recovery matters more than another hard effort", "Восстановление важнее еще одной тяжелой нагрузки", icon: "heart.fill", color: CoachPalette.recovery),
-                whyRow("Extra intensity is unlikely to add benefit", "Дополнительная интенсивность вряд ли даст пользу", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
+                whyRow("The main work is done", "Основная работа уже сделана", icon: "checkmark.circle.fill", color: renderModel.color),
+                whyRow("Rest beats another hard effort", "Отдых лучше ещё одной тяжёлой тренировки", icon: "heart.fill", color: CoachPalette.recovery),
+                whyRow("More intensity probably won't help", "Ещё одна интенсивность вряд ли поможет", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
             ]
 
         case .tomorrowProtection:
             return [
-                whyRow("Tomorrow has a higher-priority training demand", "Завтра есть более важная тренировочная нагрузка", icon: "calendar", color: renderModel.color),
-                whyRow("Extra load today can lower readiness", "Лишняя нагрузка сегодня снизит готовность", icon: "arrow.down.heart.fill", color: CoachPalette.warning),
-                whyRow("Sleep and recovery set up the next session", "Сон и восстановление готовят следующую сессию", icon: "moon.fill", color: CoachPalette.recovery)
+                whyRow("Tomorrow's workout matters more", "Завтрашняя тренировка важнее", icon: "calendar", color: renderModel.color),
+                whyRow("Extra load today will hurt tomorrow", "Лишнее сегодня ударит по завтра", icon: "arrow.down.heart.fill", color: CoachPalette.warning),
+                whyRow("Sleep tonight sets up the next session", "Сон сегодня готовит следующую сессию", icon: "moon.fill", color: CoachPalette.recovery)
             ]
 
         case .hydration:
             return [
-                whyRow("Hydration is directly limiting the decision", "Вода напрямую ограничивает решение", icon: "drop.fill", color: CoachPalette.hydration),
-                whyRow("The next block needs better fluid readiness", "Следующему блоку нужна лучшая готовность по воде", icon: "figure.run", color: renderModel.color),
-                whyRow("Fixing it now reduces avoidable stress", "Если исправить сейчас, лишнего стресса будет меньше", icon: "checkmark.seal.fill", color: renderModel.color)
+                whyRow("You're low on water", "Не хватает воды", icon: "drop.fill", color: CoachPalette.hydration),
+                whyRow("The next part goes better if you drink now", "Следующая часть пойдёт лучше, если выпить сейчас", icon: "figure.run", color: renderModel.color),
+                whyRow("Fixing it now avoids extra stress", "Сейчас проще, чем догонять потом", icon: "checkmark.seal.fill", color: renderModel.color)
             ]
 
         case .fuel:
             return [
-                whyRow("Fueling is directly limiting the decision", "Питание напрямую ограничивает решение", icon: "bolt.fill", color: CoachPalette.fueling),
-                whyRow("The next effort needs usable energy", "Следующей нагрузке нужна доступная энергия", icon: "figure.run", color: renderModel.color),
-                whyRow("Low fuel makes intensity less useful", "При низкой энергии интенсивность менее полезна", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
+                whyRow("You haven't eaten enough", "Мало еды", icon: "bolt.fill", color: CoachPalette.fueling),
+                whyRow("The next effort needs fuel", "Следующей тренировке нужна еда", icon: "figure.run", color: renderModel.color),
+                whyRow("Hard work on empty doesn't help much", "Тяжело работать на пустом желудке", icon: "exclamationmark.triangle.fill", color: CoachPalette.warning)
             ]
         }
     }

@@ -96,15 +96,21 @@ enum CoachTimeOfDayFraming {
     ) -> Copy? {
         switch timePhase {
         case .morning:
+            if owner == .stableOverview || owner == .readiness {
+                return Copy(
+                    "Morning's going fine so far.",
+                    "Утро пока идёт ровно."
+                )
+            }
             if owner == .activityPreparation || (hasUpcomingSessionToday && !completedSeriousTrainingToday) {
                 return Copy(
-                    "Morning is still open — set up the main session calmly.",
+                    "Morning is still open — ease into the main session.",
                     "Утро ещё впереди — спокойно настройтесь на главную сессию."
                 )
             }
             if owner == .stableOverview || owner == .readiness {
                 return Copy(
-                    "Morning looks steady so far.",
+                    "Morning's going fine so far.",
                     "Утро пока идёт ровно."
                 )
             }
@@ -113,14 +119,14 @@ enum CoachTimeOfDayFraming {
         case .midday:
             if isPostSession && completedSeriousTrainingToday {
                 return Copy(
-                    "The middle of the day should stay easy now.",
-                    "Середину дня лучше держать лёгкой."
+                    "Take it easy for the rest of the day.",
+                    "Остаток дня лучше держать лёгким."
                 )
             }
             if owner == .activityPreparation {
                 return Copy(
-                    "There is still time before the session — use midday without extra load.",
-                    "До сессии ещё есть время — используйте середину дня без лишней нагрузки."
+                    "You still have time before the session — don't add extra load at lunch.",
+                    "До сессии ещё есть время — не добавляйте лишней нагрузки в середине дня."
                 )
             }
             return nil
@@ -128,7 +134,7 @@ enum CoachTimeOfDayFraming {
         case .afternoon:
             if isPostSession && completedSeriousTrainingToday {
                 return Copy(
-                    "The training window is closing — protect the rest of the afternoon.",
+                    "The workout window is closing — go easy this afternoon.",
                     "Тренировочное окно закрывается — берегите остаток дня."
                 )
             }
@@ -143,13 +149,13 @@ enum CoachTimeOfDayFraming {
         case .evening:
             if owner == .postActivityRecovery || owner == .recovery || (isPostSession && completedSeriousTrainingToday) {
                 return Copy(
-                    "Evening should stay calm now.",
+                    "Keep the evening calm.",
                     "Вечер сейчас лучше держать спокойным."
                 )
             }
             if owner == .tomorrowProtection {
                 return Copy(
-                    "Evening choices will shape tomorrow.",
+                    "What you do tonight shapes tomorrow.",
                     "Вечерние решения сформируют завтра."
                 )
             }
@@ -164,8 +170,8 @@ enum CoachTimeOfDayFraming {
         case .lateEvening, .night:
             if owner == .postActivityRecovery || owner == .recovery || owner == .tomorrowProtection || completedSeriousTrainingToday {
                 return Copy(
-                    "It is late — sleep is the main lever now.",
-                    "Уже поздно — сон сейчас главный рычаг."
+                    "It's late — sleep is what helps most now.",
+                    "Уже поздно — сон сейчас важнее всего."
                 )
             }
             if owner == .stableOverview || owner == .readiness {
@@ -188,17 +194,17 @@ enum CoachTimeOfDayFraming {
         switch timePhase {
         case .morning:
             return Copy(
-                "Morning looks steady — nothing urgent needs attention.",
+                "Morning's going fine — nothing needs your attention right now.",
                 "Утро идёт ровно — срочного ничего не требует внимания."
             )
         case .midday, .afternoon:
             return Copy(
-                "The day looks steady — nothing urgent needs attention.",
+                "Today's going fine — nothing needs your attention right now.",
                 "День идёт ровно — срочного ничего не требует внимания."
             )
         case .evening, .lateEvening, .night:
             return Copy(
-                "The day is in good shape — keep the evening quiet.",
+                "Good day so far — keep the evening quiet.",
                 "День в хорошем ритме — вечер лучше держать спокойным."
             )
         }

@@ -245,6 +245,63 @@ final class CoachCoordinatorXCTests: XCTestCase {
         XCTAssertEqual(coordinator.skippedUnchangedCount, 1)
     }
 
+    func testMorningRecoveryDayUpcomingPlanDoesNotShowEasyMovementOverride() {
+        let morning = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: now) ?? now
+        let walk = PlannedActivity(
+            date: CoachTestClock.offset(minutes: 105, from: morning),
+            type: "walking",
+            title: "Walk",
+            durationMinutes: 45,
+            icon: "figure.walk",
+            imageName: "figure.walk",
+            colorRed: 0.16,
+            colorGreen: 0.80,
+            colorBlue: 0.43
+        )
+        let stretching = PlannedActivity(
+            date: CoachTestClock.offset(minutes: 180, from: morning),
+            type: "recovery",
+            title: "Stretching",
+            durationMinutes: 20,
+            icon: "figure.cooldown",
+            imageName: "figure.cooldown",
+            colorRed: 0.16,
+            colorGreen: 0.80,
+            colorBlue: 0.43
+        )
+        let sauna = PlannedActivity(
+            date: CoachTestClock.offset(minutes: 300, from: morning),
+            type: "recovery",
+            title: "Sauna",
+            durationMinutes: 20,
+            icon: "flame.fill",
+            imageName: "flame.fill",
+            colorRed: 0.95,
+            colorGreen: 0.45,
+            colorBlue: 0.20
+        )
+        let coordinator = CoachCoordinator(decisionResolver: Self.guidance(for:))
+        let state = coordinator.recomputeIfNeeded(
+            input: makeInput(
+                now: morning,
+                metrics: CoachMetricsBuilder.metrics(sleepHours: 8.1),
+                activities: [walk, stretching, sauna]
+            ),
+            reason: "morningRecoveryPlan"
+        )
+        let title = state.finalStory?.title.resolved ?? ""
+        let message = state.coachPresentation?.message ?? state.finalStory?.subtitle.resolved ?? ""
+        let visible = "\(title) \(message)".lowercased()
+
+        XCTAssertFalse(title.localizedCaseInsensitiveContains("already added"), title)
+        XCTAssertFalse(visible.contains("easy movement"), visible)
+        XCTAssertFalse(visible.contains("long ride"), visible)
+        XCTAssertTrue(
+            state.finalStory?.owner == .stableOverview || state.finalStory?.owner == .readiness,
+            state.finalStory?.owner.rawValue ?? "nil"
+        )
+    }
+
     func testActiveActivityStartUpdatesFingerprintAndRecomputesOnce() {
         var resolverCalls = 0
         let coordinator = CoachCoordinator { input in

@@ -25,8 +25,13 @@ struct WeekPlannerView: View {
     
     @Environment(\.modelContext) private var modelContext
 
-    @State private var activityPendingDelete: PlannedActivity?
-    @State private var showDeleteConfirmation = false
+    @State private var selectedMeal: Meals?
+    @State private var selectedFood: Meals?
+    @State private var showNutritionDetails = false
+    @State private var nutritionDetailsDate = Date()
+    @State private var selectedActivitySession: ActivitySessionSnapshot?
+
+    private let sessionResolver = PlannedActivitySessionResolver()
 
     private let calendar = Calendar.current
     
@@ -116,22 +121,40 @@ struct WeekPlannerView: View {
             .environmentObject(languageManager)
             .weekFitSheetChrome(cornerRadius: 36)
         }
-        .alert(
-            WeekFitLocalizedString("planner.delete.logged.title"),
-            isPresented: $showDeleteConfirmation,
-            presenting: activityPendingDelete
-        ) { activity in
-
-            Button(WeekFitLocalizedString("common.action.delete"), role: .destructive) {
-                deleteActivity(activity)
+        .sheet(item: $selectedMeal) { meal in
+            MealDetailsView(meal: meal)
+                .environmentObject(languageManager)
+        }
+        .sheet(item: $selectedFood) { food in
+            CustomFoodDetailsView(
+                food: food,
+                existingMeals: customMeals
+            )
+            .environmentObject(languageManager)
+        }
+        .fullScreenCover(isPresented: $showNutritionDetails) {
+            NutritionDetailsView(
+                selectedDate: nutritionDetailsDate,
+                calories: nutritionCalories(for: nutritionDetailsDate),
+                protein: nutritionProtein(for: nutritionDetailsDate),
+                carbs: nutritionCarbs(for: nutritionDetailsDate),
+                fats: nutritionFats(for: nutritionDetailsDate),
+                fiber: nutritionFiber(for: nutritionDetailsDate),
+                proteinGoal: proteinGoal,
+                carbsGoal: carbsGoal,
+                fatsGoal: fatsGoal,
+                fiberGoal: fiberGoal,
+                meals: nutritionMeals(for: nutritionDetailsDate)
+            ) { newDate in
+                nutritionDetailsDate = newDate
             }
-
-            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) {
-                activityPendingDelete = nil
-            }
-
-        } message: { activity in
-            Text(String(format: WeekFitLocalizedString("planner.delete.activityMessageFormat"), activity.title))
+            .environmentObject(languageManager)
+        }
+        .fullScreenCover(item: $selectedActivitySession) { session in
+            ActivitySessionDetailView(
+                session: session,
+                healthManager: healthManager
+            )
         }
         .sheet(item: $activityToConfirm) { activity in
             plannerConfirmationSheet(activity)
@@ -177,7 +200,7 @@ struct WeekPlannerView: View {
                 } label: {
                     HStack {
                         Image(systemName: "xmark.circle")
-                        Text(WeekFitLocalizedString("planner.status.skipped"))
+                        Text(WeekFitLocalizedString("planner.action.markSkipped"))
                     }
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.64))
@@ -250,8 +273,100 @@ struct WeekPlannerView: View {
         } catch {
             print("❌ Failed to delete planned activity:", error)
         }
+    }
 
-        activityPendingDelete = nil
+    private func deleteTimelineItem(_ item: PlanTimelineItem) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        switch item {
+        case .single(let activity):
+            deleteActivity(activity)
+
+        case .waterGroup(let activities):
+            activities.forEach { deleteActivity($0) }
+        }
+    }
+
+    private func openTimelineItem(_ item: PlanTimelineItem) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        switch item {
+        case .waterGroup:
+            nutritionDetailsDate = viewModel.selectedDate
+            showNutritionDetails = true
+
+        case .single(let activity):
+            openTimelineActivity(activity)
+        }
+    }
+
+    private func openTimelineActivity(_ activity: PlannedActivity) {
+        if activity.timelineEventKind == .food {
+            openTimelineMeal(
+                PlanTimelineRouter.meal(
+                    for: activity,
+                    customMeals: customMeals
+                )
+            )
+            return
+        }
+
+        if PlanTimelineRouter.shouldOpenNutrition(for: activity) {
+            nutritionDetailsDate = viewModel.selectedDate
+            showNutritionDetails = true
+            return
+        }
+
+        if PlanTimelineRouter.shouldOpenActivityDetail(for: activity) {
+            Task {
+                let session = await sessionResolver.resolve(activity, healthManager: healthManager)
+                selectedActivitySession = session
+            }
+            return
+        }
+
+        openTimelineMeal(
+            PlanTimelineRouter.meal(
+                for: activity,
+                customMeals: customMeals
+            )
+        )
+    }
+
+    private func openTimelineMeal(_ meal: Meals) {
+        if meal.isFoodProduct {
+            selectedFood = meal
+        } else {
+            selectedMeal = meal
+        }
+    }
+
+    @ViewBuilder
+    private func timelineItemContextMenu(
+        for item: PlanTimelineItem,
+        status: PlanActivityStatus
+    ) -> some View {
+        switch item {
+        case .waterGroup:
+            EmptyView()
+
+        case .single(let activity):
+            if status == .pending {
+                Button {
+                    activityToConfirm = activity
+                } label: {
+                    Label(AppText.Common.Action.done, systemImage: "checkmark.circle.fill")
+                }
+            }
+
+            if status == .upcoming || status == .pending {
+                Button {
+                    viewModel.startEditing(activity)
+                } label: {
+                    Label(WeekFitLocalizedString("common.action.edit"), systemImage: "pencil")
+                }
+            }
+        }
     }
 }
 
@@ -420,68 +535,75 @@ private extension WeekPlannerView {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 14) {
-                            ForEach(timelineItems) { item in
-                                let activity = item.representative
-                                let status = resolvedActivityStatus(for: activity)
+                    List {
+                        ForEach(Array(timelineItems.enumerated()), id: \.element.id) { index, item in
+                            let activity = item.representative
+                            let status = resolvedActivityStatus(for: activity)
+                            let category = PlanTimelineCategory.from(activity: activity)
+                            let emphasis = timelineEmphasis(for: item, status: status)
 
-                                ZStack(alignment: .leading) {
-                                    Circle()
-                                        .fill(
-                                            activityAccent(for: activity)
-                                                .opacity(status == .upcoming ? 0.62 : 0.88)
-                                        )
-                                        .frame(
-                                            width: status == .upcoming ? 4.5 : 6,
-                                            height: status == .upcoming ? 4.5 : 6
-                                        )
-                                        .offset(x: status == .upcoming ? 0.75 : 0)
-
-                                    DynamicPlanRow(
-                                        activity: activity,
-                                        displayTitle: timelineTitle(for: item),
-                                        accent: activityAccent(for: activity),
-                                        time: timelineTime(for: item),
-                                        subtitle: timelineSubtitle(for: item),
-                                        status: status,
-                                        mealImageName: mealImageName(for: activity),
-                                        mealBuilderImageItems: mealBuilderImageItems(for: activity),
-                                        mealPlaceholderInitial: mealPlaceholderInitial(for: activity)
+                            if shouldShowTimelineNowDivider(at: index) {
+                                PlanTimelineNowDivider()
+                                    .listRowInsets(
+                                        EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
                                     )
-                                    .padding(.leading, 28)
-                                }
-                                .id(item.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-                                    switch item {
-                                    case .waterGroup(let activities):
-                                        if let first = activities.first {
-                                            activityPendingDelete = first
-                                            showDeleteConfirmation = true
-                                        }
-
-                                    case .single(let activity):
-                                        switch status {
-                                        case .pending:
-                                            activityToConfirm = activity
-
-                                        case .completed, .logged:
-                                            activityPendingDelete = activity
-                                            showDeleteConfirmation = true
-
-                                        default:
-                                            viewModel.startEditing(activity)
-                                        }
-                                    }
-                                }
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
                             }
+
+                            PlanTimelineRow(
+                                activity: activity,
+                                displayTitle: timelineTitle(for: item),
+                                metadata: PlanTimelineMetadataBuilder.metadata(
+                                    for: item,
+                                    customMeals: customMeals,
+                                    status: status,
+                                    formattedDuration: formattedDuration,
+                                    waterLogCountText: waterLogCountText
+                                ),
+                                customMeals: customMeals,
+                                time: timelineTime(for: item),
+                                category: category,
+                                status: status,
+                                emphasis: emphasis,
+                                nextEmphasis: timelineNextEmphasis(at: index),
+                                isFirst: index == 0,
+                                isLast: index == timelineItems.count - 1,
+                                connectorAbove: timelineConnectorAbove(at: index)
+                            )
+                            .id(item.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                openTimelineItem(item)
+                            }
+                            .contextMenu {
+                                timelineItemContextMenu(for: item, status: status)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteTimelineItem(item)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .tint(Color.red.opacity(0.68))
+                            }
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: index == 0 ? 4 : 0,
+                                    leading: 8,
+                                    bottom: PlanTimelineLayout.rowSpacing,
+                                    trailing: 8
+                                )
+                            )
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
-                        .padding(.top, 12)
-                        .padding(.bottom, 24)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, 1)
+                    .contentMargins(.top, 10, for: .scrollContent)
+                    .contentMargins(.bottom, 24, for: .scrollContent)
                     .onAppear {
                         scrollToRelevantActivity(proxy)
                     }
@@ -492,15 +614,6 @@ private extension WeekPlannerView {
                         scrollToRelevantActivity(proxy)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(alignment: .leading) {
-                    timelineOverlay
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .contentMargins(.top, 8, for: .scrollContent)
-                .contentMargins(.bottom, 24, for: .scrollContent)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -517,50 +630,51 @@ private extension WeekPlannerView {
             baseStatus: activityStatus(for: item)
         )
     }
-    
-    private var timelineOverlay: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
 
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.16),
-                                Color.white.opacity(0.10)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(
-                        height: completedTimelineHeight(in: geo.size.height)
-                    )
-
-                Rectangle()
-                    .fill(.white.opacity(0.045))
-            }
-            .frame(width: 2.1)
-            .offset(x: 2)
-        }
-        .allowsHitTesting(false)
+    private var timelineFocusItemID: String? {
+        PlanTimelineEmphasisResolver.focusItemID(
+            in: timelineItems,
+            statusFor: { resolvedActivityStatus(for: $0) },
+            selectedDay: viewModel.selectedDate
+        )
     }
-    
-    func completedTimelineHeight(in totalHeight: CGFloat) -> CGFloat {
 
-        guard !selectedDayActivities.isEmpty else {
-            return 0
-        }
+    private func timelineEmphasis(for item: PlanTimelineItem, status: PlanActivityStatus) -> PlanTimelineVisualEmphasis {
+        PlanTimelineEmphasisResolver.emphasis(
+            for: item,
+            status: status,
+            focusItemID: timelineFocusItemID
+        )
+    }
 
-        let completed = selectedDayActivities.filter {
-            let status = resolvedActivityStatus(for: $0)
+    private func timelineNextEmphasis(at index: Int) -> PlanTimelineVisualEmphasis? {
+        guard index + 1 < timelineItems.count else { return nil }
 
-            return status == .completed || status == .logged
-        }.count
+        let nextItem = timelineItems[index + 1]
+        let nextStatus = resolvedActivityStatus(for: nextItem.representative)
+        return timelineEmphasis(for: nextItem, status: nextStatus)
+    }
 
-        let progress = CGFloat(completed) / CGFloat(selectedDayActivities.count)
+    private func shouldShowTimelineNowDivider(at index: Int) -> Bool {
+        PlanTimelineEmphasisResolver.shouldShowNowDivider(
+            at: index,
+            in: timelineItems,
+            focusItemID: timelineFocusItemID,
+            statusFor: { resolvedActivityStatus(for: $0) }
+        )
+    }
 
-        return max(24, totalHeight * progress)
+    private func timelineConnectorAbove(at index: Int) -> CGFloat {
+        guard index > 0 else { return 0 }
+
+        let previous = timelineItems[index - 1]
+        let current = timelineItems[index]
+        let gapMinutes = current.firstDate.timeIntervalSince(previous.firstDate) / 60
+
+        if gapMinutes >= 120 { return 10 }
+        if gapMinutes >= 75 { return 6 }
+        if gapMinutes >= 45 { return 4 }
+        return 0
     }
     
     private var emptySelectedDay: some View {
@@ -795,6 +909,43 @@ private extension WeekPlannerView {
         CustomMealStore.load(from: customMealsStorage)
     }
 
+    private var proteinGoal: Double { nutritionViewModel.nutritionResult?.goals.protein ?? 153.0 }
+    private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
+    private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
+    private var fiberGoal: Double { nutritionViewModel.nutritionResult?.goals.fiber ?? 35.0 }
+
+    private func nutritionMeals(for date: Date) -> [PlannedActivity] {
+        plannedActivities
+            .filter {
+                calendar.isDate($0.date, inSameDayAs: date)
+                    && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink")
+                    && $0.isCompleted
+                    && !$0.isSkipped
+                    && $0.imageName != "hydration"
+            }
+            .sorted { $0.date < $1.date }
+    }
+
+    private func nutritionCalories(for date: Date) -> Double {
+        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.calories })
+    }
+
+    private func nutritionProtein(for date: Date) -> Double {
+        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.protein })
+    }
+
+    private func nutritionCarbs(for date: Date) -> Double {
+        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.carbs })
+    }
+
+    private func nutritionFats(for date: Date) -> Double {
+        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fats })
+    }
+
+    private func nutritionFiber(for date: Date) -> Double {
+        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fiber })
+    }
+
     private func matchingCustomMeal(for activity: PlannedActivity) -> Meals? {
         guard activity.type.lowercased() == "meal" else { return nil }
 
@@ -804,70 +955,6 @@ private extension WeekPlannerView {
         return customMeals.first {
             CustomMealStore.normalizedTitle($0.title) == normalizedTitle
         }
-    }
-
-    private func mealImageName(for activity: PlannedActivity) -> String? {
-        let storedImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !storedImageName.isEmpty {
-            return storedImageName
-        }
-
-        guard let meal = matchingCustomMeal(for: activity) else { return nil }
-
-        if let photoFilename = meal.displayPhotoFilename?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !photoFilename.isEmpty {
-            return photoFilename
-        }
-
-        let assetName = meal.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return assetName.isEmpty ? nil : assetName
-    }
-
-    private func mealBuilderImageItems(for activity: PlannedActivity) -> [MealBuilderImageItem] {
-        matchingCustomMeal(for: activity)?
-            .builderImageItems?
-            .sorted { $0.zIndex < $1.zIndex } ?? []
-    }
-
-    private func mealPlaceholderInitial(for activity: PlannedActivity) -> String {
-        matchingCustomMeal(for: activity)?.placeholderInitial
-            ?? activityPlaceholderInitial(for: activity.title)
-    }
-
-    private func activityPlaceholderInitial(for title: String) -> String {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let first = trimmedTitle.first else { return "" }
-        return String(first).uppercased()
-    }
-
-    private func mergedWaterTitle(_ first: String, _ second: String) -> String {
-        let firstAmount = waterAmount(from: first)
-        let secondAmount = waterAmount(from: second)
-
-        let total = firstAmount + secondAmount
-
-        if total > 0 {
-            return String(format: WeekFitLocalizedString("planner.waterLog.amountFormat"), String(format: "%.2g", total))
-        }
-
-        return WeekFitLocalizedString("planner.waterLog.title")
-    }
-
-    private func waterAmount(from title: String) -> Double {
-        let pattern = #"(\d+(?:\.\d+)?)L"#
-
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(
-                  in: title,
-                  range: NSRange(title.startIndex..., in: title)
-              ),
-              let range = Range(match.range(at: 1), in: title)
-        else {
-            return 0
-        }
-
-        return Double(title[range]) ?? 0
     }
 
     var weekRangeTitle: String {
@@ -1107,59 +1194,6 @@ private extension WeekPlannerView {
             return Color(red: 0.82, green: 0.60, blue: 0.36)
         default:
             return item.color
-        }
-    }
-
-    func activitySubtitle(_ item: PlannedActivity) -> String {
-
-        let duration = formattedDuration(item.durationMinutes)
-        let type = item.type.lowercased()
-        let title = item.title.lowercased()
-
-        if isDrinkActivity(item) {
-            if item.durationMinutes > 0 {
-                return "\(WeekFitLocalizedString("planner.timeline.drink")) • \(duration)"
-            }
-
-            return WeekFitLocalizedString("planner.timeline.drink")
-        }
-
-        switch type {
-
-        case "meal":
-            if item.calories > 0 {
-                return String(format: WeekFitLocalizedString("planner.activitySubtitle.mealCaloriesFormat"), item.calories)
-            }
-
-            return WeekFitLocalizedString("planner.activitySubtitle.fuelingWindow")
-
-        case "workout":
-            if item.durationMinutes > 0 {
-                return String(format: WeekFitLocalizedString("planner.activitySubtitle.trainingDurationFormat"), duration)
-            }
-
-            return WeekFitLocalizedString("planner.activitySubtitle.training")
-
-        case "recovery":
-            if item.durationMinutes > 0 {
-                return String(format: WeekFitLocalizedString("planner.activitySubtitle.recoveryDurationFormat"), duration)
-            }
-
-            return WeekFitLocalizedString("planner.activitySubtitle.recovery")
-
-        case "habit":
-            if item.durationMinutes > 0 {
-                return String(format: WeekFitLocalizedString("planner.activitySubtitle.routineDurationFormat"), duration)
-            }
-
-            return WeekFitLocalizedString("planner.activitySubtitle.routine")
-
-        default:
-            if item.durationMinutes > 0 {
-                return "\(localizedPlanTypeLabel(type: type, title: title)) • \(duration)"
-            }
-
-            return localizedPlanTypeLabel(type: type, title: title)
         }
     }
 
@@ -1541,341 +1575,6 @@ private struct DynamicDayCapsule: View {
     }
 }
 
-private struct TimelineSpine: View {
-
-    let activities: [PlannedActivity]
-    let accentFor: (PlannedActivity) -> Color
-
-    var body: some View {
-        VStack(spacing: 12) {
-            ForEach(activities, id: \.id) { activity in
-                ZStack {
-                    Rectangle()
-                        .fill(.white.opacity(0.035))
-                        .frame(width: 1.5)
-
-                    Circle()
-                        .fill(accentFor(activity).opacity(0.95))
-                        .frame(width: 5, height: 5)
-                }
-                .frame(width: 8, height: 58)
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-private struct DynamicPlanRow: View {
-
-    let activity: PlannedActivity
-    let displayTitle: String
-    let accent: Color
-    let time: String
-    let subtitle: String
-    let status: PlanActivityStatus
-    let mealImageName: String?
-    let mealBuilderImageItems: [MealBuilderImageItem]
-    let mealPlaceholderInitial: String
-
-    @State private var pulse = false
-
-    private var isLive: Bool {
-        status == .live
-    }
-
-    private var isPending: Bool {
-        status == .pending
-    }
-    
-    private var timelineMarker: some View {
-        ZStack {
-            Rectangle()
-                .fill(.white.opacity(0.08))
-                .frame(width: 1.2)
-
-            Circle()
-                .fill(accent.opacity(isPending ? 0.45 : 0.95))
-                .frame(
-                    width: isLive ? 7 : 5.5,
-                    height: isLive ? 7 : 5.5
-                )
-        }
-        .frame(width: 14)
-        .frame(maxHeight: .infinity)
-    }
-
-    var body: some View {
-        HStack(spacing: 14) {
-            iconView
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(displayTitle)
-                    .font(.system(size: 14.6, weight: isLive ? .bold : .semibold))
-                    .foregroundStyle(.white.opacity(isPending ? 0.58 : 0.96))
-                    .lineLimit(1)
-                    .layoutPriority(1)
-
-                Text(subtitle)
-                    .font(.system(size: 11.4, weight: .medium))
-                    .foregroundStyle(.white.opacity(isPending ? 0.34 : 0.50))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .truncationMode(.tail)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(time)
-                    .font(.system(size: 14.2, weight: isLive ? .bold : .semibold, design: .rounded))
-                    .foregroundStyle(
-                        status == .logged
-                            ? .white.opacity(0.58)
-                            : .white.opacity(isPending ? 0.54 : 0.88)
-                    )
-                    .lineLimit(1)
-                    .layoutPriority(2)
-      
-                statusBadge
-
-            }
-            .fixedSize(horizontal: true, vertical: false)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    isLive
-                        ? .white.opacity(0.050)
-                        : .white.opacity(0.022)
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(
-                    isLive
-                        ? accent.opacity(0.34)
-                        : accent.opacity(0.11),
-                    lineWidth: isLive ? 1.15 : 0.95
-                )
-        }
-        .shadow(
-            color: isLive
-                ? accent.opacity(0.08)
-                : .black.opacity(0.14),
-            radius: 8,
-            y: 4
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-    }
-
-    private var iconView: some View {
-        ZStack {
-            Circle()
-                .fill(accent.opacity(isLive ? 0.26 : 0.15))
-                .frame(width: 34, height: 34)
-
-            iconContent
-        }
-    }
-
-    @ViewBuilder
-    private var iconContent: some View {
-        Image(systemName: activity.type.lowercased() == "meal" ? "fork.knife" : resolvedIcon)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(accent.opacity(isPending ? 0.62 : 0.96))
-    }
-    
-    private var resolvedIcon: String {
-        let title = activity.title.lowercased()
-        let type = activity.type.lowercased()
-
-        if title.contains("coffee")
-              || title.contains("espresso")
-              || title.contains("cappuccino")
-              || title.contains("latte") {
-              return "cup.and.saucer.fill"
-          }
-
-          if title.contains("tea") {
-              return "cup.and.saucer.fill"
-          }
-
-          if title.contains("water")
-              || title.contains("hydration")
-              || title.contains("drink") {
-              return "drop.fill"
-          }
-
-        if title.contains("banana")
-            || title.contains("meal")
-            || type == "meal" {
-            return "fork.knife"
-        }
-
-        if title.contains("sauna")
-            || title.contains("heat") {
-            return "flame.fill"
-        }
-
-        if title.contains("walk")
-            || type.contains("walk") {
-            return isLive ? "figure.walk.motion" : "figure.walk"
-        }
-
-        if title.contains("hike")
-            || type.contains("hike") {
-            return "figure.hiking"
-        }
-
-        if title.contains("running")
-            || title.contains("run")
-            || type.contains("running")
-            || type.contains("run") {
-            return "figure.run"
-        }
-
-        if title.contains("cycling")
-            || title.contains("cycle")
-            || title.contains("bike")
-            || title.contains("ride")
-            || type.contains("cycling")
-            || type.contains("cycle")
-            || type.contains("bike")
-            || type.contains("ride") {
-            return "bicycle"
-        }
-
-        if title.contains("yoga")
-            || type.contains("yoga") {
-            return "figure.mind.and.body"
-        }
-
-        if title.contains("breathing")
-            || title.contains("breath")
-            || type.contains("breathing")
-            || type.contains("breath") {
-            return "wind"
-        }
-
-        if title.contains("stretching")
-            || title.contains("stretch")
-            || title.contains("mobility")
-            || type.contains("stretching")
-            || type.contains("stretch")
-            || type.contains("mobility") {
-            return "figure.flexibility"
-        }
-
-        if title.contains("upper body") {
-            return "figure.strengthtraining.traditional"
-        }
-
-        if title.contains("strength")
-            || title.contains("gym")
-            || title.contains("training")
-            || title.contains("workout")
-            || type.contains("workout") {
-            return "dumbbell.fill"
-        }
-
-        if title.contains("sleep")
-            || title.contains("bedtime") {
-            return "bed.double.fill"
-        }
-
-        if title.contains("no screens")
-            || title.contains("screen") {
-            return "iphone.slash"
-        }
-
-        if title.contains("morning routine")
-            || title.contains("morning") {
-            return "sunrise.fill"
-        }
-
-        if title.contains("routine")
-            || type == "habit" {
-            return "checkmark.circle"
-        }
-
-        if type == "recovery" {
-            return "leaf.fill"
-        }
-
-        return activity.icon.isEmpty ? fallbackIcon : activity.icon
-    }
-
-    private var statusBadge: some View {
-        HStack(spacing: 4) {
-
-            if activity.isWatchSynced {
-                Image(systemName: "applewatch")
-                    .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(accent.opacity(0.52))
-            }
-
-            if status == .live {
-                Circle()
-                    .fill(accent)
-                    .frame(width: 5, height: 5)
-                    .scaleEffect(pulse ? 1.22 : 0.86)
-                    .opacity(pulse ? 0.48 : 1.0)
-                    .animation(
-                        .easeInOut(duration: 1.1)
-                            .repeatForever(autoreverses: true),
-                        value: pulse
-                    )
-                    .onAppear {
-                        pulse = true
-                    }
-            }
-
-            Text(statusText)
-        }
-        .font(.system(size: 10.2, weight: .semibold))
-        .foregroundStyle(status.color(accent: accent))
-    }
-
-    private var statusText: String {
-
-        if activity.isWatchSynced,
-           status == .logged {
-            return WeekFitLocalizedString("planner.status.synced")
-        }
-
-        return status.title
-    }
-
-    private var fallbackIcon: String {
-        let type = activity.type.lowercased()
-        let title = activity.title.lowercased()
-
-        if title.contains("water")
-            || title.contains("drink")
-            || title.contains("tea")
-            || title.contains("hydration") {
-            return "drop.fill"
-        }
-
-        switch type {
-        case "workout":
-            return "figure.run"
-        case "meal":
-            return "fork.knife"
-        case "recovery":
-            return "leaf.fill"
-        case "habit":
-            return "checkmark.circle"
-        default:
-            return "sparkles"
-        }
-    }
-}
-
 // MARK: - Day Kind
 
 private enum PlanDayKind: Equatable {
@@ -2014,29 +1713,6 @@ private extension WeekPlannerView {
             return activities.last.map { timeTitle($0.date) } ?? ""
         }
     }
-
-    private func timelineSubtitle(for item: PlanTimelineItem) -> String {
-        switch item {
-        case .single(let activity):
-            return activitySubtitle(activity)
-
-        case .waterGroup(let activities):
-            let count = activities.count
-            let first = activities.first.map { timeTitle($0.date) } ?? ""
-            let last = activities.last.map { timeTitle($0.date) } ?? ""
-            let countText = waterLogCountText(count: count)
-
-            if first == last {
-                return isRussianLocale
-                    ? "\(WeekFitLocalizedString("planner.timeline.water")): \(countText)"
-                    : countText
-            }
-
-            return isRussianLocale
-                ? "\(WeekFitLocalizedString("planner.timeline.water")): \(countText) • \(first)–\(last)"
-                : "\(countText) • \(first)–\(last)"
-        }
-    }
 }
 
 // MARK: - Color Helper
@@ -2055,46 +1731,5 @@ private extension Color {
         let blue = Double(value & 0xff) / 255.0
 
         self.init(red: red, green: green, blue: blue)
-    }
-}
-
-private enum PlanTimelineItem: Identifiable {
-    case single(PlannedActivity)
-    case waterGroup([PlannedActivity])
-
-    var id: String {
-        switch self {
-        case .single(let activity):
-            return activity.id
-        case .waterGroup(let activities):
-            return "water-\(activities.map(\.id).joined(separator: "-"))"
-        }
-    }
-
-    var firstDate: Date {
-        switch self {
-        case .single(let activity):
-            return activity.date
-        case .waterGroup(let activities):
-            return activities.first?.date ?? Date()
-        }
-    }
-
-    var representative: PlannedActivity {
-        switch self {
-        case .single(let activity):
-            return activity
-        case .waterGroup(let activities):
-            return activities.first!
-        }
-    }
-
-    var count: Int {
-        switch self {
-        case .single:
-            return 1
-        case .waterGroup(let activities):
-            return activities.count
-        }
     }
 }

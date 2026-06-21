@@ -22,6 +22,13 @@ final class MetabolicRateCalculator {
 }
 
 final class DynamicMacroAdjuster {
+    private enum CalorieTargetPolicy {
+        static let fatLossMultiplier = 0.85
+        /// Prevents unrealistically low targets while still leaving a visible gap vs maintenance.
+        static let fatLossMinimumBMRRatio = 0.90
+        static let muscleGainMultiplier = 1.10
+    }
+
     func adjustGoals(bmr: Double, activeCalories: Double, weight: Double, goal: NutritionGoal) -> NutritionGoals {
         let safeWeight = max(weight, 40.0)
         let activeFactor: Double
@@ -36,9 +43,12 @@ final class DynamicMacroAdjuster {
         let targetCalories: Double
         
         switch goal {
-        case .fatLoss:      targetCalories = max(dynamicTDEE * 0.85, bmr)
+        case .fatLoss:
+            let deficitTarget = dynamicTDEE * CalorieTargetPolicy.fatLossMultiplier
+            let safetyFloor = bmr * CalorieTargetPolicy.fatLossMinimumBMRRatio
+            targetCalories = max(deficitTarget, safetyFloor)
         case .maintenance:  targetCalories = dynamicTDEE
-        case .muscleGain:   targetCalories = dynamicTDEE * 1.10
+        case .muscleGain:   targetCalories = dynamicTDEE * CalorieTargetPolicy.muscleGainMultiplier
         }
         
         let proteinMultiplier: Double

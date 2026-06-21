@@ -179,34 +179,75 @@ struct FoodMediaView: View {
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
 
+    private var hasBundledAsset: Bool {
+        FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName)
+    }
+
     var body: some View {
-        if meal.isFoodProduct || forceCircleForLocalPhoto {
-            switch presentation {
-            case .thumbnail(let size):
-                AsyncCustomFoodVisualView(
-                    filename: meal.displayPhotoFilename,
-                    placeholderInitial: meal.placeholderInitial,
-                    size: size,
-                    imageScale: 0.68
-                )
+        switch presentation {
+        case .thumbnail(let size):
+            foodMedia(size: size, isHero: false)
 
-            case .hero(let size):
-                AsyncCustomFoodVisualView(
-                    filename: meal.displayPhotoFilename,
-                    placeholderInitial: meal.placeholderInitial,
-                    size: size * 0.85,
-                    imageScale: 0.66
-                )
-            }
+        case .hero(let size):
+            foodMedia(size: size * 0.85, isHero: true)
+        }
+    }
+
+    @ViewBuilder
+    private func foodMedia(size: CGFloat, isHero: Bool) -> some View {
+        if let localPhoto = displayableLocalPhoto(for: meal) {
+            CustomFoodVisualView(
+                image: localPhoto,
+                placeholderInitial: meal.placeholderInitial,
+                size: size,
+                imageScale: isHero ? 0.66 : 0.68,
+                fallbackSystemImage: meal.isFoodProduct
+                    ? "takeoutbag.and.cup.and.straw.fill"
+                    : "fork.knife"
+            )
+        } else if hasBundledAsset {
+            CustomFoodVisualView(
+                image: UIImage(named: meal.imageName),
+                placeholderInitial: meal.placeholderInitial,
+                size: size,
+                imageScale: isHero ? 0.66 : 0.68,
+                fallbackSystemImage: meal.isFoodProduct
+                    ? "takeoutbag.and.cup.and.straw.fill"
+                    : "fork.knife"
+            )
+        } else if meal.isFoodProduct || forceCircleForLocalPhoto {
+            AsyncCustomFoodVisualView(
+                filename: meal.displayPhotoFilename,
+                placeholderInitial: meal.placeholderInitial,
+                size: size,
+                imageScale: isHero ? 0.66 : 0.68,
+                fallbackSystemImage: meal.isFoodProduct
+                    ? "takeoutbag.and.cup.and.straw.fill"
+                    : "fork.knife"
+            )
         } else {
-            switch presentation {
-            case .thumbnail(let size):
-                media(size: size, isHero: false)
+            media(size: size, isHero: isHero)
+        }
+    }
 
-            case .hero(let size):
-                media(size: size * 0.85, isHero: true)
+    private func displayableLocalPhoto(for meal: Meals) -> UIImage? {
+        guard meal.hasCustomPhoto else { return nil }
+
+        let candidates = [
+            meal.localPhotoThumbnailFilename,
+            meal.localPhotoFilename,
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+
+        for filename in candidates {
+            if let image = MealPhotoStore.image(for: filename),
+               FoodImageQualityValidator.isDisplayable(image) {
+                return image
             }
         }
+
+        return nil
     }
 
     private func media(size: CGFloat, isHero: Bool) -> some View {
@@ -263,14 +304,16 @@ struct FoodMediaView: View {
 
     @ViewBuilder
     private func resolvedMedia(size: CGFloat, isHero: Bool) -> some View {
-        if let image = MealPhotoStore.image(for: meal.displayPhotoFilename) {
+        if let image = MealPhotoStore.image(for: meal.displayPhotoFilename),
+           FoodImageQualityValidator.isDisplayable(image) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
 
-        } else if let items = meal.builderImageItems, !items.isEmpty {
+        } else if let items = meal.builderImageItems,
+                  !items.filter({ FoodImageQualityValidator.isDisplayableAsset(named: $0.imageName) }).isEmpty {
             BuiltMealPlateView(
-                items: items,
+                items: items.filter { FoodImageQualityValidator.isDisplayableAsset(named: $0.imageName) },
                 plateSize: size * (isHero ? 0.90 : 0.86),
                 itemScale: isHero ? 0.84 : 0.34,
                 offsetScale: isHero ? 0.66 : 0.32,
@@ -280,7 +323,7 @@ struct FoodMediaView: View {
             .frame(width: size, height: size)
             .offset(x: isHero ? -size * 0.04 : 0)
 
-        } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
+        } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
             Image(meal.imageName)
                 .resizable()
                 .scaledToFill()

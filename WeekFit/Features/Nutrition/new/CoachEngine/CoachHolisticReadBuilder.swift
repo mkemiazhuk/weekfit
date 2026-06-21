@@ -22,6 +22,10 @@ enum CoachHolisticReadBuilder {
         let shouldProtectUpcomingSession: Bool
         let tomorrowRecoveryPlanSummary: CoachTomorrowPlanReadBuilder.RecoveryPlanSummary?
         let timePhase: CoachFinalDecisionTimeOfDay
+        let heroNamesUpcomingPlan: Bool
+        let isCalmOverviewDay: Bool
+        let isPostHeatRecovery: Bool
+        let todayPlanSummary: CoachDayPlanReadBuilder.DayPlanSummary?
     }
 
     struct Copy {
@@ -66,6 +70,7 @@ enum CoachHolisticReadBuilder {
         var clauses: [Copy] = []
         switch context.owner {
         case .postActivityRecovery, .recovery:
+            appendIfPresent(&clauses, todayPlanClause(context))
             appendIfPresent(&clauses, dayLoadClause(context))
             if context.tomorrowRecoveryPlanSummary != nil {
                 appendIfPresent(&clauses, forwardClause(context))
@@ -91,15 +96,30 @@ enum CoachHolisticReadBuilder {
             appendIfPresent(&clauses, dayLoadClause(context))
             appendIfPresent(&clauses, forwardClause(context))
         default:
-            appendIfPresent(&clauses, timePhaseClause(context))
-            appendIfPresent(&clauses, stateClause(context))
-            appendIfPresent(&clauses, dayLoadClause(context))
-            appendIfPresent(&clauses, forwardClause(context))
+            if context.isCalmOverviewDay {
+                appendIfPresent(&clauses, stateClause(context))
+            } else {
+                appendIfPresent(&clauses, timePhaseClause(context))
+                appendIfPresent(&clauses, stateClause(context))
+                appendIfPresent(&clauses, dayLoadClause(context))
+                if !context.heroNamesUpcomingPlan {
+                    appendIfPresent(&clauses, forwardClause(context))
+                }
+            }
         }
         return clauses
     }
 
     private static func maxClauses(for context: Context) -> Int {
+        if context.isCalmOverviewDay {
+            return 1
+        }
+        if context.isPostSession || context.isPostHeatRecovery {
+            return 2
+        }
+        if context.owner == .activityPreparation && context.isPreSession {
+            return 0
+        }
         switch context.owner {
         case .pacingExecution, .sustainableExecution, .fuelingDuringActivity, .hydrationExecution:
             return 1
@@ -111,59 +131,138 @@ enum CoachHolisticReadBuilder {
     }
 
     private static func stateClause(_ context: Context) -> Copy? {
+        if context.isCalmOverviewDay,
+           context.owner == .stableOverview || context.owner == .readiness,
+           !context.hasUpcomingSessionToday,
+           !context.completedSeriousTrainingToday {
+            if context.sleepLimited {
+                return Copy(
+                    "Last night was shorter than ideal.",
+                    "Прошлой ночью вы недоспали."
+                )
+            }
+            if isLateEveningPhase(context.timePhase), context.recoveryPercent >= 75 {
+                return Copy(
+                    "Recovery looked solid today. The main job now is to protect tomorrow.",
+                    "Сегодня восстановление выглядело хорошим. Главное сейчас — беречь завтра."
+                )
+            }
+            return calmOverviewRecoveryInterpretation(context)
+        }
+
         if context.sleepLimited {
             return Copy(
-                "Sleep is limiting readiness today.",
-                "Сон сегодня ограничивает готовность."
+                "You didn't sleep enough last night.",
+                "Прошлой ночью вы недоспали."
             )
         }
         if context.hydrationLimited && (context.isPreSession || context.isDuringSession) {
             return Copy(
-                "Hydration is behind what today requires.",
-                "Гидратация отстаёт от того, что требует день."
+                "You're a bit low on water for today.",
+                "Сегодня не хватает воды."
+            )
+        }
+        if context.hydrationLimited && context.isCalmOverviewDay {
+            return Copy(
+                "You haven't logged water yet today.",
+                "Сегодня вода пока не отмечена."
             )
         }
         if context.fuelLimited && (context.isPreSession || context.isDuringSession) {
             return Copy(
-                "Fuel is behind what today requires.",
-                "Питание отстаёт от того, что требует день."
+                "Energy for the session is not fully in place yet.",
+                "Запас энергии к сессии пока не собран."
+            )
+        }
+        if context.fuelLimited && context.isCalmOverviewDay {
+            if context.timePhase == .morning {
+                return Copy(
+                    "Nothing is logged for food yet this morning.",
+                    "Утром пока ничего не отмечено из еды."
+                )
+            }
+            return Copy(
+                "Food is a little behind today.",
+                "С едой сегодня немного отстаёте."
             )
         }
         if context.recoveryLimited || context.recoveryPercent < 70 {
             if shouldSkipSoftRecoveryClause(context) {
                 return nil
             }
+            if context.isPostHeatRecovery && context.recoveryPercent >= 75 {
+                return Copy(
+                    "Sauna took something out of you — drink water and take it easy next.",
+                    "Сауна что-то забрала — пейте воду и не торопитесь дальше."
+                )
+            }
+            if context.recoveryPercent >= 80 && !context.isDuringSession && !context.isPreSession {
+                return nil
+            }
             return Copy(
-                "Recovery is limited at \(context.recoveryPercent)%.",
-                "Восстановление ограничено — \(context.recoveryPercent)%."
+                "Recovery is at \(context.recoveryPercent)% today.",
+                "Самочувствие сегодня — \(context.recoveryPercent)%."
             )
         }
         if context.recoveryPercent < 80 && (context.completedSeriousTrainingToday || context.isDuringSession) {
             return Copy(
-                "Recovery is still moderate at \(context.recoveryPercent)%.",
-                "Восстановление пока умеренное — \(context.recoveryPercent)%."
+                "Recovery is only at \(context.recoveryPercent)% so far.",
+                "Силы пока на \(context.recoveryPercent)%."
             )
         }
         return nil
     }
 
+    private static func calmOverviewRecoveryInterpretation(_ context: Context) -> Copy? {
+        let recovery = context.recoveryPercent
+        guard recovery > 0 else { return nil }
+
+        let morningLead = context.timePhase == .morning
+        switch recovery {
+        case 75...:
+            return morningLead
+                ? Copy("Recovery looks solid this morning.", "С утра восстановление выглядит хорошим.")
+                : Copy("Recovery looks solid today.", "Сегодня восстановление выглядит хорошим.")
+        case 60..<75:
+            return morningLead
+                ? Copy("Recovery looks reasonable this morning.", "С утра самочувствие выглядит нормальным.")
+                : Copy("Recovery looks reasonable today.", "Сегодня самочувствие выглядит нормальным.")
+        case 45..<60:
+            return Copy(
+                "Recovery isn't fully restored yet, but nothing is seriously limiting the day.",
+                "Восстановление ещё не полное, но день серьёзно не ограничен."
+            )
+        default:
+            return Copy(
+                "Recovery is still catching up today.",
+                "Сегодня организм ещё восстанавливается."
+            )
+        }
+    }
+
     private static func dayLoadClause(_ context: Context) -> Copy? {
+        if let summary = context.todayPlanSummary,
+           !context.completedSeriousTrainingToday,
+           let completed = CoachDayPlanReadBuilder.completedDayClause(summary),
+           summary.hasMultipleCompleted || summary.completedMinutes >= 75 {
+            return Copy(completed.english, completed.russian)
+        }
         if context.completedSeriousTrainingToday {
             if context.caloriesBurned >= 700 {
                 return Copy(
                     "Today already has serious training in the legs.",
-                    "Сегодня уже серьёзная тренировочная нагрузка."
+                    "Сегодня уже серьёзная тренировка."
                 )
             }
             return Copy(
-                "The main training work for today is already done.",
+                "You already did the main workout today.",
                 "Главная тренировка на сегодня уже сделана."
             )
         }
         if context.caloriesBurned >= 900 {
             return Copy(
-                "The day has already cost a lot of energy.",
-                "День уже стоил много энергии."
+                "You've already spent a lot of energy today.",
+                "Сегодня уже ушло много энергии."
             )
         }
         if context.isDuringSession && context.caloriesBurned >= 400 {
@@ -190,6 +289,21 @@ enum CoachHolisticReadBuilder {
         ).map { Copy($0.english, $0.russian) }
     }
 
+    private static func todayPlanClause(_ context: Context) -> Copy? {
+        guard let summary = context.todayPlanSummary else { return nil }
+        if context.isPostSession || context.isPostHeatRecovery,
+           let balance = CoachDayPlanReadBuilder.postSessionBalanceClause(
+               summary: summary,
+               isPostHeat: context.isPostHeatRecovery
+           ) {
+            return Copy(balance.english, balance.russian)
+        }
+        if let remaining = CoachDayPlanReadBuilder.remainingDayClause(summary) {
+            return Copy(remaining.english, remaining.russian)
+        }
+        return nil
+    }
+
     private static func forwardClause(_ context: Context) -> Copy? {
         if let summary = context.tomorrowRecoveryPlanSummary, !context.shouldProtectTomorrow {
             let clause = CoachTomorrowPlanReadBuilder.forwardClause(summary: summary)
@@ -197,47 +311,54 @@ enum CoachHolisticReadBuilder {
         }
         if context.shouldProtectTomorrow {
             return Copy(
-                "Tomorrow still has real training demand.",
-                "Завтра ещё есть серьёзная нагрузка."
+                "Tomorrow has a hard session waiting.",
+                "Завтра ждёт серьёзная тренировка."
             )
+        }
+        if let summary = context.todayPlanSummary,
+           let remaining = CoachDayPlanReadBuilder.remainingDayClause(summary),
+           context.isPostSession || context.isPostHeatRecovery || context.shouldProtectUpcomingSession {
+            return Copy(remaining.english, remaining.russian)
         }
         guard let title = context.nextActivityTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
               !title.isEmpty else {
             return nil
         }
         if context.isPostSession && !context.shouldProtectUpcomingSession && !context.isPreSession {
-            return nil
+            if context.todayPlanSummary?.hasRemainingToday != true {
+                return nil
+            }
         }
         if let hours = context.hoursUntilNextActivity {
             if hours < 0.25 {
                 return Copy(
-                    "\(title) starts very soon — the rest of the day should support it.",
-                    "\(title) скоро начнётся — остаток дня лучше выстроить вокруг этого."
+                    "\(title) starts very soon — keep the rest of today simple.",
+                    "\(title) скоро начнётся — остаток дня держите простым."
                 )
             }
             if hours < 1 {
                 return Copy(
-                    "\(title) is within the hour — keep the rest of the day aligned with that.",
-                    "\(title) в течение часа — остаток дня лучше выстроить вокруг этого."
+                    "\(title) is less than an hour away — don't burn yourself out before it.",
+                    "\(title) меньше чем через час — не выгорите до неё."
                 )
             }
             if hours < 4 {
                 let rounded = max(1, Int(hours.rounded()))
                 return Copy(
-                    "\(title) is in about \(rounded) hour\(rounded == 1 ? "" : "s") — protect energy for it.",
-                    "\(title) примерно через \(rounded) \(russianHourWord(rounded)) — берегите энергию."
+                    "\(title) is in about \(rounded) hour\(rounded == 1 ? "" : "s") — save your energy for it.",
+                    "\(title) примерно через \(rounded) \(russianHourWord(rounded)) — берегите силы."
                 )
             }
             if context.isPreSession {
                 return Copy(
-                    "\(title) is the main training demand left today.",
-                    "\(title) — главная тренировочная задача, которая ещё впереди сегодня."
+                    "\(title) is the main thing left today.",
+                    "\(title) — главное, что ещё осталось сегодня."
                 )
             }
         } else if context.isPreSession {
             return Copy(
-                "\(title) is the main training demand left today.",
-                "\(title) — главная тренировочная задача, которая ещё впереди сегодня."
+                "\(title) is the main thing left today.",
+                "\(title) — главное, что ещё осталось сегодня."
             )
         }
         return nil
@@ -249,8 +370,8 @@ enum CoachHolisticReadBuilder {
             return Copy(stable.english, stable.russian)
         }
         return Copy(
-            "Use the day context, not just the last activity.",
-            "Смотрите на день целиком, а не только на последнюю активность."
+            "Look at the whole day, not just the last thing you did.",
+            "Смотрите на весь день, а не только на последнюю активность."
         )
     }
 
@@ -323,6 +444,10 @@ enum CoachHolisticReadBuilder {
         default:
             return false
         }
+    }
+
+    private static func isLateEveningPhase(_ phase: CoachFinalDecisionTimeOfDay) -> Bool {
+        phase == .lateEvening || phase == .night
     }
 
     private static func overlaps(_ lhs: Copy, _ rhs: Copy) -> Bool {

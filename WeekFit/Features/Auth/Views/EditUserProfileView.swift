@@ -36,7 +36,7 @@ struct EditUserProfileView: View {
     }
 
     private var suggestedGoal: NutritionGoal? {
-        guard hasHealthBiometrics else { return nil }
+        guard hasHealthBiometrics, !viewModel.hasManualNutritionGoal() else { return nil }
         return UserNutritionProfile.suggestedGoal(
             weightKg: healthManager.weight,
             heightCm: healthManager.heightCm

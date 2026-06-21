@@ -3928,7 +3928,8 @@ final class CoachDayPriorityResolverXCTests: XCTestCase {
         XCTAssertEqual(priority.focus, .eveningWindDown)
         XCTAssertEqual(priority.priority, .sleepPreparation)
         XCTAssertEqual(priority.objective, .completeDay)
-        XCTAssertEqual(priority.limiter, .sleep)
+        // Limiter stays evidence-based: 7h sleep is not a deficit even when protecting the night.
+        XCTAssertEqual(priority.limiter, .none)
         XCTAssertTrue(priority.message.localizedCaseInsensitiveContains("sleep"))
         XCTAssertTrue(priority.message.localizedCaseInsensitiveContains("do not force food or water"))
         XCTAssertFalse(priority.priority == .hydration || priority.priority == .fueling)

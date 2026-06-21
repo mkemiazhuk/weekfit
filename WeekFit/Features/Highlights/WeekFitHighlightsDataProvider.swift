@@ -156,10 +156,10 @@ private extension WeekFitHighlightsDataProvider {
             $0.isCompleted &&
                 !$0.isSkipped &&
                 $0.timelineEventKind == .drink &&
-                ($0.imageName == "hydration" || $0.source.lowercased() == "waterlog")
+                QuickLogActivityPortions.isHydrationLog($0)
         }
 
-        return Double(completedHydrationLogs.count) * 0.25
+        return QuickLogActivityPortions.totalWaterLiters(from: completedHydrationLogs)
     }
 
     func adherenceScore(current: Double, goal: Double) -> Double {

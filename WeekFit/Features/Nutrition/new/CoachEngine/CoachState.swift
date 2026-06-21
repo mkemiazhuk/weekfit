@@ -345,19 +345,24 @@ struct CoachState: Identifiable {
             return .settling(reason: "Coach inputs are still syncing.", createdAt: createdAt)
         }
 
-        let dayNarrative = CoachDayNarrativePresentation.resolve(
+        let normalizedGuidance = CoachLightRecoveryStableDayPolicy.normalizedGuidance(
             input: input,
             guidance: guidance
         )
-        let frame = guidance.dayDecisionFrame
+
+        let dayNarrative = CoachDayNarrativePresentation.resolve(
+            input: input,
+            guidance: normalizedGuidance
+        )
+        let frame = normalizedGuidance.dayDecisionFrame
         let frameOwnsNarrative = frame?.shouldOwnNarrative == true
-        let frameStory = frameOwnsNarrative ? guidance.screenStory : nil
-        let stateLabel = frameOwnsNarrative ? frame?.stateLabel ?? guidance.stateLabel : dayNarrative?.stateLabel ?? guidance.screenStory?.stateLabel ?? guidance.stateLabel
-        let title = frameOwnsNarrative ? frameStory?.title ?? frame?.title ?? guidance.title : dayNarrative?.title ?? validTitle(guidance.title) ?? guidance.screenStory?.title ?? guidance.priority.detailTitle
-        let message = frameOwnsNarrative ? frameStory?.myRead ?? frame?.diagnosisText ?? guidance.message : dayNarrative?.message ?? guidance.screenStory?.myRead ?? guidance.message
-        let icon = dayNarrative?.icon ?? guidance.screenStory?.icon ?? guidance.icon
-        let color = dayNarrative?.color ?? guidance.screenStory?.color ?? guidance.color
-        let recommendation = frameOwnsNarrative ? frameStory?.myRecommendation ?? guidance.insightSubtitle ?? WeekFitLocalizedString("coach.fallback.keepNextStepSimple") : guidance.screenStory?.myRecommendation ?? guidance.insightSubtitle ?? WeekFitLocalizedString("coach.fallback.keepNextStepSimple")
+        let frameStory = frameOwnsNarrative ? normalizedGuidance.screenStory : nil
+        let stateLabel = frameOwnsNarrative ? frame?.stateLabel ?? normalizedGuidance.stateLabel : dayNarrative?.stateLabel ?? normalizedGuidance.screenStory?.stateLabel ?? normalizedGuidance.stateLabel
+        let title = frameOwnsNarrative ? frameStory?.title ?? frame?.title ?? normalizedGuidance.title : dayNarrative?.title ?? validTitle(normalizedGuidance.title) ?? normalizedGuidance.screenStory?.title ?? normalizedGuidance.priority.detailTitle
+        let message = frameOwnsNarrative ? frameStory?.myRead ?? frame?.diagnosisText ?? normalizedGuidance.message : dayNarrative?.message ?? normalizedGuidance.screenStory?.myRead ?? normalizedGuidance.message
+        let icon = dayNarrative?.icon ?? normalizedGuidance.screenStory?.icon ?? normalizedGuidance.icon
+        let color = dayNarrative?.color ?? normalizedGuidance.screenStory?.color ?? normalizedGuidance.color
+        let recommendation = frameOwnsNarrative ? frameStory?.myRecommendation ?? normalizedGuidance.insightSubtitle ?? WeekFitLocalizedString("coach.fallback.keepNextStepSimple") : normalizedGuidance.screenStory?.myRecommendation ?? normalizedGuidance.insightSubtitle ?? WeekFitLocalizedString("coach.fallback.keepNextStepSimple")
         let display = CoachPresentationCopy.normalize(
             stateLabel: stateLabel,
             title: title,
@@ -366,23 +371,24 @@ struct CoachState: Identifiable {
             icon: icon,
             color: color,
             input: input,
-            guidance: guidance
+            guidance: normalizedGuidance
         )
-        logV4AuditDecision(input: input, guidance: guidance)
-        logV4AuditBuilderInput(input: input, guidance: guidance)
+        logV4AuditDecision(input: input, guidance: normalizedGuidance)
+        logV4AuditBuilderInput(input: input, guidance: normalizedGuidance)
         let builtFinalStory = CoachFinalStoryBuilder.build(
             input: input,
-            guidance: guidance,
+            guidance: normalizedGuidance,
             display: display
         )
-        logV4AuditStateBeforeEmit(story: builtFinalStory, guidance: guidance)
+        logV4AuditStateBeforeEmit(story: builtFinalStory, guidance: normalizedGuidance)
         let finalStory = applyV4VisibleStoryContractGuard(
             story: builtFinalStory,
             input: input,
-            guidance: guidance,
+            guidance: normalizedGuidance,
             reason: reason
         )
-        logV4AuditStateAfterGuard(before: builtFinalStory, after: finalStory, input: input, guidance: guidance)
+        logV4AuditStateAfterGuard(before: builtFinalStory, after: finalStory, input: input, guidance: normalizedGuidance)
+        logFinalStoryValidationContract(story: finalStory, guidance: normalizedGuidance)
         finalStory.validateVisibleContract()
 
         return CoachState(
@@ -391,7 +397,7 @@ struct CoachState: Identifiable {
             status: .ready,
             input: input,
             fingerprint: fingerprint,
-            guidance: guidance,
+            guidance: normalizedGuidance,
             finalStory: finalStory,
             todayPresentation: CoachTodayPresentation(
                 title: finalStory.title.resolved,
@@ -441,48 +447,55 @@ struct CoachState: Identifiable {
         reason: String
     ) -> CoachFinalStory {
         // V4 audit note:
-        // The literal "Recovery matters most now" is produced inside CoachFinalStoryBuilder's
+        // The literal "Take it easy for now" is produced inside CoachFinalStoryBuilder's
         // V4 hero text only after a story owner has already become .recovery. Reason rows and
         // render-model fallback copy must remain support/display concerns; they do not own the
         // final story. This final guard exists at the last CoachState boundary so legacy fallback,
         // duplicate filtering, and render defaults cannot turn a stable completed recovery-tier
         // activity into the visible recovery story.
-        let recoveryActivity = v4FinalGuardRecoveryTierActivity(input: input, guidance: guidance)
-        let isPriorityStableDailyOverview = guidance.priority.priority == .stable && guidance.priority.focus == .dailyOverview
+        if (story.owner == .stableOverview || story.owner == .readiness),
+           guidance.priority.focus == .dailyOverview,
+           !CoachLightRecoveryStableDayPolicy.needsVisibleStableDayCorrection(story: story, guidance: guidance) {
+            return story
+        }
+
         let isPhaseStable = v4FinalGuardPhaseIsStable(guidance)
+
+        let recoveryActivity = v4FinalGuardRecoveryTierActivity(input: input, guidance: guidance)
         let isRecoveryTierActivity = recoveryActivity != nil
         let activityState = v4FinalGuardActivityState(recoveryActivity, now: input.now)
-        let isCompletedRecoveryTierActivity = activityState == "completed"
         let hasIndependentRecoveryDeficit = v4FinalGuardHasIndependentRecoveryDeficit(input: input, guidance: guidance)
         let hasSignificantWorkoutActive = v4FinalGuardHasSignificantWorkoutActive(input: input, guidance: guidance)
         let hasSignificantWorkoutUpcomingToday = v4FinalGuardHasSignificantWorkoutUpcomingToday(input: input, guidance: guidance)
         let hasRecentlyCompletedSignificantWorkout = v4FinalGuardHasRecentlyCompletedSignificantWorkout(input: input)
         let hasSignificantWorkoutTomorrow = v4FinalGuardHasSignificantWorkoutTomorrow(input: input)
-        let storyLooksRecovery = story.owner == .recovery ||
-            story.owner == .postActivityRecovery ||
-            story.title.resolved.localizedCaseInsensitiveContains("Recovery matters most now") ||
-            story.title.resolved.localizedCaseInsensitiveContains("recovery")
-        let shouldApply = isPriorityStableDailyOverview &&
-            isPhaseStable &&
+        let shouldForceLightRecoveryStableOverview = CoachLightRecoveryStableDayPolicy.shouldForceStableOverview(
+            input: input,
+            guidance: guidance
+        )
+        let needsCorrection = CoachLightRecoveryStableDayPolicy.needsVisibleStableDayCorrection(
+            story: story,
+            guidance: guidance
+        )
+        let shouldApply = shouldForceLightRecoveryStableOverview &&
             isRecoveryTierActivity &&
-            isCompletedRecoveryTierActivity &&
+            needsCorrection &&
             !hasIndependentRecoveryDeficit &&
             !hasSignificantWorkoutActive &&
             !hasSignificantWorkoutUpcomingToday &&
             !hasRecentlyCompletedSignificantWorkout &&
-            !hasSignificantWorkoutTomorrow &&
-            storyLooksRecovery
+            !hasSignificantWorkoutTomorrow
         let failedConditions = v4FinalGuardFailedConditions(
-            isPriorityStableDailyOverview: isPriorityStableDailyOverview,
+            isPriorityStableDailyOverview: shouldForceLightRecoveryStableOverview,
             isPhaseStable: isPhaseStable,
             isRecoveryTierActivity: isRecoveryTierActivity,
-            isCompletedRecoveryTierActivity: isCompletedRecoveryTierActivity,
+            isCompletedRecoveryTierActivity: activityState == "completed" || activityState == "planned",
             hasIndependentRecoveryDeficit: hasIndependentRecoveryDeficit,
             hasSignificantWorkoutActive: hasSignificantWorkoutActive,
             hasSignificantWorkoutUpcomingToday: hasSignificantWorkoutUpcomingToday,
             hasRecentlyCompletedSignificantWorkout: hasRecentlyCompletedSignificantWorkout,
             hasSignificantWorkoutTomorrow: hasSignificantWorkoutTomorrow,
-            storyLooksRecovery: storyLooksRecovery
+            storyLooksRecovery: needsCorrection
         )
 
         logV4FinalGuardEvaluated(
@@ -507,10 +520,11 @@ struct CoachState: Identifiable {
             return story
         }
 
-        let title = v4FinalGuardText(
-            "You already added some easy movement",
-            russian: "Немного движения сегодня уже есть"
+        let hero = CoachLightRecoveryStableDayPolicy.stableDayHero(
+            input: input,
+            activity: recoveryActivity
         )
+        let title = v4FinalGuardText(hero.english, russian: hero.russian)
         let subtitle = v4FinalGuardText(
             "Today looks steady. Nothing needs special attention now.",
             russian: "День идёт ровно. Ничего срочного сейчас нет."
@@ -617,25 +631,27 @@ struct CoachState: Identifiable {
         guidance: CoachGuidanceV3
     ) -> PlannedActivity? {
         var candidates: [PlannedActivity] = []
-        if let activity = guidance.priority.activity {
-            candidates.append(activity)
+        if let focus = guidance.priority.activity, v4FinalGuardIsRecoveryTierOnly(focus) {
+            candidates.append(focus)
         }
         switch guidance.phase {
         case .active(let activity, _),
              .preparing(let activity, _, _),
              .recovering(let activity, _, _):
-            candidates.append(activity)
+            if v4FinalGuardIsRecoveryTierOnly(activity) {
+                candidates.append(activity)
+            }
         case .stable:
             break
         }
-        if let activity = input.dayContext.lastCompletedActivity {
-            candidates.append(activity)
-        }
-        candidates.append(contentsOf: input.dayContext.completedActivities)
-        candidates.append(contentsOf: input.plannedActivities)
+        candidates.append(contentsOf: input.plannedActivities.filter {
+            CoachLightRecoveryStableDayPolicy.isActuallyCompleted($0, now: input.now) &&
+                Calendar.current.isDate($0.date, inSameDayAs: input.now)
+        })
 
         return candidates
             .filter(v4FinalGuardIsRecoveryTierOnly)
+            .sorted { $0.date > $1.date }
             .first
     }
 
@@ -965,6 +981,56 @@ struct CoachState: Identifiable {
             "[CoachV4Audit.State.AfterGuard]",
             "applied=\(applied) ownerBefore=\(before.owner.rawValue) titleBefore=\"\(before.title.resolved)\" ownerAfter=\(after.owner.rawValue) titleAfter=\"\(after.title.resolved)\" reason=\(reason)"
         )
+        #endif
+    }
+
+    private static func logFinalStoryValidationContract(
+        story: CoachFinalStory,
+        guidance: CoachGuidanceV3
+    ) {
+        #if DEBUG
+        let reasonKinds = story.reasons.map(\.kind.rawValue).joined(separator: ",")
+        let supportSignals = story.supportSignals
+            .map { "\($0.kind.rawValue):\($0.title.resolved)" }
+            .joined(separator: " | ")
+        let supportActions = story.supportActions
+            .map { "\($0.type):\($0.title)" }
+            .joined(separator: " | ")
+        CoachLogger.trace(
+            "[CoachFinalStoryValidation.BeforeAssert]",
+            [
+                "owner=\(story.owner.rawValue)",
+                "priority=\(guidance.priority.priority)/\(guidance.priority.focus)",
+                "primaryFocus=\(story.primaryFocus)",
+                "colorFamily=\(story.colorFamily)",
+                "severity=\(guidance.priority.severity)",
+                "strength=\(guidance.priority.strength)",
+                "title=\"\(story.title.resolved)\"",
+                "recommendation=\"\(story.primaryRecommendation.resolved)\"",
+                "reasonKinds=[\(reasonKinds)]",
+                "supportSignals=[\(supportSignals.isEmpty ? "none" : supportSignals)]",
+                "supportActions=[\(supportActions.isEmpty ? "none" : supportActions)]"
+            ].joined(separator: " ")
+        )
+
+        if story.owner == .recovery || story.owner == .postActivityRecovery {
+            let colorPasses = story.colorFamily == .recovery || story.colorFamily == .warning
+            if !colorPasses {
+                CoachLogger.trace(
+                    "[CoachFinalStoryValidation.AssertWouldFail]",
+                    "Recovery story must use recovery or warning color. owner=\(story.owner.rawValue) colorFamily=\(story.colorFamily) priority=\(guidance.priority.priority)/\(guidance.priority.focus)"
+                )
+            }
+        }
+
+        if (story.owner == .recovery || story.owner == .postActivityRecovery),
+           guidance.priority.focus == .dailyOverview,
+           story.primaryFocus == .dailyOverview {
+            CoachLogger.trace(
+                "[CoachFinalStoryValidation.FocusMismatch]",
+                "owner=\(story.owner.rawValue) still carries dailyOverview focus after V4 owner normalization"
+            )
+        }
         #endif
     }
 

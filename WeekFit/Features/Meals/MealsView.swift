@@ -436,7 +436,17 @@ struct MealsView: View {
                     isQuickLogMode: isQuickLogMode,
                     isRecommended: shouldShowRecommendation &&
                                    index == 0 &&
-                                   meal.id == visibleRecommendation?.meal.id
+                                   meal.id == visibleRecommendation?.meal.id,
+                    recommendationBadge: shouldShowRecommendation &&
+                                           index == 0 &&
+                                           meal.id == visibleRecommendation?.meal.id
+                        ? visibleRecommendation?.badge
+                        : nil,
+                    recommendationIcon: shouldShowRecommendation &&
+                                          index == 0 &&
+                                          meal.id == visibleRecommendation?.meal.id
+                        ? visibleRecommendation?.icon
+                        : nil
                 ) {
                     executeDirectQuickLog(meal)
                 }
@@ -491,7 +501,21 @@ struct MealsView: View {
                                shouldShowRecommendation &&
                                items == sortedMealItems &&
                                index == 0 &&
-                               meal.id == visibleRecommendation?.meal.id
+                               meal.id == visibleRecommendation?.meal.id,
+                recommendationBadge: !meal.isFoodProduct &&
+                                     shouldShowRecommendation &&
+                                     items == sortedMealItems &&
+                                     index == 0 &&
+                                     meal.id == visibleRecommendation?.meal.id
+                    ? visibleRecommendation?.badge
+                    : nil,
+                recommendationIcon: !meal.isFoodProduct &&
+                                    shouldShowRecommendation &&
+                                    items == sortedMealItems &&
+                                    index == 0 &&
+                                    meal.id == visibleRecommendation?.meal.id
+                    ? visibleRecommendation?.icon
+                    : nil
             ) {
                 executeDirectQuickLog(meal)
             }
@@ -530,17 +554,22 @@ struct MealsView: View {
                 .foregroundStyle(WeekFitTheme.meal.opacity(0.88))
                 .frame(width: 16)
 
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(WeekFitLocalizedString(title))
                     .font(.system(size: 15.6, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary.opacity(0.84))
                     .tracking(-0.22)
 
                 if showCount {
-                    Text(String(format: "(%lld)", count))
+                    Text("·")
                         .font(.system(size: 15.0, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.48))
+                        .foregroundStyle(textSecondary.opacity(0.30))
+
+                    Text("\(count)")
+                        .font(.system(size: 15.0, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.46))
                         .tracking(-0.12)
+                        .monospacedDigit()
                 }
             }
 
@@ -798,9 +827,9 @@ struct MealsView: View {
                             .foregroundStyle(WeekFitTheme.meal.opacity(0.95))
 
                         Text(WeekFitLocalizedString(createActionTitle))
-                            .font(.system(size: 14.0, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary.opacity(0.94))
-                            .tracking(-0.16)
+                            .font(.system(size: 14.0, weight: .semibold, design: .rounded))
+                            .foregroundStyle(textPrimary.opacity(0.92))
+                            .tracking(-0.12)
 
                         Spacer(minLength: 0)
                     }
@@ -961,7 +990,7 @@ private struct MealCreationChooserSheet: View {
 
 private typealias CustomFoodFormView = CustomMealBuilderView
 
-private struct CustomFoodDetailsView: View {
+struct CustomFoodDetailsView: View {
     @State var food: Meals
     let existingMeals: [Meals]
     var isQuickLogMode: Bool = false
@@ -1494,7 +1523,7 @@ enum MealRecommendationEngine {
         switch context {
         case .morningLight:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.morningPick"),
                 "Balanced morning option without going too heavy",
                 "sunrise.fill",
                 WeekFitTheme.meal
@@ -1502,7 +1531,7 @@ enum MealRecommendationEngine {
 
         case .middayBalanced:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.bestForToday"),
                 guidance.shouldSurface
                     ? "Best match for the current Coach focus"
                     : "Steady balanced choice for this part of the day",
@@ -1512,7 +1541,7 @@ enum MealRecommendationEngine {
 
         case .eveningLight:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.eveningPick"),
                 "Light evening choice to close the day cleanly",
                 "moon.fill",
                 CoachPalette.recovery
@@ -1520,7 +1549,7 @@ enum MealRecommendationEngine {
 
         case .beforeSessionLight(let minutesUntil):
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.enduranceFuel"),
                 "Good option before activity — keep it light with \(timeText(minutesUntil)) to go",
                 "bolt.fill",
                 .orange
@@ -1533,7 +1562,7 @@ enum MealRecommendationEngine {
                 : "Best recovery choice after your session"
 
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.postWorkoutPick"),
                 reason,
                 "clock.badge.checkmark.fill",
                 WeekFitTheme.meal
@@ -1541,7 +1570,9 @@ enum MealRecommendationEngine {
 
         case .recoveryWindow:
             return (
-                "Today's Best Match",
+                meal.protein >= 35
+                    ? WeekFitLocalizedString("meals.library.badge.highProteinPick")
+                    : WeekFitLocalizedString("meals.library.badge.recoveryPick"),
                 "Best recovery choice while the recovery window is open",
                 "bolt.shield.fill",
                 WeekFitTheme.meal
@@ -1549,7 +1580,7 @@ enum MealRecommendationEngine {
 
         case .afterHeatLater:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.preWorkoutPick"),
                 "Save this for after heat exposure — rehydrate first",
                 "thermometer.sun.fill",
                 .orange
@@ -1557,7 +1588,7 @@ enum MealRecommendationEngine {
 
         case .heatRecovery:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.heatRecoveryPick"),
                 "Lighter recovery choice after heat exposure",
                 "drop.triangle.fill",
                 CoachPalette.hydration
@@ -1565,7 +1596,7 @@ enum MealRecommendationEngine {
 
         case .recoveryProtection:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.recoveryPick"),
                 "Recovery-friendly choice that keeps the day controlled",
                 "heart.fill",
                 CoachPalette.recovery
@@ -1573,7 +1604,7 @@ enum MealRecommendationEngine {
 
         case .balanced:
             return (
-                "Today's Best Match",
+                WeekFitLocalizedString("meals.library.badge.bestForToday"),
                 "Best balanced option from your saved meals",
                 "fork.knife",
                 WeekFitTheme.meal
@@ -1824,230 +1855,4 @@ private struct RecommendedTodayMealCard: View {
     }
 }
 
-
-// MARK: - Meal row
-
-private struct HeroMealLibraryRow: View {
-    let meal: Meals
-    let isQuickLogMode: Bool
-    let isRecommended: Bool
-    let onPlusTap: (() -> Void)?
-
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
-    private let rowBackground = WeekFitTheme.cardBackground
-    private let cardShadow = WeekFitTheme.cardShadow
-    private let accent = WeekFitTheme.meal
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            cardBase
-
-            plateBackground
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                .allowsHitTesting(false)
-
-            readabilityOverlay
-
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 5) {
-                    VStack(alignment: .leading, spacing: isRecommended ? 2 : 4) {
-                        if isRecommended {
-                            Text(WeekFitLocalizedString("meals.todaySMatch"))
-                                .font(.system(size: 8.2, weight: .black, design: .rounded))
-                                .tracking(0.9)
-                                .foregroundStyle(accent.opacity(0.88))
-                                .lineLimit(1)
-                        }
-
-                        Text(meal.shortTitle)
-                            .font(.system(size: 14.9, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary.opacity(0.97))
-                            .tracking(-0.28)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.74)
-
-                        Text(String(format: WeekFitLocalizedString("meals.library.itemSummaryFormat"), meal.calories, ingredientCountText))
-                            .font(.system(size: 10.9, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textSecondary.opacity(0.78))
-                            .lineLimit(1)
-                    }
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.10))
-                        .frame(width: 126, height: 1)
-
-                    macroStrip
-                }
-                .frame(width: 176, alignment: .leading)
-                .padding(.leading, 14)
-
-                Spacer(minLength: 0)
-
-                trailingAction
-                    .padding(.trailing, 10)
-            }
-        }
-        .frame(height: isRecommended ? 82 : 76)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.050), lineWidth: 1)
-        }
-        .shadow(color: cardShadow.opacity(0.12), radius: 7, y: 4)
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-    
-
-    private var cardBase: some View {
-        LinearGradient(
-            colors: [
-                Color.white.opacity(0.028),
-                rowBackground.opacity(0.64),
-                Color.black.opacity(0.16)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var plateBackground: some View {
-        ZStack {
-            if meal.isFoodProduct {
-                AsyncCustomFoodPlateView(
-                    filename: meal.displayPhotoFilename,
-                    initial: meal.placeholderInitial,
-                    plateSize: 104,
-                    itemScale: 0.36,
-                    offsetScale: 0.36,
-                    plateOpacity: 0.26,
-                    shadowOpacity: 0.18,
-                    layoutMode: .compactPreview
-                )
-                .frame(width: 130, height: 84)
-                .offset(x: -6, y: 0)
-                .opacity(0.76)
-            } else if let items = meal.builderImageItems, !items.isEmpty {
-                BuiltMealPlateView(
-                    items: items,
-                    plateSize: 104,
-                    itemScale: 0.36,
-                    offsetScale: 0.36,
-                    plateOpacity: 0.26,
-                    shadowOpacity: 0.18,
-                    layoutMode: .compactPreview
-                )
-                    .frame(width: 130, height: 84)
-                    .offset(x: -6, y: 0)
-                    .opacity(0.76)
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
-                Image(meal.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 136, height: 92)
-                    .offset(x: -6, y: 0)
-                    .opacity(0.76)
-                    .shadow(color: Color.black.opacity(0.18), radius: 7, y: 4)
-            } else {
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.20))
-                    .offset(x: 54)
-            }
-        }
-    }
-
-    private var readabilityOverlay: some View {
-        LinearGradient(
-            stops: [
-                .init(color: .black.opacity(0.95), location: 0.0),
-                .init(color: .black.opacity(0.80), location: 0.30),
-                .init(color: .black.opacity(0.34), location: 0.64),
-                .init(color: .black.opacity(0.00), location: 1.0)
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-    }
-
-    private var macroStrip: some View {
-        HStack(spacing: 7) {
-            macroView(prefix: WeekFitLocalizedString("meals.library.macroProtein"), value: meal.protein)
-
-            Divider()
-                .frame(height: 14)
-                .overlay(Color.white.opacity(0.12))
-
-            macroView(prefix: WeekFitLocalizedString("meals.library.macroCarbs"), value: meal.carbs)
-
-            Divider()
-                .frame(height: 14)
-                .overlay(Color.white.opacity(0.12))
-
-            macroView(prefix: WeekFitLocalizedString("meals.library.macroFats"), value: meal.fats)
-        }
-    }
-
-    private func macroView(prefix: String, value: Int) -> some View {
-        HStack(spacing: 4) {
-            Text(prefix)
-                .font(.system(size: 10.9, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.82))
-
-            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
-                .font(.system(size: 10.9, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.74))
-                .monospacedDigit()
-        }
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    @ViewBuilder
-    private var trailingAction: some View {
-        if isQuickLogMode {
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                onPlusTap?()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.black.opacity(0.82))
-                    .frame(width: 34, height: 34)
-                    .background {
-                        Circle()
-                            .fill(accent.opacity(0.94))
-                    }
-            }
-            .buttonStyle(.plain)
-        } else {
-            Image(systemName: "chevron.right")
-                   .font(.system(size: 10.8, weight: .bold))
-                   .foregroundStyle(Color.white.opacity(0.28))
-                   .frame(width: 18, height: 18)
-        }
-    }
-
-    private var ingredientCountText: String {
-        let count = max(meal.ingredients.count, meal.builderImageItems?.count ?? 0)
-        return count == 1 ? "1 ingredient" : "\(count) ingredients"
-    }
-}
-
-private struct BuiltMealPlateBackground: View {
-    let items: [MealBuilderImageItem]
-
-    var body: some View {
-        BuiltMealPlateView(
-            items: items,
-            plateSize: 112,
-            itemScale: 0.38,
-            offsetScale: 0.40,
-            plateOpacity: 0.28,
-            shadowOpacity: 0.20,
-            layoutMode: .compactPreview
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
 
