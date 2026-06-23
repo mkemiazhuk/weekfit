@@ -326,6 +326,10 @@ struct CoachState: Identifiable {
     let todayPresentation: CoachTodayPresentation
     let coachPresentation: CoachScreenPresentation?
     let rationalePresentation: CoachRationalePresentation?
+    /// Set when CoachV6 CopyRegistry covers the active scenario; drives Today + Coach V6 UI path.
+    let coachV6Presentation: CoachV6UIPresentation?
+    /// Always set in `.ready` after V6 evaluation — explains V6 vs V5 path even on fallback.
+    let coachV6Debug: CoachV6IntegrationDebug?
 
     var hasValidGuidance: Bool {
         guidance != nil && coachPresentation != nil && finalStory != nil
@@ -348,7 +352,9 @@ struct CoachState: Identifiable {
                 color: WeekFitTheme.secondaryText
             ),
             coachPresentation: nil,
-            rationalePresentation: nil
+            rationalePresentation: nil,
+            coachV6Presentation: nil,
+            coachV6Debug: nil
         )
     }
 
@@ -369,7 +375,9 @@ struct CoachState: Identifiable {
                 color: WeekFitTheme.secondaryText
             ),
             coachPresentation: nil,
-            rationalePresentation: nil
+            rationalePresentation: nil,
+            coachV6Presentation: nil,
+            coachV6Debug: nil
         )
     }
 
@@ -443,6 +451,40 @@ struct CoachState: Identifiable {
         logFinalStoryValidationContract(story: finalStory, guidance: normalizedGuidance)
         finalStory.validateVisibleContract()
 
+        let v6Result = CoachV6Engine.evaluate(input: input)
+        let v6Bridge = CoachV6TabPresentationBridge.build(from: v6Result)
+        let coachV6Debug = CoachV6IntegrationDebug.resolve(
+            from: v6Result,
+            usingV6: v6Bridge != nil
+        )
+        logCoachV6Integration(
+            debug: coachV6Debug,
+            v5Owner: finalStory.owner,
+            v5Title: finalStory.title.resolved
+        )
+
+        let todayPresentation: CoachTodayPresentation
+        let coachPresentation: CoachScreenPresentation?
+        let coachV6Presentation: CoachV6UIPresentation?
+
+        if let v6Bridge {
+            todayPresentation = v6Bridge.today
+            coachPresentation = v6Bridge.coach
+            coachV6Presentation = v6Bridge.ui
+        } else {
+            todayPresentation = CoachTabPresentationResolver.resolveToday(
+                story: finalStory,
+                guidance: normalizedGuidance,
+                input: input
+            )
+            coachPresentation = CoachTabPresentationResolver.resolveCoach(
+                story: finalStory,
+                guidance: normalizedGuidance,
+                input: input
+            )
+            coachV6Presentation = nil
+        }
+
         return CoachState(
             id: UUID(),
             createdAt: createdAt,
@@ -451,17 +493,11 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             guidance: normalizedGuidance,
             finalStory: finalStory,
-            todayPresentation: CoachTabPresentationResolver.resolveToday(
-                story: finalStory,
-                guidance: normalizedGuidance,
-                input: input
-            ),
-            coachPresentation: CoachTabPresentationResolver.resolveCoach(
-                story: finalStory,
-                guidance: normalizedGuidance,
-                input: input
-            ),
-            rationalePresentation: CoachRationalePresentation.resolve(from: input)
+            todayPresentation: todayPresentation,
+            coachPresentation: coachPresentation,
+            rationalePresentation: CoachRationalePresentation.resolve(from: input),
+            coachV6Presentation: coachV6Presentation,
+            coachV6Debug: coachV6Debug
         )
     }
 
@@ -478,8 +514,23 @@ struct CoachState: Identifiable {
             finalStory: finalStory,
             todayPresentation: todayPresentation,
             coachPresentation: coachPresentation,
-            rationalePresentation: rationalePresentation
+            rationalePresentation: rationalePresentation,
+            coachV6Presentation: coachV6Presentation,
+            coachV6Debug: coachV6Debug
         )
+    }
+
+    private static func logCoachV6Integration(
+        debug: CoachV6IntegrationDebug,
+        v5Owner: CoachFinalStoryOwner,
+        v5Title: String
+    ) {
+        #if DEBUG
+        CoachLogger.compact(
+            "[CoachV6Integration]",
+            "\(debug.logSummary) v5Owner=\(v5Owner.rawValue) v5Title=\"\(v5Title)\""
+        )
+        #endif
     }
 
     private static func localized(english: String, russian: String) -> String {

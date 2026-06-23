@@ -2036,7 +2036,15 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         let visible = visibleText(state).lowercased()
 
         XCTAssertEqual(story.owner, .postActivityRecovery)
-        XCTAssertTrue(renderModel.whyRows.isEmpty, renderModel.whyRows.map(\.title).joined(separator: " | "))
+        XCTAssertFalse(renderModel.whyRows.isEmpty, renderModel.whyRows.map(\.title).joined(separator: " | "))
+        let presentationWhy = try XCTUnwrap(state.coachPresentation?.whyRows.map(\.title))
+        XCTAssertFalse(presentationWhy.isEmpty, presentationWhy.joined(separator: " | "))
+        XCTAssertTrue(
+            presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("сон") ||
+                presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("нагрузк"),
+            presentationWhy.joined(separator: " | ")
+        )
+        XCTAssertTrue(presentationWhy.allSatisfy { !isRecoveryStatusWhy($0) })
         XCTAssertFalse(renderModel.displaySubtitle.isEmpty, renderModel.displaySubtitle)
         XCTAssertFalse(visible.contains("в течение часа"), visible)
         XCTAssertFalse(visible.contains("next hour"), visible)
@@ -2048,6 +2056,96 @@ final class CoachStateNarrativeContractTests: XCTestCase {
                 visible.contains("утром"),
             visible
         )
+    }
+
+    func testPhaseEImmediatePostRecoveryWindowPresentationWhyExplainsDecision() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let rideDuration = 150
+        let completed = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(rideDuration + 20),
+            duration: rideDuration,
+            icon: "bicycle",
+            completed: true
+        )
+        let state = makeState(
+            activities: [completed],
+            nutrition: nutrition(water: 2.0, calories: 2_200, protein: 100, carbs: 250),
+            activeCalories: 2_100,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 90
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let presentationWhy = try XCTUnwrap(state.coachPresentation?.whyRows.map(\.title))
+
+        XCTAssertEqual(story.owner, .postActivityRecovery)
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("Окно восстановления"), story.title.resolved)
+        XCTAssertFalse(presentationWhy.isEmpty, presentationWhy.joined(separator: " | "))
+        XCTAssertTrue(
+            presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("час") ||
+                presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("белок"),
+            presentationWhy.joined(separator: " | ")
+        )
+        XCTAssertTrue(presentationWhy.allSatisfy { !isRecoveryStatusWhy($0) })
+    }
+
+    func testPhaseEStaleEveningPostPresentationWhyExplainsSleepDecision() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let rideDuration = 150
+        let minutesSinceEnd = 260
+        let evening = date(hour: 20)
+        let completedRide = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(rideDuration + minutesSinceEnd),
+            duration: rideDuration,
+            icon: "bicycle",
+            completed: true,
+            baseDate: evening
+        )
+        let state = makeState(
+            activities: [completedRide],
+            currentDate: evening,
+            nutrition: nutrition(water: 2.2, calories: 2_300, protein: 110, carbs: 280),
+            activeCalories: 2_100,
+            completedWorkoutsCount: 1,
+            recoveryPercent: 82,
+            sleepHours: 7.5
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let presentationWhy = try XCTUnwrap(state.coachPresentation?.whyRows.map(\.title))
+
+        XCTAssertEqual(story.owner, .postActivityRecovery)
+        XCTAssertTrue(story.title.resolved.localizedCaseInsensitiveContains("Вечер после"), story.title.resolved)
+        XCTAssertFalse(presentationWhy.isEmpty, presentationWhy.joined(separator: " | "))
+        XCTAssertTrue(
+            presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("сон") ||
+                presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("нагрузк"),
+            presentationWhy.joined(separator: " | ")
+        )
+        XCTAssertTrue(presentationWhy.allSatisfy { !isRecoveryStatusWhy($0) })
+    }
+
+    func testPhaseEStableDayPresentationWhyUsesDecisionNotStatus() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let state = makeState(
+            activities: [],
+            nutrition: nutrition(water: 1.8, calories: 1_600, protein: 90, carbs: 200),
+            recoveryPercent: 88,
+            sleepHours: 7.5
+        )
+        let story = try XCTUnwrap(state.finalStory)
+        let presentationWhy = try XCTUnwrap(state.coachPresentation?.whyRows.map(\.title))
+
+        XCTAssertTrue(story.owner == .stableOverview || story.owner == .readiness, "\(story.owner)")
+        XCTAssertFalse(presentationWhy.isEmpty, presentationWhy.joined(separator: " | "))
+        XCTAssertTrue(
+            presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("коррекц") ||
+                presentationWhy.joined(separator: " ").localizedCaseInsensitiveContains("срочн"),
+            presentationWhy.joined(separator: " | ")
+        )
+        XCTAssertTrue(presentationWhy.allSatisfy { !isRecoveryStatusWhy($0) })
     }
 
     func testV4PostWithRecoveryLimitedStillMentionsTomorrowPlan() throws {
@@ -5594,7 +5692,30 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             "\(scenario.name) Why must come from structured story reasons"
         )
         if story.owner == .postActivityRecovery {
-            XCTAssertTrue(renderModel.whyRows.isEmpty, "\(scenario.name) post recovery should rely on My Read, not Why")
+            let presentationWhy = coach.whyRows.map(\.title)
+            XCTAssertTrue(
+                presentationWhy.allSatisfy { !isRecoveryStatusWhy($0) },
+                "\(scenario.name) Why must not be recovery status: \(presentationWhy)"
+            )
+            if isImmediatePostRecoveryWindow(story) {
+                XCTAssertFalse(
+                    presentationWhy.isEmpty,
+                    "\(scenario.name) immediate recovery window should explain the refuel decision in Why"
+                )
+                XCTAssertFalse(
+                    renderModel.whyRows.isEmpty,
+                    "\(scenario.name) immediate recovery window should surface engine Why rows"
+                )
+            } else if isSettledStalePostRecovery(story) {
+                XCTAssertFalse(
+                    presentationWhy.isEmpty,
+                    "\(scenario.name) settled/stale post should explain sleep/easy-day decision in Why: \(presentationWhy)"
+                )
+                XCTAssertFalse(
+                    renderModel.whyRows.isEmpty,
+                    "\(scenario.name) settled/stale post should surface engine Why rows: \(renderModel.whyRows.map(\.title))"
+                )
+            }
             XCTAssertFalse(
                 renderModel.displaySubtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                 "\(scenario.name) post recovery should show My Read"
@@ -5985,6 +6106,41 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             .joined(separator: " ")
     }
 
+    private func isImmediatePostRecoveryWindow(_ story: CoachFinalStory) -> Bool {
+        let title = story.title.resolved.lowercased()
+        return title.contains("окно восстановления") || title.contains("recovery window")
+    }
+
+    private func isSettledStalePostRecovery(_ story: CoachFinalStory) -> Bool {
+        let title = story.title.resolved.lowercased()
+        return title.contains("вечер после") ||
+            title.contains("поздний вечер") ||
+            title.contains("после сегодняшней") ||
+            title.contains("evening after") ||
+            title.contains("late day after") ||
+            title.contains("afternoon after") ||
+            title.contains("после поездки") && title.contains("день продолжается")
+    }
+
+    private func isRecoveryStatusWhy(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let markers = [
+            "восстановление для сегодня в норме",
+            "recovery looks normal for today",
+            "самочувствие в обычном диапазоне",
+            "recovery is within the normal range",
+            "самочувствие нормальное",
+            "recovery looks good enough",
+            "восстановление в норме",
+            "recovery looks normal",
+            "recovery looks reasonable",
+            "самочувствие выглядит нормальным",
+            "восстановления хватило на обычный день",
+            "hrv и пульс"
+        ]
+        return markers.contains { lower.contains($0) }
+    }
+
     private func XCTAssertWhyRowsAreRationale(
         _ rows: [CoachFinalStoryRenderedReason],
         scenarioName: String,
@@ -5997,6 +6153,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
             XCTAssertFalse(title.contains("%"), "\(scenarioName) Why row looks like a raw metric: \(row.title)", file: file, line: line)
             XCTAssertFalse(title.contains("supports this story"), "\(scenarioName) Why row is generic support copy: \(row.title)", file: file, line: line)
             XCTAssertFalse(title.contains("is part of the decision"), "\(scenarioName) Why row is generic support copy: \(row.title)", file: file, line: line)
+            XCTAssertFalse(isRecoveryStatusWhy(row.title), "\(scenarioName) Why row is recovery status: \(row.title)", file: file, line: line)
         }
     }
 

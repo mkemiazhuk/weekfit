@@ -1954,22 +1954,24 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if let finalStory = coachCoordinator.state.finalStory {
-                    let renderModel = CoachFinalStoryRenderModel(story: finalStory)
-                    let insightColor = renderModel.color
-                    let insightTitle = renderModel.title
-                    let insightIcon = renderModel.icon
-                    let insightMessage = renderModel.subtitle
-                    let insightStateLabel = renderModel.badge
+                if coachCoordinator.state.finalStory != nil {
+                    let presentation = coachCoordinator.state.todayPresentation
+                    let insightColor = presentation.color
+                    let insightTitle = presentation.title
+                    let insightIcon = presentation.icon
+                    let insightMessage = presentation.message
+                    let insightStateLabel = presentation.statusLabel
 
-                    let _ = debugTodayCoachInsight(
-                        semanticInsight: finalStory.todaySemanticInsight,
-                        titleKey: finalStory.titleKey,
-                        subtitleKey: finalStory.subtitleKey,
-                        localizedTitle: insightTitle,
-                        localizedSubtitle: insightMessage,
-                        coachScreenStoryTitle: nil
-                    )
+                    if let finalStory = coachCoordinator.state.finalStory {
+                        let _ = debugTodayCoachInsight(
+                            semanticInsight: finalStory.todaySemanticInsight,
+                            titleKey: finalStory.titleKey,
+                            subtitleKey: finalStory.subtitleKey,
+                            localizedTitle: insightTitle,
+                            localizedSubtitle: insightMessage,
+                            coachScreenStoryTitle: nil
+                        )
+                    }
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1997,9 +1999,10 @@ struct TodayView: View {
                                     .font(.system(size: 16, weight: .bold))
                                     .foregroundStyle(textPrimary)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .minimumScaleFactor(0.92)
                                     .layoutPriority(1)
-                                    .fixedSize(horizontal: false, vertical: true)
 
                                 if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
 

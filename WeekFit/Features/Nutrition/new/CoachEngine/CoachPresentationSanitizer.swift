@@ -183,6 +183,11 @@ enum CoachPresentationNarrativeContract {
         let minutes = max(activity.effectiveDurationMinutes, activity.durationMinutes)
         if minutes >= 120 { return true }
 
+        let text = "\(activity.title) \(activity.type)".lowercased()
+        if (text.contains("tennis") || text.contains("squash") || text.contains("racket")) && minutes >= 60 {
+            return true
+        }
+
         let kind = CoachActivityContextResolverV3.kind(for: activity)
         return kind == .endurance && minutes >= 60
     }
@@ -566,19 +571,6 @@ enum CoachPresentationSanitizer {
                     title: sanitized,
                     icon: row.icon,
                     color: row.color
-                )
-            )
-        }
-
-        if result.isEmpty, profile.recoveryPercent >= 75 {
-            result.append(
-                CoachPresentationWhyRow(
-                    title: localized(
-                        english: "Recovery looks normal for today.",
-                        russian: "Восстановление для сегодня в норме."
-                    ),
-                    icon: "heart.fill",
-                    color: CoachPalette.stable
                 )
             )
         }
