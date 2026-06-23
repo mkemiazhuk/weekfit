@@ -194,20 +194,25 @@ struct ExpertCoachViewV3: View {
         )
     }
 
+    private var presentationSemanticColor: Color {
+        coachCoordinator.state.coachPresentation?.color
+            ?? coachCoordinator.state.todayPresentation.color
+    }
+
     private var coachAccentColor: Color {
-        finalStoryRenderModel?.color ?? coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
+        presentationSemanticColor
     }
 
     private var heroSemanticColor: Color {
-        finalStoryRenderModel?.color ?? coachCoordinator.state.coachPresentation?.color ?? coachScreenStory.color
+        presentationSemanticColor
     }
 
     private var heroSemanticColorSource: String {
-        if let finalStoryRenderModel {
-            return "finalStoryRenderModel.\(finalStoryRenderModel.colorFamily.rawValue)"
-        }
         if coachCoordinator.state.coachPresentation != nil {
             return "coachPresentation.color"
+        }
+        if coachCoordinator.state.finalStory != nil {
+            return "todayPresentation.color"
         }
         return "coachScreenStory.color"
     }
@@ -255,7 +260,10 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachRenderedTitle: String {
-        finalStoryRenderModel?.title ?? coachCoordinator.state.coachPresentation?.title ?? validTitle(guidance.title) ?? coachScreenStory.title
+        coachCoordinator.state.coachPresentation?.title
+            ?? finalStoryRenderModel?.title
+            ?? validTitle(guidance.title)
+            ?? coachScreenStory.title
     }
 
     private func validTitle(_ title: String) -> String? {
@@ -332,7 +340,9 @@ struct ExpertCoachViewV3: View {
         let story = finalStoryRenderModel == nil ? coachScreenStory : nil
         let presentation = finalStoryRenderModel == nil ? coachCoordinator.state.coachPresentation : nil
         let renderedTitle = coachRenderedTitle
-        let renderedRead = finalStoryRenderModel?.displaySubtitle ?? coachUniqueHeroText(
+        let renderedRead = coachCoordinator.state.coachPresentation?.message
+            ?? finalStoryRenderModel?.displaySubtitle
+            ?? coachUniqueHeroText(
             coachOneStoryHeroText(
                 presentation?.message ?? story?.myRead ?? coachHeroReadFallback,
                 role: .assessment,
@@ -341,7 +351,9 @@ struct ExpertCoachViewV3: View {
             fallback: coachHeroReadFallback,
             avoiding: [coachDisplayStateLabel, renderedTitle]
         )
-        let renderedRecommendation = finalStoryRenderModel?.primaryRecommendation ?? coachUniqueHeroText(
+        let renderedRecommendation = coachCoordinator.state.coachPresentation?.recommendation
+            ?? finalStoryRenderModel?.primaryRecommendation
+            ?? coachUniqueHeroText(
             coachOneStoryHeroText(
                 presentation?.recommendation ?? canonicalRecommendationText ?? story?.myRecommendation ?? coachHeroRecommendationFallback,
                 role: .recommendation,
@@ -438,6 +450,29 @@ struct ExpertCoachViewV3: View {
         )
         .shadow(color: heroSemanticColor.opacity(0.085), radius: 18, y: 8)
         .shadow(color: Color.black.opacity(0.18), radius: 14, y: 7)
+    }
+
+    private func coachContextChip(_ chip: CoachActivityContextChip) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: chip.icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(heroSemanticColor.opacity(0.82))
+
+            Text(chip.label)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.88))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(heroSemanticColor.opacity(0.10))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(heroSemanticColor.opacity(0.16), lineWidth: 1)
+        )
     }
 
     private func coachHeroTextBlock(label: String, text: String) -> some View {
@@ -1672,7 +1707,7 @@ struct ExpertCoachViewV3: View {
         }
 
         if completedCount > 0 {
-            return String(format: WeekFitLocalizedString("coach.evening.plannedCompletedFormat"), completedCount, completedCount == 1 ? WeekFitLocalizedString("common.item.singular") : WeekFitLocalizedString("common.item.plural"))
+            return WeekFitCountPluralization.eveningPlannedCompletedPhrase(count: completedCount)
         }
 
         return WeekFitLocalizedString("coach.evening.closedWithoutCatchUp")
@@ -1890,13 +1925,38 @@ struct ExpertCoachViewV3: View {
     }
 
     private func finalStorySupportSection(_ renderModel: CoachFinalStoryRenderModel) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
-            if !renderModel.whyRows.isEmpty {
+        let presentationRows = coachCoordinator.state.coachPresentation?.whyRows ?? []
+        let hasPresentationWhy = !presentationRows.isEmpty
+
+        return VStack(alignment: .leading, spacing: 13) {
+            if hasPresentationWhy {
+                presentationWhySection(presentationRows)
+            } else if !renderModel.whyRows.isEmpty {
                 whySection(renderModel)
             }
 
             if !renderModel.supportActions.isEmpty {
                 primaryActionsSection(renderModel.supportActions)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func presentationWhySection(_ rows: [CoachPresentationWhyRow]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            supportGroupHeader(
+                title: WeekFitLocalizedString("coach.why"),
+                subtitle: WeekFitLocalizedString("coach.why.subtitle")
+            )
+
+            VStack(spacing: 5) {
+                ForEach(Array(rows.prefix(3).enumerated()), id: \.offset) { _, row in
+                    coachDecisionRow(
+                        row.title,
+                        color: row.color,
+                        icon: row.icon
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
