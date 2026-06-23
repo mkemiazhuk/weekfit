@@ -159,6 +159,14 @@ enum CoachTodayTeaserBuilder {
         renderModel: CoachFinalStoryRenderModel,
         input: CoachInputSnapshot
     ) -> (idea: String, action: String)? {
+        if let racket = CoachRacketTodayTeaserCopy.teaser(
+            story: story,
+            input: input,
+            scenario: scenario
+        ) {
+            return racket
+        }
+
         if let endurance = CoachEnduranceTodayTeaserCopy.teaser(
             story: story,
             input: input,

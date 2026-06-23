@@ -328,6 +328,11 @@ enum CoachFinalStoryBuilder {
                enduranceDurationMinutes(for: frame.dayLoadContext.focusActivity) >= 60 {
                 return endurance(frame)
             }
+            if frame.sessionPhase == .during,
+               frame.activityFamily == .racket,
+               racketDurationMinutes(for: frame.dayLoadContext.focusActivity) >= 60 {
+                return racket(frame)
+            }
             if frame.trainPermission == .noTraining {
                 if frame.sessionPhase == .during,
                    isLightRecoveryV4Family(frame.activityFamily) {
@@ -511,6 +516,74 @@ enum CoachFinalStoryBuilder {
             copies.map {
                 reason($0.kind, $0.english, $0.russian, icon: $0.icon, colorFamily: $0.colorFamily)
             }
+        }
+
+        private static func racketCatalogAction(_ copy: CoachRacketDuringPostCopyCatalog.ActionCopy) -> CoachActionRecommendation {
+            action(
+                copy.type,
+                copy.title.english,
+                copy.subtitle.english,
+                copy.title.russian,
+                copy.subtitle.russian
+            )
+        }
+
+        private static func racketCatalogReasons(_ copies: [CoachRacketDuringPostCopyCatalog.ReasonCopy]) -> [CoachV4Reason] {
+            copies.map {
+                reason($0.kind, $0.english, $0.russian, icon: $0.icon, colorFamily: $0.colorFamily)
+            }
+        }
+
+        private static func racketCatalogPlaybook(
+            window: CoachRacketDuringPostCopyCatalog.WindowCopy,
+            phase: CoachRacketDuringPostCopyCatalog.Phase,
+            frame: CoachV4DecisionFrame
+        ) -> CoachV4PlaybookOutput {
+            let activity = frame.dayLoadContext.focusActivity
+            let longSession = frame.durationBand == .longOver120
+            let elapsed = CoachEnduranceDuringPostCopyCatalog.elapsedMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let remaining = CoachEnduranceDuringPostCopyCatalog.remainingMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let minutesSinceEnd = frame.sessionPhase == .post
+                ? CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                : 0
+            let catalogExtras = CoachRacketDuringPostCopyCatalog.extras(
+                for: phase,
+                activity: activity,
+                longSession: longSession,
+                minutesSinceEnd: minutesSinceEnd
+            )
+            let reasons = CoachRacketDuringPostCopyCatalog.reasons(
+                for: phase,
+                activity: activity,
+                elapsedMinutes: elapsed,
+                remainingMinutes: remaining,
+                recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                minutesSinceEnd: minutesSinceEnd
+            )
+            return playbookOnlyOutput(
+                hero: CoachFinalStoryBuilder.dynamicText(window.hero.english, russian: window.hero.russian),
+                assessment: holisticAssessment(
+                    frame: frame,
+                    tacticalEN: window.assessment.english,
+                    tacticalRU: window.assessment.russian
+                ),
+                situation: CoachFinalStoryBuilder.dynamicText(window.situation.english, russian: window.situation.russian),
+                primary: racketCatalogAction(window.primary),
+                avoidance: CoachFinalStoryBuilder.dynamicText(window.avoidance.english, russian: window.avoidance.russian),
+                extras: catalogExtras.map(racketCatalogAction),
+                reasons: racketCatalogReasons(reasons)
+            )
         }
 
         private static func holisticReadContext(from frame: CoachV4DecisionFrame) -> CoachHolisticReadBuilder.Context {
@@ -812,6 +885,52 @@ enum CoachFinalStoryBuilder {
             return catalogPlaybook(window: window, phase: phase, frame: frame)
         }
 
+        private static func racketDurationMinutes(for activity: PlannedActivity?) -> Int {
+            guard let activity else { return 0 }
+            return max(max(activity.effectiveDurationMinutes, activity.durationMinutes), 1)
+        }
+
+        private static func racketChapterPlaybook(
+            frame: CoachV4DecisionFrame,
+            activity: PlannedActivity?,
+            longSession: Bool
+        ) -> CoachV4PlaybookOutput? {
+            let durationMinutes = racketDurationMinutes(for: activity)
+            let elapsed = CoachEnduranceDuringPostCopyCatalog.elapsedMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let remaining = CoachEnduranceDuringPostCopyCatalog.remainingMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            guard let chapter = CoachRacketSessionChapterResolver.duringSessionChapter(
+                durationMinutes: durationMinutes,
+                elapsedMinutes: elapsed,
+                remainingMinutes: remaining
+            ) else {
+                return nil
+            }
+
+            let phase = chapter.catalogPhase
+            let window = CoachRacketDuringPostCopyCatalog.window(
+                for: phase,
+                activity: activity,
+                longSession: longSession,
+                referenceNow: frame.dayLoadContext.referenceNow
+            )
+            return racketCatalogPlaybook(window: window, phase: phase, frame: frame)
+        }
+
+        private static func racketFlatDuringPlaybook(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
+            let hero = CoachFinalStoryBuilder.dynamicText("Control the court load", russian: "На корте лучше держать нагрузку под контролем")
+            let assessment = CoachFinalStoryBuilder.dynamicText("Racket sessions can become hard through repeated accelerations.", russian: "Игра может стать тяжёлой из-за постоянных ускорений.")
+            let situation = CoachFinalStoryBuilder.dynamicText("Keep movement sharp without chasing every extra point.", russian: "Движение резкое, но не гонитесь за каждым лишним очком.")
+            let primary = action(.controlIntensity, "Cap repeated sprints", "Keep the hardest rallies selective", "Повторные рывки лучше ограничить", "Выбирайте самые тяжёлые розыгрыши")
+            let avoidance = CoachFinalStoryBuilder.dynamicText("Do not let competition override recovery.", russian: "Азарт не должен перебить восстановление.")
+            return output(frame: frame, hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: [])
+        }
+
         private static func preSession(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
             let activity = frame.dayLoadContext.nextImportantActivityToday
             let longSession = frame.durationBand == .longOver120
@@ -971,12 +1090,123 @@ enum CoachFinalStoryBuilder {
                 return preSession(frame)
             }
 
-            let hero = CoachFinalStoryBuilder.dynamicText("Control the court load", russian: "На корте лучше держать нагрузку под контролем")
-            let assessment = CoachFinalStoryBuilder.dynamicText("Racket sessions can become hard through repeated accelerations.", russian: "Игра может стать тяжёлой из-за постоянных ускорений.")
-            let situation = CoachFinalStoryBuilder.dynamicText("Keep movement sharp without chasing every extra point.", russian: "Движение резкое, но не гонитесь за каждым лишним очком.")
-            let primary = action(.controlIntensity, "Cap repeated sprints", "Keep the hardest rallies selective", "Повторные рывки лучше ограничить", "Выбирайте самые тяжёлые розыгрыши")
-            let avoidance = CoachFinalStoryBuilder.dynamicText("Do not let competition override recovery.", russian: "Азарт не должен перебить восстановление.")
-            return output(frame: frame, hero: hero, assessment: assessment, situation: situation, primary: primary, avoidance: avoidance, extras: [])
+            let activity = frame.dayLoadContext.focusActivity
+            let longSession = frame.durationBand == .longOver120
+
+            switch (frame.sessionPhase, frame.durationBand) {
+            case (.pre, _):
+                return preSession(frame)
+            case (.during, _):
+                switch frame.storyOwner {
+                case .fuelingDuringActivity:
+                    let window = CoachRacketDuringPostCopyCatalog.window(
+                        for: .fueling,
+                        activity: activity,
+                        longSession: longSession,
+                        referenceNow: frame.dayLoadContext.referenceNow
+                    )
+                    return racketCatalogPlaybook(window: window, phase: .fueling, frame: frame)
+                case .hydrationExecution:
+                    let window = CoachRacketDuringPostCopyCatalog.window(
+                        for: .hydration,
+                        activity: activity,
+                        longSession: longSession,
+                        referenceNow: frame.dayLoadContext.referenceNow
+                    )
+                    return racketCatalogPlaybook(window: window, phase: .hydration, frame: frame)
+                case .pacingExecution, .sustainableExecution, .activeActivity:
+                    if let chapterPlaybook = racketChapterPlaybook(frame: frame, activity: activity, longSession: longSession) {
+                        return chapterPlaybook
+                    }
+                    return racketFlatDuringPlaybook(frame)
+                default:
+                    if let chapterPlaybook = racketChapterPlaybook(frame: frame, activity: activity, longSession: longSession) {
+                        return chapterPlaybook
+                    }
+                    return racketFlatDuringPlaybook(frame)
+                }
+            case (.post, .longOver120):
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachRacketDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let durationMinutes = racketDurationMinutes(for: activity)
+                let phase: CoachRacketDuringPostCopyCatalog.Phase
+                if CoachRacketSessionChapterResolver.postChapter(
+                    durationMinutes: durationMinutes,
+                    minutesSinceEnd: minutesSinceEnd
+                ) != nil {
+                    phase = .recoveryWindow
+                } else {
+                    phase = .postLong
+                }
+                let window = CoachRacketDuringPostCopyCatalog.window(
+                    for: phase,
+                    activity: activity,
+                    longSession: true,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext,
+                    referenceNow: frame.dayLoadContext.referenceNow
+                )
+                return racketCatalogPlaybook(window: window, phase: phase, frame: frame)
+            case (.post, .medium60To120):
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachRacketDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let durationMinutes = racketDurationMinutes(for: activity)
+                let phase: CoachRacketDuringPostCopyCatalog.Phase
+                if CoachRacketSessionChapterResolver.postChapter(
+                    durationMinutes: durationMinutes,
+                    minutesSinceEnd: minutesSinceEnd
+                ) != nil {
+                    phase = .recoveryWindow
+                } else {
+                    phase = .postMedium
+                }
+                let window = CoachRacketDuringPostCopyCatalog.window(
+                    for: phase,
+                    activity: activity,
+                    longSession: false,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext,
+                    referenceNow: frame.dayLoadContext.referenceNow
+                )
+                return racketCatalogPlaybook(window: window, phase: phase, frame: frame)
+            case (.post, .shortUnder60), (.post, .none):
+                let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
+                    activity: activity,
+                    now: frame.dayLoadContext.referenceNow
+                )
+                let postContext = CoachRacketDuringPostCopyCatalog.PostContext(
+                    recoveryPercent: frame.dayLoadContext.recoveryPercent,
+                    caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    timePhase: frame.dayLoadContext.timePhase
+                )
+                let window = CoachRacketDuringPostCopyCatalog.window(
+                    for: .postShort,
+                    activity: activity,
+                    longSession: false,
+                    minutesSinceEnd: minutesSinceEnd,
+                    postContext: postContext
+                )
+                return racketCatalogPlaybook(window: window, phase: .postShort, frame: frame)
+            case (.none, _):
+                return racketFlatDuringPlaybook(frame)
+            }
         }
 
         private static func output(
