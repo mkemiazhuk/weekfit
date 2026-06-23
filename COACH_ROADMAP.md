@@ -37,50 +37,20 @@ Activity Family → Arc Template → Chapter (narrative layer)
 
 ---
 
-## In progress
+## Manual QA (optional)
 
-### Endurance screenshot audit (manual)
+### Endurance screenshot audit
 
-Before starting Racket Arc implementation, confirm real screens for 4 h ride:
+Confirm real screens for 4 h ride (S1–S5): `COACH_PHASE_B_CHAPTER_SCREEN_AUDIT.md`
 
-| # | Chapter | Elapsed | Coach Hero (RU) | Today title (RU) |
-|---|---------|---------|-----------------|------------------|
-| S1 | Opening | 20 min | Войдите в поездку плавно | Сначала легко |
-| S2 | Establish | 45 min | Задайте ритм питания | Не пропускайте следующий приём |
-| S3 | Maintain | 120 min | Держите ровную середину | Продолжайте по плану |
-| S4 | Protect | 210 min | Берегите финиш | Не добавляйте усилие сейчас |
-| S5 | Recovery Window | +10 min post | Окно восстановления открыто | Сейчас важнее восстановление |
+### Racket Narrative vertical ✅ (Phase D)
 
-Checklist: `COACH_PHASE_B_CHAPTER_SCREEN_AUDIT.md` (S1–S5 + read-aloud coherence).
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **D** | Racket Arc — Warm In → Find Rhythm → Manage Load → Close Smart → Recovery Window | ✅ Shipped |
 
-**Gate:** Racket Arc code starts **after** screenshot sign-off.
-
----
-
-## Next
-
-### Racket Arc (Tennis / Squash)
-
-**Goal:** Court sessions feel like a **separate coach style**, not Endurance Arc with swapped words.
-
-**Constraints (same as Endurance):**
-
-- No new owners
-- Same ArcTemplate approach — chapters in narrative layer only
-- Today and Coach read **one** chapter model (`CoachRacketNarrativeContextResolver` + shared resolver pattern)
-- Hydration / fuel / readiness overrides keep priority over chapter copy
-
-**Designed chapters:**
-
-| Duration | Arc |
-|----------|-----|
-| 60 min | Warm In → Manage Load → Close Smart |
-| 90 min | Warm In → Find Rhythm → Manage Load → Close Smart |
-| 120+ min | Warm In → Find Rhythm → Manage Load → Close Smart |
-
-Close Smart: `max(75% elapsed, last 25–30 min)` — shorter final act than endurance.
-
-**Status:** Design approved in `COACH_V5_NARRATIVE_ARCHITECTURE.md` · implementation **blocked on Endurance screenshot audit**.
+**Activities:** Tennis, Squash · duration ≥ 60 min  
+**Code:** `CoachRacketSessionChapter` · `CoachRacketDuringPostCopyCatalog` · `CoachRacketTodayTeaserCopy`
 
 ---
 
@@ -108,11 +78,11 @@ Close Smart: `max(75% elapsed, last 25–30 min)` — shorter final act than end
 | Family | Arc? | Status |
 |--------|------|--------|
 | Endurance | 5-chapter arc | ✅ Shipped |
-| Racket | 3–4 chapter arc | 📋 Next (after audit) |
+| Racket | 3–4 chapter arc | ✅ Shipped |
 | Heat | 3-phase lifecycle | 🔶 Future polish |
 | Strength | Flat | ✅ |
 | Recovery | Flat | ✅ |
 
 ---
 
-*Last updated: Phase C commit — Endurance vertical complete.*
+*Last updated: Phase D — Racket Arc shipped.*

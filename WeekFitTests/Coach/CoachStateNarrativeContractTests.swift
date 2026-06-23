@@ -1727,6 +1727,109 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         )
     }
 
+    func testNinetyMinuteTennisHeroEvolutionAcrossSessionChapters() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 90
+        let fueledNutrition = nutrition(water: 1.8, calories: 1_400, protein: 80, carbs: 180)
+
+        func hero(at elapsed: Int) throws -> String {
+            let active = activity(
+                type: "tennis",
+                title: "Tennis",
+                minutesFromNow: -elapsed,
+                duration: duration,
+                icon: "figure.tennis"
+            )
+            active.source = "today"
+            let story = try XCTUnwrap(
+                makeState(
+                    activities: [active],
+                    nutrition: fueledNutrition,
+                    activeCalories: Double(elapsed * 10),
+                    recoveryPercent: 90
+                ).finalStory
+            )
+            return story.title.resolved
+        }
+
+        let warmIn = try hero(at: 10)
+        let rhythm = try hero(at: 40)
+        let load = try hero(at: 55)
+        let close = try hero(at: 75)
+
+        XCTAssertTrue(warmIn.localizedCaseInsensitiveContains("Разогре") || warmIn.localizedCaseInsensitiveContains("розыгрыш"), "warmIn @10: \(warmIn)")
+        XCTAssertTrue(rhythm.localizedCaseInsensitiveContains("ритм"), "findRhythm @40: \(rhythm)")
+        XCTAssertTrue(load.localizedCaseInsensitiveContains("рывк"), "manageLoad @55: \(load)")
+        XCTAssertTrue(close.localizedCaseInsensitiveContains("Закройте") || close.localizedCaseInsensitiveContains("перегиб"), "closeSmart @75: \(close)")
+        XCTAssertNotEqual(warmIn, rhythm)
+        XCTAssertNotEqual(rhythm, load)
+        XCTAssertNotEqual(load, close)
+    }
+
+    func testNinetyMinuteTennisTodayTeaserEvolutionAcrossSessionChapters() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 90
+        let fueledNutrition = nutrition(water: 1.8, calories: 1_400, protein: 80, carbs: 180)
+
+        func todayTitle(at elapsed: Int) throws -> String {
+            let active = activity(
+                type: "tennis",
+                title: "Tennis",
+                minutesFromNow: -elapsed,
+                duration: duration,
+                icon: "figure.tennis"
+            )
+            active.source = "today"
+            return try XCTUnwrap(
+                makeState(
+                    activities: [active],
+                    nutrition: fueledNutrition,
+                    activeCalories: Double(elapsed * 10),
+                    recoveryPercent: 90
+                ).todayPresentation.title
+            )
+        }
+
+        let warmIn = try todayTitle(at: 10)
+        let rhythm = try todayTitle(at: 40)
+        let load = try todayTitle(at: 55)
+        let close = try todayTitle(at: 75)
+
+        XCTAssertTrue(warmIn.localizedCaseInsensitiveContains("разомн"), "warmIn @10: \(warmIn)")
+        XCTAssertTrue(rhythm.localizedCaseInsensitiveContains("ритм"), "findRhythm @40: \(rhythm)")
+        XCTAssertTrue(load.localizedCaseInsensitiveContains("рывк"), "manageLoad @55: \(load)")
+        XCTAssertTrue(close.localizedCaseInsensitiveContains("перегиб") || close.localizedCaseInsensitiveContains("Закройте"), "closeSmart @75: \(close)")
+        XCTAssertNotEqual(warmIn, rhythm)
+        XCTAssertNotEqual(rhythm, load)
+        XCTAssertNotEqual(load, close)
+    }
+
+    func testRacketHeroDoesNotReuseEnduranceFuelRhythmCopy() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let active = activity(
+            type: "tennis",
+            title: "Tennis",
+            minutesFromNow: -40,
+            duration: 90,
+            icon: "figure.tennis"
+        )
+        active.source = "today"
+
+        let story = try XCTUnwrap(
+            makeState(
+                activities: [active],
+                nutrition: nutrition(water: 1.8, calories: 1_400, protein: 80, carbs: 180),
+                activeCalories: 400,
+                recoveryPercent: 90
+            ).finalStory
+        )
+        let hero = story.title.resolved
+
+        XCTAssertTrue(hero.localizedCaseInsensitiveContains("ритм"), hero)
+        XCTAssertFalse(hero.localizedCaseInsensitiveContains("питания"), hero)
+        XCTAssertFalse(hero.localizedCaseInsensitiveContains("углевод"), hero)
+    }
+
     private func assertMidSessionLongRideCoachPresentationAlignsWithEngine() throws {
         WeekFitSetCurrentLanguage(.russian)
         let rideDuration = 240
