@@ -172,9 +172,10 @@ final class CoachCoordinator: ObservableObject {
         guidance: CoachGuidanceV3,
         reason: String
     ) {
+        let v6Summary = state.coachV6Debug?.logSummary ?? "usingV6=n/a scenario=n/a copyPack=n/a"
         CoachLogger.compact(
             "[CoachV4VisibleFinal]",
-            "reason=\(reason) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(state.finalStory?.owner.rawValue ?? "nil") title=\"\(state.finalStory?.title.resolved ?? "nil")\""
+            "reason=\(reason) priority=\(guidance.priority.priority)/\(guidance.priority.focus) owner=\(state.finalStory?.owner.rawValue ?? "nil") title=\"\(state.finalStory?.title.resolved ?? "nil")\" \(v6Summary)"
         )
     }
 

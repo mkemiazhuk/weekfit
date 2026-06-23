@@ -331,7 +331,7 @@ extension CoachFinalStoryRenderModel {
         case .sustainableExecution, .fuelingDuringActivity, .hydrationExecution:
             return (2, 2)
         case .postActivityRecovery:
-            return (0, 2)
+            return (2, 2)
         case .activeActivity:
             return (2, 2)
         case .activityPreparation:

@@ -191,6 +191,10 @@ enum CoachFinalStoryBuilder {
         let todayPlanSummary: CoachDayPlanReadBuilder.DayPlanSummary?
         let needsRecoveryNutrition: Bool
         let severeRecoveryNutritionDeficit: Bool
+        let dayLoadBand: CoachDayLoadBand
+        let priorCompletedSeriousSession: PlannedActivity?
+        let coachingJob: CoachDayLoadCoachingJob
+        let narrativeTrack: CoachEnduranceNarrativeTrack
     }
 
     private struct CoachV4DecisionFrame {
@@ -730,7 +734,9 @@ enum CoachFinalStoryBuilder {
                 recoveryPercent: frame.dayLoadContext.recoveryPercent,
                 caloriesBurned: frame.dayLoadContext.caloriesBurnedSoFar,
                 shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
-                minutesSinceEnd: minutesSinceEnd
+                minutesSinceEnd: minutesSinceEnd,
+                timePhase: frame.dayLoadContext.timePhase,
+                coachingJob: frame.dayLoadContext.coachingJob
             )
             return playbookOnlyOutput(
                 hero: resolvedPostPlaybookHero(window: window, frame: frame, activity: activity),
@@ -829,21 +835,23 @@ enum CoachFinalStoryBuilder {
                     }
                     switch frame.storyOwner {
                     case .pacingExecution:
-                        let window = CoachEnduranceDuringPostCopyCatalog.window(
-                            for: .pacing,
+                        let pacingPhase: CoachEnduranceDuringPostCopyCatalog.Phase = .pacing
+                        let window = enduranceDuringWindow(
+                            for: pacingPhase,
+                            frame: frame,
                             activity: activity,
-                            longSession: longSession,
-                            referenceNow: frame.dayLoadContext.referenceNow
+                            longSession: longSession
                         )
-                        return catalogPlaybook(window: window, phase: .pacing, frame: frame)
+                        return catalogPlaybook(window: window, phase: pacingPhase, frame: frame)
                     default:
-                        let window = CoachEnduranceDuringPostCopyCatalog.window(
-                            for: .sustainable,
+                        let sustainablePhase: CoachEnduranceDuringPostCopyCatalog.Phase = .sustainable
+                        let window = enduranceDuringWindow(
+                            for: sustainablePhase,
+                            frame: frame,
                             activity: activity,
-                            longSession: longSession,
-                            referenceNow: frame.dayLoadContext.referenceNow
+                            longSession: longSession
                         )
-                        return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
+                        return catalogPlaybook(window: window, phase: sustainablePhase, frame: frame)
                     }
                 default:
                     if let chapterPlaybook = enduranceChapterPlaybook(frame: frame, activity: activity, longSession: longSession) {
@@ -948,6 +956,30 @@ enum CoachFinalStoryBuilder {
             return max(max(activity.effectiveDurationMinutes, activity.durationMinutes), 1)
         }
 
+        private static func enduranceDuringWindow(
+            for phase: CoachEnduranceDuringPostCopyCatalog.Phase,
+            frame: CoachV4DecisionFrame,
+            activity: PlannedActivity?,
+            longSession: Bool
+        ) -> CoachEnduranceDuringPostCopyCatalog.WindowCopy {
+            if frame.dayLoadContext.coachingJob != .optimizeExecution {
+                return CoachEnduranceDuringPostCopyCatalog.protectionWindow(
+                    for: phase,
+                    activity: activity,
+                    coachingJob: frame.dayLoadContext.coachingJob,
+                    longSession: longSession,
+                    shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
+                    referenceNow: frame.dayLoadContext.referenceNow
+                )
+            }
+            return CoachEnduranceDuringPostCopyCatalog.window(
+                for: phase,
+                activity: activity,
+                longSession: longSession,
+                referenceNow: frame.dayLoadContext.referenceNow
+            )
+        }
+
         private static func enduranceChapterPlaybook(
             frame: CoachV4DecisionFrame,
             activity: PlannedActivity?,
@@ -971,11 +1003,11 @@ enum CoachFinalStoryBuilder {
             }
 
             let phase = chapter.catalogPhase
-            let window = CoachEnduranceDuringPostCopyCatalog.window(
+            let window = enduranceDuringWindow(
                 for: phase,
+                frame: frame,
                 activity: activity,
-                longSession: longSession,
-                referenceNow: frame.dayLoadContext.referenceNow
+                longSession: longSession
             )
             return catalogPlaybook(window: window, phase: phase, frame: frame)
         }
@@ -1359,7 +1391,15 @@ enum CoachFinalStoryBuilder {
             if frame.primaryLimiter == .recovery {
                 reasons.append(reason(.recovery, "Recovery is the limiting factor today.", "Сегодня лучше не перегружаться.", icon: "heart.fill", colorFamily: .recovery))
             } else {
-                reasons.append(reason(.recovery, "Recovery looks good enough for the planned session.", "Сегодня самочувствие позволяет идти по плану.", icon: "heart.fill", colorFamily: .recovery))
+                reasons.append(
+                    reason(
+                        .training,
+                        "Arriving fresh matters more than rushing the prep.",
+                        "Сейчас важнее выйти свежим, чем спешить с подготовкой.",
+                        icon: "figure.cooldown",
+                        colorFamily: .activity
+                    )
+                )
             }
 
             return reasons
@@ -1404,7 +1444,15 @@ enum CoachFinalStoryBuilder {
                 if frame.primaryLimiter == .sleep || frame.primaryLimiter == .recovery {
                     reasons.append(reason(.sleep, "Sleep was shorter than usual.", "Сон был короче обычного.", icon: "moon.fill", colorFamily: .recovery))
                 } else {
-                    reasons.append(reason(.recovery, "You're recovered enough for a light sauna.", "Сил хватает для умеренной сауны.", icon: "heart.fill", colorFamily: .recovery))
+                    reasons.append(
+                        reason(
+                            .constraint,
+                            "Moderate heat costs less than pushing hard.",
+                            "Умеренная сауна заберёт меньше, чем если зайти на пределе.",
+                            icon: "flame.fill",
+                            colorFamily: .activity
+                        )
+                    )
                 }
                 return Array(reasons.prefix(3))
             }
@@ -1454,7 +1502,11 @@ enum CoachFinalStoryBuilder {
             case .fueling:
                 reasons.append(reason(.fuel, "You haven't eaten enough for this session.", "Еды маловато для этой тренировки.", icon: "bolt.fill", colorFamily: .fuel))
             default:
-                reasons.append(reason(.recovery, "Recovery looks good enough to keep going.", "Самочувствие нормальное — можно спокойно продолжать.", icon: "heart.fill", colorFamily: .recovery))
+                reasons.append(
+                    frame.storyOwner == .tomorrowProtection || activeOwnerAllowsOnlyExecutionReasons(frame)
+                        ? reason(.constraint, "Extra load today would not help tomorrow.", "Сегодня лишнее не поможет завтра.", icon: "shield.fill", colorFamily: .warning)
+                        : reason(.stability, "No need to add extra work today.", "Сегодня не нужно добавлять лишнего.", icon: "shield.fill", colorFamily: .stable)
+                )
             }
 
             if frame.dayLoadContext.caloriesBurnedSoFar >= 700 {
@@ -1654,7 +1706,15 @@ enum CoachFinalStoryBuilder {
             }
 
             if frame.dayLoadContext.shouldProtectTomorrow {
-                reasons.append(reason(.tomorrow, "Tomorrow has a real training demand.", "Завтра серьёзная тренировка.", icon: "calendar", colorFamily: .activity))
+                reasons.append(
+                    reason(
+                        .tomorrow,
+                        "Tomorrow has a real training demand — extra load today won't help.",
+                        "Завтра серьёзная тренировка — лишняя нагрузка сегодня не поможет.",
+                        icon: "calendar",
+                        colorFamily: .activity
+                    )
+                )
             } else if !heroNamesUpcomingPlan,
                       let activity = frame.dayLoadContext.nextImportantActivityToday {
                 let name = localizedActivityName(for: activity)
@@ -1679,6 +1739,7 @@ enum CoachFinalStoryBuilder {
                         )
                     )
                 }
+
             }
 
             if !calmDay,
@@ -4525,6 +4586,25 @@ enum CoachFinalStoryBuilder {
         let hoursUntilNext = nextImportant.map { max(0, $0.date.timeIntervalSince(input.now) / 3600) }
         let tomorrowDemand = input.dayPriorityModel.tomorrowDemand
         let todayPlanSummary = CoachDayPlanReadBuilder.build(input: input)
+        let shouldProtectTomorrow: Bool = {
+            if CoachTomorrowPlanReadBuilder.isRecoveryFocused(input: input) {
+                return false
+            }
+            if guidance.priority.focus == .tomorrowPlanRisk { return true }
+            if tomorrowDemand == .hard { return true }
+            let evening = timePhase == .evening || timePhase == .lateEvening || timePhase == .night
+            if evening, tomorrowDemand == .moderate || tomorrowDemand == .hard { return true }
+            return false
+        }()
+        let activeActivity = input.plannedActivities.first {
+            !$0.isSkipped && !$0.isCompleted && $0.isActive(at: input.now)
+        }
+        let narrativeContext = CoachDayLoadNarrativeResolver.resolve(
+            input: input,
+            activeActivity: activeActivity,
+            seriousCompleted: seriousCompleted,
+            shouldProtectTomorrow: shouldProtectTomorrow
+        )
 
         return CoachV4DayLoadContext(
             timePhase: timePhase,
@@ -4549,21 +4629,17 @@ enum CoachFinalStoryBuilder {
                     input.brain.sleep == .short ||
                     input.brain.sleep == .veryShort
             ),
-            shouldProtectTomorrow: {
-                if CoachTomorrowPlanReadBuilder.isRecoveryFocused(input: input) {
-                    return false
-                }
-                if guidance.priority.focus == .tomorrowPlanRisk { return true }
-                if tomorrowDemand == .hard { return true }
-                let evening = timePhase == .evening || timePhase == .lateEvening || timePhase == .night
-                if evening, tomorrowDemand == .moderate || tomorrowDemand == .hard { return true }
-                return false
-            }(),
+            shouldProtectTomorrow: shouldProtectTomorrow,
             tomorrowTrainingActivity: tomorrowProtectionActivity(input: input, guidance: guidance),
             tomorrowRecoveryPlanSummary: CoachTomorrowPlanReadBuilder.recoveryPlanSummary(input: input),
             todayPlanSummary: todayPlanSummary,
             needsRecoveryNutrition: recoveryNutritionNeedsSupport(input),
-            severeRecoveryNutritionDeficit: severeRecoveryNutritionDeficit(input: input)
+            severeRecoveryNutritionDeficit: severeRecoveryNutritionDeficit(input: input),
+            dayLoadBand: narrativeContext.band,
+            priorCompletedSeriousSession: narrativeContext.priorCompletedSeriousSession,
+            coachingJob: narrativeContext.coachingJob,
+            narrativeTrack: narrativeContext.narrativeTrack
+
         )
     }
 
@@ -6483,7 +6559,7 @@ enum CoachFinalStoryBuilder {
                 input.brain.sleep == .veryShort {
                 append(.sleep, "Sleep or recovery is limiting the day.", "Сон или отдых ограничивают день.", icon: "moon.fill", colorFamily: .recovery)
             } else {
-                append(.recovery, "Recovery is within the normal range.", "Самочувствие в обычном диапазоне.", icon: "heart.fill", colorFamily: .recovery)
+                append(.stability, "Nothing today needs urgent correction.", "Сегодня нет нагрузки, требующей коррекции.", icon: "checkmark.seal.fill", colorFamily: .stable)
             }
 
             if context.hasFutureActivityContext {

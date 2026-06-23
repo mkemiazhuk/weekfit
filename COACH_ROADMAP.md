@@ -52,6 +52,14 @@ Confirm real screens for 4 h ride (S1–S5): `COACH_PHASE_B_CHAPTER_SCREEN_AUDIT
 **Activities:** Tennis, Squash · duration ≥ 60 min  
 **Code:** `CoachRacketSessionChapter` · `CoachRacketDuringPostCopyCatalog` · `CoachRacketTodayTeaserCopy`
 
+### Why Narrative Alignment (Phase E) 🔶
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **E** | Why explains Hero decision — not recovery/hydration status | 🔶 In progress |
+
+**Doc:** `COACH_PHASE_E_WHY_ALIGNMENT.md` (ownership map + screenshot audit E-P1–E-H2)
+
 ---
 
 ## Planned
@@ -85,4 +93,4 @@ Confirm real screens for 4 h ride (S1–S5): `COACH_PHASE_B_CHAPTER_SCREEN_AUDIT
 
 ---
 
-*Last updated: Phase D — Racket Arc shipped.*
+*Last updated: Phase E — Why narrative alignment (in progress).*

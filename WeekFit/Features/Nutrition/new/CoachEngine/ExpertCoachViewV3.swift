@@ -79,11 +79,13 @@ struct ExpertCoachViewV3: View {
                 "CoachView onAppear stateID=\(coachCoordinator.state.id) \(debugCoachPrioritySummary())"
             )
             debugCoachHeroColorSystem(event: "onAppear")
+            debugCoachV6Integration(event: "onAppear")
             #endif
         }
         .onChange(of: coachCoordinator.state.id) { _, _ in
             #if DEBUG
             debugCoachHeroColorSystem(event: "stateChanged")
+            debugCoachV6Integration(event: "stateChanged")
             #endif
         }
         .sheet(isPresented: $showProfile) {
@@ -155,11 +157,16 @@ struct ExpertCoachViewV3: View {
         )
     }
 
+    private var coachV6Presentation: CoachV6UIPresentation? {
+        coachCoordinator.state.coachV6Presentation
+    }
+
     private var finalStory: CoachFinalStory? {
         coachCoordinator.state.finalStory
     }
 
     private var finalStoryRenderModel: CoachFinalStoryRenderModel? {
+        guard coachV6Presentation == nil else { return nil }
         guard let finalStory else { return nil }
         return CoachFinalStoryRenderModel(story: finalStory)
     }
@@ -195,7 +202,10 @@ struct ExpertCoachViewV3: View {
     }
 
     private var presentationSemanticColor: Color {
-        coachCoordinator.state.coachPresentation?.color
+        if let v6 = coachV6Presentation {
+            return v6.semanticColor.uiColor
+        }
+        return coachCoordinator.state.coachPresentation?.color
             ?? coachCoordinator.state.todayPresentation.color
     }
 
@@ -208,6 +218,9 @@ struct ExpertCoachViewV3: View {
     }
 
     private var heroSemanticColorSource: String {
+        if coachV6Presentation != nil {
+            return "coachV6Presentation.semanticColor"
+        }
         if coachCoordinator.state.coachPresentation != nil {
             return "coachPresentation.color"
         }
@@ -218,7 +231,10 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachIcon: String {
-        finalStoryRenderModel?.icon ?? coachCoordinator.state.coachPresentation?.icon ?? coachScreenStory.icon
+        coachV6Presentation?.icon
+            ?? finalStoryRenderModel?.icon
+            ?? coachCoordinator.state.coachPresentation?.icon
+            ?? coachScreenStory.icon
     }
 
     private var coachScreenStory: CoachScreenStory {
@@ -340,41 +356,16 @@ struct ExpertCoachViewV3: View {
         let story = finalStoryRenderModel == nil ? coachScreenStory : nil
         let presentation = finalStoryRenderModel == nil ? coachCoordinator.state.coachPresentation : nil
         let renderedTitle = coachRenderedTitle
-        let renderedRead = coachCoordinator.state.coachPresentation?.message
-            ?? finalStoryRenderModel?.displaySubtitle
-            ?? coachUniqueHeroText(
-            coachOneStoryHeroText(
-                presentation?.message ?? story?.myRead ?? coachHeroReadFallback,
-                role: .assessment,
-                fallback: coachHeroReadFallback
-            ),
-            fallback: coachHeroReadFallback,
-            avoiding: [coachDisplayStateLabel, renderedTitle]
-        )
-        let renderedRecommendation = coachCoordinator.state.coachPresentation?.recommendation
-            ?? finalStoryRenderModel?.primaryRecommendation
-            ?? coachUniqueHeroText(
-            coachOneStoryHeroText(
-                presentation?.recommendation ?? canonicalRecommendationText ?? story?.myRecommendation ?? coachHeroRecommendationFallback,
-                role: .recommendation,
-                fallback: coachHeroRecommendationFallback
-            ),
-            fallback: coachHeroRecommendationFallback,
-            avoiding: [coachDisplayStateLabel, renderedTitle, renderedRead]
-        )
-        let renderedRisk = finalStoryRenderModel?.displayAvoid ?? coachUniqueHeroText(
-            coachOneStoryHeroText(
-                presentation?.avoidNotes.first ?? story?.beCarefulWith ?? coachHeroRiskFallback,
-                role: .caution,
-                fallback: coachHeroRiskFallback
-            ),
-            fallback: coachHeroRiskFallback,
-            avoiding: [coachDisplayStateLabel, renderedTitle, renderedRead, renderedRecommendation]
-        )
-        let shouldShowRisk = finalStoryRenderModel != nil
-            ? !renderedRisk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            : (presentation?.avoidNotes.isEmpty == false || story?.shouldShowBeCarefulWith == true)
-        let shouldShowRead = !renderedRead.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let heroCopy = coachHeroCopy(story: story, presentation: presentation)
+        let renderedRead = heroCopy.read
+        let renderedRecommendation = heroCopy.recommendation
+        let renderedRisk = heroCopy.risk
+        let shouldShowRisk = heroCopy.showRisk
+        let shouldShowRead = heroCopy.showRead
+        let v6NextAction = coachV6Presentation?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let shouldShowV6NextAction = !v6NextAction.isEmpty
+        let v6WarningMessage = coachV6Presentation?.warningMessage?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let shouldShowV6Warning = !v6WarningMessage.isEmpty
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
@@ -385,6 +376,12 @@ struct ExpertCoachViewV3: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 stateBadge
+
+                if shouldShowV6Warning {
+                    coachV6WarningBanner(v6WarningMessage)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text(renderedTitle)
@@ -411,6 +408,13 @@ struct ExpertCoachViewV3: View {
                             coachHeroTextBlock(
                                 label: WeekFitLocalizedString("coach.hero.beCarefulWith"),
                                 text: renderedRisk
+                            )
+                        }
+
+                        if shouldShowV6NextAction {
+                            coachHeroTextBlock(
+                                label: coachV6NextActionLabel,
+                                text: v6NextAction
                             )
                         }
                     }
@@ -472,6 +476,37 @@ struct ExpertCoachViewV3: View {
         .overlay(
             Capsule(style: .continuous)
                 .stroke(heroSemanticColor.opacity(0.16), lineWidth: 1)
+        )
+    }
+
+    private var coachV6NextActionLabel: String {
+        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Следующий шаг" : "Next step"
+    }
+
+    private func coachV6WarningBanner(_ message: String) -> some View {
+        let accent = coachV6Presentation?.alertSeverity.uiAccentColor ?? CoachPalette.warning
+
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(accent)
+
+            Text(message)
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary.opacity(0.92))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(accent.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(accent.opacity(0.28), lineWidth: 1)
         )
     }
 
@@ -617,6 +652,77 @@ struct ExpertCoachViewV3: View {
         }
 
         return signals
+    }
+
+    private struct CoachHeroCopy {
+        let read: String
+        let recommendation: String
+        let risk: String
+        let showRead: Bool
+        let showRisk: Bool
+    }
+
+    private func coachHeroCopy(
+        story: CoachScreenStory?,
+        presentation: CoachScreenPresentation?
+    ) -> CoachHeroCopy {
+        if let v6 = coachV6Presentation {
+            let read = v6.assessment.trimmingCharacters(in: .whitespacesAndNewlines)
+            let recommendation = v6.recommendation.trimmingCharacters(in: .whitespacesAndNewlines)
+            let risk = v6.avoid.trimmingCharacters(in: .whitespacesAndNewlines)
+            return CoachHeroCopy(
+                read: v6.assessment,
+                recommendation: v6.recommendation,
+                risk: v6.avoid,
+                showRead: !read.isEmpty,
+                showRisk: !risk.isEmpty
+            )
+        }
+
+        let renderedTitle = coachRenderedTitle
+        let read = coachCoordinator.state.coachPresentation?.message
+            ?? finalStoryRenderModel?.displaySubtitle
+            ?? coachUniqueHeroText(
+                coachOneStoryHeroText(
+                    presentation?.message ?? story?.myRead ?? coachHeroReadFallback,
+                    role: .assessment,
+                    fallback: coachHeroReadFallback
+                ),
+                fallback: coachHeroReadFallback,
+                avoiding: [coachDisplayStateLabel, renderedTitle]
+            )
+        let recommendation = coachCoordinator.state.coachPresentation?.recommendation
+            ?? finalStoryRenderModel?.primaryRecommendation
+            ?? coachUniqueHeroText(
+                coachOneStoryHeroText(
+                    presentation?.recommendation ?? canonicalRecommendationText ?? story?.myRecommendation ?? coachHeroRecommendationFallback,
+                    role: .recommendation,
+                    fallback: coachHeroRecommendationFallback
+                ),
+                fallback: coachHeroRecommendationFallback,
+                avoiding: [coachDisplayStateLabel, renderedTitle, read]
+            )
+        let risk = finalStoryRenderModel?.displayAvoid ?? coachUniqueHeroText(
+            coachOneStoryHeroText(
+                presentation?.avoidNotes.first ?? story?.beCarefulWith ?? coachHeroRiskFallback,
+                role: .caution,
+                fallback: coachHeroRiskFallback
+            ),
+            fallback: coachHeroRiskFallback,
+            avoiding: [coachDisplayStateLabel, renderedTitle, read, recommendation]
+        )
+        let showRisk = finalStoryRenderModel != nil
+            ? !risk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            : (presentation?.avoidNotes.isEmpty == false || story?.shouldShowBeCarefulWith == true)
+        let showRead = !read.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        return CoachHeroCopy(
+            read: read,
+            recommendation: recommendation,
+            risk: risk,
+            showRead: showRead,
+            showRisk: showRisk
+        )
     }
 
     private func coachUniqueHeroText(
@@ -1136,6 +1242,10 @@ struct ExpertCoachViewV3: View {
     }
 
     private var coachDisplayStateLabel: String {
+        if let v6 = coachV6Presentation {
+            return v6.statusLabel.uppercased()
+        }
+
         if let finalStoryRenderModel {
             return finalStoryRenderModel.badge.uppercased()
         }
@@ -1303,6 +1413,9 @@ struct ExpertCoachViewV3: View {
 //                    )
 //                } else
                 if shouldSurfaceCoach {
+                    #if DEBUG
+                    coachV6IntegrationDebugBanner
+                    #endif
                     coachCard
                     storySupportSection
                 } else {
@@ -1880,6 +1993,16 @@ struct ExpertCoachViewV3: View {
     // MARK: - Suggested Support
 
     private var storySupportSection: some View {
+        if coachV6Presentation != nil {
+            let rows = coachCoordinator.state.coachPresentation?.whyRows ?? []
+            return AnyView(VStack(alignment: .leading, spacing: 13) {
+                if !rows.isEmpty {
+                    presentationWhySection(rows)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading))
+        }
+
         if let finalStoryRenderModel {
             return AnyView(finalStorySupportSection(finalStoryRenderModel))
         }
@@ -2697,6 +2820,52 @@ struct ExpertCoachViewV3: View {
         return "priority=\(output.priority.priority)/\(output.priority.focus) limiter=\(output.priority.limiter) strength=\(output.priority.strength) title=\"\(output.priority.todayTitle)\" renderedState=\"\(renderedState)\" renderedTitle=\"\(renderedTitle)\""
     }
 
+    private var coachV6IntegrationDebugBanner: some View {
+        Group {
+            if let debug = coachCoordinator.state.coachV6Debug {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(debug.devLabel)
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(debug.usingV6 ? CoachPalette.stable : CoachPalette.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let fallbackReason = debug.fallbackReason {
+                        Text("fallbackReason: \(fallbackReason)")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(textSecondary.opacity(0.72))
+                    }
+
+                    Text("renderPath: \(coachV6Presentation != nil ? "coachV6Presentation" : (finalStoryRenderModel != nil ? "finalStoryRenderModel" : "coachPresentation"))")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(textSecondary.opacity(0.62))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private func debugCoachV6Integration(event: String) {
+        guard let debug = coachCoordinator.state.coachV6Debug else {
+            CoachRefreshDebug.log("[CoachV6Integration]", "event=\(event) debug=nil status=\(coachCoordinator.state.status)")
+            return
+        }
+
+        CoachRefreshDebug.log(
+            "[CoachV6Integration]",
+            "event=\(event) \(debug.logSummary) renderPath=\(coachV6Presentation != nil ? "coachV6Presentation" : (finalStoryRenderModel != nil ? "finalStoryRenderModel" : "coachPresentation"))"
+        )
+    }
+
     private func debugCoachHeroColorSystem(event: String) {
         guard let guidance = coachCoordinator.state.guidance else {
             CoachRefreshDebug.log("[CoachHeroColorDebug]", "event=\(event) priority=missing")
@@ -2875,6 +3044,8 @@ enum CoachPalette {
     static let fueling = WeekFitTheme.orange
     static let training = WeekFitTheme.workout
     static let stable = Color(red: 0.16, green: 0.80, blue: 0.43)
+    /// Strategic protect-tomorrow — calm lunar tone, not alarm red.
+    static let protection = Color(red: 0.58, green: 0.52, blue: 0.95)
     static let stress = Color(red: 1.00, green: 0.47, blue: 0.47)
 
     // NEW

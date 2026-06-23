@@ -140,6 +140,89 @@ enum CoachEnduranceDuringPostCopyCatalog {
         }
     }
 
+    /// Protection-track copy for day-cap / survival coaching jobs — same chapter clock, different semantics.
+    static func protectionWindow(
+        for phase: Phase,
+        activity: PlannedActivity?,
+        coachingJob: CoachDayLoadCoachingJob,
+        longSession: Bool,
+        shouldProtectTomorrow: Bool,
+        referenceNow: Date? = nil
+    ) -> WindowCopy {
+        let modality = CoachSessionPrepCopyCatalog.modality(for: activity)
+        let remaining = remainingMinutes(activity: activity, now: referenceNow ?? Date())
+        switch (phase, modality) {
+        case (.opening, .cycling):
+            return protectionOpeningCycling(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.opening, .running):
+            return protectionOpeningRunning(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.opening, _):
+            return protectionOpeningGeneral(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.establish, .cycling):
+            return protectionEstablishCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.establish, .running):
+            return protectionEstablishRunning(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.establish, _):
+            return protectionEstablishGeneral(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.maintain, .cycling):
+            return protectionMaintainCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.maintain, .running):
+            return protectionMaintainRunning(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.maintain, _):
+            return protectionMaintainGeneral(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.protect, .cycling):
+            return protectionCapCycling(
+                longSession: longSession,
+                remainingMinutes: remaining,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.protect, .running):
+            return protectionCapRunning(
+                longSession: longSession,
+                remainingMinutes: remaining,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.protect, _):
+            return protectionCapGeneral(
+                longSession: longSession,
+                remainingMinutes: remaining,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.pacing, .cycling):
+            return protectionOpeningCycling(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.pacing, .running):
+            return protectionOpeningRunning(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.pacing, _):
+            return protectionOpeningGeneral(
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow
+            )
+        case (.sustainable, .cycling):
+            return protectionMaintainCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.sustainable, .running):
+            return protectionMaintainRunning(shouldProtectTomorrow: shouldProtectTomorrow)
+        case (.sustainable, _):
+            return protectionMaintainGeneral(shouldProtectTomorrow: shouldProtectTomorrow)
+        default:
+            return protectionMaintainGeneral(shouldProtectTomorrow: shouldProtectTomorrow)
+        }
+    }
+
     static func reasons(
         for phase: Phase,
         activity: PlannedActivity?,
@@ -148,8 +231,19 @@ enum CoachEnduranceDuringPostCopyCatalog {
         recoveryPercent: Int,
         caloriesBurned: Double,
         shouldProtectTomorrow: Bool,
-        minutesSinceEnd: Int = 0
+        minutesSinceEnd: Int = 0,
+        timePhase: CoachFinalDecisionTimeOfDay? = nil,
+        coachingJob: CoachDayLoadCoachingJob? = nil
     ) -> [ReasonCopy] {
+        if let coachingJob, coachingJob != .optimizeExecution {
+            return protectionReasons(
+                for: phase,
+                coachingJob: coachingJob,
+                shouldProtectTomorrow: shouldProtectTomorrow,
+                caloriesBurned: caloriesBurned
+            )
+        }
+
         switch phase {
         case .pacing:
             var items: [ReasonCopy] = []
@@ -166,15 +260,15 @@ enum CoachEnduranceDuringPostCopyCatalog {
             }
             items.append(
                 ReasonCopy(
-                    kind: .recovery,
+                    kind: .training,
                     english: recoveryPercent >= 75
-                        ? "Recovery still gives room to build into the session."
-                        : "Recovery is limited, so the opening should stay conservative.",
+                        ? "There is still a long session ahead — ease in first."
+                        : "Recovery is limited — keep the opening conservative.",
                     russian: recoveryPercent >= 75
-                        ? "Восстановление ещё даёт запас нарастить нагрузку."
+                        ? "Впереди длинная сессия — сначала разогрейтесь."
                         : "Восстановление ограничено — старт лучше держать консервативным.",
-                    icon: "heart.fill",
-                    colorFamily: .recovery
+                    icon: "figure.outdoor.cycle",
+                    colorFamily: .ready
                 )
             )
             return Array(items.prefix(2))
@@ -358,9 +452,69 @@ enum CoachEnduranceDuringPostCopyCatalog {
             ]
 
         case .postLong, .postMedium, .postShort:
-            return []
+            return postSettledStaleReasons(
+                timing: PostTiming.from(minutesSinceEnd: minutesSinceEnd),
+                shouldProtectTomorrow: shouldProtectTomorrow,
+                timePhase: timePhase
+            )
 
         }
+    }
+
+    private static func postSettledStaleReasons(
+        timing: PostTiming,
+        shouldProtectTomorrow: Bool,
+        timePhase: CoachFinalDecisionTimeOfDay?
+    ) -> [ReasonCopy] {
+        guard timing == .settled || timing == .stale else { return [] }
+
+        var items: [ReasonCopy] = [
+            ReasonCopy(
+                kind: .training,
+                english: "The main useful work is already done.",
+                russian: "Основная полезная работа уже сделана.",
+                icon: "checkmark.circle.fill",
+                colorFamily: .activity
+            )
+        ]
+
+        let isEveningWindDown = timePhase == .evening ||
+            timePhase == .lateEvening ||
+            timePhase == .night
+
+        if isEveningWindDown || timing == .stale {
+            items.append(
+                ReasonCopy(
+                    kind: .constraint,
+                    english: "Sleep tonight matters more than adding another effort.",
+                    russian: "Сон сегодня важнее, чем ещё одна нагрузка.",
+                    icon: "moon.fill",
+                    colorFamily: .recovery
+                )
+            )
+        } else if shouldProtectTomorrow {
+            items.append(
+                ReasonCopy(
+                    kind: .tomorrow,
+                    english: "Tomorrow has training — save margin for tonight.",
+                    russian: "Завтра тренировка — сегодня сохраните силы.",
+                    icon: "calendar",
+                    colorFamily: .activity
+                )
+            )
+        } else {
+            items.append(
+                ReasonCopy(
+                    kind: .constraint,
+                    english: "Extra intensity now is unlikely to add benefit.",
+                    russian: "Дополнительная интенсивность сейчас вряд ли поможет.",
+                    icon: "exclamationmark.triangle.fill",
+                    colorFamily: .warning
+                )
+            )
+        }
+
+        return Array(items.prefix(2))
     }
 
     static func extras(
@@ -1275,5 +1429,296 @@ enum CoachEnduranceDuringPostCopyCatalog {
         default:
             return false
         }
+    }
+
+    // MARK: - Protection track (day-cap / survival)
+
+    private static func protectionReasons(
+        for phase: Phase,
+        coachingJob: CoachDayLoadCoachingJob,
+        shouldProtectTomorrow: Bool,
+        caloriesBurned: Double
+    ) -> [ReasonCopy] {
+        var items: [ReasonCopy] = []
+
+        if coachingJob == .dayCap {
+            items.append(
+                ReasonCopy(
+                    kind: .training,
+                    english: "The main workout for today is already done.",
+                    russian: "Главная тренировка на сегодня уже была.",
+                    icon: "checkmark.circle.fill",
+                    colorFamily: .activity
+                )
+            )
+            items.append(
+                ReasonCopy(
+                    kind: .constraint,
+                    english: "This session should not repeat the first one.",
+                    russian: "Этот заезд не должен копировать первый.",
+                    icon: "shield.fill",
+                    colorFamily: .warning
+                )
+            )
+        } else {
+            items.append(
+                ReasonCopy(
+                    kind: .constraint,
+                    english: "Today's energy spend is already very high.",
+                    russian: "Расход энергии за день уже очень высокий.",
+                    icon: "flame.fill",
+                    colorFamily: .warning
+                )
+            )
+            items.append(
+                ReasonCopy(
+                    kind: .training,
+                    english: "The goal is to finish without breaking the day.",
+                    russian: "Цель — закрыть без срыва дня.",
+                    icon: "shield.fill",
+                    colorFamily: .warning
+                )
+            )
+        }
+
+        if shouldProtectTomorrow, items.count < 2 {
+            items.append(
+                ReasonCopy(
+                    kind: .tomorrow,
+                    english: "Tomorrow's training matters more than squeezing more out of today.",
+                    russian: "Завтрашняя тренировка важнее, чем выжать больше из сегодня.",
+                    icon: "calendar",
+                    colorFamily: .activity
+                )
+            )
+        }
+
+        if caloriesBurned >= 700, items.count < 2 {
+            items.append(
+                ReasonCopy(
+                    kind: .constraint,
+                    english: "The day already carries a heavy energy cost.",
+                    russian: "День уже несёт большой энергетический расход.",
+                    icon: "flame.fill",
+                    colorFamily: .warning
+                )
+            )
+        }
+
+        return Array(items.prefix(2))
+    }
+
+    private static func protectionOpeningCycling(
+        coachingJob: CoachDayLoadCoachingJob,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        let hero: BilingualText
+        let assessment: BilingualText
+        if coachingJob == .dayCap {
+            hero = bi("Second ride — don't push the day again", "Вторая поездка — не разгоняйте день снова")
+            assessment = bi(
+                shouldProtectTomorrow
+                    ? "After a long ride today, this one should close the day — not add to it — and tomorrow still matters."
+                    : "After a long ride today, this one should close the day — not add to it.",
+                shouldProtectTomorrow
+                    ? "После длинной поездки сегодня этот заезд должен закрыть день, а не добавить к нему — завтра тоже важно."
+                    : "После длинной поездки сегодня этот заезд должен закрыть день, а не добавить к нему."
+            )
+        } else {
+            hero = bi("The day is already heavy — hold the cap", "День уже тяжёлый — держите потолок")
+            assessment = bi(
+                shouldProtectTomorrow
+                    ? "Energy is already high today — finish without costing tomorrow."
+                    : "Energy is already high today — finish without adding more load.",
+                shouldProtectTomorrow
+                    ? "Энергия сегодня уже высокая — закройте без ущерба для завтра."
+                    : "Энергия сегодня уже высокая — закройте без добавки нагрузки."
+            )
+        }
+        return WindowCopy(
+            hero: hero,
+            assessment: assessment,
+            situation: bi(
+                "This ride is about protecting the day, not opening fresh legs.",
+                "Эта поездка — про защиту дня, а не про разгон с нуля."
+            ),
+            primary: action(
+                .controlIntensity,
+                "Keep the whole ride light",
+                "No chasing the first session",
+                "Держите весь заезд лёгким",
+                "Не гонитесь с первой поездкой"
+            ),
+            avoidance: bi(
+                "Do not ease in like a fresh start.",
+                "Не входите в поездку как в первую."
+            ),
+            extras: []
+        )
+    }
+
+    private static func protectionOpeningRunning(
+        coachingJob: CoachDayLoadCoachingJob,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        let hero: BilingualText
+        if coachingJob == .dayCap {
+            hero = bi("Second run — don't push the day again", "Вторая пробежка — не разгоняйте день снова")
+        } else {
+            hero = bi("The day is already heavy — hold the cap", "День уже тяжёлый — держите потолок")
+        }
+        return WindowCopy(
+            hero: hero,
+            assessment: bi(
+                shouldProtectTomorrow
+                    ? "Today's legs already did serious work — keep this run capped and protect tomorrow."
+                    : "Today's legs already did serious work — keep this run capped.",
+                shouldProtectTomorrow
+                    ? "Ноги сегодня уже сделали серьёзную работу — держите этот заход в рамках и берегите завтра."
+                    : "Ноги сегодня уже сделали серьёзную работу — держите этот заход в рамках."
+            ),
+            situation: bi("Quiet stride, low ceiling — not a fresh start.", "Тихий шаг, низкий потолок — не чистый старт."),
+            primary: action(
+                .controlIntensity,
+                "Keep the whole run light",
+                "No chasing earlier work",
+                "Держите всю пробежку лёгкой",
+                "Не гонитесь с прошлой работой"
+            ),
+            avoidance: bi("Do not open like the first run of the day.", "Не начинайте как первую пробежку дня."),
+            extras: []
+        )
+    }
+
+    private static func protectionOpeningGeneral(
+        coachingJob: CoachDayLoadCoachingJob,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        protectionOpeningRunning(coachingJob: coachingJob, shouldProtectTomorrow: shouldProtectTomorrow)
+    }
+
+    private static func protectionEstablishCycling(shouldProtectTomorrow: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Minimum fuel — not a fuel race", "Минимум еды — не гонка с голодом"),
+            assessment: bi(
+                shouldProtectTomorrow
+                    ? "Eat and drink on schedule, but don't chase the first session with food."
+                    : "Eat and drink on schedule — small amounts, not a catch-up.",
+                shouldProtectTomorrow
+                    ? "Ешьте и пейте по графику, но не догоняйте первую сессию едой."
+                    : "Ешьте и пейте по графику — малые порции, не догон."
+            ),
+            situation: bi("Fuel to avoid a bonk, not to optimize pace.", "Еда чтобы не сорваться, а не чтобы ускориться."),
+            primary: action(
+                .sustainEnergy,
+                "Small fuel on schedule",
+                "Avoid bonk, not hunger chasing",
+                "Малые порции по графику",
+                "Без гонки с голодом"
+            ),
+            avoidance: bi("Do not fuel like the first session of the day.", "Не питайтесь как в первой сессии дня."),
+            extras: []
+        )
+    }
+
+    private static func protectionEstablishRunning(shouldProtectTomorrow: Bool) -> WindowCopy {
+        protectionEstablishCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+    }
+
+    private static func protectionEstablishGeneral(shouldProtectTomorrow: Bool) -> WindowCopy {
+        protectionEstablishCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+    }
+
+    private static func protectionMaintainCycling(shouldProtectTomorrow: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Hold the floor, not the ceiling", "Держите дно, а не потолок"),
+            assessment: bi(
+                shouldProtectTomorrow
+                    ? "Repeat only what keeps you steady — don't add to today's load before tomorrow."
+                    : "Repeat only what keeps you steady — don't add to today's load.",
+                shouldProtectTomorrow
+                    ? "Повторяйте только то, что держит ровно — не добавляйте к сегодняшней нагрузке перед завтра."
+                    : "Повторяйте только то, что держит ровно — не добавляйте к сегодняшней нагрузке."
+            ),
+            situation: bi("Same easy rhythm — no surges.", "Тот же лёгкий ритм — без рывков."),
+            primary: action(
+                .controlIntensity,
+                "Hold current effort",
+                "No adding to the first session",
+                "Держите текущее усилие",
+                "Не добавляйте к первой сессии"
+            ),
+            avoidance: bi("Do not speed up because you still feel okay.", "Не ускоряйтесь только потому, что пока нормально."),
+            extras: []
+        )
+    }
+
+    private static func protectionMaintainRunning(shouldProtectTomorrow: Bool) -> WindowCopy {
+        protectionMaintainCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+    }
+
+    private static func protectionMaintainGeneral(shouldProtectTomorrow: Bool) -> WindowCopy {
+        protectionMaintainCycling(shouldProtectTomorrow: shouldProtectTomorrow)
+    }
+
+    private static func protectionCapCycling(
+        longSession: Bool,
+        remainingMinutes: Int?,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        let remainingPhraseEN = remainingMinutes.map { "About \($0) minutes remain — " } ?? ""
+        let remainingPhraseRU = remainingMinutes.map { "До финиша около \($0) минут — " } ?? ""
+        return WindowCopy(
+            hero: bi("Close without costing the day", "Закройте без ущерба для дня"),
+            assessment: bi(
+                shouldProtectTomorrow
+                    ? "\(remainingPhraseEN)finish easy — tomorrow's work matters more than today's extra effort."
+                    : "\(remainingPhraseEN)finish easy — the day is already full.",
+                shouldProtectTomorrow
+                    ? "\(remainingPhraseRU)дожмите легко — завтрашняя работа важнее сегодняшнего усилия."
+                    : "\(remainingPhraseRU)дожмите легко — день уже насыщен."
+            ),
+            situation: bi("No finish heroics — protect what's left of the day.", "Без героизма на финише — берегите остаток дня."),
+            primary: action(
+                .controlIntensity,
+                "Hold or reduce effort",
+                "Finish calmly, not fast",
+                "Держите или снижайте усилие",
+                "Дожмите спокойно, не быстро"
+            ),
+            avoidance: bi(
+                longSession
+                    ? "Do not spend the last block trying to make up for the first session."
+                    : "Do not sprint the finish because the day already cost enough.",
+                longSession
+                    ? "Не тратьте последний блок, пытаясь наверстать первую сессию."
+                    : "Не рваните на финиш — день уже стоил достаточно."
+            ),
+            extras: []
+        )
+    }
+
+    private static func protectionCapRunning(
+        longSession: Bool,
+        remainingMinutes: Int?,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        protectionCapCycling(
+            longSession: longSession,
+            remainingMinutes: remainingMinutes,
+            shouldProtectTomorrow: shouldProtectTomorrow
+        )
+    }
+
+    private static func protectionCapGeneral(
+        longSession: Bool,
+        remainingMinutes: Int?,
+        shouldProtectTomorrow: Bool
+    ) -> WindowCopy {
+        protectionCapCycling(
+            longSession: longSession,
+            remainingMinutes: remainingMinutes,
+            shouldProtectTomorrow: shouldProtectTomorrow
+        )
     }
 }

@@ -16,13 +16,19 @@ enum CoachEnduranceTodayTeaserCopy {
             return nil
         }
 
+        let shouldProtectTomorrow = input.dayPriorityModel.tomorrowDemand == .hard
+        let coachingJob = CoachDayLoadNarrativeResolver.resolveFromSnapshot(
+            input: input,
+            shouldProtectTomorrow: shouldProtectTomorrow
+        ).coachingJob
+
         switch scenario {
         case .activeWorkout:
             guard context.phase == .during else { return nil }
-            return chapterTeaser(for: context.chapter)
+            return chapterTeaser(for: context.chapter, coachingJob: coachingJob)
         case .postWorkoutRecovery:
             guard context.phase == .postRecoveryWindow, context.chapter == .recoveryWindow else { return nil }
-            return chapterTeaser(for: .recoveryWindow)
+            return chapterTeaser(for: .recoveryWindow, coachingJob: .optimizeExecution)
         default:
             return nil
         }
@@ -52,7 +58,14 @@ enum CoachEnduranceTodayTeaserCopy {
         }
     }
 
-    static func chapterTeaser(for chapter: CoachEnduranceSessionChapter) -> (idea: String, action: String) {
+    static func chapterTeaser(
+        for chapter: CoachEnduranceSessionChapter,
+        coachingJob: CoachDayLoadCoachingJob = .optimizeExecution
+    ) -> (idea: String, action: String) {
+        if coachingJob != .optimizeExecution {
+            return protectionChapterTeaser(for: chapter, coachingJob: coachingJob)
+        }
+
         switch chapter {
         case .opening:
             return (
@@ -79,6 +92,42 @@ enum CoachEnduranceTodayTeaserCopy {
                 localized(english: "Recovery leads now", russian: "Сейчас важнее восстановление"),
                 localized(english: "Protein and carbs in the next hour.", russian: "Белок и углеводы в ближайший час.")
             )
+        }
+    }
+
+    private static func protectionChapterTeaser(
+        for chapter: CoachEnduranceSessionChapter,
+        coachingJob: CoachDayLoadCoachingJob
+    ) -> (idea: String, action: String) {
+        switch chapter {
+        case .opening:
+            if coachingJob == .dayCap {
+                return (
+                    localized(english: "Second session today", russian: "Вторая поездка сегодня"),
+                    localized(english: "Keep the whole ride light.", russian: "Держите весь заезд лёгким.")
+                )
+            }
+            return (
+                localized(english: "Day is already heavy", russian: "День уже тяжёлый"),
+                localized(english: "Hold the cap — don't add load.", russian: "Держите потолок — не добавляйте нагрузку.")
+            )
+        case .establish:
+            return (
+                localized(english: "Minimum fuel only", russian: "Минимум еды"),
+                localized(english: "Small amounts on schedule.", russian: "Малые порции по графику.")
+            )
+        case .maintain:
+            return (
+                localized(english: "Hold the floor", russian: "Держите дно"),
+                localized(english: "No surges — protect the day.", russian: "Без рывков — берегите день.")
+            )
+        case .protect:
+            return (
+                localized(english: "Close without costing the day", russian: "Закройте без ущерба для дня"),
+                localized(english: "Finish calmly, not fast.", russian: "Дожмите спокойно, не быстро.")
+            )
+        case .recoveryWindow:
+            return chapterTeaser(for: .recoveryWindow, coachingJob: .optimizeExecution)
         }
     }
 
