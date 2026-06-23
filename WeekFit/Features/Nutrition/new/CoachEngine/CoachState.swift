@@ -233,22 +233,72 @@ struct CoachFinalStory {
 }
 
 struct CoachTodayPresentation {
+    let intent: CoachTabPresentationIntent
+    let statusLabel: String
     let title: String
     let message: String
     let icon: String
     let color: Color
+
+    init(
+        intent: CoachTabPresentationIntent = .statusAction,
+        statusLabel: String,
+        title: String,
+        message: String,
+        icon: String,
+        color: Color
+    ) {
+        self.intent = intent
+        self.statusLabel = statusLabel
+        self.title = title
+        self.message = message
+        self.icon = icon
+        self.color = color
+    }
 }
 
 struct CoachScreenPresentation {
+    let intent: CoachTabPresentationIntent
     let stateLabel: String
     let title: String
     let message: String
     let recommendation: String
     let icon: String
     let color: Color
+    let contextChip: CoachActivityContextChip?
+    let whyRows: [CoachPresentationWhyRow]
     let supportActions: [CoachSupportActionV3]
     let avoidNotes: [String]
+
+    init(
+        intent: CoachTabPresentationIntent = .interpretation,
+        stateLabel: String,
+        title: String,
+        message: String,
+        recommendation: String,
+        icon: String,
+        color: Color,
+        contextChip: CoachActivityContextChip? = nil,
+        whyRows: [CoachPresentationWhyRow] = [],
+        supportActions: [CoachSupportActionV3],
+        avoidNotes: [String]
+    ) {
+        self.intent = intent
+        self.stateLabel = stateLabel
+        self.title = title
+        self.message = message
+        self.recommendation = recommendation
+        self.icon = icon
+        self.color = color
+        self.contextChip = contextChip
+        self.whyRows = whyRows
+        self.supportActions = supportActions
+        self.avoidNotes = avoidNotes
+    }
 }
+
+/// Full Coach tab narrative — interpretation, reasons, and support actions.
+typealias CoachFullPresentation = CoachScreenPresentation
 
 struct CoachRationalePresentation {
     let title: String
@@ -291,6 +341,7 @@ struct CoachState: Identifiable {
             guidance: nil,
             finalStory: nil,
             todayPresentation: CoachTodayPresentation(
+                statusLabel: "OVERVIEW",
                 title: WeekFitLocalizedString("coach.unavailable.title"),
                 message: WeekFitLocalizedString("coach.unavailable.message"),
                 icon: "sparkles",
@@ -311,6 +362,7 @@ struct CoachState: Identifiable {
             guidance: nil,
             finalStory: nil,
             todayPresentation: CoachTodayPresentation(
+                statusLabel: CoachState.localized(english: "SYNCING", russian: "ОБНОВЛЕНИЕ"),
                 title: CoachState.localized(english: "Coach is settling", russian: "Коуч обновляется"),
                 message: CoachState.localized(english: "Waiting for recovery, sleep, and activity data.", russian: "Ждем данные восстановления, сна и активности."),
                 icon: "hourglass",
@@ -399,21 +451,15 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             guidance: normalizedGuidance,
             finalStory: finalStory,
-            todayPresentation: CoachTodayPresentation(
-                title: finalStory.title.resolved,
-                message: finalStory.subtitle.resolved,
-                icon: finalStory.icon,
-                color: finalStory.color
+            todayPresentation: CoachTabPresentationResolver.resolveToday(
+                story: finalStory,
+                guidance: normalizedGuidance,
+                input: input
             ),
-            coachPresentation: CoachScreenPresentation(
-                stateLabel: finalStory.badgeState.resolved,
-                title: finalStory.title.resolved,
-                message: finalStory.subtitle.resolved,
-                recommendation: finalStory.primaryRecommendation.resolved,
-                icon: finalStory.icon,
-                color: finalStory.color,
-                supportActions: finalStory.supportActions,
-                avoidNotes: [finalStory.avoidRecommendation.resolved]
+            coachPresentation: CoachTabPresentationResolver.resolveCoach(
+                story: finalStory,
+                guidance: normalizedGuidance,
+                input: input
             ),
             rationalePresentation: CoachRationalePresentation.resolve(from: input)
         )
@@ -456,7 +502,12 @@ struct CoachState: Identifiable {
         if (story.owner == .stableOverview || story.owner == .readiness),
            guidance.priority.focus == .dailyOverview,
            !CoachLightRecoveryStableDayPolicy.needsVisibleStableDayCorrection(story: story, guidance: guidance) {
-            return story
+            return applyEveningWindDownHeroGuard(
+                story: story,
+                input: input,
+                guidance: guidance,
+                reason: reason
+            )
         }
 
         let isPhaseStable = v4FinalGuardPhaseIsStable(guidance)
@@ -517,7 +568,12 @@ struct CoachState: Identifiable {
         )
 
         guard shouldApply, let recoveryActivity else {
-            return story
+            return applyEveningWindDownHeroGuard(
+                story: story,
+                input: input,
+                guidance: guidance,
+                reason: reason
+            )
         }
 
         let hero = CoachLightRecoveryStableDayPolicy.stableDayHero(
@@ -597,6 +653,46 @@ struct CoachState: Identifiable {
             titleAfter: guardedStory.title.resolved,
             guidance: guidance
         )
+        return applyEveningWindDownHeroGuard(
+            story: guardedStory,
+            input: input,
+            guidance: guidance,
+            reason: reason
+        )
+    }
+
+    private static func applyEveningWindDownHeroGuard(
+        story: CoachFinalStory,
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3,
+        reason: String
+    ) -> CoachFinalStory {
+        guard CoachEveningWindDownHeroPolicy.shouldReplaceHeroWithEveningWindDown(
+            story: story,
+            input: input,
+            guidance: guidance
+        ) else {
+            return story
+        }
+
+        let guardedStory = CoachEveningWindDownHeroPolicy.eveningWindDownStory(
+            replacing: story,
+            input: input,
+            guidance: guidance
+        )
+
+        if let activity = input.dayContext.lastCompletedActivity ?? input.plannedActivities.first {
+            logV4FinalGuard(
+                applied: true,
+                reason: "eveningWindDownHeroOwnership",
+                activity: activity,
+                ownerBefore: story.owner,
+                titleBefore: story.title.resolved,
+                ownerAfter: guardedStory.owner,
+                titleAfter: guardedStory.title.resolved,
+                guidance: guidance
+            )
+        }
         return guardedStory
     }
 
