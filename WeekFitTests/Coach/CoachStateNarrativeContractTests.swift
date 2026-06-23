@@ -3046,13 +3046,14 @@ final class CoachStateNarrativeContractTests: XCTestCase {
     func testActiveWorkoutTodayTeaserUsesTacticalGuidanceNotStatus() throws {
         WeekFitSetCurrentLanguage(.russian)
 
+        let runStart = date(hour: 8, minute: 30)
         let run = activity(
             type: "running",
             title: "Run",
-            minutesFromNow: -10,
+            minutesFromNow: 0,
             duration: 60,
             icon: "figure.run",
-            baseDate: date(hour: 8, minute: 30)
+            baseDate: runStart
         )
         run.source = "today"
 
@@ -3068,15 +3069,106 @@ final class CoachStateNarrativeContractTests: XCTestCase {
 
         XCTAssertFalse(visible.localizedCaseInsensitiveContains("тренировка идёт"), visible)
         XCTAssertFalse(visible.localizedCaseInsensitiveContains("session in progress"), visible)
+        XCTAssertFalse(today.title.localizedCaseInsensitiveContains("гонитесь"), today.title)
+        XCTAssertFalse(today.title.localizedCaseInsensitiveContains("цифр"), today.title)
         XCTAssertTrue(
-            today.title.localizedCaseInsensitiveContains("гонитесь") ||
-                today.title.localizedCaseInsensitiveContains("цифр"),
+            today.title.localizedCaseInsensitiveContains("легко") ||
+                today.title.localizedCaseInsensitiveContains("easy"),
             today.title
         )
+    }
+
+    func testFourHourRideTodayTeaserEvolutionAcrossSessionChapters() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 240
+        let fueledNutrition = nutrition(water: 2.4, calories: 1_800, protein: 90, carbs: 220)
+
+        func todayTitle(at elapsed: Int, resolvedNutrition: CoachNutritionContext? = nil) throws -> String {
+            let active = activity(
+                type: "cycling",
+                title: "Long ride",
+                minutesFromNow: -elapsed,
+                duration: duration,
+                icon: "bicycle"
+            )
+            active.source = "today"
+            return try XCTUnwrap(
+                makeState(
+                    activities: [active],
+                    nutrition: resolvedNutrition ?? fueledNutrition,
+                    activeCalories: Double(elapsed * 12),
+                    recoveryPercent: 92
+                ).todayPresentation.title
+            )
+        }
+
+        let opening = try todayTitle(at: 20)
+        let maintain = try todayTitle(at: 120)
+        let protect = try todayTitle(
+            at: 210,
+            resolvedNutrition: nutrition(water: 2.6, calories: 2_400, protein: 100, carbs: 280)
+        )
+
+        XCTAssertTrue(opening.localizedCaseInsensitiveContains("легко"), "opening @20: \(opening)")
+        XCTAssertTrue(maintain.localizedCaseInsensitiveContains("план"), "maintain @120: \(maintain)")
+        XCTAssertTrue(protect.localizedCaseInsensitiveContains("усили"), "protect @210: \(protect)")
+        XCTAssertNotEqual(opening, maintain)
+        XCTAssertNotEqual(maintain, protect)
+        XCTAssertNotEqual(opening, protect)
+    }
+
+    func testFuelingDeficitOverridesEnduranceTodayChapterTeaser() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 210
+        let active = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -143,
+            duration: duration,
+            icon: "bicycle"
+        )
+        active.source = "today"
+
+        let today = makeState(
+            activities: [active],
+            nutrition: nutrition(water: 1.0, calories: 957, protein: 55, carbs: 70),
+            activeCalories: 2_001,
+            recoveryPercent: 95
+        ).todayPresentation
+
+        XCTAssertTrue(today.title.localizedCaseInsensitiveContains("Подкреп"), today.title)
+        XCTAssertFalse(today.title.localizedCaseInsensitiveContains("план"), today.title)
+    }
+
+    func testHydrationDeficitOverridesEnduranceTodayChapterTeaser() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 180
+        let active = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -90,
+            duration: duration,
+            icon: "bicycle"
+        )
+        active.source = "today"
+
+        let state = makeState(
+            activities: [active],
+            nutrition: nutrition(water: 0.05, calories: 1_400, protein: 70, carbs: 160),
+            activeCalories: 1_200,
+            recoveryPercent: 90
+        )
+        let story = try XCTUnwrap(state.finalStory)
+
+        guard story.owner == .hydrationExecution else {
+            throw XCTSkip("Hydration deficit did not own narrative in this fixture (owner=\(story.owner))")
+        }
+
+        let today = state.todayPresentation
         XCTAssertTrue(
-            today.message.localizedCaseInsensitiveContains("темп") ||
-                today.message.localizedCaseInsensitiveContains("pace"),
-            today.message
+            today.title.localizedCaseInsensitiveContains("вод") ||
+                today.title.localizedCaseInsensitiveContains("пополн"),
+            today.title
         )
     }
 

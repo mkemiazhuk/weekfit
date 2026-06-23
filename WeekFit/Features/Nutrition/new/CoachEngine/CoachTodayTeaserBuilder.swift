@@ -159,6 +159,14 @@ enum CoachTodayTeaserBuilder {
         renderModel: CoachFinalStoryRenderModel,
         input: CoachInputSnapshot
     ) -> (idea: String, action: String)? {
+        if let endurance = CoachEnduranceTodayTeaserCopy.teaser(
+            story: story,
+            input: input,
+            scenario: scenario
+        ) {
+            return endurance
+        }
+
         switch scenario {
         case .stableDayOwnership:
             return (
@@ -179,12 +187,6 @@ enum CoachTodayTeaserBuilder {
                 return (
                     localized(english: "Keep the heat moderate", russian: "Держите тепло умеренным"),
                     localized(english: "Leave before fatigue shows.", russian: "Выйдите до появления усталости.")
-                )
-            }
-            if profile.allowsCyclingVocabulary {
-                return (
-                    localized(english: "Don't chase the numbers", russian: "Не гонитесь за цифрами"),
-                    localized(english: "Settle in before adding effort.", russian: "Сначала держите темп лёгким, потом добавляйте.")
                 )
             }
             return (

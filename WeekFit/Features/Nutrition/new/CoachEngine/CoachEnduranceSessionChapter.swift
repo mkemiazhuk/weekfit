@@ -70,3 +70,80 @@ enum CoachEnduranceSessionChapterResolver {
         return max(threeQuarters, total - 60)
     }
 }
+
+/// Shared endurance arc context for Coach and Today — one chapter model, two surfaces.
+enum CoachEnduranceNarrativeContextResolver {
+
+    enum Phase: Equatable {
+        case during
+        case postRecoveryWindow
+    }
+
+    struct ResolvedContext: Equatable {
+        let phase: Phase
+        let chapter: CoachEnduranceSessionChapter
+    }
+
+    static func resolve(
+        story: CoachFinalStory,
+        input: CoachInputSnapshot
+    ) -> ResolvedContext? {
+        guard let activity = CoachPresentationNarrativeContract.focusActivity(story: story, input: input),
+              isEnduranceLike(activity) else {
+            return nil
+        }
+
+        let durationMinutes = enduranceDurationMinutes(for: activity)
+        let context = CoachActivityContextResolverV3.resolveDayContext(
+            activities: input.plannedActivities,
+            selectedDate: input.selectedDate,
+            now: input.now
+        )
+
+        if let active = context.activeActivity,
+           !active.isCompleted,
+           active.id == activity.id,
+           let chapter = CoachEnduranceSessionChapterResolver.duringSessionChapter(
+               durationMinutes: durationMinutes,
+               elapsedMinutes: CoachEnduranceDuringPostCopyCatalog.elapsedMinutes(activity: activity, now: input.now),
+               remainingMinutes: CoachEnduranceDuringPostCopyCatalog.remainingMinutes(activity: activity, now: input.now)
+           ) {
+            return ResolvedContext(phase: .during, chapter: chapter)
+        }
+
+        if activity.isCompleted {
+            let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(activity: activity, now: input.now)
+            if let chapter = CoachEnduranceSessionChapterResolver.postChapter(
+                durationMinutes: durationMinutes,
+                minutesSinceEnd: minutesSinceEnd
+            ) {
+                return ResolvedContext(phase: .postRecoveryWindow, chapter: chapter)
+            }
+        }
+
+        return nil
+    }
+
+    static func isActiveEnduranceSession(
+        story: CoachFinalStory,
+        input: CoachInputSnapshot
+    ) -> Bool {
+        guard let context = resolve(story: story, input: input) else { return false }
+        return context.phase == .during
+    }
+
+    private static func enduranceDurationMinutes(for activity: PlannedActivity) -> Int {
+        max(max(activity.effectiveDurationMinutes, activity.durationMinutes), 1)
+    }
+
+    private static func isEnduranceLike(_ activity: PlannedActivity) -> Bool {
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let text = "\(activity.title) \(activity.type)".lowercased()
+        return kind == .endurance ||
+            text.contains("run") ||
+            text.contains("cycling") ||
+            text.contains("ride") ||
+            text.contains("bike") ||
+            text.contains("bicycle")
+    }
+}
