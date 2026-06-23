@@ -153,11 +153,23 @@ enum CoachDayPlanReadBuilder {
         if kind == .endurance {
             if text.contains("run") { return ActivityLabel(english: "run", russian: "бег") }
             if text.contains("cycl") || text.contains("bike") {
-                return ActivityLabel(english: "ride", russian: "велозаезд")
+                return ActivityLabel(english: "ride", russian: "велосессия")
             }
-            return ActivityLabel(english: "endurance session", russian: "выносливостная сессия")
+            return ActivityLabel(english: "endurance session", russian: "кардио")
         }
         if kind == .workout {
+            if text.contains("upper body") || (text.contains("upper") && text.contains("body")) {
+                return ActivityLabel(english: "upper body work", russian: "верх тела")
+            }
+            if text.contains("lower body") || (text.contains("lower") && text.contains("body")) {
+                return ActivityLabel(english: "lower body work", russian: "низ тела")
+            }
+            if text.contains("full body") || (text.contains("full") && text.contains("body")) {
+                return ActivityLabel(english: "full body work", russian: "все тело")
+            }
+            if text.contains("core") || text.contains("кор") || text.contains("пресс") {
+                return ActivityLabel(english: "core work", russian: "кор")
+            }
             return ActivityLabel(english: "strength work", russian: "силовая")
         }
 

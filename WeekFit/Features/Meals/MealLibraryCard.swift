@@ -4,12 +4,12 @@ import SwiftUI
 
 private enum MealLibraryCardMetrics {
     static let cornerRadius: CGFloat = 18
-    static let cardHeight: CGFloat = 84
+    static let cardHeight: CGFloat = 76
     static let chevronLaneWidth: CGFloat = 38
-    static let foodWidth: CGFloat = 94
-    static let foodHeight: CGFloat = 70
-    static let foodTrailingInset: CGFloat = 36
-    static let foodCenterOverlap: CGFloat = 34
+    static let foodWidth: CGFloat = 66
+    static let foodHeight: CGFloat = 50
+    static let foodTrailingInset: CGFloat = 44
+    static let foodCenterOverlap: CGFloat = 22
 }
 
 // MARK: - Badge
@@ -21,18 +21,18 @@ private struct MealLibraryRecommendationBadge: View {
     var body: some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 5.8, weight: .semibold))
-                .foregroundStyle(CoachPalette.stable.opacity(0.72))
+                .font(.system(size: 7.4, weight: .semibold))
+                .foregroundStyle(CoachPalette.stable.opacity(0.82))
 
             Text(title)
-                .font(.system(size: 7.2, weight: .bold, design: .rounded))
-                .tracking(0.55)
-                .foregroundStyle(Color.white.opacity(0.52))
+                .font(.system(size: 9.2, weight: .bold, design: .rounded))
+                .tracking(0.2)
+                .foregroundStyle(Color.white.opacity(0.62))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 6)
-        .frame(height: 16)
+        .padding(.horizontal, 7)
+        .frame(height: 18)
         .background {
             Capsule()
                 .fill(Color.white.opacity(0.05))
@@ -48,9 +48,11 @@ struct HeroMealLibraryRow: View {
     let isRecommended: Bool
     var recommendationBadge: String? = nil
     var recommendationIcon: String? = nil
+    var isHighlighted: Bool = false
     let onPlusTap: (() -> Void)?
 
     @State private var isPressed = false
+    @State private var highlightStrokeOpacity: Double = 0
 
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
@@ -80,8 +82,8 @@ struct HeroMealLibraryRow: View {
                         .padding(.bottom, 3)
                     }
 
-                    Text(meal.shortTitle)
-                        .font(.system(size: 14.9, weight: .bold, design: .rounded))
+                    Text(meal.localizedDisplayTitle)
+                        .font(.system(size: 15.2, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary.opacity(0.97))
                         .tracking(-0.28)
                         .lineLimit(1)
@@ -92,12 +94,12 @@ struct HeroMealLibraryRow: View {
                         .foregroundStyle(textSecondary.opacity(0.80))
                         .monospacedDigit()
                         .lineLimit(1)
-                        .padding(.top, 5)
+                        .padding(.top, 4)
 
                     macroLine
-                        .padding(.top, 3)
+                        .padding(.top, 2)
                 }
-                .frame(width: 172, alignment: .leading)
+                .frame(width: 178, alignment: .leading)
                 .padding(.leading, 14)
                 .padding(.trailing, 4)
 
@@ -112,6 +114,7 @@ struct HeroMealLibraryRow: View {
         .clipShape(RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous))
         .overlay(cardBorder)
         .overlay(pressHighlight)
+        .overlay(highlightPulseOverlay)
         .shadow(
             color: cardShadow.opacity(isRecommended ? 0.17 : 0.13),
             radius: isPressed ? 10 : (isRecommended ? 9 : 7),
@@ -129,6 +132,13 @@ struct HeroMealLibraryRow: View {
             },
             perform: {}
         )
+        .onChange(of: isHighlighted) { _, highlighted in
+            guard highlighted else {
+                highlightStrokeOpacity = 0
+                return
+            }
+            runHighlightPulse()
+        }
     }
 
     // MARK: Background
@@ -159,7 +169,7 @@ struct HeroMealLibraryRow: View {
     }
 
     private var foodComposition: some View {
-        let plateSize = max(MealLibraryCardMetrics.foodWidth, MealLibraryCardMetrics.foodHeight) * 1.18
+        let plateSize = max(MealLibraryCardMetrics.foodWidth, MealLibraryCardMetrics.foodHeight)
 
         return ZStack {
             if meal.isFoodProduct {
@@ -167,20 +177,20 @@ struct HeroMealLibraryRow: View {
                     filename: meal.displayPhotoFilename,
                     initial: meal.placeholderInitial,
                     plateSize: plateSize,
-                    itemScale: 0.38,
-                    offsetScale: 0.38,
-                    plateOpacity: 0.36,
-                    shadowOpacity: 0.26,
+                    itemScale: 0.28,
+                    offsetScale: 0.28,
+                    plateOpacity: 0.24,
+                    shadowOpacity: 0.14,
                     layoutMode: .compactPreview
                 )
             } else if let items = meal.builderImageItems, !items.isEmpty {
                 BuiltMealPlateView(
                     items: items,
                     plateSize: plateSize,
-                    itemScale: 0.38,
-                    offsetScale: 0.38,
-                    plateOpacity: 0.36,
-                    shadowOpacity: 0.26,
+                    itemScale: 0.28,
+                    offsetScale: 0.28,
+                    plateOpacity: 0.24,
+                    shadowOpacity: 0.14,
                     layoutMode: .compactPreview
                 )
             } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
@@ -197,7 +207,8 @@ struct HeroMealLibraryRow: View {
             width: MealLibraryCardMetrics.foodWidth,
             height: MealLibraryCardMetrics.foodHeight
         )
-        .shadow(color: Color.black.opacity(isPressed ? 0.24 : 0.22), radius: isPressed ? 11 : 10, y: isPressed ? 6 : 5)
+        .opacity(0.82)
+        .shadow(color: Color.black.opacity(isPressed ? 0.18 : 0.16), radius: isPressed ? 8 : 7, y: isPressed ? 4 : 3)
         .scaleEffect(isPressed ? 1.012 : 1.0)
         .offset(
             x: -MealLibraryCardMetrics.foodCenterOverlap,
@@ -247,7 +258,7 @@ struct HeroMealLibraryRow: View {
                 labelTint: Color(red: 0.88, green: 0.68, blue: 0.34).opacity(0.36)
             )
         }
-        .font(.system(size: 8.2, weight: .medium, design: .rounded))
+        .font(.system(size: 9.4, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .lineLimit(1)
     }
@@ -255,7 +266,7 @@ struct HeroMealLibraryRow: View {
     private func macroSegment(value: Int, label: String, labelTint: Color) -> some View {
         HStack(spacing: 2) {
             Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
-                .foregroundStyle(Color.white.opacity(0.39))
+                .foregroundStyle(Color.white.opacity(0.52))
 
             Text(label)
                 .foregroundStyle(labelTint)
@@ -306,5 +317,52 @@ struct HeroMealLibraryRow: View {
                 Color.white.opacity(isRecommended ? 0.07 : 0.05),
                 lineWidth: 1
             )
+    }
+
+    private var highlightPulseOverlay: some View {
+        RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
+            .stroke(accent.opacity(highlightStrokeOpacity), lineWidth: 2)
+            .allowsHitTesting(false)
+    }
+
+    private func runHighlightPulse() {
+        highlightStrokeOpacity = 0
+        withAnimation(.easeInOut(duration: 0.28)) {
+            highlightStrokeOpacity = 0.55
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(320))
+            withAnimation(.easeInOut(duration: 0.28)) {
+                highlightStrokeOpacity = 0.14
+            }
+            try? await Task.sleep(for: .milliseconds(280))
+            withAnimation(.easeInOut(duration: 0.28)) {
+                highlightStrokeOpacity = 0.48
+            }
+            try? await Task.sleep(for: .milliseconds(320))
+            withAnimation(.easeOut(duration: 0.35)) {
+                highlightStrokeOpacity = 0
+            }
+        }
+    }
+}
+
+struct MealsLibrarySkeletonRow: View {
+    @State private var pulse = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
+            .fill(Color.white.opacity(pulse ? 0.055 : 0.028))
+            .frame(height: MealLibraryCardMetrics.cardHeight)
+            .overlay {
+                RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.035), lineWidth: 1)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+                    pulse = true
+                }
+            }
     }
 }

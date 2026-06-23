@@ -12,16 +12,21 @@ struct WeekFitScreenHeader: View {
         HStack(alignment: .center, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(.white)
-                    .tracking(-0.75)
+                    .tracking(-0.65)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(.white.opacity(0.58))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
             }
+            .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: 20)
 
             if showAvatar {
                 WeekFitAvatarButton(
@@ -30,7 +35,7 @@ struct WeekFitScreenHeader: View {
                 )
             }
         }
-        .frame(height: 44)
+        .frame(minHeight: 48)
     }
 }
 
@@ -117,6 +122,8 @@ enum WeekFitScreenLayout {
     static let topPaddingLarge: CGFloat = 14
     static let topPaddingSmall: CGFloat = 5
     static let rootSpacing: CGFloat = 12
+    /// Floating tab bar height plus breathing room for scroll content.
+    static let tabBarClearance: CGFloat = 95
 
     static var topPadding: CGFloat {
         UIScreen.main.bounds.height > 800 ? topPaddingLarge : topPaddingSmall

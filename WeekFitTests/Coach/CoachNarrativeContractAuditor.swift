@@ -564,10 +564,10 @@ enum CoachNarrativeContractAuditor {
 
     private static func todayCoachAlignmentFindings(snapshot: CoachNarrativeFullStorySnapshot) -> [CoachNarrativeContractFinding] {
         var findings: [CoachNarrativeContractFinding] = []
-        if snapshot.todayTitle != snapshot.coachTitle {
+        if snapshot.todayTitle == snapshot.coachTitle {
             findings.append(finding(
-                .todayCoachMisalignment, .warn, .contextSelectionBug,
-                "Today title differs from Coach title"
+                .todayCoachMisalignment, .fail, .contextSelectionBug,
+                "Today and Coach share the same title"
             ))
         }
         let today = snapshot.todaySubtitle.lowercased()

@@ -45,6 +45,8 @@ struct WeekPlannerView: View {
     private var customMealsStorage = ""
     
     @State private var activityToConfirm: PlannedActivity?
+
+    @ScaledMetric(relativeTo: .title3) private var selectedDayTitleFontSize: CGFloat = 19
     
 
     var body: some View {
@@ -54,38 +56,38 @@ struct WeekPlannerView: View {
             let screenWidth = UIScreen.main.bounds.width
             
             ZStack {
-                WeekFitTheme.appBackground
-                    .ignoresSafeArea()
-
-                ambientBackground
-
                 WeekFitScreenContainer {
-                    WeekFitScreenHeader(
-                        title: WeekFitLocalizedString("planner.week.title"),
-                        subtitle: WeekFitLocalizedString("planner.week.subtitle"),
-                        initials: userSettings.profileInitials,
-                        showAvatar: true
-                    ) {
-                        showProfile = true
+                    Group {
+                        if !viewModel.showAddActivity {
+                            WeekFitScreenHeader(
+                                title: WeekFitLocalizedString("planner.week.title"),
+                                subtitle: WeekFitLocalizedString("planner.week.subtitle"),
+                                initials: userSettings.profileInitials,
+                                showAvatar: true
+                            ) {
+                                showProfile = true
+                            }
+                        }
                     }
                 } content: {
                     plannerContent
-                        .blur(radius: viewModel.showAddActivity ? 4 : 0)
-                        .scaleEffect(viewModel.showAddActivity ? 0.985 : 1.0)
                 }
-                .padding(.bottom, 96)
+                .blur(radius: viewModel.showAddActivity ? 8 : 0)
+                .opacity(viewModel.showAddActivity ? 0.22 : 1)
+                .allowsHitTesting(!viewModel.showAddActivity)
+                .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
                 .frame(width: screenWidth, height: proxy.size.height, alignment: .top)
                 .clipped()
 
                 if viewModel.showAddActivity {
-                    Color.black.opacity(0.34)
+                    Color.black.opacity(0.58)
                         .ignoresSafeArea()
                         .onTapGesture {
                             viewModel.closeAddSheet()
                         }
 
-                    VStack {
-                        Spacer()
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
 
                         PlanAddActivitySheet(
                             viewModel: viewModel,
@@ -250,10 +252,10 @@ struct WeekPlannerView: View {
         .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
     }
     
-    private var plannerContent: some View {
+    private     var plannerContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             if mode == .week {
-                weekOverviewCard
+                weekPickerCard
 
                 selectedDayCard
                     .frame(maxHeight: .infinity)
@@ -419,63 +421,79 @@ private extension WeekPlannerView {
     }
 }
 
-// MARK: - Week Overview
+// MARK: - Week Picker
 
 private extension WeekPlannerView {
 
-    var weekOverviewCard: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(WeekFitLocalizedString("planner.weekOverview"))
-                        .font(.system(size: 11.5, weight: .bold))
-                        .tracking(0.35)
-                        .foregroundStyle(.white.opacity(0.42))
-
-                    Text(weekRangeTitle)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.80)
-                }
-
-                Spacer(minLength: 0)
-            }
-
+    var weekPickerCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
             PlanningWeekPicker(
                 selectedDate: $viewModel.selectedDate,
                 dayKind: dayKind(for:)
             )
 
-            legend
+            WeekOverviewLegend()
         }
-        .padding(.horizontal, 17)
-        .padding(.top, 14)
-        .padding(.bottom, 15)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(cardBackground)
     }
+}
 
-    var legend: some View {
-        HStack(spacing: 11) {
-            legendItem(WeekFitLocalizedString("planner.legend.endurance"), Color(hex: "#5E7CFF"))
-            legendItem(WeekFitLocalizedString("planner.legend.highLoad"), Color(hex: "#FF9F43"))
-            legendItem(WeekFitLocalizedString("planner.legend.mixed"), Color(hex: "#FFD166"))
-            legendItem(WeekFitLocalizedString("planner.legend.recovery"), Color(hex: "#59D98E"))
+private struct WeekOverviewLegend: View {
+
+    private struct Entry {
+        let titleKey: String
+        let color: Color
+    }
+
+    private let entries: [Entry] = [
+        Entry(titleKey: "planner.legend.endurance", color: Color(hex: "#5E7CFF")),
+        Entry(titleKey: "planner.legend.highLoad", color: Color(hex: "#FF9F43")),
+        Entry(titleKey: "planner.legend.mixed", color: Color(hex: "#FFD166")),
+        Entry(titleKey: "planner.legend.recovery", color: Color(hex: "#59D98E"))
+    ]
+
+    @ScaledMetric(relativeTo: .caption2) private var fontSize: CGFloat = 10.5
+    @ScaledMetric(relativeTo: .caption2) private var dotSize: CGFloat = 5
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            legendRow(itemSpacing: 10, dotSpacing: 5)
+            legendRow(itemSpacing: 6, dotSpacing: 4)
+            legendRow(itemSpacing: 4, dotSpacing: 3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func legendRow(itemSpacing: CGFloat, dotSpacing: CGFloat) -> some View {
+        HStack(spacing: itemSpacing) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                legendItem(
+                    title: WeekFitLocalizedString(entry.titleKey),
+                    color: entry.color,
+                    dotSpacing: dotSpacing
+                )
+            }
         }
     }
 
-    func legendItem(_ title: String, _ color: Color) -> some View {
-        HStack(spacing: 5) {
+    private func legendItem(title: String, color: Color, dotSpacing: CGFloat) -> some View {
+        HStack(spacing: dotSpacing) {
             Circle()
                 .fill(color)
-                .frame(width: 6, height: 6)
+                .frame(width: dotSize, height: dotSize)
 
             Text(title)
-                .font(.system(size: 11.5, weight: .medium))
-                .foregroundStyle(.white.opacity(0.68))
+                .font(.system(size: fontSize, weight: .medium))
+                .foregroundStyle(.white.opacity(0.54))
                 .lineLimit(1)
-                .minimumScaleFactor(0.70)
+                .minimumScaleFactor(0.72)
+                .allowsTightening(true)
         }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(title)
     }
 }
 
@@ -484,26 +502,33 @@ private extension WeekPlannerView {
 private extension WeekPlannerView {
 
     var selectedDayCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(selectedDateHeader.uppercased())
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .tracking(0.35)
-                        .foregroundStyle(dayKind(for: viewModel.selectedDate).color)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(selectedDayKind.color)
+                            .frame(width: 7, height: 7)
 
-                    Text(selectedDayTitle)
-                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                        Text(selectedDayTitle)
+                            .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.88)
+                    }
 
-                    Text(selectedDaySubtitle)
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.56))
-                        .lineLimit(1)
+                    if selectedDayActivities.isEmpty {
+                        Text(WeekFitLocalizedString("planner.daySubtitle.empty"))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.52))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
+                    } else {
+                        selectedDayStatsRow
+                    }
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
 
                 if !selectedDayActivities.isEmpty {
                     Button {
@@ -513,22 +538,27 @@ private extension WeekPlannerView {
                         )
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#8E9EFF").opacity(0.92))
+                            .frame(width: 32, height: 32)
                             .background(
                                 Circle()
-                                    .fill(Color(hex:"#7E8CFF").opacity(0.78))
+                                    .fill(Color(hex: "#7E8CFF").opacity(0.14))
                             )
+                            .overlay {
+                                Circle()
+                                    .stroke(Color(hex: "#7E8CFF").opacity(0.22), lineWidth: 1)
+                            }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(WeekFitLocalizedString("planner.sheet.addTitle"))
                 }
             }
 
             if selectedDayActivities.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     emptySelectedDay
-                        .padding(.top, 18)
+                        .padding(.top, 8)
 
                     Spacer(minLength: 0)
                 }
@@ -545,7 +575,7 @@ private extension WeekPlannerView {
                             if shouldShowTimelineNowDivider(at: index) {
                                 PlanTimelineNowDivider()
                                     .listRowInsets(
-                                        EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
+                                        EdgeInsets(top: 0, leading: 6, bottom: 0, trailing: 6)
                                     )
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
@@ -556,10 +586,8 @@ private extension WeekPlannerView {
                                 displayTitle: timelineTitle(for: item),
                                 metadata: PlanTimelineMetadataBuilder.metadata(
                                     for: item,
-                                    customMeals: customMeals,
                                     status: status,
-                                    formattedDuration: formattedDuration,
-                                    waterLogCountText: waterLogCountText
+                                    formattedDuration: formattedDuration
                                 ),
                                 customMeals: customMeals,
                                 time: timelineTime(for: item),
@@ -569,7 +597,13 @@ private extension WeekPlannerView {
                                 nextEmphasis: timelineNextEmphasis(at: index),
                                 isFirst: index == 0,
                                 isLast: index == timelineItems.count - 1,
-                                connectorAbove: timelineConnectorAbove(at: index)
+                                connectorAbove: timelineConnectorAbove(at: index),
+                                density: PlanTimelineMetadataBuilder.density(for: item),
+                                showsTimeLabel: PlanTimelineItemGrouper.showsTimeLabel(
+                                    at: index,
+                                    in: timelineItems,
+                                    timeText: { timelineTime(for: $0) }
+                                )
                             )
                             .id(item.id)
                             .contentShape(Rectangle())
@@ -589,10 +623,10 @@ private extension WeekPlannerView {
                             }
                             .listRowInsets(
                                 EdgeInsets(
-                                    top: index == 0 ? 4 : 0,
-                                    leading: 8,
+                                    top: 0,
+                                    leading: 6,
                                     bottom: PlanTimelineLayout.rowSpacing,
-                                    trailing: 8
+                                    trailing: 6
                                 )
                             )
                             .listRowBackground(Color.clear)
@@ -601,9 +635,10 @@ private extension WeekPlannerView {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
                     .environment(\.defaultMinListRowHeight, 1)
-                    .contentMargins(.top, 10, for: .scrollContent)
-                    .contentMargins(.bottom, 24, for: .scrollContent)
+                    .contentMargins(.top, 2, for: .scrollContent)
+                    .contentMargins(.bottom, 28, for: .scrollContent)
                     .onAppear {
                         scrollToRelevantActivity(proxy)
                     }
@@ -617,11 +652,11 @@ private extension WeekPlannerView {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .padding(.top, 17)
-        .padding(.horizontal, 17)
-        .padding(.bottom, 0)
+        .padding(.top, 8)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-//        .background(cardBackground)
+        .background(selectedDayCardBackground)
     }
     
     func resolvedActivityStatus(for item: PlannedActivity) -> PlanActivityStatus {
@@ -731,34 +766,20 @@ private extension WeekPlannerView {
 private extension WeekPlannerView {
     
     func scrollToRelevantActivity(_ proxy: ScrollViewProxy) {
-//        if let live = selectedDayActivities.first(where: {
-//            activityStatus(for: $0) == .live
-//        }) {
-        if let live = selectedDayActivities.first(where: {
-            resolvedActivityStatus(for: $0) == .live
-        }) {
+        let anchor = UnitPoint(x: 0.5, y: 0.38)
+
+        if let focusID = timelineFocusItemID {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
-                proxy.scrollTo(live.id, anchor: .center)
+                proxy.scrollTo(focusID, anchor: anchor)
             }
             return
         }
 
-        let now = Date()
-
-        if let upcoming = selectedDayActivities.first(where: {
-            $0.date > now
+        if let lastCompleted = timelineItems.last(where: {
+            resolvedActivityStatus(for: $0.representative) == .completed
         }) {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
-                proxy.scrollTo(upcoming.id, anchor: .center)
-            }
-            return
-        }
-
-        if let lastCompleted = selectedDayActivities.last(where: {
-            $0.isCompleted
-        }) {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
-                proxy.scrollTo(lastCompleted.id, anchor: .center)
+                proxy.scrollTo(lastCompleted.id, anchor: anchor)
             }
         }
     }
@@ -801,7 +822,7 @@ private extension WeekPlannerView {
     }
 }
 
-// MARK: - Footer / FAB
+// MARK: - Footer
 
 private extension WeekPlannerView {
 
@@ -819,38 +840,6 @@ private extension WeekPlannerView {
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 2)
     }
-
-    var floatingAddButton: some View {
-        Button {
-            viewModel.showCalendar = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 25, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 58, height: 58)
-                .background(
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hex: "#6E83FF"),
-                                    Color(hex: "#5970FF")
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .shadow(
-                    color: Color(hex: "#6E83FF").opacity(0.30),
-                    radius: 16,
-                    y: 8
-                )
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 22)
-        .padding(.bottom, 34)
-    }
 }
 
 // MARK: - Dynamic Data
@@ -864,45 +853,7 @@ private extension WeekPlannerView {
     }
     
     private var timelineItems: [PlanTimelineItem] {
-        let sorted = selectedDayActivities.sorted { $0.date < $1.date }
-
-        var result: [PlanTimelineItem] = []
-        var waterBuffer: [PlannedActivity] = []
-
-        func flushWater() {
-            guard !waterBuffer.isEmpty else { return }
-
-            if waterBuffer.count == 1 {
-                result.append(.single(waterBuffer[0]))
-            } else {
-                result.append(.waterGroup(waterBuffer))
-            }
-
-            waterBuffer.removeAll()
-        }
-
-        for activity in sorted {
-            if isWater(activity) {
-                waterBuffer.append(activity)
-            } else {
-                flushWater()
-                result.append(.single(activity))
-            }
-        }
-
-        flushWater()
-
-        return result
-    }
-    
-    private func isWater(_ activity: PlannedActivity) -> Bool {
-        let title = activity.title.lowercased()
-        let type = activity.type.lowercased()
-
-        return title.contains("water")
-            || title.contains("hydration")
-            || type.contains("water")
-            || type.contains("hydration")
+        PlanTimelineItemGrouper.makeItems(from: selectedDayActivities)
     }
 
     private var customMeals: [Meals] {
@@ -957,66 +908,65 @@ private extension WeekPlannerView {
         }
     }
 
-    var weekRangeTitle: String {
-        guard let first = viewModel.weekDays.first,
-              let last = viewModel.weekDays.last else {
-            return localizedMonthDay(viewModel.selectedDate)
-        }
-
-        let firstMonth = localizedMonth(first)
-        let lastMonth = localizedMonth(last)
-
-        let firstDay = localizedDay(first)
-        let lastDay = localizedDay(last)
-
-        if firstMonth == lastMonth {
-            return "\(firstMonth) \(firstDay) – \(lastDay)"
-        }
-
-        return "\(firstMonth) \(firstDay) – \(lastMonth) \(lastDay)"
-    }
-
-    var selectedDateHeader: String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
-        return formatter.string(from: viewModel.selectedDate)
-    }
-
-    private func localizedMonth(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("MMM")
-        return formatter.string(from: date)
-    }
-
-    private func localizedDay(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("d")
-        return formatter.string(from: date)
-    }
-
-    private func localizedMonthDay(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("MMM d")
-        return formatter.string(from: date)
+    var selectedDayKind: PlanDayKind {
+        dayKind(for: viewModel.selectedDate)
     }
 
     var selectedDayTitle: String {
-        switch dayKind(for: viewModel.selectedDate) {
-        case .endurance:
-            return WeekFitLocalizedString("planner.dayTitle.endurance")
-        case .load:
-            return WeekFitLocalizedString("planner.dayTitle.load")
-        case .mixed:
-            return WeekFitLocalizedString("planner.dayTitle.mixed")
-        case .recovery:
-            return WeekFitLocalizedString("planner.dayTitle.recovery")
-        case .open:
-            return WeekFitLocalizedString("planner.dayTitle.open")
+        selectedDayKind.legendLabel
+    }
+
+    private var selectedDayActivityCounts: (workouts: Int, meals: Int, recovery: Int, habits: Int) {
+        let activities = selectedDayActivities
+        return (
+            workouts: activities.filter { $0.type.lowercased() == "workout" }.count,
+            meals: activities.filter { $0.type.lowercased() == "meal" }.count,
+            recovery: activities.filter { $0.type.lowercased() == "recovery" }.count,
+            habits: activities.filter { $0.type.lowercased() == "habit" }.count
+        )
+    }
+
+    @ViewBuilder
+    var selectedDayStatsRow: some View {
+        let counts = selectedDayActivityCounts
+
+        HStack(spacing: 8) {
+            if counts.workouts > 0 {
+                PlanDayStatChip(
+                    icon: "figure.run",
+                    count: counts.workouts,
+                    tint: WeekFitTheme.workout
+                )
+            }
+
+            if counts.meals > 0 {
+                PlanDayStatChip(
+                    icon: "fork.knife",
+                    count: counts.meals,
+                    tint: WeekFitTheme.meal
+                )
+            }
+
+            if counts.recovery > 0 {
+                PlanDayStatChip(
+                    icon: "leaf.fill",
+                    count: counts.recovery,
+                    tint: WeekFitTheme.recovery
+                )
+            }
+
+            if counts.habits > 0 {
+                PlanDayStatChip(
+                    icon: "checkmark.circle.fill",
+                    count: counts.habits,
+                    tint: WeekFitTheme.habit
+                )
+            }
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.9)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(selectedDaySubtitle)
     }
     
     func formattedDuration(_ minutes: Int) -> String {
@@ -1053,62 +1003,30 @@ private extension WeekPlannerView {
         if workouts > 0 { parts.append(workoutCountText(count: workouts)) }
         if meals > 0 { parts.append(mealCountText(count: meals)) }
         if recovery > 0 {
-            parts.append(
-                String(format: WeekFitLocalizedString("planner.daySubtitle.recoveryFormat"), recovery)
-            )
+            parts.append(recoveryCountText(count: recovery))
         }
-        if habits > 0 { parts.append(String(format: WeekFitLocalizedString("planner.daySubtitle.habitsFormat"), habits)) }
+        if habits > 0 {
+            parts.append(WeekFitCountPluralization.phrase(count: habits, category: .habit))
+        }
 
         if parts.isEmpty {
-            return String(format: WeekFitLocalizedString("planner.daySubtitle.plannedItemsFormat"), count)
+            return WeekFitCountPluralization.phrase(count: count, category: .plannedItem)
                 .trimmingCharacters(in: CharacterSet(charactersIn: "."))
         }
 
         return parts.joined(separator: " • ")
     }
 
-    private var isRussianLocale: Bool {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru")
-    }
-
     private func workoutCountText(count: Int) -> String {
-        guard isRussianLocale else {
-            return String(format: WeekFitLocalizedString("planner.daySubtitle.workoutsFormat"), count)
-        }
-
-        return "\(count) \(russianPlural(count: count, one: "тренировка", few: "тренировки", many: "тренировок"))"
+        WeekFitCountPluralization.phrase(count: count, category: .workout)
     }
 
     private func mealCountText(count: Int) -> String {
-        guard isRussianLocale else {
-            return String(format: WeekFitLocalizedString("planner.daySubtitle.mealsFormat"), count)
-        }
-
-        return "\(count) \(russianPlural(count: count, one: "прием пищи", few: "приема пищи", many: "приемов пищи"))"
+        WeekFitCountPluralization.phrase(count: count, category: .meal)
     }
 
-    private func waterLogCountText(count: Int) -> String {
-        guard isRussianLocale else {
-            return "\(count) water logs"
-        }
-
-        return "\(count) \(russianPlural(count: count, one: "запись", few: "записи", many: "записей"))"
-    }
-
-    private func russianPlural(count: Int, one: String, few: String, many: String) -> String {
-        let mod100 = count % 100
-        if (11...14).contains(mod100) {
-            return many
-        }
-
-        switch count % 10 {
-        case 1:
-            return one
-        case 2...4:
-            return few
-        default:
-            return many
-        }
+    private func recoveryCountText(count: Int) -> String {
+        WeekFitCountPluralization.phrase(count: count, category: .recovery)
     }
 
     func dayActivities(for date: Date) -> [PlannedActivity] {
@@ -1393,6 +1311,36 @@ private extension WeekPlannerView {
 
 // MARK: - Components
 
+private struct PlanDayStatChip: View {
+    let icon: String
+    let count: Int
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.96))
+
+            Text("\(count)")
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.78))
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background {
+            Capsule()
+                .fill(tint.opacity(0.12))
+        }
+        .overlay {
+            Capsule()
+                .stroke(tint.opacity(0.22), lineWidth: 0.8)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
 private struct PlanningWeekPicker: View {
     @Binding var selectedDate: Date
 
@@ -1421,12 +1369,12 @@ private struct PlanningWeekPicker: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             weekNavigationButton(systemName: "chevron.left") {
                 moveWeek(by: -1)
             }
 
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 ForEach(weekDays, id: \.self) { date in
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1469,12 +1417,12 @@ private struct PlanningWeekPicker: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.white.opacity(0.64))
-                .frame(width: 26, height: 46)
+                .frame(width: 24, height: 38)
                 .background {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(Color.white.opacity(0.032))
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(PlanScreenSurface.capsuleFill)
                 }
         }
         .buttonStyle(.plain)
@@ -1509,55 +1457,55 @@ private struct DynamicDayCapsule: View {
     let isToday: Bool
 
     var body: some View {
-        VStack(spacing: 5) {
-            VStack(spacing: 2) {
-                HStack(spacing: 3) {
+        VStack(spacing: 4) {
+            VStack(spacing: 1) {
+                HStack(spacing: 2) {
                     Text(dayLabel)
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.70)
 
                     if isToday {
                         Circle()
                             .fill(kind.color)
-                            .frame(width: 3.5, height: 3.5)
+                            .frame(width: 3, height: 3)
                     }
                 }
                 .foregroundStyle(isSelected ? kind.color : .white.opacity(0.70))
 
                 Text(dayNumber)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white.opacity(isSelected ? 0.94 : 0.70))
             }
 
-            VStack(spacing: 2.5) {
+            VStack(spacing: 2) {
                 ForEach(0..<4, id: \.self) { index in
                     Capsule()
-                        .fill(index < kind.barCount ? kind.color : .white.opacity(0.070))
-                        .frame(width: 18, height: 3.5)
+                        .fill(index < kind.barCount ? kind.color : Color.white.opacity(0.045))
+                        .frame(width: 16, height: 3)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 5)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isSelected ? .white.opacity(0.055) : .white.opacity(0.010))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? PlanScreenSurface.capsuleSelectedFill : PlanScreenSurface.capsuleFill.opacity(0.72))
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(
-                    isSelected ? kind.color.opacity(0.72) : .white.opacity(0.018),
+                    isSelected ? kind.color.opacity(0.72) : PlanScreenSurface.cardStroke,
                     lineWidth: isSelected ? 1.05 : 1
                 )
         }
         .shadow(
             color: isSelected ? kind.color.opacity(0.07) : .clear,
-            radius: 8,
-            y: 4
+            radius: 6,
+            y: 3
         )
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var dayLabel: String {
@@ -1590,6 +1538,16 @@ private enum PlanDayKind: Equatable {
         case .load: return WeekFitLocalizedString("planner.dayKind.load")
         case .mixed: return WeekFitLocalizedString("planner.dayKind.mixed")
         case .recovery: return WeekFitLocalizedString("planner.dayKind.recovery")
+        case .open: return WeekFitLocalizedString("planner.dayKind.open")
+        }
+    }
+
+    var legendLabel: String {
+        switch self {
+        case .endurance: return WeekFitLocalizedString("planner.legend.endurance")
+        case .load: return WeekFitLocalizedString("planner.legend.highLoad")
+        case .mixed: return WeekFitLocalizedString("planner.legend.mixed")
+        case .recovery: return WeekFitLocalizedString("planner.legend.recovery")
         case .open: return WeekFitLocalizedString("planner.dayKind.open")
         }
     }
@@ -1650,21 +1608,51 @@ enum PlanActivityStatus {
 
 // MARK: - Background
 
-private extension WeekPlannerView {
+private enum PlanScreenSurface {
+    static let cardFill = Color(red: 0.038, green: 0.042, blue: 0.048)
+    static let cardStroke = Color.white.opacity(0.028)
+    static let capsuleFill = Color(red: 0.046, green: 0.050, blue: 0.056)
+    static let capsuleSelectedFill = Color(red: 0.054, green: 0.058, blue: 0.066)
+}
 
-    var ambientBackground: some View {
-        WeekFitTheme.planAmbient
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-    }
+private extension WeekPlannerView {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(WeekFitTheme.cardBackground)
+            .fill(PlanScreenSurface.cardFill)
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(WeekFitTheme.borderSoft, lineWidth: 1)
+                    .stroke(PlanScreenSurface.cardStroke, lineWidth: 1)
             }
+    }
+
+    var selectedDayCardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(PlanScreenSurface.cardFill)
+            .overlay(alignment: .bottom) {
+                timelineBottomFade
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(PlanScreenSurface.cardStroke, lineWidth: 1)
+            }
+    }
+
+    var timelineBottomFade: some View {
+        LinearGradient(
+            colors: [
+                PlanScreenSurface.cardFill.opacity(0),
+                PlanScreenSurface.cardFill.opacity(0.62),
+                WeekFitTheme.backgroundColor.opacity(0.94),
+                WeekFitTheme.backgroundColor
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: 72)
     }
     
     private func timelineTitle(for item: PlanTimelineItem) -> String {
@@ -1699,6 +1687,15 @@ private extension WeekPlannerView {
 
         if normalizedTitle == "drink" {
             return WeekFitLocalizedString("planner.timeline.drink")
+        }
+
+        if let meal = matchingCustomMeal(for: activity) {
+            return meal.localizedDisplayTitle
+        }
+
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
         }
 
         return WeekFitCoachRuntimeLocalizedString(trimmedTitle)

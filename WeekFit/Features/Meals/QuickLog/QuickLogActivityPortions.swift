@@ -77,14 +77,13 @@ enum QuickLogActivityPortions {
         if portions > 1 {
             if activity.calories > 0 {
                 return String(
-                    format: WeekFitLocalizedString("planner.timeline.portionsAndCaloriesFormat"),
-                    formattedPortions(portions),
+                    format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"),
                     activity.calories
                 )
             }
-            return String(
-                format: WeekFitLocalizedString("planner.timeline.portionsFormat"),
-                formattedPortions(portions)
+            return WeekFitCountPluralization.portionsPhrase(
+                quantity: portions,
+                formattedQuantity: formattedPortions(portions)
             )
         }
 

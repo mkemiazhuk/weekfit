@@ -6,6 +6,7 @@ final class MealsViewModel: ObservableObject {
 
     @Published var selectedDate = Date()
     @Published var customMeals: [Meals] = []
+    @Published private(set) var hasLoadedCustomMeals = false
     @Published private(set) var cachedRecommendation: MealRecommendation?
     @Published private(set) var lastRecommendationSignature = ""
 
@@ -37,6 +38,7 @@ final class MealsViewModel: ObservableObject {
 
     func applyLoadedCustomMeals(_ meals: [Meals]) {
         customMeals = meals
+        hasLoadedCustomMeals = true
     }
 
     func updateRecommendationIfNeeded(
@@ -46,7 +48,8 @@ final class MealsViewModel: ObservableObject {
         mealItems: [Meals],
         nutritionViewModel: NutritionViewModel,
         coachCoordinator: CoachCoordinator,
-        nutritionResult: NutritionResult?
+        nutritionResult: NutritionResult?,
+        languageCode: String
     ) {
         let signature = recommendationSignature(
             source: source,
@@ -55,7 +58,8 @@ final class MealsViewModel: ObservableObject {
             mealItems: mealItems,
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
-            nutritionResult: nutritionResult
+            nutritionResult: nutritionResult,
+            languageCode: languageCode
         )
         guard signature != lastRecommendationSignature else { return }
 
@@ -84,7 +88,8 @@ final class MealsViewModel: ObservableObject {
         mealItems: [Meals],
         nutritionViewModel: NutritionViewModel,
         coachCoordinator: CoachCoordinator,
-        nutritionResult: NutritionResult?
+        nutritionResult: NutritionResult?,
+        languageCode: String
     ) -> String {
         let snapshot = nutritionViewModel.coachMetricsSnapshot
         let goals = snapshot?.result.goals ?? nutritionResult?.goals
@@ -131,6 +136,7 @@ final class MealsViewModel: ObservableObject {
             .joined(separator: "|")
 
         return [
+            languageCode,
             sourceNutritionSignature(
                 nutritionViewModel: nutritionViewModel,
                 nutritionResult: nutritionResult

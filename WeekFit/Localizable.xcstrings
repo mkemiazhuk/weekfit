@@ -1466,7 +1466,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Велотренировка"
+            "value" : "Велосессия"
           }
         }
       }
@@ -1568,7 +1568,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Силовая тренировка"
+            "value" : "Силовая"
           }
         }
       }
@@ -5598,7 +5598,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кардио-тренировка"
+            "value" : "Кардио"
           }
         }
       }
@@ -5870,7 +5870,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Силовая тренировка"
+            "value" : "Силовая"
           }
         }
       }
@@ -11939,7 +11939,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ЗАЩИТИТЬ ЗАВТРА"
+            "value" : "СОХРАНИТЕ СИЛЫ"
           }
         }
       }
@@ -12766,13 +12766,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Be careful with"
+            "value" : "What not to rush"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Чего избегать"
+            "value" : "С чем не спешить"
           }
         }
       }
@@ -12783,13 +12783,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "My read"
+            "value" : "What matters now"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Моя оценка"
+            "value" : "Что важно сейчас"
           }
         }
       }
@@ -12800,13 +12800,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "My recommendation"
+            "value" : "What to do"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Моя рекомендация"
+            "value" : "Что делать"
           }
         }
       }
@@ -15288,7 +15288,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "БЕРЕГИТЕ СОН"
+            "value" : "ПОЗАБОТЬТЕСЬ О СНЕ"
           }
         }
       }
@@ -15305,7 +15305,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "БЕРЕГИТЕ УТРО"
+            "value" : "СДЕЛАЙТЕ ЗАВТРАШНЕЕ УТРО ЛЕГЧЕ"
           }
         }
       }
@@ -15322,7 +15322,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "БЕРЕГИТЕ ЗАВТРА"
+            "value" : "ПОЗАБОТЬТЕСЬ О ЗАВТРА"
           }
         }
       }
@@ -38141,6 +38141,23 @@
         }
       }
     },
+    "common.action.undo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
     "common.action.usePhoto" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -43372,13 +43389,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Meal"
+            "value" : "Create food or meal"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Создать блюдо"
+            "value" : "Создать продукт или блюдо"
           }
         }
       }
@@ -44732,13 +44749,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "BEST FOR TODAY"
+            "value" : "Best for today"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ЛУЧШИЙ НА СЕГОДНЯ"
+            "value" : "Лучший на сегодня"
           }
         }
       }
@@ -44749,13 +44766,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ENDURANCE FUEL"
+            "value" : "Endurance fuel"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ДЛЯ ВЫНОСЛИВОСТИ"
+            "value" : "Для выносливости"
           }
         }
       }
@@ -44766,13 +44783,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "EVENING PICK"
+            "value" : "Evening pick"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ВЕЧЕРНИЙ ВЫБОР"
+            "value" : "Вечерний выбор"
           }
         }
       }
@@ -44783,13 +44800,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HEAT RECOVERY"
+            "value" : "Heat recovery"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ПОСЛЕ ЖАРЫ"
+            "value" : "После жары"
           }
         }
       }
@@ -44800,13 +44817,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HIGH PROTEIN"
+            "value" : "High protein"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "МНОГО БЕЛКА"
+            "value" : "Много белка"
           }
         }
       }
@@ -44817,13 +44834,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MORNING PICK"
+            "value" : "Morning pick"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "УТРЕННИЙ ВЫБОР"
+            "value" : "Утренний выбор"
           }
         }
       }
@@ -44834,13 +44851,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "POST-WORKOUT PICK"
+            "value" : "Post-workout pick"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ПОСЛЕ ТРЕНИРОВКИ"
+            "value" : "После тренировки"
           }
         }
       }
@@ -44851,13 +44868,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "PRE-WORKOUT PICK"
+            "value" : "Pre-workout pick"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ПЕРЕД ТРЕНИРОВКОЙ"
+            "value" : "Перед тренировкой"
           }
         }
       }
@@ -44868,13 +44885,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RECOVERY PICK"
+            "value" : "Recovery pick"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ДЛЯ ВОССТАНОВЛЕНИЯ"
+            "value" : "Для восстановления"
           }
         }
       }
@@ -45100,19 +45117,509 @@
         }
       }
     },
+    "meals.library.subtitle.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading your library"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружаем библиотеку"
+          }
+        }
+      }
+    },
+    "meals.library.subtitle.savedItemsFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld saved items"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld сохранённых"
+          }
+        }
+      }
+    },
+    "meals.library.subtitle.coachAware" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coach-aware"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С учётом Coach"
+          }
+        }
+      }
+    },
+    "meals.library.subtitle.coachRecommendation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coach recommendation"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "рекомендация Coach"
+          }
+        }
+      }
+    },
+    "meals.library.hero.logNow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log now"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать"
+          }
+        }
+      }
+    },
+    "meals.library.hero.details" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подробнее"
+          }
+        }
+      }
+    },
+    "meals.library.toast.deletedFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ deleted"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ удалено"
+          }
+        }
+      }
+    },
+    "meals.library.recommendation.sessionFallback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "session" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "тренировка" } }
+      }
+    },
+    "meals.library.recommendation.reason.morningLight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Balanced morning option without going too heavy" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сбалансированный утренний вариант без перегруза" } }
+      }
+    },
+    "meals.library.recommendation.reason.middayCoachFocus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best match for the current Coach focus" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучше всего подходит под текущий фокус Coach" } }
+      }
+    },
+    "meals.library.recommendation.reason.middayBalanced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Steady balanced choice for this part of the day" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ровный сбалансированный выбор для этого времени дня" } }
+      }
+    },
+    "meals.library.recommendation.reason.eveningLight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light evening choice to close the day cleanly" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лёгкий вечерний вариант, чтобы спокойно завершить день" } }
+      }
+    },
+    "meals.library.recommendation.reason.beforeSessionFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Good option before activity — keep it light with %@ to go" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Хороший вариант перед нагрузкой — держите лёгкость, до старта %@" } }
+      }
+    },
+    "meals.library.recommendation.reason.afterSessionNamedFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best recovery choice after today's %@" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучший вариант для восстановления после %@ сегодня" } }
+      }
+    },
+    "meals.library.recommendation.reason.afterSessionGeneric" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best recovery choice after your session" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучший вариант для восстановления после тренировки" } }
+      }
+    },
+    "meals.library.recommendation.reason.recoveryWindow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best recovery choice while the recovery window is open" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучший вариант для восстановления, пока открыто окно восстановления" } }
+      }
+    },
+    "meals.library.recommendation.reason.afterHeatLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save this for after heat exposure — rehydrate first" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Оставьте это на после жары — сначала восполните жидкость" } }
+      }
+    },
+    "meals.library.recommendation.reason.heatRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lighter recovery choice after heat exposure" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Более лёгкий вариант восстановления после жары" } }
+      }
+    },
+    "meals.library.recommendation.reason.recoveryProtection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recovery-friendly choice that keeps the day controlled" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Подходит для восстановления и помогает держать день под контролем" } }
+      }
+    },
+    "meals.library.recommendation.reason.balanced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best balanced option from your saved meals" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучший сбалансированный вариант из сохранённых блюд" } }
+      }
+    },
+    "meals.library.recommendation.time.minutesFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%dm" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "%d мин" } }
+      }
+    },
+    "meals.library.recommendation.time.hoursFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%dh" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "%d ч" } }
+      }
+    },
+    "meals.library.recommendation.time.hoursMinutesFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%dh %dm" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "%d ч %d мин" } }
+      }
+    },
+    "meals.library.recommendation.factor.lighterMorningOption" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lighter morning option" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Более лёгкий утренний вариант" } }
+      }
+    },
+    "meals.library.recommendation.factor.controlledMorningCalories" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Controlled morning calories" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Контролируемые утренние калории" } }
+      }
+    },
+    "meals.library.recommendation.factor.proteinFocusedStart" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Protein-focused start" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Белковый старт дня" } }
+      }
+    },
+    "meals.library.recommendation.factor.keepsBreakfastSimple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeps breakfast simple" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Простой завтрак" } }
+      }
+    },
+    "meals.library.recommendation.factor.noHeavyDigestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No heavy digestion" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Без тяжёлого переваривания" } }
+      }
+    },
+    "meals.library.recommendation.factor.balancedMacros" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Balanced macros" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сбалансированные макросы" } }
+      }
+    },
+    "meals.library.recommendation.factor.bestMacroBalanceToday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best macro balance today" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучший баланс макросов сегодня" } }
+      }
+    },
+    "meals.library.recommendation.factor.strongProteinBase" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strong protein base" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Хорошая белковая база" } }
+      }
+    },
+    "meals.library.recommendation.factor.steadyProteinSupport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Steady protein support" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стабильная поддержка белком" } }
+      }
+    },
+    "meals.library.recommendation.factor.usefulEnergyCarbs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Useful energy carbs" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полезные углеводы для энергии" } }
+      }
+    },
+    "meals.library.recommendation.factor.controlledCarbs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Controlled carbs" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Контролируемые углеводы" } }
+      }
+    },
+    "meals.library.recommendation.factor.lighterCalorieOption" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lighter calorie option" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Более лёгкий по калориям вариант" } }
+      }
+    },
+    "meals.library.recommendation.factor.controlledEveningChoice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Controlled evening choice" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Контролируемый вечерний выбор" } }
+      }
+    },
+    "meals.library.recommendation.factor.highProtein" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High protein" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Много белка" } }
+      }
+    },
+    "meals.library.recommendation.factor.recoverySupport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recovery support" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Поддержка восстановления" } }
+      }
+    },
+    "meals.library.recommendation.factor.easyEveningDigestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Easy evening digestion" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лёгкое вечернее переваривание" } }
+      }
+    },
+    "meals.library.recommendation.factor.simpleCloseToDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Simple close to the day" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Простое завершение дня" } }
+      }
+    },
+    "meals.library.recommendation.factor.usefulPreSessionCarbs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Useful pre-session carbs" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полезные углеводы перед нагрузкой" } }
+      }
+    },
+    "meals.library.recommendation.factor.lightEnergySupport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light energy support" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лёгкая энергетическая поддержка" } }
+      }
+    },
+    "meals.library.recommendation.factor.lowerFatBeforeActivity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lower fat before activity" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Меньше жиров перед нагрузкой" } }
+      }
+    },
+    "meals.library.recommendation.factor.keepsPrepSimple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeps prep simple" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Простая подготовка" } }
+      }
+    },
+    "meals.library.recommendation.factor.timedForUpcomingLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timed for upcoming load" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Подходит по времени к предстоящей нагрузке" } }
+      }
+    },
+    "meals.library.recommendation.factor.highestProteinMeal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Highest protein meal" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Самое белковое блюдо" } }
+      }
+    },
+    "meals.library.recommendation.factor.highProteinForRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High protein for recovery" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Много белка для восстановления" } }
+      }
+    },
+    "meals.library.recommendation.factor.recoveryCarbsIncluded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recovery carbs included" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Есть углеводы для восстановления" } }
+      }
+    },
+    "meals.library.recommendation.factor.matchesTodaysActivityLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Matches today's activity load" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Соответствует нагрузке сегодня" } }
+      }
+    },
+    "meals.library.recommendation.factor.lighterAfterHeat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lighter after heat" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Легче после жары" } }
+      }
+    },
+    "meals.library.recommendation.factor.controlledAfterHeat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Controlled after heat" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Контролируемый выбор после жары" } }
+      }
+    },
+    "meals.library.recommendation.factor.proteinForRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Protein for recovery" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Белок для восстановления" } }
+      }
+    },
+    "meals.library.recommendation.factor.rehydrateFirst" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rehydrate first" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сначала восполните жидкость" } }
+      }
+    },
+    "meals.library.recommendation.factor.lighterRecoveryOption" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lighter recovery option" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Более лёгкий вариант для восстановления" } }
+      }
+    },
+    "meals.library.recommendation.factor.keepsIntakeControlled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeps intake controlled" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Помогает держать питание под контролем" } }
+      }
+    },
+    "meals.library.recommendation.factor.supportsRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Supports recovery" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Поддерживает восстановление" } }
+      }
+    },
+    "meals.library.recommendation.factor.fitsTodaysCoachFocus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fits today's Coach focus" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Подходит под фокус Coach сегодня" } }
+      }
+    },
+    "meals.library.recommendation.factor.bestMatchFromSavedMeals" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best match from saved meals" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лучшее совпадение среди сохранённых блюд" } }
+      }
+    },
+    "meals.library.recommendation.factor.alignedWithCoachContext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Aligned with Coach context" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Согласовано с контекстом Coach" } }
+      }
+    },
+    "meals.library.recommendation.factor.goodMacroFitToday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Good macro fit today" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Хорошо подходит по макросам сегодня" } }
+      }
+    },
     "meals.library.title" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meals Library"
+            "value" : "Saved Meals"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Питание"
+            "value" : "Сохранённые блюда"
           }
         }
       }
@@ -49402,7 +49909,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Силовая тренировка"
+            "value" : "Силовая"
           }
         }
       }
@@ -49708,7 +50215,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Смешанный день"
+            "value" : "Микс"
           }
         }
       }
@@ -50456,7 +50963,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выносливость"
+            "value" : "Кардио"
           }
         }
       }
@@ -50467,13 +50974,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "High load"
+            "value" : "High Load"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высокая нагрузка"
+            "value" : "Нагрузка"
+          }
+        }
+      }
+    },
+    "planner.legend.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day type colors"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвета типов дня"
           }
         }
       }
@@ -50490,7 +51014,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Смешанная"
+            "value" : "Микс"
           }
         }
       }
@@ -50881,7 +51405,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Велотренировка"
+            "value" : "Велосессия"
           }
         }
       }
@@ -51549,6 +52073,40 @@
         }
       }
     },
+    "planner.sheet.addToDayFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить на %@"
+          }
+        }
+      }
+    },
+    "planner.sheet.todayLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сегодня"
+          }
+        }
+      }
+    },
     "planner.sheet.chooseActivity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52076,6 +52634,74 @@
         }
       }
     },
+    "planner.time.nextSlot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next slot"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "След. слот"
+          }
+        }
+      }
+    },
+    "planner.time.recommended" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендуем"
+          }
+        }
+      }
+    },
+    "planner.time.busyLegend" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Busy"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Занято"
+          }
+        }
+      }
+    },
+    "planner.time.pastLegend" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Past"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошло"
+          }
+        }
+      }
+    },
     "planner.time.bestTime" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52569,6 +53195,23 @@
         }
       }
     },
+    "planner.timeline.hydration.logCountFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "×%d"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "×%d"
+          }
+        }
+      }
+    },
     "planner.timeline.meal" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52735,6 +53378,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рецепт"
+          }
+        }
+      }
+    },
+    "planner.timeline.source.watchBadge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Watch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часы"
           }
         }
       }
@@ -53051,13 +53711,47 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Weekly activities"
+            "value" : "Training, meals, and recovery"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Активности на неделю"
+            "value" : "Тренировки, питание и восстановление"
+          }
+        }
+      }
+    },
+    "planner.week.subtitle.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan your week"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спланируй неделю"
+          }
+        }
+      }
+    },
+    "planner.week.subtitle.thisWeekFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld this week"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld на неделе"
           }
         }
       }

@@ -767,7 +767,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Today's load is already banked, and tomorrow has a long 3.5-hour ride planned.",
-            "Сегодня нагрузка уже накопилась, а завтра запланирована длинная велотренировка на 3.5 часа.",
+            "Сегодня нагрузка уже накопилась, а завтра запланирована длинная велосессия.",
             []
         ),
         (
@@ -782,7 +782,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "A long ride needs freshness, fluids, and energy before it starts. The evening before matters more than doing extra work today.",
-            "Длинная велотренировка требует свежести, воды и энергии заранее. Вечер до неё влияет на качество старта сильнее, чем еще одна нагрузка сегодня.",
+            "Длинная велосессия требует свежести, воды и энергии заранее. Вечер до неё влияет на качество старта сильнее, чем еще одна нагрузка сегодня.",
             []
         ),
         (
@@ -1032,10 +1032,10 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
 private func WeekFitRussianCoachText(_ text: String) -> String {
     var result = text
     let replacements: [(String, String)] = [
-        ("Cycling", "Велотренировка"),
-        ("cycling", "велотренировка"),
-        ("Ride", "Велотренировка"),
-        ("ride", "велотренировка"),
+        ("Cycling", "Велосессия"),
+        ("cycling", "велосессия"),
+        ("Ride", "Велосессия"),
+        ("ride", "велосессия"),
         ("Running", "Бег"),
         ("running", "бег"),
         ("Run", "Бег"),
@@ -1044,10 +1044,14 @@ private func WeekFitRussianCoachText(_ text: String) -> String {
         ("walk", "прогулка"),
         ("Walking", "Прогулка"),
         ("walking", "прогулка"),
-        ("Strength", "Силовая тренировка"),
-        ("strength", "силовая тренировка"),
+        ("Strength", "Силовая"),
+        ("strength", "силовая"),
         ("Upper Body", "Верх тела"),
         ("upper body", "верх тела"),
+        ("Lower Body", "Низ тела"),
+        ("lower body", "низ тела"),
+        ("Full Body", "Все тело"),
+        ("full body", "все тело"),
         ("Core", "Кор"),
         ("core", "кор"),
         ("Breathing", "Дыхание"),
@@ -1074,8 +1078,16 @@ private func WeekFitRussianCoachText(_ text: String) -> String {
         .replacingOccurrences(of: "АКТИВНАЯ ФАЗА", with: "ТРЕНИРОВКА")
         .replacingOccurrences(of: "Поддержите восстановление", with: "Восстанавливайтесь спокойно")
         .replacingOccurrences(of: "Защитите адаптацию", with: "Дайте работе усвоиться")
+
+    let protectedVeloSessionCapital = "\u{E000}"
+    let protectedVeloSessionLower = "\u{E001}"
+    result = result
+        .replacingOccurrences(of: "Велосессия", with: protectedVeloSessionCapital)
+        .replacingOccurrences(of: "велосессия", with: protectedVeloSessionLower)
         .replacingOccurrences(of: "сессия", with: "тренировка")
         .replacingOccurrences(of: "Сессия", with: "Тренировка")
+        .replacingOccurrences(of: protectedVeloSessionCapital, with: "Велосессия")
+        .replacingOccurrences(of: protectedVeloSessionLower, with: "велосессия")
 
     return result
 }

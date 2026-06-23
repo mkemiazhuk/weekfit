@@ -31,6 +31,7 @@ struct WeekFitScreenContainer<Header: View, Content: View>: View {
                     .frame(
                         width: width - (WeekFitScreenLayout.horizontalPadding * 2)
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
                     .clipped()
 //                    .debugFrame("Content shell")

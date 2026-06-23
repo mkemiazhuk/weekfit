@@ -13,6 +13,29 @@ final class CoachActivityClassificationTests: XCTestCase {
         XCTAssertFalse(CoachActivityClassification.isSignificantWorkout(activity))
     }
 
+    func testWalkLikeDetectsRussianTitleWithoutEnglishTokens() {
+        let activity = CoachActivityDescriptor(
+            type: "workout",
+            title: "Прогулка",
+            icon: "figure.walk",
+            imageName: "figure.walk"
+        )
+        XCTAssertTrue(CoachActivityClassification.isWalkLike(activity))
+        XCTAssertTrue(CoachActivityClassification.isRecoveryTier(activity))
+        XCTAssertFalse(CoachActivityClassification.isSignificantWorkout(activity))
+    }
+
+    func testWalkLikeDetectsEnglishWalkingType() {
+        let activity = CoachActivityDescriptor(
+            type: "walking",
+            title: "Morning Walk",
+            icon: "figure.walk",
+            imageName: "figure.walk"
+        )
+        XCTAssertTrue(CoachActivityClassification.isWalkLike(activity))
+        XCTAssertFalse(CoachActivityClassification.isSignificantWorkout(activity))
+    }
+
     func testSignificantWorkoutDetectsRunning() {
         let activity = CoachActivityDescriptor(
             type: "workout",

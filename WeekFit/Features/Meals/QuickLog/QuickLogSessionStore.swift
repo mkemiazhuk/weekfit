@@ -11,7 +11,7 @@ final class QuickLogSessionStore {
     private var adjustedItemIDs: Set<String> = []
 
     private let fastDismissDelay: Duration = .milliseconds(500)
-    private let stepperDismissDelay: Duration = .milliseconds(2200)
+    private let stepperDismissDelay: Duration = .milliseconds(1200)
 
     func selection(for itemID: String) -> QuickLogSelection {
         selections[itemID] ?? QuickLogSelection()

@@ -74,6 +74,7 @@ final class CoachInputProvider: ObservableObject {
             profile: dailySnapshot.profile,
             plannedActivities: dailySnapshot.dayActivities,
             recoveryContext: dailySnapshot.recoveryContext,
+            referenceDate: selectedDate,
             debugSource: "CoachInputProvider.\(source)"
         )
 

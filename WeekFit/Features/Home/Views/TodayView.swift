@@ -65,6 +65,7 @@ struct TodayView: View {
     @State private var quickLogSnackRows: [QuickItemDisplayRow] = []
     @State private var quickLogDrinkRows: [QuickItemDisplayRow] = []
     @State private var quickLogSession = QuickLogSessionStore()
+    @State private var quickLogCommittedUsageIDs: Set<String> = []
     @State private var quickItemUsage: [String: Int] = [:]
     @State private var didPreloadQuickFood = false
     @State private var didPreloadQuickDrinks = false
@@ -494,6 +495,7 @@ struct TodayView: View {
         }
         .onChange(of: showDirectMealLogSheet) { _, isPresented in
             if isPresented {
+                quickLogCommittedUsageIDs.removeAll()
                 prepareQuickNutritionLogData()
             } else {
                 quickLogSession.reset()
@@ -568,6 +570,7 @@ struct TodayView: View {
         }
         .onChange(of: showDirectDrinkLogSheet) { _, isPresented in
             if isPresented {
+                quickLogCommittedUsageIDs.removeAll()
                 prepareQuickDrinkLogData()
             } else {
                 quickLogSession.reset()
@@ -1031,6 +1034,8 @@ struct TodayView: View {
         let selection = quickLogSession.selection(for: itemID)
         guard selection.isSelected else { return }
 
+        commitQuickItemUsageIfNeeded(itemID: itemID, selection: selection)
+
         let message = QuickLogToastMessage.make(profile: profile, selection: selection)
 
         withAnimation(.spring(response: 0.25, dampingFraction: 0.65)) {
@@ -1065,12 +1070,20 @@ struct TodayView: View {
         return nil
     }
 
-    private func handleQuickAdd(profile: QuickLogNutritionProfile, quickItem: QuickItem? = nil) {
-        let wasSelected = quickLogSession.selection(for: profile.id).isSelected
-        let selection = quickLogSession.quickAdd(profile: profile)
-        if !wasSelected, let quickItem {
-            incrementQuickItemUsage(quickItem)
+    private func commitQuickItemUsageIfNeeded(itemID: String, selection: QuickLogSelection) {
+        guard selection.portions > 0 else { return }
+        guard !quickLogCommittedUsageIDs.contains(itemID) else { return }
+        guard let item = quickLogSnacks.first(where: { $0.id == itemID })
+            ?? quickLogDrinks.first(where: { $0.id == itemID }) else {
+            return
         }
+
+        incrementQuickItemUsage(item)
+        quickLogCommittedUsageIDs.insert(itemID)
+    }
+
+    private func handleQuickAdd(profile: QuickLogNutritionProfile, quickItem: QuickItem? = nil) {
+        let selection = quickLogSession.quickAdd(profile: profile)
         syncQuickLogSelection(profile: profile, selection: selection, quickItem: quickItem)
     }
 
@@ -1646,49 +1659,16 @@ struct TodayView: View {
     }
 
     private var upNextSection: some View {
-        let now = todayViewModel.now
+        let now = Date()
         let liveBronze = Color(red: 0.60, green: 0.52, blue: 0.39)
         let liveBadgeBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
         let neutralIconFill = Color.white.opacity(0.065)
         let neutralStroke = Color.white.opacity(0.06)
 
-        let activeSession = currentActiveSession
-
-        let futureActivityToday = selectedDayActivities.first { activity in
-            guard !activity.isCompleted,
-                  !activity.isSkipped else {
-                return false
-            }
-
-            guard activity.date > now else {
-                return false
-            }
-
-            if let activeSession,
-               activity.id == activeSession.id {
-                return false
-            }
-
-            return true
-        }
-
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)
-        let futureActivityTomorrow = plannedActivities
-            .filter { activity in
-                guard !activity.isCompleted,
-                      !activity.isSkipped,
-                      activity.date > now,
-                      let tomorrow,
-                      Calendar.current.isDate(activity.date, inSameDayAs: tomorrow) else {
-                    return false
-                }
-
-                return true
-            }
-            .sorted { $0.date < $1.date }
-            .first
-
-        let nextActivity = futureActivityToday ?? futureActivityTomorrow
+        let activeSession = currentActiveSession(now: now)
+        let nextActivity = activeSession == nil
+            ? nextUpcomingPlannedActivity(now: now)
+            : nil
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(AppText.Today.upNextTitle)
@@ -1749,8 +1729,9 @@ struct TodayView: View {
                         .stroke(activeColor.opacity(0.20), lineWidth: 1)
                 )
                 .shadow(color: activeColor.opacity(0.025), radius: 10, y: 4)
+            }
 
-            } else if let activity = nextActivity {
+            if let activity = nextActivity {
                 Button {
                     onSelectTab(.calendar)
                 } label: {
@@ -1805,7 +1786,7 @@ struct TodayView: View {
                 }
                 .buttonStyle(.plain)
 
-            } else {
+            } else if activeSession == nil {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
@@ -1839,8 +1820,51 @@ struct TodayView: View {
         }
     }
     
+    private func nextUpcomingPlannedActivity(
+        now: Date,
+        excludingActivityID: PersistentIdentifier? = nil
+    ) -> PlannedActivity? {
+        let calendar = Calendar.current
+
+        func isCandidate(_ activity: PlannedActivity) -> Bool {
+            guard !activity.isCompleted, !activity.isSkipped else { return false }
+            guard activity.date > now else { return false }
+            if let excludingActivityID, activity.id == excludingActivityID {
+                return false
+            }
+            return true
+        }
+
+        let upcoming = plannedActivities
+            .filter(isCandidate)
+            .sorted { $0.date < $1.date }
+
+        guard !upcoming.isEmpty else { return nil }
+
+        let viewingToday = calendar.isDate(selectedDate, inSameDayAs: now)
+        guard viewingToday else {
+            return upcoming.first {
+                calendar.isDate($0.date, inSameDayAs: selectedDate)
+            }
+        }
+
+        if let today = upcoming.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
+            return today
+        }
+
+        guard let tomorrow = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: now)
+        ) else {
+            return nil
+        }
+
+        return upcoming.first { calendar.isDate($0.date, inSameDayAs: tomorrow) }
+    }
+
     private func isCoveredByActiveSession(_ activity: PlannedActivity) -> Bool {
-        guard let active = currentActiveSession else { return false }
+        guard let active = currentActiveSession() else { return false }
 
         let activeEnd = Calendar.current.date(
             byAdding: .minute,
@@ -1851,10 +1875,8 @@ struct TodayView: View {
         return activity.date >= active.date && activity.date <= activeEnd
     }
 
-    private var currentActiveSession: PlannedActivity? {
-        let now = Date()
-
-        return selectedDayActivities.first { activity in
+    private func currentActiveSession(now: Date = Date()) -> PlannedActivity? {
+        selectedDayActivities.first { activity in
             let type = activity.type.lowercased()
 
             guard type == "workout" || type == "recovery" else { return false }
@@ -1955,12 +1977,12 @@ struct TodayView: View {
 
             } else {
                 if let finalStory = coachCoordinator.state.finalStory {
+                    let todayInsight = coachCoordinator.state.todayPresentation
                     let renderModel = CoachFinalStoryRenderModel(story: finalStory)
-                    let insightColor = renderModel.color
-                    let insightTitle = renderModel.title
-                    let insightIcon = renderModel.icon
-                    let insightMessage = renderModel.subtitle
-                    let insightStateLabel = renderModel.badge
+                    let insightColor = todayInsight.color
+                    let insightTitle = todayInsight.title
+                    let insightIcon = todayInsight.icon
+                    let insightMessage = todayInsight.message
 
                     let _ = debugTodayCoachInsight(
                         semanticInsight: finalStory.todaySemanticInsight,
@@ -1988,28 +2010,25 @@ struct TodayView: View {
 
                             VStack(alignment: .leading, spacing: 8) {
 
-                                Text(insightStateLabel)
+                                Text(todayInsight.statusLabel)
                                     .font(.system(size: 10.5, weight: .bold))
                                     .tracking(1.3)
                                     .foregroundStyle(insightColor.opacity(0.82))
 
                                 Text(insightTitle)
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(textPrimary)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .layoutPriority(1)
+                                    .lineLimit(2)
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-
                                     Text(insightMessage)
-                                        .font(.system(size: 13.5, weight: .medium))
+                                        .font(.system(size: 12.5, weight: .medium))
                                         .foregroundStyle(textSecondary.opacity(0.82))
                                         .lineSpacing(2)
                                         .multilineTextAlignment(.leading)
                                         .lineLimit(2)
-                                        .layoutPriority(1)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
@@ -2246,9 +2265,9 @@ struct TodayView: View {
         print("🧠 [WorkoutInsight] title:", output.insightTitle)
         print("🧠 [WorkoutInsight] subtitle:", output.insightSubtitle ?? "nil")
     }
-    
+        
     private var quickActionsSection: some View {
-        let activeSession = currentActiveSession
+        let activeSession = currentActiveSession()
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(AppText.Today.quickActionsTitle)

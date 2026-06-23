@@ -828,7 +828,7 @@ private struct SessionsCard: View {
                 Spacer()
 
                 if !sessions.isEmpty {
-                    Text(String(format: WeekFitLocalizedString("activity.sessions.countFormat"), sessions.count))
+                    Text(WeekFitCountPluralization.phrase(count: sessions.count, category: .session))
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.42))
                 }

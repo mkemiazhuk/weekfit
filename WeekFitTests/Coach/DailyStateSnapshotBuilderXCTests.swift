@@ -69,6 +69,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
             ),
             profile: CoachMetricsBuilder.standardProfile(),
             plannedActivities: [],
+            referenceDate: today,
             debugSource: "test.seedCurrentNutrition"
         )
 
@@ -87,6 +88,46 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(snapshot.nutritionMetrics.fats, 18)
         XCTAssertEqual(snapshot.nutritionMetrics.fiber, 7)
         XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 1.2)
+    }
+
+    func testBuildDoesNotCarryPreviousDayNutritionIntoNewDay() {
+        let today = CoachTestClock.reference
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        let healthManager = makeHealthManager()
+        let nutritionViewModel = NutritionViewModel()
+
+        nutritionViewModel.updateNutrition(
+            metrics: DailyNutritionMetrics(
+                protein: 120,
+                carbs: 180,
+                fats: 55,
+                fiber: 20,
+                calories: 2_400,
+                waterLiters: 2.5,
+                activeCalories: 500,
+                sleepHours: 7.5,
+                weightKg: 74
+            ),
+            profile: CoachMetricsBuilder.standardProfile(),
+            plannedActivities: [],
+            referenceDate: yesterday,
+            debugSource: "test.seedYesterdayNutrition"
+        )
+
+        let snapshot = DailyStateSnapshotBuilder.build(
+            selectedDate: today,
+            allPlannedActivities: [],
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            now: today,
+            source: "test.newDayReset"
+        )
+
+        XCTAssertEqual(snapshot.nutritionMetrics.calories, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.protein, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.carbs, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.fats, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 0)
     }
 
     func testBuildCreatesActualLoadFromHealthManager() {

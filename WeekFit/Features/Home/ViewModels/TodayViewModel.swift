@@ -48,6 +48,7 @@ final class TodayViewModel: ObservableObject {
             profile: dailySnapshot.profile,
             plannedActivities: dailySnapshot.dayActivities,
             recoveryContext: dailySnapshot.recoveryContext,
+            referenceDate: selectedDate,
             debugSource: "TodayViewModel.updateNutrition"
         )
     }

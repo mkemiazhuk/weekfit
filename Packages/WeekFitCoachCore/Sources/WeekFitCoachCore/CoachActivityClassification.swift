@@ -27,14 +27,29 @@ public enum CoachActivityClassification {
     }
 
     public static func isRecoveryTier(_ activity: CoachActivityDescriptor) -> Bool {
+        if isWalkLike(activity) || isHikeLike(activity) { return true }
+
         let tokens = tokenText(for: activity)
-        return tokens.contains("walk") ||
-            tokens.contains("walking") ||
-            tokens.contains("stretch") ||
+        return tokens.contains("stretch") ||
             tokens.contains("yoga") ||
             tokens.contains("breath") ||
             tokens.contains("mobility") ||
             activity.type.lowercased() == "recovery"
+    }
+
+    public static func isWalkLike(_ activity: CoachActivityDescriptor) -> Bool {
+        let tokens = tokenText(for: activity)
+        return tokens.contains("walk") ||
+            tokens.contains("walking") ||
+            tokens.contains("figure.walk") ||
+            tokens.contains("прогул")
+    }
+
+    public static func isHikeLike(_ activity: CoachActivityDescriptor) -> Bool {
+        let tokens = tokenText(for: activity)
+        return tokens.contains("hike") ||
+            tokens.contains("hiking") ||
+            tokens.contains("поход")
     }
 
     public static func isSignificantWorkout(_ activity: CoachActivityDescriptor) -> Bool {

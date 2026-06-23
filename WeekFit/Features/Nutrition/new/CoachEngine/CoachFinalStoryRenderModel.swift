@@ -152,11 +152,16 @@ struct CoachFinalStoryRenderModel {
             let title = reason.text.resolved.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty else { return nil }
             let normalizedTitle = Self.normalized(title)
-            guard !visibleHeroTexts.contains(where: { Self.textsOverlap(normalizedTitle, Self.normalized($0)) }) else {
+            let isNamedTomorrowStake = story.owner == .tomorrowProtection && reason.kind == .tomorrow
+            guard isNamedTomorrowStake ||
+                !visibleHeroTexts.contains(where: { Self.textsOverlap(normalizedTitle, Self.normalized($0)) }) else {
                 return nil
             }
             let reasonDomains = Self.semanticDomains(for: reason.kind, title: title)
-            guard !shouldSuppressSemanticDuplicates || reasonDomains.isEmpty || reasonDomains.isDisjoint(with: seenWhyDomains) else {
+            guard isNamedTomorrowStake ||
+                !shouldSuppressSemanticDuplicates ||
+                reasonDomains.isEmpty ||
+                reasonDomains.isDisjoint(with: seenWhyDomains) else {
                 return nil
             }
             guard seenWhyRows.insert(normalizedTitle).inserted else {
@@ -403,8 +408,8 @@ extension CoachFinalStoryRenderModel {
             )
         case .tomorrowProtection:
             return localized(
-                english: "Do less today so tomorrow starts fresher.",
-                russian: "Сделайте меньше сегодня, чтобы завтра начать свежее."
+                english: "Wind down this evening and try to get to bed a little earlier.",
+                russian: "Проведите вечер спокойно и постарайтесь лечь пораньше."
             )
         case .readiness, .stableOverview:
             return localized(
@@ -463,8 +468,8 @@ extension CoachFinalStoryRenderModel {
             )
         case .tomorrowProtection:
             return localized(
-                english: "Do not spend the energy tomorrow needs.",
-                russian: "Не расходуйте энергию, которая нужна завтра."
+                english: "Save your energy for tomorrow's session.",
+                russian: "Оставьте силы на завтрашнюю тренировку."
             )
         case .readiness, .stableOverview:
             return localized(

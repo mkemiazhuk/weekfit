@@ -6897,6 +6897,10 @@ private extension CoachDayPriorityResolver {
     }
 
     private static func dayManagementCandidate(in context: CoachDecisionContext) -> PriorityCandidate? {
+        if let stableDay = stableDayAfterCompletedLightActivityCandidate(in: context) {
+            return stableDay
+        }
+
         if let recoveryReinforcement = completedRecoveryReinforcementCandidate(in: context) {
             return recoveryReinforcement
         }
@@ -7312,6 +7316,55 @@ private extension CoachDayPriorityResolver {
         case .afternoon:
             return "No activities remain today."
         }
+    }
+
+    private static func stableDayAfterCompletedLightActivityCandidate(
+        in context: CoachDecisionContext
+    ) -> PriorityCandidate? {
+        guard CoachLightRecoveryStableDayPolicy.ownsStableDayAfterCompletedLightActivity(in: context) else {
+            return nil
+        }
+
+        let upcomingRecovery = [
+            context.activityContext.laterTodayActivity,
+            context.activityContext.nextUpcomingActivity
+        ]
+        .compactMap { $0 }
+        .first { CoachLightRecoveryStableDayPolicy.isRecoveryPlanModality($0) }
+
+        return PriorityCandidate(
+            priorityScore: 76,
+            insightScore: 84,
+            uniquenessScore: 88,
+            result: CoachDayPriorityResult(
+                focus: .dailyOverview,
+                level: .useful,
+                reason: "Light morning work is done and only recovery context remains.",
+                activity: upcomingRecovery,
+                overridesTimingFocus: true,
+                priority: .stable,
+                strength: .medium,
+                confidence: 0.78,
+                mode: .reinforcement,
+                limiter: CoachLimiter.none,
+                messageFamily: .stable,
+                todayTitle: "The day is on plan",
+                todayMessage: "Nothing needs fixing.",
+                title: "The day is on plan",
+                message: "Morning movement is already done. Let the day stay calm — nothing special is needed before the remaining recovery block.",
+                supportBullets: [
+                    "Stay with today's rhythm",
+                    "Calmly keep food and water on track",
+                    "Nothing special is needed before sauna"
+                ],
+                whyThisMatters: "After light morning work, the value is a calm rhythm — not another prep push.",
+                reasons: [
+                    "Morning movement is already done.",
+                    "Only recovery context remains today.",
+                    "Recovery remains high."
+                ]
+            )
+        )
     }
 
     private static func completedRecoveryReinforcementCandidate(in context: CoachDecisionContext) -> PriorityCandidate? {
@@ -8954,10 +9007,8 @@ private extension CoachDayPriorityResolver {
     }
 
     static func isWalkLike(_ activity: PlannedActivity) -> Bool {
-        let text = "\(activity.type) \(activity.title)".lowercased()
-        return text.contains("walk") ||
-            text.contains("walking") ||
-            text.contains("hike")
+        CoachActivityClassification.isWalkLike(activity) ||
+            CoachActivityClassification.isHikeLike(activity)
     }
 
     static func isMeaningfulImmediateActivity(_ activity: PlannedActivity) -> Bool {
