@@ -1017,17 +1017,15 @@ enum CoachActivityContextResolverV3 {
             type.contains("cardio")
 
         let isWalkOrHike =
-            title.contains("walk") ||
-            title.contains("hike") ||
-            type.contains("walk") ||
-            type.contains("hike")
+            CoachActivityClassification.isWalkLike(activity) ||
+            CoachActivityClassification.isHikeLike(activity)
+
+        if isWalkOrHike {
+            return .recovery
+        }
 
         if isRun || isRide || isSwim {
             return .endurance
-        }
-
-        if isWalkOrHike {
-            return activity.durationMinutes >= 60 ? .endurance : .recovery
         }
 
         let isRacketSport =
@@ -1080,6 +1078,15 @@ enum CoachActivityContextResolverV3 {
 
         if duration >= 120 || calories >= 1000 {
             return .high
+        }
+
+        if CoachActivityClassification.isWalkLike(activity) {
+            return calories >= 600 ? .moderate : .low
+        }
+
+        if CoachActivityClassification.isHikeLike(activity) {
+            if duration >= 180 || calories >= 1000 { return .moderate }
+            return .low
         }
 
         if title.contains("walk") || type.contains("walk") {

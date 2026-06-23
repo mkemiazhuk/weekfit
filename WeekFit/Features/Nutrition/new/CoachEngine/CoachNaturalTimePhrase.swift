@@ -26,7 +26,7 @@ enum CoachNaturalTimePhrase {
             let hours = max(1, Int((Double(m) / 60.0).rounded()))
             return (
                 "Start is in about \(hours) hours.",
-                "До старта около \(hours) \(russianHourWord(hours))."
+                "До старта около \(hours) \(WeekFitCountPluralization.noun(count: hours, category: .hourNominative, locale: Locale(identifier: "ru")))."
             )
         default:
             return ("There is plenty of time before the start.", "До старта ещё достаточно времени.")
@@ -52,7 +52,7 @@ enum CoachNaturalTimePhrase {
             return ("in a few hours", "через несколько часов")
         case 300..<480:
             let hours = max(1, Int((Double(m) / 60.0).rounded()))
-            return ("in about \(hours) hours", "примерно через \(hours) \(russianHourWord(hours))")
+            return ("in about \(hours) hours", "примерно через \(hours) \(WeekFitCountPluralization.noun(count: hours, category: .hourNominative, locale: Locale(identifier: "ru")))")
         default:
             return ("later today", "позже сегодня")
         }
@@ -63,17 +63,17 @@ enum CoachNaturalTimePhrase {
     static func sessionDuration(minutes: Int) -> (english: String, russian: String)? {
         guard minutes > 0 else { return nil }
         if minutes < 60 {
-            return ("about \(minutes) minutes", "около \(minutes) \(russianMinuteWord(minutes))")
+            return ("about \(minutes) minutes", "около \(minutes) \(WeekFitCountPluralization.noun(count: minutes, category: .minuteAccusative, locale: Locale(identifier: "ru")))")
         }
         let hours = Double(minutes) / 60.0
         if minutes % 60 == 0 {
             let h = minutes / 60
-            return ("about \(h) hour\(h == 1 ? "" : "s")", "около \(h) \(russianHourWord(h))")
+            return ("about \(h) hour\(h == 1 ? "" : "s")", "около \(h) \(WeekFitCountPluralization.noun(count: h, category: .hourNominative, locale: Locale(identifier: "ru")))")
         }
         let rounded = (hours * 2).rounded() / 2
         if rounded == floor(rounded) {
             let h = Int(rounded)
-            return ("about \(h) hours", "около \(h) \(russianHourWord(h))")
+            return ("about \(h) hours", "около \(h) \(WeekFitCountPluralization.noun(count: h, category: .hourNominative, locale: Locale(identifier: "ru")))")
         }
         let whole = Int(floor(rounded))
         let half = rounded - Double(whole)
@@ -88,22 +88,6 @@ enum CoachNaturalTimePhrase {
 
     // MARK: - Helpers
 
-    private static func russianHourWord(_ hours: Int) -> String {
-        let mod10 = hours % 10
-        let mod100 = hours % 100
-        if mod10 == 1 && mod100 != 11 { return "час" }
-        if (2...4).contains(mod10) && !(12...14).contains(mod100) { return "часа" }
-        return "часов"
-    }
-
-    private static func russianMinuteWord(_ minutes: Int) -> String {
-        let mod10 = minutes % 10
-        let mod100 = minutes % 100
-        if mod10 == 1 && mod100 != 11 { return "минуту" }
-        if (2...4).contains(mod10) && !(12...14).contains(mod100) { return "минуты" }
-        return "минут"
-    }
-
     private static func russianDecimalHours(_ hours: Double) -> String {
         let whole = Int(floor(hours))
         let fraction = hours - Double(whole)
@@ -112,6 +96,6 @@ enum CoachNaturalTimePhrase {
             return "\(whole),5 часа"
         }
         let rounded = Int(hours.rounded())
-        return "\(rounded) \(russianHourWord(rounded))"
+        return "\(rounded) \(WeekFitCountPluralization.noun(count: rounded, category: .hourNominative, locale: Locale(identifier: "ru")))"
     }
 }

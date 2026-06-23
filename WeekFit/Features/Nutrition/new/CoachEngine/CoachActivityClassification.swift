@@ -13,6 +13,14 @@ enum CoachActivityClassification {
     static func isSignificantWorkout(_ activity: PlannedActivity) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isSignificantWorkout(activity.coachDescriptor)
     }
+
+    static func isWalkLike(_ activity: PlannedActivity) -> Bool {
+        WeekFitCoachCore.CoachActivityClassification.isWalkLike(activity.coachDescriptor)
+    }
+
+    static func isHikeLike(_ activity: PlannedActivity) -> Bool {
+        WeekFitCoachCore.CoachActivityClassification.isHikeLike(activity.coachDescriptor)
+    }
 }
 
 /// Keeps completed light recovery modalities on stable day planning unless there is
@@ -106,6 +114,89 @@ enum CoachLightRecoveryStableDayPolicy {
         let completed = input.dayContext.completedActivities.filter { isActuallyCompleted($0, now: now) }
         guard !completed.isEmpty else { return false }
         return completed.allSatisfy(isLightRecoveryModality)
+    }
+
+    static func isRecoveryPlanModality(_ activity: PlannedActivity) -> Bool {
+        isLightRecoveryModality(activity) || isCompletedHeatActivity(activity)
+    }
+
+    static func hasOnlyRecoveryPlanModalitiesRemaining(_ input: CoachInputSnapshot) -> Bool {
+        let calendar = Calendar.current
+        let remaining = input.plannedActivities.filter { activity in
+            calendar.isDate(activity.date, inSameDayAs: input.now) &&
+                !activity.isCompleted &&
+                !activity.isSkipped &&
+                activity.date >= input.now
+        }
+        return remaining.allSatisfy(isRecoveryPlanModality)
+    }
+
+    static func ownsStableDayAfterCompletedLightActivity(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> Bool {
+        guard !hasIndependentRecoveryDeficit(input: input, guidance: guidance) else { return false }
+        guard lightRecoveryOnlyCompletedToday(input, now: input.now) else { return false }
+        guard hasOnlyRecoveryPlanModalitiesRemaining(input) else { return false }
+        guard input.recoveryContext.recoveryPercent >= 75 else { return false }
+        return true
+    }
+
+    static func ownsStableDayAfterCompletedLightActivity(in context: CoachDecisionContext) -> Bool {
+        if context.brain.recovery == .compromised ||
+            context.brain.recovery == .vulnerable ||
+            context.brain.readiness == .low ||
+            context.brain.readiness == .compromised ||
+            context.brain.sleep == .short ||
+            context.brain.sleep == .veryShort {
+            return false
+        }
+        if let recoveryPercent = context.recoveryContext?.recoveryPercent, recoveryPercent < 75 {
+            return false
+        }
+        if context.tomorrowDemand.isHard { return false }
+
+        let completed = context.dayContext.completedActivities.filter {
+            isActuallyCompleted($0, now: context.dayContext.now)
+        }
+        guard !completed.isEmpty, completed.allSatisfy(isLightRecoveryModality) else { return false }
+
+        let calendar = Calendar.current
+        let remaining = context.dayContext.upcomingActivities.filter { activity in
+            calendar.isDate(activity.date, inSameDayAs: context.dayContext.now) &&
+                !activity.isCompleted &&
+                !activity.isSkipped &&
+                activity.date >= context.dayContext.now
+        }
+        return remaining.allSatisfy(isRecoveryPlanModality)
+    }
+
+    static func stableDayOwnershipRecommendationEnglish() -> (title: String, subtitle: String) {
+        (
+            title: "Keep today's rhythm steady",
+            subtitle: "No extra load is needed now"
+        )
+    }
+
+    static func stableDayOwnershipRecommendationRussian() -> (title: String, subtitle: String) {
+        (
+            title: "Сохраняйте обычный ритм",
+            subtitle: "Дополнительная нагрузка сейчас не нужна"
+        )
+    }
+
+    static func stableDayCalmOverviewEnglish() -> (title: String, subtitle: String) {
+        (
+            title: "Nothing special needs changing",
+            subtitle: "The day is unfolding calmly"
+        )
+    }
+
+    static func stableDayCalmOverviewRussian() -> (title: String, subtitle: String) {
+        (
+            title: "Ничего специально менять не нужно",
+            subtitle: "День развивается спокойно"
+        )
     }
 
     static func isDayPlanningIntentHour(_ now: Date) -> Bool {
@@ -476,6 +567,12 @@ enum CoachLightRecoveryStableDayPolicy {
         return ("Good day so far — keep it calm", "Хороший день — дальше спокойно")
     }
 
+    static func isCompletedHeatActivity(_ activity: PlannedActivity) -> Bool {
+        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let text = CoachActivityClassification.tokenText(for: activity)
+        return kind == .heat || text.contains("sauna") || text.contains("steam")
+    }
+
     static func caloriesCriticallyLow(_ input: CoachInputSnapshot) -> Bool {
         let calories = input.nutritionContext?.caloriesCurrent ?? input.brain.metrics.calories
         if calories <= 0 { return true }
@@ -538,6 +635,289 @@ enum CoachLightRecoveryStableDayPolicy {
             input.brain.fuel == .underfueled
         guard baseFuelingGap else { return false }
         return shouldShowFuelWarning(input: input, guidance: guidance, activity: activity)
+    }
+}
+
+/// Prevents completed light-recovery activities from owning the evening wind-down hero.
+enum CoachEveningWindDownHeroPolicy {
+
+    static func isEveningWindDownDecision(
+        _ guidance: CoachGuidanceV3,
+        input: CoachInputSnapshot
+    ) -> Bool {
+        if guidance.priority.focus == .eveningWindDown ||
+            guidance.priority.priority == .sleepPreparation {
+            return true
+        }
+
+        return isCalmLateEveningWindDownContext(guidance, input: input)
+    }
+
+    static func isCalmLateEveningWindDownContext(
+        _ guidance: CoachGuidanceV3,
+        input: CoachInputSnapshot
+    ) -> Bool {
+        guard CoachFinalStoryBuilder.isLateEveningWindDown(input) else {
+            return false
+        }
+        guard case .stable = guidance.phase else {
+            return false
+        }
+        guard activeActivity(input: input, guidance: guidance) == nil else {
+            return false
+        }
+
+        // Meals, hydration, and habits can stay on the plan after training is done;
+        // only upcoming training should block late-evening wind-down.
+        guard input.dayContext.upcomingTrainingActivities.isEmpty else {
+            return false
+        }
+
+        switch guidance.priority.priority {
+        case .stable, .sleepPreparation, .recovery:
+            break
+        default:
+            return false
+        }
+
+        switch guidance.priority.focus {
+        case .eveningWindDown, .dailyOverview, .recoveryNeeded, .performanceReadiness:
+            return true
+        default:
+            return guidance.priority.limiter == .none
+        }
+    }
+
+    static func heroTitleReflectsCompletedLightActivity(_ story: CoachFinalStory) -> Bool {
+        let title = story.title.resolved.lowercased()
+        let english = story.title.fallback.lowercased()
+
+        let markers = [
+            "прогулка учтена",
+            "walk is logged",
+            "лёгкая активность уже учтена",
+            "light movement is logged",
+            "лёгкая активность — без фанатизма",
+            "хороший день — дальше спокойно",
+            "good day — keep it calm",
+            "good day so far",
+            "йога учтена",
+            "растяжка учтена",
+            "stretching is logged",
+            "breathing is logged",
+            "mobility is logged",
+            "yoga is logged",
+            "ещё в плане",
+            "still on today's plan"
+        ]
+
+        return markers.contains { title.contains($0) || english.contains($0) }
+    }
+
+    static func ownerIsDrivenByCompletedLightActivityOnly(
+        story: CoachFinalStory,
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> Bool {
+        guard story.owner == .recovery ||
+                story.owner == .stableOverview ||
+                story.owner == .readiness else {
+            return false
+        }
+
+        guard guidance.priority.focus != .postActivityRecovery else {
+            return false
+        }
+
+        if let activity = guidance.priority.activity,
+           CoachLightRecoveryStableDayPolicy.isActuallyCompleted(activity, now: input.now),
+           CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity) {
+            return true
+        }
+
+        if let last = input.dayContext.lastCompletedActivity,
+           CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(last),
+           input.dayContext.upcomingTrainingActivities.isEmpty,
+           activeActivity(input: input, guidance: guidance) == nil {
+            return true
+        }
+
+        return false
+    }
+
+    static func hasRecentSeriousTrainingHeroContext(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> Bool {
+        if guidance.priority.focus == .postActivityRecovery {
+            if let activity = guidance.priority.activity,
+               CoachActivityClassification.isSignificantWorkout(activity) {
+                return true
+            }
+            if input.dayContext.lastCompletedActivity.map(CoachActivityClassification.isSignificantWorkout) == true {
+                return true
+            }
+        }
+
+        if case .recovering(let activity, _, let minutesSinceEnd) = guidance.phase,
+           CoachActivityClassification.isSignificantWorkout(activity),
+           minutesSinceEnd <= 360 {
+            return true
+        }
+
+        return false
+    }
+
+    static func shouldReplaceHeroWithEveningWindDown(
+        story: CoachFinalStory,
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> Bool {
+        guard isEveningWindDownDecision(guidance, input: input) else {
+            return false
+        }
+
+        guard !hasRecentSeriousTrainingHeroContext(input: input, guidance: guidance) else {
+            return false
+        }
+
+        if heroTitleReflectsCompletedLightActivity(story) {
+            return true
+        }
+
+        return ownerIsDrivenByCompletedLightActivityOnly(
+            story: story,
+            input: input,
+            guidance: guidance
+        )
+    }
+
+    static func eveningWindDownStory(
+        replacing story: CoachFinalStory,
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> CoachFinalStory {
+        let title = storyText(
+            "Evening for recovery",
+            russian: "Вечер — на восстановление"
+        )
+        let assessment = storyText(
+            "Today's main activities are already behind you. The priority now is to close the day calmly and protect sleep.",
+            russian: "Основные активности на сегодня уже позади. Сейчас важнее спокойно закрыть день и не мешать сну."
+        )
+        let recommendation = storyText(
+            "Leave the plan unchanged and shift into a calm evening rhythm.",
+            russian: "Оставьте план без изменений и переходите в спокойный режим."
+        )
+        let avoid = storyText(
+            "Do not add load late in the evening.",
+            russian: "Не добавляйте нагрузку поздно вечером."
+        )
+        let badge = storyText("EVENING", russian: "ВЕЧЕР")
+        let heroState = storyText("Wind down", russian: "Спокойный вечер")
+
+        return CoachFinalStory(
+            owner: .stableOverview,
+            primaryFocus: .eveningWindDown,
+            titleKey: story.titleKey,
+            subtitleKey: story.subtitleKey,
+            badgeState: badge,
+            heroState: heroState,
+            colorFamily: .stable,
+            icon: "moon.stars.fill",
+            primaryRecommendationKey: story.primaryRecommendationKey,
+            avoidRecommendationKey: story.avoidRecommendationKey,
+            title: title,
+            subtitle: assessment,
+            primaryRecommendation: recommendation,
+            avoidRecommendation: avoid,
+            whatHappened: assessment,
+            whatMattersNow: assessment,
+            whatToDoNext: recommendation,
+            whatToAvoid: avoid,
+            reasons: [
+                CoachFinalStoryReason(
+                    kind: .time,
+                    text: storyText(
+                        "Evening wind-down should own the story after today's plan is complete.",
+                        russian: "Вечерний режим должен вести историю, когда план на сегодня уже закрыт."
+                    ),
+                    icon: "moon.stars.fill",
+                    colorFamily: .stable
+                )
+            ],
+            supportSignals: completedActivitySupportSignals(
+                input: input,
+                existing: story.supportSignals
+            ),
+            upNextContext: nil,
+            confidence: story.confidence,
+            dataReadinessState: story.dataReadinessState,
+            primaryAction: CoachFinalStoryAction(
+                title: recommendation,
+                icon: "moon.stars.fill"
+            ),
+            supportActions: [],
+            decisionContext: story.decisionContext
+        )
+    }
+
+    static func completedActivitySupportSignals(
+        input: CoachInputSnapshot,
+        existing: [CoachFinalStorySupportSignal]
+    ) -> [CoachFinalStorySupportSignal] {
+        let calendar = Calendar.current
+        var signals = existing.filter { $0.kind != .recovery && $0.kind != .activity }
+
+        let completed = input.plannedActivities
+            .filter { calendar.isDate($0.date, inSameDayAs: input.now) }
+            .filter { CoachLightRecoveryStableDayPolicy.isActuallyCompleted($0, now: input.now) }
+            .sorted { $0.date < $1.date }
+
+        for activity in completed {
+            if CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity) {
+                let calm = CoachLightRecoveryStableDayPolicy.calmHero(for: activity)
+                signals.append(
+                    CoachFinalStorySupportSignal(
+                        kind: .recovery,
+                        title: storyText(calm.english, russian: calm.russian),
+                        icon: "figure.walk"
+                    )
+                )
+            } else if CoachLightRecoveryStableDayPolicy.isCompletedHeatActivity(activity) {
+                signals.append(
+                    CoachFinalStorySupportSignal(
+                        kind: .recovery,
+                        title: storyText("Sauna complete", russian: "Сауна завершена"),
+                        icon: "flame.fill"
+                    )
+                )
+            }
+        }
+
+        return Array(signals.prefix(3))
+    }
+
+    private static func activeActivity(
+        input: CoachInputSnapshot,
+        guidance: CoachGuidanceV3
+    ) -> PlannedActivity? {
+        switch guidance.phase {
+        case .active(let activity, _):
+            return activity
+        case .preparing, .recovering, .stable:
+            return input.plannedActivities.first { $0.isActive(at: input.now) }
+        }
+    }
+
+    private static func storyText(_ english: String, russian: String) -> CoachFinalStoryText {
+        CoachFinalStoryText(
+            key: "",
+            fallback: english,
+            russianFallback: russian,
+            parameters: [],
+            russianParameters: []
+        )
     }
 }
 

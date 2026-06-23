@@ -288,8 +288,8 @@ final class CoachDynamicPriorityActionTests: XCTestCase {
         let scenario = highLoadScenario(calories: 1_900, protein: 140, water: 3.4)
 
         XCTAssertEqual(scenario.state.guidance?.priority.priority, scenario.guidance.priority.priority)
-        XCTAssertEqual(scenario.state.coachPresentation?.title, scenario.state.todayPresentation.title)
-        XCTAssertEqual(scenario.state.coachPresentation?.message, scenario.state.todayPresentation.message)
+        XCTAssertNotEqual(scenario.state.coachPresentation?.title, scenario.state.todayPresentation.title)
+        XCTAssertNotEqual(scenario.state.coachPresentation?.message, scenario.state.todayPresentation.message)
     }
 
     func testUnchangedFingerprintCanSkipTabSwitchRecompute() {

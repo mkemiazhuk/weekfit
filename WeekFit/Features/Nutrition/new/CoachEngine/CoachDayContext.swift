@@ -303,6 +303,10 @@ private extension CoachDayContextBuilder {
     static func isTrainingStress(_ activity: PlannedActivity) -> Bool {
         guard !isHydrationLog(activity) else { return false }
 
+        if CoachActivityClassification.isWalkLike(activity) {
+            return false
+        }
+
         let kind = CoachActivityContextResolverV3.kind(for: activity)
 
         guard kind == .workout ||

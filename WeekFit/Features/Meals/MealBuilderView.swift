@@ -995,7 +995,7 @@ struct MealBuilderView: View {
         case .vegetables:
             let count = selectedIngredients.filter { $0.ingredient.category == .vegetables }.count
             return count > 0
-                ? String(format: WeekFitLocalizedString("meals.builder.hint.countAddedFormat"), count)
+                ? WeekFitCountPluralization.ingredientsAddedPhrase(count: count)
                 : WeekFitLocalizedString("meals.builder.hint.addMore")
 
         case .extras:

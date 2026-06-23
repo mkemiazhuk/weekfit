@@ -248,6 +248,13 @@ extension Meals {
         title.components(separatedBy: ",").first ?? title
     }
 
+    var localizedDisplayTitle: String {
+        MealBuilderTitleComposer.displayTitle(
+            storedTitle: shortTitle,
+            builderImageItems: builderImageItems
+        )
+    }
+
     var normalizedTitle: String {
         title
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -434,5 +441,45 @@ extension MealsType {
                 blue: 0.62
             )
         }
+    }
+}
+
+enum MealBuilderTitleComposer {
+
+    static func displayTitle(
+        storedTitle: String,
+        builderImageItems: [MealBuilderImageItem]?
+    ) -> String {
+        compose(from: builderImageItems) ?? storedTitle
+    }
+
+    static func compose(from items: [MealBuilderImageItem]?) -> String? {
+        guard let items, !items.isEmpty else { return nil }
+
+        let catalog = Dictionary(uniqueKeysWithValues: MealBuilderDemoData.ingredients.map { ($0.id, $0) })
+        let resolvedIngredients = items.compactMap { catalog[$0.id] }
+        guard !resolvedIngredients.isEmpty else { return nil }
+
+        func first(in category: MealIngredientCategory) -> MealBuilderIngredient? {
+            resolvedIngredients.first { $0.category == category }
+        }
+
+        let protein = first(in: .protein)?.localizedTitle
+        let base = first(in: .base)?.localizedTitle
+        let vegetable = first(in: .vegetables)?.localizedTitle
+        let extra = first(in: .extras)?.localizedTitle
+        let drinks = first(in: .drinks)?.localizedTitle
+
+        if let protein, let base { return "\(protein) \(base)" }
+        if let base, let extra { return "\(extra) \(base)" }
+        if let vegetable, let protein { return "\(protein) \(vegetable)" }
+
+        if let base { return base }
+        if let protein { return protein }
+        if let vegetable { return vegetable }
+        if let extra { return extra }
+        if let drinks { return drinks }
+
+        return resolvedIngredients.first?.localizedTitle
     }
 }

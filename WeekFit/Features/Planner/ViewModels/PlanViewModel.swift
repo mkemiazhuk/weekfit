@@ -15,7 +15,6 @@ final class PlanViewModel: ObservableObject {
 
     // MARK: - UI State
     @Published var selectedDate = Date()
-    @Published var showCalendar = false
     @Published var showAddActivity = false
     @Published var selectedSlot: Date?
 
@@ -94,11 +93,14 @@ final class PlanViewModel: ObservableObject {
     }
 
     var selectedDayTitle: String {
-        selectedDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+        WeekFitShortWeekdayMonthDay(selectedDate)
     }
 
     var selectedHeaderTitle: String {
-        selectedDate.formatted(.dateTime.weekday(.abbreviated).day().month(.wide))
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEE d MMMM")
+        return formatter.string(from: selectedDate)
     }
 
     var weekDays: [Date] {

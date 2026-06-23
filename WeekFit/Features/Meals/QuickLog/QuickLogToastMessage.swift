@@ -30,10 +30,10 @@ enum QuickLogToastMessage {
 
         let portions = nutrition.portions
         if portions > 1 {
-            return String(
-                format: WeekFitLocalizedString("quickLog.toast.portionsFormat"),
-                profile.title,
-                QuickLogServingMath.formattedQuantity(portions)
+            return WeekFitCountPluralization.toastPortionsPhrase(
+                title: profile.title,
+                quantity: portions,
+                formattedQuantity: QuickLogServingMath.formattedQuantity(portions)
             )
         }
 

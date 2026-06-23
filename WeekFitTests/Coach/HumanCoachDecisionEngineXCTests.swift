@@ -958,9 +958,10 @@ final class HumanCoachDecisionEngineXCTests: XCTestCase {
             guidance: output
         )
 
-        XCTAssertEqual(state.todayPresentation.title, story.title)
-        XCTAssertEqual(state.todayPresentation.message, story.myRead)
-        XCTAssertNotEqual(state.todayPresentation.message, output.dayDecisionFrame?.todayMessage)
+        XCTAssertEqual(state.todayPresentation.title, output.priority.todayTitle)
+        XCTAssertEqual(state.todayPresentation.message, output.priority.todayMessage)
+        XCTAssertNotEqual(state.todayPresentation.title, story.title)
+        XCTAssertNotEqual(state.coachPresentation?.title, state.todayPresentation.title)
     }
 
     func testCompletedDayNarrativeUsesStoryNotStatusCopy() throws {

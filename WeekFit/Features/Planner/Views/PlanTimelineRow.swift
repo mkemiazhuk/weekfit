@@ -2,22 +2,35 @@ import SwiftUI
 import WeekFitPlanner
 
 enum PlanTimelineLayout {
-    static let timeWidth: CGFloat = 44
-    static let columnWidth: CGFloat = 20
+    static let timeWidth: CGFloat = 54
+    static let columnWidth: CGFloat = 18
     static let timeToTimelineSpacing: CGFloat = 4
-    static let timelineToCardSpacing: CGFloat = 7
+    static let timelineToCardSpacing: CGFloat = 5
     static let nodeSize: CGFloat = 9
     static let nodeVerticalPadding: CGFloat = 3
     static let lineWidth: CGFloat = 1.0
-    static let rowSpacing: CGFloat = 13
-    static let cardCornerRadius: CGFloat = 15
-    static let avatarSize: CGFloat = 34
-    static let avatarContentSize: CGFloat = 25
-    static let cardHorizontalPadding: CGFloat = 13
-    static let cardVerticalPadding: CGFloat = 11
-    static let titleFontSize: CGFloat = 16
-    static let metadataFontSize: CGFloat = 11.5
-    static let activityIconFontSize: CGFloat = 14
+    static let rowSpacing: CGFloat = 10
+    static let cardCornerRadius: CGFloat = 16
+    static let avatarSize: CGFloat = 36
+    static let avatarContentSize: CGFloat = 24
+    static let foodAvatarSize: CGFloat = 29
+    static let foodAvatarContentSize: CGFloat = 19
+    static let compactHydrationAvatarSize: CGFloat = 20
+    static let compactHydrationIconSize: CGFloat = 10
+    static let compactHydrationVerticalPadding: CGFloat = 7
+    static let cardHorizontalPadding: CGFloat = 11
+    static let cardVerticalPadding: CGFloat = 10
+    static let cardIconSpacing: CGFloat = 9
+    static let cardAccentBarWidth: CGFloat = 3.5
+    static let typeDotSize: CGFloat = 6.5
+    static let rowTopInset: CGFloat = 8
+    static let firstConnectorInset: CGFloat = 8
+    static let lastConnectorInset: CGFloat = 4
+    static let titleFontSize: CGFloat = 15.2
+    static let subtitleFontSize: CGFloat = 12.5
+    static let timeFontSize: CGFloat = 15
+    static let activityIconFontSize: CGFloat = 16
+    static let titleSubtitleSpacing: CGFloat = 1
 }
 
 struct PlanTimelineNowDivider: View {
@@ -25,9 +38,9 @@ struct PlanTimelineNowDivider: View {
     @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: PlanTimelineLayout.timeToTimelineSpacing) {
             Color.clear
-                .frame(width: timeColumnWidth + PlanTimelineLayout.timeToTimelineSpacing)
+                .frame(width: timeColumnWidth)
 
             Circle()
                 .fill(Color.white.opacity(0.22))
@@ -68,11 +81,16 @@ struct PlanTimelineRow: View {
     let isFirst: Bool
     let isLast: Bool
     let connectorAbove: CGFloat
+    var density: PlanTimelineRowDensity = .standard
+    var showsTimeLabel: Bool = true
 
     @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
+    @ScaledMetric(relativeTo: .body) private var titleFontSize = PlanTimelineLayout.titleFontSize
+    @ScaledMetric(relativeTo: .subheadline) private var subtitleFontSize = PlanTimelineLayout.subtitleFontSize
+    @ScaledMetric(relativeTo: .callout) private var timeFontSize = PlanTimelineLayout.timeFontSize
     @State private var livePulse = false
 
-    private var accent: Color { category.color }
+    private var accent: Color { activity.color }
 
     private var isLive: Bool {
         status == .live
@@ -114,21 +132,27 @@ struct PlanTimelineRow: View {
     }
 
     private var timeLabel: some View {
-        Text(time)
-            .font(.system(size: 11.5, weight: timeFontWeight, design: .monospaced))
-            .foregroundStyle(timeColor)
-            .frame(width: timeColumnWidth, alignment: .trailing)
-            .padding(.top, 10)
-            .lineLimit(1)
-            .minimumScaleFactor(0.82)
-            .accessibilityHidden(true)
+        Group {
+            if showsTimeLabel {
+                Text(time)
+                    .font(.system(size: timeFontSize, weight: timeFontWeight).monospacedDigit())
+                    .foregroundStyle(timeColor)
+            } else {
+                Text("·")
+                    .font(.system(size: timeFontSize * 0.72, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.24))
+            }
+        }
+        .frame(width: timeColumnWidth, alignment: .trailing)
+        .padding(.top, PlanTimelineLayout.rowTopInset)
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(1)
+        .accessibilityHidden(true)
     }
 
     private var timeFontWeight: Font.Weight {
         switch emphasis {
-        case .next:
-            return .semibold
-        case .active:
+        case .next, .active:
             return .semibold
         default:
             return .medium
@@ -148,18 +172,18 @@ struct PlanTimelineRow: View {
                 ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.88)
                 : accent.opacity(0.90)
         case .upcoming:
-            return .white.opacity(0.58)
+            return .white.opacity(0.72)
         case .past:
-            return .white.opacity(0.44)
+            return .white.opacity(0.60)
         case .skipped:
-            return .white.opacity(0.28)
+            return .white.opacity(0.40)
         }
     }
 
     private var timelineColumn: some View {
         VStack(spacing: 0) {
             if isFirst && connectorAbove == 0 {
-                Color.clear.frame(height: 8)
+                Color.clear.frame(height: PlanTimelineLayout.firstConnectorInset)
             } else {
                 timelineLine(opacity: lineOpacityAbove)
                     .frame(height: max(10, connectorAbove + 8))
@@ -174,7 +198,7 @@ struct PlanTimelineRow: View {
             .padding(.vertical, PlanTimelineLayout.nodeVerticalPadding)
 
             if isLast {
-                Color.clear.frame(height: 6)
+                Color.clear.frame(height: PlanTimelineLayout.lastConnectorInset)
             } else {
                 timelineLine(opacity: lineOpacityBelow)
                     .frame(minHeight: 12)
@@ -188,6 +212,7 @@ struct PlanTimelineRow: View {
         Rectangle()
             .fill(accent.opacity(opacity))
             .frame(width: PlanTimelineLayout.lineWidth)
+            .frame(maxWidth: .infinity)
     }
 
     private var lineOpacityAbove: Double {
@@ -196,7 +221,7 @@ struct PlanTimelineRow: View {
 
     private var lineOpacityBelow: Double {
         guard let nextEmphasis else {
-            return lineOpacity(for: emphasis) * 0.75
+            return lineOpacity(for: emphasis) * 0.80
         }
         return (lineOpacity(for: emphasis) + lineOpacity(for: nextEmphasis)) / 2
     }
@@ -204,44 +229,64 @@ struct PlanTimelineRow: View {
     private func lineOpacity(for emphasis: PlanTimelineVisualEmphasis) -> Double {
         switch emphasis {
         case .past:
-            return 0.26
+            return 0.32
         case .skipped:
-            return 0.16
+            return 0.20
         case .upcoming:
-            return 0.34
+            return 0.40
         case .active:
-            return 0.42
-        case .next:
             return 0.48
+        case .next:
+            return 0.54
         }
     }
 
     private var activityCard: some View {
-        HStack(spacing: 11) {
-            iconView
+        HStack(alignment: .center, spacing: 0) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(accent.opacity(accentBarOpacity))
+                .frame(width: PlanTimelineLayout.cardAccentBarWidth)
+                .padding(.vertical, 4)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(displayTitle)
-                    .font(.system(size: PlanTimelineLayout.titleFontSize, weight: titleFontWeight))
-                    .foregroundStyle(titleColor)
-                    .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
+            HStack(alignment: .center, spacing: PlanTimelineLayout.cardIconSpacing) {
+                iconView
 
-                if !metadata.isEmpty {
-                    metadataLine
+                VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(accent.opacity(typeDotOpacity))
+                            .frame(
+                                width: PlanTimelineLayout.typeDotSize,
+                                height: PlanTimelineLayout.typeDotSize
+                            )
+
+                        Text(displayTitle)
+                            .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
+                            .foregroundStyle(titleColor)
+                            .tracking(-0.22)
+                            .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
+                    }
+
+                    if !metadata.isEmpty {
+                        metadataLine
+                            .padding(.leading, PlanTimelineLayout.typeDotSize + 6)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(chevronColor)
-                .padding(.leading, 2)
-                .accessibilityHidden(true)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(chevronColor)
+                    .frame(width: 6, alignment: .trailing)
+                    .accessibilityHidden(true)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, PlanTimelineLayout.cardHorizontalPadding)
+            .padding(.vertical, cardVerticalPadding)
         }
-        .padding(.horizontal, PlanTimelineLayout.cardHorizontalPadding)
-        .padding(.vertical, PlanTimelineLayout.cardVerticalPadding)
         .background {
             RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
                 .fill(cardFill)
@@ -266,16 +311,33 @@ struct PlanTimelineRow: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    private var accentBarOpacity: Double {
+        if isLive { return 0.88 }
+
+        switch emphasis {
+        case .next:
+            return 0.82
+        case .active:
+            return 0.74
+        case .upcoming:
+            return 0.62
+        case .past:
+            return 0.48
+        case .skipped:
+            return 0.28
+        }
+    }
+
+    private var typeDotOpacity: Double {
+        min(accentBarOpacity + 0.08, 0.96)
+    }
+
     private var titleFontWeight: Font.Weight {
         switch emphasis {
-        case .next, .active:
-            return isLive ? .semibold : .semibold
-        case .upcoming:
-            return .medium
-        case .past:
-            return .medium
         case .skipped:
             return .regular
+        default:
+            return .semibold
         }
     }
 
@@ -292,36 +354,35 @@ struct PlanTimelineRow: View {
         }
     }
 
+    private var cardVerticalPadding: CGFloat {
+        density == .compactHydration
+            ? PlanTimelineLayout.compactHydrationVerticalPadding
+            : PlanTimelineLayout.cardVerticalPadding
+    }
+
     private var metadataLine: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
+        HStack(alignment: .center, spacing: 4) {
             if let primary = metadata.primary, !primary.isEmpty {
                 Text(primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
             }
 
             if metadata.showsWatchIcon {
-                if metadata.primary != nil {
-                    metadataDot
-                }
-                Image(systemName: "applewatch")
-                    .font(.system(size: 9, weight: .semibold))
-                if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
-                    Text(sourceLabel)
-                }
-            } else if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
-                if metadata.primary != nil {
-                    metadataDot
-                }
-                Text(sourceLabel)
+                watchSourceBadge
             }
         }
-        .font(.system(size: PlanTimelineLayout.metadataFontSize, weight: .regular))
+        .font(.system(size: subtitleFontSize, weight: .regular))
         .foregroundStyle(metadataColor)
-        .fixedSize(horizontal: false, vertical: true)
+        .lineLimit(1)
     }
 
-    private var metadataDot: some View {
-        Text("·")
-            .foregroundStyle(metadataColor.opacity(0.72))
+    private var watchSourceBadge: some View {
+        Image(systemName: "applewatch")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(metadataColor.opacity(0.58))
+            .accessibilityLabel(WeekFitLocalizedString("planner.timeline.source.appleWatch"))
     }
 
     private var accessibilityLabelText: String {
@@ -339,8 +400,12 @@ struct PlanTimelineRow: View {
                     WeekFitLocalizedString("planner.timeline.source.appleWatch")
                 )
             )
-        } else if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
-            parts.append(sourceLabel)
+        }
+        if let foodSource = PlanTimelineMetadataBuilder.accessibilityFoodSource(
+            for: activity,
+            customMeals: customMeals
+        ) {
+            parts.append(foodSource)
         }
         return parts.joined(separator: ", ")
     }
@@ -363,32 +428,32 @@ struct PlanTimelineRow: View {
     private var metadataColor: Color {
         switch emphasis {
         case .next:
-            return .white.opacity(0.46)
+            return .white.opacity(0.74)
         case .active, .upcoming:
-            return .white.opacity(0.40)
+            return .white.opacity(0.72)
         case .past:
-            return .white.opacity(0.38)
+            return .white.opacity(0.68)
         case .skipped:
-            return .white.opacity(0.24)
+            return .white.opacity(0.42)
         }
     }
 
     private var cardFill: Color {
         if isLive {
-            return accent.opacity(0.08)
+            return accent.opacity(0.10)
         }
 
         switch emphasis {
         case .next:
-            return Color.white.opacity(0.042)
+            return accent.opacity(0.08)
         case .active:
-            return Color.white.opacity(0.034)
+            return accent.opacity(0.065)
         case .upcoming:
-            return Color.white.opacity(0.028)
+            return accent.opacity(0.048)
         case .past:
-            return Color.white.opacity(0.024)
+            return Color(red: 0.036, green: 0.040, blue: 0.046)
         case .skipped:
-            return Color.white.opacity(0.014)
+            return Color(red: 0.030, green: 0.033, blue: 0.038)
         }
     }
 
@@ -399,15 +464,15 @@ struct PlanTimelineRow: View {
 
         switch emphasis {
         case .next:
-            return accent.opacity(0.22)
+            return accent.opacity(0.24)
         case .active:
             return isPending
-                ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.20)
-                : accent.opacity(0.16)
+                ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.22)
+                : accent.opacity(0.18)
         case .upcoming:
-            return Color.white.opacity(0.07)
+            return accent.opacity(0.12)
         case .past:
-            return Color.white.opacity(0.058)
+            return Color.white.opacity(0.034)
         case .skipped:
             return Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.16)
         }
@@ -465,21 +530,24 @@ struct PlanTimelineRow: View {
 
     @ViewBuilder
     private var iconView: some View {
-        if let foodVisual = PlanTimelineNutritionVisualResolver.resolve(
+        if density == .compactHydration {
+            compactHydrationIcon
+        } else if let foodVisual = PlanTimelineNutritionVisualResolver.resolve(
             for: activity,
             customMeals: customMeals
         ) {
             PlanTimelineNutritionAvatar(
                 visual: foodVisual,
                 accent: accent,
-                backgroundOpacity: iconBackgroundOpacity,
-                foregroundOpacity: iconForegroundOpacity,
-                size: PlanTimelineLayout.avatarSize,
-                contentSize: PlanTimelineLayout.avatarContentSize
+                backgroundOpacity: foodIconBackgroundOpacity,
+                foregroundOpacity: foodIconForegroundOpacity,
+                size: PlanTimelineLayout.foodAvatarSize,
+                contentSize: PlanTimelineLayout.foodAvatarContentSize
             )
+            .opacity(0.88)
         } else {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(accent.opacity(iconBackgroundOpacity))
                     .frame(width: PlanTimelineLayout.avatarSize, height: PlanTimelineLayout.avatarSize)
 
@@ -490,20 +558,48 @@ struct PlanTimelineRow: View {
         }
     }
 
+    private var compactHydrationIcon: some View {
+        ZStack {
+            Circle()
+                .fill(accent.opacity(0.07))
+                .frame(
+                    width: PlanTimelineLayout.compactHydrationAvatarSize,
+                    height: PlanTimelineLayout.compactHydrationAvatarSize
+                )
+
+            Image(systemName: "drop.fill")
+                .font(
+                    .system(
+                        size: PlanTimelineLayout.compactHydrationIconSize,
+                        weight: .semibold
+                    )
+                )
+                .foregroundStyle(accent.opacity(0.62))
+        }
+    }
+
+    private var foodIconBackgroundOpacity: Double {
+        iconBackgroundOpacity * 0.82
+    }
+
+    private var foodIconForegroundOpacity: Double {
+        iconForegroundOpacity * 0.88
+    }
+
     private var iconBackgroundOpacity: Double {
         if isLive { return 0.20 }
 
         switch emphasis {
         case .next:
-            return 0.16
+            return 0.20
         case .active:
-            return 0.14
+            return 0.17
         case .upcoming:
-            return 0.11
+            return 0.14
         case .past:
-            return 0.09
+            return 0.11
         case .skipped:
-            return 0.05
+            return 0.06
         }
     }
 
@@ -782,7 +878,8 @@ private enum PlanTimelinePreviewFactory {
         status: PlanActivityStatus,
         emphasis: PlanTimelineVisualEmphasis,
         completed: Bool = false,
-        category: PlanTimelineCategory = .activity
+        category: PlanTimelineCategory = .activity,
+        metadata: PlanTimelineRowMetadata? = nil
     ) -> some View {
         PlanTimelineRow(
             activity: PlannedActivity(
@@ -797,7 +894,7 @@ private enum PlanTimelinePreviewFactory {
                 isCompleted: completed
             ),
             displayTitle: title,
-            metadata: PlanTimelineRowMetadata(
+            metadata: metadata ?? PlanTimelineRowMetadata(
                 primary: emphasis == .past ? "39 min" : nil,
                 sourceLabel: nil,
                 showsWatchIcon: false
@@ -829,7 +926,7 @@ private enum PlanTimelinePreviewFactory {
                 category: .nutrition
             )
             PlanTimelinePreviewFactory.row(
-                title: "Apple",
+                title: "Холодник с картошкой",
                 time: "14:41",
                 status: .logged,
                 emphasis: .past,
@@ -841,7 +938,12 @@ private enum PlanTimelinePreviewFactory {
                 time: "17:31",
                 status: .logged,
                 emphasis: .past,
-                completed: true
+                completed: true,
+                metadata: PlanTimelineRowMetadata(
+                    primary: "19 min",
+                    sourceLabel: nil,
+                    showsWatchIcon: true
+                )
             )
             PlanTimelineNowDivider()
             PlanTimelinePreviewFactory.row(

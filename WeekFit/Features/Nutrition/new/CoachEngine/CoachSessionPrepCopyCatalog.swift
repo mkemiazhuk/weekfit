@@ -69,6 +69,11 @@ enum CoachSessionPrepCopyCatalog {
 
     static func modality(for activity: PlannedActivity?) -> Modality {
         guard let activity else { return .general }
+        if CoachActivityClassification.isWalkLike(activity) ||
+            CoachActivityClassification.isHikeLike(activity) ||
+            CoachLightRecoveryStableDayPolicy.isLightRecoveryModality(activity) {
+            return .general
+        }
         let text = "\(activity.title) \(activity.type) \(activity.imageName)".lowercased()
 
         if text.contains("tennis") { return .tennis }
@@ -288,11 +293,11 @@ enum CoachSessionPrepCopyCatalog {
         strengthFamilyCopy(
             longSession: longSession,
             labelEN: "upper body session",
-            labelRU: "тренировка верха",
+            labelRU: "верх тела",
             longLabelEN: "long upper body session",
-            longLabelRU: "длинная тренировка верха",
+            longLabelRU: "длинная — верх тела",
             closeEN: "Upper body work is close — shoulders should feel awake, not worked.",
-            closeRU: "Тренировка верха скоро — плечи должны быть живыми, не разогретыми до максимума.",
+            closeRU: "Верх тела скоро — плечи должны быть живыми, не разогретыми до максимума.",
             mobilityEN: "Shoulders and upper back waking up",
             mobilityRU: "Разомни плечи и верх спины",
             under15EN: "First sets with room left in the tank",
@@ -304,11 +309,11 @@ enum CoachSessionPrepCopyCatalog {
         strengthFamilyCopy(
             longSession: longSession,
             labelEN: "lower body session",
-            labelRU: "тренировка низа",
+            labelRU: "низ тела",
             longLabelEN: "long lower body session",
-            longLabelRU: "длинная тренировка низа",
+            longLabelRU: "длинная — низ тела",
             closeEN: "Lower body work is close — hips should feel ready, not heavy.",
-            closeRU: "Тренировка низа скоро — бёдра должны быть живыми, не забитыми.",
+            closeRU: "Низ тела скоро — бёдра должны быть живыми, не забитыми.",
             mobilityEN: "Hips and ankles waking up",
             mobilityRU: "Разомни бёдра и голеностоп",
             under15EN: "First sets with control, not ambition",
@@ -320,11 +325,11 @@ enum CoachSessionPrepCopyCatalog {
         strengthFamilyCopy(
             longSession: longSession,
             labelEN: "full body session",
-            labelRU: "тренировка всего тела",
+            labelRU: "все тело",
             longLabelEN: "long full body session",
-            longLabelRU: "длинная тренировка всего тела",
+            longLabelRU: "длинная — все тело",
             closeEN: "Full body work is close — warm and ready, not wired.",
-            closeRU: "Тренировка всего тела скоро — разогретый, но не перевозбуждённый.",
+            closeRU: "Все тело скоро — разогретый, но не перевозбуждённый.",
             mobilityEN: "Full warm-up — the body notices when you skip",
             mobilityRU: "Полная разминка — если пропустить, потом чувствуется",
             under15EN: "Early sets well inside your limit",

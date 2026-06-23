@@ -2210,16 +2210,16 @@ final class InsightsViewModel: ObservableObject {
         let unlockCopy: String
         if quality.mealDays < 7 {
             let needed = max(1, 7 - quality.mealDays)
-            unlockCopy = "\(needed) more meal \(dayWord(needed)) needed to unlock nutrition trends."
+            unlockCopy = WeekFitCountPluralization.insightsUnlockMealDaysSubtitle(needed: needed)
         } else if quality.activityDays < 7 {
             let needed = max(1, 7 - quality.activityDays)
-            unlockCopy = "\(needed) more activity \(dayWord(needed)) needed to unlock load patterns."
+            unlockCopy = WeekFitCountPluralization.insightsUnlockActivityDaysSubtitle(needed: needed)
         } else if quality.recoveryDays < 7 {
             let needed = max(1, 7 - quality.recoveryDays)
-            unlockCopy = "\(needed) more recovery \(dayWord(needed)) needed to understand your recovery pattern."
+            unlockCopy = WeekFitCountPluralization.insightsUnlockRecoveryDaysSubtitle(needed: needed)
         } else if quality.sleepDays < 7 {
             let needed = max(1, 7 - quality.sleepDays)
-            unlockCopy = "\(needed) more \(needed == 1 ? "night" : "nights") needed to understand your sleep pattern."
+            unlockCopy = WeekFitCountPluralization.insightsUnlockSleepNightsSubtitle(needed: needed)
         } else if quality.hydrationDays < 7 {
             unlockCopy = "Core patterns are forming. More drink logs can add hydration context later."
         } else {
@@ -3913,7 +3913,7 @@ final class InsightsViewModel: ObservableObject {
                 accent: WeekFitTheme.meal,
                 label: "NUTRITION INSIGHT",
                 title: "Not enough nutrition data",
-                subtitle: "Log meals on \(needed) more \(dayWord(needed)) so food can be compared with recovery.",
+                subtitle: WeekFitCountPluralization.insightsLogMealsOnMoreDaysSubtitle(needed: needed),
                 takeaway: "Start with consistent meal logging.",
                 icon: "fork.knife",
                 domain: .nutrition,
@@ -3976,7 +3976,7 @@ final class InsightsViewModel: ObservableObject {
             return InsightsCorrelationCard(
                 label: "HYDRATION INSIGHT",
                 title: "Hydration insight unavailable",
-                subtitle: "Log drinks on \(needed) more \(dayWord(needed)) in the last 7 days to compare with recovery.",
+                subtitle: WeekFitCountPluralization.insightsLogDrinksOnMoreDaysSubtitle(needed: needed),
                 rows: rows
             )
         }
@@ -4056,7 +4056,10 @@ final class InsightsViewModel: ObservableObject {
             let needed = max(1, unlock.target - unlock.count)
             return InsightsReflection(
                 label: "WEEKLY REFLECTION",
-                text: "\(strongestDomainName(from: domainCounts).capitalized) is currently the clearest signal. \(needed) more \(unlock.name) \(needed == 1 ? "day" : "days") will make the next coaching pattern more reliable.",
+                text: WeekFitCountPluralization.insightsMoreDomainDaysReflection(
+                    needed: needed,
+                    domainName: unlock.name
+                ),
                 domain: unlock.domain
             )
         }
@@ -4297,7 +4300,7 @@ final class InsightsViewModel: ObservableObject {
     }
 
     private func dayWord(_ count: Int) -> String {
-        count == 1 ? "day" : "days"
+        WeekFitCountPluralization.noun(count: count, category: .day)
     }
 
     private func strongestDomainName(

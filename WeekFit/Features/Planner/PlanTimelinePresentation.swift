@@ -64,6 +64,7 @@ struct PlanTimelineRowMetadata: Equatable {
     let sourceLabel: String?
     let showsWatchIcon: Bool
 
+    /// At most two subtitle attributes render: `primary` plus either `sourceLabel` or the watch icon.
     var isEmpty: Bool {
         (primary?.isEmpty ?? true)
             && (sourceLabel?.isEmpty ?? true)
@@ -71,36 +72,62 @@ struct PlanTimelineRowMetadata: Equatable {
     }
 }
 
+enum PlanTimelineRowDensity: Equatable {
+    case standard
+    case compactHydration
+}
+
 enum PlanTimelineMetadataBuilder {
 
     static func metadata(
         for item: PlanTimelineItem,
-        customMeals: [Meals],
         status: PlanActivityStatus,
-        formattedDuration: (Int) -> String,
-        waterLogCountText: (Int) -> String
+        formattedDuration: (Int) -> String
     ) -> PlanTimelineRowMetadata {
         switch item {
         case .single(let activity):
             return metadata(
                 for: activity,
-                customMeals: customMeals,
                 status: status,
                 formattedDuration: formattedDuration
             )
 
         case .waterGroup(let activities):
+            return waterGroupMetadata(for: activities)
+        }
+    }
+
+    static func density(for item: PlanTimelineItem) -> PlanTimelineRowDensity {
+        switch item {
+        case .waterGroup:
+            return .compactHydration
+        case .single(let activity):
+            return isHydrationEntry(activity) ? .compactHydration : .standard
+        }
+    }
+
+    private static func waterGroupMetadata(for activities: [PlannedActivity]) -> PlanTimelineRowMetadata {
+        let totalML = activities.reduce(into: 0) { total, activity in
+            total += QuickLogActivityPortions.hydrationVolumeMilliliters(for: activity)
+        }
+
+        if totalML > 0 {
             return PlanTimelineRowMetadata(
-                primary: waterLogCountText(activities.count),
-                sourceLabel: WeekFitLocalizedString("planner.timeline.source.hydration"),
+                primary: formattedWaterVolume(milliliters: totalML),
+                sourceLabel: nil,
                 showsWatchIcon: false
             )
         }
+
+        return PlanTimelineRowMetadata(
+            primary: compactLogCount(activities.count),
+            sourceLabel: nil,
+            showsWatchIcon: false
+        )
     }
 
     private static func metadata(
         for activity: PlannedActivity,
-        customMeals: [Meals],
         status: PlanActivityStatus,
         formattedDuration: (Int) -> String
     ) -> PlanTimelineRowMetadata {
@@ -109,13 +136,10 @@ enum PlanTimelineMetadataBuilder {
             formattedDuration: formattedDuration
         )
         let watch = shouldShowWatchIcon(for: activity, status: status)
-        let source = sourceLabel(for: activity, customMeals: customMeals)
 
         return PlanTimelineRowMetadata(
             primary: primary,
-            sourceLabel: watch
-                ? WeekFitLocalizedString("planner.timeline.source.appleWatch")
-                : source,
+            sourceLabel: nil,
             showsWatchIcon: watch
         )
     }
@@ -137,49 +161,63 @@ enum PlanTimelineMetadataBuilder {
             )
         }
 
-        if isDrinkActivity(activity) {
+        if isHydrationEntry(activity) || isNonWaterDrink(activity) {
             return nil
         }
 
-        if activity.durationMinutes > 0 {
+        if activity.durationMinutes > 0,
+           !isLowValueDuration(activity) {
             return formattedDuration(activity.durationMinutes)
         }
 
         return nil
     }
 
-    private static func sourceLabel(
-        for activity: PlannedActivity,
-        customMeals: [Meals]
-    ) -> String? {
-        if PlanTimelineNutritionVisualResolver.isDrinkActivity(activity)
-            || activity.timelineEventKind == .drink {
-            if PlanTimelineNutritionVisualResolver.isWaterActivity(activity) {
-                return WeekFitLocalizedString("planner.timeline.source.hydration")
+    private static func isLowValueDuration(_ activity: PlannedActivity) -> Bool {
+        let type = activity.type.lowercased()
+        guard type == "habit" || type == "drink" else { return false }
+
+        return activity.durationMinutes <= 5
+    }
+
+    private static func compactLogCount(_ count: Int) -> String {
+        String(format: WeekFitLocalizedString("planner.timeline.hydration.logCountFormat"), count)
+    }
+
+    private static func formattedWaterVolume(milliliters: Int) -> String {
+        if milliliters >= 1000 {
+            if milliliters == 1000 {
+                return WeekFitLocalizedString("quickLog.quantity.water.oneLiter")
             }
-            return WeekFitLocalizedString("planner.timeline.source.drink")
+
+            let liters = Double(milliliters) / 1000.0
+            let formatted = liters.truncatingRemainder(dividingBy: 1) == 0
+                ? String(Int(liters))
+                : String(format: "%.1f", liters)
+            return String(format: WeekFitLocalizedString("common.unit.decimalLiter"), formatted)
         }
 
-        guard activity.type.lowercased() == "meal"
-            || activity.timelineEventKind == .food else {
-            return nil
-        }
+        return String(format: WeekFitLocalizedString("common.unit.millilitersFormat"), milliliters)
+    }
 
-        if let meal = matchingCustomMeal(for: activity, in: customMeals) {
-            if meal.creationMode == .ingredients {
-                return WeekFitLocalizedString("planner.timeline.source.recipe")
-            }
-            if meal.isFoodProduct || meal.creationMode == .manual {
-                return WeekFitLocalizedString("meals.customFood")
-            }
-            return WeekFitLocalizedString("planner.timeline.source.meal")
-        }
+    private static func isHydrationEntry(_ activity: PlannedActivity) -> Bool {
+        PlanTimelineNutritionVisualResolver.isWaterActivity(activity)
+            || isWaterActivity(activity)
+    }
 
-        if PlanTimelineFoodVisualResolver.isCustomFoodSource(activity, customMeals: customMeals) {
-            return WeekFitLocalizedString("meals.customFood")
-        }
+    private static func isNonWaterDrink(_ activity: PlannedActivity) -> Bool {
+        PlanTimelineNutritionVisualResolver.isDrinkActivity(activity)
+            && !PlanTimelineNutritionVisualResolver.isWaterActivity(activity)
+    }
 
-        return WeekFitLocalizedString("planner.timeline.source.meal")
+    private static func isWaterActivity(_ activity: PlannedActivity) -> Bool {
+        let type = activity.type.lowercased()
+        let title = activity.title.lowercased()
+
+        return type.contains("water")
+            || type.contains("hydration")
+            || title.contains("water")
+            || title.contains("hydration")
     }
 
     private static func shouldShowWatchIcon(
@@ -206,15 +244,30 @@ enum PlanTimelineMetadataBuilder {
         }
     }
 
-    private static func isDrinkActivity(_ activity: PlannedActivity) -> Bool {
-        let type = activity.type.lowercased()
-        let title = activity.title.lowercased()
+    static func accessibilityFoodSource(
+        for activity: PlannedActivity,
+        customMeals: [Meals]
+    ) -> String? {
+        guard activity.type.lowercased() == "meal"
+            || activity.timelineEventKind == .food else {
+            return nil
+        }
 
-        return type.contains("water")
-            || type.contains("drink")
-            || title.contains("water")
-            || title.contains("hydration")
-            || title.contains("drink")
+        if let meal = matchingCustomMeal(for: activity, in: customMeals) {
+            if meal.creationMode == .ingredients {
+                return WeekFitLocalizedString("planner.timeline.source.recipe")
+            }
+            if meal.isFoodProduct || meal.creationMode == .manual {
+                return WeekFitLocalizedString("meals.customFood")
+            }
+            return nil
+        }
+
+        if PlanTimelineFoodVisualResolver.isCustomFoodSource(activity, customMeals: customMeals) {
+            return WeekFitLocalizedString("meals.customFood")
+        }
+
+        return nil
     }
 }
 
@@ -256,6 +309,72 @@ enum PlanTimelineItem: Identifiable {
         case .waterGroup(let activities):
             return activities.count
         }
+    }
+}
+
+enum PlanTimelineItemGrouper {
+
+    static func makeItems(from activities: [PlannedActivity]) -> [PlanTimelineItem] {
+        let sorted = activities.sorted { $0.date < $1.date }
+
+        var result: [PlanTimelineItem] = []
+        var waterBuffer: [PlannedActivity] = []
+
+        func flushWater() {
+            guard !waterBuffer.isEmpty else { return }
+
+            if waterBuffer.count == 1 {
+                result.append(.single(waterBuffer[0]))
+            } else {
+                result.append(.waterGroup(waterBuffer))
+            }
+
+            waterBuffer.removeAll()
+        }
+
+        for activity in sorted {
+            if isWater(activity) {
+                if let last = waterBuffer.last,
+                   !sameMinute(last.date, activity.date) {
+                    flushWater()
+                }
+                waterBuffer.append(activity)
+            } else {
+                flushWater()
+                result.append(.single(activity))
+            }
+        }
+
+        flushWater()
+        return result
+    }
+
+    static func showsTimeLabel<Item>(
+        at index: Int,
+        in items: [Item],
+        timeText: (Item) -> String
+    ) -> Bool {
+        guard index > 0 else { return true }
+        return timeText(items[index]) != timeText(items[index - 1])
+    }
+
+    private static func sameMinute(_ lhs: Date, _ rhs: Date) -> Bool {
+        Calendar.current.isDate(lhs, equalTo: rhs, toGranularity: .minute)
+    }
+
+    private static func isWater(_ activity: PlannedActivity) -> Bool {
+        PlanTimelineNutritionVisualResolver.isWaterActivity(activity)
+            || isLegacyWaterActivity(activity)
+    }
+
+    private static func isLegacyWaterActivity(_ activity: PlannedActivity) -> Bool {
+        let title = activity.title.lowercased()
+        let type = activity.type.lowercased()
+
+        return title.contains("water")
+            || title.contains("hydration")
+            || type.contains("water")
+            || type.contains("hydration")
     }
 }
 

@@ -41,8 +41,10 @@ enum DailyStateSnapshotBuilder {
         now: Date = Date(),
         source: String
     ) -> DailyStateSnapshot {
+        nutritionViewModel.prepareForDay(selectedDate)
         let resolvedDayActivities = dayActivities ?? activities(on: selectedDate, from: allPlannedActivities)
         let preservedMetrics = preservedNutritionMetrics(
+            selectedDate: selectedDate,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel
         )
@@ -109,9 +111,29 @@ enum DailyStateSnapshotBuilder {
     }
 
     private static func preservedNutritionMetrics(
+        selectedDate: Date,
         healthManager: HealthManager,
         nutritionViewModel: NutritionViewModel
     ) -> DailyNutritionMetrics {
+        let selectedDayStart = Calendar.current.startOfDay(for: selectedDate)
+        let canUseViewModel = nutritionViewModel.trackedNutritionDayStart.map {
+            Calendar.current.isDate($0, inSameDayAs: selectedDayStart)
+        } == true
+
+        guard canUseViewModel else {
+            return DailyNutritionMetrics(
+                protein: healthManager.protein,
+                carbs: healthManager.carbs,
+                fats: healthManager.fats,
+                fiber: healthManager.fiber,
+                calories: healthManager.calories,
+                waterLiters: healthManager.waterLiters,
+                activeCalories: healthManager.activeCalories,
+                sleepHours: healthManager.sleepHours,
+                weightKg: healthManager.weight
+            )
+        }
+
         let current = nutritionViewModel.currentMetrics
         let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
 

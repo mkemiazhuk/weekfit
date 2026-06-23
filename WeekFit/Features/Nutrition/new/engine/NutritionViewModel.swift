@@ -20,6 +20,9 @@ final class NutritionViewModel: ObservableObject {
     
     @Published var manualWaterLiters: Double = 0
 
+    /// Calendar day the in-memory nutrition totals belong to.
+    private(set) var trackedNutritionDayStart: Date?
+
     // Локальный кэш активностей для предотвращения сброса данных при трекинге воды
     private var cachedPlannedActivities: [PlannedActivity] = []
     private var lastNutritionStateSignature = ""
@@ -43,6 +46,23 @@ final class NutritionViewModel: ObservableObject {
         manualWaterLiters = 0
         cachedPlannedActivities = []
         lastNutritionStateSignature = ""
+        trackedNutritionDayStart = nil
+    }
+
+    /// Clears day-scoped nutrition totals when the selected calendar day changes.
+    func prepareForDay(_ date: Date) {
+        let dayStart = Calendar.current.startOfDay(for: date)
+        guard trackedNutritionDayStart != dayStart else { return }
+
+        trackedNutritionDayStart = dayStart
+        manualWaterLiters = 0
+        lastNutritionStateSignature = ""
+        cachedPlannedActivities = []
+        currentMetrics = nil
+        nutritionResult = nil
+        coachMetricsSnapshot = nil
+        coachGuidanceSnapshot = nil
+        coachStateRefreshID = UUID()
     }
 
     /// Safe UI calculation output mapping directly to HomeView Daily Status circles
@@ -66,6 +86,7 @@ final class NutritionViewModel: ObservableObject {
         profile: UserNutritionProfile,
         plannedActivities: [PlannedActivity] = [],
         recoveryContext: CoachRecoveryContext? = nil,
+        referenceDate: Date = Date(),
         debugSource: String = "unspecified"
     ) {
         #if DEBUG
@@ -77,10 +98,10 @@ final class NutritionViewModel: ObservableObject {
         self.cachedPlannedActivities = plannedActivities
         var updatedMetrics = metrics
         
-        // MARK: 🌙 НОЧНОЙ ФИЛЬТР ЦИРКАДНОГО РИТМА (с 00:00 до 05:00)
-        let currentHour = Calendar.current.component(.hour, from: Date())
-        let isEarlyMorning = currentHour >= 0 && currentHour < 5
-        
+        let dayStart = Calendar.current.startOfDay(for: referenceDate)
+        let isReferenceToday = Calendar.current.isDateInToday(referenceDate)
+        let currentHour = Calendar.current.component(.hour, from: referenceDate)
+        let isEarlyMorning = isReferenceToday && currentHour >= 0 && currentHour < 5
         let hasLoggedMeals = plannedActivities.contains { $0.type.lowercased() == "meal" && $0.isCompleted }
         
         let completedMeals = CoachCanonicalDayState.completedMeals(from: plannedActivities)
@@ -98,13 +119,12 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.fiber = max(updatedMetrics.fiber, mealFiber)
         }
         
-        if isEarlyMorning && !hasLoggedMeals {
+        if isEarlyMorning && !hasLoggedMeals && completedMeals.isEmpty {
             updatedMetrics.calories = 0.0
             updatedMetrics.protein = 0.0
             updatedMetrics.carbs = 0.0
             updatedMetrics.fats = 0.0
             updatedMetrics.waterLiters = 0.0
-//            print("🌙 [Circadian Shield] Deep night block activated. Enforcing pristine zeros for the new calendar day.")
         } else {
             let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
             updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
@@ -150,6 +170,7 @@ final class NutritionViewModel: ObservableObject {
         self.currentProfile = profile
         self.nutritionResult = nextSnapshot.result
         self.coachMetricsSnapshot = nextSnapshot
+        trackedNutritionDayStart = dayStart
         let oldRefreshID = coachStateRefreshID
         let newRefreshID = nextSnapshot.id
         #if DEBUG

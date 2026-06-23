@@ -115,4 +115,38 @@ struct QuickItem: Codable, Identifiable, Equatable {
         case gramsPerServing
         case mlPerServing
     }
+
+    var localizedTitle: String {
+        Self.localizedTitle(forStoredTitle: title)
+    }
+
+    static func localizedTitle(forStoredTitle storedTitle: String) -> String {
+        let trimmed = storedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return storedTitle }
+
+        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else {
+            return trimmed
+        }
+
+        return russianTitlesByStoredTitle[trimmed.lowercased()] ?? trimmed
+    }
+
+    private static let russianTitlesByStoredTitle: [String: String] = [
+        "water": "Вода",
+        "coffee": "Кофе",
+        "tea": "Чай",
+        "milk": "Молоко",
+        "orange juice": "Апельсиновый сок",
+        "protein shake": "Протеиновый коктейль",
+        "tomato juice": "Томатный сок",
+        "banana": "Банан",
+        "apple": "Яблоко",
+        "orange": "Апельсин",
+        "greek yogurt": "Греческий йогурт",
+        "protein bar": "Протеиновый батончик",
+        "mixed nuts": "Смесь орехов",
+        "dark chocolate": "Тёмный шоколад",
+        "rice cakes": "Рисовые хлебцы",
+        "toast": "Тост"
+    ]
 }

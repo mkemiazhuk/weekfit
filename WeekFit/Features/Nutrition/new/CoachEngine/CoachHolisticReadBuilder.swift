@@ -70,10 +70,15 @@ enum CoachHolisticReadBuilder {
         var clauses: [Copy] = []
         switch context.owner {
         case .postActivityRecovery, .recovery:
-            appendIfPresent(&clauses, todayPlanClause(context))
-            appendIfPresent(&clauses, dayLoadClause(context))
-            if context.tomorrowRecoveryPlanSummary != nil {
+            if context.tomorrowRecoveryPlanSummary != nil, !context.shouldProtectTomorrow {
                 appendIfPresent(&clauses, forwardClause(context))
+                appendIfPresent(&clauses, dayLoadClause(context))
+            } else {
+                appendIfPresent(&clauses, todayPlanClause(context))
+                appendIfPresent(&clauses, dayLoadClause(context))
+                if context.tomorrowRecoveryPlanSummary != nil {
+                    appendIfPresent(&clauses, forwardClause(context))
+                }
             }
             appendIfPresent(&clauses, stateClause(context))
             appendIfPresent(&clauses, timePhaseClause(context))
@@ -136,6 +141,9 @@ enum CoachHolisticReadBuilder {
            !context.hasUpcomingSessionToday,
            !context.completedSeriousTrainingToday {
             if context.sleepLimited {
+                if context.recoveryPercent >= 60 && context.recoveryPercent < 75 {
+                    return calmOverviewRecoveryInterpretation(context)
+                }
                 return Copy(
                     "Last night was shorter than ideal.",
                     "Прошлой ночью вы недоспали."
@@ -143,8 +151,8 @@ enum CoachHolisticReadBuilder {
             }
             if isLateEveningPhase(context.timePhase), context.recoveryPercent >= 75 {
                 return Copy(
-                    "Recovery looked solid today. The main job now is to protect tomorrow.",
-                    "Сегодня восстановление выглядело хорошим. Главное сейчас — беречь завтра."
+                    "Recovery looked good today — leave something for tomorrow.",
+                    "Сегодня восстановление выглядело нормально — завтра понадобятся силы."
                 )
             }
             return calmOverviewRecoveryInterpretation(context)
@@ -170,8 +178,8 @@ enum CoachHolisticReadBuilder {
         }
         if context.fuelLimited && (context.isPreSession || context.isDuringSession) {
             return Copy(
-                "Energy for the session is not fully in place yet.",
-                "Запас энергии к сессии пока не собран."
+                "Eat something light before the session.",
+                "Перед тренировкой лучше поесть."
             )
         }
         if context.fuelLimited && context.isCalmOverviewDay {
@@ -250,8 +258,8 @@ enum CoachHolisticReadBuilder {
         if context.completedSeriousTrainingToday {
             if context.caloriesBurned >= 700 {
                 return Copy(
-                    "Today already has serious training in the legs.",
-                    "Сегодня уже серьёзная тренировка."
+                    "Today already put serious training into your legs.",
+                    "Ноги уже получили достаточно работы сегодня."
                 )
             }
             return Copy(
@@ -261,8 +269,8 @@ enum CoachHolisticReadBuilder {
         }
         if context.caloriesBurned >= 900 {
             return Copy(
-                "You've already spent a lot of energy today.",
-                "Сегодня уже ушло много энергии."
+                "Today already had more load than usual.",
+                "Сегодня нагрузка уже выше обычной."
             )
         }
         if context.isDuringSession && context.caloriesBurned >= 400 {

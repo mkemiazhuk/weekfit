@@ -193,10 +193,10 @@ final class QuickLogSessionStoreTests: XCTestCase {
         store.onSheetDismissRequest = { dismissedItemID = $0 }
 
         _ = store.quickAdd(profile: profile)
-        try? await Task.sleep(for: .milliseconds(1200))
+        try? await Task.sleep(for: .milliseconds(1100))
         XCTAssertNil(dismissedItemID)
 
-        try? await Task.sleep(for: .milliseconds(1200))
+        try? await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(dismissedItemID, profile.id)
     }
 
@@ -212,10 +212,10 @@ final class QuickLogSessionStoreTests: XCTestCase {
 
         store.increment(profile: profile)
         store.increment(profile: profile)
-        try? await Task.sleep(for: .milliseconds(1500))
+        try? await Task.sleep(for: .milliseconds(1100))
         XCTAssertNil(dismissedItemID)
 
-        try? await Task.sleep(for: .milliseconds(900))
+        try? await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(dismissedItemID, profile.id)
         XCTAssertEqual(store.selection(for: profile.id).portions, 3)
     }

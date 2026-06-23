@@ -2,6 +2,16 @@ import SwiftUI
 import UIKit
 import SwiftData
 
+private struct AddSheetTimeSlotState: Identifiable {
+    var id: Date { slot }
+
+    let slot: Date
+    let isPast: Bool
+    let isOccupied: Bool
+    let isActive: Bool
+    let isRecommended: Bool
+}
+
 struct PlanAddActivitySheet: View {
 
     @ObservedObject var viewModel: PlanViewModel
@@ -16,15 +26,19 @@ struct PlanAddActivitySheet: View {
     private var customMealsStorage: String = ""
     
     @State private var showDeleteConfirmation = false
+    @State private var showMealLibrarySheet = false
+    @State private var showMealBuilder = false
 
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let borderSoft = WeekFitTheme.borderSoft
 
+    private let addSheetCarouselInset: CGFloat = 10
     private let addSheetHorizontalInset: CGFloat = 8
+    private let busySlotColor = Color(red: 0.93, green: 0.62, blue: 0.22)
     private let addSheetCornerRadius: CGFloat = 34
     private let addSheetMealCardWidth: CGFloat = 118
-    private let addSheetMealCardHeight: CGFloat = 96
+    private let addSheetMealCardHeight: CGFloat = 104
     private let addSheetMealImageWidth: CGFloat = 104
     private let addSheetMealImageHeight: CGFloat = 48
 
@@ -37,26 +51,9 @@ struct PlanAddActivitySheet: View {
     private var calendar: Calendar { viewModel.calendar }
     private var availableMeals: [Meals] { viewModel.availableMeals }
     private var currentOptions: [PlannerOption] { viewModel.currentOptions }
-    private var selectedDayTitle: String { viewModel.selectedDayTitle }
 
     
 
-    func nextHourSlot() -> Date? {
-        let base = viewModel.selectedSlot ?? Date()
-        let target = calendar.date(byAdding: .hour, value: 1, to: base) ?? base
-
-        return timeSlots.first { slot in
-            slot >= target &&
-            !viewModel.hasTimeConflict(
-                newStart: slot,
-                durationMinutes: viewModel.selectedDuration,
-                activities: plannedActivities,
-                excluding: viewModel.editingActivity,
-                newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
-            )
-        }
-    }
-    
     private var timeSlots: [Date] {
         let startOfDay = calendar.startOfDay(for: viewModel.selectedDate)
 
@@ -74,26 +71,27 @@ struct PlanAddActivitySheet: View {
         return allSlots.filter { $0 >= Date() }
     }
 
-    private var addSheetHeight: CGFloat {
-        switch viewModel.selectedType {
-        case .meal:
-            return viewModel.editingActivity == nil ? 500 : 520
-
-        case .workout:
-            return viewModel.editingActivity == nil ? 560 : 580
-
-        case .recovery:
-            return viewModel.editingActivity == nil ? 560 : 580
-
-        case .habit:
-            return viewModel.editingActivity == nil ? 470 : 490
-        }
+    private var addSheetMaxHeight: CGFloat {
+        min(UIScreen.main.bounds.height * 0.78, 620)
     }
     
     var body: some View {
         let _ = languageManager.selectedLanguage
 
         addActivitySheet
+            .sheet(isPresented: $showMealLibrarySheet) {
+                mealLibrarySheet
+                    .weekFitSheetChrome(cornerRadius: 30)
+            }
+            .sheet(isPresented: $showMealBuilder) {
+                MealBuilderView { newMeal in
+                    saveMealToLibrary(newMeal)
+                    showMealBuilder = false
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+                .weekFitSheetChrome(cornerRadius: 36)
+            }
             .sheet(isPresented: $viewModel.showCustomDuration) {
                 customDurationSheet
                     .weekFitSheetChrome(cornerRadius: 30)
@@ -117,6 +115,7 @@ struct PlanAddActivitySheet: View {
             }
 
             .onAppear {
+                lightHaptic.prepare()
                 viewModel.loadCustomMeals(from: customMealsStorage)
 
                 if viewModel.editingActivity == nil {
@@ -138,26 +137,29 @@ struct PlanAddActivitySheet: View {
 private extension PlanAddActivitySheet {
 
     var addActivitySheet: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             addSheetGrabber
 
             sheetHeader
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
 
-            activityTypePickerSection
-            itemPickerSection
-            timePickerSection
-            durationPickerSection
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 6) {
+                    activityTypePickerSection
+                    itemPickerSection
+                    timePickerSection
+                    durationPickerSection
+                }
+                .padding(.bottom, 4)
+            }
 
             saveButton
-                .padding(.top, hasSelectedTimeConflict ? 6 : 2)
-
+                .padding(.top, 6)
         }
         .padding(.horizontal, WeekFitStyle.Size.horizontalPadding)
         .padding(.top, 7)
-        .padding(.bottom, viewModel.editingActivity == nil ? 11 : 10)
-        .frame(height: addSheetHeight, alignment: .top)
-        .clipped()
+        .padding(.bottom, viewModel.editingActivity == nil ? 9 : 8)
+        .frame(maxHeight: addSheetMaxHeight, alignment: .top)
         .background { addSheetBackground }
         .overlay { addSheetBorder }
         .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: -5)
@@ -176,17 +178,34 @@ private extension PlanAddActivitySheet {
 
     var sheetHeader: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addTitle") : WeekFitLocalizedString("planner.sheet.editTitle"))
                     .font(.system(size: 21.5, weight: .semibold))
                     .foregroundStyle(textPrimary.opacity(0.96))
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
 
-                Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addSubtitle") : WeekFitLocalizedString("planner.sheet.editSubtitle"))
-                    .font(.system(size: 13.2, weight: .medium))
-                    .foregroundStyle(textSecondary.opacity(0.66))
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(viewModel.selectedType.color.opacity(0.88))
+
+                    Text(addSheetDayChipTitle)
+                        .font(.system(size: 13.8, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textPrimary.opacity(0.92))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(viewModel.selectedType.color.opacity(0.08))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(viewModel.selectedType.color.opacity(0.18), lineWidth: 1)
+                }
             }
 
             Spacer()
@@ -265,7 +284,12 @@ private extension PlanAddActivitySheet {
                     ? WeekFitLocalizedString("planner.sheet.chooseMeal")
                     : WeekFitLocalizedString("planner.sheet.chooseActivity"),
                 subtitle: chooseItemSubtitle,
-                trailing: viewModel.selectedType == .meal ? WeekFitLocalizedString("planner.sheet.viewAll") : nil
+                trailing: viewModel.selectedType == .meal && !availableMeals.isEmpty
+                    ? WeekFitLocalizedString("planner.sheet.viewAll")
+                    : nil,
+                trailingAction: viewModel.selectedType == .meal && !availableMeals.isEmpty
+                    ? { showMealLibrarySheet = true }
+                    : nil
             )
             .padding(.top, 1)
 
@@ -295,10 +319,9 @@ private extension PlanAddActivitySheet {
                         }
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, addSheetCarouselInset)
                 .padding(.vertical, 2)
             }
-//            .mask { horizontalFadeMask }
             .onAppear { scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedItem.title) { _, _ in scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedType) { _, _ in scrollToSelectedOption(proxy) }
@@ -306,22 +329,38 @@ private extension PlanAddActivitySheet {
     }
 
     var emptyMealPickerState: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "fork.knife.circle")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString("planner.emptyMeal.title"))
-                    .font(.system(size: 12.6, weight: .semibold))
-                    .foregroundStyle(textPrimary.opacity(0.86))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WeekFitLocalizedString("planner.emptyMeal.title"))
+                        .font(.system(size: 12.6, weight: .semibold))
+                        .foregroundStyle(textPrimary.opacity(0.86))
 
-                Text(WeekFitLocalizedString("planner.emptyMeal.message"))
-                    .font(.system(size: 10.8, weight: .medium))
-                    .foregroundStyle(textSecondary.opacity(0.62))
+                    Text(WeekFitLocalizedString("planner.emptyMeal.message"))
+                        .font(.system(size: 10.8, weight: .medium))
+                        .foregroundStyle(textSecondary.opacity(0.62))
+                }
             }
+
+            Button {
+                lightHaptic.impactOccurred()
+                showMealBuilder = true
+            } label: {
+                Text(WeekFitLocalizedString("meals.createFoodOrMeal"))
+                    .font(.system(size: 12.4, weight: .semibold))
+                    .foregroundStyle(Color.black.opacity(0.84))
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                    .background(viewModel.selectedType.color.opacity(0.92))
+                    .clipShape(Capsule(style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
-        .frame(width: addSheetMealCardWidth * 1.7, height: addSheetMealCardHeight, alignment: .leading)
+        .frame(width: addSheetMealCardWidth * 1.9, height: addSheetMealCardHeight, alignment: .leading)
         .padding(.horizontal, 12)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -336,22 +375,16 @@ private extension PlanAddActivitySheet {
     var timePickerSection: some View {
         ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .lastTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(AppText.Planner.whenTitle)
-                            .font(.system(size: 15.6, weight: .semibold))
-                            .foregroundStyle(textPrimary.opacity(0.93))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AppText.Planner.whenTitle)
+                        .font(.system(size: 15.6, weight: .semibold))
+                        .foregroundStyle(textPrimary.opacity(0.93))
 
-                        Text(timeSectionSubtitle)
-                            .font(.system(size: 12.2, weight: .regular))
-                            .foregroundStyle(textSecondary.opacity(0.66))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                    }
-
-                    Spacer()
-
-                    bestSlotButton(proxy)
+                    Text(timeSectionSubtitle)
+                        .font(.system(size: 12.2, weight: .regular))
+                        .foregroundStyle(textSecondary.opacity(0.66))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
                 }
                 .padding(.top, 2)
 
@@ -375,7 +408,7 @@ private extension PlanAddActivitySheet {
                         durationButton(60)
                         customDurationButton
                     }
-                    .padding(.horizontal, 2)
+                    .padding(.horizontal, addSheetCarouselInset)
                     .padding(.vertical, 2)
                 }
                 .mask { durationFadeMask }
@@ -391,7 +424,8 @@ private extension PlanAddActivitySheet {
     func sheetSectionHeader(
         _ title: String,
         subtitle: String? = nil,
-        trailing: String? = nil
+        trailing: String? = nil,
+        trailingAction: (() -> Void)? = nil
     ) -> some View {
         HStack(alignment: .lastTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
@@ -410,9 +444,10 @@ private extension PlanAddActivitySheet {
 
             Spacer()
 
-            if let trailing {
+            if let trailing, let trailingAction {
                 Button {
                     lightHaptic.impactOccurred()
+                    trailingAction()
                 } label: {
                     Text(trailing)
                         .font(.system(size: 12.2, weight: .semibold))
@@ -425,41 +460,50 @@ private extension PlanAddActivitySheet {
 
     func typeButton(_ type: PlannerType) -> some View {
         let active = viewModel.selectedType == type
-        let activeFillOpacity: Double = type == .workout ? 0.30 : 0.38
+        let activeFillOpacity: Double = switch type {
+        case .workout: 0.30
+        case .habit: 0.46
+        case .recovery: 0.38
+        case .meal: 0.38
+        }
 
         return Button {
+            guard viewModel.selectedType != type else { return }
+
             lightHaptic.impactOccurred()
+            viewModel.selectedType = type
 
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                viewModel.selectedType = type
-
-                if type == .meal {
-                    viewModel.syncDefaultSelectedMeal()
-                } else {
-                    viewModel.selectedMealID = nil
-                    viewModel.selectedItem = type.options[0]
-                }
+            if type == .meal {
+                viewModel.syncDefaultSelectedMeal()
+            } else {
+                viewModel.selectedMealID = nil
+                viewModel.selectedItem = type.options[0]
+                viewModel.applyDefaultDurationForSelectedItem()
             }
         } label: {
-            HStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Image(systemName: type.icon)
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
 
                 Text(localizedTitle(for: type))
-                    .font(.system(size: 10.8, weight: .medium, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .font(.system(size: 9.8, weight: .medium, design: .rounded))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.72)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(active ? saveButtonForeground : textPrimary.opacity(0.58))
+            .foregroundStyle(active ? typeButtonActiveForeground(for: type) : textPrimary.opacity(0.58))
             .frame(maxWidth: .infinity)
-            .frame(height: 31)
+            .frame(minHeight: 38)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 5)
             .background {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
                     .fill(active ? type.color.opacity(activeFillOpacity) : Color.white.opacity(0.026))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(active ? Color.white.opacity(0.070) : Color.white.opacity(0.035), lineWidth: 1)
+                    .stroke(active ? Color.white.opacity(type == .habit ? 0.10 : 0.070) : Color.white.opacity(0.035), lineWidth: 1)
             }
             .shadow(
                 color: active ? type.color.opacity(type == .workout ? 0.014 : 0.022) : Color.black.opacity(0.032),
@@ -572,12 +616,12 @@ private extension PlanAddActivitySheet {
                             meal.fats
                         )
                     )
-                        .font(.system(size: 11.0, weight: .medium))
+                        .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.50))
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.78)
                 }
-                .frame(height: 34, alignment: .topLeading)
+                .frame(minHeight: 34, alignment: .topLeading)
 
                 Spacer(minLength: 0)
             }
@@ -607,39 +651,89 @@ private extension PlanAddActivitySheet {
 // MARK: - Time / Duration
 
 private extension PlanAddActivitySheet {
-    
-    func firstAvailableSlot() -> Date? {
-        timeSlots.first { slot in
-            !viewModel.hasTimeConflict(
+
+    func buildTimeSlotStates() -> [AddSheetTimeSlotState] {
+        let slots = timeSlots
+        let selectedSlot = viewModel.selectedSlot
+        let blocksTime = viewModel.selectedType.blocksPlannerTime
+        let duration = viewModel.selectedDuration
+        let excluding = viewModel.editingActivity
+
+        var recommendedSlot: Date?
+        var states: [AddSheetTimeSlotState] = []
+        states.reserveCapacity(slots.count)
+
+        for slot in slots {
+            let past = isPastSlot(slot)
+            let occupied = !past && viewModel.hasTimeConflict(
                 newStart: slot,
-                durationMinutes: viewModel.selectedDuration,
+                durationMinutes: duration,
                 activities: plannedActivities,
-                excluding: viewModel.editingActivity,
-                newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
+                excluding: excluding,
+                newEventBlocksPlannerTime: blocksTime
+            )
+
+            if recommendedSlot == nil, !past, !occupied {
+                recommendedSlot = slot
+            }
+
+            let active = selectedSlot.map {
+                calendar.isDate($0, equalTo: slot, toGranularity: .minute)
+            } ?? false
+
+            states.append(
+                AddSheetTimeSlotState(
+                    slot: slot,
+                    isPast: past,
+                    isOccupied: occupied,
+                    isActive: active,
+                    isRecommended: false
+                )
+            )
+        }
+
+        guard let recommendedSlot else { return states }
+
+        return states.map { state in
+            guard calendar.isDate(state.slot, equalTo: recommendedSlot, toGranularity: .minute) else {
+                return state
+            }
+
+            return AddSheetTimeSlotState(
+                slot: state.slot,
+                isPast: state.isPast,
+                isOccupied: state.isOccupied,
+                isActive: state.isActive,
+                isRecommended: true
             )
         }
     }
 
+    func firstAvailableSlot(from states: [AddSheetTimeSlotState]) -> Date? {
+        states.first { !$0.isPast && !$0.isOccupied }?.slot
+    }
+
+    func firstAvailableSlot() -> Date? {
+        firstAvailableSlot(from: buildTimeSlotStates())
+    }
+
     func ensureSelectedAvailableSlot(_ proxy: ScrollViewProxy) {
+        let slotStates = buildTimeSlotStates()
+
         DispatchQueue.main.async {
             let currentSlot = viewModel.selectedSlot
 
             let currentIsUsable: Bool = {
                 guard let currentSlot else { return false }
 
-                let isPast = isPastSlot(currentSlot)
-                let conflict = viewModel.hasTimeConflict(
-                    newStart: currentSlot,
-                    durationMinutes: viewModel.selectedDuration,
-                    activities: plannedActivities,
-                    excluding: viewModel.editingActivity,
-                    newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
-                )
-
-                return !isPast && !conflict
+                return slotStates.contains { state in
+                    calendar.isDate(state.slot, equalTo: currentSlot, toGranularity: .minute)
+                        && !state.isPast
+                        && !state.isOccupied
+                }
             }()
 
-            let targetSlot = currentIsUsable ? currentSlot : firstAvailableSlot()
+            let targetSlot = currentIsUsable ? currentSlot : firstAvailableSlot(from: slotStates)
 
             guard let targetSlot else { return }
 
@@ -647,56 +741,23 @@ private extension PlanAddActivitySheet {
                 viewModel.selectedSlot = targetSlot
             }
 
-            withAnimation(.easeInOut(duration: 0.25)) {
-                proxy.scrollTo(timeSlotID(targetSlot), anchor: .center)
-            }
+            proxy.scrollTo(timeSlotID(targetSlot), anchor: .center)
         }
-    }
-
-    func bestSlotButton(_ proxy: ScrollViewProxy) -> some View {
-        Button {
-            lightHaptic.impactOccurred()
-
-            if let slot = nextHourSlot() {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                    viewModel.selectedSlot = slot
-                }
-
-                DispatchQueue.main.async {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        proxy.scrollTo(timeSlotID(slot), anchor: .center)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "clock.arrow.circlepath")
-                Text(AppText.Planner.addOneHour)
-            }
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(viewModel.selectedType.color.opacity(0.78))
-            .padding(.horizontal, 10)
-            .frame(height: 28)
-            .background(Color.white.opacity(0.032))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(viewModel.selectedType.color.opacity(0.10), lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
     }
 
     func timeSelectionSection(_ proxy: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        let slotStates = buildTimeSlotStates()
+        let showsBusyLegend = slotStates.contains { !$0.isPast && $0.isOccupied }
+
+        return VStack(alignment: .leading, spacing: 7) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 7) {
-                    ForEach(timeSlots, id: \.self) { slot in
-                        timeSlotButton(slot)
-                            .id(timeSlotID(slot))
+                    ForEach(slotStates) { state in
+                        timeSlotButton(state)
+                            .id(timeSlotID(state.slot))
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, addSheetCarouselInset)
                 .padding(.vertical, 2)
             }
             .onAppear {
@@ -712,6 +773,8 @@ private extension PlanAddActivitySheet {
                 ensureSelectedAvailableSlot(proxy)
             }
 
+            timeSlotLegendRow(showsBusyLegend: showsBusyLegend)
+
             HStack(spacing: 6) {
                 Circle()
                     .fill(hasSelectedTimeConflict ? Color.red.opacity(0.74) : viewModel.selectedType.color.opacity(0.70))
@@ -720,115 +783,185 @@ private extension PlanAddActivitySheet {
                 Text(selectedTimeStatusText)
                     .font(.system(size: 11.6, weight: .medium))
                     .foregroundStyle(hasSelectedTimeConflict ? Color.red.opacity(0.76) : textSecondary.opacity(0.58))
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.82)
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, addSheetCarouselInset)
         }
     }
 
-    func timeSlotButton(_ slot: Date) -> some View {
-        let active = viewModel.selectedSlot.map {
-            calendar.isDate($0, equalTo: slot, toGranularity: .minute)
-        } ?? false
+    @ViewBuilder
+    func timeSlotLegendRow(showsBusyLegend: Bool) -> some View {
+        let showsPastLegend = calendar.isDateInToday(viewModel.selectedDate)
 
-        let conflict = viewModel.hasTimeConflict(
-            newStart: slot,
-            durationMinutes: viewModel.selectedDuration,
-            activities: plannedActivities,
-            excluding: viewModel.editingActivity,
-            newEventBlocksPlannerTime: viewModel.selectedType.blocksPlannerTime
-        )
+        if showsPastLegend || showsBusyLegend {
+            HStack(spacing: 14) {
+                if showsPastLegend {
+                    timeLegendItem(
+                        color: textPrimary.opacity(0.22),
+                        label: WeekFitLocalizedString("planner.time.pastLegend")
+                    )
+                }
 
-        let isPast = isPastSlot(slot)
+                if showsBusyLegend {
+                    timeLegendItem(
+                        color: busySlotColor.opacity(0.78),
+                        label: WeekFitLocalizedString("planner.time.busyLegend")
+                    )
+                }
+            }
+            .padding(.horizontal, addSheetCarouselInset)
+        }
+    }
+
+    func timeLegendItem(color: Color, label: String) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(color)
+                .frame(width: 14, height: 8)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                }
+
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(textSecondary.opacity(0.52))
+        }
+    }
+
+    func timeSlotButton(_ state: AddSheetTimeSlotState) -> some View {
+        let slot = state.slot
+        let active = state.isActive
+        let occupied = state.isOccupied
+        let isPast = state.isPast
+        let recommended = state.isRecommended
 
         return Button {
             guard !isPast else { return }
 
             lightHaptic.impactOccurred()
-
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                viewModel.selectedSlot = slot
-            }
+            viewModel.selectedSlot = slot
         } label: {
-            Text(slotTitle(slot))
-                .font(.system(size: 12.8, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(
-                    isPast
-                    ? textPrimary.opacity(0.22)
-                    : timeSlotForeground(active: active, conflict: conflict)
-                )
-                .frame(width: 58, height: 30)
-                .background {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(
-                            isPast
-                            ? Color.white.opacity(0.014)
-                            : timeSlotBackground(active: active, conflict: conflict)
-                        )
+            VStack(spacing: 1) {
+                HStack(spacing: 3) {
+                    Text(slotTitle(slot))
+                        .font(.system(size: active ? 13.4 : 12.6, weight: active ? .bold : .semibold, design: .rounded))
+                        .monospacedDigit()
+
+                    if recommended && !active && !occupied && !isPast {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
+                    }
                 }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(
-                            isPast
-                            ? Color.white.opacity(0.018)
-                            : timeSlotBorder(active: active, conflict: conflict),
-                            lineWidth: 1
-                        )
+
+                if active && recommended && !occupied {
+                    Text(WeekFitLocalizedString("planner.time.recommended"))
+                        .font(.system(size: 8.6, weight: .semibold))
+                        .foregroundStyle(viewModel.selectedType.color.opacity(0.68))
+                        .lineLimit(1)
                 }
+            }
+            .foregroundStyle(
+                selectionChipForeground(active: active, occupied: occupied, isPast: isPast)
+            )
+            .padding(.horizontal, active ? 12 : 10)
+            .frame(minWidth: active ? 68 : 58)
+            .frame(height: active ? 38 : 32)
+            .background {
+                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
+                    .fill(
+                        selectionChipBackground(active: active, occupied: occupied, isPast: isPast)
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
+                    .stroke(
+                        selectionChipBorder(active: active, occupied: occupied, isPast: isPast),
+                        lineWidth: active ? 1.05 : 1
+                    )
+            }
+            .shadow(
+                color: active && !occupied ? viewModel.selectedType.color.opacity(0.10) : Color.black.opacity(0.018),
+                radius: active ? 8 : 3,
+                y: active ? 4 : 2
+            )
         }
         .buttonStyle(.plain)
-        .disabled(isPast)
-        .opacity(isPast ? 0.42 : 1.0)
+        .disabled(isPast || occupied)
+        .opacity(isPast ? 0.30 : 1.0)
     }
 
     func durationButton(_ minutes: Int) -> some View {
-        let active = viewModel.selectedDuration == minutes
-
-        return Button {
-            lightHaptic.impactOccurred()
-
+        durationChip(
+            title: String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes),
+            active: viewModel.selectedDuration == minutes
+        ) {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 viewModel.selectedDuration = minutes
                 viewModel.customDuration = minutes
             }
-        } label: {
-            Text(String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes))
-                .font(.system(size: 12.8, weight: .semibold))
-                .foregroundStyle(active ? viewModel.selectedType.color.opacity(0.72) : textPrimary.opacity(0.58))
-                .frame(width: 68, height: 32)
-                .background {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(active ? viewModel.selectedType.color.opacity(0.046) : Color.white.opacity(0.030))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(active ? viewModel.selectedType.color.opacity(0.16) : Color.white.opacity(0.030), lineWidth: 1)
-                }
         }
-        .buttonStyle(.plain)
     }
 
     var customDurationButton: some View {
-        Button {
-            lightHaptic.impactOccurred()
+        let presetDurations = [15, 30, 45, 60]
+        let isCustomActive = !presetDurations.contains(viewModel.selectedDuration)
+
+        return durationChip(
+            title: isCustomActive
+                ? String(format: WeekFitLocalizedString("common.duration.minutesFormat"), viewModel.selectedDuration)
+                : WeekFitLocalizedString("planner.duration.custom"),
+            active: isCustomActive,
+            showsIcon: !isCustomActive
+        ) {
             viewModel.customDuration = viewModel.selectedDuration
             viewModel.showCustomDuration = true
+        }
+    }
+
+    func durationChip(
+        title: String,
+        active: Bool,
+        showsIcon: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            lightHaptic.impactOccurred()
+            action()
         } label: {
             HStack(spacing: 5) {
-                Text(AppText.Planner.customTitle)
-                Image(systemName: "slider.horizontal.3")
+                Text(title)
+                    .font(.system(size: active ? 13.4 : 12.6, weight: active ? .bold : .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                if showsIcon {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 11, weight: .semibold))
+                }
             }
-            .font(.system(size: 12.6, weight: .semibold))
-            .foregroundStyle(textPrimary.opacity(0.56))
-            .frame(width: 88, height: 32)
-            .background(Color.white.opacity(0.034))
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .foregroundStyle(selectionChipForeground(active: active, occupied: false, isPast: false))
+            .padding(.horizontal, active ? 14 : 12)
+            .frame(minWidth: active ? 76 : 68)
+            .frame(height: active ? 38 : 32)
+            .background {
+                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
+                    .fill(selectionChipBackground(active: active, occupied: false, isPast: false))
+            }
             .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
+                    .stroke(
+                        selectionChipBorder(active: active, occupied: false, isPast: false),
+                        lineWidth: active ? 1.05 : 1
+                    )
             }
+            .shadow(
+                color: active ? viewModel.selectedType.color.opacity(0.10) : Color.black.opacity(0.018),
+                radius: active ? 8 : 3,
+                y: active ? 4 : 2
+            )
         }
         .buttonStyle(.plain)
     }
@@ -856,7 +989,7 @@ private extension PlanAddActivitySheet {
             }
             .foregroundStyle(saveButtonForeground)
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .frame(height: 40)
             .background(
                 LinearGradient(
                     colors: [
@@ -1270,25 +1403,48 @@ private extension PlanAddActivitySheet {
         )
     }
 
-    func timeSlotForeground(active: Bool, conflict: Bool) -> Color {
-        if active && conflict { return Color.red.opacity(0.84) }
-        if active { return viewModel.selectedType.color.opacity(0.72) }
-        if conflict { return Color.red.opacity(0.44) }
+    var addSheetDayChipTitle: String {
+        if calendar.isDateInToday(viewModel.selectedDate) {
+            return WeekFitLocalizedString("planner.sheet.todayLabel")
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, d MMMM")
+        return formatter.string(from: viewModel.selectedDate)
+    }
+
+    func typeButtonActiveForeground(for type: PlannerType) -> Color {
+        switch type {
+        case .workout, .recovery, .habit:
+            return Color.white.opacity(0.90)
+        case .meal:
+            return Color.black.opacity(0.82)
+        }
+    }
+
+    func selectionChipForeground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if isPast { return textPrimary.opacity(0.18) }
+        if active && occupied { return Color.red.opacity(0.84) }
+        if active { return textPrimary.opacity(0.96) }
+        if occupied { return busySlotColor.opacity(0.62) }
         return textPrimary.opacity(0.58)
     }
 
-    func timeSlotBackground(active: Bool, conflict: Bool) -> Color {
-        if active && conflict { return Color.red.opacity(0.075) }
-        if active { return viewModel.selectedType.color.opacity(0.046) }
-        if conflict { return Color.red.opacity(0.025) }
-        return Color.white.opacity(0.030)
+    func selectionChipBackground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if isPast { return Color.white.opacity(0.012) }
+        if active && occupied { return Color.red.opacity(0.075) }
+        if occupied { return busySlotColor.opacity(0.07) }
+        if active { return viewModel.selectedType.color.opacity(0.08) }
+        return Color.white.opacity(0.022)
     }
 
-    func timeSlotBorder(active: Bool, conflict: Bool) -> Color {
-        if active && conflict { return Color.red.opacity(0.22) }
-        if active { return viewModel.selectedType.color.opacity(0.16) }
-        if conflict { return Color.red.opacity(0.08) }
-        return Color.white.opacity(0.030)
+    func selectionChipBorder(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if isPast { return Color.white.opacity(0.04) }
+        if active && occupied { return Color.red.opacity(0.22) }
+        if occupied { return busySlotColor.opacity(0.20) }
+        if active { return viewModel.selectedType.color.opacity(0.22) }
+        return Color.white.opacity(0.05)
     }
 
     func selectedItemMatches(_ option: PlannerOption) -> Bool {
@@ -1306,14 +1462,106 @@ private extension PlanAddActivitySheet {
 
     func scrollToSelectedOption(_ proxy: ScrollViewProxy) {
         DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.22)) {
-                if viewModel.selectedType == .meal,
-                   let selectedMealID = viewModel.selectedMealID {
-                    proxy.scrollTo(selectedMealID, anchor: .center)
-                } else {
-                    proxy.scrollTo(optionScrollID(viewModel.selectedItem), anchor: .center)
+            if viewModel.selectedType == .meal,
+               let selectedMealID = viewModel.selectedMealID {
+                proxy.scrollTo(selectedMealID, anchor: .center)
+            } else {
+                proxy.scrollTo(optionScrollID(viewModel.selectedItem), anchor: .center)
+            }
+        }
+    }
+}
+
+// MARK: - Meal Library
+
+private extension PlanAddActivitySheet {
+
+    var mealLibrarySheet: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(availableMeals) { meal in
+                        Button {
+                            lightHaptic.impactOccurred()
+                            viewModel.selectedMealID = meal.id
+                            viewModel.selectedItem = viewModel.plannerOption(for: meal)
+                            showMealLibrarySheet = false
+                        } label: {
+                            mealLibraryRow(meal)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+            .navigationTitle(WeekFitLocalizedString("planner.sheet.chooseMeal"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(WeekFitLocalizedString("common.action.cancel")) {
+                        showMealLibrarySheet = false
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showMealLibrarySheet = false
+                        showMealBuilder = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(Text(WeekFitLocalizedString("meals.createFoodOrMeal")))
                 }
             }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    func mealLibraryRow(_ meal: Meals) -> some View {
+        HStack(spacing: 12) {
+            mealPreview(meal)
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(meal.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(textPrimary.opacity(0.92))
+                    .lineLimit(1)
+
+                Text(
+                    String(
+                        format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"),
+                        meal.calories,
+                        meal.protein,
+                        meal.carbs,
+                        meal.fats
+                    )
+                )
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(textSecondary.opacity(0.66))
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            if viewModel.selectedMealID == meal.id {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(viewModel.selectedType.color.opacity(0.82))
+            }
+        }
+        .padding(12)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.03))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
         }
     }
 }
@@ -1342,8 +1590,22 @@ private extension PlanAddActivitySheet {
     }
 
     var canSaveSelectedItem: Bool {
-        viewModel.selectedType != .meal ||
-        viewModel.selectedMealForPlanner != nil ||
-        viewModel.editingActivity != nil
+        guard viewModel.selectedSlot != nil else { return false }
+        guard !hasSelectedTimeConflict else { return false }
+
+        return viewModel.selectedType != .meal ||
+            viewModel.selectedMealForPlanner != nil ||
+            viewModel.editingActivity != nil
+    }
+
+    func saveMealToLibrary(_ meal: Meals) {
+        let updatedMeals = CustomMealStore.upsert(
+            meal,
+            into: CustomMealStore.load(from: customMealsStorage)
+        )
+        customMealsStorage = CustomMealStore.encode(updatedMeals)
+        viewModel.loadCustomMeals(from: customMealsStorage)
+        viewModel.selectedMealID = meal.id
+        viewModel.selectedItem = viewModel.plannerOption(for: meal)
     }
 }
