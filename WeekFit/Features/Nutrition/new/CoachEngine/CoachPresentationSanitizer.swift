@@ -187,7 +187,7 @@ enum CoachPresentationNarrativeContract {
         return kind == .endurance && minutes >= 60
     }
 
-    private static func focusActivity(
+    static func focusActivity(
         story: CoachFinalStory,
         input: CoachInputSnapshot
     ) -> PlannedActivity? {
