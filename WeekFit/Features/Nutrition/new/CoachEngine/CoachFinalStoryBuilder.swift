@@ -323,6 +323,11 @@ enum CoachFinalStoryBuilder {
             if frame.storyOwner == .recovery {
                 return base(frame)
             }
+            if frame.sessionPhase == .during,
+               frame.activityFamily == .endurance,
+               enduranceDurationMinutes(for: frame.dayLoadContext.focusActivity) >= 60 {
+                return endurance(frame)
+            }
             if frame.trainPermission == .noTraining {
                 if frame.sessionPhase == .during,
                    isLightRecoveryV4Family(frame.activityFamily) {
@@ -635,19 +640,53 @@ enum CoachFinalStoryBuilder {
             case (.during, _):
                 switch frame.storyOwner {
                 case .fuelingDuringActivity:
-                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .fueling, activity: activity, longSession: longSession)
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(
+                        for: .fueling,
+                        activity: activity,
+                        longSession: longSession,
+                        referenceNow: frame.dayLoadContext.referenceNow
+                    )
                     return catalogPlaybook(window: window, phase: .fueling, frame: frame)
                 case .hydrationExecution:
-                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .hydration, activity: activity, longSession: longSession)
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(
+                        for: .hydration,
+                        activity: activity,
+                        longSession: longSession,
+                        referenceNow: frame.dayLoadContext.referenceNow
+                    )
                     return catalogPlaybook(window: window, phase: .hydration, frame: frame)
-                case .pacingExecution:
-                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .pacing, activity: activity, longSession: longSession)
-                    return catalogPlaybook(window: window, phase: .pacing, frame: frame)
-                case .sustainableExecution:
-                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .sustainable, activity: activity, longSession: longSession)
-                    return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
+                case .pacingExecution, .sustainableExecution, .activeActivity:
+                    if let chapterPlaybook = enduranceChapterPlaybook(frame: frame, activity: activity, longSession: longSession) {
+                        return chapterPlaybook
+                    }
+                    switch frame.storyOwner {
+                    case .pacingExecution:
+                        let window = CoachEnduranceDuringPostCopyCatalog.window(
+                            for: .pacing,
+                            activity: activity,
+                            longSession: longSession,
+                            referenceNow: frame.dayLoadContext.referenceNow
+                        )
+                        return catalogPlaybook(window: window, phase: .pacing, frame: frame)
+                    default:
+                        let window = CoachEnduranceDuringPostCopyCatalog.window(
+                            for: .sustainable,
+                            activity: activity,
+                            longSession: longSession,
+                            referenceNow: frame.dayLoadContext.referenceNow
+                        )
+                        return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
+                    }
                 default:
-                    let window = CoachEnduranceDuringPostCopyCatalog.window(for: .sustainable, activity: activity, longSession: longSession)
+                    if let chapterPlaybook = enduranceChapterPlaybook(frame: frame, activity: activity, longSession: longSession) {
+                        return chapterPlaybook
+                    }
+                    let window = CoachEnduranceDuringPostCopyCatalog.window(
+                        for: .sustainable,
+                        activity: activity,
+                        longSession: longSession,
+                        referenceNow: frame.dayLoadContext.referenceNow
+                    )
                     return catalogPlaybook(window: window, phase: .sustainable, frame: frame)
                 }
             case (.post, .longOver120):
@@ -661,14 +700,25 @@ enum CoachFinalStoryBuilder {
                     shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
                     timePhase: frame.dayLoadContext.timePhase
                 )
+                let durationMinutes = enduranceDurationMinutes(for: activity)
+                let phase: CoachEnduranceDuringPostCopyCatalog.Phase
+                if CoachEnduranceSessionChapterResolver.postChapter(
+                    durationMinutes: durationMinutes,
+                    minutesSinceEnd: minutesSinceEnd
+                ) != nil {
+                    phase = .recoveryWindow
+                } else {
+                    phase = .postLong
+                }
                 let window = CoachEnduranceDuringPostCopyCatalog.window(
-                    for: .postLong,
+                    for: phase,
                     activity: activity,
                     longSession: true,
                     minutesSinceEnd: minutesSinceEnd,
-                    postContext: postContext
+                    postContext: postContext,
+                    referenceNow: frame.dayLoadContext.referenceNow
                 )
-                return catalogPlaybook(window: window, phase: .postLong, frame: frame)
+                return catalogPlaybook(window: window, phase: phase, frame: frame)
             case (.post, .medium60To120):
                 let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
                     activity: activity,
@@ -680,14 +730,25 @@ enum CoachFinalStoryBuilder {
                     shouldProtectTomorrow: frame.dayLoadContext.shouldProtectTomorrow,
                     timePhase: frame.dayLoadContext.timePhase
                 )
+                let durationMinutes = enduranceDurationMinutes(for: activity)
+                let phase: CoachEnduranceDuringPostCopyCatalog.Phase
+                if CoachEnduranceSessionChapterResolver.postChapter(
+                    durationMinutes: durationMinutes,
+                    minutesSinceEnd: minutesSinceEnd
+                ) != nil {
+                    phase = .recoveryWindow
+                } else {
+                    phase = .postMedium
+                }
                 let window = CoachEnduranceDuringPostCopyCatalog.window(
-                    for: .postMedium,
+                    for: phase,
                     activity: activity,
                     longSession: false,
                     minutesSinceEnd: minutesSinceEnd,
-                    postContext: postContext
+                    postContext: postContext,
+                    referenceNow: frame.dayLoadContext.referenceNow
                 )
-                return catalogPlaybook(window: window, phase: .postMedium, frame: frame)
+                return catalogPlaybook(window: window, phase: phase, frame: frame)
             case (.post, .shortUnder60), (.post, .none):
                 let minutesSinceEnd = CoachEnduranceDuringPostCopyCatalog.minutesSinceEnd(
                     activity: activity,
@@ -712,6 +773,43 @@ enum CoachFinalStoryBuilder {
             case (.none, _):
                 return base(frame)
             }
+        }
+
+        private static func enduranceDurationMinutes(for activity: PlannedActivity?) -> Int {
+            guard let activity else { return 0 }
+            return max(max(activity.effectiveDurationMinutes, activity.durationMinutes), 1)
+        }
+
+        private static func enduranceChapterPlaybook(
+            frame: CoachV4DecisionFrame,
+            activity: PlannedActivity?,
+            longSession: Bool
+        ) -> CoachV4PlaybookOutput? {
+            let durationMinutes = enduranceDurationMinutes(for: activity)
+            let elapsed = CoachEnduranceDuringPostCopyCatalog.elapsedMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            let remaining = CoachEnduranceDuringPostCopyCatalog.remainingMinutes(
+                activity: activity,
+                now: frame.dayLoadContext.referenceNow
+            )
+            guard let chapter = CoachEnduranceSessionChapterResolver.duringSessionChapter(
+                durationMinutes: durationMinutes,
+                elapsedMinutes: elapsed,
+                remainingMinutes: remaining
+            ) else {
+                return nil
+            }
+
+            let phase = chapter.catalogPhase
+            let window = CoachEnduranceDuringPostCopyCatalog.window(
+                for: phase,
+                activity: activity,
+                longSession: longSession,
+                referenceNow: frame.dayLoadContext.referenceNow
+            )
+            return catalogPlaybook(window: window, phase: phase, frame: frame)
         }
 
         private static func preSession(_ frame: CoachV4DecisionFrame) -> CoachV4PlaybookOutput {
@@ -2094,6 +2192,21 @@ enum CoachFinalStoryBuilder {
         if let active,
            !active.isCompleted,
            isActive(active, now: input.now),
+           sessionPhase == .during,
+           activityFamily == .endurance,
+           selected.map(isSignificantCoachActivityV4) == true,
+           let deficitOwner = enduranceDeficitStoryOwner(
+               input: input,
+               active: active,
+               durationBand: durationBand,
+               sessionPhase: sessionPhase
+           ) {
+            return deficitOwner
+        }
+
+        if let active,
+           !active.isCompleted,
+           isActive(active, now: input.now),
            baseOwner == .activeActivity || guidance.priority.focus == .activeActivity {
             return baseOwner
         }
@@ -2568,6 +2681,28 @@ enum CoachFinalStoryBuilder {
             ].joined(separator: " ")
         )
         #endif
+    }
+
+    private static func enduranceDeficitStoryOwner(
+        input: CoachInputSnapshot,
+        active: PlannedActivity,
+        durationBand: CoachV4DurationBand,
+        sessionPhase: CoachV4SessionPhase
+    ) -> CoachFinalStoryOwner? {
+        guard sessionPhase == .during else { return nil }
+
+        let elapsed = activeElapsedMinutes(active, now: input.now)
+        let longEnoughForFueling = elapsed >= 90 || durationBand == .longOver120 && elapsed >= 75
+        let fuelRisk = enduranceFuelingIsBiggestLimiter(input: input, active: active, elapsedMinutes: elapsed)
+        let hydrationRisk = enduranceHydrationIsBiggestLimiter(input: input, active: active, elapsedMinutes: elapsed)
+
+        if longEnoughForFueling && fuelRisk {
+            return .fuelingDuringActivity
+        }
+        if elapsed >= 45 && hydrationRisk {
+            return .hydrationExecution
+        }
+        return nil
     }
 
     private static func enduranceFuelingIsBiggestLimiter(

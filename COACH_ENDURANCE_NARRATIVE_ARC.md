@@ -54,7 +54,7 @@ Inputs (all from existing snapshot):
 | **Opening** | session start | `elapsed ≥ 20` **or** `elapsed ≥ 10` && `duration < 120` |
 | **Establish** | after Opening | `elapsed ≥ 60` **or** `remaining ≤ 90` (whichever comes first on long rides) |
 | **Maintain** | after Establish | `remaining ≤ 60` |
-| **Protect** | `remaining ≤ 60` && session still active | session ends |
+| **Protect** | `elapsed ≥ max(0.75 × duration, duration − 60)` | session ends |
 | **Recovery Window** | session ended && `minutesSinceEnd ≤ 60` | `minutesSinceEnd > 60` → post settled/stale copy |
 
 ### Medium ride (60–120 min planned)
@@ -166,5 +166,5 @@ Post-session `recoveryWindow` maps to existing `postLong` immediate window.
 ## Open questions
 
 1. **Opening length:** 20 min vs 30 min for cycling — validate with ride data / product feel.  
-2. **Protect start:** 60 vs 45 min remaining on 3–4 h rides.  
+2. **Protect start:** `elapsed >= max(0.75 × duration, duration − 60)` — whichever comes first (e.g. 2 h ride → Protect at 90 min elapsed; 4–5 h rides → last 60 min).  
 3. **Short post Hero split** (Phase A audit): align 45 min post Hero with engine or keep generic — product call independent of arc.
