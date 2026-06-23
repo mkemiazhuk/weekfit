@@ -1629,6 +1629,104 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         try assertPostLongRideCoachPresentationAlignsWithEngine()
     }
 
+    func testFourHourRideHeroEvolutionAcrossSessionChapters() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 240
+        let fueledNutrition = nutrition(water: 2.4, calories: 1_800, protein: 90, carbs: 220)
+
+        func hero(
+            at elapsed: Int,
+            resolvedNutrition: CoachNutritionContext? = nil
+        ) throws -> (String, CoachFinalStoryOwner) {
+            let active = activity(
+                type: "cycling",
+                title: "Long ride",
+                minutesFromNow: -elapsed,
+                duration: duration,
+                icon: "bicycle"
+            )
+            active.source = "today"
+            let story = try XCTUnwrap(
+                makeState(
+                    activities: [active],
+                    nutrition: resolvedNutrition ?? fueledNutrition,
+                    activeCalories: Double(elapsed * 12),
+                    recoveryPercent: 92
+                ).finalStory
+            )
+            return (story.title.resolved, story.owner)
+        }
+
+        let opening = try hero(at: 20)
+        let maintain = try hero(at: 90)
+        let protect = try hero(
+            at: 195,
+            resolvedNutrition: nutrition(water: 2.6, calories: 2_400, protein: 100, carbs: 280)
+        )
+
+        XCTAssertTrue(opening.0.localizedCaseInsensitiveContains("Войдите"), "opening @20 owner=\(opening.1) hero=\(opening.0)")
+        XCTAssertTrue(maintain.0.localizedCaseInsensitiveContains("середин"), "maintain @90 owner=\(maintain.1) hero=\(maintain.0)")
+        XCTAssertTrue(protect.0.localizedCaseInsensitiveContains("финиш"), "protect @195 owner=\(protect.1) hero=\(protect.0)")
+        XCTAssertNotEqual(opening.0, maintain.0)
+        XCTAssertNotEqual(maintain.0, protect.0)
+    }
+
+    func testFuelingDeficitOverridesSessionChapterCopy() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let duration = 210
+        let active = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -143,
+            duration: duration,
+            icon: "bicycle"
+        )
+        active.source = "today"
+
+        let story = try XCTUnwrap(
+            makeState(
+                activities: [active],
+                nutrition: nutrition(water: 1.0, calories: 957, protein: 55, carbs: 70),
+                activeCalories: 2_001,
+                recoveryPercent: 95
+            ).finalStory
+        )
+
+        XCTAssertEqual(story.owner, .fuelingDuringActivity, "expected fuel deficit to own narrative over session chapter")
+        let hero = story.title.resolved
+        XCTAssertTrue(hero.localizedCaseInsensitiveContains("Подкреп"), "fuel hero was: \(hero)")
+        XCTAssertFalse(hero.localizedCaseInsensitiveContains("середин"), hero)
+    }
+
+    func testPostLongRideUsesRecoveryWindowChapterHero() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        let rideDuration = 240
+        let completed = activity(
+            type: "cycling",
+            title: "Long ride",
+            minutesFromNow: -(rideDuration + 10),
+            duration: rideDuration,
+            icon: "bicycle",
+            completed: true
+        )
+        let postStory = try XCTUnwrap(
+            makeState(
+                activities: [completed],
+                nutrition: nutrition(water: 1.6, calories: 1_500, protein: 70, carbs: 170),
+                activeCalories: 2_200,
+                completedWorkoutsCount: 1,
+                recoveryPercent: 88
+            ).finalStory
+        )
+        let hero = CoachFinalStoryRenderModel(story: postStory).title
+
+        XCTAssertTrue(
+            hero.localizedCaseInsensitiveContains("восстанов") ||
+                hero.localizedCaseInsensitiveContains("Окно"),
+            hero
+        )
+    }
+
     private func assertMidSessionLongRideCoachPresentationAlignsWithEngine() throws {
         WeekFitSetCurrentLanguage(.russian)
         let rideDuration = 240
@@ -1702,6 +1800,7 @@ final class CoachStateNarrativeContractTests: XCTestCase {
         XCTAssertTrue(
             postCoach.title.localizedCaseInsensitiveContains("позади") ||
                 postCoach.title.localizedCaseInsensitiveContains("восстанов") ||
+                postCoach.title.localizedCaseInsensitiveContains("Окно") ||
                 postCoach.title.localizedCaseInsensitiveContains("recover") ||
                 postCoach.title.localizedCaseInsensitiveContains("done") ||
                 postCoach.title.localizedCaseInsensitiveContains("refuel"),

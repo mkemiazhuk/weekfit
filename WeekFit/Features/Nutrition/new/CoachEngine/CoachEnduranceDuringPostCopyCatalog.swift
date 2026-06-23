@@ -33,6 +33,11 @@ enum CoachEnduranceDuringPostCopyCatalog {
     enum Phase {
         case pacing
         case sustainable
+        case opening
+        case establish
+        case maintain
+        case protect
+        case recoveryWindow
         case fueling
         case hydration
         case postLong
@@ -64,10 +69,13 @@ enum CoachEnduranceDuringPostCopyCatalog {
         activity: PlannedActivity?,
         longSession: Bool,
         minutesSinceEnd: Int = 0,
-        postContext: PostContext? = nil
+        postContext: PostContext? = nil,
+        referenceNow: Date? = nil
     ) -> WindowCopy {
         let modality = CoachSessionPrepCopyCatalog.modality(for: activity)
         let postTiming = PostTiming.from(minutesSinceEnd: minutesSinceEnd)
+        let resolveNow = referenceNow ?? Date()
+        let remaining = remainingMinutes(activity: activity, now: resolveNow)
         switch (phase, modality) {
         case (.pacing, .cycling):
             return pacingCycling(longSession: longSession)
@@ -81,6 +89,36 @@ enum CoachEnduranceDuringPostCopyCatalog {
             return sustainableRunning(longSession: longSession)
         case (.sustainable, _):
             return sustainableGeneral(longSession: longSession)
+        case (.opening, .cycling):
+            return openingCycling(longSession: longSession)
+        case (.opening, .running):
+            return openingRunning(longSession: longSession)
+        case (.opening, _):
+            return openingGeneral(longSession: longSession)
+        case (.establish, .cycling):
+            return establishCycling(longSession: longSession)
+        case (.establish, .running):
+            return establishRunning(longSession: longSession)
+        case (.establish, _):
+            return establishGeneral(longSession: longSession)
+        case (.maintain, .cycling):
+            return maintainCycling(longSession: longSession)
+        case (.maintain, .running):
+            return maintainRunning(longSession: longSession)
+        case (.maintain, _):
+            return maintainGeneral(longSession: longSession)
+        case (.protect, .cycling):
+            return protectCycling(longSession: longSession, remainingMinutes: remaining)
+        case (.protect, .running):
+            return protectRunning(longSession: longSession, remainingMinutes: remaining)
+        case (.protect, _):
+            return protectGeneral(longSession: longSession, remainingMinutes: remaining)
+        case (.recoveryWindow, .cycling):
+            return recoveryWindowCycling()
+        case (.recoveryWindow, .running):
+            return recoveryWindowRunning()
+        case (.recoveryWindow, _):
+            return recoveryWindowGeneral()
         case (.fueling, .cycling):
             return fuelingCycling()
         case (.fueling, .running):
@@ -177,6 +215,112 @@ enum CoachEnduranceDuringPostCopyCatalog {
             )
             return Array(items.prefix(2))
 
+        case .opening:
+            var items: [ReasonCopy] = []
+            if let remainingMinutes, remainingMinutes > 0 {
+                items.append(
+                    ReasonCopy(
+                        kind: .time,
+                        english: "About \(remainingMinutes) minutes of work remain after this opening block.",
+                        russian: "После этого блока впереди ещё около \(remainingMinutes) минут работы.",
+                        icon: "clock.fill",
+                        colorFamily: .ready
+                    )
+                )
+            }
+            items.append(
+                ReasonCopy(
+                    kind: .training,
+                    english: "A calm opening keeps the whole session more repeatable.",
+                    russian: "Спокойный старт делает всю сессию более ровной.",
+                    icon: "figure.outdoor.cycle",
+                    colorFamily: .ready
+                )
+            )
+            return Array(items.prefix(2))
+
+        case .establish:
+            return [
+                ReasonCopy(
+                    kind: .fuel,
+                    english: "Regular fuel now keeps the second half steadier.",
+                    russian: "Регулярное питание сейчас сделает вторую половину ровнее.",
+                    icon: "bolt.fill",
+                    colorFamily: .fuel
+                ),
+                ReasonCopy(
+                    kind: .time,
+                    english: elapsedMinutes > 0
+                        ? "You are \(elapsedMinutes) minutes in — time to set the fuel rhythm."
+                        : "The opening is done — time to set the fuel rhythm.",
+                    russian: elapsedMinutes > 0
+                        ? "Вы уже \(elapsedMinutes) минут в работе — пора задать ритм питания."
+                        : "Старт позади — пора задать ритм питания.",
+                    icon: "clock.fill",
+                    colorFamily: .ready
+                )
+            ]
+
+        case .maintain:
+            var items: [ReasonCopy] = []
+            if elapsedMinutes > 0 {
+                items.append(
+                    ReasonCopy(
+                        kind: .time,
+                        english: "You are \(elapsedMinutes) minutes into the session.",
+                        russian: "Вы уже \(elapsedMinutes) минут в сессии.",
+                        icon: "clock.fill",
+                        colorFamily: .ready
+                    )
+                )
+            }
+            items.append(
+                ReasonCopy(
+                    kind: .training,
+                    english: "The middle is about repeating what already works.",
+                    russian: "Середина — про повторение того, что уже работает.",
+                    icon: "figure.outdoor.cycle",
+                    colorFamily: .ready
+                )
+            )
+            return Array(items.prefix(2))
+
+        case .protect:
+            return [
+                ReasonCopy(
+                    kind: .time,
+                    english: remainingMinutes.map { "About \($0) minutes remain to the finish." } ?? "The finish is getting close.",
+                    russian: remainingMinutes.map { "До финиша около \($0) минут." } ?? "Финиш уже близко.",
+                    icon: "clock.fill",
+                    colorFamily: .ready
+                ),
+                ReasonCopy(
+                    kind: .training,
+                    english: "Protect the finish — no extra surges now.",
+                    russian: "Берегите финиш — лишних рывков сейчас не нужно.",
+                    icon: "flag.checkered",
+                    colorFamily: .ready
+                )
+            ]
+
+        case .recoveryWindow:
+            return [
+                ReasonCopy(
+                    kind: .recovery,
+                    english: "The first hour after a long session is the main recovery window.",
+                    russian: "Первый час после длинной сессии — главное окно восстановления.",
+                    icon: "bed.double.fill",
+                    colorFamily: .recovery
+                ),
+                ReasonCopy(
+                    kind: .fuel,
+                    english: "Protein and carbs now refill what the session took out.",
+                    russian: "Белок и углеводы сейчас восполняют то, что забрала сессия.",
+                    icon: "bolt.fill",
+                    colorFamily: .fuel
+                )
+            ]
+
         case .fueling:
             return [
                 ReasonCopy(
@@ -240,6 +384,33 @@ enum CoachEnduranceDuringPostCopyCatalog {
         case .sustainable:
             return [
                 action(.steadyHydration, "Drink with each fueling block", "Small sips, not a full bottle at once", "Пейте с каждым приёмом пищи", "Маленькими глотками, не залпом")
+            ]
+        case .opening:
+            let modality = CoachSessionPrepCopyCatalog.modality(for: activity)
+            if modality == .cycling {
+                return [
+                    action(.steadyHydration, "Sip from your bottle", "Small mouthfuls only", "Глоток из бутылки", "Только маленькими глотками")
+                ]
+            }
+            return [
+                action(.steadyHydration, "Sip if thirsty", "No need to drink a lot now", "Глоток при жажде", "Много пить сейчас не нужно")
+            ]
+        case .establish:
+            return [
+                action(.sustainEnergy, "Take carbs every 20-30 minutes", "Start the next block before energy dips", "Углеводы каждые 20-30 минут", "Следующий приём — до просадки энергии")
+            ]
+        case .maintain:
+            return [
+                action(.steadyHydration, "Drink with each fueling block", "Small sips, not a full bottle at once", "Пейте с каждым приёмом пищи", "Маленькими глотками, не залпом")
+            ]
+        case .protect:
+            return [
+                action(.controlIntensity, "Hold the current effort", "No attacks or surges to the finish", "Держите текущее усилие", "Без атак и рывков до финиша")
+            ]
+        case .recoveryWindow:
+            return [
+                action(.rehydrateGradually, "Drink 500-750 ml over the next hour", "Spread it out, not all at once", "500-750 мл в течение часа", "Растяните, не залпом"),
+                action(.sleepPriority, "Protect sleep tonight", "That is where endurance recovery happens", "Берегите сон сегодня", "Там идёт основное восстановление")
             ]
         case .fueling:
             return [
@@ -386,6 +557,223 @@ enum CoachEnduranceDuringPostCopyCatalog {
             ),
             extras: []
         )
+    }
+
+    // MARK: - Session chapters (Opening → Establish → Maintain → Protect)
+
+    private static func openingCycling(longSession: Bool) -> WindowCopy {
+        pacingCycling(longSession: longSession)
+    }
+
+    private static func openingRunning(longSession: Bool) -> WindowCopy {
+        pacingRunning(longSession: longSession)
+    }
+
+    private static func openingGeneral(longSession: Bool) -> WindowCopy {
+        pacingGeneral(longSession: longSession)
+    }
+
+    private static func establishCycling(longSession: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Set your fuel rhythm", "Задайте ритм питания"),
+            assessment: bi(
+                longSession
+                    ? "The opening is done — now regular fuel matters more than pace changes."
+                    : "The easy start is behind you — time to eat and drink on a schedule.",
+                longSession
+                    ? "Старт позади — теперь регулярное питание важнее смены темпа."
+                    : "Лёгкий старт позади — пора есть и пить по графику."
+            ),
+            situation: bi("Eat and drink on a schedule, not when hunger hits.", "Ешьте и пейте по графику, а не когда проголодаетесь."),
+            primary: action(
+                .sustainEnergy,
+                "Take carbs every 20-30 minutes",
+                "Start the next block before energy dips",
+                "Углеводы каждые 20-30 минут",
+                "Следующий приём — до просадки энергии"
+            ),
+            avoidance: bi(
+                "Do not skip the next fueling block because you feel fine.",
+                "Не пропускайте следующий приём только потому, что пока хорошо."
+            ),
+            extras: []
+        )
+    }
+
+    private static func establishRunning(longSession: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Set your fuel rhythm", "Задайте ритм питания"),
+            assessment: bi(
+                longSession
+                    ? "The opening is done — regular fuel beats pace changes from here."
+                    : "The easy start is behind you — time to fuel on a schedule.",
+                longSession
+                    ? "Старт позади — регулярное питание важнее смены темпа."
+                    : "Лёгкий старт позади — пора питаться по графику."
+            ),
+            situation: bi("Small fuel regularly beats one big catch-up later.", "Небольшие порции регулярно лучше, чем догонять потом."),
+            primary: action(
+                .sustainEnergy,
+                "Take carbs every 20-30 minutes",
+                "Gels, chews, or sports drink on schedule",
+                "Углеводы каждые 20-30 минут",
+                "Гель, батончик или изотоник по графику"
+            ),
+            avoidance: bi(
+                "Do not wait until you feel empty to eat.",
+                "Не ждите, пока «опустошит», чтобы поесть."
+            ),
+            extras: []
+        )
+    }
+
+    private static func establishGeneral(longSession: Bool) -> WindowCopy {
+        establishRunning(longSession: longSession)
+    }
+
+    private static func maintainCycling(longSession: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Hold the steady middle", "Держите ровную середину"),
+            assessment: bi(
+                longSession
+                    ? "You are into the long middle — repeat fuel, pace, and hydration."
+                    : "You are in the working middle — keep repeating what already works.",
+                longSession
+                    ? "Вы в длинной середине — повторяйте питание, темп и гидратацию."
+                    : "Вы в рабочей середине — повторяйте то, что уже работает."
+            ),
+            situation: bi("Same rhythm, same blocks — no need to change the plan now.", "Тот же ритм, те же блоки — менять план сейчас не нужно."),
+            primary: action(
+                .sustainEnergy,
+                "Take carbs every 20-30 minutes",
+                "Keep the next block on schedule",
+                "Углеводы каждые 20-30 минут",
+                "Следующий приём — по графику"
+            ),
+            avoidance: bi(
+                "Do not chase groups or surges just because you still feel good.",
+                "Не гонитесь за группой или рывками только потому, что пока хорошо."
+            ),
+            extras: []
+        )
+    }
+
+    private static func maintainRunning(longSession: Bool) -> WindowCopy {
+        WindowCopy(
+            hero: bi("Hold the steady middle", "Держите ровную середину"),
+            assessment: bi(
+                longSession
+                    ? "You are into the long middle — repeat fuel, pace, and hydration."
+                    : "You are in the working middle — keep repeating what already works.",
+                longSession
+                    ? "Вы в длинной середине — повторяйте питание, темп и гидратацию."
+                    : "Вы в рабочей середине — повторяйте то, что уже работает."
+            ),
+            situation: bi("Same rhythm, same blocks — no need to change the plan now.", "Тот же ритм, те же блоки — менять план сейчас не нужно."),
+            primary: action(
+                .sustainEnergy,
+                "Take carbs every 20-30 minutes",
+                "Keep the next block on schedule",
+                "Углеводы каждые 20-30 минут",
+                "Следующий приём — по графику"
+            ),
+            avoidance: bi(
+                "Do not speed up just because the finish still feels far away.",
+                "Не ускоряйтесь только потому, что финиш ещё кажется далёким."
+            ),
+            extras: []
+        )
+    }
+
+    private static func maintainGeneral(longSession: Bool) -> WindowCopy {
+        maintainRunning(longSession: longSession)
+    }
+
+    private static func protectCycling(longSession: Bool, remainingMinutes: Int?) -> WindowCopy {
+        let remainingPhraseEN = remainingMinutes.map { "About \($0) minutes remain — " } ?? ""
+        let remainingPhraseRU = remainingMinutes.map { "До финиша около \($0) минут — " } ?? ""
+        return WindowCopy(
+            hero: bi("Protect the finish", "Берегите финиш"),
+            assessment: bi(
+                "\(remainingPhraseEN)keep effort controlled to the line.",
+                "\(remainingPhraseRU)держите усилие под контролем до линии."
+            ),
+            situation: bi("Fuel if needed, but do not add intensity for the finish.", "Подкрепитесь при необходимости, но не добавляйте интенсивности ради финиша."),
+            primary: action(
+                .controlIntensity,
+                "Hold the current effort",
+                "No attacks or surges to the finish",
+                "Держите текущее усилие",
+                "Без атак и рывков до финиша"
+            ),
+            avoidance: bi(
+                longSession
+                    ? "Do not spend the last hour trying to make up time."
+                    : "Do not sprint the last stretch just because the finish is close.",
+                longSession
+                    ? "Не тратьте последний час, пытаясь наверстать время."
+                    : "Не рваните на финиш только потому, что он близко."
+            ),
+            extras: []
+        )
+    }
+
+    private static func protectRunning(longSession: Bool, remainingMinutes: Int?) -> WindowCopy {
+        protectCycling(longSession: longSession, remainingMinutes: remainingMinutes)
+    }
+
+    private static func protectGeneral(longSession: Bool, remainingMinutes: Int?) -> WindowCopy {
+        protectCycling(longSession: longSession, remainingMinutes: remainingMinutes)
+    }
+
+    private static func recoveryWindowCycling() -> WindowCopy {
+        WindowCopy(
+            hero: bi("Recovery window is open", "Окно восстановления открыто"),
+            assessment: bi(
+                "The long ride is done — the next hour matters most for recovery.",
+                "Длинная поездка позади — следующий час важнее всего для восстановления."
+            ),
+            situation: bi("Eat, drink, and keep the rest of the day calm.", "Поешьте, попейте и держите остаток дня спокойным."),
+            primary: action(
+                .recoveryMeal,
+                "Eat 25-40 g protein and 60-100 g carbs",
+                "In your next meal",
+                "25-40 г белка и 60-100 г углеводов",
+                "В ближайшем приёме пищи"
+            ),
+            avoidance: bi(
+                "Do not add training load in the recovery window.",
+                "Не добавляйте нагрузку в окне восстановления."
+            ),
+            extras: []
+        )
+    }
+
+    private static func recoveryWindowRunning() -> WindowCopy {
+        WindowCopy(
+            hero: bi("Recovery window is open", "Окно восстановления открыто"),
+            assessment: bi(
+                "The long run is done — the next hour matters most for recovery.",
+                "Длинная пробежка позади — следующий час важнее всего для восстановления."
+            ),
+            situation: bi("Eat, drink, and keep the rest of the day calm.", "Поешьте, попейте и держите остаток дня спокойным."),
+            primary: action(
+                .recoveryMeal,
+                "Eat 25-40 g protein and 60-100 g carbs",
+                "In your next meal",
+                "25-40 г белка и 60-100 г углеводов",
+                "В ближайшем приёме пищи"
+            ),
+            avoidance: bi(
+                "Do not add training load in the recovery window.",
+                "Не добавляйте нагрузку в окне восстановления."
+            ),
+            extras: []
+        )
+    }
+
+    private static func recoveryWindowGeneral() -> WindowCopy {
+        recoveryWindowRunning()
     }
 
     // MARK: - Sustainable
