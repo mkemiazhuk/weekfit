@@ -111,6 +111,7 @@ final class CoachV6CopyQualityTests: XCTestCase {
 
     static func baselineInput(for scenario: CoachV6ScenarioKey) -> CoachV6CopyBuildInput {
         let profile = Self.baselineProfile(for: scenario)
+        let dayReadiness = baselineDayReadiness(for: scenario)
         return CoachV6CopyBuildInput(
             scenario: scenario,
             modifiers: CoachV6ScenarioModifiers(
@@ -124,13 +125,14 @@ final class CoachV6CopyQualityTests: XCTestCase {
                 timeOfDay: profile.timeOfDay,
                 stackedDayActiveRisk: false
             ),
+            athleteState: CoachV6AthleteStateResolver.resolve(dayReadiness: dayReadiness),
             fuelState: .adequate,
             hydrationState: .adequate,
             safetyAlert: nil,
             semanticColor: CoachV6PresentationResolver.semanticColor(for: scenario),
             alertSeverity: .none,
             tomorrowWorkout: profile.tomorrowWorkout,
-            dayReadiness: baselineDayReadiness(for: scenario)
+            dayReadiness: dayReadiness
         )
     }
 
@@ -265,7 +267,8 @@ final class CoachV6CopyQualityTests: XCTestCase {
     }
 
     private func stableDayInput(fuelBehind: Bool) -> CoachV6CopyBuildInput {
-        CoachV6CopyBuildInput(
+        let dayReadiness = CoachV6DayReadiness.unknown
+        return CoachV6CopyBuildInput(
             scenario: .stableDay,
             modifiers: CoachV6ScenarioModifiers(
                 dayLoad: .fresh,
@@ -278,13 +281,14 @@ final class CoachV6CopyQualityTests: XCTestCase {
                 timeOfDay: .afternoon,
                 stackedDayActiveRisk: false
             ),
+            athleteState: CoachV6AthleteStateResolver.resolve(dayReadiness: dayReadiness),
             fuelState: fuelBehind ? .behind : .adequate,
             hydrationState: .adequate,
             safetyAlert: nil,
             semanticColor: .stable,
             alertSeverity: fuelBehind ? .elevated : .none,
             tomorrowWorkout: nil,
-            dayReadiness: .unknown
+            dayReadiness: dayReadiness
         )
     }
 

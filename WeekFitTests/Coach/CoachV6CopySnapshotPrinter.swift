@@ -265,6 +265,7 @@ enum CoachV6CopySnapshotPrinter {
                 timeOfDay: base.modifiers.timeOfDay,
                 stackedDayActiveRisk: false
             ),
+            athleteState: base.athleteState,
             fuelState: .adequate,
             hydrationState: .critical,
             safetyAlert: .hydrationCritical,
@@ -305,6 +306,7 @@ enum CoachV6CopySnapshotPrinter {
         scenario: CoachV6ScenarioKey,
         activityType: CoachV6ActivityType
     ) -> CoachV6CopyBuildInput {
+        let dayReadiness = CoachV6DayReadiness.unknown
         return CoachV6CopyBuildInput(
             scenario: scenario,
             modifiers: CoachV6ScenarioModifiers(
@@ -318,6 +320,7 @@ enum CoachV6CopySnapshotPrinter {
                 timeOfDay: .lateEvening,
                 stackedDayActiveRisk: true
             ),
+            athleteState: CoachV6AthleteStateResolver.resolve(dayReadiness: dayReadiness),
             fuelState: .adequate,
             hydrationState: .adequate,
             safetyAlert: nil,
@@ -329,7 +332,7 @@ enum CoachV6CopySnapshotPrinter {
                 startMinute: 30,
                 durationMinutes: 55
             ),
-            dayReadiness: .unknown
+            dayReadiness: dayReadiness
         )
     }
 

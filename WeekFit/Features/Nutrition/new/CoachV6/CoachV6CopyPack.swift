@@ -49,6 +49,7 @@ struct CoachV6CopyPack: Equatable, Sendable {
 struct CoachV6CopyBuildInput: Equatable, Sendable {
     let scenario: CoachV6ScenarioKey
     let modifiers: CoachV6ScenarioModifiers
+    let athleteState: CoachV6AthleteState
     let fuelState: CoachV6FuelState
     let hydrationState: CoachV6HydrationState
     let safetyAlert: CoachV6SafetyAlert?
@@ -78,6 +79,7 @@ struct CoachV6CopyBuildInput: Equatable, Sendable {
         CoachV6CopyBuildInput(
             scenario: resolution.scenario,
             modifiers: resolution.modifiers,
+            athleteState: CoachV6AthleteStateResolver.resolve(context: context),
             fuelState: context.fuelState,
             hydrationState: context.hydrationState,
             safetyAlert: resolution.safetyAlert,

@@ -136,7 +136,7 @@
 |------|---------|----------------|----------|-------|-------------|----------|
 | 9A | recovery 90%, tomorrow hard, idle morning | `day.readinessProtection` | `protectTomorrowFresh` | БЕРЕЖЁМ СИЛЫ | Сохраните запас на зав… | Good recovery + hard tomorrow — protect reserve, not empty morning |
 | 9B | recovery 35%, upcoming ride +1h | `session.activity` | `lowRecoveryPrep` | БЕРЕЖЁМ СИЛЫ | Проверьте готовность | Low recovery shifts pre-session to protective prep |
-| 9C | sleep 4.5h, live ride | `session.activity` | `duringEndurance` | СЕЙЧАС | На заезде | Live session wins — low recovery in support only |
+| 9C | sleep 4.5h, live ride | `session.activity` | `duringEndurance` | СЕЙЧАС | На заезде | Live session wins — fatigued body state adjusts recommendation, not support |
 | 9D | recovery 90%, brain past high load | `day.idle` | `morningReadiness` | ВСЁ ХОРОШО | С чего начать | Heavy yesterday + good recovery — calm morning + support |
 
 ---

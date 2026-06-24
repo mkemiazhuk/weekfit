@@ -123,7 +123,8 @@ final class CoachV6CopyNutritionTimingTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeInput(timeOfDay: CoachV6TimeOfDay, fuelBehind: Bool) -> CoachV6CopyBuildInput {
-        CoachV6CopyBuildInput(
+        let dayReadiness = CoachV6DayReadiness.unknown
+        return CoachV6CopyBuildInput(
             scenario: .tomorrowProtection,
             modifiers: CoachV6ScenarioModifiers(
                 dayLoad: .heavy,
@@ -136,6 +137,7 @@ final class CoachV6CopyNutritionTimingTests: XCTestCase {
                 timeOfDay: timeOfDay,
                 stackedDayActiveRisk: false
             ),
+            athleteState: CoachV6AthleteStateResolver.resolve(dayReadiness: dayReadiness),
             fuelState: fuelBehind ? .behind : .adequate,
             hydrationState: .adequate,
             safetyAlert: nil,
@@ -147,7 +149,7 @@ final class CoachV6CopyNutritionTimingTests: XCTestCase {
                 startMinute: 30,
                 durationMinutes: 55
             ),
-            dayReadiness: .unknown
+            dayReadiness: dayReadiness
         )
     }
 

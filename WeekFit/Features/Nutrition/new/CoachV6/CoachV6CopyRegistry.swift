@@ -7,14 +7,33 @@ enum CoachV6CopyRegistry {
             return nil
         }
 
+        let shaped = applyBodyState(base: base, input: input)
+
         return CoachV6CopyPack(
             scenario: input.scenario,
-            assessment: base.assessment,
-            recommendation: base.recommendation,
-            avoid: base.avoid,
-            nextAction: base.nextAction,
+            assessment: shaped.assessment,
+            recommendation: shaped.recommendation,
+            avoid: shaped.avoid,
+            nextAction: shaped.nextAction,
             supportingSignals: supportingSignals(for: input),
             warningLayer: warningLayer(for: input)
+        )
+    }
+
+    private static func applyBodyState(
+        base: BasePack,
+        input: CoachV6CopyBuildInput
+    ) -> CoachV6BodyStateCopyRenderer.BasePack {
+        CoachV6BodyStateCopyRenderer.apply(
+            base: CoachV6BodyStateCopyRenderer.BasePack(
+                assessment: base.assessment,
+                recommendation: base.recommendation,
+                avoid: base.avoid,
+                nextAction: base.nextAction
+            ),
+            scenario: input.scenario,
+            activityType: input.activityType,
+            bodyState: input.athleteState.bodyState
         )
     }
 
@@ -413,6 +432,10 @@ enum CoachV6CopyRegistry {
 
     private static func shouldMentionLowRecoveryLiveSignal(_ input: CoachV6CopyBuildInput) -> Bool {
         guard input.dayReadiness.isLowRecovery || input.dayReadiness.sleepIsLow else { return false }
+        if input.scenario == .duringEndurance,
+           input.athleteState.bodyState == .fatigued || input.athleteState.bodyState == .veryFatigued {
+            return false
+        }
         switch input.scenario {
         case .duringEndurance, .duringStrength, .duringRacket, .duringRecovery, .saunaActive:
             return true

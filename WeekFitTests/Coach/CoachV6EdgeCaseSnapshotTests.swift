@@ -834,12 +834,16 @@ final class CoachV6EdgeCaseSnapshotTests: XCTestCase {
                 badge: "СЕЙЧАС",
                 todayTitle: "На заезде",
                 stackedDayActiveRisk: false,
-                conflictNote: "live session keeps during* — low sleep only in support layer"
+                conflictNote: "live session keeps during* — fatigued body state shapes recommendation, not support"
             ),
             result: result,
             bridge: bridge
         )
-        assertSupportContains(try XCTUnwrap(result.copyPack), token: "восстанов")
+        let pack = try XCTUnwrap(result.copyPack)
+        let athleteState = CoachV6AthleteStateResolver.resolve(context: result.context)
+        XCTAssertEqual(athleteState.bodyState, .fatigued)
+        assertRecommendationContains(pack, token: "разговор")
+        assertSupportDoesNotContain(pack, token: "восстанов")
     }
 
     // MARK: - 11. Empty day (expanded)
@@ -1542,6 +1546,19 @@ final class CoachV6EdgeCaseSnapshotTests: XCTestCase {
             .joined(separator: " ")
             .lowercased()
         XCTAssertTrue(combined.contains(token.lowercased()), "Expected support token '\(token)' in: \(combined)")
+    }
+
+    private func assertSupportDoesNotContain(_ pack: CoachV6CopyPack, token: String) {
+        let combined = pack.supportingSignals.lines
+            .map(\.russian)
+            .joined(separator: " ")
+            .lowercased()
+        XCTAssertFalse(combined.contains(token.lowercased()), "Unexpected support token '\(token)' in: \(combined)")
+    }
+
+    private func assertRecommendationContains(_ pack: CoachV6CopyPack, token: String) {
+        let combined = joinedRussian(pack.recommendation).lowercased()
+        XCTAssertTrue(combined.contains(token.lowercased()), "Expected recommendation token '\(token)' in: \(combined)")
     }
 
     private func joinedRussian(_ section: CoachV6CopySection) -> String {

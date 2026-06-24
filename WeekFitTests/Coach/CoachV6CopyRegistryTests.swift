@@ -161,9 +161,8 @@ final class CoachV6CopyRegistryTests: XCTestCase {
         XCTAssertEqual(pack.scenario, .morningReadiness)
         XCTAssertFalse(allText(in: pack.assessment).contains(where: { mentionsHydration($0) || mentionsFuel($0) }))
         XCTAssertFalse(allText(in: pack.recommendation).contains(where: { mentionsHydration($0) || mentionsFuel($0) }))
-        XCTAssertTrue(
-            allText(in: pack.supportingSignals).contains(where: { mentionsHydration($0) || mentionsFuel($0) })
-        )
+        XCTAssertFalse(allText(in: pack.supportingSignals).contains(where: { mentionsHydration($0) || mentionsFuel($0) }))
+        XCTAssertNil(pack.warningLayer)
     }
 
     // MARK: - safetyAlert warning layer
