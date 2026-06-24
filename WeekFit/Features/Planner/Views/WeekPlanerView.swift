@@ -1036,58 +1036,7 @@ private extension WeekPlannerView {
     }
 
     func dayKind(for date: Date) -> PlanDayKind {
-        let items = dayActivities(for: date)
-
-        guard !items.isEmpty else {
-            return .open
-        }
-
-        let workouts = items.filter { $0.type.lowercased() == "workout" }
-        let recovery = items.filter { $0.type.lowercased() == "recovery" }
-        let meals = items.filter { $0.type.lowercased() == "meal" }
-        let habits = items.filter { $0.type.lowercased() == "habit" }
-
-        let workoutMinutes = workouts.reduce(0) { $0 + max($1.durationMinutes, 0) }
-        let recoveryMinutes = recovery.reduce(0) { $0 + max($1.durationMinutes, 0) }
-
-        let hasLongWorkout = workouts.contains { $0.durationMinutes >= 50 }
-
-        if workouts.isEmpty && !recovery.isEmpty {
-            return .recovery
-        }
-
-        if hasLongWorkout || workoutMinutes >= 60 {
-            return .endurance
-        }
-
-        if workouts.count >= 2 || workoutMinutes >= 45 {
-            return .load
-        }
-
-        if !workouts.isEmpty && (!recovery.isEmpty || !meals.isEmpty || !habits.isEmpty) {
-            return .mixed
-        }
-
-        if workouts.isEmpty && recoveryMinutes >= 20 {
-            return .recovery
-        }
-
-        let lightWorkoutTitles = ["walk", "walking", "yoga", "stretch", "stretching", "mobility"]
-
-        let hasOnlyLightWorkouts = !workouts.isEmpty && workouts.allSatisfy { activity in
-            let title = activity.title.lowercased()
-            return lightWorkoutTitles.contains { title.contains($0) }
-        }
-
-        if hasOnlyLightWorkouts {
-            return .recovery
-        }
-
-        if !workouts.isEmpty {
-            return .load
-        }
-
-        return .recovery
+        PlanDayKindResolver.resolve(activities: dayActivities(for: date))
     }
 
     func activityAccent(for item: PlannedActivity) -> Color {
@@ -1523,56 +1472,6 @@ private struct DynamicDayCapsule: View {
     }
 }
 
-// MARK: - Day Kind
-
-private enum PlanDayKind: Equatable {
-    case endurance
-    case load
-    case mixed
-    case recovery
-    case open
-
-    var label: String {
-        switch self {
-        case .endurance: return WeekFitLocalizedString("planner.dayKind.endurance")
-        case .load: return WeekFitLocalizedString("planner.dayKind.load")
-        case .mixed: return WeekFitLocalizedString("planner.dayKind.mixed")
-        case .recovery: return WeekFitLocalizedString("planner.dayKind.recovery")
-        case .open: return WeekFitLocalizedString("planner.dayKind.open")
-        }
-    }
-
-    var legendLabel: String {
-        switch self {
-        case .endurance: return WeekFitLocalizedString("planner.legend.endurance")
-        case .load: return WeekFitLocalizedString("planner.legend.highLoad")
-        case .mixed: return WeekFitLocalizedString("planner.legend.mixed")
-        case .recovery: return WeekFitLocalizedString("planner.legend.recovery")
-        case .open: return WeekFitLocalizedString("planner.dayKind.open")
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .endurance: return Color(hex: "#5E7CFF")
-        case .load: return Color(hex: "#FF9F43")
-        case .mixed: return Color(hex: "#FFD166")
-        case .recovery: return Color(hex: "#59D98E")
-        case .open: return .white.opacity(0.24)
-        }
-    }
-
-    var barCount: Int {
-        switch self {
-        case .endurance: return 4
-        case .load: return 3
-        case .mixed: return 2
-        case .recovery: return 1
-        case .open: return 0
-        }
-    }
-}
-
 // MARK: - Activity Status
 
 enum PlanActivityStatus {
@@ -1713,6 +1612,18 @@ private extension WeekPlannerView {
 }
 
 // MARK: - Color Helper
+
+extension PlanDayKind {
+    var color: Color {
+        switch self {
+        case .endurance: return Color(hex: "#5E7CFF")
+        case .load: return Color(hex: "#FF9F43")
+        case .mixed: return Color(hex: "#FFD166")
+        case .recovery: return Color(hex: "#59D98E")
+        case .open: return .white.opacity(0.24)
+        }
+    }
+}
 
 private extension Color {
 
