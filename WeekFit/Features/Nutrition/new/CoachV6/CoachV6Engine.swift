@@ -66,10 +66,18 @@ enum CoachV6Engine {
 
         let fuelState = resolveFuelState(
             input.nutritionContext,
+            hour: hour,
             durationBand: .short,
-            activityFamily: .none
+            activityFamily: .none,
+            activityState: .none
         )
-        let hydrationState = resolveHydrationState(input.nutritionContext)
+        let hydrationState = resolveHydrationState(
+            input.nutritionContext,
+            hour: hour,
+            activityFamily: .none,
+            durationBand: .short,
+            activityState: .none
+        )
         let dayReadiness = CoachV6DayReadinessResolver.resolve(from: input)
 
         if let activity = focus.activity,
@@ -121,8 +129,17 @@ enum CoachV6Engine {
 
         let resolvedFuelState = resolveFuelState(
             input.nutritionContext,
+            hour: hour,
             durationBand: CoachV6DurationBand.from(minutes: activity.effectiveDurationMinutes),
-            activityFamily: focus.family
+            activityFamily: focus.family,
+            activityState: focus.state
+        )
+        let resolvedHydrationState = resolveHydrationState(
+            input.nutritionContext,
+            hour: hour,
+            activityFamily: focus.family,
+            durationBand: CoachV6DurationBand.from(minutes: activity.effectiveDurationMinutes),
+            activityState: focus.state
         )
 
         return CoachV6Context(
@@ -134,7 +151,7 @@ enum CoachV6Engine {
             dayLoadBand: dayLoadBand,
             completedSeriousActivities: completedSerious,
             fuelState: resolvedFuelState,
-            hydrationState: hydrationState,
+            hydrationState: resolvedHydrationState,
             tomorrowDemand: tomorrowDemand,
             timeOfDay: timeOfDay,
             tomorrowWorkout: tomorrowWorkout,
@@ -373,46 +390,34 @@ enum CoachV6Engine {
 
     private static func resolveFuelState(
         _ nutrition: CoachNutritionContext?,
+        hour: Int,
         durationBand: CoachV6DurationBand,
-        activityFamily: CoachV6ActivityFamily
+        activityFamily: CoachV6ActivityFamily,
+        activityState: CoachV6ActivityState
     ) -> CoachV6FuelState {
-        guard let nutrition else { return .unknown }
-
-        let calorieProgress = nutrition.caloriesGoal > 0
-            ? nutrition.caloriesCurrent / nutrition.caloriesGoal
-            : 1
-        let proteinProgress = nutrition.proteinGoal > 0
-            ? nutrition.proteinCurrent / nutrition.proteinGoal
-            : 1
-
-        let isLongEndurance = activityFamily == .endurance &&
-            (durationBand == .long || durationBand == .extended)
-
-        if isLongEndurance && calorieProgress < 0.30 {
-            return .critical
-        }
-        if calorieProgress < 0.45 && proteinProgress < 0.55 {
-            return .behind
-        }
-        return .adequate
+        _ = activityState
+        return CoachV6NutritionPace.fuelState(
+            nutrition: nutrition,
+            hour: hour,
+            activityFamily: activityFamily,
+            durationBand: durationBand
+        )
     }
 
     private static func resolveHydrationState(
-        _ nutrition: CoachNutritionContext?
+        _ nutrition: CoachNutritionContext?,
+        hour: Int,
+        activityFamily: CoachV6ActivityFamily,
+        durationBand: CoachV6DurationBand,
+        activityState: CoachV6ActivityState
     ) -> CoachV6HydrationState {
-        guard let nutrition else { return .unknown }
-
-        let waterProgress = nutrition.waterGoal > 0
-            ? nutrition.waterCurrent / nutrition.waterGoal
-            : 1
-
-        if waterProgress < 0.25 || nutrition.waterRemainingLiters >= 1.5 {
-            return .critical
-        }
-        if waterProgress < 0.5 || nutrition.waterRemainingLiters >= 1.0 {
-            return .behind
-        }
-        return .adequate
+        CoachV6NutritionPace.hydrationState(
+            nutrition: nutrition,
+            hour: hour,
+            activityFamily: activityFamily,
+            durationBand: durationBand,
+            activityState: activityState
+        )
     }
 
     private static func mapTomorrowDemand(_ demand: CoachTomorrowDemand) -> CoachV6TomorrowDemand {

@@ -381,6 +381,10 @@ enum CoachV6CopyRegistry {
             }
         }
 
+        if shouldMentionLowRecoveryPrepSignal(input), lines.count < 3 {
+            lines.append(lowRecoveryPrepWhySignal(for: input))
+        }
+
         if shouldMentionDayLoadInSignals(input) {
             lines.append(.en(
                 "High cumulative load today.",
@@ -447,13 +451,31 @@ enum CoachV6CopyRegistry {
     /// Idle morning / protective day stories — nutrition belongs later.
     private static func shouldSurfaceNutritionSignals(for input: CoachV6CopyBuildInput) -> Bool {
         switch input.scenario {
-        case .morningReadiness, .protectTomorrowFresh:
+        case .morningReadiness, .protectTomorrowFresh, .lowRecoveryPrep:
             return false
         case .recoveryAfterHeavyYesterday:
             return input.timeOfDay != .morning
         default:
             return true
         }
+    }
+
+    private static func shouldMentionLowRecoveryPrepSignal(_ input: CoachV6CopyBuildInput) -> Bool {
+        guard input.scenario == .lowRecoveryPrep else { return false }
+        return input.dayReadiness.sleepIsLow || input.dayReadiness.isLowRecovery
+    }
+
+    private static func lowRecoveryPrepWhySignal(for input: CoachV6CopyBuildInput) -> CoachV6BilingualText {
+        if input.dayReadiness.sleepIsLow {
+            return .en(
+                "Sleep was short — start easier than usual.",
+                "Сон был коротким — начните легче обычного."
+            )
+        }
+        return .en(
+            "Recovery is lagging — protect the session.",
+            "Восстановление отстаёт — берегите тренировку."
+        )
     }
 
     private static func shouldMentionStackedTomorrowSignal(_ input: CoachV6CopyBuildInput) -> Bool {
