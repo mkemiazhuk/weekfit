@@ -55,6 +55,46 @@ final class RecoveryHealthKitProvider {
         )
     }
 
+    func bedtimeDeviationMinutes(for date: Date, currentBedStart: Date?) async -> Int? {
+        let calendar = calendar
+        var historicalBedStarts: [Date] = []
+
+        for dayOffset in 1...14 {
+            guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
+            let sleepSamples = await loadSleepSamples(for: pastDate)
+            if let bedStart = primaryBedStart(from: sleepSamples) {
+                historicalBedStarts.append(bedStart)
+            }
+        }
+
+        return RecoveryScoreEngine.bedtimeDeviationMinutes(
+            currentBedStart: currentBedStart,
+            historicalBedStarts: historicalBedStarts,
+            calendar: calendar
+        )
+    }
+
+    private func primaryBedStart(from sleepSamples: [HKCategorySample]) -> Date? {
+        let appleSamples = sleepSamples.filter {
+            $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
+        }
+
+        let samplesForParsing = appleSamples.isEmpty ? sleepSamples : appleSamples
+
+        let inBedSamples = samplesForParsing.filter {
+            $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue
+        }
+
+        let asleepSamples = samplesForParsing.filter {
+            isAsleepValue($0.value)
+        }
+
+        return makePrimarySleepSession(
+            inBedSamples: inBedSamples,
+            asleepSamples: asleepSamples
+        )?.start
+    }
+
     private func loadSleepSamples(for date: Date) async -> [HKCategorySample] {
         guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
             return []

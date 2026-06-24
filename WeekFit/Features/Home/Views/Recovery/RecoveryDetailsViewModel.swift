@@ -38,6 +38,11 @@ final class RecoveryDetailsViewModel: ObservableObject {
 
         guard loadToken == token else { return }
 
+        let bedtimeDeviation = await provider.bedtimeDeviationMinutes(
+            for: date,
+            currentBedStart: loadedSnapshot.bedStart
+        )
+
         let breakdown = RecoveryScoreEngine.calculate(
             sleepMinutes: loadedSnapshot.asleepMinutes,
             timeInBedMinutes: loadedSnapshot.timeInBedMinutes,
@@ -46,7 +51,8 @@ final class RecoveryDetailsViewModel: ObservableObject {
             deepSleepMinutes: loadedSnapshot.deepSleepMinutes,
             remSleepMinutes: loadedSnapshot.remSleepMinutes,
             hrvSDNN: loadedSnapshot.hrv ?? 0,
-            restingHeartRate: loadedSnapshot.restingHeartRate ?? 0
+            restingHeartRate: loadedSnapshot.restingHeartRate ?? 0,
+            bedtimeDeviationMinutes: bedtimeDeviation
         )
 
         snapshot = loadedSnapshot.withRecovery(

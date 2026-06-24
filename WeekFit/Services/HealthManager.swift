@@ -145,6 +145,7 @@ final class HealthManager: ObservableObject {
     @Published var timeInBedMinutes: Int = 0
     @Published var awakeMinutes: Int = 0
     @Published var awakeningsCount: Int = 0
+    @Published var bedStart: Date?
     @Published var recoveryBreakdown: RecoveryScoreBreakdown = .empty
     @Published var restingHeartRate: Double = 0
     @Published var hrvSDNN: Double = 0
@@ -514,6 +515,7 @@ final class HealthManager: ObservableObject {
         self.deepSleepMinutes = loadedSleepSnapshot.deepSleepMinutes
         self.remSleepMinutes = loadedSleepSnapshot.remSleepMinutes
         self.coreSleepMinutes = loadedSleepSnapshot.coreSleepMinutes
+        self.bedStart = loadedSleepSnapshot.bedStart
 
         self.standHours = hkStand
         self.sleepHours = Double(self.sleepMinutes) / 60.0
@@ -637,6 +639,8 @@ final class HealthManager: ObservableObject {
         self.hrvSDNN = await hrv
         self.restingHeartRate = await rhr
 
+        let bedtimeDeviation = await bedtimeDeviationMinutes(for: date, currentBedStart: bedStart)
+
         self.recoveryBreakdown = RecoveryScoreEngine.calculate(
             sleepMinutes: self.sleepMinutes,
             timeInBedMinutes: self.timeInBedMinutes,
@@ -645,7 +649,27 @@ final class HealthManager: ObservableObject {
             deepSleepMinutes: self.deepSleepMinutes,
             remSleepMinutes: self.remSleepMinutes,
             hrvSDNN: self.hrvSDNN,
-            restingHeartRate: self.restingHeartRate
+            restingHeartRate: self.restingHeartRate,
+            bedtimeDeviationMinutes: bedtimeDeviation
+        )
+    }
+
+    private func bedtimeDeviationMinutes(for date: Date, currentBedStart: Date?) async -> Int? {
+        let calendar = Calendar.current
+        var historicalBedStarts: [Date] = []
+
+        for dayOffset in 1...14 {
+            guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
+            let snapshot = await readRecoverySleepSnapshot(for: pastDate)
+            if let bedStart = snapshot.bedStart {
+                historicalBedStarts.append(bedStart)
+            }
+        }
+
+        return RecoveryScoreEngine.bedtimeDeviationMinutes(
+            currentBedStart: currentBedStart,
+            historicalBedStarts: historicalBedStarts,
+            calendar: calendar
         )
     }
 
@@ -794,6 +818,7 @@ final class HealthManager: ObservableObject {
         timeInBedMinutes = 0
         awakeMinutes = 0
         awakeningsCount = 0
+        bedStart = nil
         recoveryBreakdown = .empty
         restingHeartRate = 0
         hrvSDNN = 0
