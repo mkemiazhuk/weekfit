@@ -129,6 +129,7 @@ enum CoachV6CopySnapshotPrinter {
             timeOfDay: input.modifiers.timeOfDay,
             tomorrowWorkout: input.tomorrowWorkout,
             focusActivityID: input.scenario.activityFamily == nil ? nil : "snapshot-\(input.scenario.rawValue)",
+            focusSource: focusSource(for: input.scenario),
             minutesUntilStart: isPreSession(input.scenario) ? 12 : nil,
             minutesSinceEnd: isPostSession(input.scenario) ? 8 : nil,
             dayReadiness: input.dayReadiness
@@ -354,6 +355,18 @@ enum CoachV6CopySnapshotPrinter {
             return true
         default:
             return false
+        }
+    }
+
+    private static func focusSource(for scenario: CoachV6ScenarioKey) -> CoachV6FocusSource {
+        if isPreSession(scenario) { return .upcoming }
+        if isPostSession(scenario) { return .recentCompleted }
+        switch scenario {
+        case .duringEndurance, .duringRacket, .duringStrength, .duringRecovery,
+             .saunaActive, .walkLightDay, .walkAfterHeavyLoad, .walkEveningWindDown, .walkRecoveryAction:
+            return .active
+        default:
+            return .idle
         }
     }
 

@@ -176,6 +176,7 @@ struct CoachV6Context: Equatable, Sendable {
     let tomorrowWorkout: CoachV6TomorrowWorkout?
 
     let focusActivityID: String?
+    let focusSource: CoachV6FocusSource
     let minutesUntilStart: Int?
     let minutesSinceEnd: Int?
     let dayReadiness: CoachV6DayReadiness
@@ -203,8 +204,20 @@ enum CoachV6ActivityClassifier {
     }
 
     static func type(for activity: PlannedActivity) -> CoachV6ActivityType {
-        let text = tokenText(for: activity)
+        let primary = primaryTokenText(for: activity)
+        if let match = classifyType(in: primary) {
+            return match
+        }
 
+        let accessory = accessoryTokenText(for: activity)
+        if let match = classifyType(in: accessory) {
+            return match
+        }
+
+        return .none
+    }
+
+    private static func classifyType(in text: String) -> CoachV6ActivityType? {
         if containsAny(text, ["cycling", "cycle", "bike", "biking", "ride"]) {
             return .cycling
         }
@@ -229,6 +242,9 @@ enum CoachV6ActivityClassifier {
         if containsAny(text, ["full body", "full-body", "fullbody"]) {
             return .fullBody
         }
+        if containsAny(text, ["walk", "walking", "hike", "hiking", "прогул"]) {
+            return .walk
+        }
         if containsAny(text, ["strength", "gym", "lifting", "weights", "dumbbell", "barbell", "workout"]) {
             return .fullBody
         }
@@ -241,14 +257,11 @@ enum CoachV6ActivityClassifier {
         if text.contains("yoga") {
             return .yoga
         }
-        if containsAny(text, ["walk", "walking", "hike", "hiking", "прогул"]) {
-            return .walk
-        }
         if containsAny(text, ["sauna", "heat"]) {
             return .sauna
         }
 
-        return .none
+        return nil
     }
 
     static func isSeriousTraining(_ activity: PlannedActivity) -> Bool {
@@ -291,15 +304,23 @@ enum CoachV6ActivityClassifier {
         return .fresh
     }
 
+    private static func primaryTokenText(for activity: PlannedActivity) -> String {
+        [activity.type, activity.title]
+            .joined(separator: " ")
+            .lowercased()
+    }
+
+    private static func accessoryTokenText(for activity: PlannedActivity) -> String {
+        [activity.icon, activity.imageName]
+            .compactMap { $0?.isEmpty == false ? $0 : nil }
+            .joined(separator: " ")
+            .lowercased()
+    }
+
     private static func tokenText(for activity: PlannedActivity) -> String {
-        [
-            activity.type,
-            activity.title,
-            activity.icon,
-            activity.imageName
-        ]
-        .joined(separator: " ")
-        .lowercased()
+        [primaryTokenText(for: activity), accessoryTokenText(for: activity)]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     private static func containsAny(_ text: String, _ needles: [String]) -> Bool {

@@ -17,7 +17,7 @@
 ## Priority rules (fixed)
 
 ```
-1. Explicit focusActivity (if passed) > auto focus (active > recent completed ≤180m > next upcoming)
+1. Explicit focusActivity (if passed) > auto focus (active > upcoming serious training > recent completed serious ≤180m > upcoming recovery/light > recent completed recovery ≤180m > idle)
 2. Active session on calendar > last completed > upcoming
 3. tomorrowProtection context replaces completed-focus when: heavy day + tomorrow moderate/hard + afternoon/evening + no upcoming training today
 4. protectTomorrowFresh: idle morning/midday + good recovery + no serious work today + tomorrow moderate/hard — does not override live/pre-session

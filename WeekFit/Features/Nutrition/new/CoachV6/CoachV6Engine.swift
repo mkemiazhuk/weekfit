@@ -52,7 +52,7 @@ enum CoachV6Engine {
         let tomorrowDemand = mapTomorrowDemand(input.dayPriorityModel.tomorrowDemand)
 
         let tomorrowWorkout = resolveTomorrowWorkout(from: input)
-        let resolvedFocus = resolveFocusActivity(
+        let focus = CoachV6FocusResolver.resolve(
             input: input,
             explicitFocus: focusActivity
         )
@@ -60,7 +60,7 @@ enum CoachV6Engine {
         let completedSerious = completedSeriousActivities(from: input)
         let dayLoadBand = resolveDayLoadBand(
             input: input,
-            focusActivity: resolvedFocus.activity,
+            focusActivity: focus.activity,
             completedSerious: completedSerious
         )
 
@@ -72,7 +72,7 @@ enum CoachV6Engine {
         let hydrationState = resolveHydrationState(input.nutritionContext)
         let dayReadiness = CoachV6DayReadinessResolver.resolve(from: input)
 
-        if let activity = resolvedFocus.activity,
+        if let activity = focus.activity,
            shouldPreferTomorrowProtectionOverCompletedFocus(
             input: input,
             focus: activity,
@@ -92,7 +92,7 @@ enum CoachV6Engine {
             )
         }
 
-        guard let activity = resolvedFocus.activity else {
+        guard let activity = focus.activity else {
             let sessionPhase = resolveIdleSessionPhase(
                 timeOfDay: timeOfDay,
                 tomorrowDemand: tomorrowDemand,
@@ -112,40 +112,25 @@ enum CoachV6Engine {
                 timeOfDay: timeOfDay,
                 tomorrowWorkout: tomorrowWorkout,
                 focusActivityID: nil,
+                focusSource: .idle,
                 minutesUntilStart: nil,
                 minutesSinceEnd: nil,
                 dayReadiness: dayReadiness
             )
         }
 
-        let family = CoachV6ActivityClassifier.family(for: activity)
-        let activityType = CoachV6ActivityClassifier.type(for: activity)
-        let durationBand = CoachV6DurationBand.from(minutes: activity.effectiveDurationMinutes)
-        let activityState = resolveActivityState(
-            activity: activity,
-            now: now,
-            resolved: resolvedFocus
-        )
-        let sessionPhase = resolveSessionPhase(
-            activityState: activityState,
-            timeOfDay: timeOfDay,
-            tomorrowDemand: tomorrowDemand,
-            dayLoadBand: dayLoadBand,
-            family: family
-        )
-
         let resolvedFuelState = resolveFuelState(
             input.nutritionContext,
-            durationBand: durationBand,
-            activityFamily: family
+            durationBand: CoachV6DurationBand.from(minutes: activity.effectiveDurationMinutes),
+            activityFamily: focus.family
         )
 
         return CoachV6Context(
-            activityFamily: family,
-            activityType: activityType,
-            activityState: activityState,
-            sessionPhase: sessionPhase,
-            durationBand: durationBand,
+            activityFamily: focus.family,
+            activityType: focus.type,
+            activityState: focus.state,
+            sessionPhase: focus.phase,
+            durationBand: CoachV6DurationBand.from(minutes: activity.effectiveDurationMinutes),
             dayLoadBand: dayLoadBand,
             completedSeriousActivities: completedSerious,
             fuelState: resolvedFuelState,
@@ -154,132 +139,14 @@ enum CoachV6Engine {
             timeOfDay: timeOfDay,
             tomorrowWorkout: tomorrowWorkout,
             focusActivityID: activity.id,
-            minutesUntilStart: resolvedFocus.minutesUntilStart,
-            minutesSinceEnd: resolvedFocus.minutesSinceEnd,
+            focusSource: focus.source,
+            minutesUntilStart: focus.minutesUntilStart,
+            minutesSinceEnd: focus.minutesSinceEnd,
             dayReadiness: dayReadiness
         )
     }
 
-    // MARK: - Focus activity
-
-    private struct ResolvedFocus {
-        let activity: PlannedActivity?
-        let minutesUntilStart: Int?
-        let minutesSinceEnd: Int?
-    }
-
-    private static func resolveFocusActivity(
-        input: CoachInputSnapshot,
-        explicitFocus: PlannedActivity?
-    ) -> ResolvedFocus {
-        if let explicitFocus {
-            return resolveTiming(for: explicitFocus, now: input.now)
-        }
-
-        let calendar = Calendar.current
-        let dayActivities = input.plannedActivities.filter {
-            calendar.isDate($0.date, inSameDayAs: input.selectedDate) && !$0.isSkipped
-        }
-
-        if let active = dayActivities.first(where: { $0.isActive(at: input.now) }) {
-            return resolveTiming(for: active, now: input.now)
-        }
-
-        if let lastCompleted = input.dayContext.lastCompletedActivity {
-            let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= 180 {
-                return ResolvedFocus(
-                    activity: lastCompleted,
-                    minutesUntilStart: nil,
-                    minutesSinceEnd: minutesSinceEnd
-                )
-            }
-        }
-
-        if let next = input.dayContext.nextActivity {
-            return resolveTiming(for: next, now: input.now)
-        }
-
-        return ResolvedFocus(activity: nil, minutesUntilStart: nil, minutesSinceEnd: nil)
-    }
-
-    private static func resolveTiming(
-        for activity: PlannedActivity,
-        now: Date
-    ) -> ResolvedFocus {
-        if activity.isActive(at: now) {
-            return ResolvedFocus(activity: activity, minutesUntilStart: nil, minutesSinceEnd: nil)
-        }
-
-        if activity.isCompleted || activity.isPartialCompletion {
-            return ResolvedFocus(
-                activity: activity,
-                minutesUntilStart: nil,
-                minutesSinceEnd: minutesSinceActivityEnd(activity, now: now)
-            )
-        }
-
-        let minutesUntil = max(0, Int(activity.date.timeIntervalSince(now) / 60))
-        return ResolvedFocus(
-            activity: activity,
-            minutesUntilStart: minutesUntil,
-            minutesSinceEnd: nil
-        )
-    }
-
-    private static func minutesSinceActivityEnd(_ activity: PlannedActivity, now: Date) -> Int {
-        let end = Calendar.current.date(
-            byAdding: .minute,
-            value: activity.effectiveDurationMinutes,
-            to: activity.date
-        ) ?? activity.date
-        return max(0, Int(now.timeIntervalSince(end) / 60))
-    }
-
-    // MARK: - Activity & session phase
-
-    private static func resolveActivityState(
-        activity: PlannedActivity,
-        now: Date,
-        resolved: ResolvedFocus
-    ) -> CoachV6ActivityState {
-        if activity.isActive(at: now) {
-            return .active
-        }
-        if activity.isCompleted || activity.isPartialCompletion {
-            let minutesSince = resolved.minutesSinceEnd ?? 0
-            return minutesSince <= 60 ? .justFinished : .finished
-        }
-        return .upcoming
-    }
-
-    private static func resolveSessionPhase(
-        activityState: CoachV6ActivityState,
-        timeOfDay: CoachV6TimeOfDay,
-        tomorrowDemand: CoachV6TomorrowDemand,
-        dayLoadBand: CoachV6DayLoadBand,
-        family: CoachV6ActivityFamily
-    ) -> CoachV6SessionPhase {
-        switch activityState {
-        case .upcoming:
-            return .pre
-        case .active:
-            return .during
-        case .justFinished:
-            return .immediatePost
-        case .finished:
-            if isEveningPhase(timeOfDay), family != .none {
-                return .evening
-            }
-            return .settledPost
-        case .none:
-            return resolveIdleSessionPhase(
-                timeOfDay: timeOfDay,
-                tomorrowDemand: tomorrowDemand,
-                dayLoadBand: dayLoadBand
-            )
-        }
-    }
+    // MARK: - Idle session phase
 
     private static func resolveIdleSessionPhase(
         timeOfDay: CoachV6TimeOfDay,
@@ -359,6 +226,7 @@ enum CoachV6Engine {
             timeOfDay: timeOfDay,
             tomorrowWorkout: tomorrowWorkout,
             focusActivityID: nil,
+            focusSource: .idle,
             minutesUntilStart: nil,
             minutesSinceEnd: nil,
             dayReadiness: dayReadiness

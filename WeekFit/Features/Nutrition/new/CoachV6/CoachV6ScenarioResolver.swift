@@ -38,6 +38,7 @@ enum CoachV6ScenarioResolver {
             timeOfDay: context.timeOfDay,
             tomorrowWorkout: context.tomorrowWorkout,
             focusActivityID: context.focusActivityID,
+            focusSource: context.focusSource,
             minutesUntilStart: context.minutesUntilStart,
             minutesSinceEnd: context.minutesSinceEnd,
             dayReadiness: context.dayReadiness

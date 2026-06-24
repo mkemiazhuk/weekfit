@@ -75,6 +75,7 @@ final class CoachV6DayReadinessRouterTests: XCTestCase {
             timeOfDay: timeOfDay,
             tomorrowWorkout: nil,
             focusActivityID: nil,
+            focusSource: .idle,
             minutesUntilStart: nil,
             minutesSinceEnd: nil,
             dayReadiness: CoachV6DayReadiness(
@@ -107,6 +108,7 @@ final class CoachV6DayReadinessRouterTests: XCTestCase {
             timeOfDay: .afternoon,
             tomorrowWorkout: nil,
             focusActivityID: "test",
+            focusSource: .upcoming,
             minutesUntilStart: 45,
             minutesSinceEnd: nil,
             dayReadiness: CoachV6DayReadiness(

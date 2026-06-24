@@ -29,6 +29,7 @@ final class CoachV6TabPresentationBridgeTests: XCTestCase {
             timeOfDay: .afternoon,
             tomorrowWorkout: nil,
             focusActivityID: "strength",
+            focusSource: .active,
             minutesUntilStart: nil,
             minutesSinceEnd: nil,
             dayReadiness: .unknown

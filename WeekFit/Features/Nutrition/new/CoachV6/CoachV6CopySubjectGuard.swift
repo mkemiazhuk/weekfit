@@ -137,6 +137,39 @@ enum CoachV6CopySubjectGuard {
             default:
                 return ["session", "ended", "тренировк", "законч"]
             }
+        case .activeStrength, .duringStrength:
+            switch activityType {
+            case .core:
+                return ["core", "кор", "силов"]
+            case .upperBody:
+                return ["upper", "верх", "силов"]
+            case .lowerBody:
+                return ["lower", "ног", "силов"]
+            default:
+                return ["strength", "workout", "силов", "тренировк"]
+            }
+        case .postStrengthImmediate, .postStrengthSettled, .eveningAfterStrength:
+            switch activityType {
+            case .core:
+                return ["core", "set", "кор", "подход", "силов"]
+            default:
+                return ["strength", "set", "силов", "подход", "мышц"]
+            }
+        case .activeRacket, .duringRacket, .postRacketImmediate, .postRacketSettled, .eveningAfterRacket:
+            return ["tennis", "squash", "racket", "матч", "теннис", "сквош"]
+        case .activeRecovery, .duringRecovery, .postRecoveryImmediate, .postRecoverySettled, .eveningAfterRecovery:
+            switch activityType {
+            case .yoga:
+                return ["yoga", "йог"]
+            case .stretching:
+                return ["stretch", "растяж"]
+            case .breathing:
+                return ["breath", "дыхан"]
+            default:
+                return ["recovery", "восстанов"]
+            }
+        case .saunaPreparation, .saunaActive, .saunaRecovery:
+            return ["sauna", "heat", "саун", "жар", "тепл"]
         case .walkLightDay:
             return ["easy walk", "walk", "прогулк", "лёгк"]
         case .walkAfterHeavyLoad:
