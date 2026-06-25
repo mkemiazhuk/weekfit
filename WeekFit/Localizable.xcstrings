@@ -45015,6 +45015,23 @@
         }
       }
     },
+    "meals.library.hero.coachRecommendation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommendation from Coach"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендация от тренера"
+          }
+        }
+      }
+    },
     "meals.library.hero.details" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -45028,6 +45045,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подробнее"
+          }
+        }
+      }
+    },
+    "meals.library.hero.logMeal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log Meal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать"
           }
         }
       }
@@ -63405,6 +63439,23 @@
         }
       }
     },
+    "today.overview.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обзор"
+          }
+        }
+      }
+    },
     "today.pending.messageFormat" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -63439,6 +63490,23 @@
         }
       }
     },
+    "today.quickActions.dinner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dinner"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ужин"
+          }
+        }
+      }
+    },
     "today.quickActions.endActivity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -63452,6 +63520,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завершить"
+          }
+        }
+      }
+    },
+    "today.quickActions.firstMeal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First meal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первый приём"
+          }
+        }
+      }
+    },
+    "today.quickActions.hydrationOnTrack" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On track"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В норме"
           }
         }
       }
@@ -63507,6 +63609,40 @@
         }
       }
     },
+    "today.quickActions.logged" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записано"
+          }
+        }
+      }
+    },
+    "today.quickActions.lunch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lunch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обед"
+          }
+        }
+      }
+    },
     "today.quickActions.mealsSnacks" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -63520,6 +63656,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блюда • Перекусы"
+          }
+        }
+      }
+    },
+    "today.quickActions.open" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть"
+          }
+        }
+      }
+    },
+    "today.quickActions.prepare" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prepare"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подготовиться"
           }
         }
       }
@@ -63547,13 +63717,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Actions"
+            "value" : "Log quickly"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Быстрые действия"
+            "value" : "Быстрый доступ"
+          }
+        }
+      }
+    },
+    "today.quickActions.upNext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up next"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дальше"
           }
         }
       }
@@ -64387,23 +64574,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "LIVE"
-          }
-        }
-      }
-    },
-    "today.overview.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overview"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Обзор"
           }
         }
       }

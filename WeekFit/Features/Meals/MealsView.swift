@@ -366,7 +366,7 @@ struct MealsView: View {
         List {
             if shouldShowRecommendation, let recommendation = visibleRecommendation {
                 coachRecommendationHero(recommendation)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 6, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -1815,161 +1815,96 @@ private struct RecommendedTodayMealCard: View {
     let onLogNow: () -> Void
     let onDetails: () -> Void
 
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
-    private let cardBackground = WeekFitTheme.cardBackground
+    private let accent = WeekFitTheme.meal
 
-    private var displayedFactors: [String] {
-        let usesCompactHero = verticalSizeClass == .compact || UIScreen.main.bounds.height < 860
-        let limit = usesCompactHero ? 2 : 3
-        return Array(recommendation.factors.prefix(limit))
+    private var shortReason: String {
+        let summary = recommendation.factors.prefix(2).joined(separator: " • ")
+        if !summary.isEmpty {
+            return summary
+        }
+        return recommendation.reason
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            badge
+        VStack(alignment: .leading, spacing: 6) {
+            Button(action: openDetails) {
+                VStack(alignment: .leading, spacing: 6) {
+                    coachBadge
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(recommendation.meal.localizedDisplayTitle)
-                    .font(.system(size: 19.0, weight: .bold, design: .rounded))
-                    .foregroundStyle(textPrimary.opacity(0.98))
-                    .tracking(-0.62)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    Text(recommendation.meal.localizedDisplayTitle)
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(recommendation.reason)
-                    .font(.system(size: 12.0, weight: .medium, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.68))
-                    .lineSpacing(1.8)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(shortReason)
+                        .font(.footnote)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary.opacity(0.68))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 3) {
-                ForEach(displayedFactors, id: \.self) { factor in
-                    factorRow(factor)
+            Button(action: onLogNow) {
+                HStack(spacing: 5) {
+                    Text(WeekFitLocalizedString("meals.library.hero.logMeal"))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .fontDesign(.rounded)
+                .foregroundStyle(Color.black.opacity(0.84))
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(accent.opacity(0.88))
                 }
             }
-
-            HStack(spacing: 8) {
-                Button(action: onLogNow) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 12, weight: .bold))
-
-                        Text(WeekFitLocalizedString("meals.library.hero.logNow"))
-                            .font(.system(size: 12.8, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(.black.opacity(0.84))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 36)
-                    .background {
-                        Capsule(style: .continuous)
-                            .fill(recommendation.color.opacity(0.88))
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onDetails) {
-                    Text(WeekFitLocalizedString("meals.library.hero.details"))
-                        .font(.system(size: 12.6, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textPrimary.opacity(0.88))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 36)
-                        .background {
-                            Capsule(style: .continuous)
-                                .fill(Color.white.opacity(0.045))
-                        }
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.top, 1)
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            recommendation.color.opacity(0.16),
-                            Color.white.opacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .shadow(color: recommendation.color.opacity(0.055), radius: 14, y: 7)
-        .shadow(color: Color.black.opacity(0.16), radius: 12, y: 6)
+        .weekFitPremiumCard(accent: accent, cornerRadius: 20, featured: false)
     }
 
-    private var badge: some View {
-        HStack(spacing: 7) {
-            Image(systemName: recommendation.icon)
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(recommendation.color)
+    private func openDetails() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onDetails()
+    }
 
-            Text(recommendation.badge)
-                .font(.system(size: 10.0, weight: .bold, design: .rounded))
-                .tracking(0.15)
-                .foregroundStyle(recommendation.color)
+    private var coachBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 9.5, weight: .bold))
+
+            Text(WeekFitLocalizedString("meals.library.hero.coachRecommendation"))
+                .font(.caption2.weight(.bold))
+                .fontDesign(.rounded)
+                .tracking(0.8)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, 9)
+        .foregroundStyle(accent)
+        .padding(.horizontal, 10)
         .frame(height: 22)
         .background {
-            Capsule()
-                .fill(recommendation.color.opacity(0.10))
-        }
-    }
-
-    private func factorRow(_ text: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 10.2, weight: .bold))
-                .foregroundStyle(recommendation.color.opacity(0.95))
-                .frame(width: 12)
-
-            Text(text)
-                .font(.system(size: 11.4, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.78))
-                .lineLimit(1)
-                .minimumScaleFactor(0.84)
-        }
-    }
-
-    private var background: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    recommendation.color.opacity(0.080),
-                    cardBackground.opacity(0.58),
-                    Color.black.opacity(0.22)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            LinearGradient(
-                stops: [
-                    .init(color: .black.opacity(0.28), location: 0.0),
-                    .init(color: .black.opacity(0.16), location: 0.56),
-                    .init(color: .black.opacity(0.02), location: 1.0)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
+            Capsule(style: .continuous)
+                .fill(accent.opacity(0.10))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(accent.opacity(0.22), lineWidth: 1)
+                }
         }
     }
 }

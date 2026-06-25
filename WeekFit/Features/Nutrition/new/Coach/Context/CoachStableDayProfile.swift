@@ -172,20 +172,20 @@ enum CoachStableDayCopy {
     private static func lowRecoveryRestPack() -> BasePack {
         BasePack(
             assessment: .single(.en(
-                "Recovery is lagging — today works best as a quiet day.",
-                "Восстановление отстаёт — сегодня лучше провести спокойно."
+                "Recovery hasn't caught up after recent strain.",
+                "Организм ещё не успел восстановиться после недавней нагрузки."
             )),
             recommendation: .single(.en(
-                "Treat rest as the plan, not a gap in it.",
-                "Отдых — это план, а не пустое место в нём."
+                "A quieter day now will help you return stronger tomorrow.",
+                "Спокойный день сейчас поможет быстрее вернуться к нормальной нагрузке завтра."
             )),
             avoid: .single(.en(
-                "Don't borrow intensity from tomorrow to fill today.",
-                "Не занимайте завтрашние силы ради сегодняшней активности."
+                "A hard workout today is likely to add fatigue instead of fitness.",
+                "Интенсивная тренировка сегодня скорее добавит усталости, чем принесёт пользу."
             )),
             nextAction: .single(.en(
-                "Walk, stretch, or nap before anything demanding.",
-                "Прогулка, растяжка или короткий отдых — перед нагрузкой."
+                "Choose an easy walk, gentle stretching, or simply give yourself more time to recover.",
+                "Выберите спокойную прогулку, лёгкую растяжку или просто дайте организму больше времени на восстановление."
             ))
         )
     }
@@ -200,48 +200,49 @@ enum CoachStableDayCopy {
     private static func tomorrowReserveFreshPack() -> BasePack {
         BasePack(
             assessment: .single(.en(
-                "Tomorrow has real work — today is for holding reserve.",
-                "Завтра серьёзная работа — сегодня берегите запас."
+                "Tomorrow brings your biggest effort — today is about arriving ready.",
+                "Завтра вас ждёт основная нагрузка — сегодня важно подойти к ней свежим."
             )),
             recommendation: .single(.en(
-                "Spend today calmly so tomorrow's session still has room.",
-                "Проведите сегодня спокойно — завтра должно хватить сил."
+                "Focus on recovery instead of trying to fit in one more workout.",
+                "Сегодня лучше сосредоточиться на восстановлении, а не пытаться успеть ещё одну тренировку."
             )),
             avoid: .single(.en(
-                "Don't burn good recovery on optional intensity today.",
-                "Не тратьте восстановление на лишнюю интенсивность."
+                "Extra intensity now could take away from tomorrow's performance.",
+                "Лишняя интенсивность сегодня может ухудшить завтрашнюю тренировку."
             )),
             nextAction: .single(.en(
-                "Keep meals steady and leave hard blocks for tomorrow.",
-                "Ешьте ровно и оставьте тяжёлое на завтра."
+                "Eat well, hydrate, and finish the day early.",
+                "Нормально поешьте, восполните воду и завершите день пораньше."
             ))
         )
     }
-
+    
     private static func tomorrowReserveAfterWorkPack(input: CoachCopyBuildInput) -> BasePack {
         let windDown = CoachCopyNutritionTiming.isWindDown(input.timeOfDay)
+
         return BasePack(
             assessment: .single(.en(
-                "Enough for today — tomorrow still needs fresh legs.",
-                "На сегодня достаточно — завтра нужны свежие ноги."
+                "Today already has enough work in it — tomorrow needs fresh legs.",
+                "На сегодня нагрузки уже достаточно — завтра нужны свежие ноги."
             )),
             recommendation: .single(windDown
                 ? .en(
-                    "Wind down now — sleep is the work.",
-                    "Заканчивайте день спокойно — сейчас важнее сон."
+                    "Switch to recovery mode now; sleep will do more than another effort.",
+                    "Сейчас лучше перейти в режим восстановления: сон даст больше, чем ещё одна нагрузка."
                 )
                 : .en(
-                    "Keep the rest of today easy, then protect sleep.",
-                    "Остаток дня спокойный — потом важен сон."
+                    "Keep the rest of the day light so tomorrow's session still has quality.",
+                    "Оставьте остаток дня лёгким, чтобы завтрашняя тренировка прошла качественно."
                 )),
             avoid: .single(.en(
-                "No extra hard blocks tonight.",
-                "Не добавляйте нагрузку сегодня."
+                "Extra intensity tonight is more likely to steal from tomorrow than improve today.",
+                "Лишняя интенсивность сегодня скорее заберёт силы у завтра, чем улучшит сегодняшний день."
             )),
             nextAction: .single(tomorrowReserveNextAction(input: input, windDown: windDown))
         )
     }
-
+    
     private static func tomorrowReserveNextAction(
         input: CoachCopyBuildInput,
         windDown: Bool
@@ -339,7 +340,7 @@ enum CoachStableDayCopy {
             )
         case .tennis, .squash:
             return .en(
-                "Match is done — recovery comes first.",
+                "Match is over — recovery comes first.",
                 "Игра позади — восстановление в приоритете."
             )
         case .upperBody, .lowerBody, .core, .fullBody:

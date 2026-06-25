@@ -95,7 +95,7 @@ final class ActivityIntelligenceSnapshotProvider {
     func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
         let durationMinutes = max(1, Int(workout.duration / 60.0))
-        let icon = workoutIcon(for: workout.workoutActivityType)
+        let icon = ActivityReconciler.icon(for: workout.workoutActivityType)
         let color = workoutColor(for: workout.workoutActivityType)
         let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let distanceKm = workout.totalDistance.map { $0.doubleValue(for: .meter()) / 1000.0 }
@@ -211,21 +211,6 @@ final class ActivityIntelligenceSnapshotProvider {
         case .hiking: return WeekFitLocalizedString("activity.workoutType.hiking")
         case .mindAndBody: return WeekFitLocalizedString("activity.workoutType.recovery")
         default: return WeekFitLocalizedString("activity.workoutType.workout")
-        }
-    }
-
-    private func workoutIcon(for type: HKWorkoutActivityType) -> String {
-        switch type {
-        case .running: return "figure.run"
-        case .walking: return "figure.walk"
-        case .cycling: return "bicycle"
-        case .traditionalStrengthTraining: return "figure.strengthtraining.traditional"
-        case .functionalStrengthTraining: return "figure.strengthtraining.functional"
-        case .yoga: return "figure.mind.and.body"
-        case .swimming: return "figure.pool.swim"
-        case .hiking: return "figure.hiking"
-        case .mindAndBody: return "wind"
-        default: return "figure.mixed.cardio"
         }
     }
 

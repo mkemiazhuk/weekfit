@@ -1,4 +1,5 @@
 import SwiftUI
+import WeekFitPlanner
 
 struct NutritionDetailsView: View {
 
@@ -319,7 +320,7 @@ private struct NutritionHeroCard: View {
                 Text(statusText)
                     .font(.system(size: NutritionTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.72)
 
                 Text(insightText)
@@ -338,27 +339,18 @@ private struct NutritionHeroCard: View {
     }
 
     private var nutritionRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.075), lineWidth: 4)
-
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            NutritionStyle.proteinColor.opacity(0.80),
-                            NutritionStyle.nutritionColor,
-                            NutritionStyle.fatColor.opacity(0.85),
-                            NutritionStyle.fiberColor.opacity(0.85)
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .shadow(color: NutritionStyle.nutritionColor.opacity(0.15), radius: 4)
-
+        WeekFitProgressRing(
+            progress: progress,
+            color: WeekFitProgressRingColor.nutrition,
+            size: 70,
+            strokeWidth: 4,
+            gradientColors: [
+                Color(red: 0.58, green: 0.38, blue: 0.96).opacity(0.86),
+                WeekFitProgressRingColor.nutrition,
+                Color(red: 1.00, green: 0.28, blue: 0.38).opacity(0.92),
+                Color(red: 0.36, green: 0.88, blue: 0.44).opacity(0.92)
+            ]
+        ) {
             VStack(spacing: -2) {
                 Text("\(nutritionScore)")
                     .font(.system(size: NutritionTypography.heroScore, weight: .bold, design: .rounded))
@@ -370,7 +362,6 @@ private struct NutritionHeroCard: View {
                     .foregroundStyle(.white.opacity(0.40))
             }
         }
-        .frame(width: 70, height: 70)
     }
 }
 
@@ -391,7 +382,7 @@ private struct MacroRingsCard: View {
         VStack(alignment: .leading, spacing: 13) {
             SectionLabel(WeekFitLocalizedString("nutrition.details.section.macroBalance"))
 
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 6) {
                 macroRing(title: WeekFitLocalizedString("nutrition.macro.protein"), value: protein, goal: proteinGoal, color: NutritionStyle.proteinColor)
                 macroRing(title: WeekFitLocalizedString("nutrition.macro.carbs"), value: carbs, goal: carbsGoal, color: NutritionStyle.carbsColor)
                 macroRing(title: WeekFitLocalizedString("nutrition.macro.fats"), value: fats, goal: fatsGoal, color: NutritionStyle.fatColor)
@@ -404,33 +395,34 @@ private struct MacroRingsCard: View {
     }
 
     private func macroRing(title: String, value: Double, goal: Double, color: Color) -> some View {
-        let progress = goal > 0 ? min(max(value / goal, 0), 1) : 0
-        let percent = Int((progress * 100).rounded())
+        let progressValue = goal > 0 ? min(max(value / goal, 0), 1) : 0
+        let progress = CGFloat(progressValue)
+        let percent = Int((progressValue * 100).rounded())
 
-        return VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.075), lineWidth: 4)
-
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        color,
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-
+        return VStack(spacing: 7) {
+            WeekFitProgressRing(
+                progress: progress,
+                color: color,
+                size: 54,
+                strokeWidth: 3.5,
+                gradientColors: [
+                    color.opacity(0.78),
+                    color,
+                    color.opacity(0.90)
+                ]
+            ) {
                 Text("\(percent)%")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.94))
                     .monospacedDigit()
             }
-            .frame(width: 58, height: 58)
 
             VStack(spacing: 1) {
                 Text(title)
                     .font(.system(size: NutritionTypography.metricTitle, weight: .semibold, design: .rounded))
                     .foregroundStyle(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
 
                 Text(String(format: WeekFitLocalizedString("nutrition.details.macro.valueFormat"), Int(value), Int(goal)))
                     .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
@@ -459,15 +451,12 @@ private struct MealTimelineCard: View {
             if meals.isEmpty {
                 emptyMeals
             } else {
-                ScrollView(showsIndicators: false) {
-                       VStack(spacing: 0) {
-                           ForEach(Array(meals.enumerated()), id: \.element.id) { index, meal in
-                               mealRow(meal, isLast: index == meals.count - 1)
-                           }
-                       }
-                       .padding(.vertical, 4)
-                   }
-                   .frame(maxHeight: 260)
+                VStack(spacing: 0) {
+                    ForEach(Array(meals.enumerated()), id: \.element.id) { index, meal in
+                        mealRow(meal, isLast: index == meals.count - 1)
+                    }
+                }
+                .padding(.vertical, 4)
             }
         }
         .padding(.horizontal, 17)
@@ -613,7 +602,20 @@ private struct MealTimelineCard: View {
     }
 
     private func mealTimelineIcon(for meal: PlannedActivity) -> String {
+        let normalizedType = meal.type.lowercased()
+        if normalizedType == "drink" || normalizedType == "hydration" {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
+
         let text = "\(meal.title) \(meal.imageName) \(meal.icon)".lowercased()
+
+        if text.contains("water") || text.contains("hydration") {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
+
+        if text.contains("coffee") || text.contains("espresso") || text.contains("latte") || text.contains("tea") {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
 
         if text.contains("juice") || text.contains("drink") {
             return "takeoutbag.and.cup.and.straw.fill"
@@ -657,7 +659,7 @@ private struct SectionLabel: View {
 private enum NutritionTypography {
     static let sectionLabel: CGFloat = 11
 
-    static let heroTitle: CGFloat = 20
+    static let heroTitle: CGFloat = 18
     static let heroText: CGFloat = 12
     static let heroScore: CGFloat = 26
     static let heroScoreLabel: CGFloat = 9

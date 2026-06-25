@@ -23,7 +23,7 @@ struct WeekFitScreenContainer<Header: View, Content: View>: View {
                 header
                     .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
                     .padding(.top, WeekFitScreenLayout.topPadding)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 10)
                     .frame(width: width)
 //                    .debugFrame("Header shell")
 

@@ -123,7 +123,6 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
                 color: CoachPalette.recovery
             ),
             coachPresentation: coachUIPresentation == nil ? nil : sampleCoachPresentation,
-            rationalePresentation: nil,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachUIPresentation == nil
                 ? nil

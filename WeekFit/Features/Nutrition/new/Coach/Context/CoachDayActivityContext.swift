@@ -338,7 +338,7 @@ enum CoachDayActivityContextResolver {
         }
 
         if kind == .heat {
-            return 120
+            return CoachHeatRecoveryPolicy.focusWindowMinutes
         }
 
         switch load {

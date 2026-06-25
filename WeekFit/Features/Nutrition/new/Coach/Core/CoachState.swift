@@ -66,16 +66,6 @@ struct CoachScreenPresentation {
     }
 }
 
-typealias CoachFullPresentation = CoachScreenPresentation
-
-struct CoachRationalePresentation {
-    let title: String
-    let message: String
-    let icon: String
-    let color: Color
-    let sourceActivityID: String
-}
-
 enum CoachStateStatus: Equatable {
     case ready
     case refreshingPrevious
@@ -98,7 +88,6 @@ struct CoachState: Identifiable {
     let fingerprint: CoachInputFingerprint?
     let todayPresentation: CoachTodayPresentation
     let coachPresentation: CoachScreenPresentation?
-    let rationalePresentation: CoachRationalePresentation?
     let coachUIPresentation: CoachUIPresentation?
     let coachIntegrationDebug: CoachIntegrationDebug?
 
@@ -158,7 +147,6 @@ struct CoachState: Identifiable {
                 color: WeekFitTheme.secondaryText
             ),
             coachPresentation: nil,
-            rationalePresentation: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil
         )
@@ -182,7 +170,6 @@ struct CoachState: Identifiable {
                 color: WeekFitTheme.secondaryText
             ),
             coachPresentation: nil,
-            rationalePresentation: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil
         )
@@ -246,7 +233,6 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             todayPresentation: todayPresentation,
             coachPresentation: coachPresentation,
-            rationalePresentation: CoachRationalePresentation.resolve(from: input),
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug
         )
@@ -263,7 +249,6 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             todayPresentation: todayPresentation,
             coachPresentation: coachPresentation,
-            rationalePresentation: rationalePresentation,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug
         )

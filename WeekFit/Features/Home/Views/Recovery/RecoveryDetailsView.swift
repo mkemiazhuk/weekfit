@@ -161,7 +161,7 @@ private struct RecoveryHeroCard: View {
                 Text(statusText)
                     .font(.system(size: RecoveryTypography.heroTitle, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.72)
 
                 Text(snapshot.insightText)
@@ -180,27 +180,18 @@ private struct RecoveryHeroCard: View {
     }
 
     private var recoveryRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.075), lineWidth: 4)
-
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            RecoveryStyle.recoveryColor.opacity(0.60),
-                            RecoveryStyle.recoveryColor,
-                            RecoveryStyle.blue,
-                            RecoveryStyle.purple.opacity(0.80)
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .shadow(color: RecoveryStyle.recoveryColor.opacity(0.15), radius: 4)
-
+        WeekFitProgressRing(
+            progress: progress,
+            color: WeekFitProgressRingColor.recovery,
+            size: 70,
+            strokeWidth: 4,
+            gradientColors: [
+                WeekFitProgressRingColor.recovery.opacity(0.80),
+                WeekFitProgressRingColor.recovery,
+                Color(red: 0.28, green: 0.92, blue: 1.00),
+                WeekFitProgressRingColor.recovery.opacity(0.94)
+            ]
+        ) {
             VStack(spacing: -2) {
                 Text("\(snapshot.recoveryScore)")
                     .font(.system(size: RecoveryTypography.heroScore, weight: .bold, design: .rounded))
@@ -212,7 +203,6 @@ private struct RecoveryHeroCard: View {
                     .foregroundStyle(.white.opacity(0.40))
             }
         }
-        .frame(width: 70, height: 70)
     }
 
     private var statusText: String {
@@ -645,7 +635,7 @@ private struct SectionLabel: View {
 private enum RecoveryTypography {
     static let sectionLabel: CGFloat = 11
 
-    static let heroTitle: CGFloat = 20
+    static let heroTitle: CGFloat = 18
     static let heroText: CGFloat = 12
     static let heroScore: CGFloat = 26
     static let heroScoreLabel: CGFloat = 9

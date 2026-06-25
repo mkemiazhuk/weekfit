@@ -303,6 +303,22 @@ final class CoachSelectionMatrixTests: XCTestCase {
         )
     }
 
+    func testCompletedSauna90MinutesAgoReleasesHeatStory() {
+        let now = date(hour: 16, minute: 30)
+        var sauna = completedActivity(title: "Sauna", endedMinutesAgo: 90, durationMinutes: 45, relativeTo: now)
+        sauna.type = "sauna"
+
+        assertSelection(
+            now: now,
+            activities: [sauna],
+            allowedScenarios: [.stableDay, .morningReadiness],
+            forbiddenScenarios: [.saunaRecovery, .saunaActive, .saunaPreparation],
+            expectedSource: .idle,
+            expectedPhase: .idle,
+            expectedFamily: .none
+        )
+    }
+
     // MARK: - 4. Completed different-family must not leak phase
 
     func testCompletedCoreWithFutureCyclingDoesNotUsePostEndurance() {

@@ -127,35 +127,11 @@ public enum ActivityReconciler {
     }
 
     public static func icon(for type: HKWorkoutActivityType) -> String {
-        switch type {
-        case .cycling:
-            return "bicycle"
-        case .running:
-            return "figure.run"
-        case .walking:
-            return "figure.walk"
-        case .hiking:
-            return "figure.hiking"
-        case .traditionalStrengthTraining,
-             .functionalStrengthTraining:
-            return "dumbbell.fill"
-        case .highIntensityIntervalTraining:
-            return "flame.fill"
-        case .yoga:
-            return "figure.yoga"
-        case .swimming:
-            return "figure.pool.swim"
-        case .coreTraining:
-            return "figure.core.training"
-        case .tennis:
-            return "figure.tennis"
-        case .squash:
-            return "figure.squash"
-        case .snowboarding:
-            return "figure.snowboarding"
-        default:
-            return "figure.run"
-        }
+        WeekFitActivityIconResolver.resolve(
+            storedIcon: nil,
+            title: title(for: type),
+            type: "workout"
+        )
     }
 
     public static func matches(

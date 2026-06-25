@@ -505,17 +505,11 @@ private extension WeekPlannerView {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 7) {
-                        Circle()
-                            .fill(selectedDayKind.color)
-                            .frame(width: 7, height: 7)
-
-                        Text(selectedDayTitle)
-                            .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.88)
-                    }
+                    Text(selectedDayTitle)
+                        .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
 
                     if selectedDayActivities.isEmpty {
                         Text(WeekFitLocalizedString("planner.daySubtitle.empty"))

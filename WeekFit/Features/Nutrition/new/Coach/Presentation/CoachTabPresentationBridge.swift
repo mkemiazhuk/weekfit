@@ -157,7 +157,7 @@ enum CoachTabPresentationBridge {
         case .saunaActive:
             title = ru ? "В бане" : "In sauna"
         case .saunaRecovery:
-            title = ru ? "После жара" : "After heat"
+            title = ru ? "После сауны" : "After heat"
         default:
             title = assessment
         }
@@ -290,8 +290,8 @@ enum CoachTabPresentationBridge {
             )
         case .postRacketImmediate:
             return localized(
-                english: "Walk the court off — let pulse settle.",
-                russian: "Пройдитесь по корту — пульс сам снизится."
+                english: "Cooldown on court — then water and stretch.",
+                russian: "Заминка на корте — потом вода и растяжка."
             )
         case .postStrengthImmediate:
             return localized(
@@ -348,7 +348,7 @@ enum CoachTabPresentationBridge {
         case .saunaRecovery:
             return localized(
                 english: "Cool down slowly.",
-                russian: "Остывайте медленно."
+                russian: "Остывайте постепенно."
             )
         default:
             return conciseLine(localizedText(pack.recommendation), maxLength: 72)
@@ -597,7 +597,7 @@ enum CoachTabPresentationBridge {
         case .saunaActive:
             return localized(english: "In the heat", russian: "В жаре")
         case .saunaRecovery:
-            return localized(english: "After sauna", russian: "После бани")
+            return localized(english: "After sauna", russian: "После сауны")
         default:
             return localized(english: "Coach", russian: "Коуч")
         }

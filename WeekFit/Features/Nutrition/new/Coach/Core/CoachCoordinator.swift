@@ -183,19 +183,12 @@ final class CoachCoordinator: ObservableObject {
         state: CoachState
     ) {
         let active = input.plannedActivities.first(where: { isActiveActivity($0, now: input.now) })
-        let rationale = state.rationalePresentation
-        let upcoming = rationale.flatMap { presentation in
-            input.plannedActivities.first(where: { $0.id == presentation.sourceActivityID })
-        }
-        let minutes = upcoming.map { max(0, Int($0.date.timeIntervalSince(input.now) / 60)) }
         let model = input.dayPriorityModel
 
         CoachLogger.trace(
             "[CoachContextDebug]",
             [
                 "activeActivity=\(activitySummary(active))",
-                "upcomingWorkout=\(activitySummary(upcoming))",
-                "minutesUntilWorkout=\(minutes.map(String.init) ?? "nil")",
                 "dayPrimarySession=\(activitySummary(model.primarySession))",
                 "daySecondarySession=\(activitySummary(model.secondarySession))",
                 "dayGoal=\(model.dayGoal.rawValue)",

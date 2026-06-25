@@ -317,18 +317,18 @@ enum CoachCopyRegistryScenarios {
                 "Игра позади — ноги и нервы ещё горят."
             ),
             recommendation: .en(
-                "Walk the court off — let heart rate drift down.",
-                "Пройдитесь по корту — пусть пульс сам снизится."
+                "Ten easy minutes on court — let body and pulse land.",
+                "Минут десять легко по корту — пусть тело и пульс успокоятся."
             ),
             avoid: .en(
-                "Don't collapse into a chair without moving.",
-                "Не падайте на стул сразу — походите."
+                "Don't sit down and replay the match in your head.",
+                "Не садитесь сразу и не прокручивайте игру в голове."
             ),
             nextAction: catchUpNextAction(
                 input: input,
                 defaultAction: .en(
-                    "Five minutes easy walk, then drink.",
-                    "Пять минут лёгкой ходьбы — потом пейте."
+                    "Water first — shoulders when breathing settles.",
+                    "Сначала вода — плечи, когда дыхание выровняется."
                 )
             )
         )
@@ -914,21 +914,21 @@ enum CoachCopyRegistryScenarios {
         Draft(
             assessment: .en(
                 "Heat session done — cool down slowly, not in a rush.",
-                "Жар позади — остывайте медленно, без спешки."
+                "Жар позади — дайте телу остыть спокойно, без резких переходов."
             ),
             recommendation: .en(
                 "Rest and quiet — let pulse settle before what's next.",
-                "Отдых и тишина — пусть пульс успокоится."
+                "Посидите несколько минут, выпейте воды и дождитесь, пока дыхание станет спокойным."
             ),
             avoid: .en(
                 "Don't jump into cold shower or hard work right away.",
-                "Не ныряйте сразу в ледяной душ или тяжёлую работу."
+                "Не переходите сразу к холодному душу, интенсивной нагрузке или тяжёлым делам."
             ),
             nextAction: catchUpNextAction(
                 input: input,
                 defaultAction: .en(
                     "Sit fifteen minutes quietly before you move on.",
-                    "Пятнадцать минут тишины — потом можно двигаться."
+                    "Когда полностью остынете, спокойно поешьте и продолжайте день."
                 )
             )
         )

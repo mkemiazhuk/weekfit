@@ -313,27 +313,18 @@ private struct ActivityHeroCard: View {
     }
 
     private var activityRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.075), lineWidth: 4)
-
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            ActivityStyle.activityColor.opacity(0.60),
-                            ActivityStyle.activityColor,
-                            ActivityStyle.green,
-                            ActivityStyle.teal.opacity(0.85)
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .shadow(color: ActivityStyle.activityColor.opacity(0.15), radius: 4)
-
+        WeekFitProgressRing(
+            progress: progress,
+            color: WeekFitProgressRingColor.activity,
+            size: 70,
+            strokeWidth: 4,
+            gradientColors: [
+                WeekFitProgressRingColor.activity.opacity(0.80),
+                WeekFitProgressRingColor.activity,
+                Color(red: 0.36, green: 0.90, blue: 0.38),
+                Color(red: 0.22, green: 0.84, blue: 0.88).opacity(0.94)
+            ]
+        ) {
             VStack(spacing: -2) {
                 Text("\(snapshot.activityPercent)")
                     .font(.system(size: ActivityTypography.heroScore, weight: .bold, design: .rounded))
@@ -345,7 +336,6 @@ private struct ActivityHeroCard: View {
                     .foregroundStyle(.white.opacity(0.40))
             }
         }
-        .frame(width: 70, height: 70)
     }
 
     private var statusText: String {
@@ -1179,28 +1169,24 @@ struct ActivitySessionDetailView: View {
             ActivityStyle.screenBackground
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                header
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 9) {
+                    sessionHeroCard
+                    metricsCard
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 9) {
-                        sessionHeroCard
-                        metricsCard
-
-                        if isHeartRateLoading || !heartRateSamples.isEmpty {
-                            heartRateCard
-                        }
-
-                        if isRouteLoading || routePoints.count > 1 {
-                            routeCard
-                        }
-
-                        footer
+                    if isHeartRateLoading || !heartRateSamples.isEmpty {
+                        heartRateCard
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 5)
-                    .padding(.bottom, 36)
+
+                    if isRouteLoading || routePoints.count > 1 {
+                        routeCard
+                    }
+
+                    footer
                 }
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 36)
             }
         }
         .preferredColorScheme(.dark)
@@ -1220,37 +1206,22 @@ struct ActivitySessionDetailView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 13) {
-            Spacer()
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                closeDetail()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
-                    .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
-                    }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
+    private var closeButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            closeDetail()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white.opacity(0.94))
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Color.white.opacity(0.075)))
+                .overlay {
+                    Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                }
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 11)
-        .background {
-            ActivityStyle.screenBackground.ignoresSafeArea(edges: .top)
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.white.opacity(0.04))
-                .frame(height: 1)
-        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(AppText.Common.Action.close))
     }
 
     private func closeDetail() {
@@ -1266,27 +1237,33 @@ struct ActivitySessionDetailView: View {
     }
 
     private var sessionHeroCard: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 14) {
             ZStack {
                 Circle()
                     .fill(session.color.opacity(0.12))
-                    .frame(width: 108, height: 108)
+                    .frame(width: 84, height: 84)
 
                 Circle()
                     .stroke(session.color.opacity(0.90), lineWidth: 2)
-                    .frame(width: 108, height: 108)
+                    .frame(width: 84, height: 84)
 
                 Image(systemName: session.icon)
-                    .font(.system(size: 43, weight: .semibold))
+                    .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(session.color)
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(session.title)
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(session.title)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+
+                    Spacer(minLength: 0)
+
+                    closeButton
+                }
 
                 Text(activityDateText)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -1305,6 +1282,8 @@ struct ActivitySessionDetailView: View {
 
                     Text(syncedText)
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
                 }
                 .foregroundStyle(.white.opacity(0.58))
                 .padding(.horizontal, 8)
@@ -1314,10 +1293,8 @@ struct ActivitySessionDetailView: View {
                         .fill(Color.white.opacity(0.045))
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 5)
+        .padding(.horizontal, 2)
         .padding(.vertical, 2)
     }
 
@@ -1710,8 +1687,8 @@ struct ActivitySessionDetailView: View {
     private var metricsColumnCount: Int {
         let count = metricItems.count
 
-        if count >= 7 {
-            return 4
+        if count >= 6 {
+            return 3
         }
 
         if count >= 4 {
@@ -2092,18 +2069,21 @@ private struct SessionMetricGridCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
+            HStack(alignment: .top, spacing: 5) {
                 Image(systemName: item.icon)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(item.color)
                     .frame(width: 14)
+                    .padding(.top, 1)
 
                 Text(WeekFitLocalizedString(item.title))
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.58))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.78)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(minHeight: 26, alignment: .topLeading)
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(item.value)

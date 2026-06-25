@@ -11,25 +11,17 @@ enum PlanTimelineLayout {
     static let lineWidth: CGFloat = 1.0
     static let rowSpacing: CGFloat = 10
     static let cardCornerRadius: CGFloat = 16
-    static let avatarSize: CGFloat = 36
-    static let avatarContentSize: CGFloat = 24
-    static let foodAvatarSize: CGFloat = 29
-    static let foodAvatarContentSize: CGFloat = 19
-    static let compactHydrationAvatarSize: CGFloat = 20
-    static let compactHydrationIconSize: CGFloat = 10
     static let compactHydrationVerticalPadding: CGFloat = 7
     static let cardHorizontalPadding: CGFloat = 11
     static let cardVerticalPadding: CGFloat = 10
     static let cardIconSpacing: CGFloat = 9
     static let cardAccentBarWidth: CGFloat = 3.5
-    static let typeDotSize: CGFloat = 6.5
     static let rowTopInset: CGFloat = 8
     static let firstConnectorInset: CGFloat = 8
     static let lastConnectorInset: CGFloat = 4
     static let titleFontSize: CGFloat = 15.2
     static let subtitleFontSize: CGFloat = 12.5
     static let timeFontSize: CGFloat = 15
-    static let activityIconFontSize: CGFloat = 16
     static let titleSubtitleSpacing: CGFloat = 1
 }
 
@@ -252,27 +244,17 @@ struct PlanTimelineRow: View {
                 iconView
 
                 VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(accent.opacity(typeDotOpacity))
-                            .frame(
-                                width: PlanTimelineLayout.typeDotSize,
-                                height: PlanTimelineLayout.typeDotSize
-                            )
-
-                        Text(displayTitle)
-                            .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
-                            .foregroundStyle(titleColor)
-                            .tracking(-0.22)
-                            .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .layoutPriority(1)
-                    }
+                    Text(displayTitle)
+                        .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
+                        .foregroundStyle(titleColor)
+                        .tracking(-0.22)
+                        .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
 
                     if !metadata.isEmpty {
                         metadataLine
-                            .padding(.leading, PlanTimelineLayout.typeDotSize + 6)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -326,10 +308,6 @@ struct PlanTimelineRow: View {
         case .skipped:
             return 0.28
         }
-    }
-
-    private var typeDotOpacity: Double {
-        min(accentBarOpacity + 0.08, 0.96)
     }
 
     private var titleFontWeight: Font.Weight {
@@ -530,60 +508,14 @@ struct PlanTimelineRow: View {
 
     @ViewBuilder
     private var iconView: some View {
-        if density == .compactHydration {
-            compactHydrationIcon
-        } else if let foodVisual = PlanTimelineNutritionVisualResolver.resolve(
-            for: activity,
-            customMeals: customMeals
-        ) {
-            PlanTimelineNutritionAvatar(
-                visual: foodVisual,
-                accent: accent,
-                backgroundOpacity: foodIconBackgroundOpacity,
-                foregroundOpacity: foodIconForegroundOpacity,
-                size: PlanTimelineLayout.foodAvatarSize,
-                contentSize: PlanTimelineLayout.foodAvatarContentSize
-            )
-            .opacity(0.88)
-        } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(accent.opacity(iconBackgroundOpacity))
-                    .frame(width: PlanTimelineLayout.avatarSize, height: PlanTimelineLayout.avatarSize)
-
-                Image(systemName: resolvedIcon)
-                    .font(.system(size: PlanTimelineLayout.activityIconFontSize, weight: .semibold))
-                    .foregroundStyle(accent.opacity(iconForegroundOpacity))
-            }
-        }
-    }
-
-    private var compactHydrationIcon: some View {
-        ZStack {
-            Circle()
-                .fill(accent.opacity(0.07))
-                .frame(
-                    width: PlanTimelineLayout.compactHydrationAvatarSize,
-                    height: PlanTimelineLayout.compactHydrationAvatarSize
-                )
-
-            Image(systemName: "drop.fill")
-                .font(
-                    .system(
-                        size: PlanTimelineLayout.compactHydrationIconSize,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(accent.opacity(0.62))
-        }
-    }
-
-    private var foodIconBackgroundOpacity: Double {
-        iconBackgroundOpacity * 0.82
-    }
-
-    private var foodIconForegroundOpacity: Double {
-        iconForegroundOpacity * 0.88
+        WeekFitIconBadge(
+            systemName: resolvedIcon,
+            color: accent,
+            size: .sm,
+            shape: .roundedRect,
+            backgroundOpacity: iconBackgroundOpacity,
+            foregroundOpacity: iconForegroundOpacity
+        )
     }
 
     private var iconBackgroundOpacity: Double {
@@ -776,94 +708,7 @@ private struct PlanTimelineNode: View {
 enum PlanTimelineIconResolver {
 
     static func icon(for activity: PlannedActivity) -> String {
-        let title = activity.title.lowercased()
-        let type = activity.type.lowercased()
-
-        if title.contains("coffee") || title.contains("espresso")
-            || title.contains("cappuccino") || title.contains("latte")
-            || title.contains("tea") {
-            return "cup.and.saucer.fill"
-        }
-
-        if title.contains("water") || title.contains("hydration") || title.contains("drink") {
-            return "drop.fill"
-        }
-
-        if title.contains("banana") || title.contains("meal") || type == "meal" {
-            return "fork.knife"
-        }
-
-        if title.contains("sauna") || title.contains("heat") {
-            return "flame.fill"
-        }
-
-        if title.contains("walk") || type.contains("walk") {
-            return "figure.walk"
-        }
-
-        if title.contains("hike") || type.contains("hike") {
-            return "figure.hiking"
-        }
-
-        if title.contains("running") || title.contains("run")
-            || type.contains("running") || type.contains("run") {
-            return "figure.run"
-        }
-
-        if title.contains("cycling") || title.contains("cycle")
-            || title.contains("bike") || title.contains("ride")
-            || type.contains("cycling") || type.contains("cycle")
-            || type.contains("bike") || type.contains("ride") {
-            return "bicycle"
-        }
-
-        if title.contains("yoga") || type.contains("yoga") {
-            return "figure.mind.and.body"
-        }
-
-        if title.contains("breathing") || title.contains("breath")
-            || type.contains("breathing") || type.contains("breath") {
-            return "wind"
-        }
-
-        if title.contains("stretching") || title.contains("stretch")
-            || title.contains("mobility")
-            || type.contains("stretching") || type.contains("stretch")
-            || type.contains("mobility") {
-            return "figure.flexibility"
-        }
-
-        if title.contains("upper body") {
-            return "figure.strengthtraining.traditional"
-        }
-
-        if title.contains("strength") || title.contains("gym")
-            || title.contains("training") || title.contains("workout")
-            || type.contains("workout") {
-            return "dumbbell.fill"
-        }
-
-        if title.contains("sleep") || title.contains("bedtime") {
-            return "bed.double.fill"
-        }
-
-        if title.contains("no screens") || title.contains("screen") {
-            return "iphone.slash"
-        }
-
-        if title.contains("morning routine") || title.contains("morning") {
-            return "sunrise.fill"
-        }
-
-        if title.contains("routine") || type == "habit" {
-            return "checkmark.circle"
-        }
-
-        if type == "recovery" {
-            return "leaf.fill"
-        }
-
-        return activity.icon.isEmpty ? "sparkles" : activity.icon
+        WeekFitActivityIconResolver.resolve(for: activity)
     }
 }
 

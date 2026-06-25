@@ -35,7 +35,7 @@ struct CoachFocusSelection: Equatable, Sendable {
 
 enum CoachFocusResolver {
 
-    private static let recentCompletedWindowMinutes = 180
+    private static let defaultRecentCompletedWindowMinutes = 180
     private static let immediatePostWindowMinutes = 60
 
     static func resolve(
@@ -71,7 +71,7 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= recentCompletedWindowMinutes,
+            if minutesSinceEnd <= recentCompletedWindowMinutes(for: lastCompleted),
                CoachActivityClassifier.isSeriousTraining(lastCompleted) {
                 return selection(
                     for: lastCompleted,
@@ -88,7 +88,7 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= recentCompletedWindowMinutes {
+            if minutesSinceEnd <= recentCompletedWindowMinutes(for: lastCompleted) {
                 return selection(
                     for: lastCompleted,
                     source: .recentCompleted,
@@ -210,5 +210,12 @@ enum CoachFocusResolver {
 
     private static func isEveningPhase(_ timeOfDay: CoachTimeOfDay) -> Bool {
         timeOfDay == .evening || timeOfDay == .lateEvening
+    }
+
+    private static func recentCompletedWindowMinutes(for activity: PlannedActivity) -> Int {
+        if CoachActivityClassifier.family(for: activity) == .heat {
+            return CoachHeatRecoveryPolicy.focusWindowMinutes
+        }
+        return defaultRecentCompletedWindowMinutes
     }
 }

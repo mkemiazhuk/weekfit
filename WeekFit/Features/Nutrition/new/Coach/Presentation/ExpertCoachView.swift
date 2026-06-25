@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 struct ExpertCoachView: View {
 
@@ -8,10 +7,8 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
-    @Environment(\.modelContext) private var modelContext
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
-    @StateObject private var screenViewModel = CoachScreenViewModel()
 
     @State private var showProfile = false
 
@@ -82,10 +79,6 @@ struct ExpertCoachView: View {
         coachState.todayPresentation
     }
 
-    private var rationalePresentation: CoachRationalePresentation? {
-        coachState.rationalePresentation
-    }
-
     private var isRegistryGap: Bool {
         coachState.todayCoachInsightHiddenReason == .registryGap
     }
@@ -122,11 +115,22 @@ struct ExpertCoachView: View {
     }
 
     private var selectedDateTitle: String {
-        screenViewModel.selectedDateTitle(for: screenViewModel.selectedDate)
+        WeekFitShortWeekdayMonthDay(Date())
     }
 
     private var shouldShowHealthConnectPrompt: Bool {
-        screenViewModel.shouldShowHealthConnectPrompt(healthManager: healthManager)
+        !hasTodayRecoverySignals &&
+        (
+            !healthManager.isHealthAccessRequested ||
+            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
+        )
+    }
+
+    private var hasTodayRecoverySignals: Bool {
+        healthManager.sleepMinutes > 0 ||
+        healthManager.timeInBedMinutes > 0 ||
+        healthManager.hrvSDNN > 0 ||
+        healthManager.restingHeartRate > 0
     }
 
     // MARK: - Background
@@ -176,7 +180,7 @@ struct ExpertCoachView: View {
         return ZStack(alignment: .topTrailing) {
             Image(systemName: coachIcon)
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(heroSemanticColor.opacity(0.045))
+                .foregroundStyle(heroSemanticColor.opacity(0.058))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
@@ -237,9 +241,9 @@ struct ExpertCoachView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            heroSemanticColor.opacity(0.13),
-                            cardBackground.opacity(0.50),
-                            cardBackground.opacity(0.30)
+                            heroSemanticColor.opacity(0.138),
+                            cardBackground.opacity(0.52),
+                            cardBackground.opacity(0.28)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -247,21 +251,34 @@ struct ExpertCoachView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    heroSemanticColor.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: UnitPoint(x: 0.72, y: 0.58)
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    heroSemanticColor.opacity(0.22),
-                                    Color.white.opacity(0.035)
+                                    heroSemanticColor.opacity(0.26),
+                                    Color.white.opacity(0.055)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: 1
+                            lineWidth: 1.25
                         )
                 )
         )
-        .shadow(color: heroSemanticColor.opacity(0.085), radius: 18, y: 8)
-        .shadow(color: Color.black.opacity(0.18), radius: 14, y: 7)
+        .shadow(color: heroSemanticColor.opacity(0.092), radius: 18, y: 8)
+        .shadow(color: Color.black.opacity(0.19), radius: 14, y: 7)
     }
 
     private var stateBadge: some View {
@@ -402,10 +419,6 @@ struct ExpertCoachView: View {
         let supportActions = coachPresentation?.supportActions ?? []
 
         return VStack(alignment: .leading, spacing: 13) {
-            if let rationale = rationalePresentation {
-                rationaleSection(rationale)
-            }
-
             if !whyRows.isEmpty {
                 presentationWhySection(whyRows)
             }
@@ -437,16 +450,6 @@ struct ExpertCoachView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func rationaleSection(_ presentation: CoachRationalePresentation) -> some View {
-        storyInfoSection(
-            title: WeekFitCoachRuntimeLocalizedString(presentation.title),
-            subtitle: WeekFitLocalizedString("coach.info.rationale.subtitle"),
-            icon: presentation.icon,
-            text: WeekFitCoachRuntimeLocalizedString(presentation.message),
-            color: presentation.color
-        )
-    }
-
     private func primaryActionsSection(_ actions: [CoachSupportAction]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             supportGroupHeader(
@@ -465,61 +468,6 @@ struct ExpertCoachView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func storyInfoSection(
-        title: String,
-        subtitle: String,
-        icon: String,
-        text: String,
-        color: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            supportGroupHeader(
-                title: WeekFitCoachRuntimeLocalizedString(title),
-                subtitle: WeekFitCoachRuntimeLocalizedString(subtitle)
-            )
-
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(color.opacity(0.12))
-                        .frame(width: 30, height: 30)
-
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(color)
-                }
-                .padding(.top, 1)
-
-                Text(WeekFitCoachRuntimeLocalizedString(text))
-                    .font(.system(size: 13.2, weight: .medium, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.84))
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                color.opacity(0.06),
-                                cardBackground.opacity(0.24)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
-                    )
-            )
-        }
     }
 
     private func supportGroupHeader(

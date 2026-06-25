@@ -230,10 +230,20 @@ enum CoachScenarioResolver {
         case .during:
             return .saunaActive
         case .immediatePost, .settledPost, .evening:
-            return .saunaRecovery
+            if isWithinHeatRecoveryWindow(context) {
+                return .saunaRecovery
+            }
+            return idleScenario(for: context)
         case .tomorrowProtection, .idle:
             return idleScenario(for: context)
         }
+    }
+
+    private static func isWithinHeatRecoveryWindow(_ context: CoachContext) -> Bool {
+        guard let minutesSinceEnd = context.minutesSinceEnd else {
+            return context.sessionPhase == .immediatePost
+        }
+        return minutesSinceEnd <= CoachHeatRecoveryPolicy.focusWindowMinutes
     }
 
     // MARK: - Helpers
