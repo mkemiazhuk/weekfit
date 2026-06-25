@@ -164,6 +164,7 @@ struct ActivityIntelligenceView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
                         ActivityHeroCard(snapshot: snapshot)
+                        ActivityDailyMetricsCard(snapshot: snapshot)
                         ActivityTimelineCard(points: snapshot.hourlyActivityPoints)
                         WeeklyContextCard(
                             selectedSnapshot: snapshot,
@@ -391,6 +392,108 @@ private struct ActivityHeroCard: View {
             )
         default:
             return WeekFitLocalizedString("activity.noMeaningfulMovementHasBeenRecordedYetToday")
+        }
+    }
+}
+
+// MARK: - Daily Metrics
+
+private struct ActivityDailyMetricsCard: View {
+    let snapshot: ActivityDaySnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            SectionLabel(WeekFitLocalizedString("activity.details.section.keyMetrics"))
+
+            HStack(alignment: .top, spacing: 8) {
+                compactMetric(
+                    title: WeekFitLocalizedString("today.status.metric.exercise"),
+                    value: exerciseText,
+                    icon: "figure.run",
+                    color: ActivityStyle.activityColor
+                )
+
+                compactMetric(
+                    title: WeekFitLocalizedString("today.status.metric.stand"),
+                    value: standText,
+                    icon: "figure.stand",
+                    color: ActivityStyle.green
+                )
+
+                compactMetric(
+                    title: WeekFitLocalizedString("common.unit.vo2"),
+                    value: vo2Text,
+                    icon: "lungs.fill",
+                    color: ActivityStyle.teal
+                )
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .activityCard(glow: ActivityStyle.activityColor.opacity(0.035))
+    }
+
+    private var exerciseText: String {
+        let minutes = max(0, snapshot.exerciseMinutes)
+
+        if minutes <= 0 {
+            return "—"
+        }
+
+        if minutes < 60 {
+            return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
+        }
+
+        return String(format: "%.1f %@", Double(minutes) / 60.0, WeekFitLocalizedString("common.unit.hoursShort"))
+    }
+
+    private var standText: String {
+        snapshot.standHours > 0 ? "\(snapshot.standHours)/12" : "—"
+    }
+
+    private var vo2Text: String {
+        snapshot.vo2Max > 0 ? String(format: "%.1f", snapshot.vo2Max) : "—"
+    }
+
+    private func compactMetric(
+        title: String,
+        value: String,
+        icon: String,
+        color: Color
+    ) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.14))
+                    .frame(width: 30, height: 30)
+
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
+
+                Text(value)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.026))
         }
     }
 }

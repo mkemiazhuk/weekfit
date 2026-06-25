@@ -1,5 +1,7 @@
 import Foundation
 
+/// Presentation labels and styling for the planner day chip.
+/// Underlying training logic lives in `DayTrainingType` / `DayTrainingTypeClassifier`.
 enum PlanDayKind: Equatable {
     case endurance
     case load
@@ -36,111 +38,28 @@ enum PlanDayKind: Equatable {
         case .open: return 0
         }
     }
+
+    init(trainingType: DayTrainingType) {
+        switch trainingType {
+        case .recovery: self = .recovery
+        case .endurance: self = .endurance
+        case .strength: self = .load
+        case .mixed: self = .mixed
+        }
+    }
 }
 
 enum PlanDayKindResolver {
-
-    private enum WorkoutBucket: Hashable {
-        case light
-        case endurance
-        case strength
-    }
 
     nonisolated static func resolve(activities: [PlannedActivity]) -> PlanDayKind {
         guard !activities.isEmpty else {
             return .open
         }
 
-        let workouts = activities.filter { $0.type.lowercased() == "workout" }
-        let recovery = activities.filter { $0.type.lowercased() == "recovery" }
-        let meals = activities.filter { $0.type.lowercased() == "meal" }
-        let habits = activities.filter { $0.type.lowercased() == "habit" }
-
-        let workoutMinutes = workouts.reduce(0) { $0 + max($1.durationMinutes, 0) }
-        let recoveryMinutes = recovery.reduce(0) { $0 + max($1.durationMinutes, 0) }
-
-        if workouts.isEmpty && !recovery.isEmpty {
-            return .recovery
+        guard let trainingType = DayTrainingTypeClassifier.classify(activities: activities) else {
+            return .open
         }
 
-        if isMixedDay(
-            workouts: workouts,
-            recovery: recovery,
-            meals: meals,
-            habits: habits
-        ) {
-            return .mixed
-        }
-
-        let hasLongWorkout = workouts.contains { $0.durationMinutes >= 50 }
-
-        if hasLongWorkout || workoutMinutes >= 60 {
-            return .endurance
-        }
-
-        if workouts.count >= 2 || workoutMinutes >= 45 {
-            return .load
-        }
-
-        if workouts.isEmpty && recoveryMinutes >= 20 {
-            return .recovery
-        }
-
-        if !workouts.isEmpty && hasOnlyLightWorkouts(workouts) {
-            return .recovery
-        }
-
-        if !workouts.isEmpty {
-            return .load
-        }
-
-        return .recovery
-    }
-
-    nonisolated private static func isMixedDay(
-        workouts: [PlannedActivity],
-        recovery: [PlannedActivity],
-        meals: [PlannedActivity],
-        habits: [PlannedActivity]
-    ) -> Bool {
-        if !workouts.isEmpty,
-           !recovery.isEmpty || !meals.isEmpty || !habits.isEmpty {
-            return true
-        }
-
-        if workouts.count >= 2, hasHeterogeneousWorkouts(workouts) {
-            return true
-        }
-
-        return false
-    }
-
-    nonisolated private static func hasHeterogeneousWorkouts(_ workouts: [PlannedActivity]) -> Bool {
-        Set(workouts.map(workoutBucket(for:))).count >= 2
-    }
-
-    nonisolated private static func hasOnlyLightWorkouts(_ workouts: [PlannedActivity]) -> Bool {
-        !workouts.isEmpty && workouts.allSatisfy {
-            workoutBucket(for: $0) == .light
-        }
-    }
-
-    nonisolated private static func workoutBucket(for activity: PlannedActivity) -> WorkoutBucket {
-        let title = activity.title.lowercased()
-
-        let lightKeywords = ["walk", "walking", "yoga", "stretch", "stretching", "mobility", "breath"]
-        if lightKeywords.contains(where: { title.contains($0) }) {
-            return .light
-        }
-
-        let enduranceKeywords = [
-            "cycling", "cycle", "running", "run", "tennis", "squash",
-            "swim", "swimming", "ride", "bike", "biking", "cardio"
-        ]
-        if enduranceKeywords.contains(where: { title.contains($0) }) {
-            return .endurance
-        }
-
-        return .strength
+        return PlanDayKind(trainingType: trainingType)
     }
 }

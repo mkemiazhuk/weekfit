@@ -50,6 +50,7 @@ struct RecoveryDetailsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
                         RecoveryHeroCard(snapshot: viewModel.snapshot)
+                        RecoveryVitalsCard(snapshot: viewModel.snapshot)
                         RecoveryBreakdownCard(snapshot: viewModel.snapshot)
                         SleepDetailsCard(snapshot: viewModel.snapshot)
                         SleepStagesCard(snapshot: viewModel.snapshot)
@@ -226,6 +227,95 @@ private struct RecoveryHeroCard: View {
             return WeekFitLocalizedString("recovery.details.status.takeItEasier")
         default:
             return WeekFitLocalizedString("recovery.details.status.noData")
+        }
+    }
+}
+
+private struct RecoveryVitalsCard: View {
+    let snapshot: RecoveryDaySnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            SectionLabel(WeekFitLocalizedString("recovery.details.section.keyVitals"))
+
+            HStack(alignment: .top, spacing: 8) {
+                compactVital(
+                    title: WeekFitLocalizedString("today.status.metric.deep"),
+                    value: RecoveryFormat.duration(snapshot.deepSleepMinutes),
+                    icon: "moon.zzz.fill",
+                    color: RecoveryStyle.deepBlue
+                )
+
+                compactVital(
+                    title: WeekFitLocalizedString("today.status.metric.hrv"),
+                    value: hrvText,
+                    icon: "waveform.path.ecg",
+                    color: RecoveryStyle.recoveryColor
+                )
+
+                compactVital(
+                    title: WeekFitLocalizedString("today.status.metric.rhr"),
+                    value: rhrText,
+                    icon: "heart.fill",
+                    color: RecoveryStyle.red
+                )
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .recoveryCard(glow: RecoveryStyle.recoveryColor.opacity(0.035))
+    }
+
+    private var hrvText: String {
+        guard let hrv = snapshot.hrv, hrv > 0 else { return "—" }
+        return "\(Int(hrv.rounded())) \(WeekFitLocalizedString("common.unit.millisecondShort"))"
+    }
+
+    private var rhrText: String {
+        guard let rhr = snapshot.restingHeartRate, rhr > 0 else { return "—" }
+        return "\(Int(rhr.rounded())) \(WeekFitLocalizedString("common.unit.bpm"))"
+    }
+
+    private func compactVital(
+        title: String,
+        value: String,
+        icon: String,
+        color: Color
+    ) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.14))
+                    .frame(width: 30, height: 30)
+
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
+
+                Text(value)
+                    .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.70)
+                    .multilineTextAlignment(.center)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.026))
         }
     }
 }

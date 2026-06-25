@@ -120,11 +120,12 @@ struct QuickLogItemRow: View {
             Image(row.item.imageName)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 38, height: 38)
+                .frame(width: QuickLogRowMetrics.imageSize * 0.68, height: QuickLogRowMetrics.imageSize * 0.68)
         } else {
             Image(systemName: row.item.icon)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(accentColor)
+                .offset(y: -0.5)
         }
     }
 }

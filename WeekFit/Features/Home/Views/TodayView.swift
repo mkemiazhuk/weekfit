@@ -31,6 +31,7 @@ struct TodayView: View {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var coachInputProvider: CoachInputProvider
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @State private var showProfile = false
     @State private var showContent = false
@@ -46,6 +47,67 @@ struct TodayView: View {
     private let textPrimary = Color.white
     private let textSecondary = Color.white.opacity(0.65)
     private let textTertiary = Color.white.opacity(0.35)
+
+    private let todayRingSize: CGFloat = 86
+    private let todayRingStroke: CGFloat = 4
+    private let todayPremiumBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
+    private let todayPremiumBronzeSoft = Color(red: 0.60, green: 0.52, blue: 0.39)
+    private let todayActivityColor = WeekFitTheme.meal
+    private let todayNutritionColor = WeekFitTheme.habit
+    private let todayRecoveryColor = WeekFitTheme.recovery
+
+    private enum TodayLayout {
+        static let cardRadius: CGFloat = 20
+        static let contentTopInset: CGFloat = 12
+        static let gapAfterOverview: CGFloat = 24
+        static let gapAfterUpNext: CGFloat = 18
+        static let gapBeforeQuickActions: CGFloat = 14
+        static let tabBarContentInset: CGFloat = 58
+        static let ringGroupSpacing: CGFloat = 4
+        static let cardTitleBottomGap: CGFloat = 10
+        static let overviewContentTopPadding: CGFloat = 14
+        static let overviewContentBottomPadding: CGFloat = 14
+        static let overviewHorizontalPadding: CGFloat = 16
+        static let coachCardVerticalPadding: CGFloat = 19
+        static let cardInteriorVerticalPadding: CGFloat = 13
+    }
+
+    private var shouldScrollSummary: Bool {
+        dynamicTypeSize >= .large
+    }
+
+    private var shouldStackRings: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var shouldStackQuickActions: Bool {
+        dynamicTypeSize >= .xxLarge
+    }
+
+    private var shouldRelocateUpNextTime: Bool {
+        dynamicTypeSize >= .xLarge
+    }
+
+    private var todayEffectiveRingSize: CGFloat {
+        if shouldStackRings { return todayRingSize }
+        switch dynamicTypeSize {
+        case .xxLarge:
+            return 78
+        case .xxxLarge:
+            return 74
+        default:
+            return todayRingSize
+        }
+    }
+
+    private var ringCaptionLineLimit: Int {
+        if shouldStackRings { return 3 }
+        return dynamicTypeSize >= .xLarge ? 2 : 1
+    }
+
+    private var quickActionCaptionLineLimit: Int {
+        shouldStackQuickActions ? 2 : 1
+    }
 
     private var healthRefreshBinding: Binding<UUID> {
         Binding(
@@ -368,7 +430,7 @@ struct TodayView: View {
             }
         ) {
             PremiumActivityStartSheet(
-                background: WeekFitTheme.backgroundColor,
+                background: QuickActionSheetDesign.Color.sheetBackground,
                 cardBackground: WeekFitTheme.cardBackground,
                 textSecondary: WeekFitTheme.secondaryText,
                 isPresented: $showDirectWorkoutLogSheet,
@@ -380,16 +442,16 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: 34)
+            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
             ZStack {
-                Color(red: 0.035, green: 0.043, blue: 0.047)
+                QuickActionSheetDesign.Color.sheetBackground
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     PremiumBottomSheetHeader(
-                        title: WeekFitLocalizedString("today.quickLog.title.logFood"),
+                        title: WeekFitLocalizedString("today.quickActions.logFood"),
                         subtitle: selectedLogTab == .meals
                             ? WeekFitLocalizedString("today.quickLog.subtitle.savedFoods")
                             : WeekFitLocalizedString("today.quickLog.subtitle.drinksSnacks")
@@ -397,16 +459,33 @@ struct TodayView: View {
                         showDirectMealLogSheet = false
                     }
 
-                    quickLogSegmentedControl(
-                        decodedMealsCount: quickLogMealRows.count,
-                        snacksCount: quickLogSnackRows.count
+                    QuickActionSheetSegmentedControl(
+                        segments: [
+                            QuickActionSheetSegment(
+                                id: QuickNutritionLogTab.meals.rawValue,
+                                title: WeekFitLocalizedString("today.quickLog.section.meals"),
+                                badgeCount: quickLogMealRows.count
+                            ),
+                            QuickActionSheetSegment(
+                                id: QuickNutritionLogTab.snacks.rawValue,
+                                title: WeekFitLocalizedString("today.quickLog.section.snacks"),
+                                badgeCount: quickLogSnackRows.count
+                            )
+                        ],
+                        selection: Binding(
+                            get: { selectedLogTab.rawValue },
+                            set: { newValue in
+                                selectedLogTab = QuickNutritionLogTab(rawValue: newValue) ?? .meals
+                            }
+                        )
                     )
-                    .padding(.horizontal, 18)
-                    .padding(.top, 8)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                    .padding(.bottom, QuickActionSheetDesign.Layout.segmentedBottomPadding)
 
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
+                            QuickActionCoachRecommendationSlot()
+
                             switch selectedLogTab {
 
                             case .meals:
@@ -450,35 +529,30 @@ struct TodayView: View {
                                         showAction: false
                                     )
                                 } else {
-                                    if !quickLogSnackRows.isEmpty {
-                                        quickLogSectionHeader(WeekFitLocalizedString("today.quickLog.section.snacks"))
-                                            .padding(.top, 2)
-
-                                        ForEach(quickLogSnackRows) { row in
-                                            let profile = QuickLogNutritionProfile.from(item: row.item)
-                                            let selection = quickLogSession.selection(for: row.id)
-                                            QuickLogItemRow(
-                                                row: row,
-                                                accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
-                                                selection: selection,
-                                                displayQuantity: selection.effectivePortions(for: profile),
-                                                onPlusTap: {
-                                                    handleQuickAdd(profile: profile, quickItem: row.item)
-                                                },
-                                                onIncrement: {
-                                                    handleQuickIncrement(profile: profile)
-                                                },
-                                                onDecrement: {
-                                                    handleQuickDecrement(profile: profile)
-                                                }
-                                            )
-                                        }
+                                    ForEach(quickLogSnackRows) { row in
+                                        let profile = QuickLogNutritionProfile.from(item: row.item)
+                                        let selection = quickLogSession.selection(for: row.id)
+                                        QuickLogItemRow(
+                                            row: row,
+                                            accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
+                                            selection: selection,
+                                            displayQuantity: selection.effectivePortions(for: profile),
+                                            onPlusTap: {
+                                                handleQuickAdd(profile: profile, quickItem: row.item)
+                                            },
+                                            onIncrement: {
+                                                handleQuickIncrement(profile: profile)
+                                            },
+                                            onDecrement: {
+                                                handleQuickDecrement(profile: profile)
+                                            }
+                                        )
                                     }
                                 }
                             }
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 24)
+                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                        .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
                     }
                 }
             }
@@ -488,7 +562,7 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: 34)
+            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: true)
             }
@@ -506,7 +580,7 @@ struct TodayView: View {
         }
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
-                Color(red: 0.035, green: 0.043, blue: 0.047)
+                QuickActionSheetDesign.Color.sheetBackground
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -518,7 +592,9 @@ struct TodayView: View {
                     }
 
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
+                            QuickActionCoachRecommendationSlot()
+
                             if quickLogDrinkRows.isEmpty {
                                 quickLogEmptyState(
                                     icon: "drop.fill",
@@ -528,9 +604,6 @@ struct TodayView: View {
                                     showAction: false
                                 )
                             } else {
-                                quickLogSectionHeader(WeekFitLocalizedString("today.quickLog.section.drinks"))
-                                    .padding(.top, 2)
-
                                 ForEach(quickLogDrinkRows) { row in
                                     let profile = QuickLogNutritionProfile.from(item: row.item)
                                     let selection = quickLogSession.selection(for: row.id)
@@ -552,8 +625,8 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 24)
+                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                        .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
                     }
                 }
             }
@@ -563,7 +636,7 @@ struct TodayView: View {
             ])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: 34)
+            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: false)
             }
@@ -578,104 +651,9 @@ struct TodayView: View {
         }
     }
     
-    private enum QuickSheetTypography {
-        static let title = Font.system(size: 15.5, weight: .bold, design: .rounded)
-        static let subtitle = Font.system(size: 12.2, weight: .medium, design: .rounded)
-        static let meta = Font.system(size: 11.2, weight: .semibold, design: .rounded)
-        static let badge = Font.system(size: 8.8, weight: .bold, design: .rounded)
-    }
-
-    private enum QuickLogRowMetrics {
-        static let height: CGFloat = 74
-        static let horizontalPadding: CGFloat = 12
-        static let imageSize: CGFloat = 60
-        static let imageCornerRadius: CGFloat = 16
-        static let cardCornerRadius: CGFloat = 23
-        static let plusButtonSize: CGFloat = 42
-    }
-
     private func openActivityIntelligence() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         showActivityIntelligence = true
-    }
-
-    private func quickLogSectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .bold, design: .rounded))
-            .tracking(0.4)
-            .foregroundStyle(.white.opacity(0.52))
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-
-    private func quickLogSegmentedControl(
-        decodedMealsCount: Int,
-        snacksCount: Int
-    ) -> some View {
-        HStack(spacing: 4) {
-            ForEach(QuickNutritionLogTab.allCases) { tab in
-                let isSelected = selectedLogTab == tab
-                let count = tab == .meals ? decodedMealsCount : snacksCount
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                        selectedLogTab = tab
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(tab.title)
-                            .font(.system(size: 12.2, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10.2, weight: .bold, design: .rounded))
-                                .foregroundStyle(isSelected ? .black.opacity(0.70) : .white.opacity(0.42))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background {
-                                    Capsule()
-                                        .fill(isSelected ? .white.opacity(0.70) : .white.opacity(0.06))
-                                }
-                        }
-                    }
-                    .foregroundStyle(isSelected ? .white.opacity(0.96) : .white.opacity(0.42))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 34)
-                    .background {
-                        if isSelected {
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.14),
-                                            Color.white.opacity(0.08)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                                .overlay {
-                                    Capsule()
-                                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                                }
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(3)
-        .background {
-            Capsule()
-                .fill(Color.white.opacity(0.035))
-        }
-        .overlay {
-            Capsule()
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
-        }
     }
 
     private func quickLogEmptyState(
@@ -685,17 +663,17 @@ struct TodayView: View {
         buttonTitle: String?,
         showAction: Bool
     ) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 38, weight: .semibold))
-                .foregroundStyle(Color(red: 0.50, green: 0.74, blue: 0.54).opacity(0.85))
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(Color(red: 0.50, green: 0.74, blue: 0.54).opacity(0.82))
 
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.95))
+                .font(QuickActionSheetDesign.Typography.emptyTitle)
+                .foregroundStyle(.white.opacity(0.94))
 
             Text(message)
-                .font(.system(size: 12.5, weight: .medium))
+                .font(QuickActionSheetDesign.Typography.emptyMessage)
                 .foregroundStyle(.white.opacity(0.42))
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
@@ -707,10 +685,10 @@ struct TodayView: View {
                     onSelectTab(.meals)
                 } label: {
                     Text(buttonTitle)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.black.opacity(0.82))
-                        .padding(.horizontal, 18)
-                        .frame(height: 42)
+                        .padding(.horizontal, 16)
+                        .frame(height: 38)
                         .background {
                             Capsule()
                                 .fill(Color(red: 0.50, green: 0.74, blue: 0.54))
@@ -721,8 +699,8 @@ struct TodayView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 38)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 32)
     }
     
     private func prepareQuickNutritionLogData() {
@@ -980,6 +958,16 @@ struct TodayView: View {
         #endif
     }
 
+    private func logTodayCoachInsightHiddenIfNeeded() {
+        #if DEBUG
+        guard let reason = coachCoordinator.state.todayCoachInsightHiddenReason else { return }
+        CoachLogger.compact(
+            "[TodayCoachInsight]",
+            "hidden reason=\(reason.rawValue) status=\(coachCoordinator.state.statusLogLabel) usingCoach=\(coachCoordinator.state.coachUIPresentation != nil ? "yes" : "no") todayTitle=\"\(coachCoordinator.state.todayPresentation.title)\""
+        )
+        #endif
+    }
+
     private func debugTodayCoachInsight(
         semanticInsight: DynamicInsight?,
         titleKey: String,
@@ -1140,9 +1128,20 @@ struct TodayView: View {
 
         } content: {
 
-            summaryContent
+            Group {
+                if shouldScrollSummary {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        summaryContent()
+                            .padding(.top, TodayLayout.contentTopInset)
+                            .padding(.bottom, 12)
+                    }
+                } else {
+                    summaryContent()
+                        .padding(.top, TodayLayout.contentTopInset)
+                }
+            }
         }
-        .padding(.bottom, 95)
+        .padding(.bottom, TodayLayout.tabBarContentInset)
         .opacity(showContent ? 1 : 0)
 
     }
@@ -1153,19 +1152,183 @@ struct TodayView: View {
     }
     
 
-    private var summaryContent: some View {
-        VStack(alignment: .leading, spacing: WeekFitScreenLayout.rootSpacing) {
-
+    private func summaryContent() -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             dailyStatusSection
-            
+
             upNextSection
-            
+                .padding(.top, TodayLayout.gapAfterOverview)
+
             coachEntryPointSection
-            
+                .padding(.top, TodayLayout.gapAfterUpNext)
+
             quickActionsSection
-            
-            Spacer(minLength: 0)
+                .padding(.top, TodayLayout.gapBeforeQuickActions)
         }
+    }
+
+    private func todayCardSectionTitle(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.caption2.weight(.semibold))
+            .fontDesign(.rounded)
+            .tracking(1.15)
+            .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.68))
+            .offset(y: 0.5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func todayPremiumCard<Content: View>(
+        accent: Color,
+        cornerRadius: CGFloat = TodayLayout.cardRadius,
+        featured: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                cardBackground.opacity(featured ? 0.94 : 0.88),
+                                Color.white.opacity(featured ? 0.024 : 0.014)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(featured ? 0.16 : 0.10),
+                                Color.white.opacity(featured ? 0.045 : 0.028),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: accent.opacity(featured ? 0.05 : 0.025), radius: featured ? 12 : 6, y: featured ? 5 : 2)
+            .shadow(color: Color.black.opacity(featured ? 0.10 : 0.06), radius: featured ? 8 : 4, y: featured ? 3 : 2)
+    }
+
+    private func todayGlassDock<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                    .fill(.ultraThinMaterial.opacity(0.16))
+                    .background {
+                        RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.black.opacity(0.30),
+                                        cardBackground.opacity(0.90)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            }
+            .shadow(color: Color.black.opacity(0.07), radius: 5, y: 2)
+    }
+
+    private func todayOverviewShell<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .padding(.horizontal, TodayLayout.overviewHorizontalPadding)
+            .padding(.top, TodayLayout.overviewContentTopPadding)
+            .padding(.bottom, TodayLayout.overviewContentBottomPadding)
+            .frame(maxWidth: .infinity)
+            .background {
+                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                    .fill(cardBackground.opacity(0.38))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.032), lineWidth: 1)
+            }
+    }
+
+    private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
+        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
+            HStack(alignment: .top, spacing: 14) {
+                coachSettlingGlyph
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AppText.Today.coachInsightLabel)
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.45)
+                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+
+                    Text(AppText.Today.coachSettlingTitle)
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .padding(.top, 2)
+                        .lineSpacing(1)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(needsHealthConnect ? AppText.Today.coachSettlingMessageHealth : AppText.Today.coachSettlingMessageSleep)
+                        .font(.footnote)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary.opacity(0.68))
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+        }
+        .onAppear {
+            logTodayCoachInsightHiddenIfNeeded()
+            guard !livePulse else { return }
+            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
+                livePulse = true
+            }
+        }
+    }
+
+    private var coachSettlingGlyph: some View {
+        ZStack {
+            Circle()
+                .fill(WeekFitTheme.coachAccent.opacity(livePulse ? 0.16 : 0.09))
+                .frame(width: 40, height: 40)
+                .blur(radius: livePulse ? 1 : 0)
+
+            Circle()
+                .fill(WeekFitTheme.coachAccent.opacity(0.11))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Circle()
+                        .stroke(WeekFitTheme.coachAccent.opacity(0.20), lineWidth: 1)
+                }
+
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.90))
+                .offset(y: 0.5)
+                .scaleEffect(livePulse ? 1.03 : 0.97)
+        }
+        .frame(width: 40, height: 40)
+        .accessibilityHidden(true)
     }
     
     private var plannedActivitiesForSelectedDate: [PlannedActivity] {
@@ -1306,10 +1469,10 @@ struct TodayView: View {
 
         let recoveryDisplayValue: Int? =
             hasRecoveryData ? recoveryPercent : nil
-        
-        let activityColor = Color(red: 0.16, green: 0.80, blue: 0.43)
-        let nutritionColor = Color(red: 0.95, green: 0.65, blue: 0.12)
-        let recoveryColor = Color(red: 0.18, green: 0.74, blue: 0.89)
+
+        let activityColor = todayActivityColor
+        let nutritionColor = todayNutritionColor
+        let recoveryColor = todayRecoveryColor
 
         let activityGoalText = String(format: WeekFitLocalizedString("today.status.activity.goalFormat"), Int(baseGoal))
         let activityValueText = String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(healthManager.activeCalories))
@@ -1334,282 +1497,224 @@ struct TodayView: View {
             }
         }()
 
-        let exerciseMetric = compactActivityMetricDuration(healthManager.exerciseMinutes)
-        let standValueText = healthManager.standHours > 0 ? "\(healthManager.standHours)/12" : "-"
-        let vo2ValueText = healthManager.cardioFitnessVO2 > 0 ? String(format: "%.1f", healthManager.cardioFitnessVO2) : "—"
-
-        let hrvValueText = healthManager.hrvSDNN > 0 ? "\(Int(healthManager.hrvSDNN))" : "—"
-        let rhrValueText = healthManager.restingHeartRate > 0 ? "\(Int(healthManager.restingHeartRate))" : "—"
-        let deepSleepText = healthManager.deepSleepMinutes > 0 ? String(format: "%.1f", Double(healthManager.deepSleepMinutes) / 60.0) : "—"
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(AppText.Today.dailyStatusTitle)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(textPrimary)
-
-                    Text(AppText.Today.dailyStatusSubtitle)
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(textTertiary)
-                }
-
-                Spacer()
-            }
-
+        return Group {
             if shouldShowHealthConnectPrompt {
-                VStack(spacing: 16) {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.red.opacity(0.12))
-                                .frame(width: 44, height: 44)
+                todayPremiumCard(accent: todayActivityColor, cornerRadius: 22) {
+                    VStack(spacing: 16) {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.red.opacity(0.12))
+                                    .frame(width: 44, height: 44)
 
-                            Image(systemName: "heart.text.square.fill")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.red)
+                                Image(systemName: "heart.text.square.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.red)
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(AppText.Today.connectAppleHealth)
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(textPrimary)
+
+                                Text(AppText.Today.healthDescription)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(textSecondary)
+                                    .lineSpacing(2)
+                            }
                         }
+                        .padding(.top, 4)
 
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(AppText.Today.connectAppleHealth)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(textPrimary)
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-                            Text(AppText.Today.healthDescription)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(textSecondary)
-                                .lineSpacing(2)
-                        }
-                    }
-                    .padding(.top, 4)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-                        Task {
-                            await healthManager.requestAuthorization(
-                                for: selectedDate,
-                                plannedActivities: selectedDayActivities
-                            )
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 13, weight: .bold))
-
-                            Text(AppText.Today.connectAppleHealth)
-                        }
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.16, green: 0.80, blue: 0.43),
-                                            Color(red: 0.12, green: 0.70, blue: 0.38)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
+                            Task {
+                                await healthManager.requestAuthorization(
+                                    for: selectedDate,
+                                    plannedActivities: selectedDayActivities
                                 )
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 13, weight: .bold))
+
+                                Text(AppText.Today.connectAppleHealth)
+                            }
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                todayActivityColor,
+                                                todayActivityColor.opacity(0.82)
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                            }
+                            .shadow(color: todayActivityColor.opacity(0.22), radius: 8, y: 3)
                         }
-                        .shadow(
-                            color: Color(red: 0.16, green: 0.80, blue: 0.43).opacity(0.2),
-                            radius: 8,
-                            y: 3
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(16)
                 }
-                .padding(4)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
 
             } else {
-                HStack(alignment: .top, spacing: 6) {
+                todayOverviewShell {
+                    VStack(alignment: .leading, spacing: 0) {
+                        todayCardSectionTitle(WeekFitLocalizedString("today.overview.title"))
+                            .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        openActivityIntelligence()
-                    } label: {
-                        VStack(spacing: 12) {
-                            statusRingWidget(
-                                title: WeekFitLocalizedString("today.status.activity"),
-                                infoText: activityGoalText,
-                                valueText: activityValueText,
-                                value: activityPercent,
-                                centerText: activityDisplayText,
-                                color: activityColor
-                            )
+                        Group {
+                            if shouldStackRings {
+                                VStack(spacing: 16) {
+                                    dailyStatusActivityRingButton(
+                                        activityGoalText: activityGoalText,
+                                        activityValueText: activityValueText,
+                                        activityPercent: activityPercent,
+                                        activityDisplayText: activityDisplayText,
+                                        activityColor: activityColor
+                                    )
 
-                            VStack(spacing: 5) {
-                                metricRow(title: WeekFitLocalizedString("today.status.metric.exercise"), value: exerciseMetric.value, unit: exerciseMetric.unit, color: activityColor)
-                                metricRow(title: WeekFitLocalizedString("today.status.metric.stand"), value: standValueText, unit: WeekFitLocalizedString("common.unit.hoursShort"), color: activityColor.opacity(0.7))
-                                metricRow(title: WeekFitLocalizedString("common.unit.vo2"), value: vo2ValueText, unit: "", color: activityColor.opacity(0.5))
+                                    dailyStatusNutritionRingButton(
+                                        eatenCalories: eatenCalories,
+                                        nutritionPercent: nutritionPercent,
+                                        nutritionColor: nutritionColor
+                                    )
+
+                                    dailyStatusRecoveryRingButton(
+                                        recoveryDisplayValue: recoveryDisplayValue,
+                                        recoveryStatusText: recoveryStatusText,
+                                        sleepValueInfoText: sleepValueInfoText,
+                                        recoveryColor: recoveryColor,
+                                        isRecoveryPreparing: !hasRecoveryData
+                                    )
+                                }
+                            } else {
+                                HStack(alignment: .top, spacing: TodayLayout.ringGroupSpacing) {
+                                    dailyStatusActivityRingButton(
+                                        activityGoalText: activityGoalText,
+                                        activityValueText: activityValueText,
+                                        activityPercent: activityPercent,
+                                        activityDisplayText: activityDisplayText,
+                                        activityColor: activityColor
+                                    )
+
+                                    dailyStatusNutritionRingButton(
+                                        eatenCalories: eatenCalories,
+                                        nutritionPercent: nutritionPercent,
+                                        nutritionColor: nutritionColor
+                                    )
+
+                                    dailyStatusRecoveryRingButton(
+                                        recoveryDisplayValue: recoveryDisplayValue,
+                                        recoveryStatusText: recoveryStatusText,
+                                        sleepValueInfoText: sleepValueInfoText,
+                                        recoveryColor: recoveryColor,
+                                        isRecoveryPreparing: !hasRecoveryData
+                                    )
+                                }
                             }
-                            .padding(6)
-                            .background {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.white.opacity(0.015))
-                            }
-                            .padding(.horizontal, 2)
                         }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-                        nutritionDetailsDate = Date()
-
-                        showNutritionDetails = true
-                    } label: {
-
-                            VStack(spacing: 12) {
-                            statusRingWidget(
-                                title: WeekFitLocalizedString("today.status.nutrition"),
-                                infoText: remainingCaloriesText,
-                                valueText: String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(eatenCalories)),
-                                value: nutritionPercent,
-                                color: nutritionColor
-                            )
-                            VStack(spacing: 5) {
-                                metricRow(
-                                    title: WeekFitLocalizedString("meals.library.macroProtein"),
-                                    value: "\(Int(nutritionViewModel.currentMetrics?.protein ?? 0.0))/\(Int(proteinGoal))",
-                                    unit: "",
-                                    color: Color(red: 0.55, green: 0.40, blue: 0.85)
-                                )
-                                
-                                metricRow(
-                                    title: WeekFitLocalizedString("meals.library.macroFats"),
-                                    value: "\(Int(nutritionViewModel.currentMetrics?.fats ?? 0.0))/\(Int(fatsGoal))",
-                                    unit: "",
-                                    color: Color.pink
-                                )
-
-                                metricRow(
-                                    title: WeekFitLocalizedString("meals.library.macroCarbs"),
-                                    value: "\(Int(nutritionViewModel.currentMetrics?.carbs ?? 0.0))/\(Int(carbsGoal))",
-                                    unit: "",
-                                    color: Color.orange
-                                )
-                               
-                            }
-                            .padding(6)
-                            .background {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.white.opacity(0.015))
-                            }
-                            .padding(.horizontal, 2)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showRecoveryDetails = true
-                    } label: {
-
-                        VStack(spacing: 12) {
-
-                            statusRingWidget(
-                                title: WeekFitLocalizedString("today.status.recovery"),
-                                infoText: recoveryDisplayValue == nil ? "" : recoveryStatusText,
-                                valueText: recoveryDisplayValue == nil ? WeekFitLocalizedString("today.status.loading") : sleepValueInfoText,
-                                value: recoveryDisplayValue,
-                                color: recoveryColor
-                            )
-
-                            VStack(spacing: 5) {
-                                metricRow(
-                                    title: WeekFitLocalizedString("today.status.metric.deep"),
-                                    value: deepSleepText,
-                                    unit: WeekFitLocalizedString("common.unit.hoursShort"),
-                                    color: recoveryColor.opacity(0.5)
-                                )
-
-                                metricRow(
-                                    title: WeekFitLocalizedString("today.status.metric.hrv"),
-                                    value: hrvValueText,
-                                    unit: WeekFitLocalizedString("common.unit.millisecondShort"),
-                                    color: recoveryColor
-                                )
-
-                                metricRow(
-                                    title: WeekFitLocalizedString("today.status.metric.rhr"),
-                                    value: rhrValueText,
-                                    unit: WeekFitLocalizedString("common.unit.bpm"),
-                                    color: recoveryColor.opacity(0.7)
-                                )
-                            }
-                            .padding(6)
-                            .background {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.white.opacity(0.015))
-                            }
-                            .padding(.horizontal, 2)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
                 }
             }
-        }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(cardBackground.opacity(0.6))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.03), lineWidth: 1)
-                }
         }
         .transaction { transaction in
             transaction.animation = nil
         }
     }
 
-    private func metricRow(title: String, value: String, unit: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 4, height: 4)
-            
-            Text(title)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(textTertiary)
-            
-            Spacer(minLength: 1)
-            
-            HStack(spacing: 1) {
-                Text(value)
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(textSecondary)
-                if !unit.isEmpty {
-                    Text(unit)
-                        .font(.system(size: 8, weight: .regular))
-                        .foregroundStyle(textTertiary)
-                }
-            }
+    private func dailyStatusActivityRingButton(
+        activityGoalText: String,
+        activityValueText: String,
+        activityPercent: Int,
+        activityDisplayText: String,
+        activityColor: Color
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            openActivityIntelligence()
+        } label: {
+            statusRingWidget(
+                title: WeekFitLocalizedString("today.status.activity"),
+                infoText: activityGoalText,
+                valueText: activityValueText,
+                value: activityPercent,
+                centerText: activityDisplayText,
+                color: activityColor
+            )
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TodayScaleButtonStyle())
+        .accessibilityHint(Text(String(localized: AppText.Today.statusRingAccessibilityHint)))
+    }
+
+    private func dailyStatusNutritionRingButton(
+        eatenCalories: Double,
+        nutritionPercent: Int,
+        nutritionColor: Color
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            nutritionDetailsDate = Date()
+            showNutritionDetails = true
+        } label: {
+            statusRingWidget(
+                title: WeekFitLocalizedString("today.status.nutrition"),
+                infoText: remainingCaloriesText,
+                valueText: String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(eatenCalories)),
+                value: nutritionPercent,
+                color: nutritionColor
+            )
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TodayScaleButtonStyle())
+        .accessibilityHint(Text(String(localized: AppText.Today.statusRingAccessibilityHint)))
+    }
+
+    private struct TodayScaleButtonStyle: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed ? 0.97 : 1)
+                .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
         }
     }
 
-    private func compactActivityMetricDuration(_ minutes: Int) -> (value: String, unit: String) {
-        let safeMinutes = max(0, minutes)
-
-        if safeMinutes < 60 {
-            return ("\(safeMinutes)", WeekFitLocalizedString("common.unit.minutesShort"))
+    private func dailyStatusRecoveryRingButton(
+        recoveryDisplayValue: Int?,
+        recoveryStatusText: String,
+        sleepValueInfoText: String,
+        recoveryColor: Color,
+        isRecoveryPreparing: Bool
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showRecoveryDetails = true
+        } label: {
+            statusRingWidget(
+                title: WeekFitLocalizedString("today.status.recovery"),
+                infoText: isRecoveryPreparing
+                    ? WeekFitLocalizedString("today.recovery.syncing")
+                    : recoveryStatusText,
+                valueText: sleepValueInfoText,
+                value: recoveryDisplayValue,
+                color: recoveryColor
+            )
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
-
-        return (String(format: "%.1f", Double(safeMinutes) / 60.0), WeekFitLocalizedString("common.unit.hoursShort"))
+        .buttonStyle(TodayScaleButtonStyle())
+        .accessibilityHint(Text(String(localized: AppText.Today.statusRingAccessibilityHint)))
     }
 
     private func statusRingWidget(
@@ -1621,203 +1726,315 @@ struct TodayView: View {
         color: Color
     ) -> some View {
         let displayValue = value ?? 0
+        let progress = CGFloat(displayValue) / 100.0
+        let ringSize = todayEffectiveRingSize
+        let ringStroke = max(3, todayRingStroke * (ringSize / todayRingSize))
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 7) {
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.04), lineWidth: 4.0)
-                    .frame(width: 72, height: 72)
+                    .stroke(Color.white.opacity(0.06), lineWidth: ringStroke)
+                    .frame(width: ringSize, height: ringSize)
+
+                if value != nil, progress > 0 {
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(color.opacity(0.24), style: StrokeStyle(lineWidth: ringStroke + 4, lineCap: .round))
+                        .frame(width: ringSize, height: ringSize)
+                        .rotationEffect(.degrees(-90))
+                        .blur(radius: 4)
+                }
 
                 Circle()
-                    .trim(from: 0, to: CGFloat(displayValue) / 100.0)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4.0, lineCap: .round))
-                    .frame(width: 72, height: 72)
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AngularGradient(
+                            colors: [
+                                color.opacity(0.50),
+                                color,
+                                color.opacity(0.86)
+                            ],
+                            center: .center
+                        ),
+                        style: StrokeStyle(lineWidth: ringStroke, lineCap: .round)
+                    )
+                    .frame(width: ringSize, height: ringSize)
                     .rotationEffect(.degrees(-90))
 
                 Text(value == nil ? "—" : (centerText ?? "\(displayValue)%"))
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.title3.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.75)
+                    .lineLimit(1)
+                    .offset(y: value == nil ? 1 : 0.5)
             }
 
-            VStack(spacing: 1) {
+            VStack(spacing: 3) {
                 Text(title)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(textPrimary)
+                    .font(.footnote.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary.opacity(0.94))
+                    .lineLimit(ringCaptionLineLimit)
+                    .minimumScaleFactor(0.85)
 
                 Text(valueText)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(color)
+                    .font(.caption.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(color.opacity(0.94))
+                    .lineLimit(ringCaptionLineLimit)
+                    .minimumScaleFactor(0.84)
 
                 if !infoText.isEmpty {
                     Text(infoText)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(textTertiary)
+                        .font(.caption2.weight(.medium))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary.opacity(0.58))
+                        .lineLimit(ringCaptionLineLimit)
+                        .minimumScaleFactor(0.82)
                 }
             }
+            .padding(.top, 1)
+            .frame(maxWidth: .infinity, alignment: .top)
+            .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
     }
 
     private var upNextSection: some View {
         let now = Date()
-        let liveBronze = Color(red: 0.60, green: 0.52, blue: 0.39)
-        let liveBadgeBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
-        let neutralIconFill = Color.white.opacity(0.065)
-        let neutralStroke = Color.white.opacity(0.06)
+        let neutralIconFill = Color.white.opacity(0.07)
+        let neutralStroke = Color.white.opacity(0.08)
 
         let activeSession = currentActiveSession(now: now)
         let nextActivity = activeSession == nil
             ? nextUpcomingPlannedActivity(now: now)
             : nil
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(AppText.Today.upNextTitle)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(textPrimary)
-                .tracking(0.3)
-                .padding(.leading, 2)
-
+        return Group {
             if let activeSession {
-                let activeColor = liveBronze
+                todayPremiumCard(accent: todayPremiumBronze, featured: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
+                            .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(activeColor.opacity(0.075))
-                            .frame(width: 44, height: 44)
-                            .overlay(Circle().stroke(activeColor.opacity(0.24), lineWidth: 1))
+                        VStack(alignment: .leading, spacing: shouldRelocateUpNextTime ? 8 : 0) {
+                            HStack(alignment: .top, spacing: 12) {
+                                upNextIconBadge(
+                                    systemName: upNextIcon(for: activeSession, isLive: true),
+                                    fill: todayPremiumBronzeSoft.opacity(0.10),
+                                    stroke: todayPremiumBronze.opacity(0.18),
+                                    iconColor: todayPremiumBronze.opacity(0.88)
+                                )
 
-                        Image(systemName: upNextIcon(for: activeSession, isLive: true))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(liveBadgeBronze.opacity(0.86))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(AppText.Today.currentSession)
+                                        .font(.subheadline.weight(.bold))
+                                        .fontDesign(.rounded)
+                                        .foregroundStyle(textPrimary.opacity(0.94))
+
+                                    Text(String(format: WeekFitLocalizedString("today.upNext.inProgressFormat"), shortDisplayTitle(activityDisplayTitle(activeSession))))
+                                        .font(.caption.weight(.medium))
+                                        .fontDesign(.rounded)
+                                        .foregroundStyle(textTertiary)
+                                        .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                if !shouldRelocateUpNextTime {
+                                    Spacer(minLength: 8)
+
+                                    Text(AppText.Today.live)
+                                        .font(.caption2.weight(.bold))
+                                        .fontDesign(.rounded)
+                                        .foregroundStyle(.black)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [
+                                                            todayPremiumBronze.opacity(0.96),
+                                                            todayPremiumBronzeSoft.opacity(0.88)
+                                                        ],
+                                                        startPoint: .top,
+                                                        endPoint: .bottom
+                                                    )
+                                                )
+                                        )
+                                        .offset(y: 0.5)
+                                }
+                            }
+
+                            if shouldRelocateUpNextTime {
+                                HStack {
+                                    Spacer(minLength: 0)
+                                    Text(AppText.Today.live)
+                                        .font(.caption2.weight(.bold))
+                                        .fontDesign(.rounded)
+                                        .foregroundStyle(.black)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [
+                                                            todayPremiumBronze.opacity(0.96),
+                                                            todayPremiumBronzeSoft.opacity(0.88)
+                                                        ],
+                                                        startPoint: .top,
+                                                        endPoint: .bottom
+                                                    )
+                                                )
+                                        )
+                                }
+                            }
+                        }
                     }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(AppText.Today.currentSession)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(textPrimary)
-
-                        Text(String(format: WeekFitLocalizedString("today.upNext.inProgressFormat"), shortDisplayTitle(activityDisplayTitle(activeSession))))
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundStyle(textTertiary)
-                    }
-
-                    Spacer()
-
-                    Text(AppText.Today.live)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(liveBadgeBronze.opacity(0.92))
-                        .clipShape(Capsule())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
                 }
-                .padding(14)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            activeColor.opacity(0.030),
-                            cardBackground.opacity(0.44)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(activeColor.opacity(0.20), lineWidth: 1)
-                )
-                .shadow(color: activeColor.opacity(0.025), radius: 10, y: 4)
-            }
-
-            if let activity = nextActivity {
+            } else if let activity = nextActivity {
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onSelectTab(.calendar)
                 } label: {
-                    HStack(spacing: 12) {
+                    todayPremiumCard(accent: todayPremiumBronze.opacity(0.75), featured: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
+                                .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-                        ZStack {
-                            Circle()
-                                .fill(neutralIconFill)
-                                .frame(width: 44, height: 44)
-                                .overlay(Circle().stroke(neutralStroke, lineWidth: 1))
+                            VStack(alignment: .leading, spacing: shouldRelocateUpNextTime ? 8 : 0) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    upNextIconBadge(
+                                        systemName: upNextIcon(for: activity),
+                                        fill: neutralIconFill,
+                                        stroke: neutralStroke,
+                                        iconColor: textSecondary.opacity(0.82)
+                                    )
 
-                            Image(systemName: upNextIcon(for: activity))
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(textSecondary.opacity(0.86))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(shortDisplayTitle(activityDisplayTitle(activity)))
+                                            .font(.subheadline.weight(.bold))
+                                            .fontDesign(.rounded)
+                                            .foregroundStyle(textPrimary.opacity(0.94))
+
+                                        Text(upNextSubtitle(for: activity))
+                                            .font(.caption.weight(.medium))
+                                            .fontDesign(.rounded)
+                                            .foregroundStyle(textTertiary)
+                                            .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .layoutPriority(1)
+
+                                    if !shouldRelocateUpNextTime {
+                                        Spacer(minLength: 8)
+
+                                        upNextTimePill(
+                                            text: upNextTimeText(for: activity, selectedDate: selectedDate)
+                                        )
+                                    }
+                                }
+
+                                if shouldRelocateUpNextTime {
+                                    HStack {
+                                        Spacer(minLength: 0)
+                                        upNextTimePill(
+                                            text: upNextTimeText(for: activity, selectedDate: selectedDate)
+                                        )
+                                    }
+                                }
+                            }
                         }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(shortDisplayTitle(activityDisplayTitle(activity)))
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(textPrimary)
-
-                            Text(upNextSubtitle(for: activity))
-                                .font(.system(size: 11, weight: .regular))
-                                .foregroundStyle(textTertiary)
-                                .lineLimit(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .layoutPriority(1)
-
-                        Spacer()
-
-                        Text(upNextTimeText(for: activity, selectedDate: selectedDate))
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(liveBronze.opacity(0.82))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(liveBronze.opacity(0.075))
-                            .clipShape(Capsule())
-                            .fixedSize(horizontal: true, vertical: false)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(textTertiary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
                     }
-                    .padding(14)
-                    .background(cardBackground.opacity(0.38))
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(neutralStroke, lineWidth: 1)
-                    )
                 }
                 .buttonStyle(.plain)
 
-            } else if activeSession == nil {
+            } else {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
                     onSelectTab(.calendar)
-
                 } label: {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color(red: 0.16, green: 0.80, blue: 0.43))
+                    todayPremiumCard(accent: WeekFitTheme.border, featured: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
+                                .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-                        Text(AppText.Today.noActivitiesPlanned)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(textSecondary)
+                            HStack(alignment: .center, spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(todayActivityColor)
+                                    .offset(y: -0.5)
 
-                        Spacer()
+                                Text(AppText.Today.noActivitiesPlanned)
+                                    .font(.footnote.weight(.medium))
+                                    .fontDesign(.rounded)
+                                    .foregroundStyle(textSecondary)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.85)
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(textTertiary)
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(textTertiary)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
                     }
-                    .padding(14)
-                    .background(cardBackground.opacity(0.3))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.015), lineWidth: 1)
-                    )
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func upNextTimePill(text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.bold))
+            .monospacedDigit()
+            .foregroundColor(todayPremiumBronze.opacity(0.88))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(todayPremiumBronze.opacity(0.10))
+                    .overlay {
+                        Capsule()
+                            .stroke(todayPremiumBronze.opacity(0.14), lineWidth: 1)
+                    }
+            )
+            .offset(x: shouldRelocateUpNextTime ? 0 : -2, y: shouldRelocateUpNextTime ? 0 : 1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func upNextIconBadge(
+        systemName: String,
+        fill: Color,
+        stroke: Color,
+        iconColor: Color
+    ) -> some View {
+        ZStack {
+            Circle()
+                .fill(fill)
+                .frame(width: 44, height: 44)
+                .overlay(Circle().stroke(stroke, lineWidth: 1))
+
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(iconColor)
+                .offset(y: upNextIconOpticalYOffset(systemName))
+        }
+    }
+
+    private func upNextIconOpticalYOffset(_ systemName: String) -> CGFloat {
+        systemName.hasPrefix("figure.") ? -0.5 : 0
     }
     
     private func nextUpcomingPlannedActivity(
@@ -1976,119 +2193,81 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if coachCoordinator.state.finalStory != nil {
+                if coachCoordinator.state.canRenderTodayCoachInsight {
                     let presentation = coachCoordinator.state.todayPresentation
                     let insightColor = presentation.color
                     let insightTitle = presentation.title
                     let insightIcon = presentation.icon
                     let insightMessage = presentation.message
-                    let insightStateLabel = presentation.statusLabel
-
-                    if let finalStory = coachCoordinator.state.finalStory {
-                        let _ = debugTodayCoachInsight(
-                            semanticInsight: finalStory.todaySemanticInsight,
-                            titleKey: finalStory.titleKey,
-                            subtitleKey: finalStory.subtitleKey,
-                            localizedTitle: insightTitle,
-                            localizedSubtitle: insightMessage,
-                            coachScreenStoryTitle: nil
-                        )
-                    }
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         onSelectTab(.coach)
                     } label: {
-                        HStack(alignment: .top, spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(insightColor.opacity(0.10))
-                                    .frame(width: 38, height: 38)
+                        todayPremiumCard(accent: insightColor, featured: true) {
+                            HStack(alignment: .top, spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(insightColor.opacity(0.11))
+                                        .frame(width: 40, height: 40)
+                                        .overlay {
+                                            Circle()
+                                                .stroke(insightColor.opacity(0.18), lineWidth: 1)
+                                        }
 
-                                Image(systemName: insightIcon)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(insightColor)
-                            }
-
-                            VStack(alignment: .leading, spacing: 8) {
-
-                                Text(insightStateLabel)
-                                    .font(.system(size: 10.5, weight: .bold))
-                                    .tracking(1.3)
-                                    .foregroundStyle(insightColor.opacity(0.82))
-
-                                Text(insightTitle)
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(textPrimary)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .minimumScaleFactor(0.92)
-                                    .layoutPriority(1)
-
-                                if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text(insightMessage)
-                                        .font(.system(size: 12.5, weight: .medium))
-                                        .foregroundStyle(textSecondary.opacity(0.82))
-                                        .lineSpacing(2)
-                                        .multilineTextAlignment(.leading)
-                                        .lineLimit(2)
-                                        .fixedSize(horizontal: false, vertical: true)
+                                    Image(systemName: insightIcon)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(insightColor.opacity(0.92))
+                                        .offset(y: coachIconOpticalYOffset(insightIcon))
                                 }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .layoutPriority(1)
+                                .padding(.top, 2)
 
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(textTertiary)
-                                .padding(.top, 4)
-                                .accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(AppText.Today.coachInsightLabel)
+                                        .font(.caption2.weight(.bold))
+                                        .fontDesign(.rounded)
+                                        .tracking(1.45)
+                                        .foregroundStyle(insightColor.opacity(0.78))
+
+                                    Text(insightTitle)
+                                        .font(.callout.weight(.bold))
+                                        .fontDesign(.rounded)
+                                        .foregroundStyle(textPrimary)
+                                        .padding(.top, 2)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(3)
+                                        .lineSpacing(1)
+                                        .minimumScaleFactor(0.92)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .layoutPriority(1)
+
+                                    if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Text(insightMessage)
+                                            .font(.footnote)
+                                            .fontDesign(.rounded)
+                                            .foregroundStyle(textSecondary.opacity(0.68))
+                                            .lineSpacing(2)
+                                            .multilineTextAlignment(.leading)
+                                            .lineLimit(3)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .layoutPriority(1)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(textTertiary.opacity(0.75))
+                                    .padding(.top, 10)
+                                    .accessibilityHidden(true)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    insightColor.opacity(0.060),
-                                    cardBackground.opacity(0.72)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            insightColor.opacity(0.18),
-                                            Color.white.opacity(0.035)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1
-                                )
-                        )
-                        .shadow(color: insightColor.opacity(0.05), radius: 12, y: 5)
-                        .shadow(color: Color.black.opacity(0.10), radius: 10, y: 4)
                     }
                     .buttonStyle(.plain)
                 } else {
-                    // Settling fallback only. Do not synthesize a legacy Coach story without CoachFinalStory.
-                    HStack {
-                        ProgressView()
-                            .padding(.trailing, 8)
-                        Text(shouldShowHealthConnectPrompt ? AppText.Today.connectHealthInsights : AppText.Today.recoverySleepSyncPending)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(textSecondary)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(cardBackground.opacity(0.3))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    coachSettlingCard(needsHealthConnect: shouldShowHealthConnectPrompt)
                 }
             }
         }
@@ -2154,22 +2333,6 @@ struct TodayView: View {
         todayViewModel.triggerHealthRefresh()
     }
     
-    private func workoutInsightIcon(
-        fallback: String,
-        output: CoachGuidanceV3
-    ) -> String {
-        let text = [
-            output.insightTitle,
-            output.insightSubtitle ?? "",
-            output.dynamicInsight.title,
-            output.dynamicInsight.text
-        ]
-        .joined(separator: " ")
-        .lowercased()
-
-        return iconForWorkoutInsightText(text, fallback: fallback)
-    }
-
     private func iconForWorkoutInsightText(
         _ text: String,
         fallback: String
@@ -2262,58 +2425,100 @@ struct TodayView: View {
         return fallback
     }
     
-    private func debugWorkoutInsight(_ output: CoachGuidanceV3) {
-        print("🧠 [WorkoutInsight] phase:", output.phase)
-        print("🧠 [WorkoutInsight] opportunity:", output.opportunity.type)
-        print("🧠 [WorkoutInsight] shouldSurface:", output.shouldSurface)
-        print("🧠 [WorkoutInsight] title:", output.insightTitle)
-        print("🧠 [WorkoutInsight] subtitle:", output.insightSubtitle ?? "nil")
-    }
-        
     private var quickActionsSection: some View {
         let activeSession = currentActiveSession()
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(AppText.Today.quickActionsTitle)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(textPrimary)
-                .padding(.leading, 2)
+        return todayGlassDock {
+            VStack(alignment: .leading, spacing: 0) {
+                todayCardSectionTitle(WeekFitLocalizedString("today.quickActions.title"))
+                    .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-            HStack(spacing: 0) {
-                quickActionItem(
-                    icon: "takeoutbag.and.cup.and.straw.fill",
-                    label: WeekFitLocalizedString("today.quickActions.logDrinks"),
-                    subLabel: String(format: "%.1f/%.1fL", currentWater, waterGoal),
-                    color: Color(red: 0.25, green: 0.55, blue: 0.95),
-                    toastMessage: drinksQuickLogToast
-                ) {
-                    preloadQuickDrinkLogDataIfNeeded()
-                    showDirectDrinkLogSheet = true
-                }
+                Group {
+                    if shouldStackQuickActions {
+                        VStack(spacing: 10) {
+                            quickActionItem(
+                                icon: "takeoutbag.and.cup.and.straw.fill",
+                                label: WeekFitLocalizedString("today.quickActions.logDrinks"),
+                                subLabel: String(
+                                    format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
+                                    currentWater,
+                                    waterGoal
+                                ),
+                                color: WeekFitTheme.workout,
+                                toastMessage: drinksQuickLogToast
+                            ) {
+                                preloadQuickDrinkLogDataIfNeeded()
+                                showDirectDrinkLogSheet = true
+                            }
 
-                quickActionItem(
-                    icon: "fork.knife",
-                    label: WeekFitLocalizedString("today.quickActions.logFood"),
-                    subLabel: WeekFitLocalizedString("today.quickActions.mealsSnacks"),
-                    color: Color(red: 0.95, green: 0.65, blue: 0.12),
-                    toastMessage: foodQuickLogToast
-                ) {
-                    selectedLogTab = .meals
-                    preloadQuickFoodLogDataIfNeeded()
-                    showDirectMealLogSheet = true
-                }
+                            quickActionItem(
+                                icon: "fork.knife",
+                                label: WeekFitLocalizedString("today.quickActions.logFood"),
+                                subLabel: WeekFitLocalizedString("today.quickActions.mealsSnacks"),
+                                color: todayNutritionColor,
+                                toastMessage: foodQuickLogToast
+                            ) {
+                                selectedLogTab = .meals
+                                preloadQuickFoodLogDataIfNeeded()
+                                showDirectMealLogSheet = true
+                            }
 
-                quickActionItem(
-                    icon: activeSession == nil ? "play.circle.fill" : "stop.circle.fill",
-                    label: activeSession == nil ? WeekFitLocalizedString("today.quickActions.startActivity") : WeekFitLocalizedString("today.quickActions.endActivity"),
-                    subLabel: activeSession.map { activityDisplayTitle($0) }
-                        ?? WeekFitLocalizedString("today.quickActions.workoutRecovery"),
-                    color: activeSession == nil ? CoachPalette.stable : Color(red: 0.60, green: 0.52, blue: 0.39),
-                    liveIndicatorColor: activeSession == nil
-                        ? nil
-                        : Color(red: 0.72, green: 0.63, blue: 0.45)
-                ) {
-                    showDirectWorkoutLogSheet = true
+                            quickActionItem(
+                                icon: activeSession == nil ? "play.circle.fill" : "stop.circle.fill",
+                                label: activeSession == nil ? WeekFitLocalizedString("today.quickActions.startActivity") : WeekFitLocalizedString("today.quickActions.endActivity"),
+                                subLabel: activeSession.map { activityDisplayTitle($0) }
+                                    ?? WeekFitLocalizedString("today.quickActions.workoutRecovery"),
+                                color: activeSession == nil ? todayActivityColor : todayPremiumBronzeSoft,
+                                liveIndicatorColor: activeSession == nil
+                                    ? nil
+                                    : todayPremiumBronze
+                            ) {
+                                showDirectWorkoutLogSheet = true
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 0) {
+                            quickActionItem(
+                                icon: "takeoutbag.and.cup.and.straw.fill",
+                                label: WeekFitLocalizedString("today.quickActions.logDrinks"),
+                                subLabel: String(
+                                    format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
+                                    currentWater,
+                                    waterGoal
+                                ),
+                                color: WeekFitTheme.workout,
+                                toastMessage: drinksQuickLogToast
+                            ) {
+                                preloadQuickDrinkLogDataIfNeeded()
+                                showDirectDrinkLogSheet = true
+                            }
+
+                            quickActionItem(
+                                icon: "fork.knife",
+                                label: WeekFitLocalizedString("today.quickActions.logFood"),
+                                subLabel: WeekFitLocalizedString("today.quickActions.mealsSnacks"),
+                                color: todayNutritionColor,
+                                toastMessage: foodQuickLogToast
+                            ) {
+                                selectedLogTab = .meals
+                                preloadQuickFoodLogDataIfNeeded()
+                                showDirectMealLogSheet = true
+                            }
+
+                            quickActionItem(
+                                icon: activeSession == nil ? "play.circle.fill" : "stop.circle.fill",
+                                label: activeSession == nil ? WeekFitLocalizedString("today.quickActions.startActivity") : WeekFitLocalizedString("today.quickActions.endActivity"),
+                                subLabel: activeSession.map { activityDisplayTitle($0) }
+                                    ?? WeekFitLocalizedString("today.quickActions.workoutRecovery"),
+                                color: activeSession == nil ? todayActivityColor : todayPremiumBronzeSoft,
+                                liveIndicatorColor: activeSession == nil
+                                    ? nil
+                                    : todayPremiumBronze
+                            ) {
+                                showDirectWorkoutLogSheet = true
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2335,10 +2540,14 @@ struct TodayView: View {
             } label: {
                 ZStack(alignment: .top) {
                     Circle()
-                        .fill(color.opacity(0.12))
-//                        .overlay(Circle().stroke(color.opacity(0.72), lineWidth: 1.4))
-                        .frame(width: 30, height: 30)
-                    Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color).frame(width: 30, height: 30)
+                        .fill(color.opacity(0.10))
+                        .overlay(Circle().stroke(color.opacity(0.12), lineWidth: 1))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(color.opacity(0.88))
+                        .offset(y: quickActionIconOpticalYOffset(icon))
+                        .frame(width: 40, height: 40)
                     
                     if let toastMessage {
                         Text(toastMessage)
@@ -2350,26 +2559,52 @@ struct TodayView: View {
                             .padding(.vertical, 3)
                             .background(color.opacity(0.92))
                             .clipShape(Capsule())
-                            .offset(y: -34)
+                            .offset(y: -32)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(TodayScaleButtonStyle())
             
-            VStack(spacing: 1) {
+            VStack(spacing: 2) {
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(1)
+                    .font(.caption.weight(.medium))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary.opacity(0.88))
+                    .lineLimit(quickActionCaptionLineLimit)
+                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.center)
                 Text(subLabel)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(textTertiary)
-                    .lineLimit(1)
+                    .font(.caption2.weight(.medium))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textSecondary.opacity(0.52))
+                    .lineLimit(quickActionCaptionLineLimit)
                     .minimumScaleFactor(0.82)
+                    .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func coachIconOpticalYOffset(_ systemName: String) -> CGFloat {
+        if systemName.hasPrefix("figure.") {
+            return -0.5
+        }
+        if systemName == "brain.head.profile" {
+            return 0.5
+        }
+        return 0
+    }
+
+    private func quickActionIconOpticalYOffset(_ systemName: String) -> CGFloat {
+        switch systemName {
+        case "fork.knife", "takeoutbag.and.cup.and.straw.fill":
+            return 0.5
+        case "play.circle.fill", "stop.circle.fill":
+            return 0
+        default:
+            return 0
+        }
     }
 
     private func updateNutrition(withExtraWater extra: Double = 0) {

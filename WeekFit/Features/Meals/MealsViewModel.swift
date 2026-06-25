@@ -64,10 +64,9 @@ final class MealsViewModel: ObservableObject {
         guard signature != lastRecommendationSignature else { return }
 
         let nextRecommendation: MealRecommendation?
-        if let guidance = coachCoordinator.state.guidance
-            ?? nutritionViewModel.coachGuidanceSnapshot?.guidance {
+        if let input = coachCoordinator.state.input {
             nextRecommendation = MealRecommendationEngine.make(
-                guidance: guidance,
+                input: input,
                 meals: mealItems,
                 now: Date()
             )

@@ -1377,25 +1377,25 @@ struct MealRecommendation: Equatable {
 enum MealRecommendationEngine {
 
     static func make(
-        guidance: CoachGuidanceV3,
+        input: CoachInputSnapshot,
         meals: [Meals],
         now: Date
     ) -> MealRecommendation? {
         guard !meals.isEmpty else { return nil }
 
-        let context = context(from: guidance, now: now)
+        let context = context(from: input, now: now)
         let rankedMeal = meals.max { lhs, rhs in
             score(lhs, context: context) < score(rhs, context: context)
         }
 
         guard let meal = rankedMeal else { return nil }
 
-        let copy = copy(for: context, guidance: guidance, meal: meal)
+        let copy = copy(for: context, input: input, meal: meal)
         let factors = recommendationFactors(
             meal: meal,
             context: context,
             meals: meals,
-            guidance: guidance
+            input: input
         )
 
         return MealRecommendation(
@@ -1424,55 +1424,61 @@ enum MealRecommendationEngine {
     }
 
     private static func context(
-        from guidance: CoachGuidanceV3,
+        from input: CoachInputSnapshot,
         now: Date
     ) -> RecommendationContext {
         let hour = Calendar.current.component(.hour, from: now)
+        let focus = CoachFocusResolver.resolve(input: input)
 
-        switch guidance.phase {
-        case .preparing(let activity, let kind, let minutesUntil):
-            if kind == .heat {
-                return minutesUntil < 75
+        switch focus.source {
+        case .active:
+            if focus.family == .heat {
+                return .afterHeatLater
+            }
+            return .afterSessionLater(activityTitle: focus.activity?.title)
+
+        case .upcoming:
+            if focus.family == .heat {
+                let minutes = focus.minutesUntilStart ?? 120
+                return minutes < 75
                     ? .afterHeatLater
-                    : .beforeSessionLight(minutesUntil: minutesUntil)
+                    : .beforeSessionLight(minutesUntil: minutes)
             }
 
-            if minutesUntil < 45 {
-                return .afterSessionLater(activityTitle: activity.title)
+            if let minutes = focus.minutesUntilStart {
+                if minutes < 45 {
+                    return .afterSessionLater(activityTitle: focus.activity?.title)
+                }
+                if minutes <= 150 {
+                    return .beforeSessionLight(minutesUntil: minutes)
+                }
             }
+            return dayContext(for: hour, input: input)
 
-            if minutesUntil <= 150 {
-                return .beforeSessionLight(minutesUntil: minutesUntil)
+        case .recentCompleted:
+            if focus.family == .heat {
+                return .heatRecovery
             }
+            return .recoveryWindow
 
-            return dayContext(for: hour, guidance: guidance)
-
-        case .active(_, let kind):
-            return kind == .heat ? .afterHeatLater : .afterSessionLater(activityTitle: nil)
-
-        case .recovering(_, let kind, _):
-            return kind == .heat ? .heatRecovery : .recoveryWindow
-
-        case .stable:
-            return dayContext(for: hour, guidance: guidance)
+        case .idle:
+            return dayContext(for: hour, input: input)
         }
     }
 
     private static func dayContext(
         for hour: Int,
-        guidance: CoachGuidanceV3
+        input: CoachInputSnapshot
     ) -> RecommendationContext {
-        let actionTypes = guidance.supportActions.map(\.type)
-
-        if guidance.opportunity.type == .protectRecoveryBeforeActivity ||
-            actionTypes.contains(.sleepPriority) ||
-            actionTypes.contains(.downshiftNervousSystem) {
+        if input.brain.recovery == .compromised ||
+            input.brain.recovery == .vulnerable ||
+            input.dayPriorityModel.tomorrowDemand == .hard {
             return .recoveryProtection
         }
 
-        if guidance.opportunity.type == .recoverAfterWorkout ||
-            actionTypes.contains(.recoveryMeal) ||
-            actionTypes.contains(.startRecoveryNutrition) {
+        if input.dayContext.hasMeaningfulLoadCompleted ||
+            input.brain.strain == .high ||
+            input.brain.strain == .veryHigh {
             return .recoveryWindow
         }
 
@@ -1570,7 +1576,7 @@ enum MealRecommendationEngine {
 
     private static func copy(
         for context: RecommendationContext,
-        guidance: CoachGuidanceV3,
+        input: CoachInputSnapshot,
         meal: Meals
     ) -> (badge: String, reason: String, icon: String, color: Color) {
         switch context {
@@ -1583,9 +1589,11 @@ enum MealRecommendationEngine {
             )
 
         case .middayBalanced:
+            let coachFocused = input.dayContext.hasMeaningfulLoadCompleted ||
+                input.dayPriorityModel.dayStressLevel == .high
             return (
                 WeekFitLocalizedString("meals.library.badge.bestForToday"),
-                guidance.shouldSurface
+                coachFocused
                     ? WeekFitLocalizedString("meals.library.recommendation.reason.middayCoachFocus")
                     : WeekFitLocalizedString("meals.library.recommendation.reason.middayBalanced"),
                 "fork.knife",
@@ -1675,7 +1683,7 @@ enum MealRecommendationEngine {
         meal: Meals,
         context: RecommendationContext,
         meals: [Meals],
-        guidance: CoachGuidanceV3
+        input: CoachInputSnapshot
     ) -> [String] {
         let topProtein = meals.map(\.protein).max() ?? meal.protein
         let topCarbs = meals.map(\.carbs).max() ?? meal.carbs

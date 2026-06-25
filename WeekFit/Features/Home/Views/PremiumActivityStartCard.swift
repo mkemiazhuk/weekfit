@@ -18,70 +18,63 @@ struct PremiumActivityStartCard: View {
 
     @State private var pressed = false
 
+    private var actionButtonSize: CGFloat { QuickActionSheetDesign.Row.actionButtonSize }
+
     var body: some View {
         Button {
             action()
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: QuickActionSheetDesign.Row.contentSpacing) {
                 imageBlock
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(QuickActionSheetDesign.Typography.rowTitle)
+                        .foregroundStyle(.white.opacity(hasConflict ? 0.46 : 0.96))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+
                     HStack(spacing: 6) {
                         if let badge {
-                            Text(badge)
-                                .font(.system(size: 8.8, weight: .bold))
-                                .tracking(0.45)
-                                .foregroundStyle(accentColor.opacity(0.86))
-                                .padding(.horizontal, 7)
-                                .frame(height: 18)
-                                .background(
-                                    Capsule()
-                                        .fill(accentColor.opacity(0.10))
-                                )
-                                .overlay {
-                                    Capsule()
-                                        .stroke(accentColor.opacity(0.12), lineWidth: 1)
-                                }
+                            Text(badge.uppercased())
+                                .font(QuickActionSheetDesign.Typography.rowBadge)
+                                .tracking(0.35)
+                                .foregroundStyle(accentColor.opacity(0.82))
+                                .lineLimit(1)
                         }
 
-                        Spacer(minLength: 0)
-                    }
-
-                    Text(title)
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(hasConflict ? 0.46 : 0.96))
-                        .lineLimit(1)
-
-                    HStack(spacing: 6) {
                         Text(cleanSubtitle)
                             .lineLimit(1)
 
-                        Circle()
-                            .fill(textSecondary.opacity(0.28))
-                            .frame(width: 3, height: 3)
+                        if badge != nil {
+                            Circle()
+                                .fill(textSecondary.opacity(0.24))
+                                .frame(width: 3, height: 3)
+                        }
 
                         Text(formattedDuration(durationMinutes))
                             .monospacedDigit()
                     }
-                    .font(.system(size: 11.8, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(hasConflict ? 0.34 : 0.66))
+                    .font(QuickActionSheetDesign.Typography.rowSubtitle)
+                    .foregroundStyle(textSecondary.opacity(hasConflict ? 0.34 : 0.58))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 }
 
-                Spacer(minLength: 6)
+                Spacer(minLength: 4)
 
                 startControl
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, QuickActionSheetDesign.Row.horizontalPadding)
             .frame(maxWidth: .infinity)
-            .frame(height: 74)
+            .frame(height: QuickActionSheetDesign.Row.height)
             .background {
-                RoundedRectangle(cornerRadius: 23, style: .continuous)
+                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
                                 cardBackground.opacity(0.98),
-                                Color.white.opacity(0.030)
+                                Color.white.opacity(0.024)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -89,12 +82,12 @@ struct PremiumActivityStartCard: View {
                     )
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 23, style: .continuous)
+                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                accentColor.opacity(hasConflict ? 0.035 : 0.105),
-                                .white.opacity(0.045),
+                                accentColor.opacity(hasConflict ? 0.03 : 0.09),
+                                .white.opacity(0.04),
                                 .clear
                             ],
                             startPoint: .topLeading,
@@ -104,24 +97,15 @@ struct PremiumActivityStartCard: View {
                     )
             }
             .shadow(
-                color: accentColor.opacity(hasConflict ? 0.0 : 0.045),
-                radius: 12,
-                y: 5
+                color: accentColor.opacity(hasConflict ? 0.0 : 0.03),
+                radius: 8,
+                y: 3
             )
             .scaleEffect(pressed ? 0.985 : 1.0)
             .opacity(hasConflict ? 0.52 : 1.0)
         }
         .buttonStyle(.plain)
         .disabled(hasConflict)
-//        .simultaneousGesture(
-//            DragGesture(minimumDistance: 0)
-//                .onChanged { _ in pressed = true }
-//                .onEnded { _ in
-//                    withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
-//                        pressed = false
-//                    }
-//                }
-//        )
     }
 
     private var imageBlock: some View {
@@ -131,45 +115,54 @@ struct PremiumActivityStartCard: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(accentColor.opacity(0.105))
+                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
+                    .fill(accentColor.opacity(0.10))
 
                 Image(systemName: systemIcon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(accentColor.opacity(0.78))
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(accentColor.opacity(0.76))
+                    .offset(y: -0.5)
             }
 
             LinearGradient(
                 colors: [
                     .black.opacity(0.0),
-                    .black.opacity(0.20)
+                    .black.opacity(0.16)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
 
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.055), lineWidth: 1)
+            RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
+                .stroke(.white.opacity(0.05), lineWidth: 1)
         }
-        .frame(width: 60, height: 60)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(
+            width: QuickActionSheetDesign.Row.imageSize,
+            height: QuickActionSheetDesign.Row.imageSize
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
+                style: .continuous
+            )
+        )
     }
 
     private var startControl: some View {
         ZStack {
             Circle()
-                .fill(accentColor.opacity(hasConflict ? 0.08 : 0.22))
-                .frame(width: 42, height: 42)
+                .fill(accentColor.opacity(hasConflict ? 0.07 : 0.18))
+                .frame(width: actionButtonSize, height: actionButtonSize)
 
             Circle()
-                .stroke(accentColor.opacity(hasConflict ? 0.08 : 0.18), lineWidth: 1)
+                .stroke(accentColor.opacity(hasConflict ? 0.07 : 0.15), lineWidth: 1)
 
             Image(systemName: hasConflict ? "lock.fill" : "play.fill")
-                .font(.system(size: hasConflict ? 12 : 13, weight: .bold))
-                .foregroundStyle(hasConflict ? .white.opacity(0.28) : .white.opacity(0.94))
-                .offset(x: hasConflict ? 0 : 1)
+                .font(.system(size: hasConflict ? 10.5 : 11, weight: .semibold))
+                .foregroundStyle(hasConflict ? .white.opacity(0.26) : .white.opacity(0.92))
+                .offset(x: hasConflict ? 0 : 0.5)
         }
-        .frame(width: 42, height: 42)
+        .frame(width: actionButtonSize, height: actionButtonSize)
     }
 
     private var cleanSubtitle: String {

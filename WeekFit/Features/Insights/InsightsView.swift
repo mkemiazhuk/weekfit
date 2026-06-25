@@ -4799,58 +4799,75 @@ struct InsightsView: View {
         state: CoachState,
         input: CoachInputSnapshot?
     ) -> InsightsCoachContext? {
-        guard let guidance = state.guidance,
-              let frame = guidance.dayDecisionFrame else {
-            return nil
-        }
+        guard let v6 = state.coachUIPresentation else { return nil }
 
-        let confidence = frame.contextConfidence.value
-        let domain = insightsDomain(for: frame)
-        let actionDestination: InsightsActionDestination = frame.planStatus.requiresPlanChange || frame.planStatus == .complete
+        let domain = insightsDomain(for: v6.scenario)
+        let actionDestination: InsightsActionDestination = v6.urgencyLevel >= .protective
             ? .tab(.coach)
             : .detail(detailDestination(for: domain))
-        let evidence = [
-            frame.primaryDriver == .none ? nil : frame.primaryDriverText,
-            frame.contributors.isEmpty ? nil : frame.contributorText,
-            frame.remainingActivityRisk.map { risk in
-                "Today still has \(risk.plannedDuration) minutes planned, so more \(risk.expectedIntensity.lowercased()) work may add fatigue faster than fitness."
-            }
-        ].compactMap { $0 }
+        let evidence = v6.supportingSignals.isEmpty
+            ? [v6.assessment].filter { !$0.isEmpty }
+            : v6.supportingSignals
 
         return InsightsCoachContext(
             title: state.todayPresentation.title,
             message: state.todayPresentation.message,
-            stateLabel: frame.stateLabel,
+            stateLabel: v6.statusLabel,
             icon: state.todayPresentation.icon,
             accent: state.todayPresentation.color,
-            confidence: confidence,
-            evidence: evidence.isEmpty ? [frame.whyText] : evidence,
-            recommendation: frame.recommendationText,
+            confidence: insightsConfidence(for: v6),
+            evidence: evidence.isEmpty ? [v6.recommendation] : evidence,
+            recommendation: v6.recommendation,
             actionTitle: actionTitle(for: actionDestination),
             domain: domain,
             actionDestination: actionDestination,
-            shouldLeadInsights: frame.shouldOwnNarrative ||
-                frame.planStatus.requiresPlanChange ||
-                frame.planStatus == .complete ||
-                frame.recommendationIntent == .protectTomorrow ||
-                frame.remainingActivityRisk?.riskLevel == .high ||
-                frame.remainingActivityRisk?.riskLevel == .critical
+            shouldLeadInsights: shouldLeadInsights(v6: v6, input: input)
         )
     }
 
-    private func insightsDomain(for frame: CoachDayDecisionFrame) -> InsightsDomain {
-        switch frame.primaryDriver {
-        case .poorSleep:
-            return .sleep
-        case .lowRecovery, .accumulatedFatigue:
-            return .recovery
-        case .overloadRisk, .excessiveLoad, .tomorrowDemand:
-            return .activity
-        case .illness, .injury, .unsafeHeatStress:
-            return .recovery
+    private func insightsConfidence(for v6: CoachUIPresentation) -> Double {
+        switch v6.alertSeverity {
         case .none:
-            if frame.contributors.contains(.hydrationBehind) { return .hydration }
-            if frame.contributors.contains(.underfueled) || frame.contributors.contains(.proteinBehind) { return .nutrition }
+            return 0.72
+        case .elevated:
+            return 0.84
+        case .critical:
+            return 0.92
+        }
+    }
+
+    private func shouldLeadInsights(v6: CoachUIPresentation, input: CoachInputSnapshot?) -> Bool {
+        if v6.urgencyLevel >= .protective { return true }
+        if v6.alertSeverity == .critical { return true }
+        switch v6.scenario {
+        case .tomorrowProtection, .protectTomorrowFresh, .recoveryAfterHeavyYesterday:
+            return true
+        default:
+            break
+        }
+        if input?.dayPriorityModel.tomorrowDemand == .hard { return true }
+        return false
+    }
+
+    private func insightsDomain(for scenario: CoachScenarioKey) -> InsightsDomain {
+        switch scenario {
+        case .morningReadiness, .lowRecoveryPrep, .recoveryAfterHeavyYesterday:
+            return .recovery
+        case .tomorrowProtection, .protectTomorrowFresh:
+            return .activity
+        case .saunaPreparation, .saunaActive:
+            return .hydration
+        case .walkLightDay, .walkAfterHeavyLoad, .walkRecoveryAction, .walkEveningWindDown:
+            return .recovery
+        case .activeEndurance, .activeRacket, .activeStrength, .activeRecovery,
+             .duringEndurance, .duringRacket, .duringStrength, .duringRecovery,
+             .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate, .postRecoveryImmediate,
+             .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled,
+             .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
+            return .activity
+        case .saunaRecovery:
+            return .recovery
+        case .stableDay:
             return .consistency
         }
     }

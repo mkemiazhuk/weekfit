@@ -128,7 +128,7 @@ struct WeekFitRootView: View {
             .environmentObject(coachInputProvider)
 
         case .coach:
-            ExpertCoachViewV3(authViewModel: authViewModel)
+            ExpertCoachView(authViewModel: authViewModel)
                 .environmentObject(coachInputProvider)
 
 //        case .highlights:

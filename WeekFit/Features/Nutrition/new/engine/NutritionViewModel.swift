@@ -15,7 +15,6 @@ final class NutritionViewModel: ObservableObject {
     @Published var currentMetrics: DailyNutritionMetrics?
     @Published var currentProfile: UserNutritionProfile?
     @Published private(set) var coachMetricsSnapshot: CoachMetricsSnapshot?
-    @Published private(set) var coachGuidanceSnapshot: CoachGuidanceSnapshot?
     @Published private(set) var coachStateRefreshID = UUID()
     
     @Published var manualWaterLiters: Double = 0
@@ -41,7 +40,6 @@ final class NutritionViewModel: ObservableObject {
         currentMetrics = nil
         currentProfile = nil
         coachMetricsSnapshot = nil
-        coachGuidanceSnapshot = nil
         coachStateRefreshID = UUID()
         manualWaterLiters = 0
         cachedPlannedActivities = []
@@ -61,7 +59,6 @@ final class NutritionViewModel: ObservableObject {
         currentMetrics = nil
         nutritionResult = nil
         coachMetricsSnapshot = nil
-        coachGuidanceSnapshot = nil
         coachStateRefreshID = UUID()
     }
 
@@ -194,41 +191,6 @@ final class NutritionViewModel: ObservableObject {
         )
         #endif
         coachStateRefreshID = newRefreshID
-    }
-
-    func committedCoachGuidance(
-        metricsSnapshotID: UUID,
-        inputSignature: String
-    ) -> CoachGuidanceV3? {
-        guard let snapshot = coachGuidanceSnapshot,
-              snapshot.metricsSnapshotID == metricsSnapshotID,
-              snapshot.inputSignature == inputSignature else {
-            return nil
-        }
-
-        return snapshot.guidance
-    }
-
-    func commitCoachGuidance(
-        _ guidance: CoachGuidanceV3,
-        metricsSnapshotID: UUID,
-        inputSignature: String,
-        source: String
-    ) {
-        if let existing = coachGuidanceSnapshot,
-           existing.metricsSnapshotID == metricsSnapshotID,
-           existing.inputSignature == inputSignature {
-            return
-        }
-
-        coachGuidanceSnapshot = CoachGuidanceSnapshot(
-            id: UUID(),
-            createdAt: Date(),
-            source: source,
-            metricsSnapshotID: metricsSnapshotID,
-            inputSignature: inputSignature,
-            guidance: guidance
-        )
     }
 
     private func nutritionStateSignature(
@@ -490,13 +452,13 @@ final class NutritionViewModel: ObservableObject {
     }
 
     private func isTrainingActivity(_ activity: PlannedActivity) -> Bool {
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let kind = CoachActivityContextResolver.kind(for: activity)
         return kind == .workout || kind == .endurance
     }
 
     private func trainingStress(_ activities: [PlannedActivity]) -> Int {
         activities.reduce(0) { total, activity in
-            switch CoachActivityContextResolverV3.load(for: activity) {
+            switch CoachActivityContextResolver.load(for: activity) {
             case .low:
                 return total + 1
             case .moderate:

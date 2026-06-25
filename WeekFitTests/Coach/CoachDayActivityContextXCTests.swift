@@ -152,7 +152,7 @@ final class CoachDayActivityContextXCTests: XCTestCase {
         XCTAssertTrue(context.phase.isStable)
         XCTAssertNil(context.nextUpcomingActivity)
 
-        let copy = CoachActivityContextResolverV3.stablePresentation(from: context)
+        let copy = CoachActivityContextResolver.stablePresentation(from: context)
         XCTAssertTrue(copy.message.contains("open") || copy.title.contains("overview"))
     }
 
@@ -220,7 +220,7 @@ final class CoachDayActivityContextXCTests: XCTestCase {
         XCTAssertFalse(context.showsImmediateCoachFocusOnToday)
         XCTAssertNotNil(context.laterTodayActivity)
 
-        let copy = CoachActivityContextResolverV3.stablePresentation(from: context)
+        let copy = CoachActivityContextResolver.stablePresentation(from: context)
         XCTAssertFalse(copy.title.contains("Evening Strength"))
         XCTAssertFalse(copy.message.contains("Evening Strength"))
         XCTAssertFalse(copy.title.localizedCaseInsensitiveContains("next up"))
@@ -239,7 +239,7 @@ final class CoachDayActivityContextXCTests: XCTestCase {
     }
 
     private func resolve(_ activities: [PlannedActivity]) -> CoachDayActivityContext {
-        CoachActivityContextResolverV3.resolveDayContext(
+        CoachActivityContextResolver.resolveDayContext(
             activities: activities,
             selectedDate: selectedDate,
             now: now
@@ -247,7 +247,7 @@ final class CoachDayActivityContextXCTests: XCTestCase {
     }
 }
 
-private extension CoachActivityPhaseV3 {
+private extension CoachActivityPhase {
     var isStable: Bool {
         if case .stable = self {
             return true
