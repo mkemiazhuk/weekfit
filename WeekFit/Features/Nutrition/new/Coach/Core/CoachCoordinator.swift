@@ -14,9 +14,16 @@ final class CoachCoordinator: ObservableObject {
     private(set) var skippedUnchangedCount = 0
     private(set) var lastRecomputeReason: String?
 
+    private let lifecycleToken = "CoachCoordinator"
+
     init(initialState: CoachState = .unavailable(reason: "Coach inputs have not been collected yet.")) {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
         CoachIntegrationMetrics.restoreFromStorageIfNeeded()
         self.state = initialState
+    }
+
+    deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
     func updateInput(_ input: CoachInputSnapshot?) {
@@ -152,7 +159,7 @@ final class CoachCoordinator: ObservableObject {
         let v6Summary = state.coachIntegrationDebug?.logSummary ?? "usingCoach=n/a scenario=n/a copyPack=n/a"
         CoachLogger.compact(
             "[CoachState]",
-            "Coach state changed reason=\(reason) stateID=\(state.id) scenario=\(state.coachIntegrationDebug?.scenario.rawValue ?? "nil") title=\"\(state.todayPresentation.title)\" \(v6Summary)"
+            "Coach state changed reason=\(reason) stateID=\(state.id) scenario=\(state.coachIntegrationDebug?.scenario.rawValue ?? "nil") title=\"\(state.coachUIPresentation?.todayTitle ?? "")\" \(v6Summary)"
         )
     }
 

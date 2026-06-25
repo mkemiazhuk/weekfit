@@ -466,6 +466,22 @@ enum AppText {
             }
         }
 
+        enum NightComfort {
+            static let title: LocalizedStringResource = "settings.nightComfort.title"
+            static let subtitle: LocalizedStringResource = "settings.nightComfort.subtitle"
+            static let footer: LocalizedStringResource = "settings.nightComfort.footer"
+            static let profileSubtitle: LocalizedStringResource = "settings.nightComfort.profileSubtitle"
+
+            enum Option {
+                static let automatic: LocalizedStringResource = "settings.nightComfort.option.automatic"
+                static let alwaysOn: LocalizedStringResource = "settings.nightComfort.option.alwaysOn"
+                static let off: LocalizedStringResource = "settings.nightComfort.option.off"
+                static let automaticSubtitle: LocalizedStringResource = "settings.nightComfort.option.automaticSubtitle"
+                static let alwaysOnSubtitle: LocalizedStringResource = "settings.nightComfort.option.alwaysOnSubtitle"
+                static let offSubtitle: LocalizedStringResource = "settings.nightComfort.option.offSubtitle"
+            }
+        }
+
         enum ProfileEdit {
             static let title: LocalizedStringResource = "settings.profile.edit.title"
             static let headline: LocalizedStringResource = "settings.profile.edit.headline"

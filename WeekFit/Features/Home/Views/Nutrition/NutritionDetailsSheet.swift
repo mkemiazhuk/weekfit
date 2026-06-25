@@ -56,11 +56,11 @@ private extension NutritionDetailsSheet {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.94))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                         .frame(width: 42, height: 42)
-                        .background(Circle().fill(Color.white.opacity(0.075)))
+                        .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                         .overlay {
-                            Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                         }
                 }
                 .buttonStyle(.plain)
@@ -70,7 +70,7 @@ private extension NutritionDetailsSheet {
             HStack(spacing: 22) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
 
                 HStack(spacing: 10) {
                     Image(systemName: "calendar")
@@ -79,11 +79,11 @@ private extension NutritionDetailsSheet {
                     Text(sheetDateTitle)
                         .font(.system(size: 22, weight: .medium, design: .rounded))
                 }
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.75))
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
             }
         }
     }
@@ -129,7 +129,7 @@ private extension NutritionDetailsSheet {
 
                 Text(String(format: WeekFitLocalizedString("nutrition.details.macroCurrentGoalUnitFormat"), macro.current, macro.goal, macro.unit))
                     .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.68))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
             }
         }
         .frame(maxWidth: .infinity)
@@ -150,7 +150,7 @@ private extension NutritionDetailsSheet {
                 Text(WeekFitLocalizedString("nutrition.details.insight.legacySummary"))
                     .font(.system(size: 19, weight: .regular, design: .rounded))
                     .lineSpacing(5)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -226,7 +226,7 @@ private extension NutritionDetailsSheet {
 
                     Text(String(format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"), meal.kcal))
                         .font(.system(size: 19, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
                 }
 
                 HStack(spacing: 20) {
@@ -248,7 +248,7 @@ private extension NutritionDetailsSheet {
                 .fontWeight(.bold)
 
             Text(String(format: WeekFitLocalizedString("common.unit.gramFormat"), value))
-                .foregroundStyle(.white.opacity(0.66))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
         }
         .font(.system(size: 18, weight: .medium, design: .rounded))
     }
@@ -273,7 +273,7 @@ private extension NutritionDetailsSheet {
             VStack(alignment: .leading, spacing: 8) {
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.suggestion"))
                     .font(.system(size: 18, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.balancedDinner"))
                     .font(.system(size: 25, weight: .bold, design: .rounded))
@@ -281,7 +281,7 @@ private extension NutritionDetailsSheet {
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.target"))
                     .font(.system(size: 18, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.6))
 
                 HStack(spacing: 22) {
                     macroText(WeekFitLocalizedString("meals.library.macroProtein"), 35, color: .purple)
@@ -292,7 +292,7 @@ private extension NutritionDetailsSheet {
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.caloriesRange"))
                     .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                     .padding(.top, 2)
             }
 
@@ -300,7 +300,7 @@ private extension NutritionDetailsSheet {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 25, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
         }
         .padding(24)
         .background(cardBackground)
@@ -326,22 +326,22 @@ private extension NutritionDetailsSheet {
 
             Text(WeekFitLocalizedString("nutrition.details.note.legacyFull"))
                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
                 .lineSpacing(3)
 
             Spacer()
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .background(Color.white.opacity(0.045))
+        .background(WeekFitTheme.whiteOpacity(0.045))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     var cardBackground: some View {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.09),
-                Color.white.opacity(0.045)
+                WeekFitTheme.whiteOpacity(0.09),
+                WeekFitTheme.whiteOpacity(0.045)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing

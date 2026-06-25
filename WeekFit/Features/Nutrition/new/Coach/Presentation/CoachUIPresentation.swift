@@ -65,6 +65,9 @@ struct CoachUIPresentation: Equatable, Sendable {
     let coachTitle: String
     let todayTitle: String
     let todayMessage: String
+    let whyRows: [CoachPresentationWhyRow]
+
+    var accentColor: Color { semanticColor.uiColor }
 }
 
 extension CoachSemanticColor {

@@ -77,7 +77,7 @@ private extension HelpSupportView {
             VStack(alignment: .leading, spacing: 7) {
                 Text(WeekFitLocalizedString("support.help.hero"))
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
             }
             .padding(.top, 2)
         }
@@ -178,11 +178,11 @@ private extension HelpSupportView {
             VStack(spacing: 4) {
                 Text(WeekFitLocalizedString("support.help.footerTitle"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.36))
 
                 Text(WeekFitLocalizedString("support.help.footerSubtitle"))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.24))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
             }
         }
         .frame(maxWidth: .infinity)
@@ -217,7 +217,7 @@ private extension HelpSupportView {
 
                     Text(WeekFitLocalizedString("support.sheet.subtitle"))
                         .font(.system(size: 13.2, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.54))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
                         .multilineTextAlignment(.center)
                 }
 
@@ -257,7 +257,7 @@ private extension HelpSupportView {
                             Text(WeekFitLocalizedString("support.copyEmailAddress"))
                         }
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background {
@@ -388,7 +388,7 @@ private struct SupportRow: View {
 
                     Text(subtitle)
                         .font(.system(size: 13.2, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.54))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -398,7 +398,7 @@ private struct SupportRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.22))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.22))
             }
             .padding(.horizontal, 17)
             .padding(.vertical, 12)
@@ -563,7 +563,7 @@ private extension SupportDetailView {
 
             Text(subtitle)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.5))
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -589,7 +589,7 @@ private extension SupportDetailView {
 
             Text(text)
                 .font(.system(size: 13.2, weight: .medium))
-                .foregroundStyle(.white.opacity(0.54))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }

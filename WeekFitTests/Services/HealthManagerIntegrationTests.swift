@@ -22,6 +22,31 @@ final class HealthManagerIntegrationTests: XCTestCase {
         XCTAssertEqual(manager.recoveryPercent, 0)
     }
 
+    func testPrepareForDisplayDayClearsDayScopedTotals() {
+        let manager = HealthManager()
+        manager.activeCalories = 820
+        manager.recoveryBreakdown = RecoveryScoreBreakdown(
+            sleepDuration: 80,
+            sleepContinuity: 70,
+            sleepQuality: 75,
+            hrv: 70,
+            restingHeartRate: 75,
+            total: 75
+        )
+        manager.hrvSDNN = 62
+        manager.restingHeartRate = 54
+        manager.sleepMinutes = 420
+
+        let dayStart = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(dayStart)
+
+        XCTAssertEqual(manager.activeCalories, 0)
+        XCTAssertEqual(manager.recoveryPercent, 0)
+        XCTAssertEqual(manager.hrvSDNN, 0)
+        XCTAssertEqual(manager.restingHeartRate, 0)
+        XCTAssertEqual(manager.sleepMinutes, 0)
+    }
+
     func testActivityMetricsSnapshotRecoveryPercentMatchesBreakdown() {
         let snapshot = ActivityMetricsSnapshot(
             activeCalories: 420,

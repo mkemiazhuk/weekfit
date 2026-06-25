@@ -1,71 +1,6 @@
 import Foundation
 import SwiftUI
 
-struct CoachTodayPresentation {
-    let intent: CoachTabPresentationIntent
-    let statusLabel: String
-    let title: String
-    let message: String
-    let icon: String
-    let color: Color
-
-    init(
-        intent: CoachTabPresentationIntent = .statusAction,
-        statusLabel: String,
-        title: String,
-        message: String,
-        icon: String,
-        color: Color
-    ) {
-        self.intent = intent
-        self.statusLabel = statusLabel
-        self.title = title
-        self.message = message
-        self.icon = icon
-        self.color = color
-    }
-}
-
-struct CoachScreenPresentation {
-    let intent: CoachTabPresentationIntent
-    let stateLabel: String
-    let title: String
-    let message: String
-    let recommendation: String
-    let icon: String
-    let color: Color
-    let contextChip: CoachActivityContextChip?
-    let whyRows: [CoachPresentationWhyRow]
-    let supportActions: [CoachSupportAction]
-    let avoidNotes: [String]
-
-    init(
-        intent: CoachTabPresentationIntent = .interpretation,
-        stateLabel: String,
-        title: String,
-        message: String,
-        recommendation: String,
-        icon: String,
-        color: Color,
-        contextChip: CoachActivityContextChip? = nil,
-        whyRows: [CoachPresentationWhyRow] = [],
-        supportActions: [CoachSupportAction] = [],
-        avoidNotes: [String] = []
-    ) {
-        self.intent = intent
-        self.stateLabel = stateLabel
-        self.title = title
-        self.message = message
-        self.recommendation = recommendation
-        self.icon = icon
-        self.color = color
-        self.contextChip = contextChip
-        self.whyRows = whyRows
-        self.supportActions = supportActions
-        self.avoidNotes = avoidNotes
-    }
-}
-
 enum CoachStateStatus: Equatable {
     case ready
     case refreshingPrevious
@@ -86,13 +21,11 @@ struct CoachState: Identifiable {
     let status: CoachStateStatus
     let input: CoachInputSnapshot?
     let fingerprint: CoachInputFingerprint?
-    let todayPresentation: CoachTodayPresentation
-    let coachPresentation: CoachScreenPresentation?
     let coachUIPresentation: CoachUIPresentation?
     let coachIntegrationDebug: CoachIntegrationDebug?
 
     var hasValidGuidance: Bool {
-        coachUIPresentation != nil && coachPresentation != nil
+        coachUIPresentation != nil
     }
 
     var canRenderTodayCoachInsight: Bool {
@@ -111,7 +44,8 @@ struct CoachState: Identifiable {
     }
 
     private var hasValidTodayPresentationContent: Bool {
-        !todayPresentation.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard let ui = coachUIPresentation else { return false }
+        return !ui.todayTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var isSettlingCoachState: Bool {
@@ -139,14 +73,6 @@ struct CoachState: Identifiable {
             status: .unavailable(reason: reason),
             input: nil,
             fingerprint: nil,
-            todayPresentation: CoachTodayPresentation(
-                statusLabel: "OVERVIEW",
-                title: WeekFitLocalizedString("coach.unavailable.title"),
-                message: WeekFitLocalizedString("coach.unavailable.message"),
-                icon: "sparkles",
-                color: WeekFitTheme.secondaryText
-            ),
-            coachPresentation: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil
         )
@@ -159,17 +85,6 @@ struct CoachState: Identifiable {
             status: .unavailable(reason: reason),
             input: nil,
             fingerprint: nil,
-            todayPresentation: CoachTodayPresentation(
-                statusLabel: localized(english: "REFINING", russian: "УТОЧНЯЮ"),
-                title: localized(english: "Recommendations refining", russian: "Рекомендации уточняются"),
-                message: localized(
-                    english: "Coach is assembling today's picture. Recommendations will sharpen as your data comes in.",
-                    russian: "Собираю полную картину вашего дня. Рекомендации станут точнее, когда появятся данные."
-                ),
-                icon: "hourglass",
-                color: WeekFitTheme.secondaryText
-            ),
-            coachPresentation: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil
         )
@@ -199,10 +114,10 @@ struct CoachState: Identifiable {
         }
 
         let v6Result = CoachEngine.evaluate(input: input)
-        let presentationBridge = CoachTabPresentationBridge.build(from: v6Result)
+        let coachUIPresentation = CoachTabPresentationBridge.build(from: v6Result)
         let coachIntegrationDebug = CoachIntegrationDebug.resolve(
             from: v6Result,
-            usingCoach: presentationBridge != nil
+            usingCoach: coachUIPresentation != nil
         )
         CoachIntegrationMetrics.record(
             debug: coachIntegrationDebug,
@@ -210,18 +125,7 @@ struct CoachState: Identifiable {
         )
         logCoachIntegration(debug: coachIntegrationDebug, reason: reason)
 
-        let todayPresentation: CoachTodayPresentation
-        let coachPresentation: CoachScreenPresentation?
-        let coachUIPresentation: CoachUIPresentation?
-
-        if let presentationBridge {
-            todayPresentation = presentationBridge.today
-            coachPresentation = presentationBridge.coach
-            coachUIPresentation = presentationBridge.ui
-        } else {
-            todayPresentation = registryGapTodayPresentation(scenario: v6Result.scenario)
-            coachPresentation = nil
-            coachUIPresentation = nil
+        if coachUIPresentation == nil {
             logCoachRegistryGap(debug: coachIntegrationDebug, reason: reason)
         }
 
@@ -231,8 +135,6 @@ struct CoachState: Identifiable {
             status: .ready,
             input: input,
             fingerprint: fingerprint,
-            todayPresentation: todayPresentation,
-            coachPresentation: coachPresentation,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug
         )
@@ -247,8 +149,6 @@ struct CoachState: Identifiable {
             status: .refreshingPrevious,
             input: input,
             fingerprint: fingerprint,
-            todayPresentation: todayPresentation,
-            coachPresentation: coachPresentation,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug
         )
@@ -272,20 +172,26 @@ struct CoachState: Identifiable {
         )
     }
 
-    private static func registryGapTodayPresentation(scenario: CoachScenarioKey) -> CoachTodayPresentation {
-        CoachTodayPresentation(
-            statusLabel: localized(english: "PREPARING", russian: "ПОДГОТОВКА"),
-            title: localized(english: "Preparing recommendations", russian: "Готовлю рекомендации"),
-            message: localized(
-                english: "Putting together today's guidance.",
-                russian: "Собираю рекомендации на сегодня."
-            ),
-            icon: "hourglass",
-            color: WeekFitTheme.secondaryText
-        )
-    }
-
     static func localized(english: String, russian: String) -> String {
         WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english
     }
+}
+
+// MARK: - Registry gap chrome
+
+extension CoachState {
+    static var registryGapTitle: String {
+        localized(english: "Preparing recommendations", russian: "Готовлю рекомендации")
+    }
+
+    static var registryGapMessage: String {
+        localized(
+            english: "Putting together today's guidance.",
+            russian: "Собираю рекомендации на сегодня."
+        )
+    }
+
+    static var registryGapIcon: String { "hourglass" }
+
+    static var registryGapColor: Color { WeekFitTheme.secondaryText }
 }

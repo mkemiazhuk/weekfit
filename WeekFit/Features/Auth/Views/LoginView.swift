@@ -236,7 +236,7 @@ struct LoginView: View {
 
             Text(WeekFitLocalizedString("login.hero.subtitle"))
                 .font(.system(size: 15.0, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.84))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.84))
                 .lineSpacing(5)
                 .padding(.top, 1)
                 .frame(maxWidth: 300, alignment: .leading)
@@ -332,11 +332,11 @@ struct LoginView: View {
             VStack(alignment: .leading, spacing: -1) {
                 Text(title)
                     .font(.system(size: 9.5, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.74))
 
                 Text(value)
                     .font(.system(size: 13.5, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.98))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.98))
 
                 Text(subtitle)
                     .font(.system(size: 9.2, weight: .semibold))
@@ -492,11 +492,11 @@ struct LoginView: View {
                     Text(WeekFitLocalizedString("login.note.appleHealth"))
                         .font(.system(size: 11.5, weight: .medium))
                 }
-                .foregroundStyle(.white.opacity(0.66))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
 
                 Text(WeekFitLocalizedString("login.note.connectWhenReady"))
                     .font(.system(size: 11.1, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
             }
             .multilineTextAlignment(.center)
             .padding(.top, 2)
@@ -531,7 +531,7 @@ struct LoginView: View {
                 Text(title)
                     .font(.system(size: 14.5, weight: .semibold))
             }
-            .foregroundStyle(.white.opacity(0.96))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
             .frame(maxWidth: .infinity)
             .frame(height: 43)
             .background {
@@ -568,20 +568,20 @@ struct LoginView: View {
         VStack(spacing: 2) {
             Text(WeekFitLocalizedString("login.terms.intro"))
                 .font(.system(size: 9.8, weight: .regular))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
 
             HStack(spacing: 4) {
                 Text(WeekFitLocalizedString("login.terms.service"))
                     .font(.system(size: 10.2, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
 
                 Text(WeekFitLocalizedString("login.terms.and"))
                     .font(.system(size: 9.8))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
 
                 Text(WeekFitLocalizedString("login.terms.privacy"))
                     .font(.system(size: 10.2, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
             }
         }
         .multilineTextAlignment(.center)

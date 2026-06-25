@@ -35,19 +35,19 @@ struct PlanTimelineNowDivider: View {
                 .frame(width: timeColumnWidth)
 
             Circle()
-                .fill(Color.white.opacity(0.22))
+                .fill(WeekFitTheme.whiteOpacity(0.22))
                 .frame(width: 4, height: 4)
 
             Text(WeekFitLocalizedString("planner.timeline.now"))
                 .font(.system(size: 9.5, weight: .semibold))
                 .tracking(0.45)
                 .textCase(.uppercase)
-                .foregroundStyle(Color.white.opacity(0.30))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.30))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
             Rectangle()
-                .fill(Color.white.opacity(0.07))
+                .fill(WeekFitTheme.whiteOpacity(0.07))
                 .frame(height: 0.5)
 
             Spacer(minLength: 0)
@@ -132,7 +132,7 @@ struct PlanTimelineRow: View {
             } else {
                 Text("·")
                     .font(.system(size: timeFontSize * 0.72, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.24))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
             }
         }
         .frame(width: timeColumnWidth, alignment: .trailing)
@@ -450,7 +450,7 @@ struct PlanTimelineRow: View {
         case .upcoming:
             return accent.opacity(0.12)
         case .past:
-            return Color.white.opacity(0.034)
+            return WeekFitTheme.whiteOpacity(0.034)
         case .skipped:
             return Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.16)
         }
@@ -581,7 +581,7 @@ private struct PlanTimelineNode: View {
 
                 Image(systemName: "xmark")
                     .font(.system(size: 5.5, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
             } else if isFilled {
                 Circle()
                     .fill(accent.opacity(filledOpacity))

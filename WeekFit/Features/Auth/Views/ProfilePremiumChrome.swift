@@ -12,7 +12,7 @@ struct ProfilePremiumHeader: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: titleSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
                     .allowsTightening(true)
@@ -20,7 +20,7 @@ struct ProfilePremiumHeader: View {
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.56))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -43,15 +43,15 @@ struct ProfilePremiumCloseButton: View {
         } label: {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .frame(width: 46, height: 46)
                 .background {
                     Circle()
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.090),
-                                    Color.white.opacity(0.045)
+                                    WeekFitTheme.whiteOpacity(0.090),
+                                    WeekFitTheme.whiteOpacity(0.045)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -60,9 +60,9 @@ struct ProfilePremiumCloseButton: View {
                 }
                 .overlay {
                     Circle()
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                 }
-                .shadow(color: accent.opacity(0.055), radius: 12, y: 5)
+                .shadow(color: WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.055)), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(AppText.Common.Action.close))
@@ -78,33 +78,35 @@ struct ProfilePremiumBackground: View {
 
             RadialGradient(
                 colors: [
-                    accent.opacity(0.070),
-                    accent.opacity(0.018),
+                    WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.070)),
+                    WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.018)),
                     .clear
                 ],
                 center: .topTrailing,
                 startRadius: 10,
                 endRadius: 360
             )
+            .opacity(WeekFitTheme.ambientOpacity)
             .offset(x: 110, y: -130)
 
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.024),
-                    Color.white.opacity(0.006),
+                    WeekFitTheme.whiteOpacity(0.024),
+                    WeekFitTheme.whiteOpacity(0.006),
                     .clear
                 ],
                 center: .topLeading,
                 startRadius: 10,
                 endRadius: 340
             )
+            .opacity(WeekFitTheme.ambientOpacity)
             .offset(x: -120, y: -100)
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.010),
+                    WeekFitTheme.whiteOpacity(0.010),
                     .clear,
-                    Color.black.opacity(0.32)
+                    Color.black.opacity(WeekFitTheme.scaledOpacity(0.32))
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -129,8 +131,8 @@ extension View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.040),
-                                Color.white.opacity(0.012)
+                                WeekFitTheme.whiteOpacity(0.040),
+                                WeekFitTheme.whiteOpacity(0.012)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -141,7 +143,7 @@ extension View {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(
                             RadialGradient(
-                                colors: [glow, .clear],
+                                colors: [WeekFitTheme.accent(glow), .clear],
                                 center: .trailing,
                                 startRadius: 12,
                                 endRadius: 180
@@ -152,19 +154,19 @@ extension View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                .stroke(WeekFitTheme.border, lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 12)
+        .shadow(color: WeekFitTheme.cardShadow, radius: 18, x: 0, y: 12)
     }
 
     func profilePremiumSectionCard(cornerRadius: CGFloat = 24) -> some View {
         background {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.white.opacity(0.040))
+                .fill(WeekFitTheme.cardTertiary)
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                .stroke(WeekFitTheme.borderSoft, lineWidth: 1)
         }
     }
 }

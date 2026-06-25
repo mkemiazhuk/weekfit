@@ -1,4 +1,3 @@
-import SwiftUI
 import XCTest
 @testable import WeekFit
 
@@ -56,16 +55,27 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
     }
 
     func testEmptyTodayPresentationCannotRenderTodayCoachInsight() {
-        let state = makeState(
-            todayPresentation: CoachTodayPresentation(
-                statusLabel: "NOW",
-                title: "   ",
-                message: "Message",
-                icon: "figure.walk",
-                color: CoachPalette.stable
-            ),
-            coachUIPresentation: sampleCoachUIPresentation
+        var presentation = sampleCoachUIPresentation
+        presentation = CoachUIPresentation(
+            scenario: presentation.scenario,
+            assessment: presentation.assessment,
+            recommendation: presentation.recommendation,
+            avoid: presentation.avoid,
+            nextAction: presentation.nextAction,
+            supportingSignals: presentation.supportingSignals,
+            warningMessage: presentation.warningMessage,
+            warningAlert: presentation.warningAlert,
+            semanticColor: presentation.semanticColor,
+            alertSeverity: presentation.alertSeverity,
+            icon: presentation.icon,
+            urgencyLevel: presentation.urgencyLevel,
+            statusLabel: presentation.statusLabel,
+            coachTitle: presentation.coachTitle,
+            todayTitle: "   ",
+            todayMessage: presentation.todayMessage,
+            whyRows: presentation.whyRows
         )
+        let state = makeState(coachUIPresentation: presentation)
 
         XCTAssertFalse(state.canRenderTodayCoachInsight)
         XCTAssertEqual(state.todayCoachInsightHiddenReason, .noTodayPresentation)
@@ -100,13 +110,13 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
             statusLabel: "Important now",
             coachTitle: "Recovering now",
             todayTitle: "Recovering now",
-            todayMessage: "Recovery is the job for the rest of today."
+            todayMessage: "Recovery is the job for the rest of today.",
+            whyRows: []
         )
     }
 
     private func makeState(
         status: CoachStateStatus = .ready,
-        todayPresentation: CoachTodayPresentation? = nil,
         coachUIPresentation: CoachUIPresentation? = nil
     ) -> CoachState {
         CoachState(
@@ -115,14 +125,6 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
             status: status,
             input: nil,
             fingerprint: nil,
-            todayPresentation: todayPresentation ?? CoachTodayPresentation(
-                statusLabel: "IMPORTANT NOW",
-                title: "Recovering now",
-                message: "Recovery is the job for the rest of today.",
-                icon: "figure.walk",
-                color: CoachPalette.recovery
-            ),
-            coachPresentation: coachUIPresentation == nil ? nil : sampleCoachPresentation,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachUIPresentation == nil
                 ? nil
@@ -132,18 +134,6 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
                     usingCoach: true,
                     fallbackReason: nil
                 )
-        )
-    }
-
-    private var sampleCoachPresentation: CoachScreenPresentation {
-        CoachScreenPresentation(
-            stateLabel: "IMPORTANT NOW",
-            title: "Recovering now",
-            message: "Main work is done.",
-            recommendation: "Keep the rest of the day calm.",
-            icon: "figure.walk",
-            color: CoachPalette.recovery,
-            avoidNotes: ["Do not add load."]
         )
     }
 

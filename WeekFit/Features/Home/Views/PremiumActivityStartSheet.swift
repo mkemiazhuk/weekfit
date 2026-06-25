@@ -301,7 +301,7 @@ struct PremiumActivityStartSheet: View {
 
                 Text(localizedOptionTitle(liveItem.title))
                     .font(.system(size: 15.2, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                     .lineLimit(1)
 
                 liveProgressText(startedAt: liveItem.date, maxMinutes: liveItem.durationMinutes)
@@ -317,7 +317,7 @@ struct PremiumActivityStartSheet: View {
                 } label: {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
@@ -372,7 +372,7 @@ struct PremiumActivityStartSheet: View {
             Text(timeText)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                 .frame(width: 82, alignment: .trailing)
         }
     }
@@ -385,7 +385,7 @@ struct PremiumActivityStartSheet: View {
             Text(String(format: WeekFitLocalizedString("home.activityStart.progressFormat"), elapsedMinutes, maxMinutes))
                 .font(.system(size: 10.6, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                 .lineLimit(1)
         }
     }

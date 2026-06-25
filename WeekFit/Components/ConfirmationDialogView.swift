@@ -91,7 +91,7 @@ struct ConfirmationDialogView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.092),
+                                    WeekFitTheme.whiteOpacity(0.092),
                                     WeekFitTheme.backgroundColor.opacity(0.96),
                                     Color.black.opacity(0.78)
                                 ],
@@ -105,9 +105,9 @@ struct ConfirmationDialogView: View {
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.13),
+                                    WeekFitTheme.whiteOpacity(0.13),
                                     iconTint.opacity(0.13),
-                                    Color.white.opacity(0.035)
+                                    WeekFitTheme.whiteOpacity(0.035)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -133,7 +133,7 @@ struct ConfirmationDialogView: View {
                     LinearGradient(
                         colors: [
                             iconTint.opacity(0.18),
-                            Color.white.opacity(0.045)
+                            WeekFitTheme.whiteOpacity(0.045)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -159,8 +159,8 @@ struct ConfirmationDialogView: View {
                 dialogButton(
                     title: secondaryTitle,
                     foreground: WeekFitTheme.primaryText.opacity(0.82),
-                    background: Color.white.opacity(0.065),
-                    border: Color.white.opacity(0.060),
+                    background: WeekFitTheme.whiteOpacity(0.065),
+                    border: WeekFitTheme.whiteOpacity(0.060),
                     action: { onSecondary?() }
                 )
 

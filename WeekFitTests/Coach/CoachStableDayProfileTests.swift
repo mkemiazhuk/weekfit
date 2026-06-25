@@ -59,8 +59,8 @@ final class CoachStableDayProfileTests: XCTestCase {
         XCTAssertEqual(result.modifiers.lastCompletedActivityType, .cycling)
         XCTAssertEqual(resolveProfile(for: result), .workBanked)
 
-        XCTAssertEqual(bridge.ui.todayTitle, "Восстанавливаемся")
-        XCTAssertFalse(bridge.ui.assessment.contains("ничего срочного"))
+        XCTAssertEqual(bridge.todayTitle, "Восстанавливаемся")
+        XCTAssertFalse(bridge.assessment.contains("ничего срочного"))
         XCTAssertTrue(pack.assessment.lines.first?.russian.contains("Заезд сделан") == true)
         XCTAssertTrue(pack.recommendation.lines.first?.russian.contains("без спешки") == true)
         XCTAssertTrue(pack.avoid.lines.first?.russian.contains("тяжёлый блок") == true)
@@ -74,7 +74,7 @@ final class CoachStableDayProfileTests: XCTestCase {
 
         XCTAssertEqual(result.scenario, .stableDay)
         XCTAssertEqual(resolveProfile(for: result), .emptyDay)
-        XCTAssertEqual(bridge.ui.todayTitle, "Спокойный день")
+        XCTAssertEqual(bridge.todayTitle, "Спокойный день")
         XCTAssertTrue(pack.assessment.lines.first?.russian.contains("ничего срочного") == true)
     }
 
@@ -146,7 +146,7 @@ final class CoachStableDayProfileTests: XCTestCase {
         )
 
         XCTAssertEqual(CoachStableDayProfile.resolve(for: input), .lowRecoveryRest)
-        XCTAssertEqual(bridge.ui.todayTitle, "День восстановления")
+        XCTAssertEqual(bridge.todayTitle, "День восстановления")
         XCTAssertTrue(pack.assessment.lines.first?.russian.contains("Восстановление отстаёт") == true)
         let support = pack.supportingSignals.lines.map(\.russian).joined(separator: " ")
         XCTAssertTrue(support.contains("коротким"))
@@ -166,7 +166,7 @@ final class CoachStableDayProfileTests: XCTestCase {
         )
 
         XCTAssertEqual(CoachStableDayProfile.resolve(for: input), .tomorrowReserve)
-        XCTAssertEqual(bridge.ui.todayTitle, "Запас на завтра")
+        XCTAssertEqual(bridge.todayTitle, "Запас на завтра")
         XCTAssertTrue(pack.assessment.lines.first?.russian.contains("Завтра серьёзная") == true)
         let support = pack.supportingSignals.lines.map(\.russian).joined(separator: " ")
         XCTAssertTrue(support.contains("Завтра в плане"))
@@ -198,11 +198,11 @@ final class CoachStableDayProfileTests: XCTestCase {
         XCTAssertEqual(lowRecoveryInsight.urgencyLevel, CoachUrgencyLevel.protective)
         XCTAssertEqual(tomorrowInsight.urgencyLevel, CoachUrgencyLevel.protective)
         XCTAssertEqual(
-            CoachTabPresentationBridge.build(from: makeStableDayEngineResult(input: lowRecoveryInput))?.ui.statusLabel,
+            CoachTabPresentationBridge.build(from: makeStableDayEngineResult(input: lowRecoveryInput))?.statusLabel,
             "БЕРЕЖЁМ СИЛЫ"
         )
         XCTAssertEqual(
-            CoachTabPresentationBridge.build(from: makeStableDayEngineResult(input: tomorrowInput))?.ui.statusLabel,
+            CoachTabPresentationBridge.build(from: makeStableDayEngineResult(input: tomorrowInput))?.statusLabel,
             "БЕРЕЖЁМ СИЛЫ"
         )
     }
@@ -489,10 +489,10 @@ enum CoachStableDayProfileSnapshotPrinter {
         ]
 
         if let bridge {
-            lines.append("TITLE: \(bridge.ui.todayTitle)")
-            lines.append("BADGE: \(bridge.ui.statusLabel)")
-            lines.append("TEASER: \(bridge.ui.todayMessage)")
-            lines.append("ICON: \(bridge.ui.icon)")
+            lines.append("TITLE: \(bridge.todayTitle)")
+            lines.append("BADGE: \(bridge.statusLabel)")
+            lines.append("TEASER: \(bridge.todayMessage)")
+            lines.append("ICON: \(bridge.icon)")
         }
 
         if let pack {

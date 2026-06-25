@@ -83,7 +83,7 @@ struct MealPhotoCropEditorView: View {
                 .clipShape(Circle())
 
             Circle()
-                .stroke(Color.white.opacity(0.88), lineWidth: 2)
+                .stroke(WeekFitTheme.whiteOpacity(0.88), lineWidth: 2)
                 .frame(width: cropSize, height: cropSize)
 
             Circle()

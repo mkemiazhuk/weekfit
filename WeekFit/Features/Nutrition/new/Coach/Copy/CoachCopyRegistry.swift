@@ -8,13 +8,19 @@ enum CoachCopyRegistry {
         }
 
         let shaped = applyBodyState(base: base, input: input)
+        let profile = CoachStableDayProfile.resolve(for: input)
+        let final = CoachDayClosingCopyPolicy.apply(
+            to: shaped,
+            input: input,
+            profile: profile
+        )
 
         return CoachCopyPack(
             scenario: input.scenario,
-            assessment: shaped.assessment,
-            recommendation: shaped.recommendation,
-            avoid: shaped.avoid,
-            nextAction: shaped.nextAction,
+            assessment: final.assessment,
+            recommendation: final.recommendation,
+            avoid: final.avoid,
+            nextAction: final.nextAction,
             supportingSignals: supportingSignals(for: input),
             warningLayer: warningLayer(for: input)
         )
@@ -483,7 +489,7 @@ enum CoachCopyRegistry {
 
     /// Idle morning / protective day stories — nutrition belongs later.
     private static func shouldSurfaceNutritionSignals(for input: CoachCopyBuildInput) -> Bool {
-        if input.conversationPhase == .morningOverview {
+        if input.conversationPhase == .morningOverview || input.conversationPhase == .dayClosing {
             return false
         }
         switch input.scenario {

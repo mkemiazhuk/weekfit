@@ -98,7 +98,7 @@ struct RecoveryDetailsView: View {
 
                 Text(recoveryDetailsDateTitle)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -108,11 +108,11 @@ struct RecoveryDetailsView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -126,7 +126,7 @@ struct RecoveryDetailsView: View {
         }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
     }
@@ -166,7 +166,7 @@ private struct RecoveryHeroCard: View {
 
                 Text(snapshot.insightText)
                     .font(.system(size: RecoveryTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -200,7 +200,7 @@ private struct RecoveryHeroCard: View {
 
                 Text(WeekFitLocalizedString("common.unit.score"))
                     .font(.system(size: RecoveryTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }
         }
     }
@@ -286,14 +286,14 @@ private struct RecoveryVitalsCard: View {
             VStack(spacing: 2) {
                 Text(title)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
 
                 Text(value)
                     .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .lineLimit(2)
                     .minimumScaleFactor(0.70)
                     .multilineTextAlignment(.center)
@@ -305,7 +305,7 @@ private struct RecoveryVitalsCard: View {
         .padding(.horizontal, 5)
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.026))
+                .fill(WeekFitTheme.whiteOpacity(0.026))
         }
     }
 }
@@ -342,7 +342,7 @@ private struct RecoveryBreakdownCard: View {
 
             Text(dynamicExplanationTitle)
                 .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.46))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
         }
@@ -368,12 +368,12 @@ private struct RecoveryBreakdownCard: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle")
                 .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
                 .padding(.top, 1)
 
             Text(WeekFitLocalizedString("recovery.details.score.explanation"))
                 .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.39))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.39))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -402,7 +402,7 @@ private struct RecoveryBreakdownCard: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(title)
                         .font(.system(size: RecoveryTypography.metricTitle, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.86))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
                         .lineLimit(1)
                         .minimumScaleFactor(0.86)
 
@@ -415,7 +415,7 @@ private struct RecoveryBreakdownCard: View {
 
                         Text("/ \(maxValue)")
                             .font(.system(size: RecoveryTypography.metricSecondary, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.40))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
                     }
                     .monospacedDigit()
                 }
@@ -447,7 +447,7 @@ private struct SleepDetailsCard: View {
             }
 
             Rectangle()
-                .fill(Color.white.opacity(0.045))
+                .fill(WeekFitTheme.whiteOpacity(0.045))
                 .frame(height: 1)
 
             VStack(spacing: 7) {
@@ -481,14 +481,14 @@ private struct SleepDetailsCard: View {
             VStack(spacing: 2) {
                 Text(title)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
 
                 Text(value)
                     .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
                     .monospacedDigit()
@@ -499,7 +499,7 @@ private struct SleepDetailsCard: View {
         .padding(.horizontal, 5)
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.026))
+                .fill(WeekFitTheme.whiteOpacity(0.026))
         }
     }
 }
@@ -571,13 +571,13 @@ private struct SleepTimeRow: View {
         HStack {
             Text(title)
                 .font(.system(size: RecoveryTypography.metricTitle, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.44))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.44))
 
             Spacer()
 
             Text(value)
                 .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
                 .monospacedDigit()
         }
     }
@@ -597,18 +597,18 @@ private struct SleepStageRow: View {
 
             Text(title)
                 .font(.system(size: RecoveryTypography.metricTitle, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.82))
 
             Spacer()
 
             Text(value)
                 .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.90))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.90))
                 .monospacedDigit()
 
             Text("\(percent)%")
                 .font(.system(size: RecoveryTypography.metricSecondary, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                 .frame(width: 38, alignment: .trailing)
                 .monospacedDigit()
         }
@@ -626,7 +626,7 @@ private struct SectionLabel: View {
         Text(text)
             .font(.system(size: RecoveryTypography.sectionLabel, weight: .bold, design: .rounded))
             .tracking(1.8)
-            .foregroundStyle(.white.opacity(0.68))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
     }
 }
 
@@ -647,16 +647,16 @@ private enum RecoveryTypography {
 }
 
 private enum RecoveryStyle {
-    static let screenBackground = Color(red: 0.018, green: 0.019, blue: 0.022)
-    static let cardBackground = Color(red: 0.045, green: 0.048, blue: 0.055)
-    static let border = Color.white.opacity(0.065)
+    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var border: Color { WeekFitTheme.border }
 
-    static let recoveryColor = Color(red: 0.18, green: 0.74, blue: 0.89)
-    static let blue = Color(red: 0.30, green: 0.72, blue: 0.95)
-    static let deepBlue = Color(red: 0.22, green: 0.42, blue: 0.95)
-    static let purple = Color(red: 0.58, green: 0.40, blue: 0.95)
-    static let amber = Color(red: 0.92, green: 0.68, blue: 0.30)
-    static let red = Color(red: 0.96, green: 0.42, blue: 0.42)
+    static var recoveryColor: Color { WeekFitTheme.accent(Color(red: 0.18, green: 0.74, blue: 0.89)) }
+    static var blue: Color { WeekFitTheme.accent(Color(red: 0.30, green: 0.72, blue: 0.95)) }
+    static var deepBlue: Color { WeekFitTheme.accent(Color(red: 0.22, green: 0.42, blue: 0.95)) }
+    static var purple: Color { WeekFitTheme.accent(Color(red: 0.58, green: 0.40, blue: 0.95)) }
+    static var amber: Color { WeekFitTheme.accent(Color(red: 0.92, green: 0.68, blue: 0.30)) }
+    static var red: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.42, blue: 0.42)) }
 }
 
 private enum RecoveryFormat {
@@ -702,8 +702,8 @@ private extension View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.030),
-                                Color.white.opacity(0.004)
+                                WeekFitTheme.whiteOpacity(0.030),
+                                WeekFitTheme.whiteOpacity(0.004)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -745,7 +745,7 @@ private struct MiniProgressBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.085))
+                    .fill(WeekFitTheme.whiteOpacity(0.085))
 
                 Capsule()
                     .fill(color)

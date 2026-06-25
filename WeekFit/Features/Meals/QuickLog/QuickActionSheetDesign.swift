@@ -107,8 +107,8 @@ struct QuickActionSheetSegmentedControl: View {
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.13),
-                                            Color.white.opacity(0.07)
+                                            WeekFitTheme.whiteOpacity(0.13),
+                                            WeekFitTheme.whiteOpacity(0.07)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -116,7 +116,7 @@ struct QuickActionSheetSegmentedControl: View {
                                 )
                                 .overlay {
                                     Capsule()
-                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                                 }
                         }
                     }
@@ -127,11 +127,11 @@ struct QuickActionSheetSegmentedControl: View {
         .padding(QuickActionSheetDesign.SegmentedControl.containerPadding)
         .background {
             Capsule()
-                .fill(Color.white.opacity(0.034))
+                .fill(WeekFitTheme.whiteOpacity(0.034))
         }
         .overlay {
             Capsule()
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 }

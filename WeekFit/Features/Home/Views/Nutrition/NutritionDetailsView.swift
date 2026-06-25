@@ -126,7 +126,7 @@ struct NutritionDetailsView: View {
 
                 Text(nutritionDetailsDateTitle)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -136,11 +136,11 @@ struct NutritionDetailsView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -154,7 +154,7 @@ struct NutritionDetailsView: View {
         }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
     }
@@ -284,14 +284,14 @@ struct NutritionDetailsView: View {
 
             Text(WeekFitLocalizedString("nutrition.details.note.full"))
                 .font(.system(size: NutritionTypography.helperText, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
                 .lineSpacing(2.5)
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(Color.white.opacity(0.03))
+        .background(WeekFitTheme.whiteOpacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
@@ -325,7 +325,7 @@ private struct NutritionHeroCard: View {
 
                 Text(insightText)
                     .font(.system(size: NutritionTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -359,7 +359,7 @@ private struct NutritionHeroCard: View {
 
                 Text(WeekFitLocalizedString("common.unit.score"))
                     .font(.system(size: NutritionTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }
         }
     }
@@ -413,7 +413,7 @@ private struct MacroRingsCard: View {
             ) {
                 Text("\(percent)%")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .monospacedDigit()
             }
 
@@ -426,7 +426,7 @@ private struct MacroRingsCard: View {
 
                 Text(String(format: WeekFitLocalizedString("nutrition.details.macro.valueFormat"), Int(value), Int(goal)))
                     .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
             }
@@ -468,15 +468,15 @@ private struct MealTimelineCard: View {
         VStack(spacing: 9) {
             Image(systemName: "fork.knife.circle")
                 .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.28))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
 
             Text(AppText.Nutrition.Details.emptyTitle)
                 .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.76))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.76))
 
             Text(WeekFitLocalizedString("nutrition.details.empty.timelineMessage"))
                 .font(.system(size: NutritionTypography.helperText, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.40))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
         }
@@ -491,7 +491,7 @@ private struct MealTimelineCard: View {
         return HStack(alignment: .top, spacing: 12) {
             Text(meal.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
                 .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                 .frame(width: 44, alignment: .leading)
                 .padding(.top, 7)
 
@@ -530,7 +530,7 @@ private struct MealTimelineCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(meal.title)
                         .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 
@@ -538,7 +538,7 @@ private struct MealTimelineCard: View {
 
                     Text(String(format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"), meal.calories))
                         .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                         .lineLimit(1)
                 }
 
@@ -571,7 +571,7 @@ private struct MealTimelineCard: View {
 
             Text(String(format: WeekFitLocalizedString("common.unit.gramFormat"), value))
                 .font(.system(size: NutritionTypography.helperText, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
         }
     }
 
@@ -650,7 +650,7 @@ private struct SectionLabel: View {
         Text(text)
             .font(.system(size: NutritionTypography.sectionLabel, weight: .bold, design: .rounded))
             .tracking(1.8)
-            .foregroundStyle(.white.opacity(0.68))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
     }
 }
 
@@ -671,17 +671,17 @@ private enum NutritionTypography {
 }
 
 private enum NutritionStyle {
-    static let screenBackground = Color(red: 0.018, green: 0.019, blue: 0.022)
-    static let cardBackground = Color(red: 0.045, green: 0.048, blue: 0.055)
-    static let innerCardBackground = Color.white.opacity(0.035)
-    static let border = Color.white.opacity(0.065)
+    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
+    static var border: Color { WeekFitTheme.border }
 
-    static let nutritionColor = Color(red: 0.95, green: 0.65, blue: 0.12)
+    static var nutritionColor: Color { WeekFitTheme.accent(Color(red: 0.95, green: 0.65, blue: 0.12)) }
 
-    static let proteinColor = Color(red: 0.55, green: 0.40, blue: 0.95)
-    static let carbsColor = Color(red: 1.00, green: 0.55, blue: 0.16)
-    static let fatColor = Color(red: 1.00, green: 0.22, blue: 0.43)
-    static let fiberColor = Color(red: 0.16, green: 0.80, blue: 0.43)
+    static var proteinColor: Color { WeekFitTheme.accent(Color(red: 0.55, green: 0.40, blue: 0.95)) }
+    static var carbsColor: Color { WeekFitTheme.accent(Color(red: 1.00, green: 0.55, blue: 0.16)) }
+    static var fatColor: Color { WeekFitTheme.accent(Color(red: 1.00, green: 0.22, blue: 0.43)) }
+    static var fiberColor: Color { WeekFitTheme.accent(Color(red: 0.16, green: 0.80, blue: 0.43)) }
 }
 
 private extension View {
@@ -698,8 +698,8 @@ private extension View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.030),
-                                Color.white.opacity(0.004)
+                                WeekFitTheme.whiteOpacity(0.030),
+                                WeekFitTheme.whiteOpacity(0.004)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -733,7 +733,7 @@ private extension View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 }

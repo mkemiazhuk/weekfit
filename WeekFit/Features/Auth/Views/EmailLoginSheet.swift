@@ -104,7 +104,7 @@ struct EmailLoginSheet: View {
 
             Text(mode.subtitle)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
         }
     }
 
@@ -116,7 +116,7 @@ struct EmailLoginSheet: View {
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(canSubmit ? brandGreen : Color.white.opacity(0.12))
+                    .fill(canSubmit ? brandGreen : WeekFitTheme.whiteOpacity(0.12))
                     .frame(height: 52)
 
                 if authViewModel.isLoading {
@@ -145,7 +145,7 @@ struct EmailLoginSheet: View {
                     }
                 }
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.66))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
             }
 
             Button {
@@ -230,7 +230,7 @@ struct EmailLoginSheet: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                 .frame(width: 20)
 
             TextField(title, text: text)
@@ -260,7 +260,7 @@ struct EmailLoginSheet: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                 .frame(width: 20)
 
             SecureField(title, text: text)

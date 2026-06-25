@@ -239,11 +239,11 @@ final class CoachConversationPhaseSafetyTests: XCTestCase {
         )
         let injectedBridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: injectedResult))
 
-        XCTAssertEqual(baselineBridge.today.title, injectedBridge.today.title)
-        XCTAssertEqual(baselineBridge.today.message, injectedBridge.today.message)
-        XCTAssertEqual(baselineBridge.coach.title, injectedBridge.coach.title)
-        XCTAssertEqual(baselineBridge.coach.message, injectedBridge.coach.message)
-        XCTAssertEqual(baselineBridge.coach.recommendation, injectedBridge.coach.recommendation)
+        XCTAssertEqual(baselineBridge.todayTitle, injectedBridge.todayTitle)
+        XCTAssertEqual(baselineBridge.todayMessage, injectedBridge.todayMessage)
+        XCTAssertEqual(baselineBridge.coachTitle, injectedBridge.coachTitle)
+        XCTAssertEqual(baselineBridge.assessment, injectedBridge.assessment)
+        XCTAssertEqual(baselineBridge.recommendation, injectedBridge.recommendation)
     }
 
     // MARK: - Fingerprint
@@ -287,6 +287,22 @@ final class CoachConversationPhaseSafetyTests: XCTestCase {
 
         XCTAssertEqual(result.context.conversationPhase, .morningOverview)
         XCTAssertEqual(result.context.conversationPhaseReason, "morningWindowIdleDay")
+    }
+
+    func testDayClosingSuppressesNutritionCatchUp() throws {
+        let lateEvening = date(hour: 21, minute: 15)
+        let nutrition = behindNutrition()
+
+        let result = CoachEngine.evaluate(
+            input: makeInput(now: lateEvening, activities: [], nutrition: nutrition, brainHour: 21)
+        )
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+
+        XCTAssertEqual(result.context.conversationPhase, .dayClosing)
+        XCTAssertFalse(result.modifiers.fuelBehind)
+        XCTAssertFalse(result.modifiers.hydrationBehind)
+        XCTAssertEqual(result.todayInsight.alertSeverity, .none)
+        XCTAssertFalse(whyRowsMentionNutrition(bridge.whyRows))
     }
 
     func testDayClosingComputedOnLateEveningIdleWithoutUpcomingWork() {
@@ -368,6 +384,24 @@ final class CoachConversationPhaseSafetyTests: XCTestCase {
             waterCurrent: 0,
             waterGoal: 2.5
         )
+    }
+
+    private func behindNutrition() -> CoachNutritionContext {
+        CoachNutritionContext(
+            caloriesCurrent: 600,
+            caloriesGoal: 2_800,
+            proteinCurrent: 25,
+            proteinGoal: 140,
+            waterCurrent: 0.4,
+            waterGoal: 2.5
+        )
+    }
+
+    private func whyRowsMentionNutrition(_ rows: [CoachPresentationWhyRow]) -> Bool {
+        let text = rows.map(\.title).joined(separator: " ").lowercased()
+        return text.contains("water") || text.contains("вод") ||
+            text.contains("fuel") || text.contains("калор") ||
+            text.contains("meal") || text.contains("behind")
     }
 
     private func makeInput(

@@ -940,7 +940,7 @@ enum CoachCopyRegistryScenarios {
         input: CoachCopyBuildInput,
         defaultAction: CoachBilingualText
     ) -> CoachBilingualText {
-        if input.conversationPhase == .morningOverview {
+        if input.conversationPhase == .morningOverview || input.conversationPhase == .dayClosing {
             return defaultAction
         }
         if input.modifiers.fuelBehind || input.fuelState.isBehind {

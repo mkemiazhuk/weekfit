@@ -4,11 +4,21 @@ internal import Combine
 @MainActor
 final class MealsViewModel: ObservableObject {
 
+    private let lifecycleToken = "MealsViewModel"
+
     @Published var selectedDate = Date()
     @Published var customMeals: [Meals] = []
     @Published private(set) var hasLoadedCustomMeals = false
     @Published private(set) var cachedRecommendation: MealRecommendation?
     @Published private(set) var lastRecommendationSignature = ""
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+
+    deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
 
     func selectedDateTitle(for date: Date) -> String {
         WeekFitShortWeekdayMonthDay(date)
@@ -32,6 +42,7 @@ final class MealsViewModel: ObservableObject {
                 ? CustomMealStore.encode(migratedMeals)
                 : nil
 
+            MealPhotoStore.releaseMemoryCache()
             return (migratedMeals, encoded)
         }.value
     }

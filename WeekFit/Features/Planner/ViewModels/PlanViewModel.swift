@@ -5,6 +5,8 @@ internal import Combine
 @MainActor
 final class PlanViewModel: ObservableObject {
 
+    private let lifecycleToken = "PlanViewModel"
+
     // MARK: - Timeline constants
     let timelineStartHour = 5
     let timelineEndHour = 24
@@ -40,10 +42,32 @@ final class PlanViewModel: ObservableObject {
     @Published var customMeals: [Meals] = []
     @Published var selectedMealID: String?
 
+    var dayKindCacheRevision = ""
+    var dayKindByDayStart: [TimeInterval: PlanDayKind] = [:]
+    var timelineItemsCacheKey = ""
+    var cachedTimelineItems: [PlanTimelineItem] = []
+    private var loadedCustomMealsStorage = ""
+    private var loadedCustomMealsCatalogRevision: UInt = .max
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+
+    deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
+
     var calendar: Calendar {
         var cal = Calendar.current
         cal.firstWeekday = 2
         return cal
+    }
+
+    /// Token for mounted-tab equality checks; must change when planner UI state changes.
+    var plannerInteractionToken: String {
+        let day = Int(calendar.startOfDay(for: selectedDate).timeIntervalSince1970)
+        let editingID = editingActivity?.id ?? "-"
+        return "\(day)|\(showAddActivity)|\(editingID)"
     }
 
     var availableMeals: [Meals] {
@@ -120,6 +144,24 @@ final class PlanViewModel: ObservableObject {
            !customMeals.contains(where: { $0.id == selectedMealID }) {
             syncDefaultSelectedMeal()
         }
+    }
+
+    func syncCustomMeals(from meals: [Meals], revision: UInt) {
+        guard loadedCustomMealsCatalogRevision != revision else { return }
+        loadedCustomMealsCatalogRevision = revision
+        customMeals = meals
+
+        if selectedType == .meal,
+           let selectedMealID,
+           !customMeals.contains(where: { $0.id == selectedMealID }) {
+            syncDefaultSelectedMeal()
+        }
+    }
+
+    func loadCustomMealsIfNeeded(from storage: String) {
+        guard storage != loadedCustomMealsStorage else { return }
+        loadedCustomMealsStorage = storage
+        loadCustomMeals(from: storage)
     }
 
     func plannerOption(for meal: Meals) -> PlannerOption {

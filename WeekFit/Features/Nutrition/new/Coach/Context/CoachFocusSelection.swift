@@ -1,6 +1,12 @@
 import Foundation
 import WeekFitPlanner
 
+// MARK: - Focus selection (production scenario routing)
+//
+// Ownership: `CoachFocusResolver` is the sole owner of which activity Coach focuses on
+// and the derived session phase/state. Output feeds `CoachEngine.buildContext` → `CoachContext`.
+// See: Coach/Docs/CoachContextLayerAudit.md
+
 // MARK: - Focus selection
 
 enum CoachFocusSource: String, Equatable, Sendable {
@@ -35,9 +41,6 @@ struct CoachFocusSelection: Equatable, Sendable {
 
 enum CoachFocusResolver {
 
-    private static let defaultRecentCompletedWindowMinutes = 180
-    private static let immediatePostWindowMinutes = 60
-
     static func resolve(
         input: CoachInputSnapshot,
         explicitFocus: PlannedActivity? = nil
@@ -71,7 +74,7 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= recentCompletedWindowMinutes(for: lastCompleted),
+            if minutesSinceEnd <= CoachActivityWindowPolicy.recentCompletedFocusWindowMinutes(for: lastCompleted),
                CoachActivityClassifier.isSeriousTraining(lastCompleted) {
                 return selection(
                     for: lastCompleted,
@@ -88,7 +91,7 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= recentCompletedWindowMinutes(for: lastCompleted) {
+            if minutesSinceEnd <= CoachActivityWindowPolicy.recentCompletedFocusWindowMinutes(for: lastCompleted) {
                 return selection(
                     for: lastCompleted,
                     source: .recentCompleted,
@@ -172,7 +175,8 @@ enum CoachFocusResolver {
         }
         if activity.isCompleted || activity.isPartialCompletion {
             let minutesSince = minutesSinceEnd ?? 0
-            return minutesSince <= immediatePostWindowMinutes ? .justFinished : .finished
+            return CoachActivityWindowPolicy.isWithinImmediatePostFocusWindow(minutesSinceEnd: minutesSince)
+                ? .justFinished : .finished
         }
         return .upcoming
     }
@@ -210,12 +214,5 @@ enum CoachFocusResolver {
 
     private static func isEveningPhase(_ timeOfDay: CoachTimeOfDay) -> Bool {
         timeOfDay == .evening || timeOfDay == .lateEvening
-    }
-
-    private static func recentCompletedWindowMinutes(for activity: PlannedActivity) -> Int {
-        if CoachActivityClassifier.family(for: activity) == .heat {
-            return CoachHeatRecoveryPolicy.focusWindowMinutes
-        }
-        return defaultRecentCompletedWindowMinutes
     }
 }

@@ -222,7 +222,7 @@ struct ActivityIntelligenceView: View {
 
                 Text(activityDetailsDateTitle)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -232,11 +232,11 @@ struct ActivityIntelligenceView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -250,7 +250,7 @@ struct ActivityIntelligenceView: View {
         }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
     }
@@ -299,7 +299,7 @@ private struct ActivityHeroCard: View {
 
                 Text(WeekFitLocalizedString(insightText))
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -333,7 +333,7 @@ private struct ActivityHeroCard: View {
 
                 Text("activity.score")
                     .font(.system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }
         }
     }
@@ -465,14 +465,14 @@ private struct ActivityDailyMetricsCard: View {
             VStack(spacing: 2) {
                 Text(title)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
 
                 Text(value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
                     .monospacedDigit()
@@ -483,7 +483,7 @@ private struct ActivityDailyMetricsCard: View {
         .padding(.horizontal, 5)
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.026))
+                .fill(WeekFitTheme.whiteOpacity(0.026))
         }
     }
 }
@@ -546,19 +546,19 @@ private struct ActivityTimelineCard: View {
                         if let hour = value.as(Int.self) {
                             Text(String(format: "%02d", hour))
                                 .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.45))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.45))
                         }
                     }
                 }
             }
             .chartYAxis {
                 AxisMarks(values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine().foregroundStyle(Color.white.opacity(0.045))
+                    AxisGridLine().foregroundStyle(WeekFitTheme.whiteOpacity(0.045))
                     AxisValueLabel {
                         if let number = value.as(Double.self) {
                             Text("\(Int(number))")
                                 .font(.system(size: 9, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.38))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                         }
                     }
                 }
@@ -593,12 +593,12 @@ private struct ActivityTimelineCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(WeekFitLocalizedString(title))
                     .font(.system(size: ActivityTypography.metricSecondary, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                     .lineLimit(1)
 
                 Text(value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
                     .monospacedDigit()
@@ -614,8 +614,8 @@ private struct ActivityTimelineCard: View {
 
         if value <= 0 {
             colors = [
-                Color.white.opacity(0.04),
-                Color.white.opacity(0.015)
+                WeekFitTheme.whiteOpacity(0.04),
+                WeekFitTheme.whiteOpacity(0.015)
             ]
         } else if ratio >= 0.75 {
             colors = [
@@ -630,7 +630,7 @@ private struct ActivityTimelineCard: View {
         } else {
             colors = [
                 ActivityStyle.teal.opacity(0.45),
-                Color.white.opacity(0.05)
+                WeekFitTheme.whiteOpacity(0.05)
             ]
         }
 
@@ -822,7 +822,7 @@ private struct WeeklyContextCard: View {
 
                         ZStack(alignment: .bottom) {
                             Capsule()
-                                .fill(Color.white.opacity(item.isSelected ? 0.075 : 0.040))
+                                .fill(WeekFitTheme.whiteOpacity(item.isSelected ? 0.075 : 0.040))
                                 .frame(width: item.isSelected ? 13 : 10, height: chartHeight)
 
                             Capsule()
@@ -854,7 +854,7 @@ private struct WeeklyContextCard: View {
     private func barFill(for item: WeeklyContextItem) -> LinearGradient {
         let colors: [Color] = item.isSelected
         ? [ActivityStyle.activityColor, ActivityStyle.teal.opacity(0.75)]
-        : [Color.white.opacity(0.38), Color.white.opacity(0.18)]
+        : [WeekFitTheme.whiteOpacity(0.38), WeekFitTheme.whiteOpacity(0.18)]
 
         return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
     }
@@ -923,7 +923,7 @@ private struct SessionsCard: View {
                 if !sessions.isEmpty {
                     Text(WeekFitCountPluralization.phrase(count: sessions.count, category: .session))
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                 }
             }
 
@@ -960,11 +960,11 @@ private struct SessionRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(session.title)
                         .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
 
                     Text(session.timeRange)
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.46))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
                 }
 
                 Spacer()
@@ -972,12 +972,12 @@ private struct SessionRow: View {
                 HStack(spacing: 6) {
                     Text(DurationFormatter.fullMinutes(session.durationMinutes))
                         .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.86))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
                         .monospacedDigit()
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: ActivityTypography.helperText, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.24))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
                 }
             }
         }
@@ -1213,11 +1213,11 @@ struct ActivitySessionDetailView: View {
         } label: {
             Image(systemName: "xmark")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                 .frame(width: 36, height: 36)
-                .background(Circle().fill(Color.white.opacity(0.075)))
+                .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                 .overlay {
-                    Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                 }
         }
         .buttonStyle(.plain)
@@ -1267,12 +1267,12 @@ struct ActivitySessionDetailView: View {
 
                 Text(activityDateText)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
                     .lineLimit(1)
 
                 Text(detailTimeRange)
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                     .lineLimit(1)
                     .minimumScaleFactor(0.84)
 
@@ -1285,12 +1285,12 @@ struct ActivitySessionDetailView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                 }
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .background {
                     Capsule()
-                        .fill(Color.white.opacity(0.045))
+                        .fill(WeekFitTheme.whiteOpacity(0.045))
                 }
             }
         }
@@ -1349,7 +1349,7 @@ struct ActivitySessionDetailView: View {
                     }
                 }
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                 .monospacedDigit()
             }
 
@@ -1386,19 +1386,19 @@ struct ActivitySessionDetailView: View {
                             if let minute = value.as(Double.self) {
                                 Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), Int(minute.rounded())))
                                     .font(.system(size: 9, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.38))
+                                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                             }
                         }
                     }
                 }
                 .chartYAxis {
                     AxisMarks(values: heartRateYAxisValues) { value in
-                        AxisGridLine().foregroundStyle(Color.white.opacity(0.055))
+                        AxisGridLine().foregroundStyle(WeekFitTheme.whiteOpacity(0.055))
                         AxisValueLabel {
                             if let number = value.as(Double.self) {
                                 Text("\(Int(number))")
                                     .font(.system(size: 9, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.38))
+                                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                             }
                         }
                     }
@@ -1445,7 +1445,7 @@ struct ActivitySessionDetailView: View {
                                         LinearGradient(
                                             colors: [
                                                 session.color.opacity(0.55),
-                                                Color.white.opacity(0.14),
+                                                WeekFitTheme.whiteOpacity(0.14),
                                                 session.color.opacity(0.22)
                                             ],
                                             startPoint: .topLeading,
@@ -1510,14 +1510,14 @@ struct ActivitySessionDetailView: View {
 
                             Text(zone.title)
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.72))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                                 .frame(width: 42, alignment: .leading)
                                 .lineLimit(1)
 
                             GeometryReader { proxy in
                                 ZStack(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color.white.opacity(0.065))
+                                        .fill(WeekFitTheme.whiteOpacity(0.065))
 
                                     Capsule()
                                         .fill(zone.color)
@@ -1528,7 +1528,7 @@ struct ActivitySessionDetailView: View {
 
                             Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.70))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(width: 58, alignment: .trailing)
@@ -1536,7 +1536,7 @@ struct ActivitySessionDetailView: View {
 
                             Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.44))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.44))
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(width: 34, alignment: .trailing)
@@ -1555,7 +1555,7 @@ struct ActivitySessionDetailView: View {
     private var footer: some View {
         Text(String(format: WeekFitLocalizedString("activity.dataFrom"), detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")))
             .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-            .foregroundStyle(.white.opacity(0.38))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 3)
     }
@@ -1728,11 +1728,11 @@ struct ActivitySessionDetailView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(WeekFitLocalizedString(title))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
 
                 Text(value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .monospacedDigit()
             }
         }
@@ -1951,12 +1951,12 @@ private struct HeartRateZoneLegendRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(WeekFitLocalizedString(zone.title))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(isActive ? 0.74 : 0.44))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.74 : 0.44))
                     .lineLimit(1)
 
                 Text(zone.range)
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(isActive ? 0.42 : 0.28))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.42 : 0.28))
                     .lineLimit(1)
             }
             .frame(width: 70, alignment: .leading)
@@ -1964,7 +1964,7 @@ private struct HeartRateZoneLegendRow: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.055))
+                        .fill(WeekFitTheme.whiteOpacity(0.055))
 
                     Capsule()
                         .fill(zone.color.opacity(isActive ? 0.95 : 0.20))
@@ -1975,7 +1975,7 @@ private struct HeartRateZoneLegendRow: View {
 
             Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(isActive ? 0.70 : 0.40))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.70 : 0.40))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 58, alignment: .trailing)
@@ -1983,7 +1983,7 @@ private struct HeartRateZoneLegendRow: View {
 
             Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(isActive ? 0.48 : 0.34))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.48 : 0.34))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 34, alignment: .trailing)
@@ -2033,7 +2033,7 @@ private struct SessionDetailSkeletonLine: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.018))
+                .fill(WeekFitTheme.whiteOpacity(0.018))
         }
     }
 }
@@ -2078,7 +2078,7 @@ private struct SessionMetricGridCell: View {
 
                 Text(WeekFitLocalizedString(item.title))
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2088,14 +2088,14 @@ private struct SessionMetricGridCell: View {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(item.value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
 
                 if !item.unit.isEmpty {
                     Text(item.unit)
                         .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                         .lineLimit(1)
                 }
             }
@@ -2117,7 +2117,7 @@ private struct ZoneDonutView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: 12)
+                .stroke(WeekFitTheme.whiteOpacity(0.07), lineWidth: 12)
 
             ForEach(donutSegments) { segment in
                 Circle()
@@ -2134,7 +2134,7 @@ private struct ZoneDonutView: View {
 
                 Text("activity.min")
                     .font(.system(size: ActivityTypography.helperText, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
             }
         }
     }
@@ -2289,14 +2289,14 @@ private struct WorkoutRouteMapPreview: View {
 
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .padding(7)
                         .background {
                             Circle()
                                 .fill(.black.opacity(0.52))
                                 .overlay {
                                     Circle()
-                                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                                        .stroke(WeekFitTheme.whiteOpacity(0.16), lineWidth: 1)
                                 }
                         }
                         .padding(8)
@@ -2325,7 +2325,7 @@ private struct WorkoutRouteMapPreview: View {
                     .frame(width: 9, height: 9)
                     .overlay {
                         Circle()
-                            .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                            .stroke(WeekFitTheme.whiteOpacity(0.92), lineWidth: 2)
                     }
             }
         }
@@ -2333,7 +2333,7 @@ private struct WorkoutRouteMapPreview: View {
         if let finish = coordinates.last, coordinates.count > 1 {
             Annotation("", coordinate: finish, anchor: .center) {
                 Circle()
-                    .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                    .stroke(WeekFitTheme.whiteOpacity(0.95), lineWidth: 2)
                     .background(Circle().fill(color.opacity(0.35)))
                     .frame(width: 11, height: 11)
             }
@@ -2404,7 +2404,7 @@ private struct WorkoutRouteDetailMapView: View {
 
                 Text(title)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2415,11 +2415,11 @@ private struct WorkoutRouteDetailMapView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -2493,7 +2493,7 @@ private struct RouteEndpointMarker: View {
                 .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
 
             Circle()
-                .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                .stroke(WeekFitTheme.whiteOpacity(0.95), lineWidth: 2)
                 .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
 
             if style == .finish {
@@ -2514,11 +2514,11 @@ private struct EmptySessionsRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("activity.noWorkoutsRecorded")
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
 
                 Text("activity.activityTotalsAreShownFromAppleHealth")
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
             }
 
             Spacer()
@@ -2559,7 +2559,7 @@ private struct SectionLabel: View {
         Text(text)
             .font(.system(size: ActivityTypography.sectionLabel, weight: .bold, design: .rounded))
             .tracking(1.8)
-            .foregroundStyle(.white.opacity(0.68))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
     }
 }
 
@@ -2580,20 +2580,20 @@ private enum ActivityTypography {
 }
 
 private enum ActivityStyle {
-    static let screenBackground = Color(red: 0.018, green: 0.019, blue: 0.022)
-    static let cardBackground = Color(red: 0.045, green: 0.048, blue: 0.055)
-    static let innerCardBackground = Color.white.opacity(0.035)
-    static let border = Color.white.opacity(0.065)
+    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
+    static var border: Color { WeekFitTheme.border }
 
-    static let activityColor = Color(red: 0.16, green: 0.80, blue: 0.43)
-    static let green = Color(red: 0.45, green: 0.78, blue: 0.45)
-    static let teal = Color(red: 0.25, green: 0.78, blue: 0.82)
-    static let blue = Color(red: 0.30, green: 0.72, blue: 0.95)
-    static let purple = Color(red: 0.58, green: 0.40, blue: 0.95)
-    static let yellow = Color(red: 0.96, green: 0.86, blue: 0.20)
-    static let orange = Color(red: 0.96, green: 0.54, blue: 0.16)
-    static let amber = Color(red: 0.92, green: 0.68, blue: 0.30)
-    static let red = Color(red: 0.96, green: 0.42, blue: 0.42)
+    static var activityColor: Color { WeekFitTheme.accent(Color(red: 0.16, green: 0.80, blue: 0.43)) }
+    static var green: Color { WeekFitTheme.accent(Color(red: 0.45, green: 0.78, blue: 0.45)) }
+    static var teal: Color { WeekFitTheme.accent(Color(red: 0.25, green: 0.78, blue: 0.82)) }
+    static var blue: Color { WeekFitTheme.accent(Color(red: 0.30, green: 0.72, blue: 0.95)) }
+    static var purple: Color { WeekFitTheme.accent(Color(red: 0.58, green: 0.40, blue: 0.95)) }
+    static var yellow: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.86, blue: 0.20)) }
+    static var orange: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.54, blue: 0.16)) }
+    static var amber: Color { WeekFitTheme.accent(Color(red: 0.92, green: 0.68, blue: 0.30)) }
+    static var red: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.42, blue: 0.42)) }
 }
 
 private enum DurationFormatter {
@@ -2698,8 +2698,8 @@ private extension View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.030),
-                                Color.white.opacity(0.004)
+                                WeekFitTheme.whiteOpacity(0.030),
+                                WeekFitTheme.whiteOpacity(0.004)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -2733,7 +2733,7 @@ private extension View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 }

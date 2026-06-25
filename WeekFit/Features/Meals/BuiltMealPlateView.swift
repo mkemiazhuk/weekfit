@@ -87,9 +87,10 @@ struct AsyncCustomFoodPlateView: View {
     var plateOpacity: CGFloat = 0.28
     var shadowOpacity: CGFloat = 0.20
     var layoutMode: PlateLayoutMode = .detail
+    var photoTargetPixelSize: CGFloat = MealPhotoStore.thumbnailPixelSize
 
     var body: some View {
-        AsyncMealPhotoView(filename: filename) { image in
+        AsyncMealPhotoView(filename: filename, targetPixelSize: photoTargetPixelSize) { image in
             BuiltMealPlateView(
                 items: [],
                 plateSize: plateSize,

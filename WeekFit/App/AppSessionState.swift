@@ -18,6 +18,7 @@ final class AppSessionState: ObservableObject {
     var healthRefreshTrigger: UUID { healthRefreshEvent.token }
     var coachRefreshTrigger: UUID { coachRefreshEvent.token }
     var localDataResetTrigger: UUID { localDataResetEvent.token }
+    var latestHealthRefreshSources: [String] { healthRefreshEvent.sources }
 
     func triggerReturnToToday() {
         returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)

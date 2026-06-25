@@ -115,7 +115,7 @@ struct MealDetailsView: View {
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.010),
+                    WeekFitTheme.whiteOpacity(0.010),
                     .clear,
                     Color.black.opacity(0.15)
                 ],
@@ -135,10 +135,10 @@ struct MealDetailsView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.045))
+                        .fill(WeekFitTheme.whiteOpacity(0.045))
                         .overlay {
                             Circle()
-                                .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                                .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
                         }
 
                     Image(systemName: "chevron.left")
@@ -172,10 +172,10 @@ struct MealDetailsView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.045))
+                            .fill(WeekFitTheme.whiteOpacity(0.045))
                             .overlay {
                                 Circle()
-                                    .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                                    .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
                             }
 
                         Image(systemName: "square.and.pencil")
@@ -232,8 +232,8 @@ struct MealDetailsView: View {
                 .overlay(alignment: .topLeading) {
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.060),
-                            Color.white.opacity(0.014),
+                            WeekFitTheme.whiteOpacity(0.060),
+                            WeekFitTheme.whiteOpacity(0.014),
                             .clear
                         ],
                         startPoint: .topLeading,
@@ -244,7 +244,7 @@ struct MealDetailsView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(0.66), radius: 14, y: 7)
     }
@@ -327,11 +327,11 @@ struct MealDetailsView: View {
         .frame(height: 46)
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(isPrimary ? accent.opacity(0.052) : Color.white.opacity(0.030))
+                .fill(isPrimary ? accent.opacity(0.052) : WeekFitTheme.whiteOpacity(0.030))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(isPrimary ? accent.opacity(0.17) : Color.white.opacity(0.038), lineWidth: 1)
+                .stroke(isPrimary ? accent.opacity(0.17) : WeekFitTheme.whiteOpacity(0.038), lineWidth: 1)
         }
     }
 
@@ -353,7 +353,7 @@ struct MealDetailsView: View {
 
                     if index != meal.ingredients.count - 1 {
                         Rectangle()
-                            .fill(Color.white.opacity(0.045))
+                            .fill(WeekFitTheme.whiteOpacity(0.045))
                             .frame(height: 1)
                             .padding(.leading, 46)
                     }
@@ -362,11 +362,11 @@ struct MealDetailsView: View {
             .padding(.horizontal, 12)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.038))
+                    .fill(WeekFitTheme.whiteOpacity(0.038))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
             }
         }
     }
@@ -395,7 +395,7 @@ struct MealDetailsView: View {
     private func ingredientImage(for item: MealsIngredient, index: Int) -> some View {
         ZStack {
             Circle()
-                .fill(Color.white.opacity(0.045))
+                .fill(WeekFitTheme.whiteOpacity(0.045))
 
             if let imageName = ingredientImageName(index: index),
                !imageName.isEmpty,
@@ -432,7 +432,7 @@ struct MealDetailsView: View {
                             .font(.system(size: 11.4, weight: .bold, design: .rounded))
                             .foregroundStyle(textPrimary.opacity(0.90))
                             .frame(width: 22, height: 22)
-                            .background(Color.white.opacity(0.052))
+                            .background(WeekFitTheme.whiteOpacity(0.052))
                             .clipShape(Circle())
 
                         Text(step)

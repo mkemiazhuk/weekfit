@@ -9,10 +9,8 @@ enum CoachConversationPhaseResolver {
     static func resolve(
         input: CoachInputSnapshot,
         context: CoachContext,
-        isFirstOpenToday: Bool? = nil
+        isFirstOpenToday: Bool
     ) -> CoachConversationPhaseResolution {
-        _ = isFirstOpenToday
-
         if let ownerReason = liveSessionOwnerReason(context) {
             return CoachConversationPhaseResolution(phase: .steady, reason: ownerReason)
         }
@@ -21,7 +19,11 @@ enum CoachConversationPhaseResolver {
             return CoachConversationPhaseResolution(phase: .dayClosing, reason: "bedtimeWindowNoMeaningfulWorkLeft")
         }
 
-        if CoachMorningOverviewPolicy.isActive(input: input, context: context) {
+        if CoachMorningOverviewPolicy.isActive(
+            input: input,
+            context: context,
+            isFirstOpenToday: isFirstOpenToday
+        ) {
             return morningOverviewResolution(input: input, context: context)
         }
 

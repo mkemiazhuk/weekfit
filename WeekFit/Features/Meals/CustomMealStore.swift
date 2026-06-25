@@ -149,9 +149,23 @@ enum CustomMealValidation {
 
 enum MealPhotoStore {
     nonisolated static let directoryName = "MealPhotos"
-    nonisolated static let thumbnailPixelSize: CGFloat = 512
+    nonisolated static let thumbnailPixelSize: CGFloat = 384
+    /// Display size for library rows (~66 pt plate); avoids caching 512 px thumbnails per row.
+    nonisolated static let libraryRowPixelSize: CGFloat = 128
+    /// Planner timeline row (~40 pt plate).
+    nonisolated static let timelineRowPixelSize: CGFloat = 72
+    /// In-form photo preview; smaller than library thumbnail to limit memory while editing.
+    nonisolated static let formPreviewPixelSize: CGFloat = 256
+    /// Max long edge stored for custom meal photos (avoids keeping 12 MP originals in RAM/disk).
+    nonisolated static let originalMaxPixelSize: CGFloat = 1600
     nonisolated(unsafe) private static let imageCache = NSCache<NSString, UIImage>()
-    nonisolated private static let thumbnailCIContext = CIContext(options: nil)
+    nonisolated private static let cacheConfigured: Void = {
+        imageCache.countLimit = 20
+        imageCache.totalCostLimit = 8 * 1024 * 1024
+    }()
+    nonisolated private static let thumbnailCIContext = CIContext(options: [
+        .cacheIntermediates: false
+    ])
     nonisolated private static let inFlightLock = NSLock()
     nonisolated(unsafe) private static var inFlightLoads: [String: [(UIImage?) -> Void]] = [:]
     nonisolated private static let metadataPropertyDiagnosticsEnabled = false
@@ -161,34 +175,133 @@ enum MealPhotoStore {
         let thumbnailFilename: String
     }
 
+    nonisolated static func releaseMemoryCache() {
+        _ = cacheConfigured
+        imageCache.removeAllObjects()
+    }
+
+    nonisolated private static func storeInCache(_ image: UIImage, filename: String) {
+        _ = cacheConfigured
+        imageCache.setObject(image, forKey: filename as NSString, cost: estimatedBytes(for: image))
+    }
+
+    nonisolated private static func estimatedBytes(for image: UIImage) -> Int {
+        guard let cgImage = image.cgImage else { return 1 }
+        return max(cgImage.width * cgImage.height * 4, 1)
+    }
+
     nonisolated static func save(_ image: UIImage) throws -> String {
         try save(image, filenamePrefix: "photo", compressionQuality: 0.82)
     }
 
-    nonisolated static func savePhotoSet(_ image: UIImage) throws -> PhotoSet {
+    /// Writes a full-resolution original to disk without retaining it in memory.
+    nonisolated static func savePendingOriginal(_ image: UIImage) throws -> String {
+        let storageImage = downsampledImage(from: image, maxPixelSize: originalMaxPixelSize)
+        return try save(
+            storageImage,
+            filenamePrefix: "pending-original",
+            compressionQuality: 0.88,
+            cacheInMemory: false
+        )
+    }
+
+    /// Downsample picker/camera payload without decoding the full camera bitmap.
+    nonisolated static func downsampledImage(
+        from data: Data,
+        maxPixelSize: CGFloat = originalMaxPixelSize
+    ) -> UIImage? {
+        let sourceOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else {
+            return nil
+        }
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: false,
+            kCGImageSourceThumbnailMaxPixelSize: Int(maxPixelSize)
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
+    }
+
+    nonisolated static func downsampledImage(
+        from image: UIImage,
+        maxPixelSize: CGFloat = originalMaxPixelSize
+    ) -> UIImage {
         let normalized = image.normalizedForPhotoStorage()
-        let originalFilename = try save(
-            normalized,
-            filenamePrefix: "original",
-            compressionQuality: 0.88
+        let largestSide = max(normalized.size.width, normalized.size.height)
+        guard largestSide > maxPixelSize else { return normalized }
+
+        let scale = maxPixelSize / largestSide
+        let targetSize = CGSize(
+            width: max(1, normalized.size.width * scale),
+            height: max(1, normalized.size.height * scale)
         )
 
-        do {
-            let thumbnail = thumbnailImage(from: normalized, sideLength: thumbnailPixelSize)
-            let thumbnailFilename = try save(
-                thumbnail,
-                filenamePrefix: "thumb",
-                compressionQuality: 0.86
-            )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
 
-            return PhotoSet(
-                originalFilename: originalFilename,
-                thumbnailFilename: thumbnailFilename
-            )
+        return UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+            normalized.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+    }
+
+    /// Promotes a pending original file into the permanent photo set.
+    nonisolated static func promotePendingOriginal(_ pendingFilename: String) throws -> PhotoSet {
+        let pendingURL = url(for: pendingFilename)
+        let originalFilename = "original-\(UUID().uuidString).jpg"
+        let originalURL = url(for: originalFilename)
+
+        do {
+            try FileManager.default.moveItem(at: pendingURL, to: originalURL)
+        } catch {
+            delete(filename: pendingFilename)
+            throw error
+        }
+
+        do {
+            let photoSet = try makePhotoSetFromOriginalOnDisk(originalFilename: originalFilename)
+            imageCache.removeObject(forKey: originalFilename as NSString)
+            imageCache.removeObject(forKey: photoSet.thumbnailFilename as NSString)
+            return photoSet
         } catch {
             delete(filename: originalFilename)
             throw error
         }
+    }
+
+    nonisolated static func savePhotoSet(_ image: UIImage) throws -> PhotoSet {
+        let pendingFilename = try savePendingOriginal(image)
+        return try promotePendingOriginal(pendingFilename)
+    }
+
+    nonisolated private static func makePhotoSetFromOriginalOnDisk(originalFilename: String) throws -> PhotoSet {
+        guard let thumbnailSource = loadDecodedImageFromDisk(
+            filename: originalFilename,
+            targetPixelSize: thumbnailPixelSize,
+            cacheDecodedImage: false
+        ) else {
+            throw MealPhotoStoreError.encodingFailed
+        }
+
+        let thumbnailFilename = try save(
+            thumbnailSource,
+            filenamePrefix: "thumb",
+            compressionQuality: 0.86,
+            cacheInMemory: false
+        )
+
+        return PhotoSet(
+            originalFilename: originalFilename,
+            thumbnailFilename: thumbnailFilename
+        )
     }
 
     nonisolated static func thumbnailImage(from image: UIImage, sideLength: CGFloat = thumbnailPixelSize) -> UIImage {
@@ -228,22 +341,28 @@ enum MealPhotoStore {
         guard meal.isFoodProduct,
               meal.localPhotoThumbnailFilename == nil,
               let originalFilename = meal.localPhotoFilename,
-              let originalImage = image(for: originalFilename) else {
+              let originalImage = loadDecodedImageFromDisk(
+                filename: originalFilename,
+                targetPixelSize: thumbnailPixelSize
+              ) else {
             return meal
         }
 
         do {
-            let thumbnail = thumbnailImage(from: originalImage)
+            let thumbnail = thumbnailImage(from: originalImage, sideLength: thumbnailPixelSize)
             let thumbnailFilename = try save(
                 thumbnail,
                 filenamePrefix: "thumb",
-                compressionQuality: 0.86
+                compressionQuality: 0.86,
+                cacheInMemory: false
             )
 
             var updatedMeal = meal
             updatedMeal.localPhotoThumbnailFilename = thumbnailFilename
+            imageCache.removeObject(forKey: originalFilename as NSString)
             return updatedMeal
         } catch {
+            imageCache.removeObject(forKey: originalFilename as NSString)
             return meal
         }
     }
@@ -258,7 +377,8 @@ enum MealPhotoStore {
     nonisolated private static func save(
         _ image: UIImage,
         filenamePrefix: String,
-        compressionQuality: CGFloat
+        compressionQuality: CGFloat,
+        cacheInMemory: Bool = false
     ) throws -> String {
         try FileManager.default.createDirectory(
             at: photosDirectory,
@@ -273,13 +393,35 @@ enum MealPhotoStore {
         }
 
         try data.write(to: url, options: [.atomic])
-        imageCache.setObject(image, forKey: filename as NSString)
+        if cacheInMemory {
+            storeInCache(image, filename: filename)
+        }
         return filename
     }
 
     nonisolated static func image(for filename: String?) -> UIImage? {
         guard let filename, !filename.isEmpty else { return nil }
         return cachedImage(for: filename, label: "image")
+    }
+
+    nonisolated static func timelineImage(for filename: String?) -> UIImage? {
+        guard let filename, !filename.isEmpty else { return nil }
+
+        let cacheKey = "timeline:\(filename)" as NSString
+        if let cached = imageCache.object(forKey: cacheKey) {
+            return cached
+        }
+
+        guard let image = loadDecodedImageFromDisk(
+            filename: filename,
+            targetPixelSize: timelineRowPixelSize,
+            cacheDecodedImage: false
+        ) else {
+            return nil
+        }
+
+        storeInCache(image, filename: "timeline:\(filename)")
+        return image
     }
 
     nonisolated static func cachedImage(for filename: String?) -> UIImage? {
@@ -419,7 +561,8 @@ enum MealPhotoStore {
 
     nonisolated private static func loadDecodedImageFromDisk(
         filename: String,
-        targetPixelSize: CGFloat
+        targetPixelSize: CGFloat,
+        cacheDecodedImage: Bool = true
     ) -> UIImage? {
         let fileURL = url(for: filename)
 
@@ -428,21 +571,17 @@ enum MealPhotoStore {
         debugEnd("image.fileAttributes filename=\(filename) bytes=\(fileSize)", start: attributesStart)
 
         let readStart = debugStart("image.diskRead filename=\(filename)")
-        guard let data = try? Data(contentsOf: fileURL) else {
-            debugEnd("image.diskRead.miss filename=\(filename)", start: readStart)
-            return nil
-        }
-        debugEnd("image.diskRead filename=\(filename)", start: readStart)
-
         let sourceOptions: [CFString: Any] = [
             kCGImageSourceShouldCache: false,
             kCGImageSourceShouldCacheImmediately: false
         ]
         let sourceCreateStart = debugStart("image.metadata.sourceCreate filename=\(filename)")
-        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else {
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions as CFDictionary) else {
+            debugEnd("image.diskRead.miss filename=\(filename)", start: readStart)
             debugEnd("image.metadata.sourceCreate.failed filename=\(filename)", start: sourceCreateStart)
             return nil
         }
+        debugEnd("image.diskRead filename=\(filename)", start: readStart)
         debugEnd("image.metadata.sourceCreate filename=\(filename)", start: sourceCreateStart)
 
         logImageMetadataDiagnostics(
@@ -455,7 +594,7 @@ enum MealPhotoStore {
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceShouldCacheImmediately: false,
             kCGImageSourceThumbnailMaxPixelSize: Int(targetPixelSize)
         ]
         guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
@@ -467,9 +606,64 @@ enum MealPhotoStore {
         debugEnd("image.downsampleDecode filename=\(filename) width=\(cgImage.width) height=\(cgImage.height) decodedBytes=\(outputBytes)", start: decodeStart)
 
         let cacheInsertStart = debugStart("image.cacheInsert filename=\(filename)")
-        imageCache.setObject(image, forKey: filename as NSString)
+        if cacheDecodedImage && shouldCacheDecodedImage(targetPixelSize: targetPixelSize) {
+            storeInCache(image, filename: filename)
+        }
         debugEnd("image.cacheInsert filename=\(filename)", start: cacheInsertStart)
         return image
+    }
+
+    /// Photo persistence for meal forms — runs off the main actor to avoid UI memory spikes.
+    nonisolated static func persistSavedPhotoFilenames(
+        pendingOriginalFilename: String?,
+        selectedImage: UIImage?,
+        didRemovePhoto: Bool,
+        existingOriginalFilename: String?,
+        existingThumbnailFilename: String?
+    ) throws -> (originalFilename: String?, thumbnailFilename: String?) {
+        #if DEBUG
+        MealMemoryAudit.checkpoint("photo.persist.begin")
+        #endif
+        defer {
+            #if DEBUG
+            MealMemoryAudit.checkpoint("photo.persist.end")
+            #endif
+        }
+
+        if let pendingOriginalFilename {
+            let photoSet = try promotePendingOriginal(pendingOriginalFilename)
+            deletePhotoSet(
+                originalFilename: existingOriginalFilename,
+                thumbnailFilename: existingThumbnailFilename
+            )
+            releaseMemoryCache()
+            return (photoSet.originalFilename, photoSet.thumbnailFilename)
+        }
+
+        if let selectedImage {
+            let photoSet = try savePhotoSet(selectedImage)
+            deletePhotoSet(
+                originalFilename: existingOriginalFilename,
+                thumbnailFilename: existingThumbnailFilename
+            )
+            releaseMemoryCache()
+            return (photoSet.originalFilename, photoSet.thumbnailFilename)
+        }
+
+        if didRemovePhoto {
+            deletePhotoSet(
+                originalFilename: existingOriginalFilename,
+                thumbnailFilename: existingThumbnailFilename
+            )
+            releaseMemoryCache()
+            return (nil, nil)
+        }
+
+        return (existingOriginalFilename, existingThumbnailFilename)
+    }
+
+    nonisolated private static func shouldCacheDecodedImage(targetPixelSize: CGFloat) -> Bool {
+        targetPixelSize >= thumbnailPixelSize
     }
 
     nonisolated private static func logImageMetadataDiagnostics(

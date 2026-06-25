@@ -83,7 +83,7 @@ struct QuickLogRowView<ImageContent: View>: View {
                 cornerRadius: QuickLogRowMetrics.imageCornerRadius,
                 style: .continuous
             )
-            .fill(Color.white.opacity(0.04))
+            .fill(WeekFitTheme.whiteOpacity(0.04))
 
             imageContent()
 
@@ -110,7 +110,7 @@ struct QuickLogRowView<ImageContent: View>: View {
                 cornerRadius: QuickLogRowMetrics.imageCornerRadius,
                 style: .continuous
             )
-            .stroke(Color.white.opacity(0.045), lineWidth: 1)
+            .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 }
@@ -139,7 +139,7 @@ private extension View {
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .stroke(
-                    Color.white.opacity(isSelected ? 0.06 : 0.035),
+                    WeekFitTheme.whiteOpacity(isSelected ? 0.06 : 0.035),
                     lineWidth: 1
                 )
         }
@@ -159,7 +159,7 @@ private extension View {
                 displayQuantity: 0,
                 imageContent: {
                     Image(systemName: "fork.knife")
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.4))
                 },
                 onPlusTap: {},
                 onIncrement: {},

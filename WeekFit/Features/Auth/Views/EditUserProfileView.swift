@@ -11,8 +11,8 @@ struct EditUserProfileView: View {
     @State private var selectedGoal: NutritionGoal = .maintenance
 
     private let background = Color.black
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.54)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
     private let accentGreenTop = Color(red: 0.70, green: 0.88, blue: 0.72)
     private let accentGreenBottom = Color(red: 0.58, green: 0.79, blue: 0.62)
 
@@ -182,7 +182,7 @@ struct EditUserProfileView: View {
 
             Text(avatarInitial)
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
         }
         .frame(width: 74, height: 74)
         .overlay {

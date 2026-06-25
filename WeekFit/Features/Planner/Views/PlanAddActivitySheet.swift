@@ -170,7 +170,7 @@ private extension PlanAddActivitySheet {
 
     var addSheetGrabber: some View {
         Capsule()
-            .fill(Color.white.opacity(0.12))
+            .fill(WeekFitTheme.whiteOpacity(0.12))
             .frame(width: 36, height: 4)
             .frame(maxWidth: .infinity)
             .padding(.bottom, 2)
@@ -239,11 +239,11 @@ private extension PlanAddActivitySheet {
                     .font(.system(size: 12.5, weight: .bold))
                     .foregroundStyle(textPrimary.opacity(0.88))
                     .frame(width: 30, height: 30)
-                    .background(Color.white.opacity(0.045))
+                    .background(WeekFitTheme.whiteOpacity(0.045))
                     .clipShape(Circle())
                     .overlay {
                         Circle()
-                            .stroke(Color.white.opacity(0.040), lineWidth: 1)
+                            .stroke(WeekFitTheme.whiteOpacity(0.040), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -364,11 +364,11 @@ private extension PlanAddActivitySheet {
         .padding(.horizontal, 12)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.022))
+                .fill(WeekFitTheme.whiteOpacity(0.022))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
         }
     }
 
@@ -499,11 +499,11 @@ private extension PlanAddActivitySheet {
             .padding(.vertical, 5)
             .background {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(active ? type.color.opacity(activeFillOpacity) : Color.white.opacity(0.026))
+                    .fill(active ? type.color.opacity(activeFillOpacity) : WeekFitTheme.whiteOpacity(0.026))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(active ? Color.white.opacity(type == .habit ? 0.10 : 0.070) : Color.white.opacity(0.035), lineWidth: 1)
+                    .stroke(active ? WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070) : WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
             }
             .shadow(
                 color: active ? type.color.opacity(type == .workout ? 0.014 : 0.022) : Color.black.opacity(0.032),
@@ -560,11 +560,11 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : Color.white.opacity(0.022))
+                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : WeekFitTheme.whiteOpacity(0.022))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
             }
             .shadow(
                 color: active ? viewModel.selectedType.color.opacity(0.012) : Color.black.opacity(0.018),
@@ -631,11 +631,11 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : Color.white.opacity(0.022))
+                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : WeekFitTheme.whiteOpacity(0.022))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
             }
             .shadow(
                 color: active ? viewModel.selectedType.color.opacity(0.012) : Color.black.opacity(0.014),
@@ -821,7 +821,7 @@ private extension PlanAddActivitySheet {
                 .frame(width: 14, height: 8)
                 .overlay {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                        .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 0.5)
                 }
 
             Text(label)
@@ -1003,7 +1003,7 @@ private extension PlanAddActivitySheet {
             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
             }
             .shadow(color: viewModel.selectedType.color.opacity(0.020), radius: 4, y: 2)
             .shadow(color: Color.black.opacity(0.12), radius: 6, y: 3)
@@ -1023,7 +1023,7 @@ private extension PlanAddActivitySheet {
     var customDurationSheet: some View {
         VStack(spacing: 18) {
             Capsule()
-                .fill(Color.white.opacity(0.14))
+                .fill(WeekFitTheme.whiteOpacity(0.14))
                 .frame(width: 36, height: 4)
                 .padding(.top, 8)
 
@@ -1204,8 +1204,8 @@ private extension PlanAddActivitySheet {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.010),
-                            Color.white.opacity(0.004),
+                            WeekFitTheme.whiteOpacity(0.010),
+                            WeekFitTheme.whiteOpacity(0.004),
                             Color.clear
                         ],
                         startPoint: .top,
@@ -1221,8 +1221,8 @@ private extension PlanAddActivitySheet {
             .stroke(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.056),
-                        Color.white.opacity(0.018),
+                        WeekFitTheme.whiteOpacity(0.056),
+                        WeekFitTheme.whiteOpacity(0.018),
                         borderSoft.opacity(0.22)
                     ],
                     startPoint: .topLeading,
@@ -1255,7 +1255,7 @@ private extension PlanAddActivitySheet {
     var saveButtonForeground: Color {
         switch viewModel.selectedType {
         case .workout, .recovery:
-            return Color.white.opacity(0.90)
+            return WeekFitTheme.whiteOpacity(0.90)
         case .meal, .habit:
             return Color.black.opacity(0.82)
         }
@@ -1417,7 +1417,7 @@ private extension PlanAddActivitySheet {
     func typeButtonActiveForeground(for type: PlannerType) -> Color {
         switch type {
         case .workout, .recovery, .habit:
-            return Color.white.opacity(0.90)
+            return WeekFitTheme.whiteOpacity(0.90)
         case .meal:
             return Color.black.opacity(0.82)
         }
@@ -1432,19 +1432,19 @@ private extension PlanAddActivitySheet {
     }
 
     func selectionChipBackground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
-        if isPast { return Color.white.opacity(0.012) }
+        if isPast { return WeekFitTheme.whiteOpacity(0.012) }
         if active && occupied { return Color.red.opacity(0.075) }
         if occupied { return busySlotColor.opacity(0.07) }
         if active { return viewModel.selectedType.color.opacity(0.08) }
-        return Color.white.opacity(0.022)
+        return WeekFitTheme.whiteOpacity(0.022)
     }
 
     func selectionChipBorder(active: Bool, occupied: Bool, isPast: Bool) -> Color {
-        if isPast { return Color.white.opacity(0.04) }
+        if isPast { return WeekFitTheme.whiteOpacity(0.04) }
         if active && occupied { return Color.red.opacity(0.22) }
         if occupied { return busySlotColor.opacity(0.20) }
         if active { return viewModel.selectedType.color.opacity(0.22) }
-        return Color.white.opacity(0.05)
+        return WeekFitTheme.whiteOpacity(0.05)
     }
 
     func selectedItemMatches(_ option: PlannerOption) -> Bool {
@@ -1557,11 +1557,11 @@ private extension PlanAddActivitySheet {
         .padding(12)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(WeekFitTheme.whiteOpacity(0.03))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
         }
     }
 }

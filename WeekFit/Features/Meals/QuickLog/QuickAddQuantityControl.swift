@@ -68,7 +68,7 @@ struct QuickAddQuantityControl: View {
 
             Text(QuickLogServingMath.formattedQuantity(max(quantity, 1)))
                 .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                 .monospacedDigit()
                 .frame(minWidth: 24)
 

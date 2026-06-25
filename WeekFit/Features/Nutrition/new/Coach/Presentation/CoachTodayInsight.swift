@@ -166,7 +166,7 @@ enum CoachPresentationResolver {
         if resolution.safetyAlert != nil || stackedDayActiveRisk {
             return .critical
         }
-        if let context, CoachMorningOverviewPolicy.shouldSuppressNutrition(context: context) {
+        if let context, CoachConversationNutritionPolicy.shouldSuppress(context: context) {
             return .none
         }
         if modifiers.fuelBehind || modifiers.hydrationBehind {

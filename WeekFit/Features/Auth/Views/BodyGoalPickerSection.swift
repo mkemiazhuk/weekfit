@@ -7,8 +7,8 @@ struct BodyGoalPickerSection: View {
     let hasHealthBiometrics: Bool
     let suggestedGoal: NutritionGoal?
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.54)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
     private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
 
     var body: some View {
@@ -90,7 +90,7 @@ struct BodyGoalPickerSection: View {
 
     private var softDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.06))
+            .fill(WeekFitTheme.whiteOpacity(0.06))
             .frame(height: 1)
             .padding(.leading, 16)
     }

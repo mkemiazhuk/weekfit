@@ -7,10 +7,12 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @Environment(\.tabIsActive) private var tabIsActive
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var showProfile = false
+    @State private var keepCoachMounted = false
 
     private let coachContentHorizontalInset: CGFloat = 0
 
@@ -23,9 +25,28 @@ struct ExpertCoachView: View {
     }
 
     var body: some View {
+        Group {
+            if tabIsActive || keepCoachMounted {
+                activeCoachBody
+                    .opacity(tabIsActive ? 1 : 0)
+                    .allowsHitTesting(tabIsActive)
+                    .accessibilityHidden(!tabIsActive)
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityHidden(true)
+            }
+        }
+        .onAppear {
+            keepCoachMounted = true
+        }
+    }
+
+    @ViewBuilder
+    private var activeCoachBody: some View {
         let _ = languageManager.selectedLanguage
 
-        return ZStack(alignment: .top) {
+        ZStack(alignment: .top) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
 
@@ -71,47 +92,12 @@ struct ExpertCoachView: View {
         coachState.coachUIPresentation
     }
 
-    private var coachPresentation: CoachScreenPresentation? {
-        coachState.coachPresentation
-    }
-
-    private var todayPresentation: CoachTodayPresentation {
-        coachState.todayPresentation
-    }
-
     private var isRegistryGap: Bool {
         coachState.todayCoachInsightHiddenReason == .registryGap
     }
 
     private var shouldSurfaceCoach: Bool {
-        coachState.hasValidGuidance || coachUIPresentation != nil
-    }
-
-    private var heroSemanticColor: Color {
-        coachUIPresentation?.semanticColor.uiColor
-            ?? coachPresentation?.color
-            ?? todayPresentation.color
-    }
-
-    private var coachIcon: String {
-        coachUIPresentation?.icon
-            ?? coachPresentation?.icon
-            ?? todayPresentation.icon
-    }
-
-    private var coachDisplayStateLabel: String {
-        if let ui = coachUIPresentation {
-            return ui.statusLabel.uppercased()
-        }
-
-        let label = coachPresentation?.stateLabel.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return label.isEmpty ? todayPresentation.statusLabel.uppercased() : label.uppercased()
-    }
-
-    private var coachRenderedTitle: String {
-        coachUIPresentation?.coachTitle
-            ?? coachPresentation?.title
-            ?? todayPresentation.title
+        coachState.hasValidGuidance
     }
 
     private var selectedDateTitle: String {
@@ -137,7 +123,6 @@ struct ExpertCoachView: View {
 
     private var ambientBackground: some View {
         WeekFitTheme.coachAmbient
-            .blur(radius: 30)
             .ignoresSafeArea()
             .allowsHitTesting(false)
     }
@@ -168,33 +153,26 @@ struct ExpertCoachView: View {
 
     private var coachCard: some View {
         let ui = coachUIPresentation
-        let renderedTitle = coachRenderedTitle
-        let read = ui?.assessment.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let recommendation = ui?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? coachPresentation?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? ""
-        let risk = ui?.avoid.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let nextAction = ui?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let warningMessage = ui?.warningMessage?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         return ZStack(alignment: .topTrailing) {
-            Image(systemName: coachIcon)
+            Image(systemName: ui?.icon ?? "sparkles")
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(heroSemanticColor.opacity(0.058))
+                .foregroundStyle((ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.058))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 0) {
                 stateBadge
 
-                if !warningMessage.isEmpty {
+                if let warningMessage = ui?.warningMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !warningMessage.isEmpty {
                     coachWarningBanner(warningMessage)
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(renderedTitle)
+                    Text(ui?.coachTitle ?? "")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.8)
@@ -202,28 +180,30 @@ struct ExpertCoachView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        if !read.isEmpty {
+                        if let read = ui?.assessment.trimmingCharacters(in: .whitespacesAndNewlines), !read.isEmpty {
                             coachHeroTextBlock(
                                 label: WeekFitLocalizedString("coach.hero.myRead"),
-                                text: ui?.assessment ?? read
+                                text: read
                             )
                         }
 
-                        if !recommendation.isEmpty {
+                        if let recommendation = ui?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines),
+                           !recommendation.isEmpty {
                             coachHeroTextBlock(
                                 label: WeekFitLocalizedString("coach.hero.myRecommendation"),
-                                text: ui?.recommendation ?? coachPresentation?.recommendation ?? recommendation
+                                text: recommendation
                             )
                         }
 
-                        if !risk.isEmpty {
+                        if let risk = ui?.avoid.trimmingCharacters(in: .whitespacesAndNewlines), !risk.isEmpty {
                             coachHeroTextBlock(
                                 label: WeekFitLocalizedString("coach.hero.beCarefulWith"),
-                                text: ui?.avoid ?? risk
+                                text: risk
                             )
                         }
 
-                        if !nextAction.isEmpty {
+                        if let nextAction = ui?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines),
+                           !nextAction.isEmpty {
                             coachHeroTextBlock(
                                 label: coachNextActionLabel,
                                 text: nextAction
@@ -241,7 +221,7 @@ struct ExpertCoachView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            heroSemanticColor.opacity(0.138),
+                            (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.138),
                             cardBackground.opacity(0.52),
                             cardBackground.opacity(0.28)
                         ],
@@ -254,7 +234,7 @@ struct ExpertCoachView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    heroSemanticColor.opacity(0.05),
+                                    (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.05),
                                     Color.clear
                                 ],
                                 startPoint: .topLeading,
@@ -267,8 +247,8 @@ struct ExpertCoachView: View {
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    heroSemanticColor.opacity(0.26),
-                                    Color.white.opacity(0.055)
+                                    (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.26),
+                                    WeekFitTheme.whiteOpacity(0.055)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -277,29 +257,29 @@ struct ExpertCoachView: View {
                         )
                 )
         )
-        .shadow(color: heroSemanticColor.opacity(0.092), radius: 18, y: 8)
+        .shadow(color: (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.092), radius: 18, y: 8)
         .shadow(color: Color.black.opacity(0.19), radius: 14, y: 7)
     }
 
     private var stateBadge: some View {
         HStack(spacing: 8) {
-            Image(systemName: coachIcon)
+            Image(systemName: coachUIPresentation?.icon ?? "sparkles")
                 .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(heroSemanticColor)
+                .foregroundStyle(coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
 
-            Text(coachDisplayStateLabel)
+            Text(coachUIPresentation?.statusLabel.uppercased() ?? "")
                 .font(.system(size: 10, weight: .black, design: .rounded))
                 .tracking(1.4)
-                .foregroundStyle(heroSemanticColor)
+                .foregroundStyle(coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
         }
         .padding(.horizontal, 11)
         .frame(height: 24)
         .background(
             Capsule()
-                .fill(heroSemanticColor.opacity(0.09))
+                .fill((coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.09))
                 .overlay(
                     Capsule()
-                        .stroke(heroSemanticColor.opacity(0.22), lineWidth: 1)
+                        .stroke((coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.22), lineWidth: 1)
                 )
         )
     }
@@ -358,7 +338,7 @@ struct ExpertCoachView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textSecondary)
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(Color.white.opacity(0.05)))
+                .background(Circle().fill(WeekFitTheme.whiteOpacity(0.05)))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(WeekFitLocalizedString(shouldShowHealthConnectPrompt ? "coach.unavailable.title" : "coach.unavailable.sleepSync.title"))
@@ -377,25 +357,25 @@ struct ExpertCoachView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
         )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var registryGapSection: some View {
         HStack(spacing: 12) {
-            Image(systemName: todayPresentation.icon)
+            Image(systemName: CoachState.registryGapIcon)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(todayPresentation.color)
+                .foregroundStyle(CoachState.registryGapColor)
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(todayPresentation.color.opacity(0.12)))
+                .background(Circle().fill(CoachState.registryGapColor.opacity(0.12)))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(todayPresentation.title)
+                Text(CoachState.registryGapTitle)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text(todayPresentation.message)
+                Text(CoachState.registryGapMessage)
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary)
             }
@@ -407,7 +387,7 @@ struct ExpertCoachView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
         )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -415,16 +395,11 @@ struct ExpertCoachView: View {
     // MARK: - Story Support
 
     private var storySupportSection: some View {
-        let whyRows = coachPresentation?.whyRows ?? []
-        let supportActions = coachPresentation?.supportActions ?? []
+        let whyRows = coachUIPresentation?.whyRows ?? []
 
         return VStack(alignment: .leading, spacing: 13) {
             if !whyRows.isEmpty {
                 presentationWhySection(whyRows)
-            }
-
-            if !supportActions.isEmpty {
-                primaryActionsSection(supportActions)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -443,26 +418,6 @@ struct ExpertCoachView: View {
                         row.title,
                         color: row.color,
                         icon: row.icon
-                    )
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func primaryActionsSection(_ actions: [CoachSupportAction]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            supportGroupHeader(
-                title: WeekFitLocalizedString("coach.whatToDo"),
-                subtitle: WeekFitLocalizedString("coach.whatToDo.subtitle")
-            )
-
-            VStack(spacing: 5) {
-                ForEach(Array(actions.prefix(3))) { action in
-                    coachDecisionRow(
-                        action.title,
-                        color: action.color,
-                        icon: action.icon
                     )
                 }
             }
@@ -516,7 +471,7 @@ struct ExpertCoachView: View {
                 .fill(cardBackground.opacity(0.25))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.035), lineWidth: 1)
+                        .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
                 )
         )
     }

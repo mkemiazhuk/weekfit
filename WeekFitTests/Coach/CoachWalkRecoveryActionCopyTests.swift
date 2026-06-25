@@ -81,8 +81,8 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         XCTAssertTrue(russian.contains("прогулка уже"))
         XCTAssertTrue(russian.contains("остаток дня"))
         XCTAssertTrue(russian.contains("отдыха"))
-        XCTAssertEqual(bridge.ui.todayTitle, "Прогулка завершена")
-        XCTAssertEqual(bridge.ui.coachTitle, "Прогулка завершена")
+        XCTAssertEqual(bridge.todayTitle, "Прогулка завершена")
+        XCTAssertEqual(bridge.coachTitle, "Прогулка завершена")
     }
 
     // MARK: - Helpers

@@ -20,7 +20,12 @@ enum CoachMorningOverviewPolicy {
 
     // MARK: - Phase eligibility
 
-    static func isActive(input: CoachInputSnapshot, context: CoachContext) -> Bool {
+    static func isActive(
+        input: CoachInputSnapshot,
+        context: CoachContext,
+        isFirstOpenToday: Bool
+    ) -> Bool {
+        guard isFirstOpenToday else { return false }
         guard isMorningWindow(now: input.now, timeOfDay: context.timeOfDay) else {
             return false
         }

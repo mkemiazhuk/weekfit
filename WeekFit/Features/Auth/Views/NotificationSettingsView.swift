@@ -34,11 +34,11 @@ struct NotificationSettingsView: View {
 
     private let background = Color.black
     private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
-    private let rowBackground = Color.white.opacity(0.065)
+    private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.54)
-    private let sectionText = Color.white.opacity(0.34)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
+    private let sectionText = WeekFitTheme.whiteOpacity(0.34)
 
     private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
 
@@ -217,7 +217,7 @@ private extension NotificationSettingsView {
     var footerNote: some View {
         Text(AppText.Settings.Notifications.footerNote)
             .font(.system(size: 13.5, weight: .medium))
-            .foregroundStyle(.white.opacity(0.34))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
             .lineSpacing(2)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)

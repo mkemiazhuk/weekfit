@@ -4683,7 +4683,7 @@ struct InsightsView: View {
                             .frame(width: 18, height: 6)
                     } else {
                         Circle()
-                            .fill(Color.white.opacity(0.14))
+                            .fill(WeekFitTheme.whiteOpacity(0.14))
                             .frame(width: 6, height: 6)
                     }
                 }
@@ -4810,11 +4810,11 @@ struct InsightsView: View {
             : v6.supportingSignals
 
         return InsightsCoachContext(
-            title: state.todayPresentation.title,
-            message: state.todayPresentation.message,
+            title: v6.todayTitle,
+            message: v6.todayMessage,
             stateLabel: v6.statusLabel,
-            icon: state.todayPresentation.icon,
-            accent: state.todayPresentation.color,
+            icon: v6.icon,
+            accent: v6.accentColor,
             confidence: insightsConfidence(for: v6),
             evidence: evidence.isEmpty ? [v6.recommendation] : evidence,
             recommendation: v6.recommendation,
@@ -5094,8 +5094,8 @@ private extension InsightsView {
                     LinearGradient(
                         colors: [
                             page.accent.opacity(0.16),
-                            Color.white.opacity(0.052),
-                            Color.white.opacity(0.030)
+                            WeekFitTheme.whiteOpacity(0.052),
+                            WeekFitTheme.whiteOpacity(0.030)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -5103,7 +5103,7 @@ private extension InsightsView {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                 }
         }
     }
@@ -5258,7 +5258,7 @@ private extension InsightsView {
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.045))
+        .background(WeekFitTheme.whiteOpacity(0.045))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -5379,7 +5379,7 @@ private extension InsightsView {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(prominence.shadowOpacity), radius: prominence.shadowRadius, y: prominence.shadowY)
     }
@@ -5744,7 +5744,7 @@ private extension InsightsView {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(0.45), radius: 12, y: 6)
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -5948,10 +5948,10 @@ private extension InsightsView {
         .padding(.vertical, 9)
         .frame(width: 118, alignment: .trailing)
         .frame(minHeight: 58, alignment: .trailing)
-        .background(Color.white.opacity(0.050))
+        .background(WeekFitTheme.whiteOpacity(0.050))
         .overlay {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
     }
@@ -6105,7 +6105,7 @@ private extension InsightsView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color.white.opacity(0.045))
+        .background(WeekFitTheme.whiteOpacity(0.045))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
@@ -6248,7 +6248,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 
@@ -6267,7 +6267,7 @@ private extension InsightsView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
-        .background(Color.white.opacity(0.035))
+        .background(WeekFitTheme.whiteOpacity(0.035))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
@@ -6470,7 +6470,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.04), lineWidth: 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .onTapGesture {
@@ -6521,7 +6521,7 @@ private extension InsightsView {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.035))
+        .background(WeekFitTheme.whiteOpacity(0.035))
         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 
@@ -6708,7 +6708,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.04), lineWidth: 1)
         }
     }
 
@@ -6905,7 +6905,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(0.65), radius: 10, y: 5)
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -6932,7 +6932,7 @@ private extension InsightsView {
         .background(accent.opacity(0.045))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.032), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.032), lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
@@ -6992,7 +6992,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(0.65), radius: 10, y: 5)
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -7080,7 +7080,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: softShadow.opacity(0.65), radius: 10, y: 5)
     }
@@ -7115,7 +7115,7 @@ private extension InsightsView {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.04), lineWidth: 1)
         }
     }
 
@@ -7131,7 +7131,7 @@ private extension InsightsView {
 
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.055))
+                    .fill(WeekFitTheme.whiteOpacity(0.055))
                     .frame(height: 5)
 
                 Capsule(style: .continuous)
@@ -7262,7 +7262,7 @@ private extension InsightsView {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.04), lineWidth: 1)
         }
     }
 }
@@ -7352,7 +7352,7 @@ private struct PremiumInsightAreaChart: View {
                     }
                     .frame(width: plotWidth)
                     .font(.system(size: 9.8, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
 
                     Color.clear
                         .frame(width: labelWidth, height: axisHeight)
@@ -7387,7 +7387,7 @@ private struct PremiumInsightAreaChart: View {
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: width, y: y))
         }
-        .stroke(Color.white.opacity(opacity), lineWidth: 1)
+        .stroke(WeekFitTheme.whiteOpacity(opacity), lineWidth: 1)
     }
 
     private func targetLine(y: CGFloat, width: CGFloat) -> some View {
@@ -7396,7 +7396,7 @@ private struct PremiumInsightAreaChart: View {
             path.addLine(to: CGPoint(x: width, y: y))
         }
         .stroke(
-            Color.white.opacity(0.22),
+            WeekFitTheme.whiteOpacity(0.22),
             style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [5, 7])
         )
     }
@@ -7419,7 +7419,7 @@ private struct PremiumInsightAreaChart: View {
     private func zoneLabel(_ label: String, accent isAccent: Bool) -> some View {
         Text(label)
             .font(.system(size: isAccent ? 10.6 : 9.4, weight: isAccent ? .bold : .semibold))
-            .foregroundStyle(isAccent ? accent.opacity(0.92) : Color.white.opacity(0.34))
+            .foregroundStyle(isAccent ? accent.opacity(0.92) : WeekFitTheme.whiteOpacity(0.34))
             .lineLimit(1)
             .minimumScaleFactor(0.76)
             .frame(maxWidth: .infinity, alignment: .trailing)

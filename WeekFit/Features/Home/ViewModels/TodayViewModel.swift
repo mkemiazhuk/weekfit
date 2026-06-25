@@ -7,11 +7,56 @@ final class TodayViewModel: ObservableObject {
 
     @Published var healthRefreshID = UUID()
     @Published var now = Date()
+    @Published private(set) var trackedDisplayDayStart: Date?
 
     private static let logger = Logger(subsystem: "WeekFit", category: "TodayViewModel")
+    private let lifecycleToken = "TodayViewModel"
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+
+    deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
 
     func triggerHealthRefresh() {
         healthRefreshID = UUID()
+    }
+
+    /// Returns `true` when the calendar day rolled over and HealthKit should reload.
+    @discardableResult
+    func reconcileDayBoundary(
+        selectedDate: inout Date,
+        healthManager: HealthManager,
+        nutritionViewModel: NutritionViewModel,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let currentNow = Date()
+        now = currentNow
+
+        let output = TodayDayBoundaryPolicy.reconcile(
+            TodayDayBoundaryPolicy.Input(
+                now: currentNow,
+                selectedDate: selectedDate,
+                trackedDayStart: trackedDisplayDayStart,
+                calendar: calendar
+            )
+        )
+
+        trackedDisplayDayStart = output.trackedDayStart
+        selectedDate = output.selectedDate
+
+        if output.didCrossBoundary {
+            healthManager.prepareForDisplayDay(output.trackedDayStart)
+            nutritionViewModel.prepareForDay(output.selectedDate)
+        }
+
+        return output.shouldRefreshHealth
+    }
+
+    func nextDayBoundary(after date: Date = Date(), calendar: Calendar = .current) -> Date {
+        TodayDayBoundaryPolicy.nextBoundary(after: date, calendar: calendar)
     }
 
     func selectedDayActivities(

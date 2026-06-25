@@ -35,6 +35,12 @@ final class PlanViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.calculateProgress(from: []), 0.18, accuracy: 0.001)
     }
 
+    func testPlannerInteractionTokenChangesWhenSelectedDateChanges() {
+        let firstToken = viewModel.plannerInteractionToken
+        viewModel.selectedDate = calendar.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
+        XCTAssertNotEqual(viewModel.plannerInteractionToken, firstToken)
+    }
+
     private func makeActivity(
         date: Date,
         title: String,

@@ -127,7 +127,7 @@ struct MealCardRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: isQuickLogMode ? 23 : 20, style: .continuous)
                 .stroke(
-                    Color.white.opacity(0.035),
+                    WeekFitTheme.whiteOpacity(0.035),
                     lineWidth: 1
                 )
         }
@@ -160,7 +160,7 @@ struct MealCardRow: View {
 
             } else {
                 RoundedRectangle(cornerRadius: isQuickLogMode ? 18 : 12)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(WeekFitTheme.whiteOpacity(0.04))
                     .overlay {
                         Image(systemName: "fork.knife")
                             .font(.system(size: isQuickLogMode ? 20 : 14))
@@ -209,11 +209,11 @@ struct MealCardRow: View {
                 .foregroundStyle(textPrimary.opacity(0.9))
                 .frame(maxWidth: .infinity)
 
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
@@ -221,7 +221,7 @@ struct MealCardRow: View {
         .frame(height: isQuickLogMode ? 20 : 18)
         .background {
             Capsule()
-                .fill(Color.white.opacity(isQuickLogMode ? 0.030 : 0.025))
+                .fill(WeekFitTheme.whiteOpacity(isQuickLogMode ? 0.030 : 0.025))
         }
     }
 

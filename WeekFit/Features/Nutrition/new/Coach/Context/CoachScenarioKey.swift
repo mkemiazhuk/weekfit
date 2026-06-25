@@ -77,7 +77,7 @@ struct CoachScenarioModifiers: Equatable, Sendable {
     let lastCompletedActivityType: CoachActivityType
 
     static func from(context: CoachContext, scenario: CoachScenarioKey) -> CoachScenarioModifiers {
-        let suppressNutrition = CoachMorningOverviewPolicy.shouldSuppressNutrition(context: context)
+        let suppressNutrition = CoachConversationNutritionPolicy.shouldSuppress(context: context)
         return CoachScenarioModifiers(
             dayLoad: context.dayLoadBand,
             fuelBehind: suppressNutrition ? false : context.fuelState.isBehind,

@@ -76,6 +76,12 @@
                     title: "Language",
                     subtitle: "Choose the app language",
                     type: .language
+                ),
+                ProfileItem(
+                    icon: "moon.stars.fill",
+                    title: WeekFitLocalizedString("settings.nightComfort.title"),
+                    subtitle: WeekFitLocalizedString("settings.nightComfort.profileSubtitle"),
+                    type: .nightComfort
                 )
             ]
         }

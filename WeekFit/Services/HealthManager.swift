@@ -165,6 +165,8 @@ final class HealthManager: ObservableObject {
     @Published var sleepHours: Double = 0
     @Published private(set) var lastHealthKitSyncTime: Date?
 
+    private var loadedMetricsDayStart: Date?
+
     @Published var weight: Double = 0
     @Published var heightCm: Double = 0
     @Published var age: Int = 0
@@ -175,6 +177,7 @@ final class HealthManager: ObservableObject {
     private let healthStore = HKHealthStore()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
     private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
+    private var inFlightHealthLoad: Task<Void, Never>?
     
     
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
@@ -322,6 +325,28 @@ final class HealthManager: ObservableObject {
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
+        if let inFlightHealthLoad {
+            await inFlightHealthLoad.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            await self.performLoadHealthData(for: date, plannedActivities: plannedActivities)
+        }
+        inFlightHealthLoad = task
+        await task.value
+        inFlightHealthLoad = nil
+    }
+
+    private func performLoadHealthData(
+        for date: Date = Date(),
+        plannedActivities: [PlannedActivity] = []
+    ) async {
+        let requestedDayStart = Calendar.current.startOfDay(for: date)
+        if loadedMetricsDayStart != requestedDayStart {
+            prepareForDisplayDay(requestedDayStart)
+        }
+
         #if DEBUG
         if CoachDebugSettings.todayDataAuditEnabled {
             Self.logger.debug("loadHealthData start currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) accessRequested=\(self.isHealthAccessRequested, privacy: .public)")
@@ -782,6 +807,7 @@ final class HealthManager: ObservableObject {
     }
     
     private func resetHealthDependentValues() {
+        loadedMetricsDayStart = nil
         resetProfileValues()
         resetHeaderValues()
 
@@ -828,6 +854,21 @@ final class HealthManager: ObservableObject {
         recoveryStatus = "—"
         sleepText = "—"
         bestTimeText = WeekFitLocalizedString("health.syncHealthToPersonalizeYourDay")
+    }
+
+    /// Clears day-scoped HealthKit totals so rings do not show the previous calendar day.
+    func prepareForDisplayDay(_ dayStart: Date) {
+        guard loadedMetricsDayStart != dayStart else { return }
+
+        loadedMetricsDayStart = dayStart
+        resetHeaderValues()
+
+        protein = 0
+        carbs = 0
+        fats = 0
+        fiber = 0
+        calories = 0
+        waterLiters = 0
     }
 
     private func readAge() -> Int {

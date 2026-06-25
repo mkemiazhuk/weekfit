@@ -31,7 +31,7 @@ final class CoachMorningOverviewTests: XCTestCase {
         XCTAssertFalse(result.modifiers.hydrationBehind)
         XCTAssertEqual(result.todayInsight.alertSeverity, .none)
         XCTAssertTrue(pack.supportingSignals.lines.isEmpty)
-        XCTAssertFalse(whyRowsMentionNutrition(bridge.coach.whyRows))
+        XCTAssertFalse(whyRowsMentionNutrition(bridge.whyRows))
     }
 
     func testUpcomingWalkMorningSuppressesNutritionWhyRows() throws {
@@ -54,7 +54,7 @@ final class CoachMorningOverviewTests: XCTestCase {
         XCTAssertEqual(result.scenario, .walkLightDay)
         XCTAssertFalse(result.modifiers.hydrationBehind)
         XCTAssertFalse(result.modifiers.fuelBehind)
-        XCTAssertFalse(whyRowsMentionNutrition(bridge.coach.whyRows))
+        XCTAssertFalse(whyRowsMentionNutrition(bridge.whyRows))
 
         let supportText = pack.supportingSignals.lines
             .flatMap { [$0.english.lowercased(), $0.russian.lowercased()] }
@@ -179,6 +179,17 @@ final class CoachMorningOverviewTests: XCTestCase {
         XCTAssertEqual(result.scenario, .activeEndurance)
         XCTAssertFalse(result.modifiers.fuelBehind)
         XCTAssertFalse(result.modifiers.hydrationBehind)
+    }
+
+    func testMorningOverviewRequiresFirstOpenToday() {
+        let morning = date(hour: 7, minute: 30)
+        let input = makeInput(now: morning, activities: [], nutrition: emptyNutrition(), brainHour: 7)
+
+        let firstOpen = CoachEngine.evaluate(input: input)
+        XCTAssertEqual(firstOpen.context.conversationPhase, .morningOverview)
+
+        let repeatOpen = CoachEngine.evaluate(input: input)
+        XCTAssertEqual(repeatOpen.context.conversationPhase, .steady)
     }
 
     // MARK: - Helpers

@@ -63,8 +63,8 @@ final class CoachStackedDayRiskTests: XCTestCase {
 
         let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
         XCTAssertTrue(
-            bridge.today.title.localizedCaseInsensitiveContains("силовая") ||
-                bridge.today.title.localizedCaseInsensitiveContains("Lifting")
+            bridge.todayTitle.localizedCaseInsensitiveContains("силовая") ||
+                bridge.todayTitle.localizedCaseInsensitiveContains("Lifting")
         )
         XCTAssertTrue(
             pack.supportingSignals.lines.contains {

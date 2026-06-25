@@ -37,6 +37,7 @@ struct WeekFitBottomBar: View {
     @Binding var selectedTab: WeekFitTab
 
     @Namespace private var selectionNamespace
+    @Environment(\.weekFitPalette) private var palette
 
     private let barHeight: CGFloat = 52
     private let itemHeight: CGFloat = 42
@@ -54,11 +55,11 @@ struct WeekFitBottomBar: View {
     }
 
     private var activeColor: Color {
-        WeekFitTheme.primaryText.opacity(0.94)
+        palette.textPrimary.opacity(0.94)
     }
 
     private var inactiveColor: Color {
-        WeekFitTheme.secondaryText.opacity(0.52)
+        palette.textSecondary.opacity(0.52)
     }
 
     var body: some View {
@@ -86,8 +87,8 @@ struct WeekFitBottomBar: View {
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.08),
-                                    Color.white.opacity(0.03),
+                                    WeekFitTheme.whiteOpacity(0.08),
+                                    WeekFitTheme.whiteOpacity(0.03),
                                     Color.black.opacity(0.25)
                                 ],
                                 startPoint: .top,
@@ -120,8 +121,8 @@ struct WeekFitBottomBar: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.100),
-                                    Color.white.opacity(0.045)
+                                    WeekFitTheme.whiteOpacity(0.100),
+                                    WeekFitTheme.whiteOpacity(0.045)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -134,12 +135,12 @@ struct WeekFitBottomBar: View {
                         .overlay {
                             Capsule(style: .continuous)
                                 .stroke(
-                                    Color.white.opacity(0.065),
+                                    WeekFitTheme.whiteOpacity(0.065),
                                     lineWidth: 1
                                 )
                         }
                         .shadow(
-                            color: Color.white.opacity(0.030),
+                            color: WeekFitTheme.whiteOpacity(0.030),
                             radius: 6,
                             x: 0,
                             y: -1
@@ -204,6 +205,10 @@ struct WeekFitBottomBar: View {
 
     private func handleTap(_ tab: WeekFitTab) {
         guard selectedTab != tab else { return }
+
+        #if DEBUG
+        TabSwitchDiagnostics.markSwitchStarted()
+        #endif
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 

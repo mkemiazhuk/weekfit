@@ -789,10 +789,10 @@ final class CoachSelectionMatrixTests: XCTestCase {
 
     private func joinedRussianCopy(
         _ pack: CoachCopyPack,
-        bridge: CoachTabPresentationBridge.Result
+        bridge: CoachUIPresentation
     ) -> String {
         [
-            bridge.coach.title,
+            bridge.coachTitle,
             pack.assessment.lines.map(\.russian).joined(),
             pack.recommendation.lines.map(\.russian).joined(),
             pack.avoid.lines.map(\.russian).joined(),

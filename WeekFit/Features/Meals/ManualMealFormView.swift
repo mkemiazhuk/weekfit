@@ -32,6 +32,7 @@ struct ManualMealFormView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var selectedThumbnailImage: UIImage?
+    @State private var pendingOriginalFilename: String?
     @State private var existingPreviewImage: UIImage?
     @State private var didRemovePhoto = false
     @State private var showCamera = false
@@ -137,6 +138,9 @@ struct ManualMealFormView: View {
         .onAppear {
             requestExistingPreviewImageIfNeeded()
         }
+        .onDisappear {
+            releaseCapturedPhotoMemory(deletePendingOriginal: true)
+        }
         .onChange(of: focusedField) { oldValue, newValue in
             Self.debugLog("focus.change \(oldValue?.rawValue ?? "nil") -> \(newValue?.rawValue ?? "nil")")
         }
@@ -237,7 +241,7 @@ struct ManualMealFormView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.030),
+                            WeekFitTheme.whiteOpacity(0.030),
                             WeekFitTheme.cardSecondary.opacity(1.0),
                             cardBackground.opacity(1.04)
                         ],
@@ -248,7 +252,7 @@ struct ManualMealFormView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.075), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 13, y: 6)
     }
@@ -297,7 +301,7 @@ struct ManualMealFormView: View {
     private var ambientBackground: some View {
         RadialGradient(
             colors: [
-                Color.white.opacity(0.018),
+                WeekFitTheme.whiteOpacity(0.018),
                 Color.clear
             ],
             center: UnitPoint(x: 0.88, y: 0.02),
@@ -388,7 +392,7 @@ struct ManualMealFormView: View {
         .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.085), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.35), radius: 8, y: 4)
         .contextMenu {
@@ -462,11 +466,11 @@ struct ManualMealFormView: View {
             .frame(height: 40)
             .background {
                 Capsule()
-                    .fill(Color.white.opacity(0.050))
+                    .fill(WeekFitTheme.whiteOpacity(0.050))
             }
             .overlay {
                 Capsule()
-                    .stroke(Color.white.opacity(0.070), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.070), lineWidth: 1)
             }
         }
         .padding(.top, 2)
@@ -581,8 +585,8 @@ struct ManualMealFormView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.052 * surfaceOpacity),
-                                Color.white.opacity(0.038 * surfaceOpacity)
+                                WeekFitTheme.whiteOpacity(0.052 * surfaceOpacity),
+                                WeekFitTheme.whiteOpacity(0.038 * surfaceOpacity)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -591,7 +595,7 @@ struct ManualMealFormView: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(borderOpacity), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(borderOpacity), lineWidth: 1)
             }
     }
 
@@ -656,8 +660,7 @@ struct ManualMealFormView: View {
 
         Task {
             let start = Self.debugStart("photoPicker.loadTransferable")
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data) else {
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
                 Self.debugEnd("photoPicker.loadTransferable.failed", start: start)
                 return
             }
@@ -665,14 +668,24 @@ struct ManualMealFormView: View {
 
             let processingStart = Self.debugStart("photoPicker.processImage")
             DispatchQueue.global(qos: .userInitiated).async {
-                let normalized = image.normalizedForPhotoStorage()
-                let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
-                Self.debugEnd("photoPicker.processImage", start: processingStart)
+                autoreleasepool {
+                    guard let storageImage = MealPhotoStore.downsampledImage(from: data) else {
+                        Self.debugEnd("photoPicker.processImage.failed", start: processingStart)
+                        return
+                    }
+                    let thumbnail = MealPhotoStore.thumbnailImage(
+                        from: storageImage,
+                        sideLength: MealPhotoStore.formPreviewPixelSize
+                    )
+                    let pendingFilename = try? MealPhotoStore.savePendingOriginal(storageImage)
+                    Self.debugEnd("photoPicker.processImage", start: processingStart)
 
-                DispatchQueue.main.async {
-                    selectedImage = normalized
-                    selectedThumbnailImage = thumbnail
-                    didRemovePhoto = false
+                    DispatchQueue.main.async {
+                        selectedThumbnailImage = thumbnail
+                        pendingOriginalFilename = pendingFilename
+                        selectedImage = nil
+                        didRemovePhoto = false
+                    }
                 }
             }
         }
@@ -681,14 +694,21 @@ struct ManualMealFormView: View {
     private func processCapturedPhoto(_ image: UIImage) {
         let processingStart = Self.debugStart("camera.processImage")
         DispatchQueue.global(qos: .userInitiated).async {
-            let normalized = image.normalizedForPhotoStorage()
-            let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
-            Self.debugEnd("camera.processImage", start: processingStart)
+            autoreleasepool {
+                let storageImage = MealPhotoStore.downsampledImage(from: image)
+                let thumbnail = MealPhotoStore.thumbnailImage(
+                    from: storageImage,
+                    sideLength: MealPhotoStore.formPreviewPixelSize
+                )
+                let pendingFilename = try? MealPhotoStore.savePendingOriginal(storageImage)
+                Self.debugEnd("camera.processImage", start: processingStart)
 
-            DispatchQueue.main.async {
-                selectedImage = normalized
-                selectedThumbnailImage = thumbnail
-                didRemovePhoto = false
+                DispatchQueue.main.async {
+                    selectedThumbnailImage = thumbnail
+                    pendingOriginalFilename = pendingFilename
+                    selectedImage = nil
+                    didRemovePhoto = false
+                }
             }
         }
     }
@@ -704,10 +724,19 @@ struct ManualMealFormView: View {
 
     private func removePhoto() {
         selectedPhotoItem = nil
-        selectedImage = nil
-        selectedThumbnailImage = nil
+        releaseCapturedPhotoMemory(deletePendingOriginal: true)
         didRemovePhoto = true
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func releaseCapturedPhotoMemory(deletePendingOriginal: Bool) {
+        selectedImage = nil
+        selectedThumbnailImage = nil
+        existingPreviewImage = nil
+        if deletePendingOriginal, let pendingOriginalFilename {
+            MealPhotoStore.delete(filename: pendingOriginalFilename)
+        }
+        pendingOriginalFilename = nil
     }
 
     private var isSaveEnabled: Bool {
@@ -758,78 +787,78 @@ struct ManualMealFormView: View {
             return
         }
 
-        let originalPhotoFilename: String?
-        let thumbnailPhotoFilename: String?
+        let pendingPhotoFilename = pendingOriginalFilename
+        let fallbackSelectedImage = selectedImage
+        let shouldRemovePhoto = didRemovePhoto
+        let existingOriginalFilename = editingMeal?.localPhotoFilename
+        let existingThumbnailFilename = editingMeal?.localPhotoThumbnailFilename
 
-        do {
-            if let selectedImage {
-                let photoSaveStart = Self.debugStart("photo.savePhotoSet")
-                let photoSet = try MealPhotoStore.savePhotoSet(selectedImage)
-                Self.debugEnd("photo.savePhotoSet", start: photoSaveStart)
-                originalPhotoFilename = photoSet.originalFilename
-                thumbnailPhotoFilename = photoSet.thumbnailFilename
-                let photoDeleteStart = Self.debugStart("photo.deleteOldPhotoSet")
-                MealPhotoStore.deletePhotoSet(
-                    originalFilename: editingMeal?.localPhotoFilename,
-                    thumbnailFilename: editingMeal?.localPhotoThumbnailFilename
-                )
-                Self.debugEnd("photo.deleteOldPhotoSet", start: photoDeleteStart)
-            } else if didRemovePhoto {
-                let photoDeleteStart = Self.debugStart("photo.deletePhotoSet")
-                MealPhotoStore.deletePhotoSet(
-                    originalFilename: editingMeal?.localPhotoFilename,
-                    thumbnailFilename: editingMeal?.localPhotoThumbnailFilename
-                )
-                Self.debugEnd("photo.deletePhotoSet", start: photoDeleteStart)
-                originalPhotoFilename = nil
-                thumbnailPhotoFilename = nil
-            } else {
-                originalPhotoFilename = editingMeal?.localPhotoFilename
-                thumbnailPhotoFilename = editingMeal?.localPhotoThumbnailFilename
+        Task {
+            let photoSaveStart = Self.debugStart("photo.persistSavedPhotoFilenames")
+            let persistedPhotos: (originalFilename: String?, thumbnailFilename: String?)
+            do {
+                persistedPhotos = try await Task.detached(priority: .userInitiated) {
+                    try MealPhotoStore.persistSavedPhotoFilenames(
+                        pendingOriginalFilename: pendingPhotoFilename,
+                        selectedImage: fallbackSelectedImage,
+                        didRemovePhoto: shouldRemovePhoto,
+                        existingOriginalFilename: existingOriginalFilename,
+                        existingThumbnailFilename: existingThumbnailFilename
+                    )
+                }.value
+                Self.debugEnd("photo.persistSavedPhotoFilenames", start: photoSaveStart)
+            } catch {
+                await MainActor.run {
+                    validationMessage = WeekFitLocalizedString("meals.foodForm.validation.photoSaveFailed")
+                    Self.debugEnd("save.photoFailed", start: saveStart)
+                }
+                return
             }
-        } catch {
-            validationMessage = WeekFitLocalizedString("meals.foodForm.validation.photoSaveFailed")
-            Self.debugEnd("save.photoFailed", start: saveStart)
-            return
-        }
 
-        let trimmedName = input.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            await MainActor.run {
+                pendingOriginalFilename = nil
+                selectedImage = nil
 
-        let meal = Meals(
-            id: editingMeal?.id ?? "custom_meal_\(UUID().uuidString)",
-            title: trimmedName,
-            subtitle: String(format: WeekFitLocalizedString("meals.value.gramServingFormat"), input.servingGrams),
-            imageName: editingMeal?.imageName ?? "",
-            type: editingMeal?.type ?? .balanced,
-            calories: input.calories,
-            protein: input.protein,
-            carbs: input.carbs,
-            fats: input.fats,
-            fiber: input.fiber,
-            benefits: editingMeal?.benefits ?? [
-                WeekFitLocalizedString("meals.foodForm.display.customMeal"),
-                WeekFitLocalizedString("meals.foodForm.display.manualEntry")
-            ],
-            ingredients: [
-                MealsIngredient(
-                    name: WeekFitLocalizedString("meals.foodForm.display.serving"),
-                    amount: String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), input.servingGrams)
+                let trimmedName = input.name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                let meal = Meals(
+                    id: editingMeal?.id ?? "custom_meal_\(UUID().uuidString)",
+                    title: trimmedName,
+                    subtitle: String(format: WeekFitLocalizedString("meals.value.gramServingFormat"), input.servingGrams),
+                    imageName: editingMeal?.imageName ?? "",
+                    type: editingMeal?.type ?? .balanced,
+                    calories: input.calories,
+                    protein: input.protein,
+                    carbs: input.carbs,
+                    fats: input.fats,
+                    fiber: input.fiber,
+                    benefits: editingMeal?.benefits ?? [
+                        WeekFitLocalizedString("meals.foodForm.display.customMeal"),
+                        WeekFitLocalizedString("meals.foodForm.display.manualEntry")
+                    ],
+                    ingredients: [
+                        MealsIngredient(
+                            name: WeekFitLocalizedString("meals.foodForm.display.serving"),
+                            amount: String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), input.servingGrams)
+                        )
+                    ],
+                    suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
+                    builderImageItems: nil,
+                    libraryKind: editingMeal?.libraryKind ?? .product,
+                    creationMode: .manual,
+                    servingGrams: input.servingGrams,
+                    localPhotoFilename: persistedPhotos.originalFilename,
+                    localPhotoThumbnailFilename: persistedPhotos.thumbnailFilename
                 )
-            ],
-            suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
-            builderImageItems: nil,
-            libraryKind: editingMeal?.libraryKind ?? .product,
-            creationMode: .manual,
-            servingGrams: input.servingGrams,
-            localPhotoFilename: originalPhotoFilename,
-            localPhotoThumbnailFilename: thumbnailPhotoFilename
-        )
 
-        validationMessage = nil
-        onSave(meal)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        Self.debugEnd("save.success", start: saveStart)
-        dismiss()
+                validationMessage = nil
+                releaseCapturedPhotoMemory(deletePendingOriginal: false)
+                onSave(meal)
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                Self.debugEnd("save.success", start: saveStart)
+                dismiss()
+            }
+        }
     }
 
     private var currentSuggestedTime: String {

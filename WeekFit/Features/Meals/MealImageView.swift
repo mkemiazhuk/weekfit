@@ -34,6 +34,7 @@ struct AsyncMealPhotoView<Content: View>: View {
     var targetPixelSize: CGFloat
     let content: (UIImage?) -> Content
 
+    @Environment(\.tabIsActive) private var tabIsActive
     @State private var loadedImage: UIImage?
 
     init(
@@ -52,16 +53,30 @@ struct AsyncMealPhotoView<Content: View>: View {
 
     var body: some View {
         content(loadedImage)
-        .onAppear {
-            loadImageIfNeeded()
-        }
-        .onChange(of: resolvedFilename) { _ in
-            loadedImage = nil
-            loadImageIfNeeded()
-        }
+            .onAppear {
+                loadImageIfNeeded()
+            }
+            .onDisappear {
+                loadedImage = nil
+            }
+            .onChange(of: tabIsActive) { _, isActive in
+                if isActive {
+                    loadImageIfNeeded()
+                } else {
+                    loadedImage = nil
+                }
+            }
+            .onChange(of: resolvedFilename) { _, _ in
+                loadedImage = nil
+                loadImageIfNeeded()
+            }
     }
 
     private func loadImageIfNeeded() {
+        guard tabIsActive else {
+            loadedImage = nil
+            return
+        }
         guard !resolvedFilename.isEmpty else {
             loadedImage = nil
             return
@@ -132,7 +147,7 @@ struct MealAvatarView: View {
         .clipShape(Circle())
         .overlay {
             Circle()
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(
             color: WeekFitTheme.cardShadow.opacity(0.50),
@@ -264,9 +279,9 @@ struct FoodMediaView: View {
                 .stroke(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(isHero ? 0.12 : 0.09),
+                            WeekFitTheme.whiteOpacity(isHero ? 0.12 : 0.09),
                             accent.opacity(isHero ? 0.10 : 0.07),
-                            Color.white.opacity(0.030)
+                            WeekFitTheme.whiteOpacity(0.030)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing

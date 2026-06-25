@@ -60,20 +60,21 @@ final class CoachTabPresentationBridgeTests: XCTestCase {
         XCTAssertNil(CoachTabPresentationBridge.build(from: result))
     }
 
-    func testBridgeMapsStableDayCopyToTabPresentations() throws {
+    func testBridgeMapsStableDayCopyToUIPresentation() throws {
         let now = CoachTestClock.reference
         let result = CoachEngine.evaluate(
             input: makeInput(now: now, activities: [], brainHour: 14)
         )
-        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
-        XCTAssertFalse(bridge.today.title.isEmpty)
-        XCTAssertFalse(bridge.today.message.isEmpty)
-        XCTAssertEqual(bridge.today.icon, result.todayInsight.icon)
-        XCTAssertEqual(bridge.coach.message, bridge.ui.assessment)
-        XCTAssertEqual(bridge.coach.recommendation, bridge.ui.recommendation)
-        XCTAssertEqual(bridge.coach.avoidNotes, [bridge.ui.avoid])
-        XCTAssertEqual(bridge.coach.whyRows.count, bridge.ui.supportingSignals.count)
+        XCTAssertFalse(presentation.todayTitle.isEmpty)
+        XCTAssertFalse(presentation.todayMessage.isEmpty)
+        XCTAssertFalse(presentation.coachTitle.isEmpty)
+        XCTAssertFalse(presentation.nextAction.isEmpty)
+        XCTAssertEqual(presentation.icon, result.todayInsight.icon)
+        XCTAssertFalse(presentation.assessment.isEmpty)
+        XCTAssertFalse(presentation.recommendation.isEmpty)
+        XCTAssertEqual(presentation.avoid.isEmpty ? [] : [presentation.avoid], [presentation.avoid])
     }
 
     func testBridgeTodayCopyIsConcise() throws {
@@ -81,10 +82,10 @@ final class CoachTabPresentationBridgeTests: XCTestCase {
         let result = CoachEngine.evaluate(
             input: makeInput(now: now, activities: [], brainHour: 14)
         )
-        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
-        XCTAssertLessThanOrEqual(bridge.today.title.count, 27)
-        XCTAssertLessThanOrEqual(bridge.today.message.count, 89)
+        XCTAssertLessThanOrEqual(presentation.todayTitle.count, 27)
+        XCTAssertLessThanOrEqual(presentation.todayMessage.count, 89)
     }
 
     func testBridgeTomorrowProtectionTodayTitleIsShortWithoutTomorrow() throws {
@@ -118,17 +119,17 @@ final class CoachTabPresentationBridgeTests: XCTestCase {
             ),
             focusActivity: completedRide
         )
-        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
         XCTAssertTrue(
-            bridge.today.title.localizedCaseInsensitiveContains("достаточно") ||
-                bridge.today.title.localizedCaseInsensitiveContains("protect")
+            presentation.todayTitle.localizedCaseInsensitiveContains("достаточно") ||
+                presentation.todayTitle.localizedCaseInsensitiveContains("protect")
         )
-        XCTAssertFalse(bridge.today.title.lowercased().contains("tomorrow"))
-        XCTAssertFalse(bridge.today.title.contains("завтра"))
-        XCTAssertFalse(bridge.today.title.contains("Core"))
-        XCTAssertLessThanOrEqual(bridge.today.title.count, 22)
-        XCTAssertTrue(bridge.today.message.contains("сон") || bridge.today.message.contains("sleep"))
+        XCTAssertFalse(presentation.todayTitle.lowercased().contains("tomorrow"))
+        XCTAssertFalse(presentation.todayTitle.contains("завтра"))
+        XCTAssertFalse(presentation.todayTitle.contains("Core"))
+        XCTAssertLessThanOrEqual(presentation.todayTitle.count, 22)
+        XCTAssertTrue(presentation.todayMessage.contains("сон") || presentation.todayMessage.contains("sleep"))
     }
 
     func testBridgeWhyRowsUsePerSignalColorsWhenFuelAndHydrationBehind() throws {
@@ -170,11 +171,11 @@ final class CoachTabPresentationBridgeTests: XCTestCase {
             ),
             focusActivity: completedRide
         )
-        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
-        XCTAssertGreaterThanOrEqual(bridge.coach.whyRows.count, 2)
-        XCTAssertEqual(bridge.coach.whyRows[0].icon, "drop.fill")
-        XCTAssertEqual(bridge.coach.whyRows[1].icon, "fork.knife")
+        XCTAssertGreaterThanOrEqual(presentation.whyRows.count, 2)
+        XCTAssertEqual(presentation.whyRows[0].icon, "drop.fill")
+        XCTAssertEqual(presentation.whyRows[1].icon, "fork.knife")
     }
 
     // MARK: - Helpers

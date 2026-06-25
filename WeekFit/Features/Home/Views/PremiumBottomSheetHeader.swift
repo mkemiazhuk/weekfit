@@ -18,14 +18,14 @@ struct PremiumBottomSheetHeader: View {
                 VStack(spacing: 3) {
                     Text(title)
                         .font(QuickActionSheetDesign.Typography.headerTitle)
-                        .foregroundStyle(.white.opacity(0.96))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.9)
 
                     Text(subtitle)
                         .font(QuickActionSheetDesign.Typography.headerSubtitle)
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.88)
@@ -40,7 +40,7 @@ struct PremiumBottomSheetHeader: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.70))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
                             .frame(width: 32, height: 32)
                             .background(
                                 Circle()

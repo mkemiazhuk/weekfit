@@ -349,7 +349,7 @@ private extension HealthAccessView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.99),
+                            WeekFitTheme.whiteOpacity(0.99),
                             Color(red: 0.96, green: 0.96, blue: 0.97)
                         ],
                         startPoint: .topLeading,
@@ -558,9 +558,9 @@ private extension HealthAccessView {
     func statusTextTint(for kind: StatusKind) -> Color {
         switch kind {
         case .positive:
-            return Color.white.opacity(0.58)
+            return WeekFitTheme.whiteOpacity(0.58)
         case .neutral:
-            return Color.white.opacity(0.46)
+            return WeekFitTheme.whiteOpacity(0.46)
         case .warning:
             return softAmber.opacity(0.82)
         case .danger:
@@ -744,7 +744,7 @@ private extension HealthAccessView {
     }
 
     var neutralTint: Color {
-        Color.white.opacity(0.56)
+        WeekFitTheme.whiteOpacity(0.56)
     }
 
     func statusTint(for kind: StatusKind) -> Color {
@@ -763,9 +763,9 @@ private extension HealthAccessView {
     func readinessIconTint(for kind: StatusKind) -> Color {
         switch kind {
         case .positive:
-            return Color.white.opacity(0.62)
+            return WeekFitTheme.whiteOpacity(0.62)
         case .neutral:
-            return Color.white.opacity(0.46)
+            return WeekFitTheme.whiteOpacity(0.46)
         case .warning:
             return softAmber.opacity(0.72)
         case .danger:
@@ -1338,7 +1338,7 @@ private struct SleepSetupHelpSheet: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.70))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
                     .frame(width: 30, height: 30)
                     .background(
                         Circle()

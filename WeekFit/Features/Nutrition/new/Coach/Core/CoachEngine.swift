@@ -2,6 +2,12 @@ import Foundation
 import WeekFitPlanner
 
 /// Coach entry point: input facts → context → scenario key.
+///
+/// Context assembly order:
+/// 1. `CoachFocusResolver` — focus activity + session phase
+/// 2. `CoachDayReadinessResolver` — idle/pre-session readiness bands
+/// 3. Engine overrides — tomorrow protection session phase, day load, nutrition signals
+/// 4. `CoachConversationPhaseResolver` — presentation frame only (no scenario routing)
 enum CoachEngine {
 
     struct Result: Equatable, Sendable {
@@ -181,7 +187,12 @@ enum CoachEngine {
         _ context: CoachContext,
         input: CoachInputSnapshot
     ) -> CoachContext {
-        let resolution = CoachConversationPhaseResolver.resolve(input: input, context: context)
+        let isFirstOpenToday = CoachSessionTracker.isFirstOpenToday(now: input.now)
+        let resolution = CoachConversationPhaseResolver.resolve(
+            input: input,
+            context: context,
+            isFirstOpenToday: isFirstOpenToday
+        )
         CoachLogger.trace(
             "[CoachConversationPhase]",
             "phase=\(resolution.phase.rawValue) reason=\(resolution.reason)"
@@ -293,10 +304,6 @@ enum CoachEngine {
             startMinute: components.minute ?? 0,
             durationMinutes: primary.effectiveDurationMinutes
         )
-    }
-
-    private static func isEveningPhase(_ timeOfDay: CoachTimeOfDay) -> Bool {
-        timeOfDay == .evening || timeOfDay == .lateEvening
     }
 
     // MARK: - Day load

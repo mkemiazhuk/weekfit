@@ -240,10 +240,10 @@ enum CoachScenarioResolver {
     }
 
     private static func isWithinHeatRecoveryWindow(_ context: CoachContext) -> Bool {
-        guard let minutesSinceEnd = context.minutesSinceEnd else {
-            return context.sessionPhase == .immediatePost
-        }
-        return minutesSinceEnd <= CoachHeatRecoveryPolicy.focusWindowMinutes
+        CoachActivityWindowPolicy.isWithinHeatRecoveryWindow(
+            minutesSinceEnd: context.minutesSinceEnd,
+            sessionPhase: context.sessionPhase
+        )
     }
 
     // MARK: - Helpers

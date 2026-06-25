@@ -9,6 +9,7 @@ struct ProfileView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
+    @EnvironmentObject private var nightComfort: NightComfortController
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
@@ -21,9 +22,9 @@ struct ProfileView: View {
 
     private let background = Color.black
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.54)
-    private let textTertiary = Color.white.opacity(0.28)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
+    private let textTertiary = WeekFitTheme.whiteOpacity(0.28)
 
     private let accentGreen = Color(red: 0.55, green: 0.80, blue: 0.58)
     private let accentBlue = Color(red: 0.56, green: 0.68, blue: 0.90)
@@ -45,6 +46,7 @@ struct ProfileView: View {
 
             resetDialogOverlay
         }
+        .weekFitTabSwitchModalOverlay()
         .task {
             let actualAccess = await healthManager.checkReadAuthorizationStatus()
 
@@ -68,6 +70,10 @@ struct ProfileView: View {
 
             case .language:
                 LanguageSettingsView()
+
+            case .nightComfort:
+                NightComfortSettingsView()
+                    .environmentObject(nightComfort)
 
             case .healthAccess:
                 HealthAccessView()
@@ -308,7 +314,7 @@ private extension ProfileView {
 
             Text(text)
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(isHighlighted ? 0.86 : 0.74))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isHighlighted ? 0.86 : 0.74))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .minimumScaleFactor(0.9)
@@ -319,7 +325,7 @@ private extension ProfileView {
         .padding(.vertical, 6)
         .background {
             Capsule()
-                .fill(isHighlighted ? tint.opacity(0.105) : Color.white.opacity(0.035))
+                .fill(isHighlighted ? tint.opacity(0.105) : WeekFitTheme.whiteOpacity(0.035))
         }
     }
 
@@ -339,7 +345,7 @@ private extension ProfileView {
 
             Text(initials.isEmpty ? "P" : initials)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
         }
         .frame(width: 52, height: 52)
         .overlay {
@@ -469,7 +475,7 @@ private extension ProfileView {
         if !healthManager.isHealthAccessGranted {
             Text(AppText.Settings.Profile.setupBadge)
                 .font(.system(size: 11.1, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
                 .background {
@@ -556,6 +562,17 @@ private extension ProfileView {
 
 private extension ProfileView {
 
+    var nightComfortPreferenceLabel: String {
+        switch nightComfort.preference {
+        case .automatic:
+            return WeekFitLocalizedString("settings.nightComfort.option.automatic")
+        case .alwaysOn:
+            return WeekFitLocalizedString("settings.nightComfort.option.alwaysOn")
+        case .off:
+            return WeekFitLocalizedString("settings.nightComfort.option.off")
+        }
+    }
+
     var coachDebugEnabled: Bool {
         CoachLogLevel(rawValue: coachLogLevelRaw) == .verbose
     }
@@ -624,6 +641,8 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.profile.item.notifications")
         case .language:
             return WeekFitLocalizedString("settings.language.title")
+        case .nightComfort:
+            return WeekFitLocalizedString("settings.nightComfort.title")
         case .healthAccess, .appleHealth:
             return WeekFitLocalizedString("settings.profile.item.healthSignals")
         case .help:
@@ -652,6 +671,8 @@ private extension ProfileView {
                 format: WeekFitLocalizedString("settings.language.currentFormat"),
                 localizedTitle(for: languageManager.selectedLanguage)
             )
+        case .nightComfort:
+            return nightComfortPreferenceLabel
         case .healthAccess, .appleHealth:
             return WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
         case .help:
@@ -672,6 +693,9 @@ private extension ProfileView {
 
         case .language:
             return accentBlue
+
+        case .nightComfort:
+            return Color(red: 0.62, green: 0.54, blue: 0.92)
 
         case .healthAccess, .appleHealth:
             return Color(red: 255/255, green: 89/255, blue: 119/255)

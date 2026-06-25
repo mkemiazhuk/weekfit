@@ -30,7 +30,7 @@ struct PremiumActivityStartCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(QuickActionSheetDesign.Typography.rowTitle)
-                        .foregroundStyle(.white.opacity(hasConflict ? 0.46 : 0.96))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(hasConflict ? 0.46 : 0.96))
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
 
@@ -74,7 +74,7 @@ struct PremiumActivityStartCard: View {
                         LinearGradient(
                             colors: [
                                 cardBackground.opacity(0.98),
-                                Color.white.opacity(0.024)
+                                WeekFitTheme.whiteOpacity(0.024)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing

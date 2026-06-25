@@ -17,6 +17,7 @@ struct ProfileItem: Identifiable {
 enum ProfileItemType {
     case notifications
     case language
+    case nightComfort
     case healthAccess
     case units
     case privacy
@@ -28,6 +29,7 @@ enum ProfileItemType {
 enum ProfileDestination: Identifiable {
     case notifications
     case language
+    case nightComfort
     case healthAccess
     case privacy
     case helpSupport
@@ -38,6 +40,7 @@ enum ProfileDestination: Identifiable {
         switch self {
         case .notifications: return "notifications"
         case .language: return "language"
+        case .nightComfort: return "nightComfort"
         case .healthAccess: return "healthAccess"
         case .privacy: return "privacy"
         case .helpSupport: return "helpSupport"

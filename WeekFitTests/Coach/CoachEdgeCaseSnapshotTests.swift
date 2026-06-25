@@ -1436,14 +1436,14 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
     private func assertExpectation(
         _ expected: Expectation,
         result: CoachEngine.Result,
-        bridge: CoachTabPresentationBridge.Result
+        bridge: CoachUIPresentation
     ) {
         let row = CoachEdgeCaseMatrixPrinter.format(
             caseID: expected.caseID,
             owner: expected.storyOwner,
             scenario: result.scenario,
-            badge: bridge.today.statusLabel,
-            todayTitle: bridge.today.title,
+            badge: bridge.statusLabel,
+            todayTitle: bridge.todayTitle,
             conflict: expected.conflictNote,
             stacked: result.modifiers.stackedDayActiveRisk
         )
@@ -1451,13 +1451,13 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
         CoachEdgeCaseMatrixPrinter.appendToLog(row)
 
         XCTAssertEqual(result.scenario, expected.scenario, row)
-        XCTAssertEqual(bridge.today.statusLabel, expected.badge, row)
-        XCTAssertEqual(bridge.today.title, expected.todayTitle, row)
+        XCTAssertEqual(bridge.statusLabel, expected.badge, row)
+        XCTAssertEqual(bridge.todayTitle, expected.todayTitle, row)
         XCTAssertEqual(result.modifiers.stackedDayActiveRisk, expected.stackedDayActiveRisk, row)
         XCTAssertNotNil(result.copyPack, row)
     }
 
-    private func requireBridge(_ result: CoachEngine.Result) throws -> CoachTabPresentationBridge.Result {
+    private func requireBridge(_ result: CoachEngine.Result) throws -> CoachUIPresentation {
         try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
     }
 

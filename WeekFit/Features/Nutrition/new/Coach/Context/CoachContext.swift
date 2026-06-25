@@ -151,6 +151,10 @@ enum CoachTimeOfDay: String, Equatable, Sendable {
 }
 
 // MARK: - Context
+//
+// Ownership: facts-only snapshot consumed by `CoachScenarioResolver`, copy registry, and
+// presentation modifiers. Built exclusively by `CoachEngine.buildContext`.
+// Does not own day aggregates (`CoachDayContext`) or UI phase windows (`CoachActivityWindowPolicy`).
 
 /// Facts-only snapshot for Coach scenario resolution.
 /// No narrative, owners, or copy — only telemetry and schedule state.
@@ -368,5 +372,120 @@ enum CoachActivityClassifier {
 
     private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
         needles.contains { text.contains($0) }
+    }
+
+    // MARK: - Legacy kind/load bridge (PR3 Phase B)
+    //
+    // `CoachActivityKind` / `CoachActivityLoad` remain for DayContext and DayPriorityModel.
+    // Scenario routing uses `type` / `family` above.
+
+    static func coachKind(for activity: PlannedActivity) -> CoachActivityKind {
+        let title = activity.title.lowercased()
+        let typeLabel = activity.type.lowercased()
+
+        if typeLabel == "meal" ||
+            title.contains("meal") ||
+            title.contains("lunch") ||
+            title.contains("dinner") {
+            return .meal
+        }
+
+        if title.contains("sauna") ||
+            typeLabel.contains("sauna") ||
+            title.contains("hot yoga") ||
+            typeLabel.contains("hot yoga") ||
+            title.contains("heat") ||
+            typeLabel.contains("heat") {
+            return .heat
+        }
+
+        if containsAny(tokenText(for: activity), ["swim", "swimming"]) {
+            return .endurance
+        }
+
+        switch type(for: activity) {
+        case .cycling, .running:
+            return .endurance
+        case .tennis, .squash, .upperBody, .lowerBody, .core, .fullBody:
+            return .workout
+        case .walk, .stretching, .yoga, .breathing:
+            return .recovery
+        case .sauna:
+            return .heat
+        case .none:
+            if typeLabel.contains("recovery") || title.contains("recovery") {
+                return .recovery
+            }
+            return .other
+        }
+    }
+
+    static func coachLoad(for activity: PlannedActivity) -> CoachActivityLoad {
+        let title = activity.title.lowercased()
+        let typeLabel = activity.type.lowercased()
+        let duration = activity.durationMinutes
+        let calories = activityCalories(for: activity)
+
+        if duration >= 180 || calories >= 1800 {
+            return .extreme
+        }
+
+        if duration >= 120 || calories >= 1000 {
+            return .high
+        }
+
+        if CoachActivityClassification.isWalkLike(activity) {
+            return calories >= 600 ? .moderate : .low
+        }
+
+        if CoachActivityClassification.isHikeLike(activity) {
+            if duration >= 180 || calories >= 1000 { return .moderate }
+            return .low
+        }
+
+        if title.contains("walk") || typeLabel.contains("walk") {
+            return duration >= 90 || calories >= 500 ? .moderate : .low
+        }
+
+        if title.contains("cycling") ||
+            title.contains("cycle") ||
+            title.contains("bike") ||
+            title.contains("ride") ||
+            title.contains("run") ||
+            typeLabel.contains("cycling") ||
+            typeLabel.contains("run") {
+
+            if duration >= 120 || calories >= 1000 { return .high }
+            if duration >= 60 || calories >= 400 { return .moderate }
+            return .low
+        }
+
+        if title.contains("strength") ||
+            title.contains("gym") ||
+            title.contains("hiit") ||
+            title.contains("workout") ||
+            typeLabel.contains("strength") ||
+            typeLabel.contains("gym") ||
+            typeLabel.contains("hiit") ||
+            typeLabel.contains("workout") {
+
+            if duration >= 90 || calories >= 700 { return .high }
+            return .moderate
+        }
+
+        if title.contains("yoga") ||
+            title.contains("stretch") ||
+            title.contains("mobility") ||
+            title.contains("recovery") ||
+            title.contains("breath") ||
+            typeLabel.contains("breath") {
+            return .low
+        }
+
+        return .moderate
+    }
+
+    static func activityCalories(for activity: PlannedActivity) -> Int {
+        max(activity.calories, 0)
     }
 }

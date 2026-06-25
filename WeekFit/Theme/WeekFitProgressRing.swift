@@ -19,6 +19,8 @@ struct WeekFitProgressRing<Label: View>: View {
     let tipGlowColor: Color
     @ViewBuilder private let label: () -> Label
 
+    @Environment(\.weekFitPalette) private var palette
+
     init(
         progress: CGFloat,
         color: Color,
@@ -38,7 +40,7 @@ struct WeekFitProgressRing<Label: View>: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.11), lineWidth: strokeWidth)
+                .stroke(Color.white.opacity(palette.ringTrackOpacity), lineWidth: strokeWidth)
                 .frame(width: size, height: size)
 
             if progress > 0 {
@@ -47,7 +49,7 @@ struct WeekFitProgressRing<Label: View>: View {
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        AngularGradient(colors: gradientColors, center: .center),
+                        AngularGradient(colors: resolvedGradientColors, center: .center),
                         style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
                     )
                     .frame(width: size, height: size)
@@ -59,6 +61,12 @@ struct WeekFitProgressRing<Label: View>: View {
         .frame(width: size, height: size)
     }
 
+    private var resolvedGradientColors: [Color] {
+        gradientColors.map { color in
+            palette.accent(color).opacity(Double(palette.ringGradientPeakOpacity))
+        }
+    }
+
     /// Short arc bloom at the progress tip — no full-circumference halo.
     private var leadingEdgeGlow: some View {
         let span = min(0.10, max(0.035, progress * 0.12))
@@ -67,7 +75,7 @@ struct WeekFitProgressRing<Label: View>: View {
         return Circle()
             .trim(from: tipStart, to: progress)
             .stroke(
-                tipGlowColor.opacity(0.18),
+                palette.accent(tipGlowColor).opacity(Double(palette.ringGlowOpacity)),
                 style: StrokeStyle(lineWidth: strokeWidth + 1.5, lineCap: .round)
             )
             .frame(width: size, height: size)

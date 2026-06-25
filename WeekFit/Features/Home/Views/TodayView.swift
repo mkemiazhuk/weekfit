@@ -32,10 +32,11 @@ struct TodayView: View {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var coachInputProvider: CoachInputProvider
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @Environment(\.weekFitPalette) private var palette
+    @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @State private var showProfile = false
-    @State private var showContent = false
     @State private var livePulse = false
     @State private var drinksQuickLogToast: String?
     @State private var foodQuickLogToast: String?
@@ -45,9 +46,9 @@ struct TodayView: View {
     private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
     private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.65)
-    private let textTertiary = Color.white.opacity(0.35)
+    private var textPrimary: Color { palette.textPrimary }
+    private var textSecondary: Color { palette.textSecondary }
+    private var textTertiary: Color { palette.textTertiary }
 
     private let todayRingSize: CGFloat = 86
     private let todayRingStroke: CGFloat = 4
@@ -299,7 +300,8 @@ struct TodayView: View {
         }
     }
 
-    var body: some View {
+    @ViewBuilder
+    private var todayActiveBody: some View {
         let _ = languageManager.selectedLanguage
 
         ZStack(alignment: .bottom) {
@@ -317,6 +319,18 @@ struct TodayView: View {
                    }
                 }
 
+        }
+    }
+
+    var body: some View {
+        Group {
+            if tabIsActive {
+                todayActiveBody
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityHidden(true)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
@@ -351,25 +365,45 @@ struct TodayView: View {
                 recoveryBreakdown: healthManager.recoveryBreakdown
             )
         }
-        .onAppear {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) { showContent = true }
-        }
         .task(id: todayViewModel.healthRefreshID) {
+            guard tabIsActive else { return }
             await refreshHealthAndNutritionAsync()
+        }
+        .task(id: todayViewModel.trackedDisplayDayStart) {
+            guard tabIsActive else { return }
+
+            let delay = todayViewModel.nextDayBoundary().timeIntervalSinceNow + 0.5
+            guard delay > 0 else {
+                reconcileTodayDayBoundary()
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                reconcileTodayDayBoundary()
+            }
         }
         .onChange(of: plannedActivities) { _, _ in
             debugTodayDataState(source: "TodayView.onChange.plannedActivities")
             refreshTodayLiveState(refreshHealth: false)
         }
         .onChange(of: selectedDate) { oldValue, newValue in
+            guard tabIsActive else { return }
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
-            todayViewModel.triggerHealthRefresh()
-        }
-        .onChange(of: appSession.healthRefreshTrigger) { _, _ in
-            debugTodayDataState(source: "TodayView.onChange.healthRefreshTrigger")
+
+            let calendar = Calendar.current
+            if !calendar.isDate(oldValue, inSameDayAs: newValue) {
+                let dayStart = calendar.startOfDay(for: newValue)
+                healthManager.prepareForDisplayDay(dayStart)
+                nutritionViewModel.prepareForDay(newValue)
+            }
+
             todayViewModel.triggerHealthRefresh()
         }
         .onChange(of: scenePhase) { _, newPhase in
+            guard tabIsActive else { return }
             guard newPhase == .active else { return }
             refreshTodayAfterAppBecameActive()
         }
@@ -379,7 +413,14 @@ struct TodayView: View {
         .onChange(of: appSession.localDataResetTrigger) { _, _ in
             handleLocalDataResetCompleted()
         }
+        .onChange(of: tabIsActive) { _, isActive in
+            guard isActive else { return }
+            reconcileTodayDayBoundary()
+            // Full reload is event-driven at root; boundary reconcile clears stale ring totals first.
+            refreshTodayLiveState(refreshHealth: false)
+        }
         .task(id: coachCoordinator.nextScheduledCheckpoint) {
+            guard tabIsActive else { return }
             guard let checkpoint = coachCoordinator.nextScheduledCheckpoint else { return }
             let delay = checkpoint.timeIntervalSinceNow
             if delay > 0 {
@@ -579,8 +620,8 @@ struct TodayView: View {
                 quickLogSession.reset()
             }
         }
-        .onChange(of: userSettings.customMealsStorage) { _, _ in
-            refreshQuickLogMealsFromStorage()
+        .onChange(of: userSettings.customMealsCatalogRevision) { _, _ in
+            refreshQuickLogMealsFromCatalog()
         }
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
@@ -674,11 +715,11 @@ struct TodayView: View {
 
             Text(title)
                 .font(QuickActionSheetDesign.Typography.emptyTitle)
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
 
             Text(message)
                 .font(QuickActionSheetDesign.Typography.emptyMessage)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
 
@@ -714,7 +755,7 @@ struct TodayView: View {
         let quickItems = repository.loadQuickItems()
 
         setQuickItemUsage(usage)
-        refreshQuickLogMealsFromStorage()
+        refreshQuickLogMealsFromCatalog()
         setQuickLogSnacks(sortByUsage(quickItems.filter { $0.category == .snack }, usage: usage))
         Self.debugEnd(
             "quickNutrition.prepare meals=\(quickLogMeals.count) snacks=\(quickLogSnacks.count)",
@@ -722,13 +763,13 @@ struct TodayView: View {
         )
     }
 
-    private func refreshQuickLogMealsFromStorage() {
-        setQuickLogMeals(CustomMealStore.load(from: userSettings.customMealsStorage))
+    private func refreshQuickLogMealsFromCatalog() {
+        setQuickLogMeals(userSettings.customMealsCatalog)
     }
 
     private func preloadQuickFoodLogDataIfNeeded() {
         guard !didPreloadQuickFood else {
-            refreshQuickLogMealsFromStorage()
+            refreshQuickLogMealsFromCatalog()
             return
         }
         didPreloadQuickFood = true
@@ -967,7 +1008,7 @@ struct TodayView: View {
         guard let reason = coachCoordinator.state.todayCoachInsightHiddenReason else { return }
         CoachLogger.compact(
             "[TodayCoachInsight]",
-            "hidden reason=\(reason.rawValue) status=\(coachCoordinator.state.statusLogLabel) usingCoach=\(coachCoordinator.state.coachUIPresentation != nil ? "yes" : "no") todayTitle=\"\(coachCoordinator.state.todayPresentation.title)\""
+            "hidden reason=\(reason.rawValue) status=\(coachCoordinator.state.statusLogLabel) usingCoach=\(coachCoordinator.state.coachUIPresentation != nil ? "yes" : "no") todayTitle=\"\(coachCoordinator.state.coachUIPresentation?.todayTitle ?? "")\""
         )
         #endif
     }
@@ -1115,13 +1156,13 @@ struct TodayView: View {
             }
         }
         .padding(.bottom, TodayLayout.tabBarContentInset)
-        .opacity(showContent ? 1 : 0)
 
     }
 
     private var ambientBackground: some View {
         WeekFitTheme.todayAmbient
-        .ignoresSafeArea()
+            .opacity(palette.ambientOpacity)
+            .ignoresSafeArea()
     }
     
 
@@ -1145,7 +1186,7 @@ struct TodayView: View {
             .font(.caption2.weight(.semibold))
             .fontDesign(.rounded)
             .tracking(1.15)
-            .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.68))
+            .foregroundStyle(palette.textTertiary.opacity(0.68))
             .offset(y: 0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1156,14 +1197,16 @@ struct TodayView: View {
         featured: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        content()
+        let softenedAccent = palette.accent(accent)
+
+        return content()
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                cardBackground.opacity(featured ? 0.94 : 0.88),
-                                Color.white.opacity(featured ? 0.024 : 0.014)
+                                palette.cardBackground.opacity(featured ? 0.94 : 0.88),
+                                WeekFitTheme.whiteOpacity(featured ? 0.024 : 0.014)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1175,8 +1218,8 @@ struct TodayView: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                accent.opacity(featured ? 0.16 : 0.10),
-                                Color.white.opacity(featured ? 0.045 : 0.028),
+                                softenedAccent.opacity(palette.accentOpacity(featured ? 0.16 : 0.10)),
+                                palette.borderSoft,
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -1185,8 +1228,16 @@ struct TodayView: View {
                         lineWidth: 1
                     )
             }
-            .shadow(color: accent.opacity(featured ? 0.05 : 0.025), radius: featured ? 12 : 6, y: featured ? 5 : 2)
-            .shadow(color: Color.black.opacity(featured ? 0.10 : 0.06), radius: featured ? 8 : 4, y: featured ? 3 : 2)
+            .shadow(
+                color: softenedAccent.opacity(Double(palette.accentOpacity(featured ? 0.05 : 0.025))),
+                radius: featured ? 12 : 6,
+                y: featured ? 5 : 2
+            )
+            .shadow(
+                color: Color.black.opacity(Double(palette.cardShadowOpacity * (featured ? 0.36 : 0.21))),
+                radius: featured ? 8 : 4,
+                y: featured ? 3 : 2
+            )
     }
 
     /// Premium action surface — same card family as Coach/Up Next, tuned as the execution layer after Coach.
@@ -1203,7 +1254,7 @@ struct TodayView: View {
                         LinearGradient(
                             colors: [
                                 cardBackground.opacity(0.90),
-                                Color.white.opacity(0.018)
+                                WeekFitTheme.whiteOpacity(0.018)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1230,7 +1281,7 @@ struct TodayView: View {
                         LinearGradient(
                             colors: [
                                 accent.opacity(0.14),
-                                Color.white.opacity(0.05),
+                                WeekFitTheme.whiteOpacity(0.05),
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -1245,7 +1296,7 @@ struct TodayView: View {
 
     private var todayQuickActionsAccent: Color {
         if coachCoordinator.state.canRenderTodayCoachInsight {
-            return coachCoordinator.state.todayPresentation.color
+            return coachCoordinator.state.coachUIPresentation?.accentColor ?? WeekFitTheme.coachAccent
         }
         return WeekFitTheme.coachAccent
     }
@@ -1264,7 +1315,7 @@ struct TodayView: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.032), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.032), lineWidth: 1)
             }
     }
 
@@ -1783,8 +1834,8 @@ struct TodayView: View {
 
     private var upNextSection: some View {
         let now = Date()
-        let neutralIconFill = Color.white.opacity(0.07)
-        let neutralStroke = Color.white.opacity(0.08)
+        let neutralIconFill = WeekFitTheme.whiteOpacity(0.07)
+        let neutralStroke = WeekFitTheme.whiteOpacity(0.08)
 
         let activeSession = currentActiveSession(now: now)
         let nextActivity = activeSession == nil
@@ -2168,12 +2219,12 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if coachCoordinator.state.canRenderTodayCoachInsight {
-                    let presentation = coachCoordinator.state.todayPresentation
-                    let insightColor = presentation.color
-                    let insightTitle = presentation.title
+                if coachCoordinator.state.canRenderTodayCoachInsight,
+                   let presentation = coachCoordinator.state.coachUIPresentation {
+                    let insightColor = presentation.accentColor
+                    let insightTitle = presentation.todayTitle
                     let insightIcon = presentation.icon
-                    let insightMessage = presentation.message
+                    let insightMessage = presentation.todayMessage
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2266,23 +2317,30 @@ struct TodayView: View {
         debugTodayDataState(source: "refreshTodayLiveState.afterNutrition refreshHealth=\(refreshHealth)")
     }
 
+    private func reconcileTodayDayBoundary() {
+        var date = selectedDate
+        let shouldRefresh = todayViewModel.reconcileDayBoundary(
+            selectedDate: &date,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
+        )
+
+        if date != selectedDate {
+            selectedDate = date
+        } else if shouldRefresh {
+            todayViewModel.triggerHealthRefresh()
+        }
+    }
+
     private func handleReturnToTodayRequest() {
         selectedDate = Date()
-        debugTodayDataState(source: "handleReturnToTodayRequest")
+        todayViewModel.now = Date()
+        reconcileTodayDayBoundary()
     }
 
     private func refreshTodayAfterAppBecameActive() {
-        let currentDate = Date()
-        todayViewModel.now = currentDate
-
-        if !Calendar.current.isDate(selectedDate, inSameDayAs: currentDate) {
-            selectedDate = currentDate
-            debugTodayDataState(source: "scenePhase.active.dateRolledOver")
-            return
-        }
-
-        debugTodayDataState(source: "scenePhase.active.sameDay")
-        todayViewModel.triggerHealthRefresh()
+        todayViewModel.now = Date()
+        reconcileTodayDayBoundary()
     }
 
     private func handleLocalDataResetCompleted() {
@@ -2854,7 +2912,7 @@ private extension View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.035), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
         }
         .contentShape(Rectangle())
     }

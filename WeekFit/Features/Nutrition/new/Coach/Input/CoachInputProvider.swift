@@ -6,6 +6,20 @@ final class CoachInputProvider: ObservableObject {
     @Published private(set) var lastInput: CoachInputSnapshot?
     @Published private(set) var lastRefreshReason: String = "notLoaded"
 
+    private let lifecycleToken = "CoachInputProvider"
+    private var inFlightRefreshTask: Task<Void, Never>?
+    private var lastCompletedRefreshKey: String?
+    private var refreshGeneration = 0
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+
+    deinit {
+        inFlightRefreshTask?.cancel()
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
+
     func refresh(
         selectedDate: Date,
         plannedActivities: [PlannedActivity],
@@ -15,24 +29,81 @@ final class CoachInputProvider: ObservableObject {
         source: String,
         refreshHealth: Bool = false
     ) async {
-        let dayActivities = DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
+        refreshGeneration += 1
+        let generation = refreshGeneration
 
-        if refreshHealth {
-            await healthManager.loadHealthData(
-                for: selectedDate,
-                plannedActivities: dayActivities
-            )
+        let refreshKey = Self.refreshKey(
+            selectedDate: selectedDate,
+            plannedActivities: plannedActivities,
+            source: source,
+            refreshHealth: refreshHealth
+        )
+
+        if !refreshHealth, refreshKey == lastCompletedRefreshKey {
+            return
         }
 
-        refreshFromCurrentState(
-            selectedDate: selectedDate,
-            dayActivities: dayActivities,
-            allPlannedActivities: plannedActivities,
-            healthManager: healthManager,
-            nutritionViewModel: nutritionViewModel,
-            coachCoordinator: coachCoordinator,
-            source: source
-        )
+        if let inFlightRefreshTask {
+            await inFlightRefreshTask.value
+            if !refreshHealth, refreshKey == lastCompletedRefreshKey {
+                return
+            }
+        }
+
+        let task = Task { @MainActor in
+            let dayActivities = DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
+
+            if refreshHealth {
+                await healthManager.loadHealthData(
+                    for: selectedDate,
+                    plannedActivities: dayActivities
+                )
+            }
+
+            let previousRefreshReason = lastRefreshReason
+            refreshFromCurrentState(
+                selectedDate: selectedDate,
+                dayActivities: dayActivities,
+                allPlannedActivities: plannedActivities,
+                healthManager: healthManager,
+                nutritionViewModel: nutritionViewModel,
+                coachCoordinator: coachCoordinator,
+                source: source
+            )
+
+            guard generation == self.refreshGeneration else {
+                lastRefreshReason = previousRefreshReason
+                #if DEBUG
+                HealthRefreshGuardLog.logStaleCoachRefreshDropped(
+                    generation: generation,
+                    currentGeneration: self.refreshGeneration,
+                    source: source
+                )
+                #endif
+                return
+            }
+
+            lastCompletedRefreshKey = refreshKey
+        }
+
+        inFlightRefreshTask = task
+        await task.value
+        inFlightRefreshTask = nil
+    }
+
+    private static func refreshKey(
+        selectedDate: Date,
+        plannedActivities: [PlannedActivity],
+        source: String,
+        refreshHealth: Bool
+    ) -> String {
+        let day = Int(Calendar.current.startOfDay(for: selectedDate).timeIntervalSince1970 / 86_400)
+        return [
+            source,
+            refreshHealth ? "health" : "cached",
+            "\(day)",
+            PlannedActivityRefreshSignature.make(from: plannedActivities)
+        ].joined(separator: "#")
     }
 
     func refreshFromCurrentState(

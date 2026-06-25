@@ -67,8 +67,8 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: makeEngineResult(input: input, pack: pack)))
         let russian = joinedRussian(pack)
 
-        XCTAssertEqual(bridge.ui.todayTitle, "Восстанавливаемся")
-        XCTAssertEqual(bridge.ui.coachTitle, "Восстанавливаемся")
+        XCTAssertEqual(bridge.todayTitle, "Восстанавливаемся")
+        XCTAssertEqual(bridge.coachTitle, "Восстанавливаемся")
         XCTAssertTrue(russian.contains("основная работа уже сделана"))
         XCTAssertFalse(russian.contains("15–20 минут"))
         XCTAssertFalse(russian.contains("восстановительная прогулка"))
