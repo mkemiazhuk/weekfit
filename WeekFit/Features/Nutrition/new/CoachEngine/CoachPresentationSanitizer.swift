@@ -790,12 +790,12 @@ enum CoachPresentationSanitizer {
     private static func activityIcon(for family: CoachPresentationActivityProfile.Family, fallback: String) -> String {
         switch family {
         case .walk: return "figure.walk"
-        case .cycling: return "bicycle"
+        case .cycling: return "figure.outdoor.cycle"
         case .strength: return "dumbbell.fill"
         case .heat: return "flame.fill"
         case .stretching: return "figure.cooldown"
         case .yoga: return "figure.yoga"
-        case .mobility: return "figure.flexibility"
+        case .mobility: return "figure.cooldown"
         case .breathing: return "wind"
         case .other: return fallback
         }

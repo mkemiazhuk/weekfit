@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import HealthKit
 import UIKit
+import WeekFitPlanner
 internal import Combine
 import OSLog
 
@@ -1681,16 +1682,17 @@ struct TodayView: View {
                 let activeColor = liveBronze
 
                 HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(activeColor.opacity(0.075))
-                            .frame(width: 44, height: 44)
-                            .overlay(Circle().stroke(activeColor.opacity(0.24), lineWidth: 1))
-
-                        Image(systemName: upNextIcon(for: activeSession, isLive: true))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(liveBadgeBronze.opacity(0.86))
-                    }
+                    WeekFitIconBadge(
+                        systemName: upNextIcon(for: activeSession, isLive: true),
+                        color: liveBadgeBronze,
+                        size: .lg,
+                        shape: .circle,
+                        strokeOpacity: 1,
+                        strokeWidth: 1,
+                        fillColor: activeColor.opacity(0.075),
+                        strokeColor: activeColor.opacity(0.24),
+                        iconColor: liveBadgeBronze.opacity(0.86)
+                    )
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(AppText.Today.currentSession)
@@ -1737,16 +1739,17 @@ struct TodayView: View {
                 } label: {
                     HStack(spacing: 12) {
 
-                        ZStack {
-                            Circle()
-                                .fill(neutralIconFill)
-                                .frame(width: 44, height: 44)
-                                .overlay(Circle().stroke(neutralStroke, lineWidth: 1))
-
-                            Image(systemName: upNextIcon(for: activity))
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(textSecondary.opacity(0.86))
-                        }
+                        WeekFitIconBadge(
+                            systemName: upNextIcon(for: activity),
+                            color: textSecondary,
+                            size: .lg,
+                            shape: .circle,
+                            strokeOpacity: 1,
+                            strokeWidth: 1,
+                            fillColor: neutralIconFill,
+                            strokeColor: neutralStroke,
+                            iconColor: textSecondary.opacity(0.86)
+                        )
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(shortDisplayTitle(activityDisplayTitle(activity)))
@@ -2167,99 +2170,11 @@ struct TodayView: View {
         .joined(separator: " ")
         .lowercased()
 
-        return iconForWorkoutInsightText(text, fallback: fallback)
-    }
-
-    private func iconForWorkoutInsightText(
-        _ text: String,
-        fallback: String
-    ) -> String {
-
-        if text.contains("walk")
-            || text.contains("walking")
-            || text.contains("ходь")
-            || text.contains("прогул") {
-            return "figure.walk"
-        }
-
-        if text.contains("run")
-            || text.contains("running")
-            || text.contains("бег") {
-            return "figure.run"
-        }
-
-        if text.contains("cycling")
-            || text.contains("cycle")
-            || text.contains("bike")
-            || text.contains("ride")
-            || text.contains("вел")
-            || text.contains("вело") {
-            return "bicycle"
-        }
-
-        if text.contains("hike")
-            || text.contains("hiking")
-            || text.contains("поход") {
-            return "figure.hiking"
-        }
-
-        if text.contains("core")
-            || text.contains("abs")
-            || text.contains("abdominal")
-            || text.contains("кор")
-            || text.contains("пресс") {
-            return "figure.core.training"
-        }
-
-        if text.contains("upper body")
-            || text.contains("lower body")
-            || text.contains("full body")
-            || text.contains("strength")
-            || text.contains("gym")
-            || text.contains("weights")
-            || text.contains("dumbbell")
-            || text.contains("сил")
-            || text.contains("зал") {
-            return "figure.strengthtraining.traditional"
-        }
-
-        if text.contains("stretch")
-            || text.contains("stretching")
-            || text.contains("mobility")
-            || text.contains("flexibility")
-            || text.contains("растяж")
-            || text.contains("мобил") {
-            return "figure.flexibility"
-        }
-
-        if text.contains("yoga")
-            || text.contains("йога") {
-            return "figure.mind.and.body"
-        }
-
-        if text.contains("breathing")
-            || text.contains("breath")
-            || text.contains("дых") {
-            return "wind"
-        }
-
-        if text.contains("sauna")
-            || text.contains("heat")
-            || text.contains("саун") {
-            return "flame.fill"
-        }
-
-        if text.contains("swim")
-            || text.contains("swimming")
-            || text.contains("плав") {
-            return "figure.pool.swim"
-        }
-
-        if text.contains("hiit") || text.contains("interval") {
-            return "flame.fill"
-        }
-
-        return fallback
+        return WeekFitActivityIconResolver.resolve(
+            storedIcon: fallback.isEmpty ? nil : fallback,
+            title: text,
+            type: "workout"
+        )
     }
     
     private func debugWorkoutInsight(_ output: CoachGuidanceV3) {
@@ -2473,33 +2388,13 @@ struct TodayView: View {
     }
 
     private func upNextIcon(for activity: PlannedActivity, isLive: Bool = false) -> String {
-        let fallback = activity.icon.isEmpty ? "sparkles" : activity.icon
-        let normalizedType = activity.type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let normalizedSource = activity.source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let resolved = WeekFitActivityIconResolver.resolve(for: activity)
 
-        guard normalizedType == "workout" ||
-            normalizedType == "training" ||
-            normalizedType == "recovery" ||
-            normalizedSource == "appleworkout" else {
-            return fallback
-        }
-
-        let text = [
-            activity.title,
-            activity.type,
-            activity.source,
-            activity.imageName
-        ]
-        .joined(separator: " ")
-        .lowercased()
-
-        let resolvedIcon = iconForWorkoutInsightText(text, fallback: fallback)
-
-        if isLive && resolvedIcon == "figure.walk" {
+        if isLive && resolved == "figure.walk" {
             return "figure.walk.motion"
         }
 
-        return resolvedIcon
+        return resolved
     }
 
     private func activitySubtitle(_ activity: PlannedActivity) -> String {

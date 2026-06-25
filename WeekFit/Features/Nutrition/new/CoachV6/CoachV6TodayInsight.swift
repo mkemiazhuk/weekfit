@@ -202,7 +202,7 @@ enum CoachV6PresentationResolver {
         case .walk:
             return "figure.walk"
         case .stretching:
-            return "figure.flexibility"
+            return "figure.cooldown"
         case .yoga:
             return "figure.yoga"
         case .breathing:

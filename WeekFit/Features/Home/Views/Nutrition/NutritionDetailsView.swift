@@ -1,4 +1,5 @@
 import SwiftUI
+import WeekFitPlanner
 
 struct NutritionDetailsView: View {
 
@@ -613,7 +614,20 @@ private struct MealTimelineCard: View {
     }
 
     private func mealTimelineIcon(for meal: PlannedActivity) -> String {
+        let normalizedType = meal.type.lowercased()
+        if normalizedType == "drink" || normalizedType == "hydration" {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
+
         let text = "\(meal.title) \(meal.imageName) \(meal.icon)".lowercased()
+
+        if text.contains("water") || text.contains("hydration") {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
+
+        if text.contains("coffee") || text.contains("espresso") || text.contains("latte") || text.contains("tea") {
+            return WeekFitActivityIconResolver.resolve(for: meal)
+        }
 
         if text.contains("juice") || text.contains("drink") {
             return "takeoutbag.and.cup.and.straw.fill"

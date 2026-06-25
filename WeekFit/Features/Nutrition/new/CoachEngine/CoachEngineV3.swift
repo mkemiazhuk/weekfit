@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WeekFitPlanner
 
 // MARK: - Coach Engine V3
 // Philosophy:
@@ -1874,75 +1875,7 @@ enum CoachGuidanceFactoryV3 {
     }
 
     private static func activityIcon(for activity: PlannedActivity) -> String {
-        let text = [
-            activity.title,
-            activity.type,
-            activity.icon,
-            activity.imageName
-        ]
-        .joined(separator: " ")
-        .lowercased()
-
-        if text.contains("water") || text.contains("hydration") || text.contains("hydrate") {
-            return "drop.fill"
-        }
-
-        if text.contains("meal") ||
-            text.contains("food") ||
-            text.contains("lunch") ||
-            text.contains("dinner") ||
-            text.contains("breakfast") ||
-            text.contains("snack") ||
-            text.contains("fuel") {
-            return "fork.knife"
-        }
-
-        if text.contains("sauna") || text.contains("heat") {
-            return "thermometer.sun.fill"
-        }
-
-        if text.contains("tennis") || text.contains("squash") {
-            return "figure.tennis"
-        }
-
-        if text.contains("swim") || text.contains("pool") {
-            return "figure.pool.swim"
-        }
-
-        if text.contains("cycling") ||
-            text.contains("cycle") ||
-            text.contains("bike") ||
-            text.contains("bicycle") ||
-            text.contains("ride") {
-            return "bicycle"
-        }
-
-        if text.contains("walking") || text.contains("walk") {
-            return "figure.walk"
-        }
-
-        if text.contains("running") || text.contains("run") {
-            return "figure.run"
-        }
-
-        if text.contains("strength") ||
-            text.contains("workout") ||
-            text.contains("gym") ||
-            text.contains("dumbbell") ||
-            text.contains("weights") ||
-            text.contains("lifting") {
-            return "dumbbell.fill"
-        }
-
-        if text.contains("stretch") || text.contains("mobility") || text.contains("flexibility") {
-            return "figure.flexibility"
-        }
-
-        if text.contains("yoga") {
-            return "figure.mind.and.body"
-        }
-
-        return activity.icon.isEmpty ? "sparkles" : activity.icon
+        WeekFitActivityIconResolver.resolve(for: activity)
     }
 
     private static func color(for scenario: CoachActivityScenario) -> Color {

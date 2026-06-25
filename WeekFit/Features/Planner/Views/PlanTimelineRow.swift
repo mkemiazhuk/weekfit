@@ -546,15 +546,14 @@ struct PlanTimelineRow: View {
             )
             .opacity(0.88)
         } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(accent.opacity(iconBackgroundOpacity))
-                    .frame(width: PlanTimelineLayout.avatarSize, height: PlanTimelineLayout.avatarSize)
-
-                Image(systemName: resolvedIcon)
-                    .font(.system(size: PlanTimelineLayout.activityIconFontSize, weight: .semibold))
-                    .foregroundStyle(accent.opacity(iconForegroundOpacity))
-            }
+            WeekFitIconBadge(
+                systemName: resolvedIcon,
+                color: accent,
+                size: .sm,
+                shape: .roundedRect,
+                backgroundOpacity: iconBackgroundOpacity,
+                foregroundOpacity: iconForegroundOpacity
+            )
         }
     }
 
@@ -776,94 +775,7 @@ private struct PlanTimelineNode: View {
 enum PlanTimelineIconResolver {
 
     static func icon(for activity: PlannedActivity) -> String {
-        let title = activity.title.lowercased()
-        let type = activity.type.lowercased()
-
-        if title.contains("coffee") || title.contains("espresso")
-            || title.contains("cappuccino") || title.contains("latte")
-            || title.contains("tea") {
-            return "cup.and.saucer.fill"
-        }
-
-        if title.contains("water") || title.contains("hydration") || title.contains("drink") {
-            return "drop.fill"
-        }
-
-        if title.contains("banana") || title.contains("meal") || type == "meal" {
-            return "fork.knife"
-        }
-
-        if title.contains("sauna") || title.contains("heat") {
-            return "flame.fill"
-        }
-
-        if title.contains("walk") || type.contains("walk") {
-            return "figure.walk"
-        }
-
-        if title.contains("hike") || type.contains("hike") {
-            return "figure.hiking"
-        }
-
-        if title.contains("running") || title.contains("run")
-            || type.contains("running") || type.contains("run") {
-            return "figure.run"
-        }
-
-        if title.contains("cycling") || title.contains("cycle")
-            || title.contains("bike") || title.contains("ride")
-            || type.contains("cycling") || type.contains("cycle")
-            || type.contains("bike") || type.contains("ride") {
-            return "bicycle"
-        }
-
-        if title.contains("yoga") || type.contains("yoga") {
-            return "figure.mind.and.body"
-        }
-
-        if title.contains("breathing") || title.contains("breath")
-            || type.contains("breathing") || type.contains("breath") {
-            return "wind"
-        }
-
-        if title.contains("stretching") || title.contains("stretch")
-            || title.contains("mobility")
-            || type.contains("stretching") || type.contains("stretch")
-            || type.contains("mobility") {
-            return "figure.flexibility"
-        }
-
-        if title.contains("upper body") {
-            return "figure.strengthtraining.traditional"
-        }
-
-        if title.contains("strength") || title.contains("gym")
-            || title.contains("training") || title.contains("workout")
-            || type.contains("workout") {
-            return "dumbbell.fill"
-        }
-
-        if title.contains("sleep") || title.contains("bedtime") {
-            return "bed.double.fill"
-        }
-
-        if title.contains("no screens") || title.contains("screen") {
-            return "iphone.slash"
-        }
-
-        if title.contains("morning routine") || title.contains("morning") {
-            return "sunrise.fill"
-        }
-
-        if title.contains("routine") || type == "habit" {
-            return "checkmark.circle"
-        }
-
-        if type == "recovery" {
-            return "leaf.fill"
-        }
-
-        return activity.icon.isEmpty ? "sparkles" : activity.icon
+        WeekFitActivityIconResolver.resolve(for: activity)
     }
 }
 
