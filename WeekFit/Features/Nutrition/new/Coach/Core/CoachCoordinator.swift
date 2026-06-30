@@ -30,6 +30,10 @@ final class CoachCoordinator: ObservableObject {
         latestInput = input
     }
 
+    func invalidateResolvedStateForDayChange() {
+        lastResolvedFingerprint = nil
+    }
+
     @discardableResult
     func recomputeIfNeeded(reason: String) -> CoachState {
         guard let latestInput else {

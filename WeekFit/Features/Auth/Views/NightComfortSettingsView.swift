@@ -20,7 +20,7 @@ struct NightComfortSettingsView: View {
                     headerSection
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(AppText.Settings.NightComfort.subtitle)
+                        Text(WeekFitLocalizedString("settings.nightComfort.subtitle"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -109,19 +109,19 @@ private extension NightComfortSettingsView {
         }
     }
 
-    func title(for option: NightComfortPreference) -> LocalizedStringResource {
+    func title(for option: NightComfortPreference) -> String {
         switch option {
-        case .automatic: return AppText.Settings.NightComfort.Option.automatic
-        case .alwaysOn: return AppText.Settings.NightComfort.Option.alwaysOn
-        case .off: return AppText.Settings.NightComfort.Option.off
+        case .automatic: return WeekFitLocalizedString("settings.nightComfort.option.automatic")
+        case .alwaysOn: return WeekFitLocalizedString("settings.nightComfort.option.alwaysOn")
+        case .off: return WeekFitLocalizedString("settings.nightComfort.option.off")
         }
     }
 
-    func subtitle(for option: NightComfortPreference) -> LocalizedStringResource {
+    func subtitle(for option: NightComfortPreference) -> String {
         switch option {
-        case .automatic: return AppText.Settings.NightComfort.Option.automaticSubtitle
-        case .alwaysOn: return AppText.Settings.NightComfort.Option.alwaysOnSubtitle
-        case .off: return AppText.Settings.NightComfort.Option.offSubtitle
+        case .automatic: return WeekFitLocalizedString("settings.nightComfort.option.automaticSubtitle")
+        case .alwaysOn: return WeekFitLocalizedString("settings.nightComfort.option.alwaysOnSubtitle")
+        case .off: return WeekFitLocalizedString("settings.nightComfort.option.offSubtitle")
         }
     }
 
@@ -132,7 +132,7 @@ private extension NightComfortSettingsView {
     }
 
     var footerNote: some View {
-        Text(AppText.Settings.NightComfort.footer)
+        Text(WeekFitLocalizedString("settings.nightComfort.footer"))
             .font(.system(size: 13.5, weight: .medium))
             .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
             .lineSpacing(2)

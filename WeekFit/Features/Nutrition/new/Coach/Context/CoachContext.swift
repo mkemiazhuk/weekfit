@@ -142,11 +142,16 @@ enum CoachTimeOfDay: String, Equatable, Sendable {
             return .afternoon
         case 18..<21:
             return .evening
-        case 21..<24:
+        case 21..<23:
             return .lateEvening
         default:
             return .night
         }
+    }
+
+    /// True from 23:00 through early morning — sleep-now framing, not wind-down planning.
+    static func isSleepNow(_ timeOfDay: CoachTimeOfDay) -> Bool {
+        timeOfDay == .night
     }
 }
 

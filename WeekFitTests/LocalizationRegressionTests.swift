@@ -20,6 +20,14 @@ final class LocalizationRegressionTests: XCTestCase {
             WeekFitLocalizedString("settings.language.title", locale: Locale(identifier: "ru")),
             "Язык"
         )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "en")),
+            "Night Comfort"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "ru")),
+            "Ночной комфорт"
+        )
     }
 
     func testMissingLocalizationFallsBackToKey() {

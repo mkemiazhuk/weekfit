@@ -171,81 +171,22 @@ struct MealBuilderView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitDetailScreenHeader(
+            title: WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"),
+            subtitle: WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"),
+            titleColor: textPrimary,
+            subtitleColor: textSecondary.opacity(0.76),
+            titleDesign: .default
+        ) {
+            WeekFitDetailScreenBackButton {
                 onCancel?()
                 dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(WeekFitTheme.whiteOpacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"))
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
-                    .lineLimit(1)
-
-                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"))
-                    .font(.system(size: 13.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Button {
+        } trailing: {
+            WeekFitDetailScreenSaveButton(isEnabled: hasUnsavedChanges, accent: accent) {
                 saveMeal()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.14),
-                                    WeekFitTheme.whiteOpacity(0.09)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    hasUnsavedChanges ? accent.opacity(0.18) : WeekFitTheme.whiteOpacity(0.065),
-                                    lineWidth: 1
-                                )
-                        }
-
-                    Image(systemName: hasUnsavedChanges ? "checkmark" : "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            hasUnsavedChanges
-                            ? accent.opacity(0.85)
-                            : textSecondary.opacity(0.42)
-                        )
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-            .disabled(!hasUnsavedChanges)
-            .scaleEffect(hasUnsavedChanges ? 1.0 : 0.96)
-            .animation(.spring(response: 0.25, dampingFraction: 0.82), value: hasUnsavedChanges)
         }
-        .padding(.bottom, 2)
     }
 
     private var flyingIngredientOverlay: some View {

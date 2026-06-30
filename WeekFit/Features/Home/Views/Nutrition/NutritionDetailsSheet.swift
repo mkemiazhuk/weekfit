@@ -48,7 +48,9 @@ private extension NutritionDetailsSheet {
                 Text(AppText.Nutrition.Details.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .allowsTightening(true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
@@ -64,6 +66,7 @@ private extension NutritionDetailsSheet {
                         }
                 }
                 .buttonStyle(.plain)
+                .fixedSize()
                 .accessibilityLabel(Text(AppText.Common.Action.close))
             }
 

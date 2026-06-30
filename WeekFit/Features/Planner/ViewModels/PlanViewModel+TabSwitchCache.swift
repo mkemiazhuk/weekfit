@@ -12,7 +12,7 @@ enum TabSwitchProfiler {
         let start = CFAbsoluteTimeGetCurrent()
         let result = try work()
         let ms = (CFAbsoluteTimeGetCurrent() - start) * 1000
-        if ms >= 8 {
+        if ms >= 8, CoachDebugSettings.tabSwitchDiagnosticsEnabled {
             print("[TabSwitchProfile] \(name) ms=\(String(format: "%.1f", ms))")
         }
         return result
@@ -23,6 +23,7 @@ enum TabSwitchProfiler {
     }
 
     static func markEvent(_ name: String) {
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else { return }
         print("[TabSwitchProfile] event=\(name)")
     }
 }

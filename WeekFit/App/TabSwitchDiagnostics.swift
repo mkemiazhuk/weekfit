@@ -52,6 +52,7 @@ enum WeekFitLifecycleTracker {
 
     static func attach(_ typeName: String) {
         #if DEBUG
+        guard CoachDebugSettings.lifecycleDiagnosticsEnabled else { return }
         lock.lock()
         liveCounts[typeName, default: 0] += 1
         let count = liveCounts[typeName] ?? 0
@@ -62,6 +63,7 @@ enum WeekFitLifecycleTracker {
 
     static func detach(_ typeName: String) {
         #if DEBUG
+        guard CoachDebugSettings.lifecycleDiagnosticsEnabled else { return }
         lock.lock()
         if let count = liveCounts[typeName], count > 0 {
             liveCounts[typeName] = count - 1
@@ -137,6 +139,7 @@ enum TabSwitchDiagnostics {
         handlerMs: Double? = nil
     ) {
         #if DEBUG
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else { return }
         lock.lock()
         switchCount += 1
         let count = switchCount
@@ -226,6 +229,7 @@ extension View {
 enum MealMemoryAudit {
     static func checkpoint(_ label: String) {
         #if DEBUG
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else { return }
         let memoryMB = TabSwitchDiagnostics.residentMemoryMB()
         print("[MealMemoryAudit] \(label) memoryMB=\(String(format: "%.1f", memoryMB))")
         #endif

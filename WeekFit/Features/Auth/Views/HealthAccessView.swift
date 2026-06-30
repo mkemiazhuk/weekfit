@@ -1318,20 +1318,26 @@ private struct SleepSetupHelpSheet: View {
                     .font(.system(size: 23, weight: .bold))
                     .foregroundStyle(accent.opacity(0.82))
             }
+            .fixedSize()
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(WeekFitLocalizedString("healthAccess.sleepDataNotAppearing"))
                     .font(.system(size: 21, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .allowsTightening(true)
 
                 Text(WeekFitLocalizedString("healthAccess.weekfitReliesOnAppleHealthAndAppleWatchSleep"))
                     .font(.system(size: 13.4, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
                     .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .allowsTightening(true)
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Button {
                 dismiss()
@@ -1350,6 +1356,7 @@ private struct SleepSetupHelpSheet: View {
                     )
             }
             .buttonStyle(.plain)
+            .fixedSize()
         }
     }
 

@@ -210,6 +210,61 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertNil(future.healthKitWorkoutUUID)
     }
 
+    func testResolvedActiveCaloriesUsesMovementEstimateWhenHealthKitIsLow() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 40,
+            steps: 8_124,
+            distanceKm: 0,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 255.9, accuracy: 0.1)
+    }
+
+    func testResolvedActiveCaloriesPrefersHealthKitWhenHigher() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 420,
+            steps: 8_124,
+            distanceKm: 0,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 420)
+    }
+
+    func testResolvedActiveCaloriesUsesDistanceWhenAvailable() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 0,
+            steps: 8_124,
+            distanceKm: 6.2,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 325.5, accuracy: 0.1)
+    }
+
+    func testResolvedExerciseMinutesUsesWorkoutDurationWhenAppleExerciseTimeIsZero() {
+        let workout = workout(from: time(hour: 8, minute: 0), to: time(hour: 8, minute: 35), type: .walking)
+
+        let resolved = HealthActivityMetricsResolver.resolvedExerciseMinutes(
+            appleExerciseMinutes: 0,
+            workouts: [workout]
+        )
+
+        XCTAssertEqual(resolved, 35)
+    }
+
+    func testResolvedExerciseMinutesPrefersAppleExerciseTimeWhenHigher() {
+        let workout = workout(from: time(hour: 8, minute: 0), to: time(hour: 8, minute: 20), type: .walking)
+
+        let resolved = HealthActivityMetricsResolver.resolvedExerciseMinutes(
+            appleExerciseMinutes: 42,
+            workouts: [workout]
+        )
+
+        XCTAssertEqual(resolved, 42)
+    }
+
     private func walk(at date: Date, durationMinutes: Int = 45) -> PlannedActivity {
         PlannedActivityBuilder.workout(
             title: "Walk",

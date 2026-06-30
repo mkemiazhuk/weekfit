@@ -41,6 +41,9 @@ final class CoachDayClosingCopyPolicyTests: XCTestCase {
         XCTAssertEqual(resolveProfile(for: result), .lowRecoveryRest)
 
         XCTAssertEqual(bridge.todayTitle, "Завершаем день")
+        XCTAssertTrue(pack.assessment.lines.first?.russian.contains("коротк") == true
+            || pack.assessment.lines.first?.russian.contains("Сон") == true)
+        XCTAssertFalse(pack.assessment.lines.first?.russian.contains("нагрузка за день") == true)
         XCTAssertTrue(pack.recommendation.lines.first?.russian.contains("дойти до сна") == true)
         XCTAssertFalse(allPackText(pack).containsDaytimeRecoveryTasks)
         XCTAssertFalse(allPackText(pack).mentionsNutritionCatchUp)
@@ -86,6 +89,85 @@ final class CoachDayClosingCopyPolicyTests: XCTestCase {
         XCTAssertTrue(pack.assessment.lines.first?.russian.contains("закрываем день") == true)
         XCTAssertFalse(allPackText(pack).containsDaytimeRecoveryTasks)
         XCTAssertFalse(allPackText(pack).contains("ещё один тяжёлый блок"))
+    }
+
+    // MARK: - 4. Completed evening walk at 23:23 — day closing, not another walk
+
+    func testLateNightAfterCompletedEveningWalkUsesDayClosingNotEveningWalk() throws {
+        let lateNight = date(hour: 23, minute: 23)
+        let morningWalk = PlannedActivity(
+            date: date(hour: 8, minute: 29),
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 48,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true
+        )
+        let eveningWalk = PlannedActivity(
+            date: date(hour: 20, minute: 30),
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 57,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true
+        )
+
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: lateNight,
+                activities: [morningWalk, eveningWalk],
+                actualLoad: moderateActualLoad(),
+                brainHour: 23
+            )
+        )
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+
+        XCTAssertEqual(result.scenario, .stableDay)
+        XCTAssertEqual(result.context.focusSource, .idle)
+        XCTAssertEqual(result.context.conversationPhase, .dayClosing)
+        XCTAssertEqual(result.context.timeOfDay, .night)
+        XCTAssertNotEqual(result.scenario, .walkEveningWindDown)
+        XCTAssertEqual(bridge.todayTitle, "Пора спать")
+        XCTAssertTrue(bridge.todayMessage.lowercased().contains("сп"))
+        let pack = try XCTUnwrap(result.copyPack)
+        XCTAssertTrue(pack.nextAction.lines.first?.russian.contains("кроват") == true)
+        XCTAssertFalse(pack.nextAction.lines.first?.russian.contains("ритуал") == true)
+    }
+
+    func testLateEveningBeforeMidnightStillUsesWindDownNotSleepNow() throws {
+        let lateEvening = date(hour: 22, minute: 45)
+        let eveningWalk = PlannedActivity(
+            date: date(hour: 20, minute: 30),
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 57,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true
+        )
+
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: lateEvening,
+                activities: [eveningWalk],
+                actualLoad: moderateActualLoad(),
+                brainHour: 22
+            )
+        )
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let pack = try XCTUnwrap(result.copyPack)
+
+        XCTAssertEqual(result.context.timeOfDay, .lateEvening)
+        XCTAssertEqual(bridge.todayTitle, "Завершаем день")
+        XCTAssertTrue(pack.nextAction.lines.first?.russian.contains("ритуал") == true)
     }
 
     // MARK: - 3. Tomorrow reserve + today load — sleep-first
@@ -159,6 +241,37 @@ final class CoachDayClosingCopyPolicyTests: XCTestCase {
         XCTAssertEqual(bridge.todayTitle, "День восстановления")
         XCTAssertTrue(pack.nextAction.lines.first?.russian.contains("прогул") == true
             || pack.nextAction.lines.first?.russian.contains("растяж") == true)
+    }
+
+    // MARK: - 5. Short sleep, no activity — sleep-specific wind-down, not load
+
+    func testLateEveningShortSleepNoActivityUsesSleepNotLoadCopy() throws {
+        let lateEvening = date(hour: 22, minute: 59)
+
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: lateEvening,
+                activities: [],
+                recovery: CoachRecoveryContext(recoveryPercent: 72, sleepHours: 5.0),
+                actualLoad: CoachActualLoadSnapshot(
+                    source: .healthKitSamplesWithAppGoalEstimate,
+                    activeCalories: 120,
+                    exerciseMinutes: 5,
+                    standHours: nil,
+                    activityGoalCalories: 600,
+                    activityProgress: 0.2
+                ),
+                brainHour: 22
+            )
+        )
+        let pack = try XCTUnwrap(result.copyPack)
+
+        XCTAssertEqual(result.scenario, .stableDay)
+        XCTAssertEqual(result.context.conversationPhase, .dayClosing)
+        XCTAssertEqual(resolveProfile(for: result), .lowRecoveryRest)
+
+        XCTAssertTrue(pack.assessment.lines.first?.russian.contains("Сон был коротким") == true)
+        XCTAssertFalse(allPackText(pack).localizedCaseInsensitiveContains("нагрузка за день"))
     }
 
     // MARK: - Helpers

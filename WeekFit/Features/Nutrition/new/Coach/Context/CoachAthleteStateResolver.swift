@@ -13,6 +13,13 @@ enum CoachAthleteStateResolver {
     }
 
     private static func resolveBodyState(dayReadiness: CoachDayReadiness) -> CoachBodyState {
+        guard dayReadiness.recoveryDataAvailable else {
+            if dayReadiness.hadHeavyYesterday {
+                return .fatigued
+            }
+            return .normal
+        }
+
         if dayReadiness.recoveryBand == .low,
            dayReadiness.sleepIsLow || dayReadiness.recoveryPercent < 40 {
             return .veryFatigued

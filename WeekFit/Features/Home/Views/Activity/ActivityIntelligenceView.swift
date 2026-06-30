@@ -88,6 +88,8 @@ struct ActivityDaySnapshot: Identifiable, Hashable {
     let sessions: [ActivitySessionSnapshot]
     let hourlyActivityPoints: [ActivityTimelinePoint]
     let historicalSameWeekdayPoints: [ActivityHistoricalPoint]
+    /// Primary sleep session associated with this calendar day (typically the prior night).
+    let sleepInterval: DateInterval?
 
     static let empty = ActivityDaySnapshot(
         date: Date(),
@@ -102,7 +104,8 @@ struct ActivityDaySnapshot: Identifiable, Hashable {
         recoveryPercent: 0,
         sessions: [],
         hourlyActivityPoints: (0...23).map { ActivityTimelinePoint(hour: $0, activeCalories: 0) },
-        historicalSameWeekdayPoints: []
+        historicalSameWeekdayPoints: [],
+        sleepInterval: nil
     )
 }
 
@@ -165,7 +168,13 @@ struct ActivityIntelligenceView: View {
                     VStack(spacing: 9) {
                         ActivityHeroCard(snapshot: snapshot)
                         ActivityDailyMetricsCard(snapshot: snapshot)
-                        ActivityTimelineCard(points: snapshot.hourlyActivityPoints)
+                        ActivityTimelineCard(
+                            points: snapshot.hourlyActivityPoints,
+                            totalActiveCalories: snapshot.activeCalories,
+                            activityGoal: snapshot.activityGoal,
+                            dayStart: Calendar.current.startOfDay(for: snapshot.date),
+                            sleepInterval: snapshot.sleepInterval
+                        )
                         WeeklyContextCard(
                             selectedSnapshot: snapshot,
                             weekSnapshots: viewModel.weekSnapshots
@@ -492,9 +501,22 @@ private struct ActivityDailyMetricsCard: View {
 
 private struct ActivityTimelineCard: View {
     let points: [ActivityTimelinePoint]
+    let totalActiveCalories: Int
+    let activityGoal: Int
+    let dayStart: Date
+    let sleepInterval: DateInterval?
+
+    private static let sleepNoiseThresholdKcal = 8.0
+    private static let minimumChartScaleKcal = 60.0
 
     private var maxCalories: Double {
-        max(points.map(\.activeCalories).max() ?? 0, 1)
+        points.map { displayCalories(for: $0) }.max() ?? 0
+    }
+
+    private var chartYAxisMax: Double {
+        let peak = max(maxCalories, 1)
+        let goalBaseline = Double(max(activityGoal, 300)) * 0.12
+        return max(peak * 1.15, goalBaseline, Self.minimumChartScaleKcal)
     }
 
     private var peakPoint: ActivityTimelinePoint? {
@@ -525,7 +547,7 @@ private struct ActivityTimelineCard: View {
 
                 activityMetric(
                     title: WeekFitLocalizedString("activity.metric.activeKcal"),
-                    value: "\(peakCalories)",
+                    value: "\(totalActiveCalories)",
                     icon: "flame.fill",
                     color: ActivityStyle.green
                 )
@@ -534,12 +556,13 @@ private struct ActivityTimelineCard: View {
             Chart(points) { point in
                 BarMark(
                     x: .value("Hour", point.hour),
-                    y: .value("Calories", point.activeCalories),
+                    y: .value("Calories", displayCalories(for: point)),
                     width: .fixed(8)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .foregroundStyle(barGradient(for: point.activeCalories))
+                .foregroundStyle(barGradient(for: point))
             }
+            .chartYScale(domain: 0...chartYAxisMax)
             .chartXAxis {
                 AxisMarks(values: [0, 3, 6, 9, 12, 15, 18, 21]) { value in
                     AxisValueLabel {
@@ -607,8 +630,9 @@ private struct ActivityTimelineCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func barGradient(for value: Double) -> LinearGradient {
-        let ratio = value / maxCalories
+    private func barGradient(for point: ActivityTimelinePoint) -> LinearGradient {
+        let value = displayCalories(for: point)
+        let ratio = value / chartYAxisMax
 
         let colors: [Color]
 
@@ -616,6 +640,11 @@ private struct ActivityTimelineCard: View {
             colors = [
                 WeekFitTheme.whiteOpacity(0.04),
                 WeekFitTheme.whiteOpacity(0.015)
+            ]
+        } else if isSleepNoise(point) {
+            colors = [
+                WeekFitTheme.whiteOpacity(0.06),
+                WeekFitTheme.whiteOpacity(0.02)
             ]
         } else if ratio >= 0.75 {
             colors = [
@@ -635,6 +664,29 @@ private struct ActivityTimelineCard: View {
         }
 
         return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+    }
+
+    private func displayCalories(for point: ActivityTimelinePoint) -> Double {
+        guard point.activeCalories > 0 else { return 0 }
+        if isSleepNoise(point) { return 0 }
+        return point.activeCalories
+    }
+
+    private func isSleepNoise(_ point: ActivityTimelinePoint) -> Bool {
+        guard point.activeCalories < Self.sleepNoiseThresholdKcal else { return false }
+        return hourIntersectsSleep(point.hour)
+    }
+
+    private func hourIntersectsSleep(_ hour: Int) -> Bool {
+        guard let sleepInterval else { return false }
+
+        let calendar = Calendar.current
+        guard let hourStart = calendar.date(byAdding: .hour, value: hour, to: dayStart),
+              let hourEnd = calendar.date(byAdding: .hour, value: hour + 1, to: dayStart) else {
+            return false
+        }
+
+        return sleepInterval.intersects(DateInterval(start: hourStart, end: hourEnd))
     }
 }
 
@@ -1001,6 +1053,8 @@ struct ActivitySessionDetailView: View {
     @State private var isRoutePreviewEnabled = true
     @State private var isClosing = false
     @State private var remainingSupplementalLoads = 0
+    @State private var supplementalMetricsSettled = false
+    @State private var routeLoadingSettled = false
 
     private var detail: ActivitySessionDetailSnapshot? {
         loadedDetail ?? session.detail
@@ -1012,6 +1066,14 @@ struct ActivitySessionDetailView: View {
 
     private var routePoints: [WorkoutRoutePoint] {
         detail?.routePoints ?? []
+    }
+
+    private var routeMapRenderIdentity: String {
+        guard let first = routePoints.first, let last = routePoints.last else {
+            return "route-empty"
+        }
+
+        return "route-\(routePoints.count)-\(first.latitude)-\(first.longitude)-\(last.latitude)-\(last.longitude)"
     }
 
     private var sessionDurationSeconds: TimeInterval {
@@ -1436,6 +1498,7 @@ struct ActivitySessionDetailView: View {
                         isRouteMapPresented = true
                     } label: {
                         WorkoutRouteMapPreview(points: routePoints, color: session.color)
+                            .id(routeMapRenderIdentity)
                             .frame(height: 132)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -1781,19 +1844,25 @@ struct ActivitySessionDetailView: View {
     private func loadSupplementalDetails() async {
         guard let workoutID = session.workoutID else { return }
 
-        if let cached = ActivitySessionDetailCache.detail(for: workoutID) {
-            loadedDetail = cached
-            return
-        }
-
         let baseDetail = detail
         let activityType = baseDetail?.activityType ?? .other
         let start = baseDetail?.startDate ?? session.startDate
         let end = baseDetail?.endDate ?? session.endDate
+        let expectsRoute = ActivityRouteExpectation.expectsRoute(for: activityType)
 
+        if let cached = ActivitySessionDetailCache.detail(
+            for: workoutID,
+            activityType: activityType
+        ) {
+            loadedDetail = cached
+            return
+        }
+
+        supplementalMetricsSettled = false
+        routeLoadingSettled = !expectsRoute
         isHeartRateLoading = true
-        isRouteLoading = true
-        remainingSupplementalLoads = 3
+        isRouteLoading = expectsRoute
+        remainingSupplementalLoads = 2
 
         Task {
             let metrics = await healthManager.loadWorkoutSupplementalMetrics(
@@ -1808,7 +1877,7 @@ struct ActivitySessionDetailView: View {
                     mergeSupplementalDetails(metrics)
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                finishMetricsSupplementalLoad(for: workoutID)
             }
         }
 
@@ -1825,27 +1894,80 @@ struct ActivitySessionDetailView: View {
                     mergeSupplementalDetails(heartRate)
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                finishMetricsSupplementalLoad(for: workoutID)
             }
         }
 
-        Task {
+        if expectsRoute {
+            Task {
+                await loadRouteDetailsWithRetry(
+                    workoutID: workoutID,
+                    start: start,
+                    end: end
+                )
+            }
+        }
+    }
+
+    private func loadRouteDetailsWithRetry(
+        workoutID: UUID,
+        start: Date,
+        end: Date
+    ) async {
+        let retryDelaysSeconds: [TimeInterval] = [0, 1.5, 3, 6, 10, 15]
+        let retryStart = Date()
+
+        for (attemptIndex, scheduledOffset) in retryDelaysSeconds.enumerated() {
+            if Task.isCancelled { return }
+
+            let elapsed = Date().timeIntervalSince(retryStart)
+            let wait = scheduledOffset - elapsed
+            if wait > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            }
+
+            if Task.isCancelled { return }
+
             let route = await healthManager.loadWorkoutRouteDetails(
                 for: workoutID,
                 start: start,
                 end: end
             )
 
-            await MainActor.run {
-                isRouteLoading = false
+            let loadedRoute = (route?.routePoints.count ?? 0) > 1
 
-                if let route, route.routePoints.count > 1 {
+            await MainActor.run {
+                if let route, loadedRoute {
                     mergeSupplementalDetails(route)
+                    isRoutePreviewEnabled = true
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                let isLastAttempt = attemptIndex == retryDelaysSeconds.count - 1
+                if loadedRoute || isLastAttempt {
+                    isRouteLoading = false
+                    routeLoadingSettled = true
+                    cacheDetailIfReady(for: workoutID)
+                }
+            }
+
+            if loadedRoute {
+                return
             }
         }
+    }
+
+    private func finishMetricsSupplementalLoad(for workoutID: UUID) {
+        remainingSupplementalLoads = max(remainingSupplementalLoads - 1, 0)
+
+        if remainingSupplementalLoads == 0 {
+            supplementalMetricsSettled = true
+            cacheDetailIfReady(for: workoutID)
+        }
+    }
+
+    private func cacheDetailIfReady(for workoutID: UUID) {
+        guard supplementalMetricsSettled, routeLoadingSettled, let loadedDetail else { return }
+        ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
     }
 
     private func mergeSupplementalDetails(_ supplemental: WorkoutHealthDetailSnapshot) {
@@ -1876,13 +1998,9 @@ struct ActivitySessionDetailView: View {
             steps: supplemental.steps ?? base?.steps,
             cadence: supplemental.cadence ?? base?.cadence
         )
-    }
 
-    private func finishSupplementalLoad(for workoutID: UUID) {
-        remainingSupplementalLoads = max(remainingSupplementalLoads - 1, 0)
-
-        if remainingSupplementalLoads == 0, let loadedDetail {
-            ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
+        if supplemental.routePoints.count > 1 {
+            isRoutePreviewEnabled = true
         }
     }
 }
@@ -1913,11 +2031,36 @@ private struct HeartRateZoneDefinition: Identifiable, Hashable {
 }
 
 @MainActor
+private enum ActivityRouteExpectation {
+    static func expectsRoute(for activityType: HKWorkoutActivityType) -> Bool {
+        switch activityType {
+        case .running, .walking, .hiking, .cycling,
+             .wheelchairWalkPace, .wheelchairRunPace,
+             .crossCountrySkiing, .downhillSkiing, .snowboarding,
+             .skatingSports, .rowing, .paddleSports:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+@MainActor
 private enum ActivitySessionDetailCache {
     private static var details: [UUID: ActivitySessionDetailSnapshot] = [:]
 
-    static func detail(for workoutID: UUID) -> ActivitySessionDetailSnapshot? {
-        details[workoutID]
+    static func detail(
+        for workoutID: UUID,
+        activityType: HKWorkoutActivityType
+    ) -> ActivitySessionDetailSnapshot? {
+        guard let cached = details[workoutID] else { return nil }
+
+        if ActivityRouteExpectation.expectsRoute(for: activityType),
+           cached.routePoints.count <= 1 {
+            return nil
+        }
+
+        return cached
     }
 
     static func store(_ detail: ActivitySessionDetailSnapshot, for workoutID: UUID) {
@@ -2248,6 +2391,8 @@ private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
 
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
     private var coordinates: [CLLocationCoordinate2D] {
         WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
     }
@@ -2260,7 +2405,7 @@ private struct WorkoutRouteMapPreview: View {
         ZStack {
             RouteMapRenderGate {
                 if let mapRegion {
-                    Map(initialPosition: .region(mapRegion), interactionModes: []) {
+                    Map(position: $cameraPosition, interactionModes: []) {
                         routeContent
                     }
                     .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
@@ -2303,6 +2448,18 @@ private struct WorkoutRouteMapPreview: View {
                 }
             }
             .allowsHitTesting(false)
+        }
+        .onAppear {
+            updateCameraPosition()
+        }
+        .onChange(of: points.count) { _, _ in
+            updateCameraPosition()
+        }
+    }
+
+    private func updateCameraPosition() {
+        if let mapRegion {
+            cameraPosition = .region(mapRegion)
         }
     }
 
@@ -2387,6 +2544,11 @@ private struct WorkoutRouteDetailMapView: View {
 
             DispatchQueue.main.async {
                 canRenderMap = true
+            }
+        }
+        .onChange(of: points.count) { _, _ in
+            if let region = WorkoutRouteGeometry.mapRegion(for: points) {
+                cameraPosition = .region(region)
             }
         }
         .onDisappear {

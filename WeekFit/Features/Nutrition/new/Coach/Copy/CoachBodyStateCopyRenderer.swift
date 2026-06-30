@@ -11,7 +11,6 @@ enum CoachBodyStateCopyRenderer {
     }
 
     private static let phase2AScenarios: Set<CoachScenarioKey> = [
-        .morningReadiness,
         .stableDay,
         .activeEndurance,
         .duringEndurance,
@@ -176,39 +175,8 @@ enum CoachBodyStateCopyRenderer {
     }
 
     private static func applyLowRecoveryRestStableDay(base: BasePack, bodyState: CoachBodyState) -> BasePack {
-        switch bodyState {
-        case .fresh, .normal:
-            return base
-        case .fatigued:
-            return BasePack(
-                assessment: .single(.en(
-                    "Recovery day — energy is softer than usual too.",
-                    "День восстановления — энергии тоже меньше обычного."
-                )),
-                recommendation: .single(.en(
-                    "Keep optional intensity off the table today.",
-                    "Оставьте необязательную интенсивность на сегодня."
-                )),
-                avoid: base.avoid,
-                nextAction: base.nextAction
-            )
-        case .veryFatigued:
-            return BasePack(
-                assessment: .single(.en(
-                    "Recovery day — the body is asking for margin, not more load.",
-                    "День восстановления — телу нужен запас, а не ещё нагрузка."
-                )),
-                recommendation: .single(.en(
-                    "Treat rest as enough — recovery is the whole plan.",
-                    "Отдыха достаточно — восстановление и есть план."
-                )),
-                avoid: base.avoid,
-                nextAction: .single(.en(
-                    "Rest or walk briefly before anything demanding.",
-                    "Отдых или короткая прогулка — перед чем-то серьёзным."
-                ))
-            )
-        }
+        // Profile-specific packs already own recovery timing; body state must not replace them.
+        base
     }
 
     private static func applyStableDay(base: BasePack, bodyState: CoachBodyState) -> BasePack {

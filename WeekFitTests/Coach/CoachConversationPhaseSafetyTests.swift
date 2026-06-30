@@ -235,7 +235,8 @@ final class CoachConversationPhaseSafetyTests: XCTestCase {
             context: openingContext,
             resolution: result.resolution,
             todayInsight: result.todayInsight,
-            copyPack: result.copyPack
+            copyPack: result.copyPack,
+            morningBriefFacts: result.morningBriefFacts
         )
         let injectedBridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: injectedResult))
 

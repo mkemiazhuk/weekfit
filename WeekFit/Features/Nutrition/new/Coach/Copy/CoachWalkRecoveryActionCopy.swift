@@ -55,7 +55,7 @@ enum CoachWalkRecoveryActionCopy {
         case .live:
             return liveDraft()
         case .completed:
-            return completedDraft()
+            return completedDraft(input: input)
         }
     }
 }
@@ -86,7 +86,11 @@ enum CoachWalkRecoveryActionPresentation {
         }
     }
 
-    static func teaserMessage(for phase: CoachWalkRecoveryActionCopy.Phase, russian: Bool) -> String {
+    static func teaserMessage(
+        for phase: CoachWalkRecoveryActionCopy.Phase,
+        timeOfDay: CoachTimeOfDay,
+        russian: Bool
+    ) -> String {
         switch phase {
         case .upcoming:
             return russian
@@ -97,9 +101,14 @@ enum CoachWalkRecoveryActionPresentation {
                 ? "Держите темп лёгким."
                 : "Keep the pace easy."
         case .completed:
+            if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Остаток дня — спокойно."
+                    : "Keep the rest of the day calm."
+            }
             return russian
-                ? "Остаток дня — спокойно."
-                : "Keep the rest of the day calm."
+                ? "Сегодня без лишней интенсивности."
+                : "Keep today calm — nothing to prove."
         }
     }
 
@@ -154,7 +163,20 @@ private extension CoachWalkRecoveryActionCopy {
         )
     }
 
-    static func completedDraft() -> CoachCopyRegistryScenarios.Draft {
+    static func completedDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        if CoachCopyClosureTiming.allowsDayClosurePhrasing(
+            timeOfDay: input.timeOfDay,
+            conversationPhase: input.conversationPhase
+        ) {
+            return completedClosureDraft(input: input)
+        }
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return completedEveningDraft(input: input)
+        }
+        return completedDaytimeDraft(input: input)
+    }
+
+    static func completedClosureDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
         CoachCopyRegistryScenarios.Draft(
             assessment: .en(
                 "The walk has already helped the body ease out of load.",
@@ -162,15 +184,54 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Keep the rest of the day calm — no new hard block.",
-                "Теперь держите остаток дня спокойно — без нового интенсивного блока."
+                "Остаток дня спокойный — без нового интенсивного блока."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте шаги через силу только ради цифр."
             ),
-            nextAction: .en(
-                "Water, food as planned, then a bit of rest.",
-                "Вода, еда по плану и немного отдыха."
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                mealWindowOpen: input.mealWindowOpen
+            )
+        )
+    }
+
+    static func completedEveningDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        CoachCopyRegistryScenarios.Draft(
+            assessment: .en(
+                "The walk has already helped the body ease out of load.",
+                "Прогулка уже помогла мягко сбросить нагрузку."
+            ),
+            recommendation: .en(
+                "Keep the rest of the day calm — no new hard block.",
+                "Остаток дня спокойный — без нового интенсивного блока."
+            ),
+            avoid: .en(
+                "Do not force extra steps just to chase numbers.",
+                "Не добавляйте шаги через силу только ради цифр."
+            ),
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                mealWindowOpen: input.mealWindowOpen
+            )
+        )
+    }
+
+    static func completedDaytimeDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        CoachCopyRegistryScenarios.Draft(
+            assessment: .en(
+                "The walk has already helped the body ease out of load.",
+                "Прогулка уже помогла мягко сбросить нагрузку."
+            ),
+            recommendation: .en(
+                "Walk is already in — keep a calm ordinary rhythm from here.",
+                "Прогулка уже есть — дальше держите обычный спокойный ритм."
+            ),
+            avoid: .en(
+                "Do not force extra steps just to chase numbers.",
+                "Не добавляйте шаги через силу только ради цифр."
+            ),
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                mealWindowOpen: input.mealWindowOpen
             )
         )
     }

@@ -23,9 +23,9 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             return date
         }
 
-        let now = Date()
-        UserDefaults.standard.set(now, forKey: syncStartDateKey)
-        return now
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        UserDefaults.standard.set(startOfDay, forKey: syncStartDateKey)
+        return startOfDay
     }
 
     private init() {}

@@ -340,7 +340,8 @@ final class CoachScenarioTests: XCTestCase {
         XCTAssertEqual(result.scenario, .saunaActive)
         XCTAssertEqual(result.modifiers.activityType, .sauna)
         XCTAssertEqual(result.todayInsight.semanticColor, .heat)
-        XCTAssertEqual(result.todayInsight.urgencyLevel, .live)
+        XCTAssertEqual(result.todayInsight.conversationEnergy, .medium)
+        XCTAssertEqual(result.todayInsight.urgencyLevel, .protective)
     }
 
     // MARK: - Guard: dayLoad not in ScenarioKey names

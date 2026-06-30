@@ -66,6 +66,47 @@ struct CoachUIPresentation: Equatable, Sendable {
     let todayTitle: String
     let todayMessage: String
     let whyRows: [CoachPresentationWhyRow]
+    let showsLimitedConfidenceBadge: Bool
+
+    init(
+        scenario: CoachScenarioKey,
+        assessment: String,
+        recommendation: String,
+        avoid: String,
+        nextAction: String,
+        supportingSignals: [String],
+        warningMessage: String?,
+        warningAlert: CoachSafetyAlert?,
+        semanticColor: CoachSemanticColor,
+        alertSeverity: CoachAlertSeverity,
+        icon: String,
+        urgencyLevel: CoachUrgencyLevel,
+        statusLabel: String,
+        coachTitle: String,
+        todayTitle: String,
+        todayMessage: String,
+        whyRows: [CoachPresentationWhyRow],
+        showsLimitedConfidenceBadge: Bool = false
+    ) {
+        self.scenario = scenario
+        self.assessment = assessment
+        self.recommendation = recommendation
+        self.avoid = avoid
+        self.nextAction = nextAction
+        self.supportingSignals = supportingSignals
+        self.warningMessage = warningMessage
+        self.warningAlert = warningAlert
+        self.semanticColor = semanticColor
+        self.alertSeverity = alertSeverity
+        self.icon = icon
+        self.urgencyLevel = urgencyLevel
+        self.statusLabel = statusLabel
+        self.coachTitle = coachTitle
+        self.todayTitle = todayTitle
+        self.todayMessage = todayMessage
+        self.whyRows = whyRows
+        self.showsLimitedConfidenceBadge = showsLimitedConfidenceBadge
+    }
 
     var accentColor: Color { semanticColor.uiColor }
 }

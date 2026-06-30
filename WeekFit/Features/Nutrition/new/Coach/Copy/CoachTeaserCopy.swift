@@ -50,18 +50,37 @@ enum CoachTeaserCopy {
         case .tomorrowProtection:
             return bi("Protect your energy", "Сегодня уже достаточно")
         case .protectTomorrowFresh:
+            if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayTitle
+            }
             return bi("Save it for tomorrow", "Сохраните запас на завтра")
         case .recoveryAfterHeavyYesterday:
+            if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayTitle
+            }
             return bi("Recovery day", "День восстановления")
         case .lowRecoveryPrep:
             return bi("Check readiness first", "Проверьте готовность")
         case .morningReadiness:
+            if let facts = result.morningBriefFacts {
+                let teaser = CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario)
+                return teaser.todayTitle
+            }
             return bi("Set your pace", "С чего начать")
         case .stableDay:
             if let profile = stableDayProfile(from: result) {
+                let hadHeavyYesterday = result.context.dayReadiness.hadHeavyYesterday
                 return bi(
-                    CoachStableDayPresentation.todayTitle(for: profile, russian: false),
-                    CoachStableDayPresentation.todayTitle(for: profile, russian: true)
+                    CoachStableDayPresentation.todayTitle(
+                        for: profile,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        russian: false
+                    ),
+                    CoachStableDayPresentation.todayTitle(
+                        for: profile,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        russian: true
+                    )
                 )
             }
             return bi("Steady day", "Спокойный день")
@@ -81,11 +100,13 @@ enum CoachTeaserCopy {
                 CoachWalkAfterHeavyLoadPresentation.todayTitle(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: result.context.timeOfDay,
                     russian: false
                 ),
                 CoachWalkAfterHeavyLoadPresentation.todayTitle(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: result.context.timeOfDay,
                     russian: true
                 )
             )
@@ -163,11 +184,17 @@ enum CoachTeaserCopy {
             }
             return bi("Keep the evening easy.", "Остаток дня спокойный.")
         case .protectTomorrowFresh:
+            if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayMessage
+            }
             return bi(
-                "Good recovery — spend today with tomorrow in mind.",
-                "Восстановление хорошее — берегите силы на завтра."
+                "Keep today calm — tomorrow needs fresh legs.",
+                "Сегодня легко — завтра нужны свежие ноги."
             )
         case .recoveryAfterHeavyYesterday:
+            if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayMessage
+            }
             return bi(
                 "Yesterday still counts — go easier today.",
                 "Вчера ещё в теле — сегодня мягче."
@@ -178,20 +205,39 @@ enum CoachTeaserCopy {
                 "Начните легче, чем в плане."
             )
         case .morningReadiness:
+            if let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayMessage
+            }
             return bi(
-                "Lead with how you feel.",
-                "Слушайте тело, не только календарь."
+                "Pick today's first block.",
+                "Выберите первый блок дня."
             )
         case .stableDay:
             if let profile = stableDayProfile(from: result) {
+                let input = CoachCopyBuildInput.from(result: result)
+                let hadHeavyYesterday = result.context.dayReadiness.hadHeavyYesterday
+                let completedWalk = CoachConversationSemanticTimingAudit.Context
+                    .completedRecoveryWalkToday(input)
                 return bi(
-                    CoachStableDayPresentation.teaserMessage(for: profile, russian: false),
-                    CoachStableDayPresentation.teaserMessage(for: profile, russian: true)
+                    CoachStableDayPresentation.teaserMessage(
+                        for: profile,
+                        timeOfDay: result.context.timeOfDay,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        completedRecoveryWalkToday: completedWalk,
+                        russian: false
+                    ),
+                    CoachStableDayPresentation.teaserMessage(
+                        for: profile,
+                        timeOfDay: result.context.timeOfDay,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        completedRecoveryWalkToday: completedWalk,
+                        russian: true
+                    )
                 )
             }
             return bi(
                 "Small steps beat a late catch-up.",
-                "Маленькие шаги лучше, чем догонять вечером."
+                "Маленькие шаги лучше, чем наверстывать позже."
             )
         case .duringEndurance:
             return bi("Hold effort flat.", "Держите темп ровным.")
@@ -202,11 +248,13 @@ enum CoachTeaserCopy {
                 CoachWalkAfterHeavyLoadPresentation.teaserMessage(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: result.context.timeOfDay,
                     russian: false
                 ),
                 CoachWalkAfterHeavyLoadPresentation.teaserMessage(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: result.context.timeOfDay,
                     russian: true
                 )
             )
@@ -285,8 +333,16 @@ enum CoachTeaserCopy {
         case .walkRecoveryAction:
             let walkPhase = CoachWalkRecoveryActionPresentation.phase(for: result.context)
             return bi(
-                CoachWalkRecoveryActionPresentation.teaserMessage(for: walkPhase, russian: false),
-                CoachWalkRecoveryActionPresentation.teaserMessage(for: walkPhase, russian: true)
+                CoachWalkRecoveryActionPresentation.teaserMessage(
+                    for: walkPhase,
+                    timeOfDay: result.context.timeOfDay,
+                    russian: false
+                ),
+                CoachWalkRecoveryActionPresentation.teaserMessage(
+                    for: walkPhase,
+                    timeOfDay: result.context.timeOfDay,
+                    russian: true
+                )
             )
         case .saunaPreparation:
             return bi("Hydrate before the heat.", "Выпейте воды перед жаром.")
@@ -311,16 +367,28 @@ enum CoachTeaserCopy {
 
         switch scenario {
         case .morningReadiness:
-            return bi("Morning reset", "С чего начать день")
+            if let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).coachHeadline
+            }
+            return bi("Morning plan", "План на утро")
         case .stableDay:
             if let profile = CoachStableDayProfile.resolve(
                 scenario: scenario,
                 modifiers: modifiers,
                 dayReadiness: context.dayReadiness
             ) {
+                let hadHeavyYesterday = context.dayReadiness.hadHeavyYesterday
                 return bi(
-                    CoachStableDayPresentation.coachHeadline(for: profile, russian: false),
-                    CoachStableDayPresentation.coachHeadline(for: profile, russian: true)
+                    CoachStableDayPresentation.coachHeadline(
+                        for: profile,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        russian: false
+                    ),
+                    CoachStableDayPresentation.coachHeadline(
+                        for: profile,
+                        hadHeavyYesterday: hadHeavyYesterday,
+                        russian: true
+                    )
                 )
             }
             return bi("Steady day", "Спокойный день")
@@ -340,19 +408,27 @@ enum CoachTeaserCopy {
                 CoachWalkAfterHeavyLoadPresentation.coachHeadline(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: context.timeOfDay,
                     russian: false
                 ),
                 CoachWalkAfterHeavyLoadPresentation.coachHeadline(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
+                    timeOfDay: context.timeOfDay,
                     russian: true
                 )
             )
         case .tomorrowProtection:
             return bi("Recovery mode", "Режим восстановления")
         case .protectTomorrowFresh:
+            if context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).coachHeadline
+            }
             return bi("Save for tomorrow", "Запас на завтра")
         case .recoveryAfterHeavyYesterday:
+            if context.timeOfDay == .morning, let facts = result.morningBriefFacts {
+                return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).coachHeadline
+            }
             return bi("Recovery day", "День восстановления")
         case .lowRecoveryPrep:
             return bi("Check readiness", "Проверьте готовность")

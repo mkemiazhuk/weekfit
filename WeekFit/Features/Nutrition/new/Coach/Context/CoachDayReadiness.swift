@@ -14,18 +14,41 @@ struct CoachDayReadiness: Equatable, Sendable {
     let recoveryBand: CoachRecoveryBand
     let hadHeavyYesterday: Bool
     let sleepIsLow: Bool
+    let recoveryDataAvailable: Bool
+
+    init(
+        recoveryPercent: Int,
+        sleepHours: Double,
+        recoveryBand: CoachRecoveryBand,
+        hadHeavyYesterday: Bool,
+        sleepIsLow: Bool,
+        recoveryDataAvailable: Bool? = nil
+    ) {
+        let dataAvailable = recoveryDataAvailable ?? (recoveryPercent > 0 || sleepHours > 0)
+        self.recoveryPercent = recoveryPercent
+        self.sleepHours = sleepHours
+        self.recoveryBand = dataAvailable ? recoveryBand : .moderate
+        self.hadHeavyYesterday = hadHeavyYesterday
+        self.sleepIsLow = dataAvailable ? sleepIsLow : false
+        self.recoveryDataAvailable = dataAvailable
+    }
 
     static let unknown = CoachDayReadiness(
         recoveryPercent: 70,
         sleepHours: 7.5,
         recoveryBand: .moderate,
         hadHeavyYesterday: false,
-        sleepIsLow: false
+        sleepIsLow: false,
+        recoveryDataAvailable: true
     )
 
-    var isLowRecovery: Bool { recoveryBand == .low }
+    var isLowRecovery: Bool {
+        recoveryDataAvailable && recoveryBand == .low
+    }
 
-    var isGoodRecovery: Bool { recoveryBand == .good }
+    var isGoodRecovery: Bool {
+        recoveryDataAvailable && recoveryBand == .good
+    }
 }
 
 enum CoachDayReadinessResolver {
@@ -36,16 +59,28 @@ enum CoachDayReadinessResolver {
 
     static func resolve(from input: CoachInputSnapshot) -> CoachDayReadiness {
         let recovery = input.recoveryContext
-        let recoveryBand = recoveryBand(for: recovery.recoveryPercent)
         let hadHeavyYesterday = input.brain.past.hasHighActivityLoad
             || input.brain.past.completedWorkoutsCount >= 2
+        let recoveryDataAvailable = recovery.recoveryPercent > 0 || recovery.sleepHours > 0
+
+        guard recoveryDataAvailable else {
+            return CoachDayReadiness(
+                recoveryPercent: 0,
+                sleepHours: 0,
+                recoveryBand: .moderate,
+                hadHeavyYesterday: hadHeavyYesterday,
+                sleepIsLow: false,
+                recoveryDataAvailable: false
+            )
+        }
 
         return CoachDayReadiness(
             recoveryPercent: recovery.recoveryPercent,
             sleepHours: recovery.sleepHours,
-            recoveryBand: recoveryBand,
+            recoveryBand: recoveryBand(for: recovery.recoveryPercent),
             hadHeavyYesterday: hadHeavyYesterday,
-            sleepIsLow: recovery.sleepHours < lowSleepHours
+            sleepIsLow: recovery.sleepHours < lowSleepHours,
+            recoveryDataAvailable: true
         )
     }
 
@@ -95,6 +130,9 @@ enum CoachDayReadinessRouter {
         guard context.activityFamily == .none else { return false }
         guard context.dayReadiness.hadHeavyYesterday else { return false }
         guard context.dayLoadBand == .fresh else { return false }
+        if !context.dayReadiness.recoveryDataAvailable {
+            return true
+        }
         return context.dayReadiness.isLowRecovery || context.dayReadiness.sleepIsLow
     }
 
@@ -103,6 +141,7 @@ enum CoachDayReadinessRouter {
     static func shouldUseLowRecoveryPrep(_ context: CoachContext) -> Bool {
         guard context.sessionPhase == .pre else { return false }
         guard context.activityState == .upcoming else { return false }
+        guard context.dayReadiness.recoveryDataAvailable else { return false }
         switch context.activityFamily {
         case .endurance, .strength, .racket:
             break

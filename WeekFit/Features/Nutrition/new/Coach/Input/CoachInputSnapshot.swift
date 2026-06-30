@@ -70,6 +70,7 @@ struct CoachInputSnapshot {
     let dayContext: CoachDayContext
     let recoveryContext: CoachRecoveryContext
     let nutritionContext: CoachNutritionContext?
+    let isHealthAccessGranted: Bool
     let source: String
 
     var dayPriorityModel: DayPriorityModel {
@@ -87,6 +88,7 @@ struct CoachInputSnapshot {
         dayContext: CoachDayContext? = nil,
         recoveryContext: CoachRecoveryContext,
         nutritionContext: CoachNutritionContext?,
+        isHealthAccessGranted: Bool = true,
         source: String
     ) {
         self.metricsSnapshotID = metricsSnapshotID
@@ -104,6 +106,7 @@ struct CoachInputSnapshot {
         self.dayContext = resolvedDayContext
         self.recoveryContext = recoveryContext
         self.nutritionContext = nutritionContext
+        self.isHealthAccessGranted = isHealthAccessGranted
         self.source = source
     }
 }

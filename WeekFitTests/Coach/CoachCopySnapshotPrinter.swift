@@ -156,7 +156,8 @@ enum CoachCopySnapshotPrinter {
             context: context,
             resolution: resolution,
             todayInsight: insight,
-            copyPack: pack
+            copyPack: pack,
+            morningBriefFacts: nil
         )
     }
 

@@ -23,6 +23,7 @@ enum CoachStableDayProfile: String, Equatable, Sendable, CaseIterable {
         guard scenario == .stableDay else { return nil }
 
         if modifiers.completedSeriousActivities == .none,
+           dayReadiness.recoveryDataAvailable,
            dayReadiness.isLowRecovery || dayReadiness.sleepIsLow {
             return .lowRecoveryRest
         }
@@ -47,12 +48,19 @@ enum CoachStableDayProfile: String, Equatable, Sendable, CaseIterable {
 
 enum CoachStableDayPresentation {
 
-    static func todayTitle(for profile: CoachStableDayProfile, russian: Bool) -> String {
+    static func todayTitle(
+        for profile: CoachStableDayProfile,
+        hadHeavyYesterday: Bool = false,
+        russian: Bool
+    ) -> String {
         switch profile {
         case .emptyDay:
             return russian ? "Спокойный день" : "Steady day"
         case .lowRecoveryRest:
-            return russian ? "День восстановления" : "Recovery day"
+            if hadHeavyYesterday {
+                return russian ? "После вчерашней нагрузки" : "After yesterday's load"
+            }
+            return russian ? "Спокойный день восстановления" : "Calm recovery day"
         case .tomorrowReserve:
             return russian ? "Запас на завтра" : "Save for tomorrow"
         case .workBanked:
@@ -60,26 +68,39 @@ enum CoachStableDayPresentation {
         }
     }
 
-    static func coachHeadline(for profile: CoachStableDayProfile, russian: Bool) -> String {
-        switch profile {
-        case .emptyDay:
-            return russian ? "Спокойный день" : "Steady day"
-        case .lowRecoveryRest:
-            return russian ? "День восстановления" : "Recovery day"
-        case .tomorrowReserve:
-            return russian ? "Запас на завтра" : "Save for tomorrow"
-        case .workBanked:
-            return russian ? "Восстанавливаемся" : "Recovering now"
-        }
+    static func coachHeadline(
+        for profile: CoachStableDayProfile,
+        hadHeavyYesterday: Bool = false,
+        russian: Bool
+    ) -> String {
+        todayTitle(for: profile, hadHeavyYesterday: hadHeavyYesterday, russian: russian)
     }
 
-    static func teaserMessage(for profile: CoachStableDayProfile, russian: Bool) -> String {
+    static func teaserMessage(
+        for profile: CoachStableDayProfile,
+        timeOfDay: CoachTimeOfDay,
+        hadHeavyYesterday: Bool = false,
+        completedRecoveryWalkToday: Bool = false,
+        russian: Bool
+    ) -> String {
         switch profile {
         case .emptyDay:
             return russian
-                ? "Маленькие шаги лучше, чем догонять вечером."
+                ? "Маленькие шаги лучше, чем наверстывать позже."
                 : "Small steps beat a late catch-up."
         case .lowRecoveryRest:
+            if hadHeavyYesterday,
+               completedRecoveryWalkToday,
+               !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Прогулка уже есть — дальше спокойный ритм."
+                    : "Walk is already in — keep a calm rhythm from here."
+            }
+            if hadHeavyYesterday, !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Сегодня мягче — без лишней интенсивности."
+                    : "Go easier today — no extra intensity."
+            }
             return russian
                 ? "Сегодня лучше без лишней интенсивности."
                 : "Keep optional intensity off the table today."
@@ -88,9 +109,14 @@ enum CoachStableDayPresentation {
                 ? "Берегите силы на завтра."
                 : "Hold reserve for tomorrow's session."
         case .workBanked:
+            if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Остаток дня — восстановление."
+                    : "Recovery is the job for the rest of today."
+            }
             return russian
-                ? "Остаток дня — восстановление."
-                : "Recovery is the job for the rest of today."
+                ? "Сегодня без лишней интенсивности."
+                : "Keep optional intensity off the table today."
         }
     }
 
@@ -138,30 +164,27 @@ enum CoachStableDayCopy {
     static func basePack(for input: CoachCopyBuildInput) -> BasePack {
         switch CoachStableDayProfile.resolve(for: input) {
         case .lowRecoveryRest:
-            return lowRecoveryRestPack()
+            return lowRecoveryRestPack(input: input)
         case .tomorrowReserve:
             return tomorrowReservePack(input: input)
         case .workBanked:
             return workBankedPack(input: input)
         case .emptyDay, .none:
-            return emptyDayPack()
+            return emptyDayPack(input: input)
         }
     }
 
-    private static func emptyDayPack() -> BasePack {
+    private static func emptyDayPack(input: CoachCopyBuildInput) -> BasePack {
         BasePack(
             assessment: .single(.en(
                 "Nothing urgent is pulling the day off balance.",
                 "День идёт спокойно — ничего срочного."
             )),
             recommendation: .single(.en(
-                "Small, steady moves beat a late catch-up.",
-                "Лучше маленькие шаги, чем догонять вечером."
+                "Small, steady moves beat catching up later.",
+                "Лучше маленькие шаги, чем наверстывать позже."
             )),
-            avoid: .single(.en(
-                "Don't borrow effort from tonight without a reason.",
-                "Не тратьте вечерние силы без необходимости."
-            )),
+            avoid: .single(CoachPresentationHorizonPhrasing.avoidBorrowingEveningEffort(input: input)),
             nextAction: .single(.en(
                 "Take five quiet minutes before your next block.",
                 "Перед следующим делом — пять минут тишины."
@@ -169,7 +192,71 @@ enum CoachStableDayCopy {
         )
     }
 
-    private static func lowRecoveryRestPack() -> BasePack {
+    private static func lowRecoveryRestPack(input: CoachCopyBuildInput) -> BasePack {
+        if input.dayReadiness.hadHeavyYesterday {
+            return heavyYesterdayLowRecoveryPack(input: input)
+        }
+        return standardLowRecoveryRestPack()
+    }
+
+    private static func heavyYesterdayLowRecoveryPack(input: CoachCopyBuildInput) -> BasePack {
+        let hasWalk = CoachConversationSemanticTimingAudit.Context.completedRecoveryWalkToday(input)
+
+        let assessment: CoachBilingualText
+        if CoachCopyClosureTiming.allowsDayClosurePhrasing(
+            timeOfDay: input.timeOfDay,
+            conversationPhase: input.conversationPhase
+        ) {
+            assessment = .en(
+                "Yesterday's load landed — let today close calmly.",
+                "Вчерашняя нагрузка отозвалась — день можно завершить спокойно."
+            )
+        } else if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            assessment = .en(
+                "Yesterday's load is still in the legs — keep the evening easy.",
+                "Вчерашняя нагрузка ещё чувствуется — вечер без спешки."
+            )
+        } else {
+            assessment = .en(
+                "After yesterday's load — don't force it today.",
+                "После вчерашней нагрузки сегодня лучше не форсировать."
+            )
+        }
+
+        let recommendation: CoachBilingualText
+        if hasWalk {
+            recommendation = .en(
+                "Walk is already in — keep a calm ordinary rhythm from here.",
+                "Прогулка уже есть — дальше держите обычный спокойный ритм."
+            )
+        } else if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            recommendation = .en(
+                "Keep the rest of the day unhurried.",
+                "Остаток дня без спешки."
+            )
+        } else {
+            recommendation = .en(
+                "Today is for recovery — keep the morning easy.",
+                "Сегодня для восстановления — утро держите лёгким."
+            )
+        }
+
+        return BasePack(
+            assessment: .single(assessment),
+            recommendation: .single(recommendation),
+            avoid: .single(.en(
+                "Don't chase steps or calories for the numbers alone.",
+                "Не добирайте шаги или калории только ради цифр."
+            )),
+            nextAction: .single(
+                CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                )
+            )
+        )
+    }
+
+    private static func standardLowRecoveryRestPack() -> BasePack {
         BasePack(
             assessment: .single(.en(
                 "Recovery hasn't caught up after recent strain.",
@@ -231,10 +318,15 @@ enum CoachStableDayCopy {
                     "Switch to recovery mode now; sleep will do more than another effort.",
                     "Сейчас лучше перейти в режим восстановления: сон даст больше, чем ещё одна нагрузка."
                 )
-                : .en(
-                    "Keep the rest of the day light so tomorrow's session still has quality.",
-                    "Оставьте остаток дня лёгким, чтобы завтрашняя тренировка прошла качественно."
-                )),
+                : CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay)
+                    ? .en(
+                        "Keep the rest of the day light so tomorrow's session still has quality.",
+                        "Оставьте остаток дня лёгким, чтобы завтрашняя тренировка прошла качественно."
+                    )
+                    : .en(
+                        "Keep today light so tomorrow's session still has quality.",
+                        "Держите сегодня легко — завтрашняя тренировка должна пройти качественно."
+                    )),
             avoid: .single(.en(
                 "Extra intensity tonight is more likely to steal from tomorrow than improve today.",
                 "Лишняя интенсивность сегодня скорее заберёт силы у завтра, чем улучшит сегодняшний день."
@@ -269,19 +361,27 @@ enum CoachStableDayCopy {
         if input.modifiers.completedSeriousActivities == .twoOrMore {
             return stackedWorkBankedPack(input: input)
         }
-        if input.timeOfDay == .midday {
-            return earlyDoneWorkBankedPack(input: input)
+        if !CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return daytimeWorkBankedPack(input: input)
         }
         return standardWorkBankedPack(input: input)
     }
 
-    private static func standardWorkBankedPack(input: CoachCopyBuildInput) -> BasePack {
-        BasePack(
-            assessment: .single(workBankedAssessment(for: input.modifiers.lastCompletedActivityType)),
-            recommendation: .single(.en(
-                "Keep the rest of the day unhurried.",
-                "Остаток дня без спешки."
-            )),
+    private static func daytimeWorkBankedPack(input: CoachCopyBuildInput) -> BasePack {
+        let assessment: CoachBilingualText
+        switch input.timeOfDay {
+        case .morning, .midday:
+            assessment = .en(
+                "Morning work is done — the afternoon can stay easy.",
+                "Утренняя работа сделана — день можно провести легко."
+            )
+        default:
+            assessment = workBankedAssessment(for: input.modifiers.lastCompletedActivityType)
+        }
+
+        return BasePack(
+            assessment: .single(assessment),
+            recommendation: .single(daytimeWorkBankedRecommendation(for: input.timeOfDay)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
                 "Не добавляйте ещё один тяжёлый блок."
@@ -290,16 +390,35 @@ enum CoachStableDayCopy {
         )
     }
 
-    private static func earlyDoneWorkBankedPack(input: CoachCopyBuildInput) -> BasePack {
-        BasePack(
-            assessment: .single(.en(
-                "Morning work is done — the afternoon can stay easy.",
-                "Утренняя работа сделана — день можно провести легко."
-            )),
-            recommendation: .single(.en(
+    private static func daytimeWorkBankedRecommendation(for timeOfDay: CoachTimeOfDay) -> CoachBilingualText {
+        switch timeOfDay {
+        case .morning, .midday:
+            return .en(
                 "Leave hard blocks off the calendar until tomorrow.",
                 "Тяжёлые блоки — не сегодня."
-            )),
+            )
+        default:
+            return .en(
+                "Keep today easy — no extra hard blocks.",
+                "Сегодня без лишней интенсивности."
+            )
+        }
+    }
+
+    private static func workBankedRecommendation(input: CoachCopyBuildInput) -> CoachBilingualText {
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return .en(
+                "Keep the rest of the day unhurried.",
+                "Остаток дня без спешки."
+            )
+        }
+        return daytimeWorkBankedRecommendation(for: input.timeOfDay)
+    }
+
+    private static func standardWorkBankedPack(input: CoachCopyBuildInput) -> BasePack {
+        BasePack(
+            assessment: .single(workBankedAssessment(for: input.modifiers.lastCompletedActivityType)),
+            recommendation: .single(workBankedRecommendation(input: input)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
                 "Не добавляйте ещё один тяжёлый блок."
@@ -314,10 +433,7 @@ enum CoachStableDayCopy {
                 "A full day of training — now it's about landing softly.",
                 "Насыщенный день — сейчас важно спокойно приземлиться."
             )),
-            recommendation: .single(.en(
-                "Keep the rest of the day unhurried.",
-                "Остаток дня без спешки."
-            )),
+            recommendation: .single(workBankedRecommendation(input: input)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
                 "Не добавляйте ещё один тяжёлый блок."
@@ -357,6 +473,9 @@ enum CoachStableDayCopy {
     }
 
     private static func workBankedNextAction(input: CoachCopyBuildInput) -> CoachBilingualText {
+        if !input.mealWindowOpen {
+            return CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(mealWindowOpen: false)
+        }
         if input.modifiers.fuelBehind || input.fuelState.isBehind {
             return CoachCopyNutritionTiming.fuelCatchUpNextAction(for: input)
         }

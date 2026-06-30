@@ -17,8 +17,9 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(makeInput(sessionPhase: .pre, focusSource: .upcoming)))
         let russian = joinedRussian(pack)
 
-        XCTAssertTrue(russian.contains("плотный день позади"))
+        XCTAssertTrue(russian.contains("после нагрузки"))
         XCTAssertTrue(russian.contains("успокоиться"))
+        XCTAssertFalse(russian.contains("день позади"))
         XCTAssertFalse(russian.contains("основная работа"))
     }
 
@@ -30,13 +31,14 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         XCTAssertFalse(russian.contains("основная работа"))
     }
 
-    func testCompletedWalkAfterHeavyLoadWithSeriousWorkUsesRestOfDayCopy() throws {
+    func testCompletedWalkAfterHeavyLoadWithSeriousWorkUsesRestOfDayCopyAtEvening() throws {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
             makeInput(
                 sessionPhase: .settledPost,
                 focusSource: .recentCompleted,
                 activityState: .finished,
-                minutesSinceEnd: 88
+                minutesSinceEnd: 88,
+                timeOfDay: .evening
             )
         ))
         let russian = joinedRussian(pack)
@@ -46,6 +48,24 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         XCTAssertTrue(russian.contains("отдыха"))
         XCTAssertFalse(russian.contains("15–20"))
         XCTAssertFalse(russian.lowercased().contains("идите"))
+    }
+
+    func testCompletedWalkAfterHeavyLoadWithSeriousWorkUsesDaytimeCopyAfternoon() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeInput(
+                sessionPhase: .settledPost,
+                focusSource: .recentCompleted,
+                activityState: .finished,
+                minutesSinceEnd: 88,
+                timeOfDay: .afternoon
+            )
+        ))
+        let russian = joinedRussian(pack)
+
+        XCTAssertTrue(russian.contains("основная работа"))
+        XCTAssertTrue(russian.contains("дальше без спешки") || russian.contains("без нового тяжёлого"))
+        XCTAssertFalse(russian.contains("остаток дня"))
+        XCTAssertFalse(russian.contains("завершить"))
     }
 
     func testCompletedWalkAfterHeavyLoadRegressionAfterCoreAndWalk() throws {
@@ -69,7 +89,7 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
 
         XCTAssertEqual(bridge.todayTitle, "Восстанавливаемся")
         XCTAssertEqual(bridge.coachTitle, "Восстанавливаемся")
-        XCTAssertTrue(russian.contains("основная работа уже сделана"))
+        XCTAssertTrue(russian.contains("основная работа сделана"))
         XCTAssertFalse(russian.contains("15–20 минут"))
         XCTAssertFalse(russian.contains("восстановительная прогулка"))
     }
@@ -82,7 +102,8 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         activityState: CoachActivityState = .upcoming,
         minutesSinceEnd: Int? = nil,
         dayReadiness: CoachDayReadiness? = nil,
-        completedSerious: CoachCompletedSeriousActivities = .one
+        completedSerious: CoachCompletedSeriousActivities = .one,
+        timeOfDay: CoachTimeOfDay = .afternoon
     ) -> CoachCopyBuildInput {
         let readiness = dayReadiness ?? CoachDayReadiness(
             recoveryPercent: 82,
@@ -101,7 +122,7 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
                 activityType: .walk,
                 durationBand: .short,
                 completedSeriousActivities: completedSerious,
-                timeOfDay: .afternoon,
+                timeOfDay: timeOfDay,
                 stackedDayActiveRisk: false,
                 lastCompletedActivityType: .fullBody
             ),
@@ -157,7 +178,8 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
             context: context,
             resolution: resolution,
             todayInsight: insight,
-            copyPack: pack
+            copyPack: pack,
+            morningBriefFacts: nil
         )
     }
 

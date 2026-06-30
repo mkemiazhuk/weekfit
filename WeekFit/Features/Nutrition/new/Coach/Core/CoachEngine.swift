@@ -15,6 +15,7 @@ enum CoachEngine {
         let resolution: CoachScenarioResolution
         let todayInsight: CoachTodayInsight
         let copyPack: CoachCopyPack?
+        let morningBriefFacts: CoachMorningBriefFacts?
 
         var scenario: CoachScenarioKey { resolution.scenario }
         var modifiers: CoachScenarioModifiers { resolution.modifiers }
@@ -30,18 +31,21 @@ enum CoachEngine {
             resolution: resolution,
             context: context
         )
+        let morningBriefFacts = CoachMorningBriefFactsBuilder.build(input: input, context: context)
         let copyPack = CoachCopyRegistry.resolve(
             CoachCopyBuildInput.from(
                 context: context,
                 resolution: resolution,
-                todayInsight: todayInsight
+                todayInsight: todayInsight,
+                morningBriefFacts: morningBriefFacts
             )
         )
         return Result(
             context: context,
             resolution: resolution,
             todayInsight: todayInsight,
-            copyPack: copyPack
+            copyPack: copyPack,
+            morningBriefFacts: morningBriefFacts
         )
     }
 

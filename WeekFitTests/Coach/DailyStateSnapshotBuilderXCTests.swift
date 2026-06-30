@@ -46,6 +46,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
 
     func testBuildPreservesHighestAvailableNutritionInputs() {
         let today = CoachTestClock.reference
+        let todayStart = Calendar.current.startOfDay(for: today)
         let healthManager = makeHealthManager(
             calories: 300,
             protein: 42,
@@ -54,6 +55,13 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
             fiber: 4,
             waterLiters: 1.2
         )
+        healthManager.prepareForDisplayDay(todayStart)
+        healthManager.calories = 300
+        healthManager.protein = 42
+        healthManager.carbs = 30
+        healthManager.fats = 10
+        healthManager.fiber = 4
+        healthManager.waterLiters = 1.2
         let nutritionViewModel = NutritionViewModel()
         nutritionViewModel.updateNutrition(
             metrics: DailyNutritionMetrics(
@@ -121,6 +129,36 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
             nutritionViewModel: nutritionViewModel,
             now: today,
             source: "test.newDayReset"
+        )
+
+        XCTAssertEqual(snapshot.nutritionMetrics.calories, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.protein, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.carbs, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.fats, 0)
+        XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 0)
+    }
+
+    func testBuildClearsStaleHealthKitTotalsWhenSelectedDayChanges() {
+        let today = CoachTestClock.reference
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        let yesterdayStart = Calendar.current.startOfDay(for: yesterday)
+        let healthManager = makeHealthManager()
+        let nutritionViewModel = NutritionViewModel()
+
+        healthManager.prepareForDisplayDay(yesterdayStart)
+        healthManager.calories = 2_100
+        healthManager.protein = 140
+        healthManager.carbs = 210
+        healthManager.fats = 65
+        healthManager.waterLiters = 2.4
+
+        let snapshot = DailyStateSnapshotBuilder.build(
+            selectedDate: today,
+            allPlannedActivities: [],
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            now: today,
+            source: "test.staleHealthKitTotals"
         )
 
         XCTAssertEqual(snapshot.nutritionMetrics.calories, 0)

@@ -344,10 +344,7 @@ enum CoachCopyRegistryScenarios {
                 "Light food and fluids — nothing heavy on the stomach.",
                 "Лёгкая еда и вода — без тяжести в желудке."
             ),
-            avoid: .en(
-                "Don't jump into another intense session tonight.",
-                "Не прыгайте сегодня в ещё одну интенсивную сессию."
-            ),
+            avoid: CoachPresentationHorizonPhrasing.avoidExtraIntenseSession(input: input),
             nextAction: catchUpNextAction(
                 input: input,
                 defaultAction: .en(
@@ -520,10 +517,7 @@ enum CoachCopyRegistryScenarios {
                 "Easy movement and food — muscles rebuild on rest.",
                 "Лёгкое движение и еда — мышцы растут на отдыхе."
             ),
-            avoid: .en(
-                "Don't pile on another heavy session tonight.",
-                "Не накладывайте сегодня ещё одну тяжёлую сессию."
-            ),
+            avoid: CoachPresentationHorizonPhrasing.avoidExtraHeavySession(input: input),
             nextAction: catchUpNextAction(
                 input: input,
                 defaultAction: .en(

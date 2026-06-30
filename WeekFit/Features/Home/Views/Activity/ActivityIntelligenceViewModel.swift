@@ -161,7 +161,8 @@ extension ActivityDaySnapshot {
             recoveryPercent: recoveryPercent,
             sessions: sessions,
             hourlyActivityPoints: hourlyActivityPoints,
-            historicalSameWeekdayPoints: historicalSameWeekdayPoints
+            historicalSameWeekdayPoints: historicalSameWeekdayPoints,
+            sleepInterval: sleepInterval
         )
     }
 }

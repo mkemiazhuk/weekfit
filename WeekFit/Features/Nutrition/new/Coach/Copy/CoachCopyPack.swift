@@ -62,24 +62,35 @@ struct CoachCopyBuildInput: Equatable, Sendable {
     let activityState: CoachActivityState
     let minutesSinceEnd: Int?
     let conversationPhase: CoachConversationPhase
+    let morningBriefFacts: CoachMorningBriefFacts?
+    /// Presentation-only — false when user is still in a normal fasting / pre-first-meal window.
+    let mealWindowOpen: Bool
+    /// Presentation-only — heat, long activity, or critical dehydration risk.
+    let dehydrationRisk: Bool
 
     var activityType: CoachActivityType { modifiers.activityType }
     var dayLoad: CoachDayLoadBand { modifiers.dayLoad }
     var tomorrowDemand: CoachTomorrowDemand { modifiers.tomorrowDemand }
     var timeOfDay: CoachTimeOfDay { modifiers.timeOfDay }
 
+    var presentationHorizon: CoachPresentationHorizon {
+        CoachPresentationHorizonPolicy.resolve(input: self)
+    }
+
     static func from(result: CoachEngine.Result) -> CoachCopyBuildInput {
         from(
             context: result.context,
             resolution: result.resolution,
-            todayInsight: result.todayInsight
+            todayInsight: result.todayInsight,
+            morningBriefFacts: result.morningBriefFacts
         )
     }
 
     static func from(
         context: CoachContext,
         resolution: CoachScenarioResolution,
-        todayInsight: CoachTodayInsight
+        todayInsight: CoachTodayInsight,
+        morningBriefFacts: CoachMorningBriefFacts? = nil
     ) -> CoachCopyBuildInput {
         CoachCopyBuildInput(
             scenario: resolution.scenario,
@@ -96,7 +107,12 @@ struct CoachCopyBuildInput: Equatable, Sendable {
             sessionPhase: context.sessionPhase,
             activityState: context.activityState,
             minutesSinceEnd: context.minutesSinceEnd,
-            conversationPhase: context.conversationPhase
+            conversationPhase: context.conversationPhase,
+            morningBriefFacts: morningBriefFacts,
+            mealWindowOpen: CoachCopyMealWindowPolicy.isOpen(
+                context: context,
+                fuelState: context.fuelState
+            )
         )
     }
 
@@ -115,7 +131,10 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         sessionPhase: CoachSessionPhase = .idle,
         activityState: CoachActivityState = .none,
         minutesSinceEnd: Int? = nil,
-        conversationPhase: CoachConversationPhase = .steady
+        conversationPhase: CoachConversationPhase = .steady,
+        morningBriefFacts: CoachMorningBriefFacts? = nil,
+        mealWindowOpen: Bool = true,
+        dehydrationRisk: Bool = false
     ) {
         self.scenario = scenario
         self.modifiers = modifiers
@@ -132,5 +151,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         self.activityState = activityState
         self.minutesSinceEnd = minutesSinceEnd
         self.conversationPhase = conversationPhase
+        self.morningBriefFacts = morningBriefFacts
+        self.mealWindowOpen = mealWindowOpen
+        self.dehydrationRisk = dehydrationRisk
     }
 }

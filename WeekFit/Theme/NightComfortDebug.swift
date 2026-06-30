@@ -3,6 +3,7 @@ import Foundation
 #if DEBUG
 enum NightComfortDebug {
     static func log(_ message: String) {
+        guard CoachDebugSettings.nightComfortDiagnosticsEnabled else { return }
         print("[NightComfort] \(message)")
     }
 

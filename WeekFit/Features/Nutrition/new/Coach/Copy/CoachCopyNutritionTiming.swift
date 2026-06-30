@@ -8,6 +8,11 @@ enum CoachCopyNutritionTiming {
         timeOfDay == .lateEvening || timeOfDay == .night
     }
 
+    /// After 23:00 — the day is over; copy should say sleep now, not plan a ritual.
+    static func isSleepNow(_ timeOfDay: CoachTimeOfDay) -> Bool {
+        CoachTimeOfDay.isSleepNow(timeOfDay)
+    }
+
     /// Regular daytime / early evening — normal meal guidance is still appropriate.
     static func isMealWindowOpen(_ timeOfDay: CoachTimeOfDay) -> Bool {
         !isWindDown(timeOfDay)
@@ -41,6 +46,14 @@ enum CoachCopyNutritionTiming {
         )
     }
 
+    /// Neutral fasting-window context — not a deficit warning.
+    static func firstMealAheadSignal() -> CoachBilingualText {
+        .en(
+            "First meal is still ahead.",
+            "Первый приём пищи ещё впереди"
+        )
+    }
+
     // MARK: - Next actions
 
     static func fuelCatchUpNextAction(for input: CoachCopyBuildInput) -> CoachBilingualText {
@@ -66,6 +79,19 @@ enum CoachCopyNutritionTiming {
         return .en(
             "Drink a glass of water in the next hour.",
             "Стакан воды в ближайший час — будет кстати."
+        )
+    }
+
+    static func fastingAwareRecoveryNextAction(mealWindowOpen: Bool) -> CoachBilingualText {
+        if mealWindowOpen {
+            return .en(
+                "Stretch or walk briefly, then eat when hungry.",
+                "Растяжка или прогулка — еда, когда проголодаетесь."
+            )
+        }
+        return .en(
+            "Water by feel — first meal at your usual time.",
+            "Вода по самочувствию, первый приём пищи — в привычное время."
         )
     }
 

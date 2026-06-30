@@ -128,66 +128,22 @@ struct MealDetailsView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitDetailScreenHeader(
+            title: WeekFitLocalizedString("meals.mealDetails"),
+            subtitle: WeekFitLocalizedString("meals.reviewIngredientsNutritionAndPreparation"),
+            titleColor: textPrimary,
+            subtitleColor: textSecondary.opacity(0.76)
+        ) {
+            WeekFitDetailScreenBackButton {
                 dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(WeekFitTheme.whiteOpacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString("meals.mealDetails"))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
-                    .lineLimit(1)
-
-                Text(WeekFitLocalizedString("meals.reviewIngredientsNutritionAndPreparation"))
-                    .font(.system(size: 13.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer(minLength: 8)
-
+        } trailing: {
             if !isQuickLogMode {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                WeekFitDetailScreenCircleButton(systemName: "square.and.pencil") {
                     showMealBuilder = true
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(WeekFitTheme.whiteOpacity(0.045))
-                            .overlay {
-                                Circle()
-                                    .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
-                            }
-
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(textPrimary.opacity(0.86))
-                    }
-                    .frame(width: 38, height: 38)
                 }
-                .buttonStyle(.plain)
             }
         }
-        .padding(.bottom, 2)
     }
 
     private var mealPreviewCard: some View {

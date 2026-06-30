@@ -43,7 +43,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .morningReadiness,
                 badge: "ВСЁ ХОРОШО",
-                todayTitle: "С чего начать",
+                todayTitle: "Доброе утро",
                 stackedDayActiveRisk: false,
                 conflictNote: nil
             ),
@@ -678,7 +678,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .morningReadiness,
                 badge: "ВСЁ ХОРОШО",
-                todayTitle: "С чего начать",
+                todayTitle: "Доброе утро",
                 stackedDayActiveRisk: false,
                 conflictNote: nil
             ),
@@ -730,7 +730,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .morningReadiness,
                 badge: "ВСЁ ХОРОШО",
-                todayTitle: "С чего начать",
+                todayTitle: "Доброе утро",
                 stackedDayActiveRisk: false,
                 conflictNote: "heavy yesterday + good recovery — calm morning, yesterday in support only"
             ),
@@ -841,7 +841,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .morningReadiness,
                 badge: "ВСЁ ХОРОШО",
-                todayTitle: "С чего начать",
+                todayTitle: "Доброе утро",
                 stackedDayActiveRisk: false,
                 conflictNote: "heavy yesterday + good recovery — calm morning with support, not stuck on load"
             ),
@@ -905,7 +905,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .morningReadiness,
                 badge: "ВСЁ ХОРОШО",
-                todayTitle: "С чего начать",
+                todayTitle: "Доброе утро",
                 stackedDayActiveRisk: false,
                 conflictNote: "morning idle — nutrition stays out of main/support copy"
             ),

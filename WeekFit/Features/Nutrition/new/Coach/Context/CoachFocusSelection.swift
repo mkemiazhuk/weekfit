@@ -74,7 +74,11 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= CoachActivityWindowPolicy.recentCompletedFocusWindowMinutes(for: lastCompleted),
+            if shouldKeepRecentCompletedFocus(
+                activity: lastCompleted,
+                minutesSinceEnd: minutesSinceEnd,
+                timeOfDay: timeOfDay
+            ),
                CoachActivityClassifier.isSeriousTraining(lastCompleted) {
                 return selection(
                     for: lastCompleted,
@@ -91,7 +95,11 @@ enum CoachFocusResolver {
 
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
-            if minutesSinceEnd <= CoachActivityWindowPolicy.recentCompletedFocusWindowMinutes(for: lastCompleted) {
+            if shouldKeepRecentCompletedFocus(
+                activity: lastCompleted,
+                minutesSinceEnd: minutesSinceEnd,
+                timeOfDay: timeOfDay
+            ) {
                 return selection(
                     for: lastCompleted,
                     source: .recentCompleted,
@@ -194,7 +202,9 @@ enum CoachFocusResolver {
         case .justFinished:
             return .immediatePost
         case .finished:
-            if isEveningPhase(timeOfDay), family != .none {
+            if isEveningPhase(timeOfDay),
+               family != .none,
+               !CoachCopyNutritionTiming.isWindDown(timeOfDay) {
                 return .evening
             }
             return .settledPost
@@ -214,5 +224,21 @@ enum CoachFocusResolver {
 
     private static func isEveningPhase(_ timeOfDay: CoachTimeOfDay) -> Bool {
         timeOfDay == .evening || timeOfDay == .lateEvening
+    }
+
+    private static func shouldKeepRecentCompletedFocus(
+        activity: PlannedActivity,
+        minutesSinceEnd: Int,
+        timeOfDay: CoachTimeOfDay
+    ) -> Bool {
+        let window = CoachActivityWindowPolicy.recentCompletedFocusWindowMinutes(for: activity)
+        guard minutesSinceEnd <= window else { return false }
+
+        if CoachCopyNutritionTiming.isWindDown(timeOfDay),
+           CoachActivityClassifier.type(for: activity) == .walk {
+            return minutesSinceEnd <= CoachActivityWindowPolicy.immediatePostFocusWindowMinutes
+        }
+
+        return true
     }
 }

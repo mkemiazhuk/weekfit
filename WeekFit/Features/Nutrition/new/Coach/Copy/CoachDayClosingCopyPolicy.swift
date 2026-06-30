@@ -43,6 +43,10 @@ enum CoachDayClosingCopyPolicy {
     ) -> CoachBodyStateCopyRenderer.BasePack {
         guard isActive(input) else { return base }
 
+        if CoachCopyNutritionTiming.isSleepNow(input.timeOfDay) {
+            return sleepNowPack(for: input, profile: profile)
+        }
+
         switch input.scenario {
         case .stableDay:
             return applyStableDay(to: base, input: input, profile: profile)
@@ -60,9 +64,11 @@ enum CoachDayClosingCopyPolicy {
         guard isActive(input) else { return nil }
 
         let profile = CoachStableDayProfile.resolve(for: input)
-        let title = windDownTitle
-        let headline = windDownTitle
-        let message = teaserMessage(for: input, profile: profile)
+        let title = CoachCopyNutritionTiming.isSleepNow(input.timeOfDay) ? sleepNowTitle : windDownTitle
+        let headline = title
+        let message = CoachCopyNutritionTiming.isSleepNow(input.timeOfDay)
+            ? sleepNowTeaserMessage(for: input, profile: profile)
+            : teaserMessage(for: input, profile: profile)
 
         return TeaserOverlay(
             todayTitle: title,
@@ -79,8 +85,10 @@ enum CoachDayClosingCopyPolicy {
         profile: CoachStableDayProfile?
     ) -> CoachBodyStateCopyRenderer.BasePack {
         switch profile {
-        case .lowRecoveryRest, .emptyDay, .none:
-            return lowRecoveryRestWindDownPack()
+        case .lowRecoveryRest:
+            return lowRecoveryRestWindDownPack(input: input)
+        case .emptyDay, .none:
+            return emptyDayWindDownPack()
         case .workBanked:
             return workBankedWindDownPack()
         case .tomorrowReserve:
@@ -93,8 +101,8 @@ enum CoachDayClosingCopyPolicy {
     ) -> CoachBodyStateCopyRenderer.BasePack {
         CoachBodyStateCopyRenderer.BasePack(
             assessment: .single(.en(
-                "The load is already in — recovery matters more now.",
-                "Нагрузка за день уже есть — сейчас важнее восстановление."
+                "Yesterday's load is still in the legs — recovery matters more now.",
+                "Вчерашняя нагрузка ещё в ногах — сейчас важнее восстановление."
             )),
             recommendation: .single(.en(
                 "Do not add anything new tonight. Let the body move toward sleep.",
@@ -108,11 +116,28 @@ enum CoachDayClosingCopyPolicy {
         )
     }
 
-    private static func lowRecoveryRestWindDownPack() -> CoachBodyStateCopyRenderer.BasePack {
+    private static func lowRecoveryRestWindDownPack(
+        input: CoachCopyBuildInput
+    ) -> CoachBodyStateCopyRenderer.BasePack {
+        CoachBodyStateCopyRenderer.BasePack(
+            assessment: .single(lowRecoveryRestWindDownAssessment(for: input)),
+            recommendation: .single(.en(
+                "Do not add anything new tonight. Let the body move toward sleep.",
+                "Не добавляйте ничего нового вечером — дайте телу дойти до сна."
+            )),
+            avoid: .single(.en(
+                "No late intensity or extra recovery tasks.",
+                "Без поздней интенсивности и лишних задач на восстановление."
+            )),
+            nextAction: windDownNextAction
+        )
+    }
+
+    private static func emptyDayWindDownPack() -> CoachBodyStateCopyRenderer.BasePack {
         CoachBodyStateCopyRenderer.BasePack(
             assessment: .single(.en(
-                "The load is already in — recovery matters more now.",
-                "Нагрузка за день уже есть — сейчас важнее восстановление."
+                "Enough for today — wind down calmly.",
+                "На сегодня достаточно — спокойно завершаем день."
             )),
             recommendation: .single(.en(
                 "Do not add anything new tonight. Let the body move toward sleep.",
@@ -123,6 +148,27 @@ enum CoachDayClosingCopyPolicy {
                 "Без поздней интенсивности и лишних задач на восстановление."
             )),
             nextAction: windDownNextAction
+        )
+    }
+
+    private static func lowRecoveryRestWindDownAssessment(
+        for input: CoachCopyBuildInput
+    ) -> CoachBilingualText {
+        guard input.dayReadiness.recoveryDataAvailable else {
+            return .en(
+                "Enough for today — wind down calmly.",
+                "На сегодня достаточно — спокойно завершаем день."
+            )
+        }
+        if input.dayReadiness.sleepIsLow {
+            return .en(
+                "Short night — recovery matters more now.",
+                "Сон был коротким — сейчас важнее восстановление."
+            )
+        }
+        return .en(
+            "Recovery is lagging — rest matters more now.",
+            "Восстановление отстаёт — сейчас важнее отдых."
         )
     }
 
@@ -174,6 +220,78 @@ enum CoachDayClosingCopyPolicy {
         "Решите, во сколько ложитесь, и начните вечерний ритуал."
     ))
 
+    private static let sleepNowTitle = CoachBilingualText.en(
+        "Time for sleep",
+        "Пора спать"
+    )
+
+    private static let sleepNowNextAction = CoachCopySection.single(.en(
+        "Head to bed — the day is done.",
+        "Пора в кровать — день уже закончен."
+    ))
+
+    private static func sleepNowPack(
+        for input: CoachCopyBuildInput,
+        profile: CoachStableDayProfile?
+    ) -> CoachBodyStateCopyRenderer.BasePack {
+        CoachBodyStateCopyRenderer.BasePack(
+            assessment: .single(sleepNowAssessment(for: input, profile: profile)),
+            recommendation: .single(.en(
+                "Nothing left to optimize tonight — sleep is the move.",
+                "Сегодня уже нечего улучшать — следующий шаг только сон."
+            )),
+            avoid: .single(.en(
+                "No screens, no plans, no last-minute load.",
+                "Без экранов, планов и нагрузки в последний момент."
+            )),
+            nextAction: sleepNowNextAction
+        )
+    }
+
+    private static func sleepNowAssessment(
+        for input: CoachCopyBuildInput,
+        profile: CoachStableDayProfile?
+    ) -> CoachBilingualText {
+        if profile == .tomorrowReserve {
+            return .en(
+                "Tomorrow needs fresh legs — sleep now.",
+                "Завтра нужны свежие ноги — пора спать."
+            )
+        }
+        if profile == .workBanked || input.modifiers.completedSeriousActivities != .none {
+            return .en(
+                "The work is done — sleep is the only job left.",
+                "Работа за день сделана — осталась только кровать."
+            )
+        }
+        if profile == .lowRecoveryRest {
+            return .en(
+                "Recovery needs sleep more than anything else tonight.",
+                "Восстановлению сегодня нужен сон больше всего."
+            )
+        }
+        return .en(
+            "It's late — the day is closed.",
+            "Уже поздно — день можно закрывать."
+        )
+    }
+
+    private static func sleepNowTeaserMessage(
+        for input: CoachCopyBuildInput,
+        profile: CoachStableDayProfile?
+    ) -> CoachBilingualText {
+        if profile == .tomorrowReserve {
+            return .en(
+                "Sleep now — tomorrow starts fresh.",
+                "Спите сейчас — завтра начнётся свежим."
+            )
+        }
+        return .en(
+            "Sleep now — nothing else matters tonight.",
+            "Пора спать — больше ничего не нужно."
+        )
+    }
+
     private static func teaserMessage(
         for input: CoachCopyBuildInput,
         profile: CoachStableDayProfile?
@@ -188,6 +306,18 @@ enum CoachDayClosingCopyPolicy {
             return .en(
                 "Work is done — protect sleep tonight.",
                 "Работа сделана — сегодня вечером берегите сон."
+            )
+        }
+        if profile == .lowRecoveryRest {
+            if input.dayReadiness.sleepIsLow {
+                return .en(
+                    "Short night — protect sleep tonight.",
+                    "Короткая ночь — сегодня вечером берегите сон."
+                )
+            }
+            return .en(
+                "Recovery is lagging — keep the evening quiet.",
+                "Восстановление отстаёт — вечер без лишней нагрузки."
             )
         }
         return .en(

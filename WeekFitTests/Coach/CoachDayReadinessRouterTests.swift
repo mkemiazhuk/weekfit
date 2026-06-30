@@ -33,6 +33,30 @@ final class CoachDayReadinessRouterTests: XCTestCase {
         )
     }
 
+    func testRecoveryAfterHeavyYesterdayAppliesWhenRecoveryDataMissing() {
+        let context = idleContext(
+            recoveryBand: .moderate,
+            hadHeavyYesterday: true,
+            timeOfDay: .morning,
+            recoveryDataAvailable: false
+        )
+        XCTAssertEqual(
+            CoachDayReadinessRouter.idleScenario(for: context),
+            .recoveryAfterHeavyYesterday
+        )
+    }
+
+    func testLowRecoveryPrepDoesNotApplyWhenRecoveryDataMissing() {
+        let pre = activityContext(
+            family: .endurance,
+            phase: .pre,
+            state: .upcoming,
+            recoveryBand: .low,
+            recoveryDataAvailable: false
+        )
+        XCTAssertNil(CoachDayReadinessRouter.lowRecoveryPreSessionScenario(for: pre))
+    }
+
     func testLowRecoveryPrepAppliesOnlyToPreSeriousTraining() {
         let pre = activityContext(
             family: .endurance,
@@ -59,7 +83,8 @@ final class CoachDayReadinessRouterTests: XCTestCase {
         hadHeavyYesterday: Bool = false,
         tomorrowDemand: CoachTomorrowDemand = .none,
         timeOfDay: CoachTimeOfDay = .morning,
-        dayLoad: CoachDayLoadBand = .fresh
+        dayLoad: CoachDayLoadBand = .fresh,
+        recoveryDataAvailable: Bool? = nil
     ) -> CoachContext {
         CoachContext(
             activityFamily: .none,
@@ -83,7 +108,8 @@ final class CoachDayReadinessRouterTests: XCTestCase {
                 sleepHours: recoveryBand == .good ? 8 : 4.5,
                 recoveryBand: recoveryBand,
                 hadHeavyYesterday: hadHeavyYesterday,
-                sleepIsLow: recoveryBand != .good
+                sleepIsLow: recoveryBand != .good,
+                recoveryDataAvailable: recoveryDataAvailable
             ),
             lastCompletedSeriousActivityType: .none
         )
@@ -93,7 +119,8 @@ final class CoachDayReadinessRouterTests: XCTestCase {
         family: CoachActivityFamily,
         phase: CoachSessionPhase,
         state: CoachActivityState,
-        recoveryBand: CoachRecoveryBand
+        recoveryBand: CoachRecoveryBand,
+        recoveryDataAvailable: Bool? = nil
     ) -> CoachContext {
         CoachContext(
             activityFamily: family,
@@ -117,7 +144,8 @@ final class CoachDayReadinessRouterTests: XCTestCase {
                 sleepHours: recoveryBand == .good ? 8 : 4.5,
                 recoveryBand: recoveryBand,
                 hadHeavyYesterday: false,
-                sleepIsLow: recoveryBand != .good
+                sleepIsLow: recoveryBand != .good,
+                recoveryDataAvailable: recoveryDataAvailable
             ),
             lastCompletedSeriousActivityType: .none
         )

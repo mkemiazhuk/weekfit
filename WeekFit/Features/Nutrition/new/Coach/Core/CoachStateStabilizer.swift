@@ -35,6 +35,10 @@ enum CoachStateStabilizer {
         lock.unlock()
     }
 
+    static func markRealityChange(source: String) {
+        markSyncEvent(source: source)
+    }
+
     static func isSettling(source: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -52,6 +56,8 @@ enum CoachStateStabilizer {
         source.contains("plannedactivities.removed") ||
             source.contains("plannedactivitiesreset") ||
             source.contains("languagechange") ||
-            source.contains("logout")
+            source.contains("logout") ||
+            source.contains("dayrollover") ||
+            source.contains("dayboundary")
     }
 }

@@ -580,7 +580,10 @@ final class CoachBodyStateCopyTests: XCTestCase {
             alertSeverity: .none,
             tomorrowWorkout: nil,
             dayReadiness: dayReadiness,
-            sessionPhase: sessionPhase
+            sessionPhase: sessionPhase,
+            morningBriefFacts: scenario == .morningReadiness
+                ? CoachMorningBriefFactsBuilder.synthetic(dayReadiness: dayReadiness)
+                : nil
         )
     }
 

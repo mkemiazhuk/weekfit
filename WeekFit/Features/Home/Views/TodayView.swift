@@ -312,6 +312,7 @@ struct TodayView: View {
             todayScreen
                 .onAppear {
                    todayViewModel.now = Date()
+                   reconcileTodayDayBoundary()
                    preloadQuickFoodLogDataIfNeeded()
                    preloadQuickDrinkLogDataIfNeeded()
                    if !healthManager.isHealthAccessRequested {
@@ -390,7 +391,6 @@ struct TodayView: View {
             refreshTodayLiveState(refreshHealth: false)
         }
         .onChange(of: selectedDate) { oldValue, newValue in
-            guard tabIsActive else { return }
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
 
             let calendar = Calendar.current
@@ -398,12 +398,10 @@ struct TodayView: View {
                 let dayStart = calendar.startOfDay(for: newValue)
                 healthManager.prepareForDisplayDay(dayStart)
                 nutritionViewModel.prepareForDay(newValue)
+                todayViewModel.triggerHealthRefresh()
             }
-
-            todayViewModel.triggerHealthRefresh()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            guard tabIsActive else { return }
             guard newPhase == .active else { return }
             refreshTodayAfterAppBecameActive()
         }
@@ -1004,13 +1002,11 @@ struct TodayView: View {
     }
 
     private func logTodayCoachInsightHiddenIfNeeded() {
-        #if DEBUG
         guard let reason = coachCoordinator.state.todayCoachInsightHiddenReason else { return }
         CoachLogger.compact(
             "[TodayCoachInsight]",
             "hidden reason=\(reason.rawValue) status=\(coachCoordinator.state.statusLogLabel) usingCoach=\(coachCoordinator.state.coachUIPresentation != nil ? "yes" : "no") todayTitle=\"\(coachCoordinator.state.coachUIPresentation?.todayTitle ?? "")\""
         )
-        #endif
     }
     
     private func quickItem(for profile: QuickLogNutritionProfile) -> QuickItem? {
@@ -1361,6 +1357,23 @@ struct TodayView: View {
         }
     }
 
+    private var todayLimitedRecoveryChip: some View {
+        Text(AppText.Today.coachChipLimitedRecovery)
+            .font(.caption2.weight(.semibold))
+            .fontDesign(.rounded)
+            .foregroundStyle(textSecondary.opacity(0.68))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(WeekFitTheme.whiteOpacity(0.05))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
+            )
+    }
+
     private var coachSettlingGlyph: some View {
         ZStack {
             Circle()
@@ -1522,12 +1535,20 @@ struct TodayView: View {
 
         let recoveryPercent = healthManager.recoveryPercent
 
+        let recoveryRingMode = CoachInputReadiness.recoveryRingMode(
+            isHealthAccessGranted: healthManager.isHealthAccessGranted,
+            hasRecoverySignals: hasRecoveryData,
+            now: todayViewModel.now
+        )
+
         let recoveryDisplayValue: Int? =
-            hasRecoveryData ? recoveryPercent : nil
+            recoveryRingMode == .hasData ? recoveryPercent : nil
 
         let activityColor = todayActivityColor
         let nutritionColor = todayNutritionColor
-        let recoveryColor = todayRecoveryColor
+        let recoveryColor = recoveryRingMode == .sleepNotRecorded
+            ? textSecondary.opacity(0.58)
+            : todayRecoveryColor
 
         let activityGoalText = String(format: WeekFitLocalizedString("today.status.activity.goalFormat"), Int(baseGoal))
         let activityValueText = String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(healthManager.activeCalories))
@@ -1536,19 +1557,23 @@ struct TodayView: View {
             ? String(format: WeekFitLocalizedString("today.sleep.valueFormat"), Double(healthManager.sleepMinutes) / 60.0)
             : WeekFitLocalizedString("today.sleep.empty")
 
-        let recoveryStatusText: String = {
-            guard hasRecoveryData else { return WeekFitLocalizedString("today.recovery.syncing") }
+        let recoverySleepRingText: String = {
+            switch recoveryRingMode {
+            case .sleepNotRecorded:
+                return WeekFitLocalizedString("today.recovery.sleepNotRecorded")
+            case .awaitingMorningSync, .hasData:
+                return sleepValueInfoText
+            }
+        }()
 
-            if recoveryPercent >= 85 || (healthManager.hrvSDNN > 75.0 && healthManager.restingHeartRate < 60.0) {
-                return WeekFitLocalizedString("today.recovery.ready")
-            } else if recoveryPercent >= 70 {
-                return WeekFitLocalizedString("today.recovery.good")
-            } else if recoveryPercent >= 50 {
-                return WeekFitLocalizedString("today.recovery.ok")
-            } else if recoveryPercent > 0 {
-                return WeekFitLocalizedString("today.recovery.needRest")
-            } else {
-                return WeekFitLocalizedString("today.recovery.syncing")
+        let recoveryInfoRingText: String = {
+            switch recoveryRingMode {
+            case .hasData:
+                return recoveryStatusLabel(for: recoveryPercent)
+            case .awaitingMorningSync:
+                return WeekFitLocalizedString("today.recovery.syncingSleep")
+            case .sleepNotRecorded:
+                return WeekFitLocalizedString("today.recovery.unavailable")
             }
         }()
 
@@ -1646,10 +1671,9 @@ struct TodayView: View {
 
                                     dailyStatusRecoveryRingButton(
                                         recoveryDisplayValue: recoveryDisplayValue,
-                                        recoveryStatusText: recoveryStatusText,
-                                        sleepValueInfoText: sleepValueInfoText,
-                                        recoveryColor: recoveryColor,
-                                        isRecoveryPreparing: !hasRecoveryData
+                                        recoverySleepRingText: recoverySleepRingText,
+                                        recoveryInfoRingText: recoveryInfoRingText,
+                                        recoveryColor: recoveryColor
                                     )
                                 }
                             } else {
@@ -1670,10 +1694,9 @@ struct TodayView: View {
 
                                     dailyStatusRecoveryRingButton(
                                         recoveryDisplayValue: recoveryDisplayValue,
-                                        recoveryStatusText: recoveryStatusText,
-                                        sleepValueInfoText: sleepValueInfoText,
-                                        recoveryColor: recoveryColor,
-                                        isRecoveryPreparing: !hasRecoveryData
+                                        recoverySleepRingText: recoverySleepRingText,
+                                        recoveryInfoRingText: recoveryInfoRingText,
+                                        recoveryColor: recoveryColor
                                     )
                                 }
                             }
@@ -1745,12 +1768,25 @@ struct TodayView: View {
         }
     }
 
+    private func recoveryStatusLabel(for recoveryPercent: Int) -> String {
+        if recoveryPercent >= 85 || (healthManager.hrvSDNN > 75.0 && healthManager.restingHeartRate < 60.0) {
+            return WeekFitLocalizedString("today.recovery.ready")
+        } else if recoveryPercent >= 70 {
+            return WeekFitLocalizedString("today.recovery.good")
+        } else if recoveryPercent >= 50 {
+            return WeekFitLocalizedString("today.recovery.ok")
+        } else if recoveryPercent > 0 {
+            return WeekFitLocalizedString("today.recovery.needRest")
+        } else {
+            return WeekFitLocalizedString("today.recovery.syncing")
+        }
+    }
+
     private func dailyStatusRecoveryRingButton(
         recoveryDisplayValue: Int?,
-        recoveryStatusText: String,
-        sleepValueInfoText: String,
-        recoveryColor: Color,
-        isRecoveryPreparing: Bool
+        recoverySleepRingText: String,
+        recoveryInfoRingText: String,
+        recoveryColor: Color
     ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1758,10 +1794,8 @@ struct TodayView: View {
         } label: {
             statusRingWidget(
                 title: WeekFitLocalizedString("today.status.recovery"),
-                infoText: isRecoveryPreparing
-                    ? WeekFitLocalizedString("today.recovery.syncing")
-                    : recoveryStatusText,
-                valueText: sleepValueInfoText,
+                infoText: recoveryInfoRingText,
+                valueText: recoverySleepRingText,
                 value: recoveryDisplayValue,
                 color: recoveryColor
             )
@@ -2224,7 +2258,9 @@ struct TodayView: View {
                     let insightColor = presentation.accentColor
                     let insightTitle = presentation.todayTitle
                     let insightIcon = presentation.icon
-                    let insightMessage = presentation.todayMessage
+                    let insightMessage = presentation.showsLimitedConfidenceBadge
+                        ? presentation.recommendation
+                        : presentation.todayMessage
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2276,6 +2312,11 @@ struct TodayView: View {
                                             .multilineTextAlignment(.leading)
                                             .lineLimit(3)
                                             .fixedSize(horizontal: false, vertical: true)
+                                    }
+
+                                    if presentation.showsLimitedConfidenceBadge {
+                                        todayLimitedRecoveryChip
+                                            .padding(.top, 4)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2340,7 +2381,19 @@ struct TodayView: View {
 
     private func refreshTodayAfterAppBecameActive() {
         todayViewModel.now = Date()
-        reconcileTodayDayBoundary()
+        var date = selectedDate
+        let shouldRefreshHealth = todayViewModel.reconcileDayBoundary(
+            selectedDate: &date,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
+        )
+        if date != selectedDate {
+            selectedDate = date
+        }
+        refreshTodayLiveState(refreshHealth: shouldRefreshHealth)
+        if shouldRefreshHealth {
+            appSession.triggerCoachRefresh(source: "TodayView.sceneActive.dayBoundary")
+        }
     }
 
     private func handleLocalDataResetCompleted() {

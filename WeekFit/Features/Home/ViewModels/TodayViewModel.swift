@@ -50,6 +50,16 @@ final class TodayViewModel: ObservableObject {
         if output.didCrossBoundary {
             healthManager.prepareForDisplayDay(output.trackedDayStart)
             nutritionViewModel.prepareForDay(output.selectedDate)
+            return output.shouldRefreshHealth
+        }
+
+        let selectedDayStart = calendar.startOfDay(for: selectedDate)
+        if calendar.isDate(selectedDate, inSameDayAs: currentNow),
+           let nutritionDay = nutritionViewModel.trackedNutritionDayStart,
+           !calendar.isDate(nutritionDay, inSameDayAs: selectedDayStart) {
+            healthManager.prepareForDisplayDay(selectedDayStart)
+            nutritionViewModel.prepareForDay(selectedDate)
+            return true
         }
 
         return output.shouldRefreshHealth

@@ -126,6 +126,7 @@ enum HealthRefreshGuardLog {
         decision: CoachTabHealthRefreshPolicy.Decision,
         sources: [String] = []
     ) {
+        guard CoachDebugSettings.healthRefreshGuardLoggingEnabled else { return }
         let sourceNote = sources.isEmpty ? "" : " sources=[\(CoachTabHealthRefreshPolicy.summarizeSources(sources))]"
         print(
             "[HealthRefreshGuard] event=\(event) reload=\(decision.shouldReloadHealth) bypassThrottle=\(decision.bypassesThrottle) reason=\(decision.reason)\(sourceNote)"
@@ -133,6 +134,7 @@ enum HealthRefreshGuardLog {
     }
 
     static func logStaleCoachRefreshDropped(generation: Int, currentGeneration: Int, source: String) {
+        guard CoachDebugSettings.healthRefreshGuardLoggingEnabled else { return }
         print(
             "[HealthRefreshGuard] staleCoachRefreshDropped source=\(source) taskGen=\(generation) currentGen=\(currentGeneration)"
         )

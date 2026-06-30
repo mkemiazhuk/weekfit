@@ -167,7 +167,8 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
             context: context,
             resolution: resolution,
             todayInsight: insight,
-            copyPack: pack
+            copyPack: pack,
+            morningBriefFacts: nil
         )
     }
 

@@ -114,7 +114,21 @@ struct CoachState: Identifiable {
         }
 
         let v6Result = CoachEngine.evaluate(input: input)
-        let coachUIPresentation = CoachTabPresentationBridge.build(from: v6Result)
+        var copyPack = v6Result.copyPack
+        if readiness.dataReadinessState == .limitedRecovery, let pack = copyPack {
+            copyPack = CoachLimitedRecoveryCopyPolicy.apply(to: pack)
+        }
+        let engineResultForPresentation = CoachEngine.Result(
+            context: v6Result.context,
+            resolution: v6Result.resolution,
+            todayInsight: v6Result.todayInsight,
+            copyPack: copyPack,
+            morningBriefFacts: v6Result.morningBriefFacts
+        )
+        let coachUIPresentation = CoachTabPresentationBridge.build(
+            from: engineResultForPresentation,
+            showsLimitedConfidenceBadge: readiness.dataReadinessState == .limitedRecovery
+        )
         let coachIntegrationDebug = CoachIntegrationDebug.resolve(
             from: v6Result,
             usingCoach: coachUIPresentation != nil
@@ -158,12 +172,10 @@ struct CoachState: Identifiable {
         debug: CoachIntegrationDebug,
         reason: String
     ) {
-        #if DEBUG
         CoachLogger.compact(
             "[CoachIntegration]",
             "\(debug.logSummary) recomputeReason=\(reason)"
         )
-        #endif
     }
 
     private static func logCoachRegistryGap(debug: CoachIntegrationDebug, reason: String) {

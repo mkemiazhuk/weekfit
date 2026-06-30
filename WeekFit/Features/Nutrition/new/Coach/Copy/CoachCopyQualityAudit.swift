@@ -16,6 +16,11 @@ enum CoachCopyQualityAudit {
         violations += bilingualChecks(pack)
         violations += lengthChecks(pack)
         violations += duplicateChecks(pack)
+        violations += languageMixChecks(pack)
+        violations += conversationTimingChecks(pack, input: input)
+        violations += conversationSemanticTimingChecks(pack, input: input)
+        violations += presentationHorizonChecks(pack, input: input)
+        violations += whyRowTimingChecks(pack, input: input)
         violations += supportSignalChecks(pack, input: input)
         violations += warningLayerChecks(pack, input: input)
         violations += supportingSignalCountCheck(pack)
@@ -103,6 +108,56 @@ enum CoachCopyQualityAudit {
 
         issues += crossSectionOverlapChecks(pack)
         return issues
+    }
+
+    private static func languageMixChecks(_ pack: CoachCopyPack) -> [String] {
+        CoachCopyLanguageAudit.audit(pack: pack).findings.map {
+            "language mix \($0.language) in \($0.section): \($0.reason)"
+        }
+    }
+
+    private static func conversationSemanticTimingChecks(
+        _ pack: CoachCopyPack,
+        input: CoachCopyBuildInput
+    ) -> [String] {
+        CoachConversationSemanticTimingAudit.audit(pack: pack, input: input).findings.map {
+            "conversation semantic \($0.language) in \($0.section): \($0.phrase) (\($0.reason))"
+        }
+    }
+
+    private static func conversationTimingChecks(
+        _ pack: CoachCopyPack,
+        input: CoachCopyBuildInput
+    ) -> [String] {
+        CoachConversationTimingAudit.audit(pack: pack, input: input).findings.map {
+            "conversation timing \($0.language) in \($0.section): \($0.phrase) (\($0.reason))"
+        }
+    }
+
+    private static func presentationHorizonChecks(
+        _ pack: CoachCopyPack,
+        input: CoachCopyBuildInput
+    ) -> [String] {
+        CoachPresentationHorizonCopyAudit.audit(pack: pack, input: input).findings.map {
+            "presentation horizon \($0.language) in \($0.section): \($0.phrase) (\($0.reason))"
+        }
+    }
+
+    private static func whyRowTimingChecks(
+        _ pack: CoachCopyPack,
+        input: CoachCopyBuildInput
+    ) -> [String] {
+        var violations: [String] = []
+        for (index, line) in pack.supportingSignals.lines.enumerated() {
+            let ru = WhyRowTimingAudit.audit(rows: [(line.russian, "ru")], input: input)
+            let en = WhyRowTimingAudit.audit(rows: [(line.english, "en")], input: input)
+            for finding in ru.findings + en.findings {
+                violations.append(
+                    "why row timing [\(index)] \(finding.language): \(finding.phrase) (\(finding.reason))"
+                )
+            }
+        }
+        return violations
     }
 
     private static func crossSectionOverlapChecks(_ pack: CoachCopyPack) -> [String] {

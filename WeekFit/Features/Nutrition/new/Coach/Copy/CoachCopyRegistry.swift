@@ -67,7 +67,7 @@ enum CoachCopyRegistry {
     ) -> BasePack? {
         switch scenario {
         case .morningReadiness:
-            return morningReadinessPack()
+            return morningReadinessPack(input: input)
         case .stableDay:
             return stableDayPack(input: input)
         case .duringEndurance:
@@ -79,7 +79,7 @@ enum CoachCopyRegistry {
         case .protectTomorrowFresh:
             return protectTomorrowFreshPack(input: input)
         case .recoveryAfterHeavyYesterday:
-            return recoveryAfterHeavyYesterdayPack()
+            return recoveryAfterHeavyYesterdayPack(input: input)
         case .lowRecoveryPrep:
             return lowRecoveryPrepPack(input: input)
         default:
@@ -99,24 +99,17 @@ enum CoachCopyRegistry {
         )
     }
 
-    private static func morningReadinessPack() -> BasePack {
-        BasePack(
-            assessment: .single(.en(
-                "It's morning — the day hasn't picked a direction yet.",
-                "Утро — день ещё не решил, куда повернёт."
-            )),
-            recommendation: .single(.en(
-                "Lead with how you actually feel, not what's loudest on the calendar.",
-                "Слушайте тело, а не самое громкое в календаре."
-            )),
-            avoid: .single(.en(
-                "Don't turn the first hour into a race.",
-                "Не устраивайте гонку с самого утра."
-            )),
-            nextAction: .single(.en(
-                "Name one thing that matters today.",
-                "Выберите одну главную задачу на сегодня."
-            ))
+    private static func morningReadinessPack(input: CoachCopyBuildInput) -> BasePack {
+        let facts = input.morningBriefFacts ?? CoachMorningBriefFactsBuilder.synthetic(
+            dayReadiness: input.dayReadiness,
+            tomorrowWorkout: input.tomorrowWorkout
+        )
+        let pack = CoachMorningBriefCopyPolicy.morningReadinessPack(for: facts)
+        return BasePack(
+            assessment: .single(pack.assessment),
+            recommendation: .single(pack.recommendation),
+            avoid: .single(pack.avoid),
+            nextAction: .single(pack.nextAction)
         )
     }
 
@@ -224,9 +217,19 @@ enum CoachCopyRegistry {
     }
 
     private static func tomorrowProtectionAssessment(input: CoachCopyBuildInput) -> CoachBilingualText {
-        .en(
-            "Heavy load is banked — hold the line tonight.",
-            "На сегодня нагрузки уже достаточно."
+        if CoachCopyClosureTiming.allowsDayClosurePhrasing(
+            timeOfDay: input.timeOfDay,
+            conversationPhase: input.conversationPhase
+        ) {
+            return .en(
+                "Heavy load is banked — hold the line tonight.",
+                "На сегодня нагрузки уже достаточно."
+            )
+        }
+
+        return .en(
+            "Heavy load is banked — hold reserve for tomorrow.",
+            "Серьёзная работа уже сделана — берегите силы на завтра."
         )
     }
 
@@ -241,9 +244,16 @@ enum CoachCopyRegistry {
             )
         }
 
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return .en(
+                "Keep the rest of today easy, then protect sleep.",
+                "Остаток дня спокойный — сон потом важнее."
+            )
+        }
+
         return .en(
-            "Keep the rest of today easy, then protect sleep.",
-            "Остаток дня спокойный — сон потом важнее."
+            "Keep today easy, then protect sleep tonight.",
+            "Держите сегодня легко — к ночи важнее сон."
         )
     }
 
@@ -274,7 +284,12 @@ enum CoachCopyRegistry {
 
     private static func protectTomorrowFreshPack(input: CoachCopyBuildInput) -> BasePack {
         let assessment: CoachBilingualText
-        if let workout = input.tomorrowWorkout {
+        if input.timeOfDay == .morning, let facts = input.morningBriefFacts {
+            assessment = CoachMorningBriefCopyPolicy.protectTomorrowFreshAssessment(
+                facts: facts,
+                tomorrowWorkout: input.tomorrowWorkout
+            )
+        } else if let workout = input.tomorrowWorkout {
             let title = workout.title.trimmingCharacters(in: .whitespacesAndNewlines)
             if !title.isEmpty {
                 assessment = .en(
@@ -321,12 +336,26 @@ enum CoachCopyRegistry {
         "Восстановление в порядке — завтра в календаре серьёзная работа."
     )
 
-    private static func recoveryAfterHeavyYesterdayPack() -> BasePack {
-        BasePack(
-            assessment: .single(.en(
+    private static func recoveryAfterHeavyYesterdayPack(input: CoachCopyBuildInput) -> BasePack {
+        let facts = input.morningBriefFacts ?? CoachMorningBriefFactsBuilder.synthetic(
+            dayReadiness: input.dayReadiness,
+            tomorrowWorkout: input.tomorrowWorkout
+        )
+        let assessment = input.timeOfDay == .morning
+            ? CoachMorningBriefCopyPolicy.recoveryAfterHeavyYesterdayAssessment(for: facts)
+            : CoachBilingualText.en(
                 "Yesterday's load is still in the legs — today needs a softer line.",
                 "Вчерашняя нагрузка ещё чувствуется — сегодня мягче."
-            )),
+            )
+        let nextAction = input.timeOfDay == .morning
+            ? CoachMorningBriefCopyPolicy.recoveryAfterHeavyYesterdayNextAction(for: facts)
+            : CoachBilingualText.en(
+                "Walk, stretch, or nap before anything demanding.",
+                "Прогулка, растяжка или короткий отдых — перед нагрузкой."
+            )
+
+        return BasePack(
+            assessment: .single(assessment),
             recommendation: .single(.en(
                 "Treat today as recovery first, training second.",
                 "Сначала восстановление, потом тренировка."
@@ -335,10 +364,7 @@ enum CoachCopyRegistry {
                 "Don't chase yesterday's numbers or stack hard blocks early.",
                 "Не гонитесь за вчерашними цифрами и не добавляйте тяжести с утра."
             )),
-            nextAction: .single(.en(
-                "Walk, stretch, or nap before anything demanding.",
-                "Прогулка, растяжка или короткий отдых — перед нагрузкой."
-            ))
+            nextAction: .single(nextAction)
         )
     }
 
@@ -385,12 +411,20 @@ enum CoachCopyRegistry {
         var lines: [CoachBilingualText] = []
 
         if shouldSurfaceNutritionSignals(for: input) {
-            if input.modifiers.hydrationBehind, input.safetyAlert != .hydrationCritical {
+            let progress = RelativeProgressPolicy.evaluate(input: input)
+
+            if progress.shouldSurfaceHydrationWhyRow,
+               input.safetyAlert != .hydrationCritical {
                 lines.append(CoachCopyNutritionTiming.hydrationBehindSignal(for: input))
             }
 
-            if input.modifiers.fuelBehind, input.safetyAlert != .fuelCritical {
+            if progress.shouldSurfaceFuelWhyRow, input.safetyAlert != .fuelCritical {
                 lines.append(CoachCopyNutritionTiming.fuelBehindSignal(for: input))
+            } else if !input.mealWindowOpen,
+                      input.modifiers.fuelBehind || input.fuelState.isBehind,
+                      input.safetyAlert != .fuelCritical,
+                      lines.count < 3 {
+                lines.append(CoachCopyNutritionTiming.firstMealAheadSignal())
             }
         }
 

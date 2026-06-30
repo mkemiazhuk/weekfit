@@ -53,6 +53,29 @@ enum CoachDebugSettings {
         UserDefaults.standard.bool(forKey: todayDataAuditKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_TODAY_DATA_AUDIT"] == "1"
     }
+
+    static let tabSwitchDiagnosticsKey = "weekfit_tab_switch_diagnostics_enabled"
+    static let lifecycleDiagnosticsKey = "weekfit_lifecycle_diagnostics_enabled"
+    static let nightComfortDiagnosticsKey = "weekfit_night_comfort_diagnostics_enabled"
+
+    static var tabSwitchDiagnosticsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: tabSwitchDiagnosticsKey) ||
+            ProcessInfo.processInfo.environment["WEEKFIT_TAB_SWITCH_DIAG"] == "1"
+    }
+
+    static var lifecycleDiagnosticsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: lifecycleDiagnosticsKey) ||
+            ProcessInfo.processInfo.environment["WEEKFIT_LIFECYCLE_DIAG"] == "1"
+    }
+
+    static var nightComfortDiagnosticsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: nightComfortDiagnosticsKey) ||
+            ProcessInfo.processInfo.environment["WEEKFIT_NIGHT_COMFORT_DIAG"] == "1"
+    }
+
+    static var healthRefreshGuardLoggingEnabled: Bool {
+        pipelineTraceEnabled
+    }
 }
 
 enum CoachDebug {

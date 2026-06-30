@@ -184,6 +184,7 @@ private extension PlanAddActivitySheet {
                     .foregroundStyle(textPrimary.opacity(0.96))
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
+                    .allowsTightening(true)
 
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
@@ -195,6 +196,7 @@ private extension PlanAddActivitySheet {
                         .foregroundStyle(textPrimary.opacity(0.92))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
@@ -207,10 +209,10 @@ private extension PlanAddActivitySheet {
                         .stroke(viewModel.selectedType.color.opacity(0.18), lineWidth: 1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
-            Spacer()
-            
-            if let editingActivity = viewModel.editingActivity {
+            if viewModel.editingActivity != nil {
                 Button(role: .destructive) {
                     lightHaptic.impactOccurred()
                     showDeleteConfirmation = true
@@ -227,6 +229,7 @@ private extension PlanAddActivitySheet {
                         }
                 }
                 .buttonStyle(.plain)
+                .fixedSize()
 
                 Spacer()
                     .frame(width: 6)
@@ -247,6 +250,7 @@ private extension PlanAddActivitySheet {
                     }
             }
             .buttonStyle(.plain)
+            .fixedSize()
             .padding(.top, 1)
             .accessibilityLabel(Text(AppText.Common.Action.close))
         }

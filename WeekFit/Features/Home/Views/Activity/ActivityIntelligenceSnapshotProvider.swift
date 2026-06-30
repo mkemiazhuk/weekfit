@@ -56,10 +56,12 @@ final class ActivityIntelligenceSnapshotProvider {
         async let hourly = healthManager.loadHourlyActiveCalories(for: date)
         async let workouts = healthManager.loadWorkoutSamples(for: date)
         async let metrics = healthManager.readActivityMetrics(for: date)
+        async let sleep = healthManager.loadRecoverySleepSnapshot(for: date)
 
         let hourlyCalories = await hourly
         let workoutSamples = await workouts
         let dayMetrics = await metrics
+        let sleepSnapshot = await sleep
 
         let activeCalories = Int(dayMetrics.activeCalories.rounded())
         let goal = healthManager.automatedActivityGoal(for: dayMetrics)
@@ -72,6 +74,14 @@ final class ActivityIntelligenceSnapshotProvider {
             for: date,
             healthManager: healthManager
         )
+
+        let sleepInterval: DateInterval? = {
+            guard let bedStart = sleepSnapshot.bedStart,
+                  let wakeTime = sleepSnapshot.wakeTime else {
+                return nil
+            }
+            return DateInterval(start: bedStart, end: wakeTime)
+        }()
 
         return ActivityDaySnapshot(
             date: date,
@@ -88,7 +98,8 @@ final class ActivityIntelligenceSnapshotProvider {
             hourlyActivityPoints: hourlyCalories.enumerated().map {
                 ActivityTimelinePoint(hour: $0.offset, activeCalories: $0.element)
             },
-            historicalSameWeekdayPoints: historicalSameWeekdayPoints
+            historicalSameWeekdayPoints: historicalSameWeekdayPoints,
+            sleepInterval: sleepInterval
         )
     }
 

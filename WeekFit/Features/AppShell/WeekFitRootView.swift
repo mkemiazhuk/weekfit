@@ -32,6 +32,7 @@ struct WeekFitRootView: View {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
 
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.weekFitPalette) private var palette
 
     @StateObject private var planViewModel = PlanViewModel()
@@ -45,6 +46,7 @@ struct WeekFitRootView: View {
     @State private var coachTabRefreshTask: Task<Void, Never>?
     @State private var healthRefreshEventTask: Task<Void, Never>?
     @State private var tabSwitchGeneration = 0
+    @State private var trackedAppDayStart: Date?
     /// Last `healthRefreshTrigger` token applied to a HealthKit reload.
     /// Tab activation alone must not reload until this matches or data goes stale.
     @State private var acknowledgedHealthRefreshToken: UUID?
@@ -89,7 +91,23 @@ struct WeekFitRootView: View {
                 showContent = true
             }
             refreshPlannedActivitiesSignature()
-            reconcileWatchWorkouts(source: "root.onAppear")
+            reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
+            Task {
+                await reconcileHealthWorkouts(
+                    source: "root.onAppear",
+                    bootstrapFromHealth: true
+                )
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
+        }
+        .task(id: trackedAppDayStart) {
+            await scheduleNextCalendarDayCheck()
+        }
+        .task(id: coachCoordinator.nextScheduledCheckpoint) {
+            await handleCoachCheckpointIfNeeded()
         }
         .onChange(of: selectedTab) { oldValue, newValue in
             mountedTabs.insert(newValue)
@@ -100,10 +118,14 @@ struct WeekFitRootView: View {
             returnToToday()
         }
         .onChange(of: activityCoordinator.completedWorkoutsBatch) { _, _ in
-            reconcileWatchWorkouts(source: "root.onChange.completedWorkoutsBatch")
+            Task {
+                await reconcileHealthWorkouts(source: "root.onChange.completedWorkoutsBatch")
+            }
         }
         .onChange(of: watchSyncPlannerSignature) { _, _ in
-            reconcileWatchWorkouts(source: "root.onChange.plannedActivities")
+            Task {
+                await reconcileHealthWorkouts(source: "root.onChange.plannedActivities")
+            }
         }
         .onChange(of: languageManager.selectedLanguage) { _, _ in
             syncCoachRefreshInputs()
@@ -346,6 +368,10 @@ struct WeekFitRootView: View {
                 source: "healthRefreshEvent.\(sourceLabel)",
                 refreshHealth: true
             )
+            await reconcileHealthWorkouts(
+                source: "healthRefreshEvent.\(sourceLabel)",
+                bootstrapFromHealth: true
+            )
             acknowledgeHealthRefreshEvent()
         }
     }
@@ -483,7 +509,19 @@ struct WeekFitRootView: View {
             .joined(separator: "|")
     }
 
-    private func reconcileWatchWorkouts(source: String) {
+    private func reconcileHealthWorkouts(
+        source: String,
+        bootstrapFromHealth: Bool = false
+    ) async {
+        if bootstrapFromHealth {
+            await activityCoordinator.bootstrapHealthWorkouts(
+                for: Date(),
+                healthManager: healthManager,
+                with: plannedActivities,
+                modelContext: modelContext
+            )
+        }
+
         guard !activityCoordinator.completedWorkoutsBatch.isEmpty else { return }
 
         activityCoordinator.reconcileCompletedWorkouts(
@@ -492,5 +530,97 @@ struct WeekFitRootView: View {
         )
         appSession.triggerHealthRefresh(source: source)
         appSession.triggerCoachRefresh(source: source)
+    }
+
+    private func reconcileAppCalendarDay(source: String, returnToToday: Bool) {
+        let calendar = Calendar.current
+        let now = Date()
+        let todayStart = AppCalendarDayBoundary.dayStart(for: now, calendar: calendar)
+
+        let inMemoryRollover = trackedAppDayStart.map {
+            !calendar.isDate($0, inSameDayAs: todayStart)
+        } ?? false
+
+        let persistedRollover = AppCalendarDayBoundary.detectPersistedRollover(
+            now: now,
+            calendar: calendar
+        ) != nil
+
+        if inMemoryRollover || persistedRollover {
+            let previousDayStart = trackedAppDayStart
+                ?? AppCalendarDayBoundary.loadPersistedDayStart()
+                ?? todayStart
+
+            applyInMemoryCalendarDayRollover(
+                from: previousDayStart,
+                to: todayStart,
+                source: source,
+                returnToToday: returnToToday
+            )
+        }
+
+        trackedAppDayStart = todayStart
+        syncCoachRefreshInputs()
+    }
+
+    private func applyInMemoryCalendarDayRollover(
+        from previousDayStart: Date,
+        to newDayStart: Date,
+        source: String,
+        returnToToday: Bool
+    ) {
+        let calendar = Calendar.current
+        guard !calendar.isDate(previousDayStart, inSameDayAs: newDayStart) else { return }
+
+        trackedAppDayStart = newDayStart
+
+        if calendar.isDate(todaySelectedDate, inSameDayAs: previousDayStart) {
+            todaySelectedDate = Date()
+        }
+
+        healthManager.prepareForDisplayDay(newDayStart)
+        nutritionViewModel.prepareForDay(todaySelectedDate)
+        coachCoordinator.invalidateResolvedStateForDayChange()
+        coachInputProvider.invalidateCompletedRefreshCache()
+
+        appSession.handleCalendarDayRollover(
+            source: source,
+            returnToToday: returnToToday
+        )
+    }
+
+    private func scheduleNextCalendarDayCheck() async {
+        let delay = AppCalendarDayBoundary.nextBoundary().timeIntervalSinceNow + 0.5
+        if delay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        }
+
+        guard !Task.isCancelled else { return }
+
+        reconcileAppCalendarDay(source: "midnightTimer", returnToToday: true)
+    }
+
+    private func handleCoachCheckpointIfNeeded() async {
+        guard let checkpoint = coachCoordinator.nextScheduledCheckpoint else { return }
+
+        let delay = checkpoint.timeIntervalSinceNow
+        if delay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        }
+
+        guard !Task.isCancelled else { return }
+
+        let now = Date()
+        let calendar = Calendar.current
+        let todayStart = AppCalendarDayBoundary.dayStart(for: now, calendar: calendar)
+
+        if let trackedAppDayStart,
+           !calendar.isDate(trackedAppDayStart, inSameDayAs: todayStart) {
+            reconcileAppCalendarDay(source: "coachCheckpoint.dayRollover", returnToToday: true)
+        } else {
+            coachCoordinator.invalidateResolvedStateForDayChange()
+            appSession.triggerCoachRefresh(source: "coachCheckpoint")
+            syncCoachRefreshInputs()
+        }
     }
 }

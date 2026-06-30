@@ -64,6 +64,16 @@ final class AppSessionState: ObservableObject {
         }
     }
 
+    /// Fires health + coach refresh after the calendar day rolls over.
+    func handleCalendarDayRollover(source: String, returnToToday: Bool = true) {
+        CoachStateStabilizer.markRealityChange(source: "dayRollover.\(source)")
+        triggerHealthRefresh(source: "dayRollover.\(source)")
+        triggerCoachRefresh(source: "dayRollover.\(source)")
+        if returnToToday {
+            triggerReturnToToday()
+        }
+    }
+
     private func flushHealthRefresh() {
         let sources = pendingHealthRefreshSources
         pendingHealthRefreshSources.removeAll()

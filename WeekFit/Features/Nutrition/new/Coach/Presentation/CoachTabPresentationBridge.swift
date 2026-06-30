@@ -4,7 +4,10 @@ import SwiftUI
 enum CoachTabPresentationBridge {
 
     /// Returns UI presentation when `copyPack` exists; otherwise `nil` (registry gap).
-    static func build(from engineResult: CoachEngine.Result) -> CoachUIPresentation? {
+    static func build(
+        from engineResult: CoachEngine.Result,
+        showsLimitedConfidenceBadge: Bool = false
+    ) -> CoachUIPresentation? {
         guard let pack = engineResult.copyPack else { return nil }
 
         let insight = engineResult.todayInsight
@@ -16,20 +19,34 @@ enum CoachTabPresentationBridge {
         let warningMessage = pack.warningLayer.map { localizedText($0.message) }
         let teaser = CoachTeaserCopy.resolve(from: engineResult, localizedAssessment: assessment)
         let semanticColor = insight.semanticColor
-        let whyRows = supportingWhyRows(
-            from: engineResult,
-            pack: pack,
-            semanticColor: semanticColor
+        let coachTitle = localizedText(teaser.coachHeadline)
+        let compactHero = CoachUIPresentationDedup.compact(
+            CoachUIPresentationDedup.HeroCopy(
+                coachTitle: coachTitle,
+                assessment: assessment,
+                recommendation: recommendation,
+                avoid: avoid,
+                nextAction: nextAction
+            )
+        )
+        let whyRows = dedupedWhyRows(
+            supportingWhyRows(
+                from: engineResult,
+                pack: pack,
+                semanticColor: semanticColor
+            ),
+            hero: compactHero,
+            safetyCritical: pack.warningLayer != nil
         )
 
         let ru = WeekFitCurrentLocale().identifier.hasPrefix("ru")
 
         return CoachUIPresentation(
             scenario: pack.scenario,
-            assessment: assessment,
-            recommendation: recommendation,
-            avoid: avoid,
-            nextAction: nextAction,
+            assessment: compactHero.assessment,
+            recommendation: compactHero.recommendation,
+            avoid: compactHero.avoid,
+            nextAction: compactHero.nextAction,
             supportingSignals: supportingSignals,
             warningMessage: warningMessage,
             warningAlert: pack.warningLayer?.alert,
@@ -37,18 +54,23 @@ enum CoachTabPresentationBridge {
             alertSeverity: insight.alertSeverity,
             icon: insight.icon,
             urgencyLevel: insight.urgencyLevel,
-            statusLabel: statusLabel(for: insight),
-            coachTitle: localizedText(teaser.coachHeadline),
+            statusLabel: statusLabel(
+                for: insight,
+                dayReadiness: engineResult.context.dayReadiness,
+                limitedRecovery: showsLimitedConfidenceBadge
+            ),
+            coachTitle: compactHero.coachTitle,
             todayTitle: singleLineTitle(
                 localizedText(teaser.todayTitle),
-                maxLength: ru ? 22 : 26
+                maxLength: ru ? 26 : 26
             ),
             todayMessage: todayMessage(
                 scenario: pack.scenario,
                 teaser: teaser,
-                recommendation: recommendation
+                recommendation: compactHero.recommendation
             ),
-            whyRows: whyRows
+            whyRows: whyRows,
+            showsLimitedConfidenceBadge: showsLimitedConfidenceBadge
         )
     }
 
@@ -61,10 +83,11 @@ enum CoachTabPresentationBridge {
     ) -> [CoachPresentationWhyRow] {
         let input = CoachCopyBuildInput.from(result: engineResult)
         let localizedLines = pack.supportingSignals.lines.map(localizedText)
+        let progress = RelativeProgressPolicy.evaluate(input: input)
         var rows: [CoachPresentationWhyRow] = []
         var index = 0
 
-        if input.modifiers.hydrationBehind, input.safetyAlert != .hydrationCritical, index < localizedLines.count,
+        if progress.shouldSurfaceHydrationWhyRow, input.safetyAlert != .hydrationCritical, index < localizedLines.count,
            !CoachConversationNutritionPolicy.shouldSuppress(context: engineResult.context) {
             rows.append(CoachPresentationWhyRow(
                 title: localizedLines[index],
@@ -74,7 +97,7 @@ enum CoachTabPresentationBridge {
             index += 1
         }
 
-        if input.modifiers.fuelBehind, input.safetyAlert != .fuelCritical, index < localizedLines.count,
+        if progress.shouldSurfaceFuelWhyRow, input.safetyAlert != .fuelCritical, index < localizedLines.count,
            !CoachConversationNutritionPolicy.shouldSuppress(context: engineResult.context) {
             rows.append(CoachPresentationWhyRow(
                 title: localizedLines[index],
@@ -103,6 +126,77 @@ enum CoachTabPresentationBridge {
         }
 
         return rows
+    }
+
+    private static func dedupedWhyRows(
+        _ rows: [CoachPresentationWhyRow],
+        hero: CoachUIPresentationDedup.HeroCopy,
+        safetyCritical: Bool
+    ) -> [CoachPresentationWhyRow] {
+        let heroTexts = [
+            hero.coachTitle,
+            hero.assessment,
+            hero.recommendation,
+            hero.avoid,
+            hero.nextAction
+        ].filter { !$0.isEmpty }
+
+        return rows.filter { row in
+            let title = row.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return false }
+
+            if heroTexts.contains(where: { CoachUIPresentationDedup.isNearDuplicate($0, title) }) {
+                return false
+            }
+
+            if !safetyCritical, nutritionTopicDuplicated(row: row, heroTexts: heroTexts) {
+                return false
+            }
+
+            return true
+        }
+    }
+
+    private static func nutritionTopicDuplicated(
+        row: CoachPresentationWhyRow,
+        heroTexts: [String]
+    ) -> Bool {
+        let heroBlob = heroTexts.joined(separator: " ")
+        guard !heroBlob.isEmpty else { return false }
+
+        switch row.icon {
+        case "drop.fill":
+            return CoachCopyQualityAudit.mentionsHydration(heroBlob)
+        case "fork.knife":
+            return CoachCopyQualityAudit.mentionsFuel(heroBlob) || mentionsPlannedMealTiming(heroBlob)
+        default:
+            if mentionsFirstMealAhead(row.title) {
+                return mentionsPlannedMealTiming(heroBlob)
+            }
+            if CoachCopyQualityAudit.mentionsFuel(row.title) {
+                return CoachCopyQualityAudit.mentionsFuel(heroBlob)
+            }
+            if CoachCopyQualityAudit.mentionsHydration(row.title) {
+                return CoachCopyQualityAudit.mentionsHydration(heroBlob)
+            }
+            return false
+        }
+    }
+
+    private static func mentionsPlannedMealTiming(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        if lower.contains("first meal") || lower.contains("usual time") || lower.contains("meal at your") {
+            return true
+        }
+        return text.contains("первый приём пищи")
+            || text.contains("привычное время")
+            || text.contains("приём пищи ещё впереди")
+    }
+
+    private static func mentionsFirstMealAhead(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("first meal is still ahead")
+            || text.contains("Первый приём пищи ещё впереди")
     }
 
     private static func shouldMentionDayLoadInWhyRows(_ input: CoachCopyBuildInput) -> Bool {
@@ -152,23 +246,28 @@ enum CoachTabPresentationBridge {
         return String(trimmed[..<end]).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
     }
 
-    private static func statusLabel(for insight: CoachTodayInsight) -> String {
-        if insight.safetyAlert != nil {
-            return localized(english: "IMPORTANT", russian: "ВАЖНО")
+    private static func statusLabel(
+        for insight: CoachTodayInsight,
+        dayReadiness: CoachDayReadiness,
+        limitedRecovery: Bool
+    ) -> String {
+        if limitedRecovery {
+            return WeekFitLocalizedString("today.coach.status.noRecovery")
         }
 
-        switch insight.urgencyLevel {
-        case .calm:
-            return localized(english: "ALL GOOD", russian: "ВСЁ ХОРОШО")
-        case .focused:
-            return localized(english: "FOCUS NOW", russian: "СЕЙЧАС ВАЖНО")
-        case .live:
-            return localized(english: "LIVE", russian: "СЕЙЧАС")
-        case .protective:
-            return localized(english: "SAVE ENERGY", russian: "БЕРЕЖЁМ СИЛЫ")
-        case .critical:
-            return localized(english: "ATTENTION", russian: "ВНИМАНИЕ")
-        }
+        let stableDayProfile = CoachStableDayProfile.resolve(
+            scenario: insight.scenario,
+            modifiers: insight.modifiers,
+            dayReadiness: dayReadiness
+        )
+        let labels = CoachConversationEnergyBadge.resolve(
+            energy: insight.conversationEnergy,
+            scenario: insight.scenario,
+            safetyAlert: insight.safetyAlert,
+            stackedDayActiveRisk: insight.modifiers.stackedDayActiveRisk,
+            stableDayProfile: stableDayProfile
+        )
+        return localized(english: labels.english, russian: labels.russian)
     }
 
     private static func localized(english: String, russian: String) -> String {

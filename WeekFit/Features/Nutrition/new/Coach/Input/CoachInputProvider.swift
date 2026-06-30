@@ -91,6 +91,10 @@ final class CoachInputProvider: ObservableObject {
         inFlightRefreshTask = nil
     }
 
+    func invalidateCompletedRefreshCache() {
+        lastCompletedRefreshKey = nil
+    }
+
     private static func refreshKey(
         selectedDate: Date,
         plannedActivities: [PlannedActivity],

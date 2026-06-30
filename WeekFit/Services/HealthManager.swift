@@ -99,6 +99,56 @@ struct ActivityMetricsSnapshot: Hashable {
     )
 }
 
+enum HealthActivityMetricsResolver {
+    private static let defaultWeightKg = 70.0
+    /// Net active kcal per kg body weight per km walked (rough MET ~3.5).
+    private static let kcalPerKgKmWalking = 0.75
+    /// Net active kcal per step per kg when distance is unavailable.
+    private static let kcalPerStepPerKg = 0.00045
+
+    static func resolvedActiveCalories(
+        healthKitActiveCalories: Double,
+        steps: Int,
+        distanceKm: Double,
+        weightKg: Double
+    ) -> Double {
+        max(
+            healthKitActiveCalories,
+            estimatedActiveCaloriesFromMovement(
+                steps: steps,
+                distanceKm: distanceKm,
+                weightKg: weightKg
+            )
+        )
+    }
+
+    static func estimatedActiveCaloriesFromMovement(
+        steps: Int,
+        distanceKm: Double,
+        weightKg: Double
+    ) -> Double {
+        let weight = max(weightKg, defaultWeightKg)
+
+        if distanceKm > 0 {
+            return distanceKm * weight * kcalPerKgKmWalking
+        }
+
+        guard steps > 0 else { return 0 }
+
+        return Double(steps) * weight * kcalPerStepPerKg
+    }
+
+    static func resolvedExerciseMinutes(
+        appleExerciseMinutes: Int,
+        workouts: [HKWorkout]
+    ) -> Int {
+        let workoutMinutes = workouts.reduce(0) { total, workout in
+            total + max(1, Int((workout.duration / 60).rounded()))
+        }
+        return max(appleExerciseMinutes, workoutMinutes)
+    }
+}
+
 
 struct RecoverySleepSnapshot: Hashable {
     let sleepMinutes: Int
@@ -206,6 +256,7 @@ final class HealthManager: ObservableObject {
         async let stepsCount = readDaySum(.stepCount, unit: .count(), for: date)
         async let distanceMeters = readDaySum(.distanceWalkingRunning, unit: .meter(), for: date)
         async let exercise = readDaySum(.appleExerciseTime, unit: .minute(), for: date)
+        async let dayWorkouts = loadWorkoutSamples(for: date)
         async let sleepSnapshot = readRecoverySleepSnapshot(for: date)
         async let stand = readStandHours(for: date)
         async let vo2 = readLatestQuantity(.vo2Max, unit: HKUnit(from: "ml/kg*min"))
@@ -231,17 +282,29 @@ final class HealthManager: ObservableObject {
 
         let loadedSleepSnapshot = await sleepSnapshot
 
+        let hkCalories = await calories
+        let hkSteps = Int(await stepsCount)
+        let hkDistanceKm = await distanceMeters / 1000.0
+
         return ActivityMetricsSnapshot(
-            activeCalories: await calories,
-            steps: Int(await stepsCount),
-            exerciseMinutes: Int(await exercise),
+            activeCalories: HealthActivityMetricsResolver.resolvedActiveCalories(
+                healthKitActiveCalories: hkCalories,
+                steps: hkSteps,
+                distanceKm: hkDistanceKm,
+                weightKg: weight
+            ),
+            steps: hkSteps,
+            exerciseMinutes: HealthActivityMetricsResolver.resolvedExerciseMinutes(
+                appleExerciseMinutes: Int(await exercise),
+                workouts: await dayWorkouts
+            ),
 
             sleepMinutes: loadedSleepSnapshot.sleepMinutes,
             timeInBedMinutes: loadedSleepSnapshot.timeInBedMinutes,
             awakeMinutes: loadedSleepSnapshot.awakeMinutes,
             awakeningsCount: loadedSleepSnapshot.awakeningsCount,
 
-            distanceKm: await distanceMeters / 1000.0,
+            distanceKm: hkDistanceKm,
             standHours: await stand,
             vo2Max: await vo2,
 
@@ -516,6 +579,7 @@ final class HealthManager: ObservableObject {
         async let stepsCount = readDaySum(.stepCount, unit: .count(), for: date)
         async let distanceMeters = readDaySum(.distanceWalkingRunning, unit: .meter(), for: date)
         async let exercise = readDaySum(.appleExerciseTime, unit: .minute(), for: date)
+        async let dayWorkouts = loadWorkoutSamples(for: date)
         async let sleepSnapshot = readRecoverySleepSnapshot(for: date)
         async let stand = readStandHours(for: date)
         async let vo2 = readLatestQuantity(.vo2Max, unit: HKUnit(from: "ml/kg*min"))
@@ -523,12 +587,20 @@ final class HealthManager: ObservableObject {
         let hkCalories = await calories
         let hkSteps = Int(await stepsCount)
         let hkDistanceKm = await distanceMeters / 1000.0
-        let hkExercise = Int(await exercise)
+        let hkExercise = HealthActivityMetricsResolver.resolvedExerciseMinutes(
+            appleExerciseMinutes: Int(await exercise),
+            workouts: await dayWorkouts
+        )
         let loadedSleepSnapshot = await sleepSnapshot
         let hkStand = await stand
         let hkVo2 = await vo2
 
-        self.activeCalories = hkCalories
+        self.activeCalories = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: hkCalories,
+            steps: hkSteps,
+            distanceKm: hkDistanceKm,
+            weightKg: weight
+        )
         self.steps = hkSteps
         self.distanceKm = hkDistanceKm
         self.exerciseMinutes = hkExercise
@@ -871,6 +943,15 @@ final class HealthManager: ObservableObject {
         waterLiters = 0
     }
 
+    /// True when in-memory HealthKit totals were loaded for the requested calendar day.
+    func areDisplayMetricsLoaded(for date: Date, calendar: Calendar = .current) -> Bool {
+        guard let loadedMetricsDayStart else { return false }
+        let requestedDayStart = calendar.startOfDay(for: date)
+        return calendar.isDate(loadedMetricsDayStart, inSameDayAs: requestedDayStart)
+    }
+
+    var displayMetricsDayStart: Date? { loadedMetricsDayStart }
+
     private func readAge() -> Int {
         do {
             let components = try healthStore.dateOfBirthComponents()
@@ -1088,6 +1169,10 @@ final class HealthManager: ObservableObject {
 
             self.healthStore.execute(query)
         }
+    }
+
+    func loadRecoverySleepSnapshot(for date: Date) async -> RecoverySleepSnapshot {
+        await readRecoverySleepSnapshot(for: date)
     }
 
     private static func isAnyAsleepValue(_ value: Int) -> Bool {
@@ -1530,11 +1615,7 @@ final class HealthManager: ObservableObject {
         end: Date,
         activityType: HKWorkoutActivityType
     ) async -> WorkoutHealthDetailSnapshot? {
-        guard let workout = await loadWorkoutSample(
-            id: workoutID,
-            start: start,
-            end: end
-        ) else {
+        guard let workout = await loadWorkout(id: workoutID, near: start) else {
             return nil
         }
 
@@ -1571,11 +1652,7 @@ final class HealthManager: ObservableObject {
         start: Date,
         end: Date
     ) async -> WorkoutHealthDetailSnapshot? {
-        guard let workout = await loadWorkoutSample(
-            id: workoutID,
-            start: start,
-            end: end
-        ) else {
+        guard let workout = await loadWorkout(id: workoutID, near: start) else {
             return nil
         }
 
@@ -1927,12 +2004,13 @@ final class HealthManager: ObservableObject {
                 var values = Array(repeating: 0.0, count: 24)
 
                 collection?.enumerateStatistics(from: start, to: end) { statistics, _ in
-                    let hour = calendar.component(.hour, from: statistics.startDate)
+                    guard statistics.startDate >= start, statistics.startDate < end else { return }
+
+                    let hourIndex = calendar.dateComponents([.hour], from: start, to: statistics.startDate).hour ?? -1
                     let value = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
 
-                    if hour >= 0 && hour < 24 {
-                        values[hour] = value
-                    }
+                    guard hourIndex >= 0, hourIndex < 24 else { return }
+                    values[hourIndex] += value
                 }
 
                 continuation.resume(returning: values)

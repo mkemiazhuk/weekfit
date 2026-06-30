@@ -20,7 +20,10 @@ final class CoachCopyQualityTests: XCTestCase {
     func testMorningReadinessSnapshotSections() throws {
         let pack = try resolveBaseline(.morningReadiness)
         assertSectionsDistinct(pack)
-        XCTAssertTrue(pack.assessment.lines.first?.english.contains("morning") == true)
+        let assessment = pack.assessment.lines.first?.english.lowercased() ?? ""
+        XCTAssertTrue(assessment.contains("morning"))
+        XCTAssertTrue(assessment.contains("82"))
+        XCTAssertTrue(pack.nextAction.lines.first?.english.isEmpty == false)
         XCTAssertNil(pack.warningLayer)
     }
 
@@ -153,8 +156,29 @@ final class CoachCopyQualityTests: XCTestCase {
             semanticColor: CoachPresentationResolver.semanticColor(for: scenario),
             alertSeverity: .none,
             tomorrowWorkout: profile.tomorrowWorkout,
-            dayReadiness: dayReadiness
+            dayReadiness: dayReadiness,
+            morningBriefFacts: baselineMorningBriefFacts(
+                for: scenario,
+                dayReadiness: dayReadiness,
+                profile: profile
+            )
         )
+    }
+
+    private static func baselineMorningBriefFacts(
+        for scenario: CoachScenarioKey,
+        dayReadiness: CoachDayReadiness,
+        profile: BaselineProfile
+    ) -> CoachMorningBriefFacts? {
+        switch scenario {
+        case .morningReadiness, .protectTomorrowFresh, .recoveryAfterHeavyYesterday, .lowRecoveryPrep:
+            return CoachMorningBriefFactsBuilder.synthetic(
+                dayReadiness: dayReadiness,
+                tomorrowWorkout: profile.tomorrowWorkout
+            )
+        default:
+            return nil
+        }
     }
 
     private static func baselineDayReadiness(for scenario: CoachScenarioKey) -> CoachDayReadiness {

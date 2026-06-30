@@ -97,10 +97,36 @@ final class WeekFitActivityCoordinator: ObservableObject {
         clearCompletedWorkoutsBatch()
     }
 
+    /// Pulls completed workouts already stored in Health for the given day and reconciles them
+    /// with the planner. Used when there is no live Watch bridge (phone-only Health activity).
+    func bootstrapHealthWorkouts(
+        for date: Date,
+        healthManager: HealthManager,
+        with activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) async {
+        guard healthManager.isHealthAccessGranted else { return }
+
+        let workouts = await healthManager.loadWorkoutSamples(for: date)
+        guard !workouts.isEmpty else { return }
+
+        for workout in workouts {
+            reconcileCompletedAppleWorkout(
+                workout,
+                with: activities,
+                modelContext: modelContext,
+                forceRetry: true
+            )
+        }
+
+        try? modelContext.save()
+    }
+
     func reconcileCompletedAppleWorkout(
         _ workout: HKWorkout,
         with activities: [PlannedActivity],
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        forceRetry: Bool = false
     ) {
         let workoutUUID = workout.uuid.uuidString
 
@@ -141,7 +167,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
             return
         }
 
-        guard !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+        guard forceRetry || !reconciledWorkoutUUIDs.contains(workoutUUID) else {
             return
         }
 

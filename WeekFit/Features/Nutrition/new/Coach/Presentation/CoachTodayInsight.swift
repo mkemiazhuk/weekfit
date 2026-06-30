@@ -45,6 +45,7 @@ struct CoachTodayInsight: Equatable, Sendable {
     let safetyAlert: CoachSafetyAlert?
     let icon: String
     let urgencyLevel: CoachUrgencyLevel
+    let conversationEnergy: CoachConversationEnergy
 }
 
 // MARK: - Presentation resolver
@@ -67,12 +68,23 @@ enum CoachPresentationResolver {
             stackedDayActiveRisk: stackedRisk,
             context: context
         )
+        let baseSemanticColor = semanticColor(
+            for: resolution.scenario,
+            stableDayProfile: stableDayProfile
+        )
+        let energyInput = CoachConversationEnergyPolicy.Input.from(
+            resolution: resolution,
+            alertSeverity: alertSeverity,
+            stableDayProfile: stableDayProfile
+        )
+        let conversationEnergy = CoachConversationEnergyPolicy.resolve(energyInput)
         return CoachTodayInsight(
             scenario: resolution.scenario,
             modifiers: resolution.modifiers,
-            semanticColor: semanticColor(
-                for: resolution.scenario,
-                stableDayProfile: stableDayProfile
+            semanticColor: CoachConversationEnergyPolicy.adjustedSemanticColor(
+                base: baseSemanticColor,
+                energy: conversationEnergy,
+                scenario: resolution.scenario
             ),
             alertSeverity: alertSeverity,
             safetyAlert: resolution.safetyAlert,
@@ -87,13 +99,13 @@ enum CoachPresentationResolver {
                 stableDayProfile: stableDayProfile,
                 lastCompletedActivityType: context.lastCompletedSeriousActivityType
             ),
-            urgencyLevel: urgencyLevel(
+            urgencyLevel: CoachConversationEnergyPolicy.urgencyLevel(
+                energy: conversationEnergy,
                 scenario: resolution.scenario,
                 safetyAlert: resolution.safetyAlert,
-                alertSeverity: alertSeverity,
-                stackedDayActiveRisk: stackedRisk,
-                stableDayProfile: stableDayProfile
-            )
+                stackedDayActiveRisk: stackedRisk
+            ),
+            conversationEnergy: conversationEnergy
         )
     }
 
@@ -175,7 +187,7 @@ enum CoachPresentationResolver {
         return .none
     }
 
-    // MARK: Urgency
+    // MARK: Urgency (legacy — prefer conversationEnergy for new code)
 
     static func urgencyLevel(
         scenario: CoachScenarioKey,
@@ -184,35 +196,21 @@ enum CoachPresentationResolver {
         stackedDayActiveRisk: Bool = false,
         stableDayProfile: CoachStableDayProfile? = nil
     ) -> CoachUrgencyLevel {
-        if safetyAlert != nil || stackedDayActiveRisk {
-            return .critical
-        }
-        if scenario == .stableDay, let stableDayProfile {
-            return CoachStableDayPresentation.urgencyLevel(for: stableDayProfile)
-        }
-        return baseUrgencyLevel(for: scenario)
-    }
-
-    private static func baseUrgencyLevel(for scenario: CoachScenarioKey) -> CoachUrgencyLevel {
-        switch scenario {
-        case .stableDay, .morningReadiness, .walkLightDay, .walkEveningWindDown,
-             .postEnduranceSettled, .postRacketSettled, .postStrengthSettled,
-             .postRecoverySettled, .saunaRecovery:
-            return .calm
-        case .activeEndurance, .activeRacket, .activeStrength, .activeRecovery,
-             .saunaPreparation, .walkAfterHeavyLoad, .walkRecoveryAction:
-            return .focused
-        case .duringEndurance, .duringRacket, .duringStrength, .duringRecovery,
-             .saunaActive:
-            return .live
-        case .tomorrowProtection, .eveningAfterEndurance, .eveningAfterRacket,
-             .eveningAfterStrength, .eveningAfterRecovery, .protectTomorrowFresh,
-             .recoveryAfterHeavyYesterday, .lowRecoveryPrep:
-            return .protective
-        case .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate,
-             .postRecoveryImmediate:
-            return .focused
-        }
+        let energy = CoachConversationEnergyPolicy.resolve(
+            CoachConversationEnergyPolicy.Input(
+                scenario: scenario,
+                safetyAlert: safetyAlert,
+                alertSeverity: alertSeverity,
+                stackedDayActiveRisk: stackedDayActiveRisk,
+                stableDayProfile: stableDayProfile
+            )
+        )
+        return CoachConversationEnergyPolicy.urgencyLevel(
+            energy: energy,
+            scenario: scenario,
+            safetyAlert: safetyAlert,
+            stackedDayActiveRisk: stackedDayActiveRisk
+        )
     }
 
     // MARK: Icon

@@ -20,16 +20,19 @@ struct PremiumBottomSheetHeader: View {
                         .font(QuickActionSheetDesign.Typography.headerTitle)
                         .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.9)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .allowsTightening(true)
 
                     Text(subtitle)
                         .font(QuickActionSheetDesign.Typography.headerSubtitle)
                         .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.88)
+                        .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 44)
 
                 HStack {
@@ -52,6 +55,7 @@ struct PremiumBottomSheetHeader: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .fixedSize()
                 }
             }
             .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)

@@ -205,7 +205,7 @@ struct ExpertCoachView: View {
                         if let nextAction = ui?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines),
                            !nextAction.isEmpty {
                             coachHeroTextBlock(
-                                label: coachNextActionLabel,
+                                label: WeekFitLocalizedString("coach.hero.nextStep"),
                                 text: nextAction
                             )
                         }
@@ -262,30 +262,35 @@ struct ExpertCoachView: View {
     }
 
     private var stateBadge: some View {
-        HStack(spacing: 8) {
-            Image(systemName: coachUIPresentation?.icon ?? "sparkles")
-                .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
+        let isLimitedRecovery = coachUIPresentation?.showsLimitedConfidenceBadge == true
+        let accent = isLimitedRecovery
+            ? textSecondary.opacity(0.72)
+            : (coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
+        let label = coachUIPresentation?.statusLabel ?? ""
 
-            Text(coachUIPresentation?.statusLabel.uppercased() ?? "")
-                .font(.system(size: 10, weight: .black, design: .rounded))
-                .tracking(1.4)
-                .foregroundStyle(coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
+        return HStack(spacing: isLimitedRecovery ? 5 : 8) {
+            Image(systemName: isLimitedRecovery ? "moon.zzz.fill" : (coachUIPresentation?.icon ?? "sparkles"))
+                .font(.system(size: isLimitedRecovery ? 9 : 11.5, weight: .semibold))
+
+            Text(isLimitedRecovery ? label : label.uppercased())
+                .font(.system(
+                    size: isLimitedRecovery ? 9 : 10,
+                    weight: isLimitedRecovery ? .semibold : .black,
+                    design: .rounded
+                ))
+                .tracking(isLimitedRecovery ? 0.2 : 1.4)
         }
-        .padding(.horizontal, 11)
-        .frame(height: 24)
+        .foregroundStyle(accent)
+        .padding(.horizontal, isLimitedRecovery ? 8 : 11)
+        .frame(height: isLimitedRecovery ? 20 : 24)
         .background(
             Capsule()
-                .fill((coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.09))
+                .fill(accent.opacity(isLimitedRecovery ? 0.08 : 0.09))
                 .overlay(
                     Capsule()
-                        .stroke((coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.22), lineWidth: 1)
+                        .stroke(accent.opacity(isLimitedRecovery ? 0.14 : 0.22), lineWidth: 1)
                 )
         )
-    }
-
-    private var coachNextActionLabel: String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Следующий шаг" : "Next step"
     }
 
     private func coachWarningBanner(_ message: String) -> some View {

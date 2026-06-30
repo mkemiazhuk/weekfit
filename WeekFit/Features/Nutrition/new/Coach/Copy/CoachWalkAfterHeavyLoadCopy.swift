@@ -32,6 +32,7 @@ enum CoachWalkAfterHeavyLoadPresentation {
     static func todayTitle(
         for phase: CoachWalkAfterHeavyLoadCopy.Phase,
         hasSeriousWork: Bool,
+        timeOfDay: CoachTimeOfDay,
         russian: Bool
     ) -> String {
         switch phase {
@@ -43,21 +44,26 @@ enum CoachWalkAfterHeavyLoadPresentation {
             if hasSeriousWork {
                 return russian ? "Восстанавливаемся" : "Recovering now"
             }
-            return russian ? "Плотный день позади" : "Heavy day done"
+            if CoachCopyClosureTiming.allowsDayClosurePhrasing(timeOfDay: timeOfDay) {
+                return russian ? "Плотный день позади" : "Heavy day done"
+            }
+            return russian ? "Восстанавливаемся" : "Recovering now"
         }
     }
 
     static func coachHeadline(
         for phase: CoachWalkAfterHeavyLoadCopy.Phase,
         hasSeriousWork: Bool,
+        timeOfDay: CoachTimeOfDay,
         russian: Bool
     ) -> String {
-        todayTitle(for: phase, hasSeriousWork: hasSeriousWork, russian: russian)
+        todayTitle(for: phase, hasSeriousWork: hasSeriousWork, timeOfDay: timeOfDay, russian: russian)
     }
 
     static func teaserMessage(
         for phase: CoachWalkAfterHeavyLoadCopy.Phase,
         hasSeriousWork: Bool,
+        timeOfDay: CoachTimeOfDay,
         russian: Bool
     ) -> String {
         switch phase {
@@ -71,13 +77,23 @@ enum CoachWalkAfterHeavyLoadPresentation {
                 : "Keep the pace easy."
         case .completed:
             if hasSeriousWork {
+                if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                    return russian
+                        ? "Остаток дня — восстановление."
+                        : "Recovery is the job for the rest of today."
+                }
                 return russian
-                    ? "Остаток дня — восстановление."
-                    : "Recovery is the job for the rest of today."
+                    ? "Сегодня без лишней интенсивности."
+                    : "Keep optional intensity off the table today."
+            }
+            if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Остаток дня спокойный."
+                    : "Keep the rest of the day calm."
             }
             return russian
-                ? "Остаток дня спокойный."
-                : "Keep the rest of the day calm."
+                ? "Сегодня без лишней интенсивности."
+                : "Keep today calm — nothing to prove."
         }
     }
 
@@ -93,8 +109,8 @@ private extension CoachWalkAfterHeavyLoadCopy {
     static func upcomingDraft() -> CoachCopyRegistryScenarios.Draft {
         CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "Big day behind you — this walk is about settling down.",
-                "Плотный день позади — прогулка, чтобы успокоиться."
+                "After a heavy day — this walk is about settling down.",
+                "После нагрузки — прогулка, чтобы успокоиться."
             ),
             recommendation: .en(
                 "Let heart rate and pace drift down; nothing to prove.",
@@ -134,49 +150,133 @@ private extension CoachWalkAfterHeavyLoadCopy {
 
     static func completedDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
         if input.modifiers.completedSeriousActivities != .none {
-            return completedAfterSeriousWorkDraft()
+            return completedAfterSeriousWorkDraft(input: input)
         }
-        return completedWalksOnlyDraft()
+        return completedWalksOnlyDraft(input: input)
     }
 
-    static func completedAfterSeriousWorkDraft() -> CoachCopyRegistryScenarios.Draft {
-        CoachCopyRegistryScenarios.Draft(
+    static func completedAfterSeriousWorkDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        if CoachCopyClosureTiming.allowsDayClosurePhrasing(
+            timeOfDay: input.timeOfDay,
+            conversationPhase: input.conversationPhase
+        ) {
+            return CoachCopyRegistryScenarios.Draft(
+                assessment: .en(
+                    "Main work is done — the day can land calmly now.",
+                    "Основная работа уже сделана — день можно завершить спокойно."
+                ),
+                recommendation: .en(
+                    "Keep the rest of the day calm — no new hard block.",
+                    "Остаток дня — восстановление, без нового интенсивного блока."
+                ),
+                avoid: .en(
+                    "Do not force extra steps just to chase numbers.",
+                    "Не добавляйте нагрузку ради цифр."
+                ),
+                nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                )
+            )
+        }
+
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return CoachCopyRegistryScenarios.Draft(
+                assessment: .en(
+                    "Main work is done — the evening can stay calm.",
+                    "Основная работа сделана — вечер можно провести спокойно."
+                ),
+                recommendation: .en(
+                    "Keep the rest of the day calm — no new hard block.",
+                    "Остаток дня спокойный — без нового тяжёлого блока."
+                ),
+                avoid: .en(
+                    "Do not force extra steps just to chase numbers.",
+                    "Не добавляйте нагрузку ради цифр."
+                ),
+                nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                )
+            )
+        }
+
+        return CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "Main work is done — the day can land calmly now.",
-                "Основная работа уже сделана — день можно завершить спокойно."
+                "Main work is done — keep today easy from here.",
+                "Основная работа сделана — дальше без спешки."
             ),
             recommendation: .en(
-                "Keep the rest of the day calm — no new hard block.",
-                "Остаток дня — восстановление, без нового интенсивного блока."
+                "No new hard block today — recovery comes first.",
+                "Сегодня без нового тяжёлого блока — восстановление в приоритете."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте нагрузку ради цифр."
             ),
-            nextAction: .en(
-                "Water, food as planned, then a bit of rest.",
-                "Вода, еда по плану и немного отдыха."
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                mealWindowOpen: input.mealWindowOpen
             )
         )
     }
 
-    static func completedWalksOnlyDraft() -> CoachCopyRegistryScenarios.Draft {
-        CoachCopyRegistryScenarios.Draft(
+    static func completedWalksOnlyDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        if CoachCopyClosureTiming.allowsDayClosurePhrasing(
+            timeOfDay: input.timeOfDay,
+            conversationPhase: input.conversationPhase
+        ) {
+            return CoachCopyRegistryScenarios.Draft(
+                assessment: .en(
+                    "Full day — the walks already helped things settle.",
+                    "Плотный день — прогулки уже помогли успокоиться."
+                ),
+                recommendation: .en(
+                    "Keep the rest of the day calm — nothing left to prove.",
+                    "Остаток дня спокойный — доказывать уже нечего."
+                ),
+                avoid: .en(
+                    "Do not force extra steps just to chase numbers.",
+                    "Не добавляйте шаги через силу только ради цифр."
+                ),
+                nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                )
+            )
+        }
+
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return CoachCopyRegistryScenarios.Draft(
+                assessment: .en(
+                    "The walks helped things settle — keep the evening calm.",
+                    "Прогулки помогли успокоиться — вечер без спешки."
+                ),
+                recommendation: .en(
+                    "Keep the rest of the day calm — nothing left to prove.",
+                    "Остаток дня спокойный — доказывать уже нечего."
+                ),
+                avoid: .en(
+                    "Do not force extra steps just to chase numbers.",
+                    "Не добавляйте шаги через силу только ради цифр."
+                ),
+                nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                )
+            )
+        }
+
+        return CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "Full day — the walks already helped things settle.",
-                "Плотный день — прогулки уже помогли успокоиться."
+                "The walks already helped things settle.",
+                "Прогулки уже помогли успокоиться."
             ),
             recommendation: .en(
-                "Keep the rest of the day calm — nothing left to prove.",
-                "Остаток дня спокойный — доказывать уже нечего."
+                "Keep today calm — hold an easy rhythm from here.",
+                "Сегодня спокойно — дальше держите лёгкий ритм."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте шаги через силу только ради цифр."
             ),
-            nextAction: .en(
-                "Water, food as planned, then a bit of rest.",
-                "Вода, еда по плану и немного отдыха."
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                mealWindowOpen: input.mealWindowOpen
             )
         )
     }

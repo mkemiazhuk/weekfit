@@ -234,83 +234,21 @@ struct CustomMealBuilderView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitDetailScreenHeader(
+            title: labels.formTitle,
+            subtitle: labels.formSubtitle,
+            titleColor: textPrimary,
+            subtitleColor: textSecondary.opacity(0.76),
+            titleDesign: .default
+        ) {
+            WeekFitDetailScreenBackButton {
                 dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(WeekFitTheme.whiteOpacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(WeekFitTheme.whiteOpacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(labels.formTitle)
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                Text(labels.formSubtitle)
-                    .font(.system(size: 13.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer(minLength: 8)
-
-            Button {
+        } trailing: {
+            WeekFitDetailScreenSaveButton(isEnabled: isSaveEnabled, accent: accent) {
                 save()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.14),
-                                    WeekFitTheme.whiteOpacity(0.09)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    isSaveEnabled ? accent.opacity(0.18) : WeekFitTheme.whiteOpacity(0.065),
-                                    lineWidth: 1
-                                )
-                        }
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            isSaveEnabled
-                            ? accent.opacity(0.85)
-                            : textSecondary.opacity(0.42)
-                        )
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-            .disabled(!isSaveEnabled)
-            .scaleEffect(isSaveEnabled ? 1.0 : 0.96)
-            .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isSaveEnabled)
         }
-        .padding(.bottom, 2)
     }
 
     private var heroPreviewCard: some View {

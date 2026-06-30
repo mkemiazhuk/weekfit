@@ -78,6 +78,8 @@ enum CoachIntegrationMetrics {
 
         persist(next)
 
+        #if DEBUG
+        guard CoachDebug.isCompactEnabled else { return }
         if debug.usingCoach {
             logger.debug("usingCoach=yes scenario=\(debug.scenario.rawValue, privacy: .public) reason=\(recomputeReason, privacy: .public)")
         } else {
@@ -85,6 +87,7 @@ enum CoachIntegrationMetrics {
                 "usingCoach=no scenario=\(debug.scenario.rawValue, privacy: .public) copyPack=\(debug.copyPackExists ? "yes" : "nil", privacy: .public) fallbackReason=\(reasonKey, privacy: .public) recomputeReason=\(recomputeReason, privacy: .public) totals=\(next.logSummary, privacy: .public)"
             )
         }
+        #endif
     }
 
     private static func increment(_ counts: [String: Int], key: String) -> [String: Int] {

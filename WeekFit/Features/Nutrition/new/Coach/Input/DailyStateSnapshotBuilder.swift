@@ -9,6 +9,7 @@ struct DailyStateSnapshot {
     let profile: UserNutritionProfile
     let recoveryContext: CoachRecoveryContext
     let actualLoad: CoachActualLoadSnapshot
+    let isHealthAccessGranted: Bool
     let source: String
 
     func makeCoachInput(
@@ -25,6 +26,7 @@ struct DailyStateSnapshot {
             planSource: .swiftDataPlannedActivity,
             recoveryContext: metricsSnapshot.recoveryContext,
             nutritionContext: metricsSnapshot.nutritionContext,
+            isHealthAccessGranted: isHealthAccessGranted,
             source: source
         )
     }
@@ -41,13 +43,22 @@ enum DailyStateSnapshotBuilder {
         now: Date = Date(),
         source: String
     ) -> DailyStateSnapshot {
+        let calendar = Calendar.current
+        let selectedDayStart = calendar.startOfDay(for: selectedDate)
         nutritionViewModel.prepareForDay(selectedDate)
+
+        if let loadedDay = healthManager.displayMetricsDayStart,
+           !calendar.isDate(loadedDay, inSameDayAs: selectedDayStart) {
+            healthManager.prepareForDisplayDay(selectedDayStart)
+        }
+
         let resolvedDayActivities = dayActivities ?? activities(on: selectedDate, from: allPlannedActivities)
         let preservedMetrics = preservedNutritionMetrics(
             selectedDate: selectedDate,
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel
         )
+        let metricsAreCurrent = healthManager.areDisplayMetricsLoaded(for: selectedDate, calendar: calendar)
         let nutritionMetrics = DailyNutritionMetrics(
             protein: preservedMetrics.protein,
             carbs: preservedMetrics.carbs,
@@ -55,7 +66,7 @@ enum DailyStateSnapshotBuilder {
             fiber: preservedMetrics.fiber,
             calories: preservedMetrics.calories,
             waterLiters: preservedMetrics.waterLiters,
-            activeCalories: healthManager.activeCalories,
+            activeCalories: metricsAreCurrent ? healthManager.activeCalories : 0,
             sleepHours: healthManager.sleepHours,
             weightKg: healthManager.weight
         )
@@ -99,6 +110,7 @@ enum DailyStateSnapshotBuilder {
                 activityGoalCalories: automatedActivityGoal,
                 activityProgress: healthManager.activeCalories / automatedActivityGoal
             ),
+            isHealthAccessGranted: healthManager.isHealthAccessGranted,
             source: source
         )
     }
@@ -121,6 +133,20 @@ enum DailyStateSnapshotBuilder {
         } == true
 
         guard canUseViewModel else {
+            guard healthManager.areDisplayMetricsLoaded(for: selectedDate) else {
+                return DailyNutritionMetrics(
+                    protein: 0,
+                    carbs: 0,
+                    fats: 0,
+                    fiber: 0,
+                    calories: 0,
+                    waterLiters: 0,
+                    activeCalories: 0,
+                    sleepHours: healthManager.sleepHours,
+                    weightKg: healthManager.weight
+                )
+            }
+
             return DailyNutritionMetrics(
                 protein: healthManager.protein,
                 carbs: healthManager.carbs,
@@ -136,19 +162,24 @@ enum DailyStateSnapshotBuilder {
 
         let current = nutritionViewModel.currentMetrics
         let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
+        let metricsAreCurrent = healthManager.areDisplayMetricsLoaded(for: selectedDate)
 
         func highest(_ healthKit: Double, _ viewModel: Double?, _ coachValue: Double?) -> Double {
             max(healthKit, viewModel ?? 0, coachValue ?? 0)
         }
 
+        func healthKitValue(_ value: Double) -> Double {
+            metricsAreCurrent ? value : 0
+        }
+
         return DailyNutritionMetrics(
-            protein: highest(healthManager.protein, current?.protein, coach?.proteinCurrent),
-            carbs: highest(healthManager.carbs, current?.carbs, coach?.carbsCurrent),
-            fats: highest(healthManager.fats, current?.fats, coach?.fatsCurrent),
-            fiber: highest(healthManager.fiber, current?.fiber, nil),
-            calories: highest(healthManager.calories, current?.calories, coach?.caloriesCurrent),
-            waterLiters: highest(healthManager.waterLiters, current?.waterLiters, coach?.waterCurrent),
-            activeCalories: healthManager.activeCalories,
+            protein: highest(healthKitValue(healthManager.protein), current?.protein, coach?.proteinCurrent),
+            carbs: highest(healthKitValue(healthManager.carbs), current?.carbs, coach?.carbsCurrent),
+            fats: highest(healthKitValue(healthManager.fats), current?.fats, coach?.fatsCurrent),
+            fiber: highest(healthKitValue(healthManager.fiber), current?.fiber, nil),
+            calories: highest(healthKitValue(healthManager.calories), current?.calories, coach?.caloriesCurrent),
+            waterLiters: highest(healthKitValue(healthManager.waterLiters), current?.waterLiters, coach?.waterCurrent),
+            activeCalories: metricsAreCurrent ? healthManager.activeCalories : 0,
             sleepHours: healthManager.sleepHours,
             weightKg: healthManager.weight
         )

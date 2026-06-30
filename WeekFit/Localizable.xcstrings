@@ -12828,6 +12828,23 @@
         }
       }
     },
+    "coach.hero.nextStep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next step"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий шаг"
+          }
+        }
+      }
+    },
     "coach.highLoad" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -56564,7 +56581,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Night Comfort смягчает яркость и свечение вечером. Днём интерфейс остаётся контрастным и сочным."
+            "value" : "Ночной комфорт смягчает яркость и свечение вечером. Днём интерфейс остаётся контрастным и сочным."
           }
         }
       }
@@ -56717,7 +56734,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Night Comfort"
+            "value" : "Ночной комфорт"
           }
         }
       }
@@ -62810,19 +62827,53 @@
         }
       }
     },
+    "today.coach.status.noRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recovery"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без recovery"
+          }
+        }
+      }
+    },
+    "today.coach.chip.limitedRecovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No sleep data"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет данных сна"
+          }
+        }
+      }
+    },
     "today.coach.card.limitedConfidence" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recommendations refining as the day picture comes together"
+            "value" : "No sleep recorded — recovery excluded"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Рекомендации уточняются — собираю полную картину дня"
+            "value" : "Сон не записан — без recovery"
           }
         }
       }
@@ -64302,6 +64353,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готов"
+          }
+        }
+      }
+    },
+    "today.recovery.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery unavailable"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery недоступно"
+          }
+        }
+      }
+    },
+    "today.recovery.sleepNotRecorded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No sleep recorded"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сон не записан"
           }
         }
       }

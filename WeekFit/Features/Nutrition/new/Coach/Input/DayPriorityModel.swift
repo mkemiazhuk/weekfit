@@ -225,7 +225,9 @@ struct DayPriorityModel {
             return .overload
         }
 
-        if recovery.recoveryPercent < 55 || todayActivities.allSatisfy(isSupportingActivity) {
+        let recoveryDataAvailable = recovery.recoveryPercent > 0 || recovery.sleepHours > 0
+
+        if (recoveryDataAvailable && recovery.recoveryPercent < 55) || todayActivities.allSatisfy(isSupportingActivity) {
             return .recovery
         }
 
@@ -242,11 +244,13 @@ struct DayPriorityModel {
         tomorrowDemand: CoachTomorrowDemand,
         recovery: CoachRecoveryContext
     ) -> CoachProtectionTarget {
-        if tomorrowDemand == .hard && (goal == .overload || recovery.recoveryPercent < 70) {
+        let recoveryDataAvailable = recovery.recoveryPercent > 0 || recovery.sleepHours > 0
+
+        if tomorrowDemand == .hard && (goal == .overload || (recoveryDataAvailable && recovery.recoveryPercent < 70)) {
             return .tomorrow
         }
 
-        if recovery.recoveryPercent < 55 {
+        if recoveryDataAvailable && recovery.recoveryPercent < 55 {
             return .recovery
         }
 

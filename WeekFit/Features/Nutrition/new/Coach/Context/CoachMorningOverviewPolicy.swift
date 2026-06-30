@@ -94,6 +94,15 @@ enum CoachMorningOverviewPolicy {
     static func upcomingActivityWhySignal(for input: CoachCopyBuildInput) -> CoachBilingualText? {
         guard input.conversationPhase == .morningOverview else { return nil }
         guard input.focusSource == .upcoming, input.activityType != .none else { return nil }
+        guard input.dayReadiness.recoveryDataAvailable else {
+            if input.dayReadiness.hadHeavyYesterday {
+                return .en(
+                    "Yesterday still counts — today's plan stays measured.",
+                    "Вчера ещё в теле — сегодня по плану, без спешки."
+                )
+            }
+            return nil
+        }
 
         if input.dayReadiness.sleepIsLow {
             return .en(
