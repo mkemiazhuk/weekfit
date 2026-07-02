@@ -35,6 +35,11 @@ struct NutritionBudget: Equatable {
 
 enum NutritionBudgetCalculator {
 
+    /// Single source of truth for user-facing calorie budget displays.
+    static func canonicalBudget(from viewModel: NutritionViewModel) -> NutritionBudget {
+        viewModel.nutritionBudget
+    }
+
     static func make(
         goalSet: NutritionGoalSet,
         consumed: Double

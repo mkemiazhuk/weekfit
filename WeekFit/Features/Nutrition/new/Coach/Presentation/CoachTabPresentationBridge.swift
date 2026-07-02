@@ -252,7 +252,7 @@ enum CoachTabPresentationBridge {
         limitedRecovery: Bool
     ) -> String {
         if limitedRecovery {
-            return WeekFitLocalizedString("today.coach.status.noRecovery")
+            return WeekFitLocalizedString("today.coach.chip.limitedRecovery")
         }
 
         let stableDayProfile = CoachStableDayProfile.resolve(

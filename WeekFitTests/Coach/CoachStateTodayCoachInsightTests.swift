@@ -133,7 +133,8 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
                     copyPackExists: true,
                     usingCoach: true,
                     fallbackReason: nil
-                )
+                ),
+            reflectionOffer: nil
         )
     }
 

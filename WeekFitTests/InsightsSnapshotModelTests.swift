@@ -4,10 +4,14 @@ import XCTest
 final class InsightsSnapshotModelTests: XCTestCase {
 
     func testFallbackSnapshotExposesEvidenceAndCoverageState() {
+        WeekFitSetCurrentLanguage(.english)
+        WeekFitWarmLocalizationCache()
+        defer { WeekFitSetCurrentLanguage(.english) }
+
         let snapshot = InsightsSnapshot.fallback
 
-        XCTAssertEqual(snapshot.evidence.label, "WHY THIS")
-        XCTAssertEqual(snapshot.evidence.confidenceLabel, "Building")
+        XCTAssertEqual(snapshot.evidence.label, WeekFitLocalizedString("insights.snapshot.fallback.evidence.label"))
+        XCTAssertEqual(snapshot.evidence.confidenceLabel, WeekFitLocalizedString("insights.snapshot.fallback.evidence.confidenceLabel"))
         XCTAssertFalse(snapshot.evidence.bullets.isEmpty)
         XCTAssertFalse(snapshot.whyItems.isEmpty)
         XCTAssertLessThanOrEqual(snapshot.whyItems.count, 3)
@@ -16,6 +20,22 @@ final class InsightsSnapshotModelTests: XCTestCase {
         XCTAssertFalse(snapshot.dataQuality.hasAnySignal)
         XCTAssertFalse(snapshot.learnings.isEmpty)
         XCTAssertNotNil(snapshot.opportunity)
+    }
+
+    func testFallbackSnapshotLocalizesForRussian() {
+        WeekFitSetCurrentLanguage(.russian)
+        WeekFitWarmLocalizationCache()
+        defer { WeekFitSetCurrentLanguage(.english) }
+
+        let snapshot = InsightsSnapshot.fallback
+
+        XCTAssertEqual(snapshot.evidence.label, WeekFitLocalizedString("insights.snapshot.fallback.evidence.label", locale: Locale(identifier: "ru")))
+        XCTAssertEqual(snapshot.hero.title, WeekFitLocalizedString("insights.snapshot.fallback.hero.title", locale: Locale(identifier: "ru")))
+        XCTAssertEqual(snapshot.domainPages.map(\.title), [
+            WeekFitLocalizedString("insights.snapshot.fallback.domain.recovery.title", locale: Locale(identifier: "ru")),
+            WeekFitLocalizedString("insights.snapshot.fallback.domain.activity.title", locale: Locale(identifier: "ru")),
+            WeekFitLocalizedString("insights.snapshot.fallback.domain.nutrition.title", locale: Locale(identifier: "ru"))
+        ])
     }
 
     func testSnapshotPreservesInsightContextSections() {

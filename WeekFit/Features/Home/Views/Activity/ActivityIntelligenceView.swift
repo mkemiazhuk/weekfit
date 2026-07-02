@@ -59,6 +59,14 @@ struct ActivitySessionDetailSnapshot: Hashable {
     var shouldShowElapsedTime: Bool {
         elapsedDurationSeconds > workoutDurationSeconds + 60
     }
+
+    var shouldShowDistanceMetrics: Bool {
+        !ActivityDistanceMetricsExpectation.suppresses(
+            activityType: activityType,
+            title: title,
+            icon: icon
+        )
+    }
 }
 
 struct ActivitySessionSnapshot: Identifiable, Hashable {
@@ -340,7 +348,7 @@ private struct ActivityHeroCard: View {
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("activity.score")
+                Text(WeekFitLocalizedString("activity.score"))
                     .font(.system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }
@@ -1539,7 +1547,8 @@ struct ActivitySessionDetailView: View {
                         )
                     }
 
-                    if let distanceKm = detail?.distanceKm {
+                    if let detail, detail.shouldShowDistanceMetrics,
+                       let distanceKm = detail.distanceKm {
                         routeMetric(
                             title: "activity.metric.distance",
                             value: MetricFormatter.distance(distanceKm),
@@ -1558,7 +1567,7 @@ struct ActivitySessionDetailView: View {
 
     private var timeInZonesCard: some View {
         VStack(alignment: .leading, spacing: 11) {
-            SectionLabel("activity.timeInZones")
+            SectionLabel(WeekFitLocalizedString("activity.timeInZones"))
 
             HStack(spacing: 14) {
                 ZoneDonutView(zones: heartRateZones)
@@ -1648,7 +1657,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let distanceKm = detail?.distanceKm {
+        if let detail, detail.shouldShowDistanceMetrics, let distanceKm = detail.distanceKm {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.distance",
@@ -1684,7 +1693,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let speed = detail?.averageSpeedKmh {
+        if let detail, detail.shouldShowDistanceMetrics, let speed = detail.averageSpeedKmh {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.avgSpeed",
@@ -1696,7 +1705,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let maxSpeedKmh {
+        if detail?.shouldShowDistanceMetrics == true, let maxSpeedKmh {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.maxSpeed",
@@ -1762,6 +1771,7 @@ struct ActivitySessionDetailView: View {
     }
 
     private var maxSpeedKmh: Double? {
+        guard detail?.shouldShowDistanceMetrics != false else { return nil }
         guard routePoints.count > 1 else { return nil }
 
         let speeds = zip(routePoints, routePoints.dropFirst()).compactMap { start, end -> Double? in
@@ -2031,6 +2041,56 @@ private struct HeartRateZoneDefinition: Identifiable, Hashable {
 }
 
 @MainActor
+private enum ActivityDistanceMetricsExpectation {
+    static func suppresses(
+        activityType: HKWorkoutActivityType,
+        title: String,
+        icon: String
+    ) -> Bool {
+        switch activityType {
+        case .traditionalStrengthTraining,
+             .functionalStrengthTraining,
+             .yoga,
+             .flexibility,
+             .coreTraining,
+             .pilates,
+             .mindAndBody,
+             .cooldown:
+            return true
+        default:
+            break
+        }
+
+        let haystack = [title, icon].joined(separator: " ").lowercased()
+
+        if containsAny(haystack, [
+            "upper body", "lower body", "full body", "strength", "gym",
+            "weights", "dumbbell", "barbell", "сил", "зал", "трениров",
+            "figure.strengthtraining", "figure.core.training"
+        ]) {
+            return true
+        }
+
+        if containsAny(haystack, ["yoga", "йога", "figure.yoga"]) {
+            return true
+        }
+
+        if containsAny(haystack, [
+            "stretch", "stretching", "flexibility", "mobility", "растяж", "мобил",
+            "cooldown", "figure.cooldown"
+        ]) {
+            return true
+        }
+
+        return false
+    }
+
+    private static func containsAny(_ text: String, _ tokens: [String]) -> Bool {
+        tokens.contains { text.contains($0) }
+    }
+}
+
+@MainActor
 private enum ActivityRouteExpectation {
     static func expectsRoute(for activityType: HKWorkoutActivityType) -> Bool {
         switch activityType {
@@ -2275,7 +2335,7 @@ private struct ZoneDonutView: View {
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("activity.min")
+                Text(WeekFitLocalizedString("activity.min"))
                     .font(.system(size: ActivityTypography.helperText, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
             }
@@ -2674,11 +2734,11 @@ private struct EmptySessionsRow: View {
             CircleIcon(systemName: "figure.walk", color: ActivityStyle.activityColor, size: 36)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("activity.noWorkoutsRecorded")
+                Text(WeekFitLocalizedString("activity.noWorkoutsRecorded"))
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
 
-                Text("activity.activityTotalsAreShownFromAppleHealth")
+                Text(WeekFitLocalizedString("activity.activityTotalsAreShownFromAppleHealth"))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
             }

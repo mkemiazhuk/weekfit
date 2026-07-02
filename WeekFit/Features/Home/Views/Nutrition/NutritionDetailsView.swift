@@ -13,6 +13,7 @@ struct NutritionDetailsView: View {
     let fats: Double
     let fiber: Double
 
+    let caloriesGoal: Double
     let proteinGoal: Double
     let carbsGoal: Double
     let fatsGoal: Double
@@ -34,6 +35,7 @@ struct NutritionDetailsView: View {
         carbs: Double,
         fats: Double,
         fiber: Double,
+        caloriesGoal: Double,
         proteinGoal: Double,
         carbsGoal: Double,
         fatsGoal: Double,
@@ -47,6 +49,7 @@ struct NutritionDetailsView: View {
         self.carbs = carbs
         self.fats = fats
         self.fiber = fiber
+        self.caloriesGoal = caloriesGoal
         self.proteinGoal = proteinGoal
         self.carbsGoal = carbsGoal
         self.fatsGoal = fatsGoal
@@ -79,9 +82,9 @@ struct NutritionDetailsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
                         NutritionHeroCard(
-                            nutritionScore: nutritionScore,
-                            statusText: nutritionStatusText,
-                            insightText: nutritionInsightText
+                            qualityScore: nutritionQualityScore,
+                            subtitleText: nutritionQualitySubtitle,
+                            primaryInsightText: nutritionPrimaryInsight
                         )
 
                         MacroRingsCard(
@@ -159,17 +162,33 @@ struct NutritionDetailsView: View {
         }
     }
 
-    private var nutritionScore: Int {
-        let values = [
-            macroProgress(value: protein, goal: proteinGoal),
-            macroProgress(value: carbs, goal: carbsGoal),
-            macroProgress(value: fats, goal: fatsGoal),
-            macroProgress(value: fiber, goal: fiberGoal)
-        ]
+    private var nutritionQualityInput: NutritionQualityPresenter.Input {
+        NutritionQualityPresenter.Input(
+            protein: protein,
+            carbs: carbs,
+            fats: fats,
+            fiber: fiber,
+            calories: calories,
+            proteinGoal: proteinGoal,
+            carbsGoal: carbsGoal,
+            fatsGoal: fatsGoal,
+            fiberGoal: fiberGoal,
+            caloriesGoal: caloriesGoal,
+            mealsLogged: !meals.isEmpty,
+            isToday: isToday
+        )
+    }
 
-        guard !values.isEmpty else { return 0 }
+    private var nutritionQualityScore: Int {
+        NutritionQualityPresenter.qualityScore(for: nutritionQualityInput)
+    }
 
-        return Int((values.reduce(0, +) / Double(values.count) * 100).rounded())
+    private var nutritionQualitySubtitle: String {
+        NutritionQualityPresenter.subtitleText(isToday: isToday)
+    }
+
+    private var nutritionPrimaryInsight: String {
+        NutritionQualityPresenter.primaryInsightText(for: nutritionQualityInput)
     }
 
     private var nutritionDetailsDateTitle: String {
@@ -179,95 +198,8 @@ struct NutritionDetailsView: View {
         return formatter.string(from: displayedDate)
     }
 
-    private func macroProgress(value: Double, goal: Double) -> Double {
-        guard goal > 0 else { return 0 }
-        return min(max(value / goal, 0), 1)
-    }
-
     private var isToday: Bool {
         Calendar.current.isDate(displayedDate, inSameDayAs: Date())
-    }
-
-    private var nutritionStatusText: String {
-        if meals.isEmpty {
-            return WeekFitLocalizedString("nutrition.details.status.noMealsLogged")
-        }
-
-        if !isToday {
-            switch nutritionScore {
-            case 95...:
-                return WeekFitLocalizedString("nutrition.details.status.greatBalance")
-            case 80..<95:
-                return WeekFitLocalizedString("nutrition.details.status.wellBalanced")
-            case 55..<80:
-                return WeekFitLocalizedString("nutrition.details.status.partlyBalanced")
-            default:
-                return WeekFitLocalizedString("nutrition.details.status.lowLoggedIntake")
-            }
-        }
-
-        switch nutritionScore {
-        case 95...:
-            return WeekFitLocalizedString("nutrition.details.status.onTarget")
-        case 80..<95:
-            return WeekFitLocalizedString("nutrition.details.status.nearlyBalanced")
-        case 55..<80:
-            return WeekFitLocalizedString("nutrition.details.status.buildingBalance")
-        case 1..<55:
-            return WeekFitLocalizedString("nutrition.details.status.needsAttention")
-        default:
-            return WeekFitLocalizedString("nutrition.details.status.noMealsYet")
-        }
-    }
-
-    private var nutritionInsightText: String {
-        let proteinProgress = macroProgress(value: protein, goal: proteinGoal)
-        let fatProgress = macroProgress(value: fats, goal: fatsGoal)
-        let fiberProgress = macroProgress(value: fiber, goal: fiberGoal)
-
-        if meals.isEmpty {
-            return isToday
-            ? WeekFitLocalizedString("nutrition.details.insight.emptyToday")
-            : WeekFitLocalizedString("nutrition.details.insight.emptyPastDay")
-        }
-
-        if !isToday {
-            if nutritionScore >= 95 {
-                return WeekFitLocalizedString("nutrition.details.insight.pastStrongBalance")
-            }
-
-            if proteinProgress >= 0.65 && fiberProgress < 0.50 {
-                return WeekFitLocalizedString("nutrition.details.insight.pastProteinFiberLow")
-            }
-
-            if proteinProgress >= 0.65 && fatProgress < 0.45 {
-                return WeekFitLocalizedString("nutrition.details.insight.pastProteinFatsLow")
-            }
-
-            if fiberProgress >= 0.70 {
-                return WeekFitLocalizedString("nutrition.details.insight.pastFiberGood")
-            }
-
-            return WeekFitLocalizedString("nutrition.details.insight.pastLoggedMeals")
-        }
-
-        if proteinProgress >= 0.65 && fiberProgress < 0.50 {
-            return WeekFitLocalizedString("nutrition.details.insight.todayProteinFiberLow")
-        }
-
-        if proteinProgress >= 0.65 && fatProgress < 0.45 {
-            return WeekFitLocalizedString("nutrition.details.insight.todayProteinFatsLow")
-        }
-
-        if fiberProgress >= 0.70 {
-            return WeekFitLocalizedString("nutrition.details.insight.todayFiberGood")
-        }
-
-        if nutritionScore >= 90 {
-            return WeekFitLocalizedString("nutrition.details.insight.todayCloseTargets")
-        }
-
-        return WeekFitLocalizedString("nutrition.details.insight.calculated")
     }
 
     private var noteCard: some View {
@@ -299,31 +231,31 @@ struct NutritionDetailsView: View {
 // MARK: - Hero
 
 private struct NutritionHeroCard: View {
-    let nutritionScore: Int
-    let statusText: String
-    let insightText: String
+    let qualityScore: Int
+    let subtitleText: String
+    let primaryInsightText: String
 
     private var progress: CGFloat {
-        CGFloat(min(max(nutritionScore, 0), 100)) / 100
+        CGFloat(min(max(qualityScore, 0), 100)) / 100
     }
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(alignment: .top, spacing: 15) {
             nutritionRing
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(WeekFitLocalizedString("nutrition.details.score.title").uppercased())
+            VStack(alignment: .leading, spacing: 8) {
+                Text(WeekFitLocalizedString("nutrition.details.quality.title"))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.8)
                     .foregroundStyle(NutritionStyle.nutritionColor)
 
-                Text(statusText)
-                    .font(.system(size: NutritionTypography.heroTitle, weight: .bold, design: .rounded))
+                Text(primaryInsightText)
+                    .font(.system(size: NutritionTypography.heroTitle, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                Text(insightText)
+                Text(subtitleText)
                     .font(.system(size: NutritionTypography.heroText, weight: .medium, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                     .lineSpacing(2)
@@ -351,13 +283,13 @@ private struct NutritionHeroCard: View {
                 Color(red: 0.36, green: 0.88, blue: 0.44).opacity(0.92)
             ]
         ) {
-            VStack(spacing: -2) {
-                Text("\(nutritionScore)")
+            VStack(spacing: -1) {
+                Text("\(qualityScore)")
                     .font(.system(size: NutritionTypography.heroScore, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text(WeekFitLocalizedString("common.unit.score"))
+                Text("/100")
                     .font(.system(size: NutritionTypography.heroScoreLabel, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }

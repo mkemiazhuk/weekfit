@@ -187,7 +187,7 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             reason: "test"
         )
 
-        XCTAssertEqual(state.coachUIPresentation?.statusLabel, "No recovery")
+        XCTAssertEqual(state.coachUIPresentation?.statusLabel, "No sleep data")
     }
 
     func testLimitedRecoveryAssessmentUsesConversationalCopy() {

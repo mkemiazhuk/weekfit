@@ -23,6 +23,8 @@ struct CoachState: Identifiable {
     let fingerprint: CoachInputFingerprint?
     let coachUIPresentation: CoachUIPresentation?
     let coachIntegrationDebug: CoachIntegrationDebug?
+    /// Optional reflection utterance at conversational pause. Nil unless understanding changed.
+    let reflectionOffer: ReflectionOffer?
 
     var hasValidGuidance: Bool {
         coachUIPresentation != nil
@@ -74,7 +76,8 @@ struct CoachState: Identifiable {
             input: nil,
             fingerprint: nil,
             coachUIPresentation: nil,
-            coachIntegrationDebug: nil
+            coachIntegrationDebug: nil,
+            reflectionOffer: nil
         )
     }
 
@@ -86,7 +89,8 @@ struct CoachState: Identifiable {
             input: nil,
             fingerprint: nil,
             coachUIPresentation: nil,
-            coachIntegrationDebug: nil
+            coachIntegrationDebug: nil,
+            reflectionOffer: nil
         )
     }
 
@@ -143,6 +147,16 @@ struct CoachState: Identifiable {
             logCoachRegistryGap(debug: coachIntegrationDebug, reason: reason)
         }
 
+        let reflectionOffer = ReflectionComposer.compose(
+            ReflectionComposer.Input(
+                snapshot: input,
+                context: v6Result.context,
+                urgencyLevel: v6Result.todayInsight.urgencyLevel,
+                safetyAlert: v6Result.todayInsight.safetyAlert,
+                alertSeverity: v6Result.todayInsight.alertSeverity
+            )
+        )
+
         return CoachState(
             id: UUID(),
             createdAt: createdAt,
@@ -150,7 +164,8 @@ struct CoachState: Identifiable {
             input: input,
             fingerprint: fingerprint,
             coachUIPresentation: coachUIPresentation,
-            coachIntegrationDebug: coachIntegrationDebug
+            coachIntegrationDebug: coachIntegrationDebug,
+            reflectionOffer: reflectionOffer
         )
     }
 
@@ -164,7 +179,8 @@ struct CoachState: Identifiable {
             input: input,
             fingerprint: fingerprint,
             coachUIPresentation: coachUIPresentation,
-            coachIntegrationDebug: coachIntegrationDebug
+            coachIntegrationDebug: coachIntegrationDebug,
+            reflectionOffer: reflectionOffer
         )
     }
 

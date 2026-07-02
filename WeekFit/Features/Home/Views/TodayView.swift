@@ -248,7 +248,11 @@ struct TodayView: View {
     private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
     private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
     private var fiberGoal: Double { nutritionViewModel.nutritionResult?.goals.fiber ?? 35.0 }
-    private var caloriesGoal: Double { nutritionViewModel.nutritionResult?.goals.calories ?? 2761.0 }
+    private var todayNutritionBudget: NutritionBudget {
+        NutritionBudgetCalculator.canonicalBudget(from: nutritionViewModel)
+    }
+
+    private var caloriesGoal: Double { todayNutritionBudget.totalCalories > 0 ? todayNutritionBudget.totalCalories : 2761.0 }
     private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
     
     private var currentWater: Double {
@@ -305,9 +309,7 @@ struct TodayView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack(alignment: .bottom) {
-            WeekFitTheme.appBackground
-                .ignoresSafeArea()
-            ambientBackground
+            todayBackground
 
             todayScreen
                 .onAppear {
@@ -350,6 +352,7 @@ struct TodayView: View {
                 carbs: nutritionCarbs(for: nutritionDetailsDate),
                 fats: nutritionFats(for: nutritionDetailsDate),
                 fiber: nutritionFiber(for: nutritionDetailsDate),
+                caloriesGoal: caloriesGoal,
                 proteinGoal: proteinGoal,
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
@@ -969,7 +972,7 @@ struct TodayView: View {
         let plannedMeals = selectedActivities.filter { $0.type.lowercased() == "meal" }
         let completedMeals = plannedMeals.filter(\.isCompleted)
         let activityGoal = automatedActivityGoal
-        let nutritionTarget = (result?.targetCalories ?? 0) + healthManager.activeCalories
+        let nutritionTarget = nutritionViewModel.nutritionBudget.totalCalories
         Self.logger.debug(
             """
             [TodayDataAudit] source=\(source, privacy: .public) currentDate=\(currentDate, privacy: .public) selectedDate=\(selectedDate, privacy: .public) selectedIsToday=\(calendar.isDate(selectedDate, inSameDayAs: currentDate), privacy: .public) dailySnapshotDate=\(String(describing: snapshot?.createdAt), privacy: .public) snapshotSource=\(snapshot?.source ?? "nil", privacy: .public) plannedActivities=\(selectedActivities.count, privacy: .public) allPlannedActivities=\(plannedActivities.count, privacy: .public) plannedMeals=\(plannedMeals.count, privacy: .public) completedMeals=\(completedMeals.count, privacy: .public) recoveryInputs sleepMinutes=\(healthManager.sleepMinutes, privacy: .public) sleepHours=\(healthManager.sleepHours, privacy: .public) hrv=\(healthManager.hrvSDNN, privacy: .public) rhr=\(healthManager.restingHeartRate, privacy: .public) recovery=\(healthManager.recoveryPercent, privacy: .public) recoveryBreakdown=\(String(describing: healthManager.recoveryBreakdown), privacy: .public) nutritionInputs hkCalories=\(healthManager.calories, privacy: .public) hkProtein=\(healthManager.protein, privacy: .public) hkCarbs=\(healthManager.carbs, privacy: .public) hkFats=\(healthManager.fats, privacy: .public) hkWater=\(healthManager.waterLiters, privacy: .public) metricsCalories=\(metrics?.calories ?? -1, privacy: .public) metricsProtein=\(metrics?.protein ?? -1, privacy: .public) metricsCarbs=\(metrics?.carbs ?? -1, privacy: .public) metricsWater=\(metrics?.waterLiters ?? -1, privacy: .public) nutritionTarget=\(nutritionTarget, privacy: .public) nutritionPercent=\(nutritionViewModel.nutritionPercent, privacy: .public) activityInputs activeCalories=\(healthManager.activeCalories, privacy: .public) steps=\(healthManager.steps, privacy: .public) exerciseMinutes=\(healthManager.exerciseMinutes, privacy: .public) activityGoal=\(activityGoal, privacy: .public) activityProgress=\(activityGoal > 0 ? healthManager.activeCalories / activityGoal : 0, privacy: .public) lastHealthKitSync=\(String(describing: healthManager.lastHealthKitSyncTime), privacy: .public)
@@ -1153,6 +1156,39 @@ struct TodayView: View {
         }
         .padding(.bottom, TodayLayout.tabBarContentInset)
 
+    }
+
+    @ViewBuilder
+    private var todayBackground: some View {
+        if TodayAtmospherePolicy.isEnabled {
+            TodayAtmosphereBackground(
+                snapshot: todayAtmosphereSnapshot,
+                ambientOpacity: palette.ambientOpacity
+            )
+            .ignoresSafeArea()
+        } else {
+            WeekFitTheme.appBackground
+                .ignoresSafeArea()
+            ambientBackground
+        }
+    }
+
+    private var todayAtmosphereSnapshot: TodayAtmosphereSnapshot {
+        TodayAtmosphereResolver.resolve(
+            recoveryPercent: healthManager.recoveryPercent,
+            hasRecoverySignals: hasTodayRecoverySignals,
+            sleepHours: healthManager.sleepHours,
+            activeCalories: healthManager.activeCalories,
+            activityGoal: automatedActivityGoal,
+            completedTrainingCount: completedTrainingCountToday,
+            hour: Calendar.current.component(.hour, from: todayViewModel.now)
+        )
+    }
+
+    private var completedTrainingCountToday: Int {
+        selectedDayActivities.filter { activity in
+            activity.isCompleted && CoachTomorrowDemandResolver.isTraining(activity)
+        }.count
     }
 
     private var ambientBackground: some View {
@@ -1500,18 +1536,19 @@ struct TodayView: View {
     }
     
     private var remainingCaloriesText: String {
-        let target = nutritionViewModel.nutritionResult?.targetCalories ?? 2761.0
-        let eaten = nutritionViewModel.currentMetrics?.calories ?? 0.0
-        let burned = healthManager.activeCalories
-        
-        // Формула: План + Сожженное на тренировках - Съеденное
-        let remaining = target + burned - eaten
-        
-        if remaining > 0 {
-            return String(format: WeekFitLocalizedString("today.calories.leftFormat"), Int(remaining))
-        } else {
-            return String(format: WeekFitLocalizedString("today.calories.overFormat"), Int(abs(remaining)))
+        let budget = todayNutritionBudget
+
+        if TodayNutritionDisplayMetrics.isOverBudget(budget) {
+            return String(
+                format: WeekFitLocalizedString("today.calories.overFormat"),
+                TodayNutritionDisplayMetrics.remainingCalories(from: budget)
+            )
         }
+
+        return String(
+            format: WeekFitLocalizedString("today.calories.leftFormat"),
+            TodayNutritionDisplayMetrics.remainingCalories(from: budget)
+        )
     }
 
     private var dailyStatusSection: some View {
@@ -1522,14 +1559,9 @@ struct TodayView: View {
             ? "<1%"
             : "\(activityPercent)%"
 
-        let baseTargetCalories: Double = nutritionViewModel.nutritionResult?.targetCalories ?? 1743.0
-        let activeCaloriesBurned: Double = healthManager.activeCalories
-        let dynamicNutritionTarget: Double = baseTargetCalories + activeCaloriesBurned
-        let eatenCalories: Double = nutritionViewModel.currentMetrics?.calories ?? 0.0
-
-        let nutritionPercent: Int = dynamicNutritionTarget > 0.0
-            ? Int((eatenCalories / dynamicNutritionTarget) * 100)
-            : 0
+        let budget = todayNutritionBudget
+        let eatenCalories = TodayNutritionDisplayMetrics.consumedCalories(from: budget)
+        let nutritionPercent = TodayNutritionDisplayMetrics.progressPercent(from: budget)
 
         let hasRecoveryData = hasTodayRecoverySignals
 

@@ -1590,7 +1590,9 @@ private extension PlanAddActivitySheet {
     }
 
     func deleteActivity(_ activity: PlannedActivity) {
-        viewModel.deleteActivity(activity, modelContext: modelContext)
+        Task {
+            await viewModel.deleteActivity(activity, modelContext: modelContext)
+        }
     }
 
     var canSaveSelectedItem: Bool {

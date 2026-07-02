@@ -26,9 +26,9 @@ final class DayFlowService {
             .map {
                 DayFlowItem(
                     id: "active_\($0.id)",
-                    label: "LIVE",
+                    label: WeekFitLocalizedString("today.dayFlow.live"),
                     title: $0.title,
-                    subtitle: "Happening now",
+                    subtitle: WeekFitLocalizedString("today.dayFlow.happeningNow"),
                     meta: activityTime($0.date),
                     icon: $0.icon.isEmpty ? "figure.run" : $0.icon,
                     color: $0.color,
@@ -51,9 +51,9 @@ final class DayFlowService {
             .map {
                 DayFlowItem(
                     id: "planned_\($0.id)",
-                    label: "NEXT",
+                    label: WeekFitLocalizedString("today.dayFlow.next"),
                     title: $0.title,
-                    subtitle: "Planned",
+                    subtitle: WeekFitLocalizedString("today.dayFlow.planned"),
                     meta: activityTime($0.date),
                     icon: $0.icon.isEmpty ? "sparkles" : $0.icon,
                     color: $0.color,
@@ -73,9 +73,13 @@ final class DayFlowService {
             .map {
                 DayFlowItem(
                     id: "done_\($0.id)",
-                    label: $0.isSkipped ? "SKIPPED" : "DONE",
+                    label: WeekFitLocalizedString(
+                        $0.isSkipped ? "today.dayFlow.skippedUpper" : "today.dayFlow.doneUpper"
+                    ),
                     title: $0.title,
-                    subtitle: $0.isSkipped ? "Skipped" : "Completed",
+                    subtitle: WeekFitLocalizedString(
+                        $0.isSkipped ? "today.dayFlow.skipped" : "today.dayFlow.completed"
+                    ),
                     meta: activityTime($0.date),
                     icon: $0.icon.isEmpty ? "checkmark.circle.fill" : $0.icon,
                     color: $0.color,
@@ -93,7 +97,7 @@ final class DayFlowService {
         )
         .sorted { $0.date < $1.date }
 
-        return all.isEmpty ? [DayFlowItem.empty] : all
+        return all.isEmpty ? [DayFlowItem.makeEmpty()] : all
     }
 
     private func activityTime(_ date: Date) -> String {
@@ -116,19 +120,21 @@ struct DayFlowItem: Identifiable {
     let date: Date
     let slot: DayFlowSlot
 
-    static let empty = DayFlowItem(
-        id: "empty_day_flow",
-        label: "CLEAR",
-        title: "Nothing planned right now",
-        subtitle: "Your current slot is open",
-        meta: "Plan",
-        icon: "checkmark.circle.fill",
-        color: WeekFitTheme.meal,
-        state: .done,
-        source: .system,
-        date: .now,
-        slot: .current
-    )
+    static func makeEmpty() -> DayFlowItem {
+        DayFlowItem(
+            id: "empty_day_flow",
+            label: WeekFitLocalizedString("today.dayFlow.clear"),
+            title: WeekFitLocalizedString("today.dayFlow.empty.title"),
+            subtitle: WeekFitLocalizedString("today.dayFlow.empty.subtitle"),
+            meta: WeekFitLocalizedString("today.dayFlow.empty.meta"),
+            icon: "checkmark.circle.fill",
+            color: WeekFitTheme.meal,
+            state: .done,
+            source: .system,
+            date: .now,
+            slot: .current
+        )
+    }
 }
 
 enum DayFlowState {

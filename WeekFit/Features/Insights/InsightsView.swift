@@ -2758,20 +2758,20 @@ final class InsightsViewModel: ObservableObject {
         switch domain {
         case .recovery:
             let averageRecovery = average(recoverySleepRecords.filter { $0.recoveryScore > 0 }.map { Double($0.recoveryScore) })
-            return averageRecovery > 0 ? "\(Int(averageRecovery.rounded()))" : "Building"
+            return averageRecovery > 0 ? "\(Int(averageRecovery.rounded()))" : InsightsLocalization.Section.building
         case .sleep:
             let averageSleep = average(recoverySleepRecords.filter { $0.sleepHours > 0 }.map(\.sleepHours))
-            return averageSleep > 0 ? "\(formatOneDecimal(averageSleep))h" : "Building"
+            return averageSleep > 0 ? "\(formatOneDecimal(averageSleep))h" : InsightsLocalization.Section.building
         case .activity:
             let volume = trainingVolumeSummary(records)
-            return volume.hasMeaningfulLoad ? formatDuration(Int((volume.hours * 60).rounded())) : "Building"
+            return volume.hasMeaningfulLoad ? formatDuration(Int((volume.hours * 60).rounded())) : InsightsLocalization.Section.building
         case .hydration:
             return formatLiters(records.last?.waterLiters ?? 0)
         case .nutrition:
             let protein = records.last?.proteinGrams ?? 0
-            return protein > 0 ? "\(Int(protein.rounded()))g" : "Building"
+            return protein > 0 ? "\(Int(protein.rounded()))g" : InsightsLocalization.Section.building
         case .consistency, .missingData:
-            return "Building"
+            return InsightsLocalization.Section.building
         }
     }
 
@@ -3148,20 +3148,7 @@ final class InsightsViewModel: ObservableObject {
     }
 
     private func workloadSignificanceText(_ volume: TrainingVolumeSummary) -> String {
-        switch workloadCategory(volume) {
-        case "Recovery Week":
-            return "This looks like a recovery week, so training is unlikely to be the main stressor."
-        case "Light Week":
-            return "This is a light training week, leaving room to build without forcing intensity."
-        case "Normal Week":
-            return "This looks like a normal training week, so recovery response matters more than volume alone."
-        case "Productive Week":
-            return "This has been a productive training week, enough to build fitness without looking excessive."
-        case "Heavy Week":
-            return "This has been one of your heavier recent training weeks, so recovery needs to hold steady."
-        default:
-            return "This is a very high load week, and recovery response should decide whether to push or back off."
-        }
+        InsightsLocalization.VM.workloadSignificanceText(for: workloadCategory(volume))
     }
 
     private func trainingCoachingMeaning(_ volume: TrainingVolumeSummary, recoveryStable: Bool) -> String {
@@ -3412,18 +3399,18 @@ final class InsightsViewModel: ObservableObject {
 
     private func nextTrainingProgression(_ volume: TrainingVolumeSummary, recoveryStable: Bool) -> String {
         if !recoveryStable {
-            return "Hold volume steady until recovery rises before adding another hard session."
+            return InsightsLocalization.text("insights.vm.progression.holdUntilRecovery")
         }
 
         if volume.hours >= 6.0 || volume.activeCalories >= 5_500 {
-            return "The next level is better distribution: keep volume similar and spread hard efforts across the week."
+            return InsightsLocalization.text("insights.vm.progression.betterDistribution")
         }
 
         if volume.hours >= 3.0 || volume.activeCalories >= 2_800 {
-            return "The next level is one more controlled session or a small intensity bump, only if recovery stays stable."
+            return InsightsLocalization.text("insights.vm.progression.controlledSession")
         }
 
-        return "The next level is building toward three hours of weekly activity before chasing intensity."
+        return InsightsLocalization.text("insights.vm.progression.buildThreeHours")
     }
 
     private func makeLearnings(
@@ -3444,9 +3431,12 @@ final class InsightsViewModel: ObservableObject {
         if activityRecords.count >= 6, averageRecovery >= 72 {
             let volume = trainingVolumeSummary(records)
             learnings.append(InsightsLearning(
-                label: "STRONGEST PATTERN",
-                title: "Recovery is absorbing your workload",
-                text: "\(workloadSignificanceText(volume)) Recovery stayed stable, suggesting your body is absorbing the workload well.",
+                label: InsightsLocalization.Section.strongestPattern,
+                title: InsightsLocalization.text("insights.vm.learnings.absorbingWorkload.title"),
+                text: InsightsLocalization.format(
+                    "insights.vm.learnings.absorbingWorkload.textFormat",
+                    workloadSignificanceText(volume)
+                ),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 domain: .recovery
@@ -3454,18 +3444,25 @@ final class InsightsViewModel: ObservableObject {
         } else if activityRecords.count >= 5, averageRecovery > 0, averageRecovery < 68 {
             let volume = trainingVolumeSummary(records)
             learnings.append(InsightsLearning(
-                label: "STRONGEST PATTERN",
-                title: "Training load is pressing recovery",
-                text: "\(workloadSignificanceText(volume)) Recovery is not keeping pace, so the issue looks like load management rather than motivation.",
+                label: InsightsLocalization.Section.strongestPattern,
+                title: InsightsLocalization.text("insights.vm.learnings.loadPressing.title"),
+                text: InsightsLocalization.format(
+                    "insights.vm.learnings.loadPressing.textFormat",
+                    workloadSignificanceText(volume)
+                ),
                 icon: "figure.run",
                 accent: WeekFitTheme.orange,
                 domain: .activity
             ))
         } else if recoveryRecords.count >= 7 {
             learnings.append(InsightsLearning(
-                label: "STRONGEST PATTERN",
-                title: averageRecovery >= 72 ? "Recovery is your most stable signal" : "Recovery is the signal to watch",
-                text: averageRecovery >= 72 ? "Recovery has enough history and is holding steady, so changes in sleep or training can be interpreted more clearly." : "Recovery has enough history to be useful, but it is not yet stable enough to ignore.",
+                label: InsightsLocalization.Section.strongestPattern,
+                title: averageRecovery >= 72
+                    ? InsightsLocalization.text("insights.vm.learnings.recoveryStable.title")
+                    : InsightsLocalization.text("insights.vm.learnings.recoveryWatch.title"),
+                text: averageRecovery >= 72
+                    ? InsightsLocalization.text("insights.vm.learnings.recoveryStable.text")
+                    : InsightsLocalization.text("insights.vm.learnings.recoveryWatch.text"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 domain: .recovery
@@ -3477,16 +3474,18 @@ final class InsightsViewModel: ObservableObject {
             let earlierSleep = average(Array(sleepRecords.prefix(max(0, sleepRecords.count - 7))).map(\.sleepHours))
             let sleepText: String
             if earlierSleep > 0, recentSleep - earlierSleep >= 0.25 {
-                sleepText = "Sleep has improved recently, which may give recovery more room to stay strong."
+                sleepText = InsightsLocalization.text("insights.vm.learnings.sleepImproved.text")
             } else if averageSleep < 7 {
-                sleepText = "Sleep remains below target often enough that it is the clearest bottleneck to test next."
+                sleepText = InsightsLocalization.text("insights.vm.learnings.sleepBelowTarget.text")
             } else {
-                sleepText = "Sleep is consistent enough to support recovery rather than explain current problems."
+                sleepText = InsightsLocalization.text("insights.vm.learnings.sleepConsistent.text")
             }
 
             learnings.append(InsightsLearning(
-                label: "EMERGING TREND",
-                title: averageSleep < 7 ? "Sleep is the clearest recovery lever" : "Sleep is becoming a stable base",
+                label: InsightsLocalization.Section.emergingTrend,
+                title: averageSleep < 7
+                    ? InsightsLocalization.text("insights.vm.learnings.sleepLever.title")
+                    : InsightsLocalization.text("insights.vm.learnings.sleepBase.title"),
                 text: sleepText,
                 icon: "moon.fill",
                 accent: WeekFitTheme.purple,
@@ -3500,9 +3499,9 @@ final class InsightsViewModel: ObservableObject {
 
         if mealRecords.count < 5 {
             learnings.append(InsightsLearning(
-                label: "WEAKEST SIGNAL",
-                title: "Nutrition patterns are not clear yet",
-                text: "Nutrition has too few logged days to explain recovery changes. It should stay supporting context until logging is steadier.",
+                label: InsightsLocalization.Section.weakestSignal,
+                title: InsightsLocalization.text("insights.vm.learnings.nutritionUnclear.title"),
+                text: InsightsLocalization.text("insights.vm.learnings.nutritionUnclear.text"),
                 icon: "fork.knife",
                 accent: WeekFitTheme.blue,
                 domain: .nutrition
@@ -3511,9 +3510,9 @@ final class InsightsViewModel: ObservableObject {
 
         if learnings.isEmpty {
             learnings.append(InsightsLearning(
-                label: "WHAT WE LEARNED",
-                title: "The pattern is still forming",
-                text: "There is not enough overlapping sleep, recovery, training and nutrition data yet to make a personal discovery.",
+                label: InsightsLocalization.Section.whatWeLearned,
+                title: InsightsLocalization.text("insights.vm.learnings.patternForming.title"),
+                text: InsightsLocalization.text("insights.vm.learnings.patternForming.text"),
                 icon: "sparkles",
                 accent: WeekFitTheme.meal,
                 domain: .missingData
@@ -3524,9 +3523,9 @@ final class InsightsViewModel: ObservableObject {
         if distinct.isEmpty {
             return [
                 InsightsLearning(
-                    label: "ADJACENT SIGNAL",
-                    title: "The supporting context is still forming",
-                    text: "The main story is clear enough to act on, but adjacent sleep, recovery, training or nutrition patterns need more overlap before they become separate discoveries.",
+                    label: InsightsLocalization.Section.adjacentSignal,
+                    title: InsightsLocalization.text("insights.vm.learnings.adjacent.title"),
+                    text: InsightsLocalization.text("insights.vm.learnings.adjacent.text"),
                     icon: "sparkles",
                     accent: WeekFitTheme.meal,
                     domain: .missingData
@@ -3551,9 +3550,9 @@ final class InsightsViewModel: ObservableObject {
         guard difference >= 4 else { return nil }
 
         return InsightsLearning(
-            label: "RECOVERY CLUE",
-            title: "Recovery drops most after short sleep",
-            text: "Days after 7h+ sleep average about +\(difference) recovery points compared with short-sleep nights.",
+            label: InsightsLocalization.Section.recoveryClue,
+            title: InsightsLocalization.text("insights.vm.learnings.shortSleep.title"),
+            text: InsightsLocalization.format("insights.vm.learnings.shortSleep.textFormat", difference),
             icon: "bed.double.fill",
             accent: WeekFitTheme.purple,
             domain: .sleep
@@ -3588,9 +3587,9 @@ final class InsightsViewModel: ObservableObject {
         switch hero.domain {
         case .sleep where averageSleep > 0 && averageSleep < 7:
             return InsightsOpportunity(
-                label: "BIGGEST OPPORTUNITY",
-                title: "Sleep is the next bottleneck to test",
-                text: "Adding 30-45 minutes of sleep is more likely to improve recovery than adding another workout right now.",
+                label: InsightsLocalization.Section.biggestOpportunity,
+                title: InsightsLocalization.text("insights.vm.opportunity.sleepBottleneck.title"),
+                text: InsightsLocalization.text("insights.vm.opportunity.sleepBottleneck.text"),
                 icon: "moon.zzz.fill",
                 accent: WeekFitTheme.purple,
                 domain: .sleep,
@@ -3598,9 +3597,9 @@ final class InsightsViewModel: ObservableObject {
             )
         case .activity where averageRecovery > 0 && averageRecovery < 68:
             return InsightsOpportunity(
-                label: "BIGGEST OPPORTUNITY",
-                title: "Let recovery prove the load is working",
-                text: "The next improvement is likely to come from absorbing the current training load, not adding more volume.",
+                label: InsightsLocalization.Section.biggestOpportunity,
+                title: InsightsLocalization.text("insights.vm.opportunity.proveLoad.title"),
+                text: InsightsLocalization.text("insights.vm.opportunity.proveLoad.text"),
                 icon: "bolt.shield.fill",
                 accent: WeekFitTheme.orange,
                 domain: .activity,
@@ -3608,9 +3607,9 @@ final class InsightsViewModel: ObservableObject {
             )
         case .nutrition where mealDays < 7:
             return InsightsOpportunity(
-                label: "BIGGEST OPPORTUNITY",
-                title: "Make nutrition visible enough to learn from",
-                text: "More complete meal logging would show whether food is actually influencing recovery or just adding noise.",
+                label: InsightsLocalization.Section.biggestOpportunity,
+                title: InsightsLocalization.text("insights.vm.opportunity.nutritionVisible.title"),
+                text: InsightsLocalization.text("insights.vm.opportunity.nutritionVisible.text"),
                 icon: "fork.knife",
                 accent: WeekFitTheme.blue,
                 domain: .nutrition,
@@ -3618,9 +3617,9 @@ final class InsightsViewModel: ObservableObject {
             )
         case .recovery where averageRecovery >= 72:
             return InsightsOpportunity(
-                label: "MOST LIKELY NEXT IMPROVEMENT",
-                title: "Keep the rhythm steady",
-                text: "Recovery is already strong enough that the next useful lesson is which habit keeps it stable when training changes.",
+                label: InsightsLocalization.Section.mostLikelyNextImprovement,
+                title: InsightsLocalization.text("insights.vm.opportunity.keepRhythm.title"),
+                text: InsightsLocalization.text("insights.vm.opportunity.keepRhythm.text"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 domain: .recovery,
@@ -3733,37 +3732,45 @@ final class InsightsViewModel: ObservableObject {
             weeklyMetric(
                 icon: "heart.fill",
                 iconColor: WeekFitTheme.meal,
-                title: "Recovery",
+                title: InsightsLocalization.Section.recovery,
                 value: recoveryRecords.count > 0 ? "\(Int(recoveryAverage.rounded()))" : "—",
-                detail: recoveryRecords.count >= 21 ? "consistent history" : "recent history",
-                missingDetail: "connect Health",
+                detail: recoveryRecords.count >= 21
+                    ? InsightsLocalization.text("insights.vm.weekly.consistentHistory")
+                    : InsightsLocalization.text("insights.vm.weekly.recentHistory"),
+                missingDetail: InsightsLocalization.text("insights.vm.weekly.connectHealth"),
                 destination: .recovery
             ),
             weeklyMetric(
                 icon: "moon.fill",
                 iconColor: WeekFitTheme.purple,
-                title: "Sleep",
+                title: InsightsLocalization.Section.sleep,
                 value: sleepRecords.count > 0 ? "\(formatOneDecimal(averageSleepHours))h" : "—",
-                detail: sleepRecords.count >= 21 ? "consistent history" : "recent history",
-                missingDetail: "connect sleep",
+                detail: sleepRecords.count >= 21
+                    ? InsightsLocalization.text("insights.vm.weekly.consistentHistory")
+                    : InsightsLocalization.text("insights.vm.weekly.recentHistory"),
+                missingDetail: InsightsLocalization.text("insights.vm.weekly.connectSleep"),
                 destination: .recovery
             ),
             weeklyMetric(
                 icon: "bolt.fill",
                 iconColor: WeekFitTheme.orange,
-                title: "Training",
+                title: InsightsLocalization.Section.training,
                 value: activeDays > 0 ? "\(activeDays)" : "—",
-                detail: activeDays >= 5 ? "full recent week" : "sync or log",
-                missingDetail: "sync or log",
+                detail: activeDays >= 5
+                    ? InsightsLocalization.text("insights.vm.weekly.fullRecentWeek")
+                    : InsightsLocalization.text("insights.vm.weekly.syncOrLog"),
+                missingDetail: InsightsLocalization.text("insights.vm.weekly.syncOrLog"),
                 destination: .activity
             ),
             weeklyMetric(
                 icon: "fork.knife",
                 iconColor: WeekFitTheme.blue,
-                title: "Nutrition",
+                title: InsightsLocalization.Section.nutrition,
                 value: proteinRecords.count > 0 ? "\(proteinRecords.count)" : "—",
-                detail: proteinGoal > 0 && proteinTargetDays >= 5 ? "protein consistent" : "logging building",
-                missingDetail: "log meals",
+                detail: proteinGoal > 0 && proteinTargetDays >= 5
+                    ? InsightsLocalization.text("insights.vm.weekly.proteinConsistent")
+                    : InsightsLocalization.text("insights.vm.weekly.loggingBuilding"),
+                missingDetail: InsightsLocalization.text("insights.vm.weekly.logMeals"),
                 destination: .nutrition
             )
         ]
@@ -3794,10 +3801,10 @@ final class InsightsViewModel: ObservableObject {
         guard recoveryRecords.count >= 7 else {
             return InsightsTrendCard(
                 accent: WeekFitTheme.meal,
-                label: "RECOVERY RESPONSE",
-                title: "Recovery history is still building",
-                subtitle: "Insights needs more recent recovery data before comparing the last 7 days with your baseline.",
-                takeaway: "Keep recovery logging steady to unlock the longer story.",
+                label: InsightsLocalization.Section.recoveryResponse,
+                title: InsightsLocalization.text("insights.vm.trend.recoveryBuilding.title"),
+                subtitle: InsightsLocalization.text("insights.vm.trend.recoveryBuilding.subtitle"),
+                takeaway: InsightsLocalization.text("insights.vm.trend.recoveryBuilding.takeaway"),
                 icon: "heart.fill",
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
@@ -3808,26 +3815,39 @@ final class InsightsViewModel: ObservableObject {
         let takeaway: String
         switch direction {
         case .decreasing:
-            title = "Recovery is losing momentum"
-            takeaway = "Hold volume until the recent average rebounds."
+            title = InsightsLocalization.text("insights.vm.trend.recoveryLosing.title")
+            takeaway = InsightsLocalization.text("insights.vm.trend.recoveryLosing.takeaway")
         case .increasing:
-            title = "Recovery is rebounding"
-            takeaway = "Keep the rhythm steady and watch whether the rebound holds."
+            title = InsightsLocalization.text("insights.vm.trend.recoveryRebounding.title")
+            takeaway = InsightsLocalization.text("insights.vm.trend.recoveryRebounding.takeaway")
         case .stable:
-            title = recent >= 72 ? "Recovery looks resilient" : "Recovery is stable but not high"
-            takeaway = recent >= 72 ? "The current rhythm is being absorbed." : "Use the next week to improve the base before adding load."
+            title = recent >= 72
+                ? InsightsLocalization.text("insights.vm.trend.recoveryResilient.title")
+                : InsightsLocalization.text("insights.vm.trend.recoveryStableNotHigh.title")
+            takeaway = recent >= 72
+                ? InsightsLocalization.text("insights.vm.trend.recoveryResilient.takeaway")
+                : InsightsLocalization.text("insights.vm.trend.recoveryStableNotHigh.takeaway")
         }
 
         let subtitle: String
         if baseline > 0 {
-            subtitle = "Recent 7 days average \(Int(recent.rounded())) vs \(Int(baseline.rounded())) across the previous baseline. Latest is \(latest)."
+            subtitle = InsightsLocalization.format(
+                "insights.vm.trend.recoveryCompareFormat",
+                Int(recent.rounded()),
+                Int(baseline.rounded()),
+                latest
+            )
         } else {
-            subtitle = "Over the last \(recoveryValues.count) recovery days, latest recovery is \(latest)."
+            subtitle = InsightsLocalization.format(
+                "insights.vm.trend.recoveryDaysFormat",
+                recoveryValues.count,
+                latest
+            )
         }
 
         return InsightsTrendCard(
             accent: WeekFitTheme.meal,
-            label: "RECOVERY RESPONSE",
+            label: InsightsLocalization.Section.recoveryResponse,
             title: title,
             subtitle: subtitle,
             takeaway: takeaway,
@@ -3848,10 +3868,10 @@ final class InsightsViewModel: ObservableObject {
         guard volume.hasMeaningfulLoad else {
             return InsightsTrendCard(
                 accent: WeekFitTheme.orange,
-                label: "TRAINING & RECOVERY",
-                title: "Training rhythm is still forming",
-                subtitle: "Current activity is not yet high enough to compare against recovery in a meaningful way.",
-                takeaway: "Build toward three hours of weekly activity before judging adaptation.",
+                label: InsightsLocalization.Section.trainingAndRecovery,
+                title: InsightsLocalization.text("insights.vm.trend.trainingForming.title"),
+                subtitle: InsightsLocalization.text("insights.vm.trend.trainingForming.subtitle"),
+                takeaway: InsightsLocalization.text("insights.vm.trend.trainingForming.takeaway"),
                 icon: "figure.run",
                 domain: .activity,
                 actionDestination: .detail(.activity)
@@ -3861,10 +3881,10 @@ final class InsightsViewModel: ObservableObject {
         guard recoveryRecords.count >= 7 else {
             return InsightsTrendCard(
                 accent: WeekFitTheme.orange,
-                label: "TRAINING & RECOVERY",
-                title: "Training volume is visible, but recovery context is missing",
+                label: InsightsLocalization.Section.trainingAndRecovery,
+                title: InsightsLocalization.text("insights.vm.trend.trainingMissingContext.title"),
                 subtitle: workloadSignificanceText(volume),
-                takeaway: "Recovery history is needed before changing load.",
+                takeaway: InsightsLocalization.text("insights.vm.trend.trainingMissingContext.takeaway"),
                 icon: "figure.run",
                 domain: .activity,
                 actionDestination: .detail(.activity)
@@ -3874,9 +3894,12 @@ final class InsightsViewModel: ObservableObject {
         if averageRecovery >= 72 {
             return InsightsTrendCard(
                 accent: WeekFitTheme.orange,
-                label: "TRAINING & RECOVERY",
-                title: "Recovery is keeping up with training",
-                subtitle: "\(workloadSignificanceText(volume)) Recovery remained stable, suggesting your body is absorbing the workload well.",
+                label: InsightsLocalization.Section.trainingAndRecovery,
+                title: InsightsLocalization.text("insights.vm.trend.trainingKeepingUp.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.vm.trend.trainingKeepingUp.subtitleFormat",
+                    workloadSignificanceText(volume)
+                ),
                 takeaway: nextTrainingProgression(volume, recoveryStable: true),
                 icon: "figure.run",
                 domain: .activity,
@@ -3886,9 +3909,12 @@ final class InsightsViewModel: ObservableObject {
 
         return InsightsTrendCard(
             accent: WeekFitTheme.orange,
-            label: "TRAINING & RECOVERY",
-            title: "Training may need a lighter week",
-            subtitle: "\(workloadSignificanceText(volume)) Recovery is below target, so the workload may be outpacing adaptation.",
+            label: InsightsLocalization.Section.trainingAndRecovery,
+            title: InsightsLocalization.text("insights.vm.trend.trainingLighterWeek.title"),
+            subtitle: InsightsLocalization.format(
+                "insights.vm.trend.trainingLighterWeek.subtitleFormat",
+                workloadSignificanceText(volume)
+            ),
             takeaway: nextTrainingProgression(volume, recoveryStable: false),
             icon: "figure.run",
             domain: .activity,
@@ -3911,10 +3937,10 @@ final class InsightsViewModel: ObservableObject {
             let needed = max(1, 7 - nutritionRecords.count)
             return InsightsTrendCard(
                 accent: WeekFitTheme.meal,
-                label: "NUTRITION INSIGHT",
-                title: "Not enough nutrition data",
+                label: InsightsLocalization.Section.nutritionInsight,
+                title: InsightsLocalization.text("insights.vm.trend.nutritionNotEnough.title"),
                 subtitle: WeekFitCountPluralization.insightsLogMealsOnMoreDaysSubtitle(needed: needed),
-                takeaway: "Start with consistent meal logging.",
+                takeaway: InsightsLocalization.text("insights.vm.trend.nutritionNotEnough.takeaway"),
                 icon: "fork.knife",
                 domain: .nutrition,
                 actionDestination: .detail(.nutrition)
@@ -3924,10 +3950,13 @@ final class InsightsViewModel: ObservableObject {
         if proteinGoal > 0, proteinTargetDays < 4 {
             return InsightsTrendCard(
                 accent: WeekFitTheme.meal,
-                label: "NUTRITION INSIGHT",
-                title: "Protein consistency is limiting recovery insight",
-                subtitle: "\(proteinTargetDays) days met protein target in the last 7 days.",
-                takeaway: "Hit protein more consistently before changing training.",
+                label: InsightsLocalization.Section.nutritionInsight,
+                title: InsightsLocalization.text("insights.vm.trend.proteinLimiting.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.vm.trend.proteinLimiting.subtitleFormat",
+                    proteinTargetDays
+                ),
+                takeaway: InsightsLocalization.text("insights.vm.trend.proteinLimiting.takeaway"),
                 icon: "fork.knife",
                 domain: .nutrition,
                 actionDestination: .detail(.nutrition)
@@ -3937,10 +3966,12 @@ final class InsightsViewModel: ObservableObject {
         if recoveryRecords.count >= 7 {
             return InsightsTrendCard(
                 accent: WeekFitTheme.meal,
-                label: "NUTRITION INSIGHT",
-                title: "Nutrition is supporting recovery insight",
-                subtitle: proteinGoal > 0 ? "Protein was on target \(proteinTargetDays) days this week." : "Meal logging was consistent this week.",
-                takeaway: "Keep meal logging steady while training changes.",
+                label: InsightsLocalization.Section.nutritionInsight,
+                title: InsightsLocalization.text("insights.vm.trend.nutritionSupporting.title"),
+                subtitle: proteinGoal > 0
+                    ? InsightsLocalization.format("insights.vm.trend.nutritionSupporting.proteinFormat", proteinTargetDays)
+                    : InsightsLocalization.text("insights.vm.trend.nutritionSupporting.mealsConsistent"),
+                takeaway: InsightsLocalization.text("insights.vm.trend.nutritionSupporting.takeaway"),
                 icon: "fork.knife",
                 domain: .nutrition,
                 actionDestination: .detail(.nutrition)
@@ -3949,10 +3980,12 @@ final class InsightsViewModel: ObservableObject {
 
         return InsightsTrendCard(
             accent: WeekFitTheme.meal,
-            label: "NUTRITION INSIGHT",
-            title: "Nutrition consistency is improving",
-            subtitle: proteinGoal > 0 ? "Protein was on target \(proteinTargetDays) days this week." : "Meal logging was consistent this week.",
-            takeaway: "Keep food logging steady while recovery history builds.",
+            label: InsightsLocalization.Section.nutritionInsight,
+            title: InsightsLocalization.text("insights.vm.trend.nutritionImproving.title"),
+            subtitle: proteinGoal > 0
+                ? InsightsLocalization.format("insights.vm.trend.nutritionSupporting.proteinFormat", proteinTargetDays)
+                : InsightsLocalization.text("insights.vm.trend.nutritionSupporting.mealsConsistent"),
+            takeaway: InsightsLocalization.text("insights.vm.trend.nutritionImproving.takeaway"),
             icon: "fork.knife",
             domain: .nutrition,
             actionDestination: .detail(.nutrition)
@@ -3967,15 +4000,15 @@ final class InsightsViewModel: ObservableObject {
         })
 
         let rows = [
-            InsightsCorrelationRow(icon: "drop.fill", title: "Water evidence", values: hydrationValues, color: WeekFitTheme.blue),
-            InsightsCorrelationRow(icon: "heart.fill", title: "Recovery context", values: recoveryValues, color: WeekFitTheme.meal)
+            InsightsCorrelationRow(icon: "drop.fill", title: InsightsLocalization.text("insights.vm.hydration.waterEvidence"), values: hydrationValues, color: WeekFitTheme.blue),
+            InsightsCorrelationRow(icon: "heart.fill", title: InsightsLocalization.text("insights.vm.hydration.recoveryContext"), values: recoveryValues, color: WeekFitTheme.meal)
         ]
 
         guard paired.count == 7 else {
             let needed = max(1, 7 - paired.count)
             return InsightsCorrelationCard(
-                label: "HYDRATION INSIGHT",
-                title: "Hydration insight unavailable",
+                label: InsightsLocalization.Section.hydrationInsight,
+                title: InsightsLocalization.text("insights.vm.hydration.unavailable.title"),
                 subtitle: WeekFitCountPluralization.insightsLogDrinksOnMoreDaysSubtitle(needed: needed),
                 rows: rows
             )
@@ -3988,9 +4021,9 @@ final class InsightsViewModel: ObservableObject {
 
         guard lower.count >= 2, higher.count >= 2 else {
             return InsightsCorrelationCard(
-                label: "HYDRATION INSIGHT",
-                title: "Hydration needs a cleaner sample",
-                subtitle: "The last 7 days have logs, but not enough contrast to compare recovery.",
+                label: InsightsLocalization.Section.hydrationInsight,
+                title: InsightsLocalization.text("insights.vm.hydration.cleanerSample.title"),
+                subtitle: InsightsLocalization.text("insights.vm.hydration.cleanerSample.subtitle"),
                 rows: rows
             )
         }
@@ -4001,21 +4034,21 @@ final class InsightsViewModel: ObservableObject {
 
         if abs(difference) < 5 {
             return InsightsCorrelationCard(
-                label: "HYDRATION INSIGHT",
-                title: "Hydration is not the obvious limiter",
-                subtitle: "Recent paired logs do not show a meaningful recovery difference.",
+                label: InsightsLocalization.Section.hydrationInsight,
+                title: InsightsLocalization.text("insights.vm.hydration.notLimiter.title"),
+                subtitle: InsightsLocalization.text("insights.vm.hydration.notLimiter.subtitle"),
                 rows: rows
             )
         }
 
         return InsightsCorrelationCard(
-            label: "HYDRATION INSIGHT",
+            label: InsightsLocalization.Section.hydrationInsight,
             title: difference > 0
-                ? "Hydration may be helping recovery"
-                : "Hydration is not the recovery limiter",
+                ? InsightsLocalization.text("insights.vm.hydration.helping.title")
+                : InsightsLocalization.text("insights.vm.hydration.notRecoveryLimiter.title"),
             subtitle: difference > 0
-                ? "In the last 7 days, higher-water days averaged +\(difference) recovery."
-                : "Higher-water days did not improve recovery in this 7-day sample.",
+                ? InsightsLocalization.format("insights.vm.hydration.helping.subtitleFormat", difference)
+                : InsightsLocalization.text("insights.vm.hydration.notRecoveryLimiter.subtitle"),
             rows: rows
         )
     }
@@ -4034,19 +4067,19 @@ final class InsightsViewModel: ObservableObject {
 
         guard recoveryDays >= 2 || sleepDays >= 2 || hydrationDays >= 2 || mealDays >= 2 || activityDays >= 2 else {
             return InsightsReflection(
-                label: "WEEKLY REFLECTION",
-                text: "Insights needs a few real logged days before it can compare patterns.",
+                label: InsightsLocalization.Section.weeklyReflection,
+                text: InsightsLocalization.text("insights.vm.reflection.needsDays"),
                 domain: .missingData,
                 actionDestination: .tab(.today)
             )
         }
 
         let domainCounts: [(domain: InsightsDomain, name: String, count: Int, target: Int)] = [
-            (.recovery, "recovery", recoveryDays, 7),
-            (.sleep, "sleep", sleepDays, 7),
-            (.hydration, "hydration", hydrationDays, 7),
-            (.nutrition, "nutrition", mealDays, 7),
-            (.activity, "activity", activityDays, 7)
+            (.recovery, InsightsLocalization.text("insights.vm.reflection.domain.recovery"), recoveryDays, 7),
+            (.sleep, InsightsLocalization.text("insights.vm.reflection.domain.sleep"), sleepDays, 7),
+            (.hydration, InsightsLocalization.text("insights.vm.reflection.domain.hydration"), hydrationDays, 7),
+            (.nutrition, InsightsLocalization.text("insights.vm.reflection.domain.nutrition"), mealDays, 7),
+            (.activity, InsightsLocalization.text("insights.vm.reflection.domain.activity"), activityDays, 7)
         ]
 
         if let unlock = domainCounts
@@ -4055,7 +4088,7 @@ final class InsightsViewModel: ObservableObject {
             .first {
             let needed = max(1, unlock.target - unlock.count)
             return InsightsReflection(
-                label: "WEEKLY REFLECTION",
+                label: InsightsLocalization.Section.weeklyReflection,
                 text: WeekFitCountPluralization.insightsMoreDomainDaysReflection(
                     needed: needed,
                     domainName: unlock.name
@@ -4068,16 +4101,22 @@ final class InsightsViewModel: ObservableObject {
            let coachDomain = domain(for: coachInsight),
            !usedDomains.contains(coachDomain) {
             return InsightsReflection(
-                label: "WEEKLY REFLECTION",
-                text: "The strongest pattern supports the same theme Coach is watching now: \(coachInsight.title). Use Insights for the pattern, Coach for the next immediate step.",
+                label: InsightsLocalization.Section.weeklyReflection,
+                text: InsightsLocalization.format(
+                    "insights.vm.reflection.coachPatternFormat",
+                    coachInsight.title
+                ),
                 domain: coachDomain
             )
         }
 
         let strongest = strongestDomainName(from: domainCounts)
         return InsightsReflection(
-            label: "WEEKLY REFLECTION",
-            text: "\(strongest.capitalized) is the clearest pattern. The rest of the screen explains whether that signal is supported by training, nutrition and hydration consistency.",
+            label: InsightsLocalization.Section.weeklyReflection,
+            text: InsightsLocalization.format(
+                "insights.vm.reflection.clearestPatternFormat",
+                strongest.capitalized
+            ),
             domain: .missingData
         )
     }
@@ -4594,8 +4633,8 @@ struct InsightsView: View {
 
             WeekFitScreenContainer {
                 WeekFitScreenHeader(
-                    title: "Insights",
-                    subtitle: "Last 30 Days",
+                    title: InsightsLocalization.View.screenTitle,
+                    subtitle: InsightsLocalization.View.screenSubtitle,
                     initials: userSettings.profileInitials,
                     showAvatar: true
                 ) {
@@ -4750,6 +4789,7 @@ struct InsightsView: View {
                 carbs: nutritionCarbs(for: nutritionDetailsDate),
                 fats: nutritionFats(for: nutritionDetailsDate),
                 fiber: nutritionFiber(for: nutritionDetailsDate),
+                caloriesGoal: caloriesGoal,
                 proteinGoal: proteinGoal,
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
@@ -4783,6 +4823,11 @@ struct InsightsView: View {
         }
     }
 
+    private var caloriesGoal: Double {
+        nutritionViewModel.nutritionBudget.totalCalories > 0
+            ? nutritionViewModel.nutritionBudget.totalCalories
+            : 2761.0
+    }
     private var proteinGoal: Double { nutritionViewModel.nutritionResult?.goals.protein ?? 153.0 }
     private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
     private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
@@ -4884,24 +4929,7 @@ struct InsightsView: View {
     }
 
     private func actionTitle(for destination: InsightsActionDestination) -> String {
-        switch destination {
-        case .detail(.activity):
-            return "Open activity"
-        case .detail(.nutrition):
-            return "Open nutrition"
-        case .detail(.recovery):
-            return "Open recovery"
-        case .tab(.coach):
-            return "Open Coach"
-        case .tab(.today):
-            return "Open Today"
-//        case .tab(.highlights):
-//            return "Open Highlights"
-        case .tab(.meals):
-            return "Open Nutrition"
-        case .tab(.calendar):
-            return "Open Plan"
-        }
+        InsightsLocalization.View.actionTitle(for: destination)
     }
 
     private func nutritionMeals(for date: Date) -> [PlannedActivity] {
@@ -5078,7 +5106,7 @@ private extension InsightsView {
             whyThisScoreSection(page)
 
             monthlyReviewTextSection(
-                title: "NEXT FOCUS",
+                title: InsightsLocalization.Section.nextFocus,
                 text: page.focusText,
                 accent: page.accent,
                 isFocus: true
@@ -5125,21 +5153,12 @@ private extension InsightsView {
     }
 
     func chartZones(for domain: InsightsDomain) -> (upper: String, middle: String, lower: String, upperBoundary: Double, middleBoundary: Double) {
-        switch domain {
-        case .activity:
-            return ("High load", "Sustainable load", "Low load", 0.70, 0.30)
-        case .recovery:
-            return ("Strong recovery", "Target range", "Low recovery", 0.75, 0.40)
-        case .nutrition:
-            return ("Protein target", "Consistent intake", "Below target", 0.80, 0.50)
-        default:
-            return ("High", "Target range", "Low", 0.75, 0.40)
-        }
+        InsightsLocalization.View.chartZones(for: domain)
     }
 
     func whyThisScoreSection(_ page: InsightsDomainPage) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("WHY THIS SCORE")
+            Text(InsightsLocalization.Section.whyThisScore)
                 .font(.system(size: 10.2, weight: .bold))
                 .tracking(0.36)
                 .foregroundStyle(textSecondary.opacity(0.62))
@@ -5213,7 +5232,7 @@ private extension InsightsView {
     }
 
     func trendSection(_ story: InsightsStory) -> some View {
-        storyCard(label: "TREND", icon: story.trend.icon, accent: story.trend.accent, prominence: .primary) {
+        storyCard(label: InsightsLocalization.Section.trend, icon: story.trend.icon, accent: story.trend.accent, prominence: .primary) {
             VStack(alignment: .leading, spacing: 14) {
                 Text(trendTitle(for: story))
                     .font(.system(size: 22, weight: .bold))
@@ -5266,7 +5285,7 @@ private extension InsightsView {
         let driver = story.driver
         let metric = driver.metrics.first
 
-        return storyCard(label: "DRIVER", icon: driver.icon, accent: driver.accent, prominence: .secondary) {
+        return storyCard(label: InsightsLocalization.Section.driver, icon: driver.icon, accent: driver.accent, prominence: .secondary) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(driverName(for: driver))
                     .font(.system(size: 17, weight: .bold))
@@ -5306,7 +5325,7 @@ private extension InsightsView {
         return Button {
             perform(action: focus.actionDestination)
         } label: {
-            storyCard(label: "ACTION", icon: focus.icon, accent: focus.accent, prominence: .tertiary) {
+            storyCard(label: InsightsLocalization.Section.action, icon: focus.icon, accent: focus.accent, prominence: .tertiary) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(focus.title)
                         .font(.system(size: 16.5, weight: .bold))
@@ -5315,8 +5334,8 @@ private extension InsightsView {
                         .minimumScaleFactor(0.88)
 
                     VStack(alignment: .leading, spacing: 5) {
-                        actionLine(label: "Goal", text: focus.action, accent: focus.accent)
-                        actionLine(label: "Expected outcome", text: expectedOutcomeText(for: story), accent: focus.accent)
+                        actionLine(label: InsightsLocalization.Section.goal, text: focus.action, accent: focus.accent)
+                        actionLine(label: InsightsLocalization.Section.expectedOutcome, text: expectedOutcomeText(for: story), accent: focus.accent)
                     }
 
                     HStack(spacing: 8) {
@@ -5409,25 +5428,27 @@ private extension InsightsView {
     func heroMetricName(for hero: InsightsHeroInsight) -> String {
         switch hero.domain {
         case .recovery:
-            return "Recovery Score"
+            return InsightsLocalization.View.recoveryScore
         case .sleep:
-            return hero.badgeValue.localizedCaseInsensitiveContains("h") ? "Sleep Duration" : "Sleep Score"
+            return hero.badgeValue.localizedCaseInsensitiveContains("h")
+                ? InsightsLocalization.View.sleepDuration
+                : InsightsLocalization.View.sleepScore
         case .activity:
-            return "Training Load"
+            return InsightsLocalization.View.trainingLoad
         case .nutrition:
-            return "Nutrition Signal"
+            return InsightsLocalization.View.nutritionSignal
         case .hydration:
-            return "Hydration Signal"
+            return InsightsLocalization.View.hydrationSignal
         case .consistency:
-            return "Consistency"
+            return InsightsLocalization.View.consistency
         case .missingData:
-            return "Pattern Readiness"
+            return InsightsLocalization.View.patternReadiness
         }
     }
 
     func heroMetricValue(for hero: InsightsHeroInsight) -> String {
         if hero.domain == .sleep, hero.badgeValue.localizedCaseInsensitiveContains("h") {
-            return "\(hero.badgeValue) average"
+            return InsightsLocalization.format("insights.view.hero.averageSuffix", hero.badgeValue)
         }
 
         guard (hero.domain == .recovery || hero.domain == .sleep),
@@ -5436,7 +5457,7 @@ private extension InsightsView {
             return hero.badgeValue
         }
 
-        return "\(Int(score.rounded())) / 100"
+        return InsightsLocalization.format("insights.view.hero.scoreOutOf100Format", Int(score.rounded()))
     }
 
     func heroTargetExplanation(for hero: InsightsHeroInsight) -> String {
@@ -5445,23 +5466,23 @@ private extension InsightsView {
             let targetHours = 7.0
             let gap = sleepHours - targetHours
             let gapText = gap >= 0 ? "+\(String(format: "%.1f", gap))h" : "\(String(format: "%.1f", gap))h"
-            return "Target: 7h • Gap: \(gapText)"
+            return InsightsLocalization.format("insights.view.hero.sleepTargetGapFormat", gapText)
         }
 
         guard (hero.domain == .recovery || hero.domain == .sleep),
               let score = numericHeroValue(for: hero),
               let target = hero.targetValue,
               score <= 100 else {
-            return hero.badgeLabel == "patterns" ? "Not enough real data yet" : hero.badgeLabel
+            return hero.badgeLabel == "patterns" ? InsightsLocalization.View.notEnoughDataYet : hero.badgeLabel
         }
 
         let targetScore = Int((target * 100).rounded())
         let delta = Int((score - Double(targetScore)).rounded())
         if delta >= 0 {
-            return "Above target by +\(delta)"
+            return InsightsLocalization.format("insights.view.hero.aboveTargetFormat", delta)
         }
 
-        return "Below target by \(delta)"
+        return InsightsLocalization.format("insights.view.hero.belowTargetFormat", delta)
     }
 
     func numericHeroValue(for hero: InsightsHeroInsight) -> Double? {
@@ -5475,20 +5496,20 @@ private extension InsightsView {
     func trendDeltaText(for story: InsightsStory) -> String {
         if story.trend.domain == .consistency,
            story.trend.title.localizedCaseInsensitiveContains("no major") {
-            return "→ No meaningful change detected"
+            return InsightsLocalization.View.trendNoChange
         }
 
         guard trendValues(for: story.trend).count >= 2 else {
-            return "Trend builds with real data"
+            return InsightsLocalization.View.trendBuildsWithData
         }
 
         switch validatedTrendDirection(for: story) {
         case .increasing:
-            return "↑ Improving over 30 days"
+            return InsightsLocalization.View.trendImproving
         case .decreasing:
-            return "↓ Declining over 30 days"
+            return InsightsLocalization.View.trendDeclining
         case .stable:
-            return "→ Stable over 30 days"
+            return InsightsLocalization.View.trendStable
         }
     }
 
@@ -5526,23 +5547,11 @@ private extension InsightsView {
     }
 
     var confidenceText: String {
-        let percent = Int((snapshot.evidence.confidenceValue * 100).rounded())
-        let label = confidenceLevelText
-        guard percent > 0 else {
-            return label
-        }
-        return "\(label) (\(percent)%)"
+        InsightsLocalization.Confidence.withPercent(value: snapshot.evidence.confidenceValue)
     }
 
     var confidenceLevelText: String {
-        switch snapshot.evidence.confidenceValue {
-        case 0.78...:
-            return "High Confidence"
-        case 0.55..<0.78:
-            return "Medium Confidence"
-        default:
-            return "Low Confidence"
-        }
+        InsightsLocalization.Confidence.label(for: snapshot.evidence.confidenceValue)
     }
 
     var driverName: String {
@@ -5552,17 +5561,17 @@ private extension InsightsView {
     func driverName(for driver: InsightSupportCard) -> String {
         switch driver.domain {
         case .sleep:
-            return "Sleep Duration"
+            return InsightsLocalization.View.driverSleepDuration
         case .activity:
-            return "Training Load"
+            return InsightsLocalization.View.driverTrainingLoad
         case .nutrition:
-            return "Protein Consistency"
+            return InsightsLocalization.View.driverProteinConsistency
         case .recovery:
-            return "Recovery Consistency"
+            return InsightsLocalization.View.driverRecoveryConsistency
         case .hydration:
-            return "Hydration"
+            return InsightsLocalization.View.driverHydration
         case .consistency, .missingData:
-            return "Logging Consistency"
+            return InsightsLocalization.View.driverLoggingConsistency
         }
     }
 
@@ -5577,7 +5586,9 @@ private extension InsightsView {
 
         switch driver.domain {
         case .sleep:
-            return metric.value.contains("h") ? "\(metric.value) average" : metric.value
+            return metric.value.contains("h")
+                ? InsightsLocalization.format("insights.view.hero.averageSuffix", metric.value)
+                : metric.value
         case .activity, .nutrition, .recovery, .hydration, .consistency, .missingData:
             return metric.value
         }
@@ -5595,85 +5606,66 @@ private extension InsightsView {
         switch story.driver.domain {
         case .sleep:
             return validatedTrendDirection(for: story) == .decreasing
-                ? "Recovery decline is most strongly associated with reduced sleep duration."
-                : "Average sleep is the strongest support signal in this trend."
+                ? InsightsLocalization.View.driverExplanationSleepDecline
+                : InsightsLocalization.View.driverExplanationSleepSupport
         case .activity:
             return validatedTrendDirection(for: story) == .decreasing
-                ? "Recovery decline is most strongly associated with training load."
-                : "Training load is the strongest signal behind this trend."
+                ? InsightsLocalization.View.driverExplanationActivityDecline
+                : InsightsLocalization.View.driverExplanationActivitySupport
         case .nutrition:
-            return "Protein consistency is the strongest nutrition signal in this trend."
+            return InsightsLocalization.View.driverExplanationNutrition
         case .recovery:
-            return "Recovery consistency is the strongest signal in the 30-day pattern."
+            return InsightsLocalization.View.driverExplanationRecovery
         case .hydration:
-            return "Hydration is the strongest support signal in this trend."
+            return InsightsLocalization.View.driverExplanationHydration
         case .consistency, .missingData:
-            return "Insights needs a cleaner 30-day pattern before naming a stronger driver."
+            return InsightsLocalization.View.driverExplanationMissingData
         }
     }
 
     func driverTargetText(metric: InsightTrendMetric?, domain: InsightsDomain) -> String {
         switch domain {
         case .sleep:
-            return "Target: 7h"
+            return InsightsLocalization.View.targetSleep7h
         case .nutrition:
-            return "Target: 6 of 7 days"
+            return InsightsLocalization.View.targetProtein6of7
         case .activity:
-            return "Target: stable weekly load"
+            return InsightsLocalization.View.targetStableWeeklyLoad
         case .recovery:
-            return "Target: 72+ recovery"
+            return InsightsLocalization.View.targetRecovery72
         case .hydration:
-            return "Target: consistent intake"
+            return InsightsLocalization.View.targetConsistentIntake
         case .consistency, .missingData:
-            return metric?.benchmark ?? "Target: complete logs"
+            return metric?.benchmark ?? InsightsLocalization.View.targetCompleteLogs
         }
     }
 
     func expectedOutcomeText(for story: InsightsStory) -> String {
         guard !story.action.text.isEmpty else {
-            return "The next insight should be based on a cleaner pattern."
+            return InsightsLocalization.View.expectedOutcomeFallback
         }
 
         return story.action.text
     }
 
     func refinedActionTitle(for destination: InsightsActionDestination?, fallback: String) -> String {
-        switch destination {
-        case .detail(.recovery):
-            return "View Recovery Analysis"
-        case .detail(.activity):
-            return "Review Training Trends"
-        case .detail(.nutrition):
-            return "Explore Nutrition Details"
-        case .tab(.coach):
-            return "Open Coach"
-        case .tab(.today):
-            return "Log Today"
-        case .tab(.meals):
-            return "Open Nutrition"
-        case .tab(.calendar):
-            return "Open Plan"
-//        case .tab(.highlights):
-//            return "Open Highlights"
-        case nil:
-            return fallback
-        }
+        InsightsLocalization.View.refinedActionTitle(for: destination, fallback: fallback)
     }
 
     func compactValue(for domain: InsightsDomain) -> String {
         switch domain {
         case .recovery:
-            return snapshot.weeklyScores.first { $0.title == "Recovery" }?.value ?? "Building"
+            return snapshot.weeklyScores.first { $0.title == InsightsLocalization.Section.recovery }?.value ?? InsightsLocalization.Section.building
         case .sleep:
-            return snapshot.weeklyScores.first { $0.title == "Sleep" }?.value ?? "Building"
+            return snapshot.weeklyScores.first { $0.title == InsightsLocalization.Section.sleep }?.value ?? InsightsLocalization.Section.building
         case .activity:
-            return snapshot.weeklyScores.first { $0.title == "Training" }?.value ?? "Building"
+            return snapshot.weeklyScores.first { $0.title == InsightsLocalization.Section.training }?.value ?? InsightsLocalization.Section.building
         case .nutrition:
-            return snapshot.weeklyScores.first { $0.title == "Nutrition" }?.value ?? "Building"
+            return snapshot.weeklyScores.first { $0.title == InsightsLocalization.Section.nutrition }?.value ?? InsightsLocalization.Section.building
         case .hydration:
-            return snapshot.hydrationImpact.rows.first?.values.last ?? "Building"
+            return snapshot.hydrationImpact.rows.first?.values.last ?? InsightsLocalization.Section.building
         case .consistency, .missingData:
-            return "Building"
+            return InsightsLocalization.Section.building
         }
     }
 }
@@ -5857,15 +5849,23 @@ private extension InsightsView {
         case .comparison(_, _, _, _, let delta):
             return delta
         case .distribution:
-            return "distribution"
+            return InsightsLocalization.View.graphCaptionDistribution
         case .correlation(_, _, let primaryLabel, let secondaryLabel):
-            return "\(primaryLabel) with \(secondaryLabel)"
+            return InsightsLocalization.format(
+                "insights.view.graphCaption.correlationFormat",
+                primaryLabel,
+                secondaryLabel
+            )
         case .consistency(_, let positiveLabel, let negativeLabel):
-            return "\(positiveLabel) / \(negativeLabel)"
+            return InsightsLocalization.format(
+                "insights.view.graphCaption.consistencyFormat",
+                positiveLabel,
+                negativeLabel
+            )
         case .weeklyPattern:
-            return "weekly pattern"
+            return InsightsLocalization.View.graphCaptionWeeklyPattern
         case .contributionBreakdown:
-            return "contributors"
+            return InsightsLocalization.View.graphCaptionContributors
         case .relationshipGraph(_, _, let insightLabel):
             return insightLabel
         case .trendChange(_, _, let label):
@@ -5884,38 +5884,38 @@ private extension InsightsView {
         case .trendLine:
             break
         case .comparison:
-            return "Comparison"
+            return InsightsLocalization.View.graphComparison
         case .distribution:
-            return "Distribution"
+            return InsightsLocalization.View.graphDistribution
         case .correlation:
-            return "Paired signals"
+            return InsightsLocalization.View.graphPairedSignals
         case .consistency:
-            return "Consistency"
+            return InsightsLocalization.View.graphConsistency
         case .weeklyPattern:
-            return "Weekly pattern"
+            return InsightsLocalization.View.graphWeeklyPattern
         case .contributionBreakdown:
-            return "Signal strength"
+            return InsightsLocalization.View.graphSignalStrength
         case .relationshipGraph:
-            return "Paired signals"
+            return InsightsLocalization.View.graphPairedSignals
         case .trendChange:
-            return "Trend change"
+            return InsightsLocalization.View.graphTrendChange
         case .signalStrength:
-            return "Signal strength"
+            return InsightsLocalization.View.graphSignalStrength
         }
 
         switch snapshot.hero.domain {
         case .sleep:
-            return "Monthly sleep trend"
+            return InsightsLocalization.View.graphMonthlySleep
         case .recovery:
-            return "Monthly recovery trend"
+            return InsightsLocalization.View.graphMonthlyRecovery
         case .activity:
-            return "Monthly training trend"
+            return InsightsLocalization.View.graphMonthlyTraining
         case .nutrition:
-            return "Monthly nutrition trend"
+            return InsightsLocalization.View.graphMonthlyNutrition
         case .hydration:
-            return "Monthly hydration trend"
+            return InsightsLocalization.View.graphMonthlyHydration
         case .consistency, .missingData:
-            return "Pattern building"
+            return InsightsLocalization.View.graphPatternBuilding
         }
     }
 
@@ -6291,7 +6291,7 @@ private extension InsightsView {
     }
 
     var supportSectionTitle: String {
-        "How this impacts you"
+        InsightsLocalization.text("insights.view.supportSectionTitle")
     }
 
     var visibleSupportCards: [InsightSupportCard] {
@@ -6328,8 +6328,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .relationship,
                 domain: .recovery,
-                title: "Recovery response",
-                text: "Recovery will show whether better sleep is just helpful or truly the missing piece.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.sleep.text"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 metrics: [InsightTrendMetric(label: "Watch", value: "recovery", direction: .stable, detail: "next mornings", benchmark: "after longer sleep")]
@@ -6338,8 +6338,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .adaptation,
                 domain: .recovery,
-                title: "Recovery response",
-                text: "Recovery is the check on whether the current training rhythm is sustainable.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.activity.text"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 metrics: [InsightTrendMetric(label: "Watch", value: "readiness", direction: .stable, detail: "after hard days", benchmark: "before adding load")]
@@ -6348,8 +6348,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .recoveryDriver,
                 domain: .recovery,
-                title: "Recovery response",
-                text: "Recovery will show whether better fueling is changing how you adapt to training.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.recoveryResponse.nutrition.text"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 metrics: [InsightTrendMetric(label: "Watch", value: "adaptation", direction: .stable, detail: "after workout meals", benchmark: "over the next week")]
@@ -6358,8 +6358,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .workload,
                 domain: .activity,
-                title: "Training context",
-                text: "Hydration matters most when training load is high enough to raise recovery cost.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.trainingContext.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.trainingContext.hydration.text"),
                 icon: "figure.run",
                 accent: WeekFitTheme.orange,
                 metrics: [InsightTrendMetric(label: "Watch", value: "hard days", direction: .stable, detail: "fluid timing", benchmark: "compare recovery")]
@@ -6368,8 +6368,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .workload,
                 domain: .activity,
-                title: "Training context",
-                text: "Training load explains whether the recovery signal is a warning or just normal fatigue.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.trainingContext.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.trainingContext.recovery.text"),
                 icon: "figure.run",
                 accent: WeekFitTheme.orange,
                 metrics: [InsightTrendMetric(label: "Watch", value: "load", direction: .stable, detail: "next week", benchmark: "keep it repeatable")]
@@ -6378,8 +6378,8 @@ private extension InsightsView {
             return InsightSupportCard(
                 role: .opportunity,
                 domain: .consistency,
-                title: "Pattern to build",
-                text: "A cleaner week of logs will make the next insight more personal.",
+                title: InsightsLocalization.text("insights.view.fallbackSupport.patternToBuild.title"),
+                text: InsightsLocalization.text("insights.view.fallbackSupport.patternToBuild.text"),
                 icon: "sparkles",
                 accent: snapshot.hero.accent,
                 metrics: [InsightTrendMetric(label: "Watch", value: "consistency", direction: .stable, detail: "7 days", benchmark: "sleep, recovery, training, meals")]
@@ -6781,7 +6781,7 @@ private extension InsightsView {
 
     var activityLoadSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(WeekFitLocalizedString("Activity load"))
+            Text(InsightsLocalization.View.activityLoad)
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(textPrimary)
 
@@ -6794,7 +6794,7 @@ private extension InsightsView {
     var secondaryInsightSection: some View {
         Group {
             if let insight = secondaryInsight {
-                trendButton(insight, label: "SECONDARY SIGNAL")
+                trendButton(insight, label: InsightsLocalization.Section.secondarySignal)
             }
         }
     }
@@ -7088,24 +7088,24 @@ private extension InsightsView {
     var dataCoverageCard: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack {
-                Text("DATA COVERAGE")
+                Text(InsightsLocalization.Section.dataCoverage)
                     .font(.system(size: 10, weight: .bold))
                     .tracking(0.35)
                     .foregroundStyle(textSecondary.opacity(0.70))
 
                 Spacer()
 
-                Text(snapshot.dataQuality.hasAnySignal ? "Trust meter" : "Building")
+                Text(snapshot.dataQuality.hasAnySignal ? InsightsLocalization.Section.trustMeter : InsightsLocalization.Section.building)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(snapshot.hero.accent.opacity(0.82))
             }
 
             HStack(spacing: 8) {
-                coverageColumn(title: "Recovery", value: snapshot.dataQuality.recoveryDays, target: 30, color: WeekFitTheme.meal)
-                coverageColumn(title: "Sleep", value: snapshot.dataQuality.sleepDays, target: 30, color: WeekFitTheme.purple)
-                coverageColumn(title: "Activity", value: snapshot.dataQuality.activityDays, target: 7, color: WeekFitTheme.orange)
-                coverageColumn(title: "Meals", value: snapshot.dataQuality.mealDays, target: 7, color: WeekFitTheme.meal)
-                coverageColumn(title: "Water", value: snapshot.dataQuality.hydrationDays, target: 7, color: WeekFitTheme.blue)
+                coverageColumn(title: InsightsLocalization.Section.recovery, value: snapshot.dataQuality.recoveryDays, target: 30, color: WeekFitTheme.meal)
+                coverageColumn(title: InsightsLocalization.Section.sleep, value: snapshot.dataQuality.sleepDays, target: 30, color: WeekFitTheme.purple)
+                coverageColumn(title: InsightsLocalization.Section.activity, value: snapshot.dataQuality.activityDays, target: 7, color: WeekFitTheme.orange)
+                coverageColumn(title: InsightsLocalization.Section.meals, value: snapshot.dataQuality.mealDays, target: 7, color: WeekFitTheme.meal)
+                coverageColumn(title: InsightsLocalization.Section.water, value: snapshot.dataQuality.hydrationDays, target: 7, color: WeekFitTheme.blue)
             }
         }
         .padding(13)
@@ -7344,9 +7344,9 @@ private struct PremiumInsightAreaChart: View {
 
                 HStack(alignment: .top, spacing: labelSpacing) {
                     HStack {
-                        Text("30d ago")
+                        Text(InsightsLocalization.View.chart30dAgo)
                         Spacer()
-                        Text("15d")
+                        Text(InsightsLocalization.View.chart15d)
                         Spacer()
                         Text(WeekFitLocalizedString("Today"))
                     }

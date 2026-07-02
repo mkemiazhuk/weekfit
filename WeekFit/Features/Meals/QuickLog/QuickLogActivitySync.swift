@@ -16,6 +16,7 @@ enum QuickLogActivitySync {
         if effectivePortions <= 0 {
             if let activityID = selection.loggedActivityID,
                let activity = plannedActivities.first(where: { $0.id == activityID }) {
+                ActivityNotificationService.shared.cancelNotifications(for: activity)
                 modelContext.delete(activity)
                 try? modelContext.save()
             }

@@ -113,7 +113,6 @@ enum AppText {
         static let coachCardModerateConfidence: LocalizedStringResource = "today.coach.card.moderateConfidence"
         static let coachCardLimitedConfidence: LocalizedStringResource = "today.coach.card.limitedConfidence"
         static let coachChipLimitedRecovery: LocalizedStringResource = "today.coach.chip.limitedRecovery"
-        static let coachStatusNoRecovery: LocalizedStringResource = "today.coach.status.noRecovery"
         static let recoverySleepNotRecorded: LocalizedStringResource = "today.recovery.sleepNotRecorded"
         static let recoveryUnavailable: LocalizedStringResource = "today.recovery.unavailable"
         static let connectHealthInsights: LocalizedStringResource = "today.coachInsight.connectHealth"
@@ -347,6 +346,7 @@ enum AppText {
 
         enum Details {
             static let title: LocalizedStringResource = "nutrition.details.title"
+            static let qualityTitle: LocalizedStringResource = "nutrition.details.quality.title"
             static let scoreTitle: LocalizedStringResource = "nutrition.details.score.title"
             static let estimateNote: LocalizedStringResource = "nutrition.details.estimateNote"
             static let emptyTitle: LocalizedStringResource = "nutrition.details.empty.title"

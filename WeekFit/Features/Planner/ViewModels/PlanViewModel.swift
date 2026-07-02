@@ -507,10 +507,8 @@ final class PlanViewModel: ObservableObject {
         resetDragState()
     }
 
-    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        cancelNotifications(for: activity)
+    func removePlannedActivity(_ activity: PlannedActivity, modelContext: ModelContext) async {
+        await ActivityNotificationService.shared.cancelNotificationsForDeletedActivity(activity)
         modelContext.delete(activity)
 
         do {
@@ -518,7 +516,11 @@ final class PlanViewModel: ObservableObject {
         } catch {
             print("Failed to delete activity:", error)
         }
+    }
 
+    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) async {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        await removePlannedActivity(activity, modelContext: modelContext)
         closeAddSheet()
     }
 

@@ -60,6 +60,11 @@ final class CoachInputProvider: ObservableObject {
                 )
             }
 
+            await CoachUnderstandingService.refresh(
+                healthManager: healthManager,
+                through: selectedDate
+            )
+
             let previousRefreshReason = lastRefreshReason
             refreshFromCurrentState(
                 selectedDate: selectedDate,
@@ -143,6 +148,12 @@ final class CoachInputProvider: ObservableObject {
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel
         )
+
+        CoachObservationStore.recordToday(
+            from: healthManager,
+            date: selectedDate
+        )
+        CoachUnderstandingService.evaluateBeliefs()
 
         nutritionViewModel.updateNutrition(
             metrics: dailySnapshot.nutritionMetrics,

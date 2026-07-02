@@ -206,7 +206,7 @@ struct WeekFitRootView: View {
     private var ambientBackground: some View {
         ZStack {
             WeekFitTheme.todayAmbient
-                .opacity(selectedTab == .today ? palette.ambientOpacity : 0)
+                .opacity(selectedTab == .today && !TodayAtmospherePolicy.isEnabled ? palette.ambientOpacity : 0)
             WeekFitTheme.coachAmbient
                 .opacity(selectedTab == .coach ? palette.ambientOpacity : 0)
             WeekFitTheme.mealsAmbient

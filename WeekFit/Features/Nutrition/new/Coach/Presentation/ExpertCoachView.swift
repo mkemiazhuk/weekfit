@@ -209,6 +209,8 @@ struct ExpertCoachView: View {
                                 text: nextAction
                             )
                         }
+
+                        CoachReflectionContinuationView(offer: coachState.reflectionOffer)
                     }
                 }
                 .padding(.top, 14)

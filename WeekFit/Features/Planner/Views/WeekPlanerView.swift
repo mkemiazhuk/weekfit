@@ -193,6 +193,7 @@ private struct WeekPlannerLiveQueryView: View {
                 carbs: nutritionCarbs(for: nutritionDetailsDate),
                 fats: nutritionFats(for: nutritionDetailsDate),
                 fiber: nutritionFiber(for: nutritionDetailsDate),
+                caloriesGoal: caloriesGoal,
                 proteinGoal: proteinGoal,
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
@@ -331,12 +332,8 @@ private struct WeekPlannerLiveQueryView: View {
     }
     
     func deleteActivity(_ activity: PlannedActivity) {
-        modelContext.delete(activity)
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("❌ Failed to delete planned activity:", error)
+        Task {
+            await viewModel.removePlannedActivity(activity, modelContext: modelContext)
         }
     }
 
@@ -930,6 +927,11 @@ private extension WeekPlannerLiveQueryView {
         viewModel.customMeals
     }
 
+    private var caloriesGoal: Double {
+        nutritionViewModel.nutritionBudget.totalCalories > 0
+            ? nutritionViewModel.nutritionBudget.totalCalories
+            : 2761.0
+    }
     private var proteinGoal: Double { nutritionViewModel.nutritionResult?.goals.protein ?? 153.0 }
     private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
     private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
