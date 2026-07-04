@@ -413,7 +413,7 @@ final class CoachBodyStateCopyTests: XCTestCase {
                 selectedDate: now,
                 now: now,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [ride],
+                plannedActivities: [ride].coachSnapshots(),
                 recoveryContext: CoachRecoveryContext(
                     recoveryPercent: recoveryPercent,
                     sleepHours: sleepHours
@@ -446,7 +446,7 @@ final class CoachBodyStateCopyTests: XCTestCase {
                 selectedDate: now,
                 now: now,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [ride],
+                plannedActivities: [ride].coachSnapshots(),
                 recoveryContext: CoachRecoveryContext(
                     recoveryPercent: recoveryPercent,
                     sleepHours: sleepHours
@@ -500,7 +500,7 @@ final class CoachBodyStateCopyTests: XCTestCase {
                 selectedDate: morning,
                 now: morning,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [walk],
+                plannedActivities: [walk].coachSnapshots(),
                 actualLoad: CoachActualLoadSnapshot(
                     source: .healthKitSamplesWithAppGoalEstimate,
                     activeCalories: 200,

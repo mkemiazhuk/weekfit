@@ -1,7 +1,7 @@
 import Foundation
 import WeekFitCoachCore
 
-private extension PlannedActivity {
+private extension CoachPlannedActivitySnapshot {
     var coachDescriptor: CoachActivityDescriptor {
         CoachActivityDescriptor(
             type: type,
@@ -13,23 +13,23 @@ private extension PlannedActivity {
 }
 
 enum CoachActivityClassification {
-    static func tokenText(for activity: PlannedActivity) -> String {
+    static func tokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         WeekFitCoachCore.CoachActivityClassification.tokenText(for: activity.coachDescriptor)
     }
 
-    static func isRecoveryTier(_ activity: PlannedActivity) -> Bool {
+    static func isRecoveryTier(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isRecoveryTier(activity.coachDescriptor)
     }
 
-    static func isSignificantWorkout(_ activity: PlannedActivity) -> Bool {
+    static func isSignificantWorkout(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isSignificantWorkout(activity.coachDescriptor)
     }
 
-    static func isWalkLike(_ activity: PlannedActivity) -> Bool {
+    static func isWalkLike(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isWalkLike(activity.coachDescriptor)
     }
 
-    static func isHikeLike(_ activity: PlannedActivity) -> Bool {
+    static func isHikeLike(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isHikeLike(activity.coachDescriptor)
     }
 }

@@ -106,7 +106,7 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 200,

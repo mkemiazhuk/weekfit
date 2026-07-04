@@ -7,6 +7,7 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nightComfort: NightComfortController
@@ -608,6 +609,13 @@ private extension ProfileView {
 
         do {
             let resetService = LocalDataResetService(modelContext: modelContext)
+            resetService.beforeDeletingPlannedActivities = {
+                CoachSnapshotInvalidator.invalidate(
+                    coordinator: coachCoordinator,
+                    nutritionViewModel: nutritionViewModel,
+                    reason: "localDataReset"
+                )
+            }
             try await resetService.resetAllLocalData()
 
             ActivityConfirmationState.shared.pendingActivity = nil

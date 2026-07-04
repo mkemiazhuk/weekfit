@@ -46,6 +46,19 @@ enum WeekFitTheme {
         )
     }
 
+    /// Slightly lifted OLED canvas for depth-first ambient screens (~3% above pure black).
+    static var ambientCanvasBackground: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.058, green: 0.061, blue: 0.068),
+                Color(red: 0.048, green: 0.051, blue: 0.058),
+                Color(red: 0.040, green: 0.043, blue: 0.050)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     // MARK: - Ambient Backgrounds
 
     static var planAmbient: RadialGradient {

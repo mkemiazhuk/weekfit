@@ -18,6 +18,7 @@ enum AuthError: LocalizedError {
     case invalidEmail
     case weakPassword
     case userNotFound
+    case appleSignInUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -35,30 +36,41 @@ enum AuthError: LocalizedError {
 
         case .userNotFound:
             return "Account not found."
+
+        case .appleSignInUnavailable:
+            return "Sign in with Apple is required."
         }
     }
 }
 
 final class AuthService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
-    // MARK: - Mock storage
+    nonisolated deinit {}
 
+    #if DEBUG
     private var savedEmail = "demo@weekfit.app"
     private var savedPassword = "123456"
-
-    // MARK: - Generic Sign In
+    #endif
 
     func signIn(with provider: AuthProvider) async throws {
-        try await Task.sleep(nanoseconds: 700_000_000)
+        switch provider {
+        case .apple:
+            try await Task.sleep(nanoseconds: 700_000_000)
+        case .email:
+            #if DEBUG
+            try await Task.sleep(nanoseconds: 700_000_000)
+            #else
+            throw AuthError.appleSignInUnavailable
+            #endif
+        }
     }
-
-    // MARK: - Email Auth
 
     func signInWithEmail(
         email: String,
         password: String
     ) async throws {
-
+        #if DEBUG
         try await Task.sleep(nanoseconds: 700_000_000)
 
         guard email.contains("@") else {
@@ -69,13 +81,16 @@ final class AuthService {
               password == savedPassword else {
             throw AuthError.invalidCredentials
         }
+        #else
+        throw AuthError.appleSignInUnavailable
+        #endif
     }
 
     func createAccountWithEmail(
         email: String,
         password: String
     ) async throws {
-
+        #if DEBUG
         try await Task.sleep(nanoseconds: 900_000_000)
 
         guard email.contains("@") else {
@@ -92,12 +107,15 @@ final class AuthService {
 
         savedEmail = email
         savedPassword = password
+        #else
+        throw AuthError.appleSignInUnavailable
+        #endif
     }
 
     func sendPasswordReset(
         email: String
     ) async throws {
-
+        #if DEBUG
         try await Task.sleep(nanoseconds: 800_000_000)
 
         guard email.contains("@") else {
@@ -107,29 +125,51 @@ final class AuthService {
         guard email.lowercased() == savedEmail.lowercased() else {
             throw AuthError.userNotFound
         }
-
-        // Password reset is handled by the auth backend when production auth ships.
-        _ = email
+        #else
+        throw AuthError.appleSignInUnavailable
+        #endif
     }
-
-    // MARK: - Apple Sign In
 
     func handleAppleCredential(
         _ credential: ASAuthorizationAppleIDCredential
     ) async throws -> AppleUserData {
-
         try await Task.sleep(nanoseconds: 400_000_000)
 
-        return AppleUserData(
+        let user = AppleUserData(
             id: credential.user,
             email: credential.email,
             firstName: credential.fullName?.givenName
         )
+        AuthSessionStore.appleUserID = user.id
+        return user
     }
 
-    // MARK: - Sign Out
+    func restoreAppleSessionIfValid() async -> Bool {
+        guard let userID = AuthSessionStore.appleUserID else { return false }
+
+        let provider = ASAuthorizationAppleIDProvider()
+        let state: ASAuthorizationAppleIDProvider.CredentialState
+        do {
+            state = try await provider.credentialState(forUserID: userID)
+        } catch {
+            AuthSessionStore.clear()
+            return false
+        }
+
+        switch state {
+        case .authorized:
+            return true
+        case .revoked, .notFound, .transferred:
+            AuthSessionStore.clear()
+            return false
+        @unknown default:
+            AuthSessionStore.clear()
+            return false
+        }
+    }
 
     func signOut() async throws {
         try await Task.sleep(nanoseconds: 200_000_000)
+        AuthSessionStore.clear()
     }
 }

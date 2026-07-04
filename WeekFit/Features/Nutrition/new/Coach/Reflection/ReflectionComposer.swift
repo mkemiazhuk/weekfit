@@ -3,7 +3,7 @@ import Foundation
 /// Editorial layer for Coach reflection utterances at conversational pause.
 enum ReflectionComposer {
 
-    struct Input: Sendable {
+    struct Input {
         let snapshot: CoachInputSnapshot
         let context: CoachContext
         let urgencyLevel: CoachUrgencyLevel
@@ -41,7 +41,6 @@ enum ReflectionComposer {
             pauseReason: pause.reason
         )
 
-        CoachUnderstandingStore.markSpoken(event.id)
         log(pause: pause, offer: offer)
         return offer
     }

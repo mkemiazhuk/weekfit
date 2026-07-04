@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     
     @Published var destination: ProfileDestination?
 

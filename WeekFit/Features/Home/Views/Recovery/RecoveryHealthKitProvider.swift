@@ -3,6 +3,9 @@ import HealthKit
 internal import Combine
 
 final class RecoveryHealthKitProvider {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
@@ -260,6 +263,13 @@ final class RecoveryHealthKitProvider {
 
         let sessionStart = session.start
         let sessionEnd = session.end
+        let bedStart = firstAsleepStart(
+            in: session,
+            asleepSamples: asleepSamples,
+            deepSamples: deepSamples,
+            remSamples: remSamples,
+            coreSamples: coreSamples
+        ) ?? sessionStart
         let timeInBed = max(Int(sessionEnd.timeIntervalSince(sessionStart) / 60), 0)
 
         let filteredAsleepSamples = overlappingSamples(
@@ -368,7 +378,7 @@ final class RecoveryHealthKitProvider {
             deepSleepMinutes: deep,
             remSleepMinutes: rem,
             coreSleepMinutes: core,
-            bedStart: sessionStart,
+            bedStart: bedStart,
             wakeTime: sessionEnd,
             awakeningsCount: awakenings,
             restingHeartRate: restingHeartRate,
@@ -495,6 +505,24 @@ final class RecoveryHealthKitProvider {
         }
 
         return false
+    }
+
+    private func firstAsleepStart(
+        in session: DateInterval,
+        asleepSamples: [HKCategorySample],
+        deepSamples: [HKCategorySample],
+        remSamples: [HKCategorySample],
+        coreSamples: [HKCategorySample]
+    ) -> Date? {
+        let stagedSamples = deepSamples + remSamples + coreSamples
+        let sourceSamples = stagedSamples.isEmpty ? asleepSamples : stagedSamples
+
+        return sourceSamples
+            .filter { sample in
+                sample.startDate >= session.start && sample.startDate <= session.end
+            }
+            .map(\.startDate)
+            .min()
     }
 
     private func calculateSleepScore(

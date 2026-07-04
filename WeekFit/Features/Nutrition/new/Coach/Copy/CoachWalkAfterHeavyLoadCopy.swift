@@ -187,7 +187,7 @@ private extension CoachWalkAfterHeavyLoadCopy {
                 ),
                 recommendation: .en(
                     "Keep the rest of the day calm — no new hard block.",
-                    "Остаток дня спокойный — без нового тяжёлого блока."
+                    "Остаток дня спокойный — без нового тяжёлого блока, отдыха в приорitете."
                 ),
                 avoid: .en(
                     "Do not force extra steps just to chase numbers.",

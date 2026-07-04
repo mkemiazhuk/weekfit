@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class ActivityIntelligenceViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var selectedDate: Date = Date()
     @Published private(set) var selectedSnapshot: ActivityDaySnapshot = .empty

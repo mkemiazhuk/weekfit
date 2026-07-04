@@ -18,7 +18,7 @@ enum CoachFocusSource: String, Equatable, Sendable {
 
 /// Single coherent focus — activity, taxonomy, state, and phase from the same source.
 struct CoachFocusSelection: Equatable, Sendable {
-    let activity: PlannedActivity?
+    let activity: CoachPlannedActivitySnapshot?
     let family: CoachActivityFamily
     let type: CoachActivityType
     let state: CoachActivityState
@@ -43,7 +43,7 @@ enum CoachFocusResolver {
 
     static func resolve(
         input: CoachInputSnapshot,
-        explicitFocus: PlannedActivity? = nil
+        explicitFocus: CoachPlannedActivitySnapshot? = nil
     ) -> CoachFocusSelection {
         if let explicitFocus {
             return selection(
@@ -60,7 +60,9 @@ enum CoachFocusResolver {
         }
         let timeOfDay = CoachTimeOfDay.from(hour: calendar.component(.hour, from: input.now))
 
-        if let active = dayActivities.first(where: { CoachSessionPhaseStability.isCoachLiveSession($0, now: input.now) }) {
+        if let active = dayActivities
+            .filter({ CoachSessionPhaseStability.isCoachLiveSession($0, now: input.now) })
+            .max(by: { $0.date < $1.date }) {
             return selection(for: active, source: .active, now: input.now, timeOfDay: timeOfDay)
         }
 
@@ -114,7 +116,7 @@ enum CoachFocusResolver {
 
     // MARK: - Private
 
-    private static func source(for activity: PlannedActivity, now: Date) -> CoachFocusSource {
+    private static func source(for activity: CoachPlannedActivitySnapshot, now: Date) -> CoachFocusSource {
         if CoachSessionPhaseStability.isCoachLiveSession(activity, now: now) {
             return .active
         }
@@ -125,7 +127,7 @@ enum CoachFocusResolver {
     }
 
     private static func selection(
-        for activity: PlannedActivity,
+        for activity: CoachPlannedActivitySnapshot,
         source: CoachFocusSource,
         now: Date,
         timeOfDay: CoachTimeOfDay
@@ -157,7 +159,7 @@ enum CoachFocusResolver {
         let minutesSinceEnd: Int?
     }
 
-    private static func resolveTiming(for activity: PlannedActivity, now: Date) -> ResolvedTiming {
+    private static func resolveTiming(for activity: CoachPlannedActivitySnapshot, now: Date) -> ResolvedTiming {
         if CoachSessionPhaseStability.isCoachLiveSession(activity, now: now) {
             return ResolvedTiming(minutesUntilStart: nil, minutesSinceEnd: nil)
         }
@@ -174,7 +176,7 @@ enum CoachFocusResolver {
     }
 
     private static func resolveActivityState(
-        activity: PlannedActivity,
+        activity: CoachPlannedActivitySnapshot,
         now: Date,
         minutesSinceEnd: Int?
     ) -> CoachActivityState {
@@ -202,9 +204,7 @@ enum CoachFocusResolver {
         case .justFinished:
             return .immediatePost
         case .finished:
-            if isEveningPhase(timeOfDay),
-               family != .none,
-               !CoachCopyNutritionTiming.isWindDown(timeOfDay) {
+            if isEveningPhase(timeOfDay), family != .none {
                 return .evening
             }
             return .settledPost
@@ -213,7 +213,7 @@ enum CoachFocusResolver {
         }
     }
 
-    private static func minutesSinceActivityEnd(_ activity: PlannedActivity, now: Date) -> Int {
+    private static func minutesSinceActivityEnd(_ activity: CoachPlannedActivitySnapshot, now: Date) -> Int {
         let end = Calendar.current.date(
             byAdding: .minute,
             value: activity.effectiveDurationMinutes,
@@ -227,7 +227,7 @@ enum CoachFocusResolver {
     }
 
     private static func shouldKeepRecentCompletedFocus(
-        activity: PlannedActivity,
+        activity: CoachPlannedActivitySnapshot,
         minutesSinceEnd: Int,
         timeOfDay: CoachTimeOfDay
     ) -> Bool {

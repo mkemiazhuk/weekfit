@@ -1,4 +1,5 @@
 import Foundation
+import WeekFitPlanner
 
 enum CoachCanonicalDayState {
     static func selectedDayActivities(
@@ -28,7 +29,26 @@ enum CoachCanonicalDayState {
             .sorted { $0.date < $1.date }
     }
 
+    static func coachRelevantSnapshots(from activities: [CoachPlannedActivitySnapshot]) -> [CoachPlannedActivitySnapshot] {
+        activities
+            .filter(isCoachRelevantSnapshot)
+            .sorted { $0.date < $1.date }
+    }
+
     static func isCoachRelevantActivity(_ activity: PlannedActivity) -> Bool {
+        guard !activity.isSkipped else { return false }
+        guard !isNutritionLog(activity) else { return false }
+        guard !isHydrationLog(activity) else { return false }
+
+        switch CoachActivityContextResolver.kind(for: CoachPlannedActivitySnapshot(from: activity)) {
+        case .workout, .endurance, .recovery, .heat:
+            return true
+        case .meal, .other:
+            return false
+        }
+    }
+
+    static func isCoachRelevantSnapshot(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         guard !activity.isSkipped else { return false }
         guard !isNutritionLog(activity) else { return false }
         guard !isHydrationLog(activity) else { return false }
@@ -42,6 +62,14 @@ enum CoachCanonicalDayState {
     }
 
     static func isNutritionLog(_ activity: PlannedActivity) -> Bool {
+        isNutritionLog(CoachPlannedActivitySnapshot(from: activity))
+    }
+
+    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+        isHydrationLog(CoachPlannedActivitySnapshot(from: activity))
+    }
+
+    static func isNutritionLog(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let text = "\(activity.type) \(activity.title) \(activity.imageName) \(activity.source)".lowercased()
         let type = activity.type.lowercased()
 
@@ -58,7 +86,7 @@ enum CoachCanonicalDayState {
             text.contains("latte")
     }
 
-    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+    static func isHydrationLog(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let text = "\(activity.type) \(activity.title) \(activity.imageName)".lowercased()
 
         return text.contains("hydration") ||

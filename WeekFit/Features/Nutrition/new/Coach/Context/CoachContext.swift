@@ -238,7 +238,7 @@ struct CoachContext: Equatable, Sendable {
 
 enum CoachActivityClassifier {
 
-    static func family(for activity: PlannedActivity) -> CoachActivityFamily {
+    static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
         switch type(for: activity) {
         case .cycling, .running:
             return .endurance
@@ -255,7 +255,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    static func type(for activity: PlannedActivity) -> CoachActivityType {
+    static func type(for activity: CoachPlannedActivitySnapshot) -> CoachActivityType {
         let primary = primaryTokenText(for: activity)
         if let match = classifyType(in: primary) {
             return match
@@ -281,6 +281,9 @@ enum CoachActivityClassifier {
         }
         if text.contains("squash") {
             return .squash
+        }
+        if containsAny(text, ["swim", "swimming"]) {
+            return nil
         }
         if containsAny(text, ["upper body", "upper-body", "upperbody", "push", "pull"]) {
             return .upperBody
@@ -316,7 +319,7 @@ enum CoachActivityClassifier {
         return nil
     }
 
-    static func isSeriousTraining(_ activity: PlannedActivity) -> Bool {
+    static func isSeriousTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let activityType = type(for: activity)
         guard activityType != .none else { return false }
 
@@ -340,7 +343,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    private static func inferredLoad(for activity: PlannedActivity) -> CoachDayLoadBand {
+    private static func inferredLoad(for activity: CoachPlannedActivitySnapshot) -> CoachDayLoadBand {
         let minutes = activity.effectiveDurationMinutes
         let calories = activity.calories
 
@@ -356,20 +359,20 @@ enum CoachActivityClassifier {
         return .fresh
     }
 
-    private static func primaryTokenText(for activity: PlannedActivity) -> String {
+    private static func primaryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [activity.type, activity.title]
             .joined(separator: " ")
             .lowercased()
     }
 
-    private static func accessoryTokenText(for activity: PlannedActivity) -> String {
+    private static func accessoryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [activity.icon, activity.imageName]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: " ")
             .lowercased()
     }
 
-    private static func tokenText(for activity: PlannedActivity) -> String {
+    private static func tokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [primaryTokenText(for: activity), accessoryTokenText(for: activity)]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
@@ -384,7 +387,7 @@ enum CoachActivityClassifier {
     // `CoachActivityKind` / `CoachActivityLoad` remain for DayContext and DayPriorityModel.
     // Scenario routing uses `type` / `family` above.
 
-    static func coachKind(for activity: PlannedActivity) -> CoachActivityKind {
+    static func coachKind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
         let title = activity.title.lowercased()
         let typeLabel = activity.type.lowercased()
 
@@ -425,7 +428,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    static func coachLoad(for activity: PlannedActivity) -> CoachActivityLoad {
+    static func coachLoad(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
         let title = activity.title.lowercased()
         let typeLabel = activity.type.lowercased()
         let duration = activity.durationMinutes
@@ -490,7 +493,7 @@ enum CoachActivityClassifier {
         return .moderate
     }
 
-    static func activityCalories(for activity: PlannedActivity) -> Int {
+    static func activityCalories(for activity: CoachPlannedActivitySnapshot) -> Int {
         max(activity.calories, 0)
     }
 }

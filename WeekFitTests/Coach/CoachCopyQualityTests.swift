@@ -358,7 +358,7 @@ final class CoachCopyQualityTests: XCTestCase {
                 selectedDate: now,
                 now: now,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [cycling],
+                plannedActivities: [cycling].coachSnapshots(),
                 actualLoad: CoachActualLoadSnapshot(
                     source: .healthKitSamplesWithAppGoalEstimate,
                     activeCalories: 200,

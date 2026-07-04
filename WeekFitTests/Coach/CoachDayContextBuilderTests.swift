@@ -20,7 +20,7 @@ final class CoachDayContextBuilderTests: XCTestCase {
         )
 
         let context = CoachDayContextBuilder.build(
-            activities: [completedRide, upcomingRun],
+            activities: [completedRide, upcomingRun].coachSnapshots(),
             selectedDate: selectedDate,
             now: now
         )
@@ -41,7 +41,7 @@ final class CoachDayContextBuilderTests: XCTestCase {
         let water = PlannedActivityBuilder.hydrationLog(at: CoachTestClock.offset(minutes: -5, from: now))
 
         let context = CoachDayContextBuilder.build(
-            activities: [water],
+            activities: [water].coachSnapshots(),
             selectedDate: selectedDate,
             now: now
         )
@@ -62,12 +62,52 @@ final class CoachDayContextBuilderTests: XCTestCase {
         partial.actualDurationMinutes = 20
 
         let context = CoachDayContextBuilder.build(
-            activities: [partial],
+            activities: [partial].coachSnapshots(),
             selectedDate: selectedDate,
             now: now
         )
 
         XCTAssertTrue(context.hasMeaningfulLoadCompleted)
         XCTAssertGreaterThan(context.completedActivityVolumeMinutes, 0)
+    }
+
+    func testLastCompletedActivityUsesEffectiveEndNotStartTime() {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: now)
+
+        var walk = PlannedActivity(
+            date: calendar.date(bySettingHour: 13, minute: 53, second: 0, of: dayStart)!,
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 120,
+            icon: "figure.walk",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        walk.actualDurationMinutes = 89
+        walk.healthKitWorkoutUUID = UUID().uuidString
+
+        var sauna = PlannedActivity(
+            date: calendar.date(bySettingHour: 14, minute: 30, second: 0, of: dayStart)!,
+            type: "sauna",
+            title: "Sauna",
+            durationMinutes: 26,
+            icon: "flame.fill",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            isCompleted: true
+        )
+
+        let context = CoachDayContextBuilder.build(
+            activities: [walk, sauna].coachSnapshots(),
+            selectedDate: selectedDate,
+            now: calendar.date(bySettingHour: 15, minute: 27, second: 0, of: dayStart)!
+        )
+
+        XCTAssertEqual(context.lastCompletedActivity?.id, walk.id)
     }
 }

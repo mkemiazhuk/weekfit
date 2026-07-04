@@ -1,6 +1,9 @@
 import SwiftUI
 
 final class DayFlowService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     func generate(
         plannedActivities: [PlannedActivity],

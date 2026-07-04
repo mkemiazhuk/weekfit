@@ -99,6 +99,135 @@ final class CoachOwnershipStabilityTests: XCTestCase {
         XCTAssertNotEqual(result.context.sessionPhase, .during)
     }
 
+    func testCompletedWatchWalkUsesActualEndNotPlannedSlot() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let start = date(hour: 13, minute: 53)
+        let walk = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Прогулка",
+            durationMinutes: 120,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        walk.actualDurationMinutes = 89
+        walk.healthKitWorkoutUUID = UUID().uuidString
+
+        let now = start.addingTimeInterval(94 * 60)
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: now,
+                activities: [walk],
+                actualLoad: heavyActualLoad(),
+                brainHour: 15
+            ),
+            focusActivity: walk
+        )
+
+        XCTAssertNotEqual(result.context.sessionPhase, .during)
+        XCTAssertNotEqual(result.context.activityState, .active)
+
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        XCTAssertNotEqual(bridge.coachTitle, "На прогулке")
+        XCTAssertNotEqual(bridge.todayTitle, "На прогулке")
+        XCTAssertFalse(bridge.todayMessage.contains("Держите темп"))
+
+        WeekFitSetCurrentLanguage(.english)
+    }
+
+    func testWalkCompletedAfterMiddaySaunaKeepsWalkFocus() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let start = date(hour: 13, minute: 53)
+        var walk = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 120,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        walk.actualDurationMinutes = 89
+        walk.healthKitWorkoutUUID = UUID().uuidString
+
+        var sauna = PlannedActivity(
+            date: date(hour: 14, minute: 30),
+            type: "sauna",
+            title: "Sauna",
+            durationMinutes: 26,
+            icon: "flame.fill",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true
+        )
+
+        let now = start.addingTimeInterval(94 * 60)
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: now,
+                activities: [walk, sauna],
+                actualLoad: heavyActualLoad(),
+                brainHour: 15
+            )
+        )
+
+        XCTAssertNotEqual(result.scenario, .saunaRecovery)
+        XCTAssertNotEqual(result.context.sessionPhase, .during)
+
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        XCTAssertNotEqual(bridge.coachTitle, "На прогулке")
+        XCTAssertFalse(bridge.coachTitle.lowercased().contains("саун"))
+
+        WeekFitSetCurrentLanguage(.english)
+    }
+
+    func testCompletedWatchWalkTransitionsImmediatelyAfterActualEnd() throws {
+        WeekFitSetCurrentLanguage(.russian)
+
+        let start = date(hour: 13, minute: 53)
+        let walk = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Walk",
+            durationMinutes: 89,
+            icon: "figure.walk",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        walk.actualDurationMinutes = 89
+        walk.healthKitWorkoutUUID = UUID().uuidString
+
+        let now = start.addingTimeInterval(90 * 60)
+        let result = CoachEngine.evaluate(
+            input: makeInput(
+                now: now,
+                activities: [walk],
+                actualLoad: heavyActualLoad(),
+                brainHour: 15
+            )
+        )
+
+        XCTAssertNotEqual(result.context.sessionPhase, .during)
+
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        XCTAssertNotEqual(bridge.coachTitle, "На прогулке")
+
+        WeekFitSetCurrentLanguage(.english)
+    }
+
     // MARK: - P2: upcoming today beats tomorrow protection
 
     func testUpcomingEveningYogaBlocksTomorrowProtectionOnCompletedFocus() {
@@ -318,7 +447,7 @@ final class CoachOwnershipStabilityTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: actualLoad,
             recoveryContext: CoachRecoveryContext(recoveryPercent: 80, sleepHours: 7.0),
             nutritionContext: CoachNutritionContext(

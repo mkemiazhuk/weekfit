@@ -550,6 +550,7 @@ func WeekFitWarmLocalizationCache() {
 }
 
 func WeekFitSetCurrentLanguage(_ language: AppLanguage) {
+    UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
     WeekFitLocalizationCache.update(language: language)
 }
 

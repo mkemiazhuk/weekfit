@@ -50,8 +50,8 @@ final class CoachConversationEnergyPolicyTests: XCTestCase {
         XCTAssertEqual(energy(for: .saunaRecovery), .low)
     }
 
-    func testSaunaActiveIsMedium() {
-        XCTAssertEqual(energy(for: .saunaActive), .medium)
+    func testSaunaActiveIsHigh() {
+        XCTAssertEqual(energy(for: .saunaActive), .high)
     }
 
     func testSafetyCriticalOverridesToHigh() throws {
@@ -123,14 +123,14 @@ final class CoachConversationEnergyPolicyTests: XCTestCase {
         XCTAssertEqual(presentation.urgencyLevel, .calm)
     }
 
-    func testSaunaActiveUsesMediumStaySteadyBadge() throws {
+    func testSaunaActiveUsesLiveBadge() throws {
         WeekFitSetCurrentLanguage(.russian)
         defer { WeekFitSetCurrentLanguage(.english) }
 
         let presentation = try presentation(for: .saunaActive)
-        XCTAssertEqual(presentation.conversationEnergy, .medium)
-        XCTAssertEqual(presentation.urgencyLevel, .protective)
-        XCTAssertEqual(presentation.statusLabel, "ДЕРЖИМ РИТМ")
+        XCTAssertEqual(presentation.conversationEnergy, .high)
+        XCTAssertEqual(presentation.urgencyLevel, .live)
+        XCTAssertEqual(presentation.statusLabel, "СЕЙЧАС")
     }
 
     // MARK: - Baseline energy audit (33 scenarios)
@@ -200,7 +200,7 @@ final class CoachConversationEnergyPolicyTests: XCTestCase {
         // Spot-check key scenarios
         XCTAssertTrue(report.contains("walkAfterHeavyLoad: RECOVERING"))
         XCTAssertTrue(report.contains("duringEndurance: LIVE"))
-        XCTAssertTrue(report.contains("saunaActive: STAY STEADY"))
+        XCTAssertTrue(report.contains("saunaActive: LIVE"))
         XCTAssertTrue(report.contains("stableDay: ALL GOOD"))
     }
 
@@ -209,7 +209,7 @@ final class CoachConversationEnergyPolicyTests: XCTestCase {
         XCTAssertFalse(report.isEmpty)
         XCTAssertTrue(report.contains("walkAfterHeavyLoad: ВОССТАНАВЛИВАЕМСЯ"))
         XCTAssertTrue(report.contains("duringEndurance: СЕЙЧАС"))
-        XCTAssertTrue(report.contains("saunaActive: ДЕРЖИМ РИТМ"))
+        XCTAssertTrue(report.contains("saunaActive: СЕЙЧАС"))
         XCTAssertTrue(report.contains("stableDay: ВСЁ ХОРОШО"))
     }
 
@@ -232,9 +232,10 @@ final class CoachConversationEnergyPolicyTests: XCTestCase {
              .saunaPreparation, .saunaRecovery:
             return .low
         case .tomorrowProtection, .protectTomorrowFresh, .lowRecoveryPrep,
-             .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate,
-             .saunaActive:
+             .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate:
             return .medium
+        case .saunaActive:
+            return .high
         case .activeEndurance, .activeRacket, .activeStrength,
              .duringEndurance, .duringRacket, .duringStrength:
             return .high

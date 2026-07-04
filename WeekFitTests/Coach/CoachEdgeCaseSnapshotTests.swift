@@ -1480,7 +1480,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: brain ?? HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: actualLoad ?? freshActualLoad(),
             recoveryContext: recovery ?? CoachRecoveryContext(recoveryPercent: 82, sleepHours: 7.5),
             nutritionContext: nutrition ?? defaultNutrition(),

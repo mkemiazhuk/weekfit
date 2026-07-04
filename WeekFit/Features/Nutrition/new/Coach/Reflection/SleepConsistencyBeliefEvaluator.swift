@@ -1,24 +1,27 @@
 import Foundation
 
-enum SleepConsistencyBeliefEvaluator {
+enum SleepConsistencyBeliefEvaluator: CoachBeliefEvaluator {
+
+    static let beliefID: CoachBeliefID = .sleepConsistencyRecovery
 
     private static let emergedRecoveryDelta = 8.0
     private static let establishedRecoveryDelta = 6.0
 
-    static func evaluate(observations: [CoachDailyObservation]) -> (maturity: CoachBeliefMaturity, event: UnderstandingEvent?) {
-        let currentBelief = CoachUnderstandingStore.belief(for: .sleepConsistencyRecovery)
+    static func evaluate(
+        observations: [CoachDailyObservation],
+        currentMaturity: CoachBeliefMaturity
+    ) -> BeliefEvaluationResult {
         let evaluation = analyze(observations: observations)
-        let nextMaturity = resolveMaturity(
-            current: currentBelief.maturity,
-            evaluation: evaluation
+        return BeliefEvaluationSupport.makeResult(
+            beliefID: beliefID,
+            currentMaturity: currentMaturity,
+            effectSize: evaluation?.recoveryDelta ?? 0,
+            evidence: evaluation.map(evidence(from:)),
+            hasMinimumSamples: evaluation?.hasMinimumSamples ?? false,
+            hasEstablishedSamples: evaluation?.hasEstablishedSamples ?? false,
+            emergedThreshold: emergedRecoveryDelta,
+            establishedThreshold: establishedRecoveryDelta
         )
-
-        let event = makeEvent(
-            previousMaturity: currentBelief.maturity,
-            nextMaturity: nextMaturity
-        )
-
-        return (nextMaturity, event)
     }
 
     static func analyze(observations: [CoachDailyObservation]) -> SleepConsistencyEvaluation? {
@@ -54,59 +57,65 @@ enum SleepConsistencyBeliefEvaluator {
         guard consistent.count >= 4, inconsistent.count >= 2 else { return nil }
 
         return SleepConsistencyEvaluation(
-            consistentRecoveryAverage: average(consistent.map(\.recovery)),
-            inconsistentRecoveryAverage: average(inconsistent.map(\.recovery)),
+            consistentRecoveryAverage: BeliefEvaluationSupport.average(consistent.map(\.recovery)),
+            inconsistentRecoveryAverage: BeliefEvaluationSupport.average(inconsistent.map(\.recovery)),
             consistentSampleCount: consistent.count,
             inconsistentSampleCount: inconsistent.count
         )
     }
 
-    private static func resolveMaturity(
-        current: CoachBeliefMaturity,
-        evaluation: SleepConsistencyEvaluation?
-    ) -> CoachBeliefMaturity {
-        guard let evaluation, evaluation.hasMinimumSamples else {
-            return .watching
-        }
-
-        if evaluation.hasEstablishedSamples,
-           evaluation.recoveryDelta >= establishedRecoveryDelta {
-            return .established
-        }
-
-        if evaluation.recoveryDelta >= emergedRecoveryDelta {
-            return current == .established ? .established : .emerging
-        }
-
-        return .watching
+    private static func evidence(from evaluation: SleepConsistencyEvaluation) -> BeliefEvidence {
+        BeliefEvidence(
+            eligibleDayCount: evaluation.consistentSampleCount + evaluation.inconsistentSampleCount,
+            primaryGroupSampleCount: evaluation.consistentSampleCount,
+            comparisonGroupSampleCount: evaluation.inconsistentSampleCount,
+            primaryGroupAverage: evaluation.consistentRecoveryAverage,
+            comparisonGroupAverage: evaluation.inconsistentRecoveryAverage,
+            notes: "consistent bedtime vs inconsistent bedtime"
+        )
     }
 
-    private static func makeEvent(
-        previousMaturity: CoachBeliefMaturity,
-        nextMaturity: CoachBeliefMaturity
-    ) -> UnderstandingEvent? {
-        guard nextMaturity > previousMaturity else { return nil }
+    static func blockingReason(
+        observations: [CoachDailyObservation],
+        currentMaturity: CoachBeliefMaturity,
+        evaluation: BeliefEvaluationResult
+    ) -> BeliefNoEventReason? {
+        let sleepRecoveryCount = observations.filter(\.hasSleepSignal).filter(\.hasRecoverySignal).count
+        let missingBedtimeCount = observations
+            .filter(\.hasSleepSignal)
+            .filter(\.hasRecoverySignal)
+            .filter { $0.bedStartNormalizedMinutes == nil }
+            .count
 
-        switch (previousMaturity, nextMaturity) {
-        case (.watching, .emerging), (.watching, .established):
-            return UnderstandingEvent.make(
-                beliefID: .sleepConsistencyRecovery,
-                change: .emerged,
-                maturity: nextMaturity
-            )
-        case (.emerging, .established):
-            return UnderstandingEvent.make(
-                beliefID: .sleepConsistencyRecovery,
-                change: .strengthened,
-                maturity: nextMaturity
-            )
-        default:
-            return nil
+        if missingBedtimeCount > 0, sleepRecoveryCount - missingBedtimeCount < 8 {
+            return .missingRequiredFields(["bedtime"])
         }
-    }
 
-    private static func average(_ values: [Int]) -> Double {
-        guard !values.isEmpty else { return 0 }
-        return Double(values.reduce(0, +)) / Double(values.count)
+        if sleepRecoveryCount < 8 {
+            return .insufficientObservations(required: 8, actual: sleepRecoveryCount)
+        }
+
+        if analyze(observations: observations) != nil {
+            return BeliefBlockingReasonSupport.noEventFromEvaluation(
+                currentMaturity: currentMaturity,
+                evaluation: evaluation,
+                emergedThreshold: emergedRecoveryDelta
+            )
+        }
+
+        let paired = observations
+            .filter(\.hasSleepSignal)
+            .filter(\.hasRecoverySignal)
+            .compactMap(\.bedStartNormalizedMinutes)
+        let splitIndex = max(paired.count / 2, 1)
+        let consistentCount = splitIndex
+        let inconsistentCount = paired.count - splitIndex
+
+        return .insufficientGroupSamples(
+            primaryRequired: 4,
+            primaryActual: consistentCount,
+            comparisonRequired: 2,
+            comparisonActual: inconsistentCount
+        )
     }
 }

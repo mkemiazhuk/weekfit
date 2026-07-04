@@ -242,9 +242,9 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: brain,
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             dayContext: CoachDayContextBuilder.build(
-                activities: activities,
+                activities: activities.coachSnapshots(),
                 selectedDate: now,
                 now: now
             ),

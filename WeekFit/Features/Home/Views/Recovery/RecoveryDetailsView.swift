@@ -206,16 +206,21 @@ private struct RecoveryHeroCard: View {
     }
 
     private var statusText: String {
-        switch snapshot.recoveryScore {
-        case 85...:
+        switch RecoveryScoreEngine.statusTier(
+            score: snapshot.recoveryScore,
+            sleepMinutes: snapshot.asleepMinutes,
+            restingHeartRate: snapshot.restingHeartRate,
+            hrvSDNN: snapshot.hrv
+        ) {
+        case .fullyRecovered:
             return WeekFitLocalizedString("recovery.details.status.fullyRecovered")
-        case 70..<85:
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.details.status.wellRecovered")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.details.status.moderatelyReady")
-        case 1..<55:
+        case .takeItEasier:
             return WeekFitLocalizedString("recovery.details.status.takeItEasier")
-        default:
+        case .noData:
             return WeekFitLocalizedString("recovery.details.status.noData")
         }
     }

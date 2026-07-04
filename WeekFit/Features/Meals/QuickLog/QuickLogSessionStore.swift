@@ -3,6 +3,9 @@ import Observation
 
 @Observable
 final class QuickLogSessionStore {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     private(set) var selections: [String: QuickLogSelection] = [:]
 
     var onSheetDismissRequest: ((String) -> Void)?

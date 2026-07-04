@@ -4,7 +4,7 @@ import Foundation
 /// Read-only presentation gate — never routes scenarios or changes Guidance.
 enum ConversationPauseResolver {
 
-    struct Input: Sendable {
+    struct Input {
         let snapshot: CoachInputSnapshot
         let context: CoachContext
         let urgencyLevel: CoachUrgencyLevel

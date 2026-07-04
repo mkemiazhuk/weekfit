@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class DailyStateSnapshotBuilderXCTests: XCTestCase {
 
-    func testBuildSeparatesSelectedDayActivitiesFromFullCoachContext() {
+    func testBuildSeparatesSelectedDayActivitiesFromFullCoachContext() async {
         let today = CoachTestClock.reference
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
         let todayMeal = PlannedActivityBuilder.meal(title: "Coffee", at: today, calories: 5)
@@ -44,7 +44,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(activities.map(\.title), ["Earlier", "Later"])
     }
 
-    func testBuildPreservesHighestAvailableNutritionInputs() {
+    func testBuildPreservesHighestAvailableNutritionInputs() async {
         let today = CoachTestClock.reference
         let todayStart = Calendar.current.startOfDay(for: today)
         let healthManager = makeHealthManager(
@@ -98,7 +98,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 1.2)
     }
 
-    func testBuildDoesNotCarryPreviousDayNutritionIntoNewDay() {
+    func testBuildDoesNotCarryPreviousDayNutritionIntoNewDay() async {
         let today = CoachTestClock.reference
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
         let healthManager = makeHealthManager()
@@ -138,7 +138,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 0)
     }
 
-    func testBuildClearsStaleHealthKitTotalsWhenSelectedDayChanges() {
+    func testBuildClearsStaleHealthKitTotalsWhenSelectedDayChanges() async {
         let today = CoachTestClock.reference
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
         let yesterdayStart = Calendar.current.startOfDay(for: yesterday)
@@ -168,7 +168,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 0)
     }
 
-    func testBuildCreatesActualLoadFromHealthManager() {
+    func testBuildCreatesActualLoadFromHealthManager() async {
         let today = CoachTestClock.reference
         let healthManager = makeHealthManager(activeCalories: 420, exerciseMinutes: 45, standHours: 8)
         let nutritionViewModel = NutritionViewModel()

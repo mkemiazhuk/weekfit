@@ -12,18 +12,36 @@ enum CoachConversationEnergyBadge {
         }
     }
 
+    struct PresentationContext: Equatable, Sendable {
+        let sessionPhase: CoachSessionPhase
+        let focusSource: CoachFocusSource
+        let activityState: CoachActivityState
+        let completedSeriousActivities: CoachCompletedSeriousActivities
+        let dayLoad: CoachDayLoadBand
+    }
+
     static func resolve(
         energy: CoachConversationEnergy,
         scenario: CoachScenarioKey,
         safetyAlert: CoachSafetyAlert?,
         stackedDayActiveRisk: Bool,
-        stableDayProfile: CoachStableDayProfile?
+        stableDayProfile: CoachStableDayProfile?,
+        presentationContext: PresentationContext? = nil
     ) -> Labels {
         if safetyAlert != nil {
             return Labels(english: "IMPORTANT", russian: "ВАЖНО")
         }
         if stackedDayActiveRisk {
             return Labels(english: "ATTENTION", russian: "ВНИМАНИЕ")
+        }
+
+        if let presentationContext,
+           let contextual = contextualLabels(
+               energy: energy,
+               scenario: scenario,
+               context: presentationContext
+           ) {
+            return contextual
         }
 
         switch energy {
@@ -48,6 +66,29 @@ enum CoachConversationEnergyBadge {
 
     // MARK: - Private
 
+    private static func contextualLabels(
+        energy: CoachConversationEnergy,
+        scenario: CoachScenarioKey,
+        context: PresentationContext
+    ) -> Labels? {
+        if scenario == .walkRecoveryAction,
+           context.sessionPhase == .pre,
+           context.focusSource == .upcoming {
+            return focusNow
+        }
+
+        if scenario == .saunaPreparation,
+           context.sessionPhase == .pre,
+           context.focusSource == .upcoming,
+           context.completedSeriousActivities != .none
+               || context.dayLoad == .heavy
+               || context.dayLoad == .extreme {
+            return focusNow
+        }
+
+        return nil
+    }
+
     private static func lowLabels(
         scenario: CoachScenarioKey,
         stableDayProfile: CoachStableDayProfile?
@@ -58,6 +99,9 @@ enum CoachConversationEnergyBadge {
             return Labels(english: "ALL GOOD", russian: "ВСЁ ХОРОШО")
         case .walkLightDay:
             return Labels(english: "EASY DAY", russian: "СПОКОЙНЫЙ ДЕНЬ")
+        case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength,
+             .eveningAfterRecovery, .recoveryAfterHeavyYesterday:
+            return saveEnergy
         default:
             return Labels(english: "RECOVERING", russian: "ВОССТАНАВЛИВАЕМСЯ")
         }
@@ -65,20 +109,22 @@ enum CoachConversationEnergyBadge {
 
     private static func mediumLabels(scenario: CoachScenarioKey) -> Labels {
         switch scenario {
-        case .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate,
-             .saunaActive:
-            return Labels(english: "STAY STEADY", russian: "ДЕРЖИМ РИТМ")
+        case .postEnduranceImmediate, .postRacketImmediate, .postStrengthImmediate:
+            return focusNow
         default:
-            return Labels(english: "SAVE ENERGY", russian: "БЕРЕЖЁМ СИЛЫ")
+            return saveEnergy
         }
     }
 
     private static func highLabels(scenario: CoachScenarioKey) -> Labels {
         switch scenario {
-        case .duringEndurance, .duringRacket, .duringStrength:
+        case .duringEndurance, .duringRacket, .duringStrength, .saunaActive:
             return Labels(english: "LIVE", russian: "СЕЙЧАС")
         default:
-            return Labels(english: "FOCUS NOW", russian: "СЕЙЧАС ВАЖНО")
+            return focusNow
         }
     }
+
+    private static let focusNow = Labels(english: "FOCUS NOW", russian: "СЕЙЧАС ВАЖНО")
+    private static let saveEnergy = Labels(english: "SAVE ENERGY", russian: "БЕРЕЖЁМ СИЛЫ")
 }

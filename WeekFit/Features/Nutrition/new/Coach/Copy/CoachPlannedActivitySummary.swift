@@ -13,7 +13,7 @@ struct CoachPlannedActivitySummary: Equatable, Sendable {
         String(format: "%d:%02d", startHour, startMinute)
     }
 
-    static func from(activity: PlannedActivity, calendar: Calendar = .current) -> CoachPlannedActivitySummary {
+    static func from(activity: CoachPlannedActivitySnapshot, calendar: Calendar = .current) -> CoachPlannedActivitySummary {
         let components = calendar.dateComponents([.hour, .minute], from: activity.date)
         return CoachPlannedActivitySummary(
             title: activity.title.trimmingCharacters(in: .whitespacesAndNewlines),

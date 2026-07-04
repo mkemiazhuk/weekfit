@@ -8,15 +8,24 @@ final class CoachInputProvider: ObservableObject {
 
     private let lifecycleToken = "CoachInputProvider"
     private var inFlightRefreshTask: Task<Void, Never>?
+    private nonisolated(unsafe) var inFlightRefreshTaskForDeinit: Task<Void, Never>?
     private var lastCompletedRefreshKey: String?
     private var refreshGeneration = 0
 
     init() {
         WeekFitLifecycleTracker.attach(lifecycleToken)
+        CoachSnapshotInvalidator.register(inputProvider: self)
     }
 
-    deinit {
-        inFlightRefreshTask?.cancel()
+    /// Drops the last built coach input so deleted SwiftData activities are not retained.
+    func invalidateCachedSnapshots() {
+        lastInput = nil
+        lastCompletedRefreshKey = nil
+    }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {
+        inFlightRefreshTaskForDeinit?.cancel()
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
@@ -60,10 +69,13 @@ final class CoachInputProvider: ObservableObject {
                 )
             }
 
+            #if DEBUG
             await CoachUnderstandingService.refresh(
                 healthManager: healthManager,
-                through: selectedDate
+                through: selectedDate,
+                plannedActivities: plannedActivities
             )
+            #endif
 
             let previousRefreshReason = lastRefreshReason
             refreshFromCurrentState(
@@ -75,6 +87,10 @@ final class CoachInputProvider: ObservableObject {
                 coachCoordinator: coachCoordinator,
                 source: source
             )
+
+            if refreshHealth, !healthManager.isLoadingDisplayDayMetrics {
+                healthManager.markDisplayMetricsSettled(for: selectedDate)
+            }
 
             guard generation == self.refreshGeneration else {
                 lastRefreshReason = previousRefreshReason
@@ -92,8 +108,10 @@ final class CoachInputProvider: ObservableObject {
         }
 
         inFlightRefreshTask = task
+        inFlightRefreshTaskForDeinit = task
         await task.value
         inFlightRefreshTask = nil
+        inFlightRefreshTaskForDeinit = nil
     }
 
     func invalidateCompletedRefreshCache() {
@@ -149,12 +167,6 @@ final class CoachInputProvider: ObservableObject {
             nutritionViewModel: nutritionViewModel
         )
 
-        CoachObservationStore.recordToday(
-            from: healthManager,
-            date: selectedDate
-        )
-        CoachUnderstandingService.evaluateBeliefs()
-
         nutritionViewModel.updateNutrition(
             metrics: dailySnapshot.nutritionMetrics,
             profile: dailySnapshot.profile,
@@ -163,6 +175,16 @@ final class CoachInputProvider: ObservableObject {
             referenceDate: selectedDate,
             debugSource: "CoachInputProvider.\(source)"
         )
+
+        #if DEBUG
+        CoachObservationStore.recordToday(
+            from: healthManager,
+            date: selectedDate,
+            plannedActivities: dailySnapshot.dayActivities,
+            calorieTarget: nutritionViewModel.nutritionResult.map { Int($0.targetCalories.rounded()) }
+        )
+        CoachUnderstandingService.evaluateBeliefs()
+        #endif
 
         guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
             coachCoordinator.updateInput(nil)
@@ -245,7 +267,7 @@ final class CoachInputProvider: ObservableObject {
             isMeaningfulTrainingActivity($0)
         }
         let tomorrowContext = CoachDayContextBuilder.build(
-            activities: allActivities,
+            activities: allActivities.coachSnapshots(),
             selectedDate: tomorrow,
             now: Date()
         )
@@ -267,6 +289,10 @@ final class CoachInputProvider: ObservableObject {
     }
 
     private static func debugActivity(_ activity: PlannedActivity) -> String {
+        "\(activity.title){type=\(activity.type),duration=\(activity.effectiveDurationMinutes),completed=\(activity.isCompleted),skipped=\(activity.isSkipped)}"
+    }
+
+    private static func debugActivity(_ activity: CoachPlannedActivitySnapshot) -> String {
         "\(activity.title){type=\(activity.type),duration=\(activity.effectiveDurationMinutes),completed=\(activity.isCompleted),skipped=\(activity.isSkipped)}"
     }
 

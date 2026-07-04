@@ -42,6 +42,8 @@ struct TodayView: View {
     @State private var foodQuickLogToast: String?
     
     @State private var activityToConfirm: PlannedActivity? = nil
+    @State private var stableCoachPresentation: CoachUIPresentation?
+    @State private var coachPresentationSettleTask: Task<Void, Never>?
 
     private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
     private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
@@ -442,6 +444,7 @@ struct TodayView: View {
                     }
                 }
 
+                coachCoordinator.invalidateResolvedStateForDayChange()
                 updateTodayCoachInsightIfNeeded(source: "CoachCoordinator.checkpoint")
             }
         }
@@ -1187,7 +1190,7 @@ struct TodayView: View {
 
     private var completedTrainingCountToday: Int {
         selectedDayActivities.filter { activity in
-            activity.isCompleted && CoachTomorrowDemandResolver.isTraining(activity)
+            activity.isCompleted && CoachTomorrowDemandResolver.isTraining(CoachPlannedActivitySnapshot(from: activity))
         }.count
     }
 
@@ -1351,6 +1354,16 @@ struct TodayView: View {
             }
     }
 
+    private var coachInsightPlaceholder: some View {
+        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
+            Color.clear
+                .frame(height: 54)
+                .padding(.horizontal, 16)
+                .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+        }
+        .accessibilityHidden(true)
+    }
+
     private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
         todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
             HStack(alignment: .top, spacing: 14) {
@@ -1449,6 +1462,62 @@ struct TodayView: View {
                 coachInsightSection
 //            }
         }
+    }
+
+    private func syncStableCoachPresentation() {
+        coachPresentationSettleTask?.cancel()
+
+        guard coachCoordinator.state.canRenderTodayCoachInsight,
+              let presentation = coachCoordinator.state.coachUIPresentation else {
+            if !healthManager.isHealthAccessRequested {
+                stableCoachPresentation = nil
+            }
+            return
+        }
+
+        if stableCoachPresentation == nil || stableCoachPresentation == presentation {
+            stableCoachPresentation = presentation
+            return
+        }
+
+        coachPresentationSettleTask = Task {
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard coachCoordinator.state.canRenderTodayCoachInsight,
+                      let latest = coachCoordinator.state.coachUIPresentation else {
+                    return
+                }
+                stableCoachPresentation = latest
+            }
+        }
+    }
+
+    @MainActor
+    private func bootstrapTodayCoachInsightAfterHealthLoad() {
+        let dayActivities = todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
+        coachInputProvider.refreshFromCurrentState(
+            selectedDate: selectedDate,
+            dayActivities: dayActivities,
+            allPlannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator,
+            source: "TodayView.bootstrapCoachInsight"
+        )
+        healthManager.markDisplayMetricsSettled(for: selectedDate)
+        pinStableCoachPresentationIfReady()
+    }
+
+    @MainActor
+    private func pinStableCoachPresentationIfReady() {
+        coachPresentationSettleTask?.cancel()
+        guard coachCoordinator.state.canRenderTodayCoachInsight,
+              let presentation = coachCoordinator.state.coachUIPresentation else {
+            return
+        }
+        stableCoachPresentation = presentation
     }
 
     private var shouldShowEveningReview: Bool {
@@ -1801,15 +1870,22 @@ struct TodayView: View {
     }
 
     private func recoveryStatusLabel(for recoveryPercent: Int) -> String {
-        if recoveryPercent >= 85 || (healthManager.hrvSDNN > 75.0 && healthManager.restingHeartRate < 60.0) {
+        switch RecoveryScoreEngine.statusTier(
+            score: recoveryPercent,
+            sleepMinutes: healthManager.sleepMinutes,
+            restingHeartRate: healthManager.restingHeartRate,
+            hrvSDNN: healthManager.hrvSDNN
+        ) {
+        case .fullyRecovered:
             return WeekFitLocalizedString("today.recovery.ready")
-        } else if recoveryPercent >= 70 {
+        case .wellRecovered:
             return WeekFitLocalizedString("today.recovery.good")
-        } else if recoveryPercent >= 50 {
+        case .moderatelyReady:
             return WeekFitLocalizedString("today.recovery.ok")
-        } else if recoveryPercent > 0 {
-            return WeekFitLocalizedString("today.recovery.needRest")
-        } else {
+        case .takeItEasier, .noData:
+            if recoveryPercent > 0 {
+                return WeekFitLocalizedString("today.recovery.needRest")
+            }
             return WeekFitLocalizedString("today.recovery.syncing")
         }
     }
@@ -2285,8 +2361,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if coachCoordinator.state.canRenderTodayCoachInsight,
-                   let presentation = coachCoordinator.state.coachUIPresentation {
+                if let presentation = stableCoachPresentation {
                     let insightColor = presentation.accentColor
                     let insightTitle = presentation.todayTitle
                     let insightIcon = presentation.icon
@@ -2365,10 +2440,22 @@ struct TodayView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .transition(.identity)
+                } else if shouldShowHealthConnectPrompt {
+                    coachSettlingCard(needsHealthConnect: true)
+                } else if healthManager.isHealthAccessRequested {
+                    coachInsightPlaceholder
                 } else {
-                    coachSettlingCard(needsHealthConnect: shouldShowHealthConnectPrompt)
+                    coachSettlingCard(needsHealthConnect: false)
                 }
             }
+        }
+        .onChange(of: coachCoordinator.state.id) { _, _ in
+            syncStableCoachPresentation()
+        }
+        .onChange(of: selectedDate) { _, _ in
+            coachPresentationSettleTask?.cancel()
+            stableCoachPresentation = nil
         }
         .sheet(item: $activityToConfirm) { activity in
             missedConfirmationSheet(activity)
@@ -2930,10 +3017,10 @@ struct TodayView: View {
             selectedDate: selectedDate,
             plannedActivities: plannedActivities,
             healthManager: healthManager,
-            nutritionViewModel: nutritionViewModel,
-            appSession: appSession
+            nutritionViewModel: nutritionViewModel
         )
         await MainActor.run {
+            bootstrapTodayCoachInsightAfterHealthLoad()
             if !healthManager.isHealthAccessRequested {
                 debugTodayDataState(source: "refreshHealthAndNutritionAsync.noHealthAccess")
             }

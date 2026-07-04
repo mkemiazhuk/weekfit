@@ -64,7 +64,70 @@ final class ReflectionComposerTests: XCTestCase {
         XCTAssertEqual(offer?.id, event.id)
         XCTAssertEqual(offer?.kind, .newDiscovery)
         XCTAssertFalse(offer?.message.isEmpty ?? true)
+        XCTAssertNotNil(CoachUnderstandingStore.nextUnspokenEvent())
+    }
+
+    func testMarksSpokenOnlyAfterDisplay() {
+        let event = UnderstandingEvent.make(
+            beliefID: .sleepConsistencyRecovery,
+            change: .emerged,
+            maturity: .emerging
+        )
+
+        CoachUnderstandingStore.seedForTests(
+            belief: CoachBelief(id: .sleepConsistencyRecovery, maturity: .emerging, lastUpdated: Date()),
+            pendingEvents: [event]
+        )
+
+        let offer = ReflectionComposer.compose(
+            ReflectionComposer.Input(
+                snapshot: makeInput(),
+                context: pausedContext,
+                urgencyLevel: .calm,
+                safetyAlert: nil,
+                alertSeverity: .none
+            )
+        )
+
+        XCTAssertNotNil(offer)
+        XCTAssertNotNil(CoachUnderstandingStore.nextUnspokenEvent())
+
+        ReflectionOfferDisplayTracker.markDisplayed(offer!)
         XCTAssertNil(CoachUnderstandingStore.nextUnspokenEvent())
+    }
+
+    func testShowsPendingBeliefEventsOneAtATime() {
+        let consistencyEvent = UnderstandingEvent.make(
+            beliefID: .sleepConsistencyRecovery,
+            change: .emerged,
+            maturity: .emerging
+        )
+        let durationEvent = UnderstandingEvent.make(
+            beliefID: .sleepDurationRecovery,
+            change: .emerged,
+            maturity: .emerging
+        )
+
+        CoachUnderstandingStore.seedForTests(
+            belief: CoachBelief(id: .sleepConsistencyRecovery, maturity: .emerging, lastUpdated: Date()),
+            pendingEvents: [consistencyEvent, durationEvent]
+        )
+
+        let input = ReflectionComposer.Input(
+            snapshot: makeInput(),
+            context: pausedContext,
+            urgencyLevel: .calm,
+            safetyAlert: nil,
+            alertSeverity: .none
+        )
+
+        let firstOffer = ReflectionComposer.compose(input)
+        XCTAssertEqual(firstOffer?.id, consistencyEvent.id)
+
+        ReflectionOfferDisplayTracker.markDisplayed(firstOffer!)
+
+        let secondOffer = ReflectionComposer.compose(input)
+        XCTAssertEqual(secondOffer?.id, durationEvent.id)
     }
 
     func testReturnsNilAtPauseWithoutUnderstandingChange() {
@@ -219,7 +282,7 @@ final class ReflectionComposerTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(HumanBrainStateBuilder.Configuration(currentHour: 15)),
-            plannedActivities: [completedRide],
+            plannedActivities: [completedRide].coachSnapshots(),
             actualLoad: CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 850,

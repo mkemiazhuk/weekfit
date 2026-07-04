@@ -55,12 +55,13 @@ enum HumanBrainStateBuilder {
             energyDeficit: max(1200 - c.metrics.calories, 0)
         )
 
-        let upcoming = c.nextWorkout.map { [$0] } ?? []
+        let nextSnapshot = c.nextWorkout.map(CoachPlannedActivitySnapshot.init)
+        let upcoming = nextSnapshot.map { [$0] } ?? []
         let future = HumanBrain.FutureContext(
             upcomingWorkouts: upcoming,
-            nextWorkout: c.nextWorkout,
+            nextWorkout: nextSnapshot,
             hoursToNextWorkout: c.hoursToNextWorkout,
-            hasUpcomingWorkout: c.nextWorkout != nil,
+            hasUpcomingWorkout: nextSnapshot != nil,
             hasWorkoutSoon: workoutSoon
         )
 
@@ -174,7 +175,7 @@ enum HumanBrainIntegrationBuilder {
             profile: profile,
             fullDayGoals: goals,
             smoothedGoals: goals,
-            activities: activities
+            activities: activities.coachSnapshots()
         )
     }
 }

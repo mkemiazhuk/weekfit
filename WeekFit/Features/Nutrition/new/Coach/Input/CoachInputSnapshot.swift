@@ -59,12 +59,13 @@ struct CoachLoadSourceDebug: Hashable {
     }
 }
 
+// Coach snapshots store value-type activity copies, not live SwiftData @Model instances.
 struct CoachInputSnapshot {
     let metricsSnapshotID: UUID?
     let selectedDate: Date
     let now: Date
     let brain: HumanBrain.State
-    let plannedActivities: [PlannedActivity]
+    let plannedActivities: [CoachPlannedActivitySnapshot]
     let actualLoad: CoachActualLoadSnapshot
     let planSource: CoachPlanSource
     let dayContext: CoachDayContext
@@ -82,7 +83,7 @@ struct CoachInputSnapshot {
         selectedDate: Date,
         now: Date = Date(),
         brain: HumanBrain.State,
-        plannedActivities: [PlannedActivity],
+        plannedActivities: [CoachPlannedActivitySnapshot],
         actualLoad: CoachActualLoadSnapshot? = nil,
         planSource: CoachPlanSource = .swiftDataPlannedActivity,
         dayContext: CoachDayContext? = nil,

@@ -12,7 +12,7 @@ enum CoachUpcomingActivityPolicy {
         }
     }
 
-    private static func isMeaningful(_ activity: PlannedActivity) -> Bool {
+    private static func isMeaningful(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         switch CoachActivityClassifier.family(for: activity) {
         case .endurance, .strength, .racket, .heat, .recovery:
             return true

@@ -26,7 +26,18 @@ enum RecoveryScoreEngine {
     private static let shortSleepCapMinutes = 240
     private static let shortSleepRecoveryCap = 65.0
     private static let moderateSleepCapMinutes = 360
-    private static let moderateSleepRecoveryCap = 85.0
+    private static let moderateSleepRecoveryCap = 68.0
+    private static let minimumSleepMinutesForWellRecovered = 360
+    private static let elevatedRestingHeartRateThreshold = 65.0
+    private static let suppressedHRVThreshold = 35.0
+
+    enum RecoveryStatusTier: Equatable {
+        case fullyRecovered
+        case wellRecovered
+        case moderatelyReady
+        case takeItEasier
+        case noData
+    }
 
     static func calculate(
         sleepMinutes: Int,
@@ -60,6 +71,13 @@ enum RecoveryScoreEngine {
         if let cap = recoveryCap(for: sleepMinutes) {
             recovery = min(recovery, cap)
         }
+        recovery = applyPhysiologyStressAdjustments(
+            recovery: recovery,
+            sleepMinutes: sleepMinutes,
+            hrvSDNN: hrvSDNN,
+            restingHeartRate: restingHeartRate,
+            bedtimeDeviationMinutes: bedtimeDeviationMinutes
+        )
 
         let clampedRecovery = Int(max(0, min(100, recovery)).rounded())
         let breakdownRows = makeBreakdownRows(
@@ -121,6 +139,81 @@ enum RecoveryScoreEngine {
         return deviationMinutes(current: current, average: average)
     }
 
+    static func statusTier(
+        score: Int,
+        sleepMinutes: Int,
+        restingHeartRate: Double?,
+        hrvSDNN: Double?
+    ) -> RecoveryStatusTier {
+        guard score > 0 else { return .noData }
+
+        if physiologyIsStressed(
+            sleepMinutes: sleepMinutes,
+            restingHeartRate: restingHeartRate ?? 0,
+            hrvSDNN: hrvSDNN ?? 0
+        ) {
+            if score >= 55 {
+                return .moderatelyReady
+            }
+            return .takeItEasier
+        }
+
+        switch score {
+        case 85...:
+            return .fullyRecovered
+        case 70..<85:
+            return .wellRecovered
+        case 55..<70:
+            return .moderatelyReady
+        default:
+            return .takeItEasier
+        }
+    }
+
+    static func physiologyIsStressed(
+        sleepMinutes: Int,
+        restingHeartRate: Double,
+        hrvSDNN: Double
+    ) -> Bool {
+        let shortSleep = sleepMinutes > 0 && sleepMinutes < minimumSleepMinutesForWellRecovered
+        let elevatedRHR = restingHeartRate >= elevatedRestingHeartRateThreshold
+        let suppressedHRV = hrvSDNN > 0 && hrvSDNN < suppressedHRVThreshold
+        return shortSleep || elevatedRHR || suppressedHRV
+    }
+
+    private static func applyPhysiologyStressAdjustments(
+        recovery: Double,
+        sleepMinutes: Int,
+        hrvSDNN: Double,
+        restingHeartRate: Double,
+        bedtimeDeviationMinutes: Int?
+    ) -> Double {
+        var adjusted = recovery
+
+        let shortSleep = sleepMinutes < minimumSleepMinutesForWellRecovered
+        let elevatedRHR = restingHeartRate >= elevatedRestingHeartRateThreshold
+        let suppressedHRV = hrvSDNN > 0 && hrvSDNN < suppressedHRVThreshold
+        let veryLateBedtime = (bedtimeDeviationMinutes ?? 0) >= 120
+
+        if shortSleep && elevatedRHR {
+            adjusted = min(adjusted, 62)
+        }
+
+        if shortSleep && suppressedHRV {
+            adjusted = min(adjusted, 64)
+        }
+
+        if shortSleep && elevatedRHR && suppressedHRV {
+            adjusted = min(adjusted, 58)
+        }
+
+        if shortSleep && veryLateBedtime {
+            adjusted = min(adjusted, 60)
+        }
+
+        return adjusted
+    }
+
     private static func recoveryCap(for sleepMinutes: Int) -> Double? {
         if sleepMinutes < shortSleepCapMinutes {
             return shortSleepRecoveryCap
@@ -142,7 +235,7 @@ enum RecoveryScoreEngine {
 
     private static func bedtimeConsistencyPoints(deviationMinutes: Int?) -> Double {
         guard let deviationMinutes else {
-            return 24.0
+            return 12.0
         }
 
         let ratio = min(max(Double(deviationMinutes) / bedtimeMaxDeviationMinutes, 0.0), 1.0)
@@ -205,7 +298,7 @@ enum RecoveryScoreEngine {
         case 55..<65:
             return 85.0
         case 65..<75:
-            return 60.0
+            return 45.0
         case 75..<85:
             return 35.0
         default:

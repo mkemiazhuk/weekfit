@@ -56,13 +56,14 @@ enum CoachTabPresentationBridge {
             urgencyLevel: insight.urgencyLevel,
             statusLabel: statusLabel(
                 for: insight,
+                context: engineResult.context,
                 dayReadiness: engineResult.context.dayReadiness,
                 limitedRecovery: showsLimitedConfidenceBadge
             ),
             coachTitle: compactHero.coachTitle,
             todayTitle: singleLineTitle(
                 localizedText(teaser.todayTitle),
-                maxLength: ru ? 26 : 26
+                maxLength: todayTitleMaxLength(for: pack.scenario, russian: ru)
             ),
             todayMessage: todayMessage(
                 scenario: pack.scenario,
@@ -226,6 +227,13 @@ enum CoachTabPresentationBridge {
     }
 
     /// Today card title must stay on one line — hard cap before UI truncation.
+    private static func todayTitleMaxLength(for scenario: CoachScenarioKey, russian: Bool) -> Int {
+        if russian, scenario == .protectTomorrowFresh {
+            return 22
+        }
+        return 26
+    }
+
     private static func singleLineTitle(_ text: String, maxLength: Int) -> String {
         conciseLine(text.trimmingCharacters(in: .whitespacesAndNewlines), maxLength: maxLength)
     }
@@ -248,6 +256,7 @@ enum CoachTabPresentationBridge {
 
     private static func statusLabel(
         for insight: CoachTodayInsight,
+        context: CoachContext,
         dayReadiness: CoachDayReadiness,
         limitedRecovery: Bool
     ) -> String {
@@ -265,7 +274,14 @@ enum CoachTabPresentationBridge {
             scenario: insight.scenario,
             safetyAlert: insight.safetyAlert,
             stackedDayActiveRisk: insight.modifiers.stackedDayActiveRisk,
-            stableDayProfile: stableDayProfile
+            stableDayProfile: stableDayProfile,
+            presentationContext: CoachConversationEnergyBadge.PresentationContext(
+                sessionPhase: context.sessionPhase,
+                focusSource: context.focusSource,
+                activityState: context.activityState,
+                completedSeriousActivities: context.completedSeriousActivities,
+                dayLoad: context.dayLoadBand
+            )
         )
         return localized(english: labels.english, russian: labels.russian)
     }

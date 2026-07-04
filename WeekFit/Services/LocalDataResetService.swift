@@ -3,6 +3,12 @@ import SwiftData
 
 @MainActor
 final class LocalDataResetService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
+
+    /// Called immediately before any `PlannedActivity` rows are deleted from SwiftData.
+    var beforeDeletingPlannedActivities: (() -> Void)?
 
     private let modelContext: ModelContext
     private let defaults: UserDefaults
@@ -50,6 +56,8 @@ final class LocalDataResetService {
     }
 
     private func clearSwiftData() throws {
+        beforeDeletingPlannedActivities?()
+
         let activities = try modelContext.fetch(FetchDescriptor<PlannedActivity>())
 
         for activity in activities {

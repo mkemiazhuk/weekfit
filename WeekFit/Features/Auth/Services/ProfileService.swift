@@ -34,6 +34,9 @@
         init(defaults: UserDefaults = .standard) {
             self.defaults = defaults
         }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+        nonisolated deinit {}
 
         func loadUserProfile() -> UserProfile {
             Self.migrateProfileStorageIfNeeded()

@@ -21,16 +21,16 @@ struct CoachDayContext {
     let now: Date
 
     /// Coach-relevant activities on the selected day (canonical filter applied).
-    let allActivities: [PlannedActivity]
+    let allActivities: [CoachPlannedActivitySnapshot]
 
-    let lastCompletedActivity: PlannedActivity?
-    let upcomingActivities: [PlannedActivity]
+    let lastCompletedActivity: CoachPlannedActivitySnapshot?
+    let upcomingActivities: [CoachPlannedActivitySnapshot]
 
     /// All movement/recovery volume completed today (minutes).
     let completedActivityVolumeMinutes: Int
 
     /// Training stress still ahead today — feeds tomorrow demand assessment.
-    let upcomingTrainingActivities: [PlannedActivity]
+    let upcomingTrainingActivities: [CoachPlannedActivitySnapshot]
     let upcomingTrainingMinutes: Int
     let upcomingTrainingStressScore: Int
 
@@ -41,7 +41,7 @@ struct CoachDayContext {
 enum CoachDayContextBuilder {
 
     static func build(
-        activities: [PlannedActivity],
+        activities: [CoachPlannedActivitySnapshot],
         selectedDate: Date,
         now: Date = Date()
     ) -> CoachDayContext {
@@ -52,23 +52,22 @@ enum CoachDayContextBuilder {
             .filter { calendar.isDate($0.date, inSameDayAs: selectedDate) }
             .sorted { $0.date < $1.date }
 
-        let dayActivities = CoachCanonicalDayState.coachRelevantActivities(from: rawDayActivities)
+        let dayActivities = CoachCanonicalDayState.coachRelevantSnapshots(from: rawDayActivities)
         let partial = dayActivities.filter(\.isPartialCompletion)
-        let completed = dayActivities.filter(\.isFullCompletion)
+        let completed = dayActivities.filter { $0.isCompleted && !$0.isSkipped }
 
         let upcoming = dayActivities.filter { activity in
             activity.terminalState(now: now) == .planned && activity.date >= now
         }
 
         let lastCompletedActivity = completed
-            .sorted { $0.date > $1.date }
-            .first
+            .max(by: { effectiveEndDate($0) < effectiveEndDate($1) })
 
         let partialTrainingActivities = partial.filter { isTrainingStress($0) }
-        let completedTrainingActivities = completed.filter { isTrainingStress($0) }
+        let completedTrainingActivities = completed.filter { isTrainingStress($0) && $0.isFullCompletion }
         let upcomingTrainingActivities = upcoming.filter { isTrainingStress($0) }
 
-        let completedActivityVolumeMinutes = (completed + partial)
+        let completedActivityVolumeMinutes = completed
             .filter { isActivityVolume($0) }
             .reduce(0) { $0 + effectiveMinutes($1) }
 
@@ -86,7 +85,8 @@ enum CoachDayContextBuilder {
 
         let hasMeaningfulLoadCompleted =
             completedTrainingStressScore >= 2 ||
-            completedTrainingActivities.count > 0
+            completedTrainingActivities.count > 0 ||
+            partialTrainingActivities.contains { trainingStressScore(for: $0) > 0 }
 
         return CoachDayContext(
             date: selectedDate,
@@ -107,11 +107,19 @@ enum CoachDayContextBuilder {
 
 private extension CoachDayContextBuilder {
 
-    static func effectiveMinutes(_ activity: PlannedActivity) -> Int {
+    static func effectiveMinutes(_ activity: CoachPlannedActivitySnapshot) -> Int {
         max(activity.effectiveDurationMinutes, 0)
     }
 
-    static func isActivityVolume(_ activity: PlannedActivity) -> Bool {
+    static func effectiveEndDate(_ activity: CoachPlannedActivitySnapshot, calendar: Calendar = .current) -> Date {
+        calendar.date(
+            byAdding: .minute,
+            value: max(activity.effectiveDurationMinutes, 1),
+            to: activity.date
+        ) ?? activity.date
+    }
+
+    static func isActivityVolume(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         guard !isHydrationLog(activity) else { return false }
 
         let kind = CoachActivityContextResolver.kind(for: activity)
@@ -122,7 +130,7 @@ private extension CoachDayContextBuilder {
                kind == .recovery
     }
 
-    static func isTrainingStress(_ activity: PlannedActivity) -> Bool {
+    static func isTrainingStress(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         guard !isHydrationLog(activity) else { return false }
 
         if CoachActivityClassification.isWalkLike(activity) {
@@ -160,7 +168,7 @@ private extension CoachDayContextBuilder {
         return true
     }
 
-    static func isHydrationLog(_ activity: PlannedActivity) -> Bool {
+    static func isHydrationLog(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let type = activity.type.lowercased()
         let title = activity.title.lowercased()
         let image = activity.imageName.lowercased()
@@ -171,7 +179,7 @@ private extension CoachDayContextBuilder {
             title.contains("hydration")
     }
 
-    static func trainingStressScore(for activity: PlannedActivity) -> Int {
+    static func trainingStressScore(for activity: CoachPlannedActivitySnapshot) -> Int {
         let kind = CoachActivityContextResolver.kind(for: activity)
 
         guard isTrainingStress(activity) else {

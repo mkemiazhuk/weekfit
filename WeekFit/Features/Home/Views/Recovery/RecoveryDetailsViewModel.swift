@@ -4,6 +4,9 @@ internal import Combine
 
 @MainActor
 final class RecoveryDetailsViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var snapshot: RecoveryDaySnapshot = .empty
     @Published private(set) var isLoading = false
@@ -180,17 +183,15 @@ struct RecoveryDaySnapshot: Equatable {
     private func resolvedInsightTitle(for score: Int) -> String {
         guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.title") }
 
-        switch score {
-        case 85...:
+        switch statusTier(for: score) {
+        case .fullyRecovered:
             return WeekFitLocalizedString("recovery.fullyRecovered")
-        case 70..<85:
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.wellRecovered")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.moderatelyReady")
-        case 1..<55:
+        case .takeItEasier, .noData:
             return WeekFitLocalizedString("recovery.takeItEasier")
-        default:
-            return WeekFitLocalizedString("recovery.empty.title")
         }
     }
 
@@ -202,6 +203,21 @@ struct RecoveryDaySnapshot: Equatable {
         let sleepDurationIsStrong = asleepMinutes >= 420
         let sleepQualityIsStrong = deepSleepMinutes + remSleepMinutes >= Int(Double(asleepMinutes) * 0.35)
         let continuityIsStrong = timeInBedMinutes > 0 && Double(asleepMinutes) / Double(timeInBedMinutes) >= 0.88
+        let physiologyIsStressed = RecoveryScoreEngine.physiologyIsStressed(
+            sleepMinutes: asleepMinutes,
+            restingHeartRate: restingHeartRate ?? 0,
+            hrvSDNN: hrv ?? 0
+        )
+
+        if physiologyIsStressed {
+            if !sleepDurationIsStrong {
+                return WeekFitLocalizedString("recovery.sleepDurationWasBelowTargetSoRecoveryMayFeel")
+            }
+
+            if (restingHeartRate ?? 0) >= 65 || ((hrv ?? 0) > 0 && (hrv ?? 0) < 35) {
+                return WeekFitLocalizedString("recovery.recoveryIsModerateKeepIntensityControlledUntilSignalsImprove")
+            }
+        }
 
         if score >= 85 {
             return WeekFitLocalizedString("recovery.sleepDurationContinuityAndSleepStructureWereSupportiveOvernight")
@@ -237,14 +253,14 @@ struct RecoveryDaySnapshot: Equatable {
     private func resolvedActionTitle(for score: Int) -> String {
         guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.actionTitle") }
 
-        switch score {
-        case 85...:
+        switch statusTier(for: score) {
+        case .fullyRecovered:
             return WeekFitLocalizedString("recovery.ready")
-        case 70..<85:
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.trainNormally")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.details.action.controlIntensity")
-        default:
+        case .takeItEasier, .noData:
             return WeekFitLocalizedString("recovery.recover")
         }
     }
@@ -254,16 +270,25 @@ struct RecoveryDaySnapshot: Equatable {
             return WeekFitLocalizedString("recovery.empty.actionText")
         }
 
-        switch score {
-        case 85...:
+        switch statusTier(for: score) {
+        case .fullyRecovered:
             return WeekFitLocalizedString("recovery.youCanHandleNormalTrainingLoadToday")
-        case 70..<85:
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.aNormalSessionIsFineButAvoidForcingExtra")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.chooseModerateWorkAndPayAttentionToHowYou")
-        default:
+        case .takeItEasier, .noData:
             return WeekFitLocalizedString("recovery.keepActivityLightAndFocusOnRecoveryBasics")
         }
+    }
+
+    private func statusTier(for score: Int) -> RecoveryScoreEngine.RecoveryStatusTier {
+        RecoveryScoreEngine.statusTier(
+            score: score,
+            sleepMinutes: asleepMinutes,
+            restingHeartRate: restingHeartRate,
+            hrvSDNN: hrv
+        )
     }
 
     private var hasSleepData: Bool {

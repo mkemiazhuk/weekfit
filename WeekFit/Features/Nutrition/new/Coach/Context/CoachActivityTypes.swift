@@ -20,15 +20,15 @@ enum CoachActivityLoad {
 /// Prefer `CoachActivityClassifier.type` / `family` for scenario routing.
 enum CoachActivityContextResolver {
 
-    static func kind(for activity: PlannedActivity) -> CoachActivityKind {
+    static func kind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
         CoachActivityClassifier.coachKind(for: activity)
     }
 
-    static func load(for activity: PlannedActivity) -> CoachActivityLoad {
+    static func load(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
         CoachActivityClassifier.coachLoad(for: activity)
     }
 
-    static func activityCalories(_ activity: PlannedActivity) -> Int {
+    static func activityCalories(_ activity: CoachPlannedActivitySnapshot) -> Int {
         CoachActivityClassifier.activityCalories(for: activity)
     }
 }

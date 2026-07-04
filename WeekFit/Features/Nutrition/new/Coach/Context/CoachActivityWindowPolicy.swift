@@ -12,7 +12,7 @@ enum CoachActivityWindowPolicy {
         CoachHeatRecoveryPolicy.focusWindowMinutes
     }
 
-    static func recentCompletedFocusWindowMinutes(for activity: PlannedActivity) -> Int {
+    static func recentCompletedFocusWindowMinutes(for activity: CoachPlannedActivitySnapshot) -> Int {
         if CoachActivityClassifier.family(for: activity) == .heat {
             return heatRecoveryWindowMinutes
         }
@@ -37,7 +37,7 @@ enum CoachActivityWindowPolicy {
 
     // MARK: - Prep / UI hold windows (future Today phase chrome)
 
-    static func preparationLeadMinutes(for activity: PlannedActivity) -> Int {
+    static func preparationLeadMinutes(for activity: CoachPlannedActivitySnapshot) -> Int {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
 
@@ -61,7 +61,7 @@ enum CoachActivityWindowPolicy {
         }
     }
 
-    static func recoveryHoldMinutes(for activity: PlannedActivity) -> Int {
+    static func recoveryHoldMinutes(for activity: CoachPlannedActivitySnapshot) -> Int {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
 

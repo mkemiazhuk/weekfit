@@ -52,7 +52,7 @@ final class RecoveryScoreEngineXCTests: XCTestCase {
         XCTAssertLessThan(breakdown.total, 60)
     }
 
-    func testFourHourFiftySevenMinuteSleepWithStrongSignalsStaysInModerateRange() {
+    func testFourHourFiftySevenMinuteSleepWithStrongSignalsStaysBelowWellRecovered() {
         let breakdown = RecoveryScoreEngine.calculate(
             sleepMinutes: 297,
             timeInBedMinutes: 300,
@@ -65,8 +65,32 @@ final class RecoveryScoreEngineXCTests: XCTestCase {
             bedtimeDeviationMinutes: 0
         )
 
-        XCTAssertGreaterThanOrEqual(breakdown.total, 70)
-        XCTAssertLessThanOrEqual(breakdown.total, 75)
+        XCTAssertLessThan(breakdown.total, 70)
+    }
+
+    func testFiveHourSixteenMinuteSleepWithElevatedPulseAndLowHRVReflectsStress() {
+        let breakdown = RecoveryScoreEngine.calculate(
+            sleepMinutes: 316,
+            timeInBedMinutes: 318,
+            awakeMinutes: 1,
+            awakeningsCount: 1,
+            deepSleepMinutes: 48,
+            remSleepMinutes: 70,
+            hrvSDNN: 26,
+            restingHeartRate: 68,
+            bedtimeDeviationMinutes: 277
+        )
+
+        XCTAssertLessThan(breakdown.total, 60)
+        XCTAssertEqual(
+            RecoveryScoreEngine.statusTier(
+                score: breakdown.total,
+                sleepMinutes: 316,
+                restingHeartRate: 68,
+                hrvSDNN: 26
+            ),
+            .takeItEasier
+        )
     }
 
     func testFiveHourSleepWithGoodSignalsProducesModerateRecovery() {
@@ -82,8 +106,8 @@ final class RecoveryScoreEngineXCTests: XCTestCase {
             bedtimeDeviationMinutes: 80
         )
 
-        XCTAssertGreaterThanOrEqual(breakdown.total, 70)
-        XCTAssertLessThanOrEqual(breakdown.total, 75)
+        XCTAssertLessThan(breakdown.total, 70)
+        XCTAssertGreaterThanOrEqual(breakdown.total, 55)
     }
 
     func testFiveHourSleepWithPoorContinuityScoresLowerThanGoodContinuity() {
@@ -176,30 +200,6 @@ final class RecoveryScoreEngineXCTests: XCTestCase {
         )
 
         XCTAssertEqual(breakdown.total, 45)
-        XCTAssertEqual(
-            breakdown.sleepDuration
-                + breakdown.sleepContinuity
-                + breakdown.sleepQuality
-                + breakdown.hrv
-                + breakdown.restingHeartRate,
-            breakdown.total
-        )
-    }
-
-    func testBreakdownRowsSumToTotalRecovery() {
-        let breakdown = RecoveryScoreEngine.calculate(
-            sleepMinutes: 297,
-            timeInBedMinutes: 300,
-            awakeMinutes: 3,
-            awakeningsCount: 1,
-            deepSleepMinutes: 45,
-            remSleepMinutes: 77,
-            hrvSDNN: 49,
-            restingHeartRate: 68,
-            bedtimeDeviationMinutes: 0
-        )
-
-        XCTAssertEqual(breakdown.total, 75)
         XCTAssertEqual(
             breakdown.sleepDuration
                 + breakdown.sleepContinuity

@@ -26,6 +26,9 @@ final class NutritionViewModel: ObservableObject {
     private var cachedPlannedActivities: [PlannedActivity] = []
     private var lastNutritionStateSignature = ""
     private let repository = NutritionRepository()
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     init() { load() }
 
@@ -39,12 +42,17 @@ final class NutritionViewModel: ObservableObject {
         nutritionResult = nil
         currentMetrics = nil
         currentProfile = nil
-        coachMetricsSnapshot = nil
+        invalidateCoachActivityReferences()
         coachStateRefreshID = UUID()
         manualWaterLiters = 0
-        cachedPlannedActivities = []
-        lastNutritionStateSignature = ""
         trackedNutritionDayStart = nil
+    }
+
+    /// Clears coach-side caches that retain live `PlannedActivity` model references.
+    func invalidateCoachActivityReferences() {
+        cachedPlannedActivities = []
+        coachMetricsSnapshot = nil
+        lastNutritionStateSignature = ""
     }
 
     /// Clears day-scoped nutrition totals when the selected calendar day changes.
@@ -452,13 +460,14 @@ final class NutritionViewModel: ObservableObject {
     }
 
     private func isTrainingActivity(_ activity: PlannedActivity) -> Bool {
-        let kind = CoachActivityContextResolver.kind(for: activity)
+        let snapshot = CoachPlannedActivitySnapshot(from: activity)
+        let kind = CoachActivityContextResolver.kind(for: snapshot)
         return kind == .workout || kind == .endurance
     }
 
     private func trainingStress(_ activities: [PlannedActivity]) -> Int {
         activities.reduce(0) { total, activity in
-            switch CoachActivityContextResolver.load(for: activity) {
+            switch CoachActivityContextResolver.load(for: CoachPlannedActivitySnapshot(from: activity)) {
             case .low:
                 return total + 1
             case .moderate:

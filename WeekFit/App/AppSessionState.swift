@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class AppSessionState: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)
     @Published private(set) var healthRefreshEvent = AppRefreshEvent(kind: .healthRefresh)

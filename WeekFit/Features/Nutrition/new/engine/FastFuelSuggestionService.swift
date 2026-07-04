@@ -30,6 +30,9 @@ struct FastFuelItem: Identifiable, Equatable {
 }
 
 final class FastFuelSuggestionService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     private let calendar = Calendar.current
 

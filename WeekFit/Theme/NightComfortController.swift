@@ -12,7 +12,7 @@ final class NightComfortController: ObservableObject {
         WeekFitSemanticPalette.interpolated(blend: blendFactor)
     }
 
-    private var refreshTimer: Timer?
+    private nonisolated(unsafe) var refreshTimer: Timer?
     private var solarCoordinate: CLLocationCoordinate2D?
 
     init(preference: NightComfortPreference = .stored) {
@@ -151,8 +151,9 @@ final class NightComfortController: ObservableObject {
             return false
         }
     }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
-    deinit {
+    nonisolated deinit {
         refreshTimer?.invalidate()
     }
 }

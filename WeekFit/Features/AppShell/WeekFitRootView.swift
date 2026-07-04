@@ -146,6 +146,9 @@ struct WeekFitRootView: View {
         .onChange(of: healthManager.lastHealthKitSyncTime) { _, _ in
             syncCoachRefreshInputs()
         }
+        .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
+            syncCoachRefreshInputs()
+        }
         .onChange(of: healthManager.hasCompletedHealthAccessCheck) { _, _ in
             syncCoachRefreshInputs()
         }
@@ -499,8 +502,10 @@ struct WeekFitRootView: View {
     }
 
     private var hasSettledInitialHealthState: Bool {
-        healthManager.lastHealthKitSyncTime != nil ||
-            (healthManager.hasCompletedHealthAccessCheck && !healthManager.isHealthAccessGranted)
+        if !healthManager.isHealthAccessRequested {
+            return healthManager.hasCompletedHealthAccessCheck
+        }
+        return healthManager.hasSettledMetrics(for: coachRefreshDate)
     }
 
     private var watchSyncPlannerSignature: String {
@@ -513,6 +518,13 @@ struct WeekFitRootView: View {
         source: String,
         bootstrapFromHealth: Bool = false
     ) async {
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coachCoordinator,
+            nutritionViewModel: nutritionViewModel,
+            inputProvider: coachInputProvider,
+            reason: "preHealthReconcile.\(source)"
+        )
+
         if bootstrapFromHealth {
             await activityCoordinator.bootstrapHealthWorkouts(
                 for: Date(),

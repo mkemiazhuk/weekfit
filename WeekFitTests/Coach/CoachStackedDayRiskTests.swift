@@ -177,7 +177,7 @@ final class CoachStackedDayRiskTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: actualLoad,
             recoveryContext: CoachRecoveryContext(recoveryPercent: 80, sleepHours: 7.0),
             nutritionContext: CoachNutritionContext(

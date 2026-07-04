@@ -6,12 +6,21 @@ enum CoachUnderstandingService {
     static func refresh(
         healthManager: HealthManager,
         through date: Date,
+        plannedActivities: [PlannedActivity] = [],
+        calorieTarget: Int? = nil,
         backfillDays: Int = 21
     ) async {
-        CoachObservationStore.recordToday(from: healthManager, date: date)
+        CoachObservationStore.recordToday(
+            from: healthManager,
+            date: date,
+            plannedActivities: plannedActivities,
+            calorieTarget: calorieTarget
+        )
         await CoachObservationStore.backfill(
             healthManager: healthManager,
             through: date,
+            plannedActivities: plannedActivities,
+            calorieTarget: calorieTarget,
             dayCount: backfillDays
         )
         evaluateBeliefs()
@@ -19,11 +28,9 @@ enum CoachUnderstandingService {
 
     static func evaluateBeliefs() {
         let observations = CoachObservationStore.allObservations()
-        let result = SleepConsistencyBeliefEvaluator.evaluate(observations: observations)
-        CoachUnderstandingStore.applyEvaluation(
-            beliefID: .sleepConsistencyRecovery,
-            nextMaturity: result.maturity,
-            event: result.event
-        )
+
+        for result in CoachBeliefRegistry.evaluateAll(observations: observations) {
+            CoachUnderstandingStore.applyEvaluation(result)
+        }
     }
 }

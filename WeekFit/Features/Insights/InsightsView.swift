@@ -885,6 +885,9 @@ struct InsightsSyncedWorkout {
 
 @MainActor
 final class InsightsViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var snapshot = InsightsSnapshot.fallback
     @Published private(set) var hasLoadedSnapshot: Bool

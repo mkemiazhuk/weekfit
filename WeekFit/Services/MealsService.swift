@@ -9,6 +9,9 @@ struct MealNutritionTarget {
 
 @MainActor
 final class MealsService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     private let healthManager: HealthManager
     private let repository = NutritionRepository()

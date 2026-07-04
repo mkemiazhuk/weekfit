@@ -360,7 +360,7 @@ enum CoachCopyRegistryScenarios {
         return Draft(
             assessment: .en(
                 "Racket day is in the books — evening is for recovery.",
-                "Игровой день позади — вечер для восстановления."
+                "Игровой день завершён — вечер для восстановления."
             ),
             recommendation: windDown
                 ? .en(

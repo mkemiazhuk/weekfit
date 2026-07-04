@@ -40,8 +40,8 @@ struct CoachState: Identifiable {
         if canRenderTodayCoachInsight { return nil }
         if isSettlingCoachState { return .settling }
         if status != .ready && status != .refreshingPrevious { return .stateNotReady }
-        if !hasValidTodayPresentationContent { return .noTodayPresentation }
         if coachUIPresentation == nil { return .registryGap }
+        if !hasValidTodayPresentationContent { return .noTodayPresentation }
         return .stateNotReady
     }
 
@@ -147,7 +147,9 @@ struct CoachState: Identifiable {
             logCoachRegistryGap(debug: coachIntegrationDebug, reason: reason)
         }
 
-        let reflectionOffer = ReflectionComposer.compose(
+        let reflectionOffer: ReflectionOffer?
+        #if DEBUG
+        reflectionOffer = ReflectionComposer.compose(
             ReflectionComposer.Input(
                 snapshot: input,
                 context: v6Result.context,
@@ -156,6 +158,9 @@ struct CoachState: Identifiable {
                 alertSeverity: v6Result.todayInsight.alertSeverity
             )
         )
+        #else
+        reflectionOffer = nil
+        #endif
 
         return CoachState(
             id: UUID(),

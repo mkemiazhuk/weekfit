@@ -49,7 +49,11 @@ enum CoachBodyStateCopyRenderer {
             case .workBanked:
                 return applyWorkBankedStableDay(base: base, bodyState: bodyState)
             case .lowRecoveryRest:
-                return applyLowRecoveryRestStableDay(base: base, bodyState: bodyState)
+                return applyLowRecoveryRestStableDay(
+                    base: base,
+                    bodyState: bodyState,
+                    sessionPhase: sessionPhase
+                )
             default:
                 return applyStableDay(base: base, bodyState: bodyState)
             }
@@ -174,9 +178,29 @@ enum CoachBodyStateCopyRenderer {
         }
     }
 
-    private static func applyLowRecoveryRestStableDay(base: BasePack, bodyState: CoachBodyState) -> BasePack {
-        // Profile-specific packs already own recovery timing; body state must not replace them.
-        base
+    private static func applyLowRecoveryRestStableDay(
+        base: BasePack,
+        bodyState: CoachBodyState,
+        sessionPhase: CoachSessionPhase
+    ) -> BasePack {
+        switch bodyState {
+        case .fatigued, .veryFatigued:
+            if sessionPhase == .idle || sessionPhase == .pre {
+                let adjusted = applyStableDay(base: base, bodyState: bodyState)
+                return BasePack(
+                    assessment: .single(.en(
+                        "Recovery matters today — energy is softer than usual.",
+                        "Сейчас важнее восстановление — энергии чуть меньше обычного."
+                    )),
+                    recommendation: adjusted.recommendation,
+                    avoid: adjusted.avoid,
+                    nextAction: base.nextAction
+                )
+            }
+        case .fresh, .normal:
+            break
+        }
+        return base
     }
 
     private static func applyStableDay(base: BasePack, bodyState: CoachBodyState) -> BasePack {

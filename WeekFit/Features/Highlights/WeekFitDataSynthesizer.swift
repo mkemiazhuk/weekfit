@@ -39,6 +39,9 @@ struct HighlightStory: Hashable {
 }
 
 final class WeekFitDataSynthesizer {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static func generateMonthlyHighlight(from data: [DailyMetrics]) -> HighlightStory {
         WeekFitDataSynthesizer().generateMonthlyHighlight(from: data)

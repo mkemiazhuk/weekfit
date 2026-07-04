@@ -164,6 +164,9 @@ private extension CoachWalkRecoveryActionCopy {
     }
 
     static func completedDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
+        if input.sessionPhase == .immediatePost {
+            return completedClosureDraft(input: input)
+        }
         if CoachCopyClosureTiming.allowsDayClosurePhrasing(
             timeOfDay: input.timeOfDay,
             conversationPhase: input.conversationPhase
@@ -184,7 +187,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Keep the rest of the day calm — no new hard block.",
-                "Остаток дня спокойный — без нового интенсивного блока."
+                "Остаток дня спокойный — без нового блока, отдыха в приоритете."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
@@ -204,7 +207,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Keep the rest of the day calm — no new hard block.",
-                "Остаток дня спокойный — без нового интенсивного блока."
+                "Остаток дня спокойный — без нового блока, отдыха в приоритете."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",

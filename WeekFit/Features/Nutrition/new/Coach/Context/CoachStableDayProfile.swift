@@ -60,7 +60,7 @@ enum CoachStableDayPresentation {
             if hadHeavyYesterday {
                 return russian ? "После вчерашней нагрузки" : "After yesterday's load"
             }
-            return russian ? "Спокойный день восстановления" : "Calm recovery day"
+            return russian ? "День восстановления" : "Calm recovery day"
         case .tomorrowReserve:
             return russian ? "Запас на завтра" : "Save for tomorrow"
         case .workBanked:
@@ -316,7 +316,7 @@ enum CoachStableDayCopy {
             recommendation: .single(windDown
                 ? .en(
                     "Switch to recovery mode now; sleep will do more than another effort.",
-                    "Сейчас лучше перейти в режим восстановления: сон даст больше, чем ещё одна нагрузка."
+                    "Сон сейчас даст больше, чем ещё одна нагрузка — перейдите в режим восстановления."
                 )
                 : CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay)
                     ? .en(

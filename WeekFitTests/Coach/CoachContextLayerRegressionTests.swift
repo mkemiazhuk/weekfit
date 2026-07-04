@@ -67,6 +67,9 @@ final class CoachContextLayerRegressionTests: XCTestCase {
     }
 
     func testPostEnduranceImmediateRunningUsesRunChromeNotRide() throws {
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(.english) }
+
         let now = date(hour: 14, minute: 0)
         let run = completedActivity(
             title: "Morning Run",
@@ -272,7 +275,7 @@ final class CoachContextLayerRegressionTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: actualLoad ?? CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 200,

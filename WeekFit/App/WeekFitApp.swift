@@ -44,6 +44,13 @@ struct WeekFitApp: App {
                 .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)
                 .onAppear {
                     activityCoordinator.start()
+                    activityCoordinator.beforePlannedActivityMutation = {
+                        CoachSnapshotInvalidator.invalidate(
+                            coordinator: coachCoordinator,
+                            nutritionViewModel: nutritionViewModel,
+                            reason: "healthKitActivityReconcile"
+                        )
+                    }
                     if nightComfortLocationService == nil {
                         nightComfortLocationService = NightComfortLocationService(nightComfort: nightComfort)
                     }

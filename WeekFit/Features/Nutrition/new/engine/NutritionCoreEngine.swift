@@ -24,7 +24,7 @@ enum NutritionCoreEngine {
             baseDayGoals: goals.baseDay,
             fullDayGoals: goals.fullDay,
             smoothedGoals: goals.smoothed,
-            activities: activities
+            activities: activities.coachSnapshots()
         )
         
         let decision = CoachDecisionEngine.makeDecision(

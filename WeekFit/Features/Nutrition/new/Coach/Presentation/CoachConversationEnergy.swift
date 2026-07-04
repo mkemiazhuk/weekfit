@@ -101,7 +101,7 @@ enum CoachConversationEnergyPolicy {
             return .low
 
         case .saunaActive:
-            return .medium
+            return .high
         }
     }
 

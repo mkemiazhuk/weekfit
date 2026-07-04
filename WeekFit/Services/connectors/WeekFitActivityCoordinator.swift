@@ -5,6 +5,9 @@ import SwiftData
 
 @MainActor
 final class WeekFitActivityCoordinator: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static let shared = WeekFitActivityCoordinator()
 
@@ -17,6 +20,9 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var reconciledWorkoutUUIDs = Set<String>()
+
+    /// Called before deleting or merging SwiftData `PlannedActivity` rows during HealthKit reconciliation.
+    var beforePlannedActivityMutation: (() -> Void)?
 
     private init() {
         bind()
@@ -157,6 +163,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
                 for: workout,
                 in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID }
             ) {
+                notifyPlannedActivityMutation()
                 modelContext.delete(standalone)
                 ActivityReconciler.applySyncedWorkout(workout, to: planned)
             } else {
@@ -182,6 +189,10 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         reconciledWorkoutUUIDs.insert(workoutUUID)
+    }
+
+    private func notifyPlannedActivityMutation() {
+        beforePlannedActivityMutation?()
     }
 
     private func importedWorkoutIfExists(

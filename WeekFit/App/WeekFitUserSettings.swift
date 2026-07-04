@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class WeekFitUserSettings: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     static let shared = WeekFitUserSettings()
 
     @Published private(set) var profileInitials: String

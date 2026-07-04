@@ -2,7 +2,7 @@ import Foundation
 
 struct CoachTomorrowDemandAssessment: Hashable {
     let level: CoachTomorrowDemand
-    let primaryTrainingActivity: PlannedActivity?
+    let primaryTrainingActivity: CoachPlannedActivitySnapshot?
     let trainingMinutes: Int
     let trainingStressScore: Int
 
@@ -42,7 +42,7 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    static func resolve(activities: [PlannedActivity]) -> CoachTomorrowDemandAssessment {
+    static func resolve(activities: [CoachPlannedActivitySnapshot]) -> CoachTomorrowDemandAssessment {
         let trainingActivities = activities
             .filter { !$0.isSkipped }
             .filter(isTraining)
@@ -56,13 +56,13 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    static func isTraining(_ activity: PlannedActivity) -> Bool {
+    static func isTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let kind = CoachActivityContextResolver.kind(for: activity)
         return kind == .workout || kind == .endurance
     }
 
     private static func resolve(
-        activities: [PlannedActivity],
+        activities: [CoachPlannedActivitySnapshot],
         trainingMinutes: Int,
         trainingStressScore: Int
     ) -> CoachTomorrowDemandAssessment {
@@ -92,7 +92,7 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    private static func stressScore(_ activity: PlannedActivity) -> Int {
+    private static func stressScore(_ activity: CoachPlannedActivitySnapshot) -> Int {
         CoachActivityContextResolver.load(for: activity).riskScore
     }
 }

@@ -76,7 +76,7 @@ enum CoachMorningBriefFactsBuilder {
     private static func resolveNextActivity(
         input: CoachInputSnapshot,
         context: CoachContext,
-        todayActivities: [PlannedActivity],
+        todayActivities: [CoachPlannedActivitySnapshot],
         calendar: Calendar
     ) -> CoachPlannedActivitySummary? {
         if let focusID = context.focusActivityID,

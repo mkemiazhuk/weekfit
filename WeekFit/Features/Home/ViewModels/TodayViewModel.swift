@@ -15,8 +15,9 @@ final class TodayViewModel: ObservableObject {
     init() {
         WeekFitLifecycleTracker.attach(lifecycleToken)
     }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
-    deinit {
+    nonisolated deinit {
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
@@ -155,8 +156,7 @@ final class TodayViewModel: ObservableObject {
         selectedDate: Date,
         plannedActivities: [PlannedActivity],
         healthManager: HealthManager,
-        nutritionViewModel: NutritionViewModel,
-        appSession: AppSessionState
+        nutritionViewModel: NutritionViewModel
     ) async {
         guard healthManager.isHealthAccessRequested else {
             updateNutrition(
@@ -176,7 +176,6 @@ final class TodayViewModel: ObservableObject {
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel
         )
-        appSession.triggerCoachRefresh(source: "TodayView.healthDataLoaded")
     }
 
     private static func debugStart(_ label: String) -> CFAbsoluteTime {

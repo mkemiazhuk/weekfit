@@ -99,6 +99,16 @@ struct ActivityMetricsSnapshot: Hashable {
     )
 }
 
+struct NutritionMetricsSnapshot: Hashable, Sendable {
+    let protein: Double
+    let carbs: Double
+    let fats: Double
+    let calories: Double
+    let waterLiters: Double
+    let mealsLoggedCount: Int
+    let isResolved: Bool
+}
+
 enum HealthActivityMetricsResolver {
     private static let defaultWeightKg = 70.0
     /// Net active kcal per kg body weight per km walked (rough MET ~3.5).
@@ -214,6 +224,8 @@ final class HealthManager: ObservableObject {
     @Published var waterLiters: Double = 0
     @Published var sleepHours: Double = 0
     @Published private(set) var lastHealthKitSyncTime: Date?
+    @Published private(set) var settledMetricsDayStart: Date?
+    @Published private(set) var isLoadingDisplayDayMetrics = false
 
     private var loadedMetricsDayStart: Date?
 
@@ -228,8 +240,14 @@ final class HealthManager: ObservableObject {
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
     private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
     private var inFlightHealthLoad: Task<Void, Never>?
-    
-    
+    /// Mirrors `inFlightHealthLoad` so `nonisolated deinit` can cancel in-flight work safely.
+    private nonisolated(unsafe) var inFlightHealthLoadForDeinit: Task<Void, Never>?
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {
+        inFlightHealthLoadForDeinit?.cancel()
+    }
+
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
         let goal = ProfileService().resolvedNutritionGoal(weightKg: weight, heightCm: heightCm)
         return max(
@@ -316,6 +334,63 @@ final class HealthManager: ObservableObject {
             hrvSDNN: await hrv
         )
     }
+
+    func readNutritionMetricsSnapshot(
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) async -> NutritionMetricsSnapshot? {
+        guard isHealthAccessRequested else { return nil }
+
+        let planned = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
+        let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
+        let plannedMealsLoggedCount = CoachNutritionObservationMapper.mealsLoggedCount(
+            for: date,
+            plannedActivities: plannedActivities
+        )
+
+        guard isHealthAccessGranted else {
+            guard planned.protein > 0
+                || planned.carbs > 0
+                || planned.fats > 0
+                || planned.calories > 0
+                || plannedWaterLiters > 0
+                || plannedMealsLoggedCount > 0 else {
+                return nil
+            }
+
+            return NutritionMetricsSnapshot(
+                protein: planned.protein,
+                carbs: planned.carbs,
+                fats: planned.fats,
+                calories: planned.calories,
+                waterLiters: plannedWaterLiters,
+                mealsLoggedCount: plannedMealsLoggedCount,
+                isResolved: true
+            )
+        }
+
+        async let healthProtein = readDaySum(.dietaryProtein, unit: .gram(), for: date)
+        async let healthCarbs = readDaySum(.dietaryCarbohydrates, unit: .gram(), for: date)
+        async let healthFats = readDaySum(.dietaryFatTotal, unit: .gram(), for: date)
+        async let healthCalories = readDaySum(.dietaryEnergyConsumed, unit: .kilocalorie(), for: date)
+        async let healthWaterMl = readDaySum(.dietaryWater, unit: .literUnit(with: .milli), for: date)
+
+        let hkProtein = await healthProtein
+        let hkCarbs = await healthCarbs
+        let hkFats = await healthFats
+        let hkCalories = await healthCalories
+        let hkWaterLiters = await healthWaterMl / 1_000.0
+
+        return NutritionMetricsSnapshot(
+            protein: max(hkProtein, planned.protein),
+            carbs: max(hkCarbs, planned.carbs),
+            fats: max(hkFats, planned.fats),
+            calories: max(hkCalories, planned.calories),
+            waterLiters: max(hkWaterLiters, plannedWaterLiters),
+            mealsLoggedCount: plannedMealsLoggedCount,
+            isResolved: true
+        )
+    }
     
     var isHealthAccessRequested: Bool {
         UserDefaults.standard.bool(forKey: healthAccessRequestedKey)
@@ -397,8 +472,10 @@ final class HealthManager: ObservableObject {
             await self.performLoadHealthData(for: date, plannedActivities: plannedActivities)
         }
         inFlightHealthLoad = task
+        inFlightHealthLoadForDeinit = task
         await task.value
         inFlightHealthLoad = nil
+        inFlightHealthLoadForDeinit = nil
     }
 
     private func performLoadHealthData(
@@ -408,6 +485,13 @@ final class HealthManager: ObservableObject {
         let requestedDayStart = Calendar.current.startOfDay(for: date)
         if loadedMetricsDayStart != requestedDayStart {
             prepareForDisplayDay(requestedDayStart)
+        }
+
+        await MainActor.run {
+            self.isLoadingDisplayDayMetrics = true
+        }
+        defer {
+            isLoadingDisplayDayMetrics = false
         }
 
         #if DEBUG
@@ -421,6 +505,7 @@ final class HealthManager: ObservableObject {
                 self.isHealthAccessGranted = false
                 self.hasCompletedHealthAccessCheck = true
                 self.resetHealthDependentValues()
+                self.markDisplayMetricsSettled(for: date)
                 #if DEBUG
                 if CoachDebugSettings.todayDataAuditEnabled {
                     Self.logger.debug("loadHealthData blocked currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) healthAvailable=\(HKHealthStore.isHealthDataAvailable(), privacy: .public) accessRequested=\(self.isHealthAccessRequested, privacy: .public)")
@@ -459,6 +544,7 @@ final class HealthManager: ObservableObject {
             // Если галочки были сняты — сбрасываем интерфейс
             await MainActor.run {
                 self.resetHealthDependentValues()
+                self.markDisplayMetricsSettled(for: date)
                 #if DEBUG
                 if CoachDebugSettings.todayDataAuditEnabled {
                     Self.logger.debug("loadHealthData denied currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public)")
@@ -900,6 +986,12 @@ final class HealthManager: ObservableObject {
     }
 
     private func resetHeaderValues() {
+        #if DEBUG
+        if CoachDebugSettings.lifecycleDiagnosticsEnabled {
+            Self.logger.debug("resetHeaderValues loadedMetricsDayStart=\(String(describing: self.loadedMetricsDayStart), privacy: .public)")
+        }
+        #endif
+
         activeCalories = 0
         steps = 0
         distanceKm = 0
@@ -928,11 +1020,30 @@ final class HealthManager: ObservableObject {
         bestTimeText = WeekFitLocalizedString("health.syncHealthToPersonalizeYourDay")
     }
 
+    /// Marks the display-day bootstrap complete: HealthKit totals and downstream nutrition inputs are aligned.
+    func markDisplayMetricsSettled(for date: Date, calendar: Calendar = .current) {
+        settledMetricsDayStart = calendar.startOfDay(for: date)
+    }
+
+    /// True once the current session finished loading (or definitively skipped) HealthKit for the day.
+    func hasSettledMetrics(for date: Date, calendar: Calendar = .current) -> Bool {
+        guard let settledMetricsDayStart else { return false }
+        let requestedDayStart = calendar.startOfDay(for: date)
+        return calendar.isDate(settledMetricsDayStart, inSameDayAs: requestedDayStart)
+    }
+
     /// Clears day-scoped HealthKit totals so rings do not show the previous calendar day.
     func prepareForDisplayDay(_ dayStart: Date) {
         guard loadedMetricsDayStart != dayStart else { return }
 
+        #if DEBUG
+        if CoachDebugSettings.lifecycleDiagnosticsEnabled {
+            Self.logger.debug("prepareForDisplayDay dayStart=\(dayStart, privacy: .public) previousLoaded=\(String(describing: self.loadedMetricsDayStart), privacy: .public)")
+        }
+        #endif
+
         loadedMetricsDayStart = dayStart
+        settledMetricsDayStart = nil
         resetHeaderValues()
 
         protein = 0
@@ -1132,6 +1243,13 @@ final class HealthManager: ObservableObject {
 
                 let sessionStart = session.start
                 let sessionEnd = session.end
+                let bedStart = Self.firstAsleepStart(
+                    in: session,
+                    asleepSamples: asleepSamples,
+                    deepSamples: deepSamples,
+                    remSamples: remSamples,
+                    coreSamples: coreSamples
+                ) ?? sessionStart
 
                 let filteredAsleep = Self.overlappingSamples(asleepSamples, start: sessionStart, end: sessionEnd)
                 let filteredAwake = Self.overlappingSamples(awakeSamples, start: sessionStart, end: sessionEnd)
@@ -1161,7 +1279,7 @@ final class HealthManager: ObservableObject {
                         deepSleepMinutes: deep,
                         remSleepMinutes: rem,
                         coreSleepMinutes: core,
-                        bedStart: sessionStart,
+                        bedStart: bedStart,
                         wakeTime: sessionEnd
                     )
                 )
@@ -1224,6 +1342,24 @@ final class HealthManager: ObservableObject {
         }
 
         return sessions.max { $0.duration < $1.duration }
+    }
+
+    private static func firstAsleepStart(
+        in session: DateInterval,
+        asleepSamples: [HKCategorySample],
+        deepSamples: [HKCategorySample],
+        remSamples: [HKCategorySample],
+        coreSamples: [HKCategorySample]
+    ) -> Date? {
+        let stagedSamples = deepSamples + remSamples + coreSamples
+        let sourceSamples = stagedSamples.isEmpty ? asleepSamples : stagedSamples
+
+        return sourceSamples
+            .filter { sample in
+                sample.startDate >= session.start && sample.startDate <= session.end
+            }
+            .map(\.startDate)
+            .min()
     }
 
     private static func overlappingSamples(

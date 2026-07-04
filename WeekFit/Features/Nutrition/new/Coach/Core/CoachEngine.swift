@@ -23,7 +23,17 @@ enum CoachEngine {
 
     static func evaluate(
         input: CoachInputSnapshot,
-        focusActivity: PlannedActivity? = nil
+        focusActivity: PlannedActivity?
+    ) -> Result {
+        evaluate(
+            input: input,
+            focusActivity: focusActivity.map(CoachPlannedActivitySnapshot.init)
+        )
+    }
+
+    static func evaluate(
+        input: CoachInputSnapshot,
+        focusActivity: CoachPlannedActivitySnapshot? = nil
     ) -> Result {
         let context = buildContext(input: input, focusActivity: focusActivity)
         let resolution = CoachScenarioResolver.resolve(context)
@@ -53,7 +63,7 @@ enum CoachEngine {
 
     private static func buildContext(
         input: CoachInputSnapshot,
-        focusActivity: PlannedActivity?
+        focusActivity: CoachPlannedActivitySnapshot?
     ) -> CoachContext {
         let now = input.now
         let calendar = Calendar.current
@@ -218,6 +228,7 @@ enum CoachEngine {
             tomorrowDemand: tomorrowDemand,
             dayLoadBand: dayLoadBand
         ),
+           timeOfDay == .afternoon || timeOfDay == .evening,
            !CoachUpcomingActivityPolicy.hasMeaningfulActivityLaterToday(input) {
             return .tomorrowProtection
         }
@@ -241,7 +252,7 @@ enum CoachEngine {
 
     private static func shouldPreferTomorrowProtectionOverCompletedFocus(
         input: CoachInputSnapshot,
-        focus: PlannedActivity,
+        focus: CoachPlannedActivitySnapshot,
         dayLoadBand: CoachDayLoadBand,
         tomorrowDemand: CoachTomorrowDemand,
         timeOfDay: CoachTimeOfDay
@@ -314,7 +325,7 @@ enum CoachEngine {
 
     private static func resolveDayLoadBand(
         input: CoachInputSnapshot,
-        focusActivity: PlannedActivity?,
+        focusActivity: CoachPlannedActivitySnapshot?,
         completedSerious: CoachCompletedSeriousActivities
     ) -> CoachDayLoadBand {
         let bands: [CoachDayLoadBand] = [
@@ -332,7 +343,7 @@ enum CoachEngine {
 
     private static func bandFromSeriousWork(
         completedSerious: CoachCompletedSeriousActivities,
-        focusActivity: PlannedActivity?,
+        focusActivity: CoachPlannedActivitySnapshot?,
         input: CoachInputSnapshot
     ) -> CoachDayLoadBand {
         let activeSerious = focusActivity.flatMap {
@@ -438,7 +449,7 @@ enum CoachEngine {
         return CoachActivityClassifier.type(for: latest)
     }
 
-    private static func activityEndDate(_ activity: PlannedActivity) -> Date {
+    private static func activityEndDate(_ activity: CoachPlannedActivitySnapshot) -> Date {
         let calendar = Calendar.current
         return calendar.date(
             byAdding: .minute,

@@ -20,9 +20,35 @@ final class HealthManagerIntegrationTests: XCTestCase {
         XCTAssertFalse(manager.isHealthAccessGranted)
         XCTAssertTrue(manager.hasCompletedHealthAccessCheck)
         XCTAssertEqual(manager.recoveryPercent, 0)
+        XCTAssertTrue(manager.hasSettledMetrics(for: Date()))
     }
 
-    func testPrepareForDisplayDayClearsDayScopedTotals() {
+    /// Regression for MainActorDeinitStabilization (see MainActorDeinitStabilization.swift).
+    func testEphemeralHealthManagerDeinitAfterPrepareForDisplayDay() async {
+        let manager = HealthManager()
+        let today = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(today)
+
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        manager.prepareForDisplayDay(tomorrow)
+
+        XCTAssertFalse(manager.hasSettledMetrics(for: today))
+        XCTAssertFalse(manager.hasSettledMetrics(for: tomorrow))
+    }
+
+    func testPrepareForDisplayDayClearsSettledMetricsForNewDay() async {
+        let manager = HealthManager()
+        let today = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(today)
+
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        manager.prepareForDisplayDay(tomorrow)
+
+        XCTAssertFalse(manager.hasSettledMetrics(for: today))
+        XCTAssertFalse(manager.hasSettledMetrics(for: tomorrow))
+    }
+
+    func testPrepareForDisplayDayClearsDayScopedTotals() async {
         let manager = HealthManager()
         manager.activeCalories = 820
         manager.recoveryBreakdown = RecoveryScoreBreakdown(

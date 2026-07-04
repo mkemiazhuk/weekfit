@@ -13,6 +13,9 @@ struct ExpertCoachView: View {
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false
+    #if DEBUG
+    @State private var showBeliefDebug = false
+    #endif
 
     private let coachContentHorizontalInset: CGFloat = 0
 
@@ -80,6 +83,32 @@ struct ExpertCoachView: View {
             .presentationDragIndicator(.hidden)
             .weekFitSheetChrome(cornerRadius: 36)
         }
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                showBeliefDebug = true
+            } label: {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.purple.opacity(0.92))
+                    .padding(10)
+                    .background {
+                        Circle()
+                            .fill(Color.black.opacity(0.55))
+                    }
+            }
+            .padding(.trailing, 18)
+            .padding(.bottom, 118)
+            .accessibilityIdentifier("coach.beliefDebug")
+        }
+        .sheet(isPresented: $showBeliefDebug) {
+            NavigationStack {
+                CoachBeliefDebugView(coachState: coachCoordinator.state)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        #endif
     }
 
     // MARK: - Coach State
@@ -210,7 +239,9 @@ struct ExpertCoachView: View {
                             )
                         }
 
+                        #if DEBUG
                         CoachReflectionContinuationView(offer: coachState.reflectionOffer)
+                        #endif
                     }
                 }
                 .padding(.top, 14)

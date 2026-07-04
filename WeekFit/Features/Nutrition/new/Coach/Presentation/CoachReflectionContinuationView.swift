@@ -10,7 +10,7 @@ struct CoachReflectionContinuationView: View {
     var body: some View {
         if let offer {
             let content = CoachReflectionPresentation.content(for: offer)
-            reflectionBody(content)
+            reflectionBody(content, offer: offer)
                 .accessibilityIdentifier("coach.reflection")
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(content.leadIn) \(content.message)")
@@ -18,7 +18,7 @@ struct CoachReflectionContinuationView: View {
     }
 
     @ViewBuilder
-    private func reflectionBody(_ content: CoachReflectionPresentation.Content) -> some View {
+    private func reflectionBody(_ content: CoachReflectionPresentation.Content, offer: ReflectionOffer) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             reflectionDivider
                 .padding(.top, 14)
@@ -39,6 +39,9 @@ struct CoachReflectionContinuationView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 2)
+        .onAppear {
+            ReflectionOfferDisplayTracker.markDisplayed(offer)
+        }
     }
 
     private var reflectionDivider: some View {

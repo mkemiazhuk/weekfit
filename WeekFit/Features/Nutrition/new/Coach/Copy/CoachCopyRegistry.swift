@@ -227,6 +227,14 @@ enum CoachCopyRegistry {
             )
         }
 
+        if input.sessionPhase == .tomorrowProtection,
+           input.timeOfDay == .evening || input.timeOfDay == .lateEvening {
+            return .en(
+                "Heavy load is banked — hold the line tonight.",
+                "Серьёзная работа уже сделана — берегите силы на завтра."
+            )
+        }
+
         return .en(
             "Heavy load is banked — hold reserve for tomorrow.",
             "Серьёзная работа уже сделана — берегите силы на завтра."

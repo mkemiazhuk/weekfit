@@ -29,9 +29,9 @@ enum CoachProtectionTarget: String {
 }
 
 struct DayPriorityModel {
-    let primarySession: PlannedActivity?
-    let secondarySession: PlannedActivity?
-    let supportingSessions: [PlannedActivity]
+    let primarySession: CoachPlannedActivitySnapshot?
+    let secondarySession: CoachPlannedActivitySnapshot?
+    let supportingSessions: [CoachPlannedActivitySnapshot]
     let dayGoal: CoachDayGoal
     let dayStressLevel: CoachDayStressLevel
     let tomorrowDemand: CoachTomorrowDemand
@@ -107,12 +107,12 @@ struct DayPriorityModel {
     }
 
     private struct RankedDayActivity {
-        let activity: PlannedActivity
+        let activity: CoachPlannedActivitySnapshot
         let score: Int
         let isSupporting: Bool
     }
 
-    private static func sessionScore(_ activity: PlannedActivity) -> Int {
+    private static func sessionScore(_ activity: CoachPlannedActivitySnapshot) -> Int {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
         let duration = activity.effectiveDurationMinutes
@@ -151,7 +151,7 @@ struct DayPriorityModel {
         return base + loadBonus + durationBonus + calorieBonus + completionBonus
     }
 
-    private static func isSupportingActivity(_ activity: PlannedActivity) -> Bool {
+    private static func isSupportingActivity(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
         if kind == .recovery || kind == .heat { return true }
@@ -216,8 +216,8 @@ struct DayPriorityModel {
 
     private static func dayGoal(
         stressLevel: CoachDayStressLevel,
-        primary: PlannedActivity?,
-        todayActivities: [PlannedActivity],
+        primary: CoachPlannedActivitySnapshot?,
+        todayActivities: [CoachPlannedActivitySnapshot],
         recovery: CoachRecoveryContext,
         tomorrowDemand: CoachTomorrowDemand
     ) -> CoachDayGoal {
@@ -240,7 +240,7 @@ struct DayPriorityModel {
 
     private static func protectionTarget(
         goal: CoachDayGoal,
-        primary: PlannedActivity?,
+        primary: CoachPlannedActivitySnapshot?,
         tomorrowDemand: CoachTomorrowDemand,
         recovery: CoachRecoveryContext
     ) -> CoachProtectionTarget {
@@ -262,8 +262,8 @@ struct DayPriorityModel {
     }
 }
 
-private extension PlannedActivity {
-    func isSameSession(as other: PlannedActivity?) -> Bool {
+private extension CoachPlannedActivitySnapshot {
+    func isSameSession(as other: CoachPlannedActivitySnapshot?) -> Bool {
         guard let other else { return false }
         return id == other.id
     }

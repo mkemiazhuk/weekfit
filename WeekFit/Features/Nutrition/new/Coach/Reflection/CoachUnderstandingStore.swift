@@ -26,6 +26,28 @@ enum CoachUnderstandingStore {
         lock.unlock()
     }
 
+    static func applyEvaluation(_ result: BeliefEvaluationResult) {
+        if result.nextMaturity.isDowngrade(from: result.previousMaturity) {
+            CoachLogger.trace(
+                "[CoachBelief]",
+                [
+                    "downgrade",
+                    "belief=\(result.beliefID.rawValue)",
+                    "from=\(result.previousMaturity.rawValue)",
+                    "to=\(result.nextMaturity.rawValue)",
+                    "effectSize=\(String(format: "%.1f", result.effectSize))",
+                    "confidence=\(String(format: "%.2f", result.confidence))"
+                ].joined(separator: " ")
+            )
+        }
+
+        applyEvaluation(
+            beliefID: result.beliefID,
+            nextMaturity: result.nextMaturity,
+            event: result.event
+        )
+    }
+
     static func applyEvaluation(
         beliefID: CoachBeliefID,
         nextMaturity: CoachBeliefMaturity,
@@ -34,8 +56,16 @@ enum CoachUnderstandingStore {
         lock.lock()
         var snapshot = loadUnsafe()
         var belief = snapshot.beliefs[beliefIDKey(beliefID)] ?? defaultBelief(for: beliefID)
+        let previousMaturity = belief.maturity
 
-        if nextMaturity != belief.maturity {
+        if nextMaturity != previousMaturity {
+            if nextMaturity.isDowngrade(from: previousMaturity) {
+                snapshot.pendingEvents.removeAll { pendingEvent in
+                    pendingEvent.beliefID == beliefID
+                        && !snapshot.spokenEventIDs.contains(pendingEvent.id)
+                }
+            }
+
             belief.maturity = nextMaturity
             belief.lastUpdated = Date()
             snapshot.beliefs[beliefIDKey(beliefID)] = belief
@@ -50,7 +80,26 @@ enum CoachUnderstandingStore {
         lock.unlock()
     }
 
+    static func pendingEventsSnapshot() -> [UnderstandingEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        return loadUnsafe().pendingEvents
+    }
+
+    static func spokenEventIDsSnapshot() -> Set<String> {
+        lock.lock()
+        defer { lock.unlock() }
+        return loadUnsafe().spokenEventIDs
+    }
+
     #if DEBUG
+    static func pendingEventsForTests() -> [UnderstandingEvent] {
+        pendingEventsSnapshot()
+    }
+
+    static func spokenEventIDsForTests() -> Set<String> {
+        spokenEventIDsSnapshot()
+    }
     static func resetForTests() {
         lock.lock()
         UserDefaults.standard.removeObject(forKey: storageKey)
@@ -63,9 +112,23 @@ enum CoachUnderstandingStore {
         pendingEvents: [UnderstandingEvent] = [],
         spokenEventIDs: Set<String> = []
     ) {
+        seedForTests(
+            beliefs: [belief],
+            pendingEvents: pendingEvents,
+            spokenEventIDs: spokenEventIDs
+        )
+    }
+
+    static func seedForTests(
+        beliefs: [CoachBelief],
+        pendingEvents: [UnderstandingEvent] = [],
+        spokenEventIDs: Set<String> = []
+    ) {
         lock.lock()
         var snapshot = Snapshot()
-        snapshot.beliefs[beliefIDKey(belief.id)] = belief
+        for belief in beliefs {
+            snapshot.beliefs[beliefIDKey(belief.id)] = belief
+        }
         snapshot.pendingEvents = pendingEvents
         snapshot.spokenEventIDs = spokenEventIDs
         saveUnsafe(snapshot)

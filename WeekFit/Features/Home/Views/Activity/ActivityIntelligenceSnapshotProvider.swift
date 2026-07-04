@@ -3,6 +3,9 @@ import HealthKit
 import WeekFitPlanner
 
 final class ActivityIntelligenceSnapshotProvider {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     func buildWeekSnapshots(
         endingAt date: Date,

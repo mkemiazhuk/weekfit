@@ -340,8 +340,8 @@ final class CoachScenarioTests: XCTestCase {
         XCTAssertEqual(result.scenario, .saunaActive)
         XCTAssertEqual(result.modifiers.activityType, .sauna)
         XCTAssertEqual(result.todayInsight.semanticColor, .heat)
-        XCTAssertEqual(result.todayInsight.conversationEnergy, .medium)
-        XCTAssertEqual(result.todayInsight.urgencyLevel, .protective)
+        XCTAssertEqual(result.todayInsight.conversationEnergy, .high)
+        XCTAssertEqual(result.todayInsight.urgencyLevel, .live)
     }
 
     // MARK: - Guard: dayLoad not in ScenarioKey names
@@ -412,7 +412,7 @@ final class CoachScenarioTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: actualLoad ?? CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 200,

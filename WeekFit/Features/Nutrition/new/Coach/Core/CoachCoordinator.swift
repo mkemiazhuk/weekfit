@@ -21,8 +21,9 @@ final class CoachCoordinator: ObservableObject {
         CoachIntegrationMetrics.restoreFromStorageIfNeeded()
         self.state = initialState
     }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
-    deinit {
+    nonisolated deinit {
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
@@ -32,6 +33,14 @@ final class CoachCoordinator: ObservableObject {
 
     func invalidateResolvedStateForDayChange() {
         lastResolvedFingerprint = nil
+    }
+
+    /// Drops cached coach input before SwiftData mutates or deletes `CoachPlannedActivitySnapshot` rows.
+    func invalidateCachedSnapshots(reason: String) {
+        latestInput = nil
+        lastResolvedFingerprint = nil
+        nextScheduledCheckpoint = nil
+        state = .settling(reason: reason)
     }
 
     @discardableResult
@@ -210,7 +219,7 @@ final class CoachCoordinator: ObservableObject {
         )
     }
 
-    private func isActiveActivity(_ activity: PlannedActivity, now: Date) -> Bool {
+    private func isActiveActivity(_ activity: CoachPlannedActivitySnapshot, now: Date) -> Bool {
         guard !activity.isCompleted, !activity.isSkipped else { return false }
         let end = Calendar.current.date(
             byAdding: .minute,
@@ -220,7 +229,7 @@ final class CoachCoordinator: ObservableObject {
         return activity.date <= now && now <= end
     }
 
-    private func activitySummary(_ activity: PlannedActivity?) -> String {
+    private func activitySummary(_ activity: CoachPlannedActivitySnapshot?) -> String {
         guard let activity else { return "nil" }
         return "\(activity.title)@\(activity.date)"
     }

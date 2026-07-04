@@ -93,7 +93,7 @@ final class CoachCopyNutritionTimingTests: XCTestCase {
                 selectedDate: lateEvening,
                 now: lateEvening,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [completedRide, tomorrowCore],
+                plannedActivities: [completedRide, tomorrowCore].coachSnapshots(),
                 actualLoad: CoachActualLoadSnapshot(
                     source: .healthKitSamplesWithAppGoalEstimate,
                     activeCalories: 2_758,

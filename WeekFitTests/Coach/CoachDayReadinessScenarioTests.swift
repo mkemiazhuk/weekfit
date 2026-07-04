@@ -84,7 +84,7 @@ final class CoachDayReadinessScenarioTests: XCTestCase {
             selectedDate: now,
             now: now,
             brain: HumanBrainStateBuilder.make(brainConfig),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             recoveryContext: recovery,
             nutritionContext: CoachNutritionContext(
                 caloriesCurrent: 1_800,

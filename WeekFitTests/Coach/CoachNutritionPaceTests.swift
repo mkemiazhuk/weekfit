@@ -58,7 +58,7 @@ final class CoachNutritionPaceTests: XCTestCase {
                     config.currentHour = 9
                     return HumanBrainStateBuilder.make(config)
                 }(),
-                plannedActivities: [walk, core],
+                plannedActivities: [walk, core].coachSnapshots(),
                 actualLoad: CoachActualLoadSnapshot(
                     source: .healthKitSamplesWithAppGoalEstimate,
                     activeCalories: 342,

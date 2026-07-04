@@ -234,7 +234,7 @@ final class ReflectionEligibilityRegressionTests: XCTestCase {
             brain: HumanBrainStateBuilder.make(
                 HumanBrainStateBuilder.Configuration(currentHour: Calendar.current.component(.hour, from: now))
             ),
-            plannedActivities: activities,
+            plannedActivities: activities.coachSnapshots(),
             actualLoad: CoachActualLoadSnapshot(
                 source: .healthKitSamplesWithAppGoalEstimate,
                 activeCalories: 400,

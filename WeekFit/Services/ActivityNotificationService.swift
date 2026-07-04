@@ -2,6 +2,9 @@ import Foundation
 import UserNotifications
 
 final class ActivityNotificationService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static let shared = ActivityNotificationService()
 

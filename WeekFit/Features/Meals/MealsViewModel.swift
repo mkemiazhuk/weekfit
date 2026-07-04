@@ -15,8 +15,9 @@ final class MealsViewModel: ObservableObject {
     init() {
         WeekFitLifecycleTracker.attach(lifecycleToken)
     }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
-    deinit {
+    nonisolated deinit {
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 

@@ -324,7 +324,7 @@ enum CoachMorningBriefCopyPolicy {
         case .recoveryAfterHeavyYesterday:
             return .en("Recovery day", "День восстановления")
         case .protectTomorrowFresh:
-            return .en("Save for tomorrow", "Запас на завтра")
+            return .en("Save it for tomorrow", "Сохраните запас на завтра")
         default:
             if facts.recoveryBand == .low || facts.sleepIsLow {
                 return .en("Easy morning", "Спокойного утра")
@@ -383,7 +383,7 @@ enum CoachMorningBriefCopyPolicy {
         case .recoveryAfterHeavyYesterday:
             return .en("Recovery morning", "Утро восстановления")
         case .protectTomorrowFresh:
-            return .en("Save for tomorrow", "Запас на завтра")
+            return .en("Save it for tomorrow", "Сохраните запас на завтра")
         default:
             return .en("Morning plan", "План на утро")
         }

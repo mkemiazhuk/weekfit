@@ -27,7 +27,10 @@ final class SleepConsistencyBeliefEvaluatorTests: XCTestCase {
         XCTAssertNotNil(evaluation)
         XCTAssertGreaterThan(evaluation?.recoveryDelta ?? 0, 8)
 
-        let result = SleepConsistencyBeliefEvaluator.evaluate(observations: observations)
+        let result = SleepConsistencyBeliefEvaluator.evaluate(
+            observations: observations,
+            currentMaturity: .watching
+        )
         XCTAssertEqual(result.maturity, .emerging)
         XCTAssertEqual(result.event?.change, .emerged)
 
@@ -53,7 +56,10 @@ final class SleepConsistencyBeliefEvaluatorTests: XCTestCase {
             inconsistentCount: 1
         )
 
-        let result = SleepConsistencyBeliefEvaluator.evaluate(observations: observations)
+        let result = SleepConsistencyBeliefEvaluator.evaluate(
+            observations: observations,
+            currentMaturity: .watching
+        )
         XCTAssertEqual(result.maturity, .watching)
         XCTAssertNil(result.event)
     }

@@ -130,7 +130,7 @@ final class CoachCopyCorrectnessAuditTests: XCTestCase {
                 selectedDate: evening,
                 now: evening,
                 brain: HumanBrainStateBuilder.make(brainConfig),
-                plannedActivities: [completedRide, tomorrowCore],
+                plannedActivities: [completedRide, tomorrowCore].coachSnapshots(),
                 actualLoad: CoachActualLoadSnapshot(
                     source: .healthKitSamplesWithAppGoalEstimate,
                     activeCalories: 2_758,
