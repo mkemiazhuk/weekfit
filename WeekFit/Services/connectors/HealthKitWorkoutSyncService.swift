@@ -4,6 +4,9 @@ internal import Combine
 
 @MainActor
 final class HealthKitWorkoutSyncService: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static let shared = HealthKitWorkoutSyncService()
     
@@ -23,9 +26,9 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             return date
         }
 
-        let now = Date()
-        UserDefaults.standard.set(now, forKey: syncStartDateKey)
-        return now
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        UserDefaults.standard.set(startOfDay, forKey: syncStartDateKey)
+        return startOfDay
     }
 
     private init() {}

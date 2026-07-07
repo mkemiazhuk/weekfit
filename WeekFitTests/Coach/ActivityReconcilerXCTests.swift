@@ -136,6 +136,37 @@ final class ActivityReconcilerXCTests: XCTestCase {
     }
 
     @MainActor
+    func testPersistedWorkoutSurvivesStaleActivitiesArrayOnReconcile() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let synced = workout(from: time(hour: 8, minute: 13), to: time(hour: 8, minute: 45), type: .walking)
+
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        WeekFitActivityCoordinator.shared.reconcileCompletedAppleWorkout(
+            synced,
+            with: [],
+            modelContext: context
+        )
+        try context.save()
+
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        WeekFitActivityCoordinator.shared.reconcileCompletedAppleWorkout(
+            synced,
+            with: [],
+            modelContext: context,
+            forceRetry: true
+        )
+        try context.save()
+
+        let importedActivities = try context.fetch(FetchDescriptor<PlannedActivity>())
+        XCTAssertEqual(importedActivities.count, 1)
+        XCTAssertEqual(importedActivities.first?.healthKitWorkoutUUID, synced.uuid.uuidString)
+    }
+
+    @MainActor
     func testCoordinatorPreservesPlannedSlotWhenCompletingMatchedWorkout() throws {
         let container = try ModelContainer(
             for: PlannedActivity.self,
@@ -208,6 +239,61 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertTrue(imported.isCompleted)
         XCTAssertFalse(future.isCompleted)
         XCTAssertNil(future.healthKitWorkoutUUID)
+    }
+
+    func testResolvedActiveCaloriesUsesMovementEstimateWhenHealthKitIsLow() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 40,
+            steps: 8_124,
+            distanceKm: 0,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 255.9, accuracy: 0.1)
+    }
+
+    func testResolvedActiveCaloriesPrefersHealthKitWhenHigher() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 420,
+            steps: 8_124,
+            distanceKm: 0,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 420)
+    }
+
+    func testResolvedActiveCaloriesUsesDistanceWhenAvailable() {
+        let resolved = HealthActivityMetricsResolver.resolvedActiveCalories(
+            healthKitActiveCalories: 0,
+            steps: 8_124,
+            distanceKm: 6.2,
+            weightKg: 70
+        )
+
+        XCTAssertEqual(resolved, 325.5, accuracy: 0.1)
+    }
+
+    func testResolvedExerciseMinutesUsesWorkoutDurationWhenAppleExerciseTimeIsZero() {
+        let workout = workout(from: time(hour: 8, minute: 0), to: time(hour: 8, minute: 35), type: .walking)
+
+        let resolved = HealthActivityMetricsResolver.resolvedExerciseMinutes(
+            appleExerciseMinutes: 0,
+            workouts: [workout]
+        )
+
+        XCTAssertEqual(resolved, 35)
+    }
+
+    func testResolvedExerciseMinutesPrefersAppleExerciseTimeWhenHigher() {
+        let workout = workout(from: time(hour: 8, minute: 0), to: time(hour: 8, minute: 20), type: .walking)
+
+        let resolved = HealthActivityMetricsResolver.resolvedExerciseMinutes(
+            appleExerciseMinutes: 42,
+            workouts: [workout]
+        )
+
+        XCTAssertEqual(resolved, 42)
     }
 
     private func walk(at date: Date, durationMinutes: Int = 45) -> PlannedActivity {

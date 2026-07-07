@@ -11,51 +11,62 @@ enum PlanTimelineLayout {
     static let lineWidth: CGFloat = 1.0
     static let rowSpacing: CGFloat = 10
     static let cardCornerRadius: CGFloat = 16
-    static let avatarSize: CGFloat = 36
-    static let avatarContentSize: CGFloat = 24
-    static let foodAvatarSize: CGFloat = 29
-    static let foodAvatarContentSize: CGFloat = 19
-    static let compactHydrationAvatarSize: CGFloat = 20
-    static let compactHydrationIconSize: CGFloat = 10
     static let compactHydrationVerticalPadding: CGFloat = 7
     static let cardHorizontalPadding: CGFloat = 11
     static let cardVerticalPadding: CGFloat = 10
     static let cardIconSpacing: CGFloat = 9
     static let cardAccentBarWidth: CGFloat = 3.5
-    static let typeDotSize: CGFloat = 6.5
     static let rowTopInset: CGFloat = 8
     static let firstConnectorInset: CGFloat = 8
     static let lastConnectorInset: CGFloat = 4
     static let titleFontSize: CGFloat = 15.2
     static let subtitleFontSize: CGFloat = 12.5
     static let timeFontSize: CGFloat = 15
-    static let activityIconFontSize: CGFloat = 16
     static let titleSubtitleSpacing: CGFloat = 1
 }
 
 struct PlanTimelineNowDivider: View {
 
     @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
+    @State private var pulse = false
+
+    private let liveTint = Color(red: 1.0, green: 0.706, blue: 0.341)
 
     var body: some View {
         HStack(alignment: .center, spacing: PlanTimelineLayout.timeToTimelineSpacing) {
             Color.clear
                 .frame(width: timeColumnWidth)
 
-            Circle()
-                .fill(Color.white.opacity(0.22))
-                .frame(width: 4, height: 4)
+            ZStack {
+                Circle()
+                    .fill(liveTint.opacity(pulse ? 0.20 : 0.08))
+                    .frame(width: pulse ? 14 : 10, height: pulse ? 14 : 10)
+
+                Circle()
+                    .fill(liveTint.opacity(pulse ? 0.98 : 0.72))
+                    .frame(width: 6, height: 6)
+            }
+            .frame(width: PlanTimelineLayout.columnWidth)
 
             Text(WeekFitLocalizedString("planner.timeline.now"))
-                .font(.system(size: 9.5, weight: .semibold))
-                .tracking(0.45)
+                .font(.system(size: 9.5, weight: .bold))
+                .tracking(0.55)
                 .textCase(.uppercase)
-                .foregroundStyle(Color.white.opacity(0.30))
+                .foregroundStyle(liveTint.opacity(pulse ? 0.96 : 0.72))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
             Rectangle()
-                .fill(Color.white.opacity(0.07))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            liveTint.opacity(pulse ? 0.42 : 0.18),
+                            WeekFitTheme.whiteOpacity(0.05)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .frame(height: 0.5)
 
             Spacer(minLength: 0)
@@ -64,6 +75,11 @@ struct PlanTimelineNowDivider: View {
         .padding(.bottom, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(WeekFitLocalizedString("planner.timeline.now"))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
     }
 }
 
@@ -91,6 +107,14 @@ struct PlanTimelineRow: View {
     @State private var livePulse = false
 
     private var accent: Color { activity.color }
+
+    private var pendingAttentionColor: Color {
+        Color(red: 0.95, green: 0.60, blue: 0.15)
+    }
+
+    private var rowAccent: Color {
+        isPending ? pendingAttentionColor : accent
+    }
 
     private var isLive: Bool {
         status == .live
@@ -140,7 +164,7 @@ struct PlanTimelineRow: View {
             } else {
                 Text("·")
                     .font(.system(size: timeFontSize * 0.72, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.24))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
             }
         }
         .frame(width: timeColumnWidth, alignment: .trailing)
@@ -190,7 +214,7 @@ struct PlanTimelineRow: View {
             }
 
             PlanTimelineNode(
-                accent: accent,
+                accent: rowAccent,
                 status: status,
                 emphasis: emphasis,
                 livePulse: $livePulse
@@ -210,7 +234,7 @@ struct PlanTimelineRow: View {
 
     private func timelineLine(opacity: Double) -> some View {
         Rectangle()
-            .fill(accent.opacity(opacity))
+            .fill(rowAccent.opacity(opacity))
             .frame(width: PlanTimelineLayout.lineWidth)
             .frame(maxWidth: .infinity)
     }
@@ -244,7 +268,7 @@ struct PlanTimelineRow: View {
     private var activityCard: some View {
         HStack(alignment: .center, spacing: 0) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(accent.opacity(accentBarOpacity))
+                .fill(rowAccent.opacity(accentBarOpacity))
                 .frame(width: PlanTimelineLayout.cardAccentBarWidth)
                 .padding(.vertical, 4)
 
@@ -252,14 +276,7 @@ struct PlanTimelineRow: View {
                 iconView
 
                 VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(accent.opacity(typeDotOpacity))
-                            .frame(
-                                width: PlanTimelineLayout.typeDotSize,
-                                height: PlanTimelineLayout.typeDotSize
-                            )
-
+                    HStack(alignment: .center, spacing: 6) {
                         Text(displayTitle)
                             .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
                             .foregroundStyle(titleColor)
@@ -268,11 +285,16 @@ struct PlanTimelineRow: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(1)
+
+                        if isLive {
+                            liveStatusBadge
+                        }
                     }
 
-                    if !metadata.isEmpty {
+                    if isPending {
+                        pendingStatusLine
+                    } else if !metadata.isEmpty {
                         metadataLine
-                            .padding(.leading, PlanTimelineLayout.typeDotSize + 6)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -288,8 +310,24 @@ struct PlanTimelineRow: View {
             .padding(.vertical, cardVerticalPadding)
         }
         .background {
-            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .fill(cardFill)
+            Group {
+                if isPending {
+                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    pendingAttentionColor.opacity(0.08),
+                                    Color(red: 0.036, green: 0.040, blue: 0.046).opacity(0.94)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                        .fill(cardFill)
+                }
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
@@ -305,6 +343,22 @@ struct PlanTimelineRow: View {
             radius: emphasis == .next ? 10 : 0,
             y: emphasis == .next ? 2 : 0
         )
+        .shadow(
+            color: liveGlowColor,
+            radius: isLive && livePulse ? 16 : (isLive ? 10 : 0),
+            y: isLive ? 3 : 0
+        )
+        .shadow(
+            color: pendingGlowColor,
+            radius: isPending ? 10 : 0,
+            y: isPending ? 2 : 0
+        )
+        .overlay {
+            if isLive {
+                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                    .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
@@ -312,6 +366,7 @@ struct PlanTimelineRow: View {
     }
 
     private var accentBarOpacity: Double {
+        if isPending { return 0.96 }
         if isLive { return 0.88 }
 
         switch emphasis {
@@ -328,10 +383,6 @@ struct PlanTimelineRow: View {
         }
     }
 
-    private var typeDotOpacity: Double {
-        min(accentBarOpacity + 0.08, 0.96)
-    }
-
     private var titleFontWeight: Font.Weight {
         switch emphasis {
         case .skipped:
@@ -342,6 +393,10 @@ struct PlanTimelineRow: View {
     }
 
     private var chevronColor: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.45)
+        }
+
         switch emphasis {
         case .next:
             return .white.opacity(0.42)
@@ -376,6 +431,32 @@ struct PlanTimelineRow: View {
         .font(.system(size: subtitleFontSize, weight: .regular))
         .foregroundStyle(metadataColor)
         .lineLimit(1)
+    }
+
+    private var liveStatusBadge: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(accent.opacity(livePulse ? 1.0 : 0.55))
+                .frame(width: 5, height: 5)
+
+            Text(WeekFitLocalizedString("planner.status.live"))
+                .font(.system(size: 9.2, weight: .bold, design: .rounded))
+                .tracking(0.35)
+                .textCase(.uppercase)
+                .foregroundStyle(accent.opacity(livePulse ? 0.98 : 0.82))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background {
+            Capsule()
+                .fill(accent.opacity(livePulse ? 0.18 : 0.11))
+        }
+        .overlay {
+            Capsule()
+                .stroke(accent.opacity(livePulse ? 0.34 : 0.18), lineWidth: 0.75)
+        }
+        .accessibilityHidden(true)
     }
 
     private var watchSourceBadge: some View {
@@ -439,8 +520,12 @@ struct PlanTimelineRow: View {
     }
 
     private var cardFill: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.08)
+        }
+
         if isLive {
-            return accent.opacity(0.10)
+            return accent.opacity(livePulse ? 0.14 : 0.10)
         }
 
         switch emphasis {
@@ -458,8 +543,12 @@ struct PlanTimelineRow: View {
     }
 
     private var cardStroke: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.24)
+        }
+
         if isLive {
-            return accent.opacity(0.26)
+            return accent.opacity(livePulse ? 0.42 : 0.28)
         }
 
         switch emphasis {
@@ -472,13 +561,21 @@ struct PlanTimelineRow: View {
         case .upcoming:
             return accent.opacity(0.12)
         case .past:
-            return Color.white.opacity(0.034)
+            return WeekFitTheme.whiteOpacity(0.034)
         case .skipped:
             return Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.16)
         }
     }
 
     private var cardStrokeWidth: CGFloat {
+        if isPending {
+            return 1.0
+        }
+
+        if isLive {
+            return livePulse ? 1.0 : 0.85
+        }
+
         switch emphasis {
         case .next:
             return 0.75
@@ -528,62 +625,51 @@ struct PlanTimelineRow: View {
         emphasis == .next ? accent.opacity(0.10) : .clear
     }
 
-    @ViewBuilder
-    private var iconView: some View {
-        if density == .compactHydration {
-            compactHydrationIcon
-        } else if let foodVisual = PlanTimelineNutritionVisualResolver.resolve(
-            for: activity,
-            customMeals: customMeals
-        ) {
-            PlanTimelineNutritionAvatar(
-                visual: foodVisual,
-                accent: accent,
-                backgroundOpacity: foodIconBackgroundOpacity,
-                foregroundOpacity: foodIconForegroundOpacity,
-                size: PlanTimelineLayout.foodAvatarSize,
-                contentSize: PlanTimelineLayout.foodAvatarContentSize
-            )
-            .opacity(0.88)
-        } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(accent.opacity(iconBackgroundOpacity))
-                    .frame(width: PlanTimelineLayout.avatarSize, height: PlanTimelineLayout.avatarSize)
+    private var liveGlowColor: Color {
+        isLive ? accent.opacity(livePulse ? 0.24 : 0.14) : .clear
+    }
 
-                Image(systemName: resolvedIcon)
-                    .font(.system(size: PlanTimelineLayout.activityIconFontSize, weight: .semibold))
-                    .foregroundStyle(accent.opacity(iconForegroundOpacity))
+    private var pendingGlowColor: Color {
+        isPending ? pendingAttentionColor.opacity(0.12) : .clear
+    }
+
+    private var pendingStatusLine: some View {
+        HStack(spacing: 4) {
+            Text(WeekFitLocalizedString("today.pending.title"))
+                .lineLimit(1)
+
+            if let primary = metadata.primary, !primary.isEmpty {
+                Text("·")
+                Text(primary)
+                    .lineLimit(1)
             }
         }
+        .font(.system(size: subtitleFontSize, weight: .semibold))
+        .foregroundStyle(pendingAttentionColor.opacity(0.92))
     }
 
-    private var compactHydrationIcon: some View {
-        ZStack {
-            Circle()
-                .fill(accent.opacity(0.07))
-                .frame(
-                    width: PlanTimelineLayout.compactHydrationAvatarSize,
-                    height: PlanTimelineLayout.compactHydrationAvatarSize
-                )
+    @ViewBuilder
+    private var iconView: some View {
+        if isPending {
+            ZStack {
+                Circle()
+                    .fill(pendingAttentionColor.opacity(0.10))
+                    .frame(width: 34, height: 34)
 
-            Image(systemName: "drop.fill")
-                .font(
-                    .system(
-                        size: PlanTimelineLayout.compactHydrationIconSize,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(accent.opacity(0.62))
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(pendingAttentionColor)
+            }
+        } else {
+            WeekFitIconBadge(
+                systemName: resolvedIcon,
+                color: accent,
+                size: .sm,
+                shape: .roundedRect,
+                backgroundOpacity: iconBackgroundOpacity,
+                foregroundOpacity: iconForegroundOpacity
+            )
         }
-    }
-
-    private var foodIconBackgroundOpacity: Double {
-        iconBackgroundOpacity * 0.82
-    }
-
-    private var foodIconForegroundOpacity: Double {
-        iconForegroundOpacity * 0.88
     }
 
     private var iconBackgroundOpacity: Double {
@@ -649,15 +735,41 @@ private struct PlanTimelineNode: View {
 
                 Image(systemName: "xmark")
                     .font(.system(size: 5.5, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+            } else if status == .pending {
+                Circle()
+                    .fill(accent.opacity(0.18))
+                    .frame(width: nodeDiameter, height: nodeDiameter)
+                    .shadow(color: accent.opacity(0.24), radius: 3)
+
+                Image(systemName: "exclamationmark")
+                    .font(.system(size: 6, weight: .bold))
+                    .foregroundStyle(accent.opacity(0.96))
             } else if isFilled {
+                if status == .live {
+                    Circle()
+                        .stroke(accent.opacity(livePulse ? 0.52 : 0.20), lineWidth: 1.25)
+                        .frame(
+                            width: nodeDiameter + (livePulse ? 9 : 5),
+                            height: nodeDiameter + (livePulse ? 9 : 5)
+                        )
+
+                    Circle()
+                        .fill(accent.opacity(livePulse ? 0.14 : 0.06))
+                        .frame(
+                            width: nodeDiameter + (livePulse ? 14 : 8),
+                            height: nodeDiameter + (livePulse ? 14 : 8)
+                        )
+                        .blur(radius: 1.5)
+                }
+
                 Circle()
                     .fill(accent.opacity(filledOpacity))
                     .frame(width: nodeDiameter, height: nodeDiameter)
-                    .scaleEffect(status == .live && livePulse ? 1.06 : 1.0)
+                    .scaleEffect(status == .live && livePulse ? 1.14 : 1.0)
                     .shadow(
                         color: accent.opacity(filledShadowOpacity),
-                        radius: status == .live ? 4 : 1.5
+                        radius: status == .live ? (livePulse ? 8 : 5) : 1.5
                     )
 
                 if status == .completed || status == .logged {
@@ -682,21 +794,24 @@ private struct PlanTimelineNode: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: status)
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
         .onAppear {
-            guard status == .live else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                livePulse = true
-            }
+            startLivePulseIfNeeded()
         }
         .onChange(of: status) { _, newValue in
             if newValue == .live {
-                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                    livePulse = true
-                }
+                startLivePulseIfNeeded()
             } else {
                 livePulse = false
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func startLivePulseIfNeeded() {
+        guard status == .live else { return }
+        livePulse = false
+        withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+            livePulse = true
+        }
     }
 
     private var filledOpacity: Double {
@@ -776,94 +891,7 @@ private struct PlanTimelineNode: View {
 enum PlanTimelineIconResolver {
 
     static func icon(for activity: PlannedActivity) -> String {
-        let title = activity.title.lowercased()
-        let type = activity.type.lowercased()
-
-        if title.contains("coffee") || title.contains("espresso")
-            || title.contains("cappuccino") || title.contains("latte")
-            || title.contains("tea") {
-            return "cup.and.saucer.fill"
-        }
-
-        if title.contains("water") || title.contains("hydration") || title.contains("drink") {
-            return "drop.fill"
-        }
-
-        if title.contains("banana") || title.contains("meal") || type == "meal" {
-            return "fork.knife"
-        }
-
-        if title.contains("sauna") || title.contains("heat") {
-            return "flame.fill"
-        }
-
-        if title.contains("walk") || type.contains("walk") {
-            return "figure.walk"
-        }
-
-        if title.contains("hike") || type.contains("hike") {
-            return "figure.hiking"
-        }
-
-        if title.contains("running") || title.contains("run")
-            || type.contains("running") || type.contains("run") {
-            return "figure.run"
-        }
-
-        if title.contains("cycling") || title.contains("cycle")
-            || title.contains("bike") || title.contains("ride")
-            || type.contains("cycling") || type.contains("cycle")
-            || type.contains("bike") || type.contains("ride") {
-            return "bicycle"
-        }
-
-        if title.contains("yoga") || type.contains("yoga") {
-            return "figure.mind.and.body"
-        }
-
-        if title.contains("breathing") || title.contains("breath")
-            || type.contains("breathing") || type.contains("breath") {
-            return "wind"
-        }
-
-        if title.contains("stretching") || title.contains("stretch")
-            || title.contains("mobility")
-            || type.contains("stretching") || type.contains("stretch")
-            || type.contains("mobility") {
-            return "figure.flexibility"
-        }
-
-        if title.contains("upper body") {
-            return "figure.strengthtraining.traditional"
-        }
-
-        if title.contains("strength") || title.contains("gym")
-            || title.contains("training") || title.contains("workout")
-            || type.contains("workout") {
-            return "dumbbell.fill"
-        }
-
-        if title.contains("sleep") || title.contains("bedtime") {
-            return "bed.double.fill"
-        }
-
-        if title.contains("no screens") || title.contains("screen") {
-            return "iphone.slash"
-        }
-
-        if title.contains("morning routine") || title.contains("morning") {
-            return "sunrise.fill"
-        }
-
-        if title.contains("routine") || type == "habit" {
-            return "checkmark.circle"
-        }
-
-        if type == "recovery" {
-            return "leaf.fill"
-        }
-
-        return activity.icon.isEmpty ? "sparkles" : activity.icon
+        WeekFitActivityIconResolver.resolve(for: activity)
     }
 }
 

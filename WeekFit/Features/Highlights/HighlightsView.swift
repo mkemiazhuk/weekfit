@@ -355,7 +355,7 @@ private extension HighlightsView {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
             }
             .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 22, y: 12)
     }
@@ -455,7 +455,7 @@ private struct InsightLineChart: View {
 
             ZStack {
                 ReferenceBandLines()
-                    .stroke(Color.white.opacity(0.065), style: StrokeStyle(lineWidth: 1, dash: [3, 10]))
+                    .stroke(WeekFitTheme.whiteOpacity(0.065), style: StrokeStyle(lineWidth: 1, dash: [3, 10]))
 
                 ReferenceBandLabels()
                     .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.52))

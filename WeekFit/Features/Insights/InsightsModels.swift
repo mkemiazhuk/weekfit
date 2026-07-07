@@ -1,5 +1,11 @@
 import SwiftUI
 
+private enum InsightsSnapshotFallbackL10n {
+    static func text(_ suffix: String) -> String {
+        InsightsLocalization.text("insights.snapshot.fallback.\(suffix)")
+    }
+}
+
 struct InsightsSnapshot {
     let avatarInitials: String
     let weekDays: [String]
@@ -57,121 +63,179 @@ struct InsightsSnapshot {
         self.dataQuality = dataQuality
     }
 
-    static let fallback = InsightsSnapshot(
-        avatarInitials: "WF",
-        weekDays: ["M", "T", "W", "T", "F", "S", "S"],
-        hero: InsightsHeroInsight(
-            label: "BUILDING PATTERNS",
-            title: "Building your patterns",
-            subtitle: "Log sleep, meals, drinks and activities for a few more days to unlock trends.",
-            takeaway: "Start with one consistent week.",
-            icon: "brain.head.profile",
-            accent: WeekFitTheme.meal,
-            graphValues: [],
-            badgeValue: "—",
-            badgeLabel: "patterns",
-            domain: .missingData
-        ),
-        stories: [],
-        domainPages: InsightsDomainPage.fallbackPages,
-        evidence: InsightsEvidence.fallback,
-        whyItems: [
-            InsightsWhyItem(
-                title: "Not enough recent context",
-                value: "7 days",
-                detail: "A consistent week gives Coach something useful to compare.",
-                icon: "calendar",
+    static var fallback: InsightsSnapshot {
+        InsightsSnapshot(
+            avatarInitials: "WF",
+            weekDays: ["M", "T", "W", "T", "F", "S", "S"],
+            hero: InsightsHeroInsight(
+                label: InsightsSnapshotFallbackL10n.text("hero.label"),
+                title: InsightsSnapshotFallbackL10n.text("hero.title"),
+                subtitle: InsightsSnapshotFallbackL10n.text("hero.subtitle"),
+                takeaway: InsightsSnapshotFallbackL10n.text("hero.takeaway"),
+                icon: "brain.head.profile",
+                accent: WeekFitTheme.meal,
+                graphValues: [],
+                badgeValue: "—",
+                badgeLabel: InsightsSnapshotFallbackL10n.text("hero.badgeLabel"),
                 domain: .missingData
             ),
-            InsightsWhyItem(
-                title: "Core signals are still missing",
-                value: "Sleep, food, training",
-                detail: "The read gets better once those logs overlap.",
-                icon: "sparkles",
-                domain: .missingData
-            )
-        ],
-        nextActions: [
-            InsightsNextAction(
-                title: "Log consistently for 7 days",
-                detail: "Sleep, meals, drinks and training are enough to start.",
-                icon: "checkmark.circle.fill",
-                destination: .tab(.today)
-            )
-        ],
-        supportCards: [
-            InsightSupportCard(
-                role: .opportunity,
-                title: "Build the baseline first",
-                text: "A reliable baseline will let Insights compare averages, direction and change instead of reporting raw logging counts.",
+            stories: [],
+            domainPages: InsightsDomainPage.fallbackPages,
+            evidence: InsightsEvidence.fallback,
+            whyItems: [
+                InsightsWhyItem(
+                    title: InsightsSnapshotFallbackL10n.text("why1.title"),
+                    value: InsightsSnapshotFallbackL10n.text("why1.value"),
+                    detail: InsightsSnapshotFallbackL10n.text("why1.detail"),
+                    icon: "calendar",
+                    domain: .missingData
+                ),
+                InsightsWhyItem(
+                    title: InsightsSnapshotFallbackL10n.text("why2.title"),
+                    value: InsightsSnapshotFallbackL10n.text("why2.value"),
+                    detail: InsightsSnapshotFallbackL10n.text("why2.detail"),
+                    icon: "sparkles",
+                    domain: .missingData
+                )
+            ],
+            nextActions: [
+                InsightsNextAction(
+                    title: InsightsSnapshotFallbackL10n.text("nextAction.title"),
+                    detail: InsightsSnapshotFallbackL10n.text("nextAction.detail"),
+                    icon: "checkmark.circle.fill",
+                    destination: .tab(.today)
+                )
+            ],
+            supportCards: [
+                InsightSupportCard(
+                    role: .opportunity,
+                    title: InsightsSnapshotFallbackL10n.text("supportCard.title"),
+                    text: InsightsSnapshotFallbackL10n.text("supportCard.text"),
+                    icon: "target",
+                    accent: WeekFitTheme.meal,
+                    metrics: [
+                        InsightTrendMetric(
+                            label: InsightsSnapshotFallbackL10n.text("supportCard.metric.label"),
+                            value: InsightsSnapshotFallbackL10n.text("supportCard.metric.value"),
+                            direction: .stable,
+                            detail: InsightsSnapshotFallbackL10n.text("supportCard.metric.detail"),
+                            benchmark: InsightsSnapshotFallbackL10n.text("supportCard.metric.benchmark")
+                        )
+                    ]
+                )
+            ],
+            learnings: [
+                InsightsLearning(
+                    label: InsightsSnapshotFallbackL10n.text("learning.label"),
+                    title: InsightsSnapshotFallbackL10n.text("learning.title"),
+                    text: InsightsSnapshotFallbackL10n.text("learning.text"),
+                    icon: "sparkles",
+                    accent: WeekFitTheme.meal,
+                    domain: .missingData
+                )
+            ],
+            opportunity: InsightsOpportunity(
+                label: InsightsSnapshotFallbackL10n.text("opportunity.label"),
+                title: InsightsSnapshotFallbackL10n.text("opportunity.title"),
+                text: InsightsSnapshotFallbackL10n.text("opportunity.text"),
                 icon: "target",
-                accent: WeekFitTheme.meal,
-                metrics: [
-                    InsightTrendMetric(label: "Baseline", value: "Building", direction: .stable, detail: "Not enough overlap yet", benchmark: "Needs sleep, recovery, training and nutrition context")
+                accent: Color(red: 0.95, green: 0.65, blue: 0.12),
+                domain: .missingData,
+                actionDestination: .tab(.today)
+            ),
+            weeklyScores: [
+                InsightsMiniScore(
+                    icon: "heart.fill",
+                    iconColor: WeekFitTheme.meal,
+                    title: InsightsSnapshotFallbackL10n.text("score.recovery.title"),
+                    value: "—",
+                    detail: InsightsSnapshotFallbackL10n.text("score.recovery.detail")
+                ),
+                InsightsMiniScore(
+                    icon: "moon.fill",
+                    iconColor: WeekFitTheme.purple,
+                    title: InsightsSnapshotFallbackL10n.text("score.sleep.title"),
+                    value: "—",
+                    detail: InsightsSnapshotFallbackL10n.text("score.sleep.detail")
+                ),
+                InsightsMiniScore(
+                    icon: "bolt.fill",
+                    iconColor: WeekFitTheme.orange,
+                    title: InsightsSnapshotFallbackL10n.text("score.training.title"),
+                    value: "—",
+                    detail: InsightsSnapshotFallbackL10n.text("score.training.detail")
+                ),
+                InsightsMiniScore(
+                    icon: "fork.knife",
+                    iconColor: WeekFitTheme.blue,
+                    title: InsightsSnapshotFallbackL10n.text("score.nutrition.title"),
+                    value: "—",
+                    detail: InsightsSnapshotFallbackL10n.text("score.nutrition.detail")
+                )
+            ],
+            trends: [
+                InsightsTrendCard(
+                    accent: WeekFitTheme.orange,
+                    label: InsightsSnapshotFallbackL10n.text("trend.activity.label"),
+                    title: InsightsSnapshotFallbackL10n.text("trend.activity.title"),
+                    subtitle: InsightsSnapshotFallbackL10n.text("trend.activity.subtitle"),
+                    takeaway: InsightsSnapshotFallbackL10n.text("trend.activity.takeaway"),
+                    icon: "figure.run",
+                    domain: .activity
+                ),
+                InsightsTrendCard(
+                    accent: WeekFitTheme.meal,
+                    label: InsightsSnapshotFallbackL10n.text("trend.nutrition.label"),
+                    title: InsightsSnapshotFallbackL10n.text("trend.nutrition.title"),
+                    subtitle: InsightsSnapshotFallbackL10n.text("trend.nutrition.subtitle"),
+                    takeaway: InsightsSnapshotFallbackL10n.text("trend.nutrition.takeaway"),
+                    icon: "fork.knife",
+                    domain: .nutrition
+                )
+            ],
+            hydrationImpact: InsightsCorrelationCard(
+                label: InsightsSnapshotFallbackL10n.text("hydration.label"),
+                title: InsightsSnapshotFallbackL10n.text("hydration.title"),
+                subtitle: InsightsSnapshotFallbackL10n.text("hydration.subtitle"),
+                rows: [
+                    InsightsCorrelationRow(
+                        icon: "drop.fill",
+                        title: InsightsSnapshotFallbackL10n.text("hydration.row.water"),
+                        values: ["—", "—", "—"],
+                        color: WeekFitTheme.blue
+                    ),
+                    InsightsCorrelationRow(
+                        icon: "heart.fill",
+                        title: InsightsSnapshotFallbackL10n.text("hydration.row.recovery"),
+                        values: ["—", "—", "—"],
+                        color: WeekFitTheme.meal
+                    )
                 ]
-            )
-        ],
-        learnings: [
-            InsightsLearning(
-                label: "WHAT WE LEARNED",
-                title: "Patterns are still forming",
-                text: "A few more consistent days will let Insights separate signal from noise.",
+            ),
+            weeklyReflection: InsightsReflection(
+                label: InsightsSnapshotFallbackL10n.text("reflection.label"),
+                text: InsightsSnapshotFallbackL10n.text("reflection.text"),
+                domain: .missingData
+            ),
+            focusNext: InsightsFocusNext(
+                label: InsightsSnapshotFallbackL10n.text("focus.label"),
+                title: InsightsSnapshotFallbackL10n.text("focus.title"),
+                text: InsightsSnapshotFallbackL10n.text("focus.text"),
+                action: InsightsSnapshotFallbackL10n.text("focus.action"),
                 icon: "sparkles",
                 accent: WeekFitTheme.meal,
                 domain: .missingData
+            ),
+            dataQuality: InsightsDataQuality(
+                recoveryDays: 0,
+                sleepDays: 0,
+                hydrationDays: 0,
+                mealDays: 0,
+                activityDays: 0,
+                plannerDays: 0
             )
-        ],
-        opportunity: InsightsOpportunity(
-            label: "BIGGEST OPPORTUNITY",
-            title: "Build the baseline first",
-            text: "Consistent sleep, recovery, training and nutrition logs are the fastest path to useful discoveries.",
-            icon: "target",
-            accent: Color(red: 0.95, green: 0.65, blue: 0.12),
-            domain: .missingData,
-            actionDestination: .tab(.today)
-        ),
-        weeklyScores: [
-            InsightsMiniScore(icon: "heart.fill", iconColor: WeekFitTheme.meal, title: "Recovery", value: "—", detail: "log recovery"),
-            InsightsMiniScore(icon: "moon.fill", iconColor: WeekFitTheme.purple, title: "Sleep", value: "—", detail: "log sleep"),
-            InsightsMiniScore(icon: "bolt.fill", iconColor: WeekFitTheme.orange, title: "Training", value: "—", detail: "build baseline"),
-            InsightsMiniScore(icon: "fork.knife", iconColor: WeekFitTheme.blue, title: "Nutrition", value: "—", detail: "build baseline")
-        ],
-        trends: [
-            InsightsTrendCard(accent: WeekFitTheme.orange, label: "ACTIVITY LOAD", title: "Training pattern unavailable", subtitle: "Build enough activity history to compare workload against your baseline.", takeaway: "Start by creating a reliable workload trend.", icon: "figure.run", domain: .activity),
-            InsightsTrendCard(accent: WeekFitTheme.meal, label: "NUTRITION PATTERN", title: "Nutrition insight unavailable", subtitle: "Build enough meal history to compare protein and recovery trends.", takeaway: "Protein consistency unlocks better recovery context.", icon: "fork.knife", domain: .nutrition)
-        ],
-        hydrationImpact: InsightsCorrelationCard(
-            label: "HYDRATION INSIGHT",
-            title: "Hydration insight unavailable",
-            subtitle: "Build enough drink history to compare hydration with recovery.",
-            rows: [
-                InsightsCorrelationRow(icon: "drop.fill", title: "Water evidence", values: ["—", "—", "—"], color: WeekFitTheme.blue),
-                InsightsCorrelationRow(icon: "heart.fill", title: "Recovery context", values: ["—", "—", "—"], color: WeekFitTheme.meal)
-            ]
-        ),
-        weeklyReflection: InsightsReflection(
-            label: "WEEKLY REFLECTION",
-            text: "Building your patterns. Log sleep, meals, drinks and activities for a few more days to unlock trends.",
-            domain: .missingData
-        ),
-        focusNext: InsightsFocusNext(
-            label: "FOCUS NEXT",
-            title: "Build the baseline first",
-            text: "Insights becomes useful once sleep, recovery, food, drink and activity have enough recent history.",
-            action: "Log the next 7 days consistently.",
-            icon: "sparkles",
-            accent: WeekFitTheme.meal,
-            domain: .missingData
-        ),
-        dataQuality: InsightsDataQuality(
-            recoveryDays: 0,
-            sleepDays: 0,
-            hydrationDays: 0,
-            mealDays: 0,
-            activityDays: 0,
-            plannerDays: 0
         )
-    )
+    }
 }
 
 enum InsightsDomain: Hashable {
@@ -228,71 +292,109 @@ struct InsightsDomainPage: Identifiable {
 }
 
 extension InsightsDomainPage {
-    static let fallbackPages: [InsightsDomainPage] = [
-        InsightsDomainPage(
-            id: "domain.recovery.fallback",
-            domain: .recovery,
-            label: "RECOVERY",
-            title: "Recovery",
-            scoreValue: "—",
-            statusText: "Building",
-            headline: "Recovery review is building",
-            chartValues: [],
-            chartTarget: nil,
-            chartTargetLabel: nil,
-            keySignals: [
-                InsightsKeySignal(id: "recovery.sleep", label: "Sleep baseline needed", value: "Sleep history is not complete enough to explain recovery yet."),
-                InsightsKeySignal(id: "recovery.readiness", label: "Recovery signal building", value: "More readiness data will make the monthly pattern clearer."),
-                InsightsKeySignal(id: "recovery.load", label: "Load context missing", value: "Training and recovery need more overlap before the coach read is reliable.")
-            ],
-            standoutText: "Log recovery and sleep to unlock the monthly coach read.",
-            focusText: "Log recovery and sleep for the next 7 days.",
-            icon: "heart.fill",
-            accent: Color(red: 0.18, green: 0.74, blue: 0.89)
-        ),
-        InsightsDomainPage(
-            id: "domain.activity.fallback",
-            domain: .activity,
-            label: "ACTIVITY",
-            title: "Activity",
-            scoreValue: "—",
-            statusText: "Building",
-            headline: "Activity review is building",
-            chartValues: [],
-            chartTarget: nil,
-            chartTargetLabel: nil,
-            keySignals: [
-                InsightsKeySignal(id: "activity.load", label: "Load baseline needed", value: "More activity history is needed before training load is meaningful."),
-                InsightsKeySignal(id: "activity.rhythm", label: "Training rhythm building", value: "Completed workouts will reveal whether the routine is repeatable."),
-                InsightsKeySignal(id: "activity.recovery", label: "Recovery match unknown", value: "Activity needs recovery overlap before sustainability is clear.")
-            ],
-            standoutText: "Log or sync activity to unlock the monthly coach read.",
-            focusText: "Log or sync activity for the next 7 days.",
-            icon: "figure.run",
-            accent: Color(red: 0.16, green: 0.80, blue: 0.43)
-        ),
-        InsightsDomainPage(
-            id: "domain.nutrition.fallback",
-            domain: .nutrition,
-            label: "NUTRITION",
-            title: "Nutrition",
-            scoreValue: "—",
-            statusText: "Building",
-            headline: "Nutrition review is building",
-            chartValues: [],
-            chartTarget: nil,
-            chartTargetLabel: nil,
-            keySignals: [
-                InsightsKeySignal(id: "nutrition.protein", label: "Protein signal missing", value: "Protein history is needed to judge recovery support."),
-                InsightsKeySignal(id: "nutrition.hydration", label: "Hydration baseline needed", value: "Water logs will show whether hydration supports recovery."),
-                InsightsKeySignal(id: "nutrition.quality", label: "Meal quality building", value: "More logged meals will make the nutrition pattern clearer.")
-            ],
-            standoutText: "Log meals and hydration to unlock the monthly coach read.",
-            focusText: "Log meals and hydration for the next 7 days.",
-            icon: "fork.knife",
-            accent: Color(red: 0.95, green: 0.65, blue: 0.12)
-        )
-    ]
+    static var fallbackPages: [InsightsDomainPage] {
+        [
+            InsightsDomainPage(
+                id: "domain.recovery.fallback",
+                domain: .recovery,
+                label: InsightsSnapshotFallbackL10n.text("domain.recovery.label"),
+                title: InsightsSnapshotFallbackL10n.text("domain.recovery.title"),
+                scoreValue: "—",
+                statusText: InsightsSnapshotFallbackL10n.text("domain.recovery.statusText"),
+                headline: InsightsSnapshotFallbackL10n.text("domain.recovery.headline"),
+                chartValues: [],
+                chartTarget: nil,
+                chartTargetLabel: nil,
+                keySignals: [
+                    InsightsKeySignal(
+                        id: "recovery.sleep",
+                        label: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.sleep.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.sleep.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "recovery.readiness",
+                        label: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.readiness.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.readiness.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "recovery.load",
+                        label: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.load.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.recovery.signal.load.value")
+                    )
+                ],
+                standoutText: InsightsSnapshotFallbackL10n.text("domain.recovery.standoutText"),
+                focusText: InsightsSnapshotFallbackL10n.text("domain.recovery.focusText"),
+                icon: "heart.fill",
+                accent: Color(red: 0.18, green: 0.74, blue: 0.89)
+            ),
+            InsightsDomainPage(
+                id: "domain.activity.fallback",
+                domain: .activity,
+                label: InsightsSnapshotFallbackL10n.text("domain.activity.label"),
+                title: InsightsSnapshotFallbackL10n.text("domain.activity.title"),
+                scoreValue: "—",
+                statusText: InsightsSnapshotFallbackL10n.text("domain.activity.statusText"),
+                headline: InsightsSnapshotFallbackL10n.text("domain.activity.headline"),
+                chartValues: [],
+                chartTarget: nil,
+                chartTargetLabel: nil,
+                keySignals: [
+                    InsightsKeySignal(
+                        id: "activity.load",
+                        label: InsightsSnapshotFallbackL10n.text("domain.activity.signal.load.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.activity.signal.load.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "activity.rhythm",
+                        label: InsightsSnapshotFallbackL10n.text("domain.activity.signal.rhythm.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.activity.signal.rhythm.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "activity.recovery",
+                        label: InsightsSnapshotFallbackL10n.text("domain.activity.signal.recovery.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.activity.signal.recovery.value")
+                    )
+                ],
+                standoutText: InsightsSnapshotFallbackL10n.text("domain.activity.standoutText"),
+                focusText: InsightsSnapshotFallbackL10n.text("domain.activity.focusText"),
+                icon: "figure.run",
+                accent: Color(red: 0.16, green: 0.80, blue: 0.43)
+            ),
+            InsightsDomainPage(
+                id: "domain.nutrition.fallback",
+                domain: .nutrition,
+                label: InsightsSnapshotFallbackL10n.text("domain.nutrition.label"),
+                title: InsightsSnapshotFallbackL10n.text("domain.nutrition.title"),
+                scoreValue: "—",
+                statusText: InsightsSnapshotFallbackL10n.text("domain.nutrition.statusText"),
+                headline: InsightsSnapshotFallbackL10n.text("domain.nutrition.headline"),
+                chartValues: [],
+                chartTarget: nil,
+                chartTargetLabel: nil,
+                keySignals: [
+                    InsightsKeySignal(
+                        id: "nutrition.protein",
+                        label: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.protein.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.protein.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "nutrition.hydration",
+                        label: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.hydration.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.hydration.value")
+                    ),
+                    InsightsKeySignal(
+                        id: "nutrition.quality",
+                        label: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.quality.label"),
+                        value: InsightsSnapshotFallbackL10n.text("domain.nutrition.signal.quality.value")
+                    )
+                ],
+                standoutText: InsightsSnapshotFallbackL10n.text("domain.nutrition.standoutText"),
+                focusText: InsightsSnapshotFallbackL10n.text("domain.nutrition.focusText"),
+                icon: "fork.knife",
+                accent: Color(red: 0.95, green: 0.65, blue: 0.12)
+            )
+        ]
+    }
 }
 
 enum InsightTrendDirection: String, CaseIterable, Hashable {
@@ -430,17 +532,19 @@ struct InsightsEvidence {
     let recencyText: String
     let bullets: [String]
 
-    static let fallback = InsightsEvidence(
-        label: "WHY THIS",
-        confidenceLabel: "Building",
-        confidenceValue: 0.35,
-        sourceSummary: "Waiting for enough recent data",
-        recencyText: "Updates as you log",
-        bullets: [
-            "Sleep, recovery, nutrition, hydration and activity become smarter with consistent logs.",
-            "The first useful pattern usually appears after several recent days."
-        ]
-    )
+    static var fallback: InsightsEvidence {
+        InsightsEvidence(
+            label: InsightsSnapshotFallbackL10n.text("evidence.label"),
+            confidenceLabel: InsightsSnapshotFallbackL10n.text("evidence.confidenceLabel"),
+            confidenceValue: 0.35,
+            sourceSummary: InsightsSnapshotFallbackL10n.text("evidence.sourceSummary"),
+            recencyText: InsightsSnapshotFallbackL10n.text("evidence.recencyText"),
+            bullets: [
+                InsightsSnapshotFallbackL10n.text("evidence.bullet1"),
+                InsightsSnapshotFallbackL10n.text("evidence.bullet2")
+            ]
+        )
+    }
 }
 
 struct InsightsWhyItem: Identifiable {

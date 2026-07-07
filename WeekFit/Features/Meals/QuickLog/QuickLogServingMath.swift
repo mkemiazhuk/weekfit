@@ -45,6 +45,7 @@ struct QuickLogNutritionValues: Equatable {
     let protein: Int
     let carbs: Int
     let fats: Int
+    let fiber: Int
     let portions: Double
     let grams: Double?
     let milliliters: Double?
@@ -62,6 +63,7 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
     let proteinPerServing: Int
     let carbsPerServing: Int
     let fatPerServing: Int
+    let fiberPerServing: Int
 
     let defaultServingAmount: Double
     let servingUnit: QuickLogServingUnit
@@ -69,7 +71,7 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
     let mlPerServing: Double?
 
     var isWater: Bool {
-        id == "drink_water" || title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "water"
+        id == "drink_water"
     }
 
     var supportsWaterPresets: Bool {
@@ -80,8 +82,8 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
         let grams = Double(meal.servingGrams ?? 100)
         return QuickLogNutritionProfile(
             id: meal.id,
-            title: meal.isFoodProduct ? meal.title : meal.shortTitle,
-            subtitle: meal.isFoodProduct ? meal.servingDescription : meal.subtitle,
+            title: meal.isFoodProduct ? meal.title : meal.localizedShortTitle,
+            subtitle: meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle,
             imageName: meal.imageName,
             icon: "fork.knife",
             kind: .meal,
@@ -89,6 +91,7 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
             proteinPerServing: meal.protein,
             carbsPerServing: meal.carbs,
             fatPerServing: meal.fats,
+            fiberPerServing: meal.fiber,
             defaultServingAmount: 1,
             servingUnit: .portion,
             gramsPerServing: grams,
@@ -99,8 +102,8 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
     static func from(item: QuickItem) -> QuickLogNutritionProfile {
         QuickLogNutritionProfile(
             id: item.id,
-            title: item.title,
-            subtitle: item.subtitle,
+            title: item.localizedTitle,
+            subtitle: item.localizedSubtitle,
             imageName: item.imageName,
             icon: item.icon,
             kind: item.category == .drink ? .drink : .snack,
@@ -108,6 +111,7 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
             proteinPerServing: item.proteinPerServing,
             carbsPerServing: item.carbsPerServing,
             fatPerServing: item.fatPerServing,
+            fiberPerServing: item.fiberPerServing,
             defaultServingAmount: item.defaultServingAmountValue,
             servingUnit: item.resolvedServingUnit,
             gramsPerServing: item.gramsPerServing,
@@ -219,6 +223,7 @@ enum QuickLogServingMath {
             protein: scaledInt(profile.proteinPerServing, by: clamped),
             carbs: scaledInt(profile.carbsPerServing, by: clamped),
             fats: scaledInt(profile.fatPerServing, by: clamped),
+            fiber: scaledInt(profile.fiberPerServing, by: clamped),
             portions: clamped,
             grams: grams,
             milliliters: milliliters

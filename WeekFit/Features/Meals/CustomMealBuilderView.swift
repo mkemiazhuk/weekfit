@@ -50,6 +50,7 @@ struct CustomMealBuilderView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var selectedThumbnailImage: UIImage?
+    @State private var pendingOriginalFilename: String?
     @State private var existingPreviewImage: UIImage?
     @State private var didRemovePhoto = false
     @State private var showCamera = false
@@ -98,6 +99,76 @@ struct CustomMealBuilderView: View {
     var body: some View {
         let _ = languageManager.selectedLanguage
 
+        formRoot
+            .onAppear {
+                requestExistingPreviewImageIfNeeded()
+            }
+            .onDisappear {
+                releaseCapturedPhotoMemory(deletePendingOriginal: true)
+            }
+            .onChange(of: focusedField) { oldValue, newValue in
+                Self.debugLog("focus.change \(oldValue?.rawValue ?? "nil") -> \(newValue?.rawValue ?? "nil")")
+            }
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                Self.debugLog("onChange.selectedPhotoItem isNil=\(newItem == nil)")
+                loadPhoto(newItem)
+            }
+            .onChange(of: name) { _, newValue in
+                Self.debugLog("onChange.name length=\(newValue.count)")
+            }
+            .onChange(of: servingGrams) { _, newValue in
+                Self.debugLog("onChange.servingGrams length=\(newValue.count)")
+            }
+            .onChange(of: calories) { _, newValue in
+                Self.debugLog("onChange.calories length=\(newValue.count)")
+            }
+            .onChange(of: protein) { _, newValue in
+                Self.debugLog("onChange.protein length=\(newValue.count)")
+            }
+            .onChange(of: carbs) { _, newValue in
+                Self.debugLog("onChange.carbs length=\(newValue.count)")
+            }
+            .onChange(of: fats) { _, newValue in
+                Self.debugLog("onChange.fats length=\(newValue.count)")
+            }
+            .onChange(of: fiber) { _, newValue in
+                Self.debugLog("onChange.fiber length=\(newValue.count)")
+            }
+            .sheet(isPresented: $showCamera) {
+                CustomMealCameraCaptureView { image in
+                    Self.debugLog("camera.imageCaptured")
+                    processCapturedPhoto(image)
+                }
+                .ignoresSafeArea()
+                .weekFitSheetChrome(cornerRadius: 36)
+            }
+            .photosPicker(
+                isPresented: $showPhotoLibrary,
+                selection: $selectedPhotoItem,
+                matching: .images
+            )
+            .confirmationDialog(
+                "",
+                isPresented: $showPhotoSourcePicker,
+                titleVisibility: .hidden
+            ) {
+                Button(labels.takePhoto) {
+                    openCamera()
+                }
+
+                Button(labels.choosePhoto) {
+                    showPhotoLibrary = true
+                }
+
+                Button(role: .cancel) {
+                } label: {
+                    Text(labels.cancel)
+                }
+            }
+            .preferredColorScheme(.dark)
+    }
+
+    private var formRoot: some View {
         ZStack {
             background.ignoresSafeArea()
             ambientBackground
@@ -107,96 +178,44 @@ struct CustomMealBuilderView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
-                ScrollViewReader { proxy in
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 12) {
-                            heroPreviewCard
-                            editableFields
+                formScrollContent
+            }
+        }
+    }
 
-                            if let validationMessage {
-                                Text(validationMessage)
-                                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(Color.red.opacity(0.84))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 4)
-                                    .id("validation")
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 32)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: validationMessage) { _, newValue in
-                        Self.debugLog("onChange.validationMessage isNil=\(newValue == nil)")
-                        guard newValue != nil else { return }
+    private var formScrollContent: some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    heroPreviewCard
+                    editableFields
 
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
-                            proxy.scrollTo("validation", anchor: .center)
-                        }
+                    if let validationMessage {
+                        validationMessageView(validationMessage)
                     }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 32)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: validationMessage) { _, newValue in
+                Self.debugLog("onChange.validationMessage isNil=\(newValue == nil)")
+                guard newValue != nil else { return }
+
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                    proxy.scrollTo("validation", anchor: .center)
                 }
             }
         }
-        .onAppear {
-            requestExistingPreviewImageIfNeeded()
-        }
-        .onChange(of: focusedField) { oldValue, newValue in
-            Self.debugLog("focus.change \(oldValue?.rawValue ?? "nil") -> \(newValue?.rawValue ?? "nil")")
-        }
-        .onChange(of: selectedPhotoItem) { _, newItem in
-            Self.debugLog("onChange.selectedPhotoItem isNil=\(newItem == nil)")
-            loadPhoto(newItem)
-        }
-        .onChange(of: name) { _, newValue in
-            Self.debugLog("onChange.name length=\(newValue.count)")
-        }
-        .onChange(of: servingGrams) { _, newValue in
-            Self.debugLog("onChange.servingGrams length=\(newValue.count)")
-        }
-        .onChange(of: calories) { _, newValue in
-            Self.debugLog("onChange.calories length=\(newValue.count)")
-        }
-        .onChange(of: protein) { _, newValue in
-            Self.debugLog("onChange.protein length=\(newValue.count)")
-        }
-        .onChange(of: carbs) { _, newValue in
-            Self.debugLog("onChange.carbs length=\(newValue.count)")
-        }
-        .onChange(of: fats) { _, newValue in
-            Self.debugLog("onChange.fats length=\(newValue.count)")
-        }
-        .onChange(of: fiber) { _, newValue in
-            Self.debugLog("onChange.fiber length=\(newValue.count)")
-        }
-        .sheet(isPresented: $showCamera) {
-            CustomMealCameraCaptureView { image in
-                Self.debugLog("camera.imageCaptured")
-                processCapturedPhoto(image)
-            }
-            .ignoresSafeArea()
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
-        .photosPicker(
-            isPresented: $showPhotoLibrary,
-            selection: $selectedPhotoItem,
-            matching: .images
-        )
-        .confirmationDialog(
-            "",
-            isPresented: $showPhotoSourcePicker,
-            titleVisibility: .hidden
-        ) {
-            Button(labels.takePhoto) {
-                openCamera()
-            }
+    }
 
-            Button(labels.choosePhoto) {
-                showPhotoLibrary = true
-            }
-
-            Button(labels.cancel, role: .cancel) { }
-        }
-        .preferredColorScheme(.dark)
+    private func validationMessageView(_ message: String) -> some View {
+        Text(message)
+            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+            .foregroundStyle(Color.red.opacity(0.84))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+            .id("validation")
     }
 
     private var ambientBackground: some View {
@@ -217,7 +236,7 @@ struct CustomMealBuilderView: View {
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.012),
+                    WeekFitTheme.whiteOpacity(0.012),
                     .clear,
                     Color.black.opacity(0.13)
                 ],
@@ -230,83 +249,21 @@ struct CustomMealBuilderView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitDetailScreenHeader(
+            title: labels.formTitle,
+            subtitle: labels.formSubtitle,
+            titleColor: textPrimary,
+            subtitleColor: textSecondary.opacity(0.76),
+            titleDesign: .default
+        ) {
+            WeekFitDetailScreenBackButton {
                 dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(Color.white.opacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(labels.formTitle)
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                Text(labels.formSubtitle)
-                    .font(.system(size: 13.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer(minLength: 8)
-
-            Button {
+        } trailing: {
+            WeekFitDetailScreenSaveButton(isEnabled: isSaveEnabled, accent: accent) {
                 save()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.09)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    isSaveEnabled ? accent.opacity(0.18) : Color.white.opacity(0.065),
-                                    lineWidth: 1
-                                )
-                        }
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            isSaveEnabled
-                            ? accent.opacity(0.85)
-                            : textSecondary.opacity(0.42)
-                        )
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-            .disabled(!isSaveEnabled)
-            .scaleEffect(isSaveEnabled ? 1.0 : 0.96)
-            .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isSaveEnabled)
         }
-        .padding(.bottom, 2)
     }
 
     private var heroPreviewCard: some View {
@@ -321,25 +278,21 @@ struct CustomMealBuilderView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
 
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(caloriesDisplay)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(accent)
-                        .tracking(-0.25)
-
-                    Text(labels.kcal)
-                        .font(.system(size: 12.2, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.82))
-                        .padding(.bottom, 2)
-                }
-
-                macroSummaryLine
+                MealNutritionSummaryStrip(
+                    calories: intValue(calories),
+                    protein: intValue(protein),
+                    carbs: intValue(carbs),
+                    fats: intValue(fats),
+                    fiber: intValue(fiber),
+                    accent: accent,
+                    style: .embedded
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 122)
+        .frame(height: 118)
         .background {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
@@ -355,8 +308,8 @@ struct CustomMealBuilderView: View {
                 .overlay(alignment: .topLeading) {
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.065),
-                            Color.white.opacity(0.014),
+                            WeekFitTheme.whiteOpacity(0.065),
+                            WeekFitTheme.whiteOpacity(0.014),
                             .clear
                         ],
                         startPoint: .topLeading,
@@ -367,7 +320,7 @@ struct CustomMealBuilderView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
     }
@@ -381,7 +334,7 @@ struct CustomMealBuilderView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.030),
+                                WeekFitTheme.whiteOpacity(0.030),
                                 WeekFitTheme.cardSecondary.opacity(1.0),
                                 cardBackground.opacity(1.04)
                             ],
@@ -397,14 +350,18 @@ struct CustomMealBuilderView: View {
                         .frame(width: 88, height: 88)
                         .clipped()
                 } else {
-                    VStack(spacing: 7) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(textPrimary.opacity(0.82))
+                    VStack(spacing: 6) {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(accent.opacity(0.88))
 
-                        Image(systemName: "photo")
-                            .font(.system(size: 14, weight: .semibold))
+                        Text(WeekFitLocalizedString("meals.foodForm.photoBarcodeShort"))
+                            .font(.system(size: 8.6, weight: .semibold, design: .rounded))
                             .foregroundStyle(textSecondary.opacity(0.72))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .padding(.horizontal, 4)
                     }
                 }
             }
@@ -415,7 +372,7 @@ struct CustomMealBuilderView: View {
         .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.075), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.35), radius: 8, y: 4)
         .contextMenu {
@@ -425,47 +382,6 @@ struct CustomMealBuilderView: View {
                 }
             }
         }
-    }
-
-    private var macroSummaryLine: some View {
-        HStack(spacing: 6) {
-            heroMacroLabel(
-                "P",
-                value: proteinDisplay
-            )
-
-            heroMacroSeparator
-
-            heroMacroLabel(
-                "C",
-                value: carbsDisplay
-            )
-
-            heroMacroSeparator
-
-            heroMacroLabel(
-                "F",
-                value: fatsDisplay
-            )
-        }
-        .font(.system(size: 13.6, weight: .semibold, design: .rounded))
-        .lineLimit(1)
-        .minimumScaleFactor(0.82)
-    }
-
-    private func heroMacroLabel(_ label: String, value: String) -> some View {
-        HStack(spacing: 3) {
-            Text(label)
-                .foregroundStyle(textPrimary.opacity(0.94))
-
-            Text("\(value)g")
-                .foregroundStyle(textSecondary.opacity(0.86))
-        }
-    }
-
-    private var heroMacroSeparator: some View {
-        Text("|")
-            .foregroundStyle(textSecondary.opacity(0.42))
     }
 
     private var editableFields: some View {
@@ -503,7 +419,7 @@ struct CustomMealBuilderView: View {
     private var nutritionSection: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(WeekFitLocalizedString("Nutrition"))
+                Text(WeekFitLocalizedString("meals.nutrition"))
                     .font(.system(size: 17.4, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.28)
@@ -604,11 +520,11 @@ struct CustomMealBuilderView: View {
         .frame(height: 34)
         .background {
             Capsule()
-                .fill(Color.white.opacity(0.050))
+                .fill(WeekFitTheme.whiteOpacity(0.050))
         }
         .overlay {
             Capsule()
-                .stroke(Color.white.opacity(0.070), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.070), lineWidth: 1)
         }
         .contentShape(Capsule())
         .onTapGesture {
@@ -668,7 +584,7 @@ struct CustomMealBuilderView: View {
 
     private var compactDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.055))
+            .fill(WeekFitTheme.whiteOpacity(0.055))
             .frame(height: 1)
     }
 
@@ -677,8 +593,8 @@ struct CustomMealBuilderView: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.046),
-                        Color.white.opacity(0.030)
+                        WeekFitTheme.whiteOpacity(0.046),
+                        WeekFitTheme.whiteOpacity(0.030)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -686,7 +602,7 @@ struct CustomMealBuilderView: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
             }
             .shadow(color: WeekFitTheme.cardShadow.opacity(0.44), radius: 10, y: 5)
     }
@@ -701,13 +617,8 @@ struct CustomMealBuilderView: View {
 
     private var previewTitle: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "New Food" : trimmed
+        return trimmed.isEmpty ? WeekFitLocalizedString("meals.foodForm.preview.newFood") : trimmed
     }
-
-    private var caloriesDisplay: String { displayValue(calories) }
-    private var proteinDisplay: String { displayValue(protein) }
-    private var carbsDisplay: String { displayValue(carbs) }
-    private var fatsDisplay: String { displayValue(fats) }
 
     private func displayValue(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -719,8 +630,7 @@ struct CustomMealBuilderView: View {
 
         Task {
             let loadStart = Self.debugStart("photoPicker.loadTransferable")
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data) else {
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
                 Self.debugEnd("photoPicker.loadTransferable.failed", start: loadStart)
                 return
             }
@@ -728,14 +638,25 @@ struct CustomMealBuilderView: View {
 
             let processingStart = Self.debugStart("photoPicker.processImage")
             DispatchQueue.global(qos: .userInitiated).async {
-                let normalized = image.normalizedForPhotoStorage()
-                let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
-                Self.debugEnd("photoPicker.processImage", start: processingStart)
+                autoreleasepool {
+                    guard let storageImage = MealPhotoStore.downsampledImage(from: data) else {
+                        Self.debugEnd("photoPicker.processImage.failed", start: processingStart)
+                        return
+                    }
+                    let thumbnail = MealPhotoStore.thumbnailImage(
+                        from: storageImage,
+                        sideLength: MealPhotoStore.formPreviewPixelSize
+                    )
+                    let pendingFilename = try? MealPhotoStore.savePendingOriginal(storageImage)
+                    Self.debugEnd("photoPicker.processImage", start: processingStart)
 
-                DispatchQueue.main.async {
-                    selectedImage = normalized
-                    selectedThumbnailImage = thumbnail
-                    didRemovePhoto = false
+                    DispatchQueue.main.async {
+                        selectedThumbnailImage = thumbnail
+                        pendingOriginalFilename = pendingFilename
+                        selectedImage = nil
+                        didRemovePhoto = false
+                        analyzePhotoForNutrition(storageImage)
+                    }
                 }
             }
         }
@@ -744,16 +665,73 @@ struct CustomMealBuilderView: View {
     private func processCapturedPhoto(_ image: UIImage) {
         let processingStart = Self.debugStart("camera.processImage")
         DispatchQueue.global(qos: .userInitiated).async {
-            let normalized = image.normalizedForPhotoStorage()
-            let thumbnail = MealPhotoStore.thumbnailImage(from: normalized)
-            Self.debugEnd("camera.processImage", start: processingStart)
+            autoreleasepool {
+                let storageImage = MealPhotoStore.downsampledImage(from: image)
+                let thumbnail = MealPhotoStore.thumbnailImage(
+                    from: storageImage,
+                    sideLength: MealPhotoStore.formPreviewPixelSize
+                )
+                let pendingFilename = try? MealPhotoStore.savePendingOriginal(storageImage)
+                Self.debugEnd("camera.processImage", start: processingStart)
 
-            DispatchQueue.main.async {
-                selectedImage = normalized
-                selectedThumbnailImage = thumbnail
-                didRemovePhoto = false
+                DispatchQueue.main.async {
+                    selectedThumbnailImage = thumbnail
+                    pendingOriginalFilename = pendingFilename
+                    selectedImage = nil
+                    didRemovePhoto = false
+                    analyzePhotoForNutrition(storageImage)
+                }
             }
         }
+    }
+
+    private func analyzePhotoForNutrition(_ image: UIImage) {
+        Task {
+            guard let estimate = await FoodPhotoNutritionAnalyzer.analyze(image) else { return }
+
+            let productImage = estimate.shouldReplacePhotoWithProductImage
+                ? await FoodPhotoNutritionAnalyzer.downloadProductImage(from: estimate.productImageURL)
+                : nil
+
+            await MainActor.run {
+                var didApply = false
+
+                if estimate.applyIfPossible(
+                    name: &name,
+                    servingGrams: &servingGrams,
+                    calories: &calories,
+                    protein: &protein,
+                    carbs: &carbs,
+                    fats: &fats,
+                    fiber: &fiber
+                ) {
+                    didApply = true
+                }
+
+                if let productImage,
+                   applyDownloadedProductPhoto(productImage) {
+                    didApply = true
+                }
+
+                if didApply {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+        }
+    }
+
+    private func applyDownloadedProductPhoto(_ image: UIImage) -> Bool {
+        let prepared = FoodPhotoNutritionAnalyzer.preparedMealPhoto(from: image)
+
+        if let pendingOriginalFilename {
+            MealPhotoStore.delete(filename: pendingOriginalFilename)
+        }
+
+        selectedThumbnailImage = prepared.thumbnail
+        pendingOriginalFilename = prepared.pendingFilename
+        selectedImage = nil
+        didRemovePhoto = false
+        return true
     }
 
     private func openCamera() {
@@ -770,10 +748,19 @@ struct CustomMealBuilderView: View {
     private func removePhoto() {
         Self.debugLog("removePhoto")
         selectedPhotoItem = nil
-        selectedImage = nil
-        selectedThumbnailImage = nil
+        releaseCapturedPhotoMemory(deletePendingOriginal: true)
         didRemovePhoto = true
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func releaseCapturedPhotoMemory(deletePendingOriginal: Bool) {
+        selectedImage = nil
+        selectedThumbnailImage = nil
+        existingPreviewImage = nil
+        if deletePendingOriginal, let pendingOriginalFilename {
+            MealPhotoStore.delete(filename: pendingOriginalFilename)
+        }
+        pendingOriginalFilename = nil
     }
 
     private var isSaveEnabled: Bool {
@@ -792,6 +779,9 @@ struct CustomMealBuilderView: View {
 
     private func save() {
         let saveStart = Self.debugStart("save")
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
         guard isSaveEnabled else {
             validationMessage = labels.requiredFieldsValidation
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -824,78 +814,78 @@ struct CustomMealBuilderView: View {
             return
         }
 
-        let originalPhotoFilename: String?
-        let thumbnailPhotoFilename: String?
+        let pendingPhotoFilename = pendingOriginalFilename
+        let fallbackSelectedImage = selectedImage
+        let shouldRemovePhoto = didRemovePhoto
+        let existingOriginalFilename = editingMeal?.localPhotoFilename
+        let existingThumbnailFilename = editingMeal?.localPhotoThumbnailFilename
 
-        do {
-            if let selectedImage {
-                let photoSaveStart = Self.debugStart("photo.savePhotoSet")
-                let photoSet = try MealPhotoStore.savePhotoSet(selectedImage)
-                Self.debugEnd("photo.savePhotoSet", start: photoSaveStart)
-                originalPhotoFilename = photoSet.originalFilename
-                thumbnailPhotoFilename = photoSet.thumbnailFilename
-                let photoDeleteStart = Self.debugStart("photo.deleteOldPhotoSet")
-                MealPhotoStore.deletePhotoSet(
-                    originalFilename: editingMeal?.localPhotoFilename,
-                    thumbnailFilename: editingMeal?.localPhotoThumbnailFilename
-                )
-                Self.debugEnd("photo.deleteOldPhotoSet", start: photoDeleteStart)
-            } else if didRemovePhoto {
-                let photoDeleteStart = Self.debugStart("photo.deletePhotoSet")
-                MealPhotoStore.deletePhotoSet(
-                    originalFilename: editingMeal?.localPhotoFilename,
-                    thumbnailFilename: editingMeal?.localPhotoThumbnailFilename
-                )
-                Self.debugEnd("photo.deletePhotoSet", start: photoDeleteStart)
-                originalPhotoFilename = nil
-                thumbnailPhotoFilename = nil
-            } else {
-                originalPhotoFilename = editingMeal?.localPhotoFilename
-                thumbnailPhotoFilename = editingMeal?.localPhotoThumbnailFilename
+        Task {
+            let photoSaveStart = Self.debugStart("photo.persistSavedPhotoFilenames")
+            let persistedPhotos: (originalFilename: String?, thumbnailFilename: String?)
+            do {
+                persistedPhotos = try await Task.detached(priority: .userInitiated) {
+                    try MealPhotoStore.persistSavedPhotoFilenames(
+                        pendingOriginalFilename: pendingPhotoFilename,
+                        selectedImage: fallbackSelectedImage,
+                        didRemovePhoto: shouldRemovePhoto,
+                        existingOriginalFilename: existingOriginalFilename,
+                        existingThumbnailFilename: existingThumbnailFilename
+                    )
+                }.value
+                Self.debugEnd("photo.persistSavedPhotoFilenames", start: photoSaveStart)
+            } catch {
+                await MainActor.run {
+                    validationMessage = labels.photoSaveFailedValidation
+                    Self.debugEnd("save.photoFailed", start: saveStart)
+                }
+                return
             }
-        } catch {
-            validationMessage = labels.photoSaveFailedValidation
-            Self.debugEnd("save.photoFailed", start: saveStart)
-            return
-        }
 
-        let trimmedName = input.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            await MainActor.run {
+                pendingOriginalFilename = nil
+                selectedImage = nil
 
-        let meal = Meals(
-            id: editingMeal?.id ?? "custom_meal_\(UUID().uuidString)",
-            title: trimmedName,
-            subtitle: String(format: labels.gramServingFormat, input.servingGrams),
-            imageName: editingMeal?.imageName ?? "",
-            type: editingMeal?.type ?? .balanced,
-            calories: input.calories,
-            protein: input.protein,
-            carbs: input.carbs,
-            fats: input.fats,
-            fiber: input.fiber,
-            benefits: editingMeal?.benefits ?? [
-                labels.customMealBenefit,
-                labels.manualEntryBenefit
-            ],
-            ingredients: [
-                MealsIngredient(
-                    name: labels.servingIngredient,
-                    amount: String(format: labels.gramValueFormat, input.servingGrams)
+                let trimmedName = input.name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                let meal = Meals(
+                    id: editingMeal?.id ?? "custom_meal_\(UUID().uuidString)",
+                    title: trimmedName,
+                    subtitle: String(format: labels.gramServingFormat, input.servingGrams),
+                    imageName: editingMeal?.imageName ?? "",
+                    type: editingMeal?.type ?? .balanced,
+                    calories: input.calories,
+                    protein: input.protein,
+                    carbs: input.carbs,
+                    fats: input.fats,
+                    fiber: input.fiber,
+                    benefits: editingMeal?.benefits ?? [
+                        labels.customMealBenefit,
+                        labels.manualEntryBenefit
+                    ],
+                    ingredients: [
+                        MealsIngredient(
+                            name: labels.servingIngredient,
+                            amount: String(format: labels.gramValueFormat, input.servingGrams)
+                        )
+                    ],
+                    suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
+                    builderImageItems: nil,
+                    libraryKind: editingMeal?.libraryKind ?? .product,
+                    creationMode: .manual,
+                    servingGrams: input.servingGrams,
+                    localPhotoFilename: persistedPhotos.originalFilename,
+                    localPhotoThumbnailFilename: persistedPhotos.thumbnailFilename
                 )
-            ],
-            suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
-            builderImageItems: nil,
-            libraryKind: editingMeal?.libraryKind ?? .product,
-            creationMode: .manual,
-            servingGrams: input.servingGrams,
-            localPhotoFilename: originalPhotoFilename,
-            localPhotoThumbnailFilename: thumbnailPhotoFilename
-        )
 
-        validationMessage = nil
-        onSave(meal)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        Self.debugEnd("save.success", start: saveStart)
-        dismiss()
+                validationMessage = nil
+                releaseCapturedPhotoMemory(deletePendingOriginal: false)
+                onSave(meal)
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                Self.debugEnd("save.success", start: saveStart)
+                dismiss()
+            }
+        }
     }
 
     private var currentSuggestedTime: String {

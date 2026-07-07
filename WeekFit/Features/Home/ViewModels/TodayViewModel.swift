@@ -7,11 +7,67 @@ final class TodayViewModel: ObservableObject {
 
     @Published var healthRefreshID = UUID()
     @Published var now = Date()
+    @Published private(set) var trackedDisplayDayStart: Date?
 
     private static let logger = Logger(subsystem: "WeekFit", category: "TodayViewModel")
+    private let lifecycleToken = "TodayViewModel"
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
 
     func triggerHealthRefresh() {
         healthRefreshID = UUID()
+    }
+
+    /// Returns `true` when the calendar day rolled over and HealthKit should reload.
+    @discardableResult
+    func reconcileDayBoundary(
+        selectedDate: inout Date,
+        healthManager: HealthManager,
+        nutritionViewModel: NutritionViewModel,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let currentNow = Date()
+        now = currentNow
+
+        let output = TodayDayBoundaryPolicy.reconcile(
+            TodayDayBoundaryPolicy.Input(
+                now: currentNow,
+                selectedDate: selectedDate,
+                trackedDayStart: trackedDisplayDayStart,
+                calendar: calendar
+            )
+        )
+
+        trackedDisplayDayStart = output.trackedDayStart
+        selectedDate = output.selectedDate
+
+        if output.didCrossBoundary {
+            healthManager.prepareForDisplayDay(output.trackedDayStart)
+            nutritionViewModel.prepareForDay(output.selectedDate)
+            return output.shouldRefreshHealth
+        }
+
+        let selectedDayStart = calendar.startOfDay(for: selectedDate)
+        if calendar.isDate(selectedDate, inSameDayAs: currentNow),
+           let nutritionDay = nutritionViewModel.trackedNutritionDayStart,
+           !calendar.isDate(nutritionDay, inSameDayAs: selectedDayStart) {
+            healthManager.prepareForDisplayDay(selectedDayStart)
+            nutritionViewModel.prepareForDay(selectedDate)
+            return true
+        }
+
+        return output.shouldRefreshHealth
+    }
+
+    func nextDayBoundary(after date: Date = Date(), calendar: Calendar = .current) -> Date {
+        TodayDayBoundaryPolicy.nextBoundary(after: date, calendar: calendar)
     }
 
     func selectedDayActivities(
@@ -96,12 +152,28 @@ final class TodayViewModel: ObservableObject {
         }
     }
 
+    func reconcileNutritionAfterPlannedActivitiesChange(
+        selectedDate: Date,
+        plannedActivities: [PlannedActivity],
+        healthManager: HealthManager,
+        nutritionViewModel: NutritionViewModel
+    ) async {
+        now = Date()
+        let dayActivities = selectedDayActivities(on: selectedDate, from: plannedActivities)
+        await healthManager.loadNutritionMetrics(for: selectedDate, plannedActivities: dayActivities)
+        updateNutrition(
+            selectedDate: selectedDate,
+            plannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
+        )
+    }
+
     func refreshHealthAndNutrition(
         selectedDate: Date,
         plannedActivities: [PlannedActivity],
         healthManager: HealthManager,
-        nutritionViewModel: NutritionViewModel,
-        appSession: AppSessionState
+        nutritionViewModel: NutritionViewModel
     ) async {
         guard healthManager.isHealthAccessRequested else {
             updateNutrition(
@@ -121,7 +193,6 @@ final class TodayViewModel: ObservableObject {
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel
         )
-        appSession.triggerCoachRefresh(source: "TodayView.healthDataLoaded")
     }
 
     private static func debugStart(_ label: String) -> CFAbsoluteTime {

@@ -16,7 +16,7 @@ enum BiologicalSex: String, Codable {
     case unknown
 }
 
-final class UserNutritionProfile {
+struct UserNutritionProfile: Equatable, Hashable {
     let weightKg: Double
     let heightCm: Double
     let age: Int

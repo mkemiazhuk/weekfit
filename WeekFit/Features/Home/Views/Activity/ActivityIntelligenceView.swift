@@ -59,6 +59,14 @@ struct ActivitySessionDetailSnapshot: Hashable {
     var shouldShowElapsedTime: Bool {
         elapsedDurationSeconds > workoutDurationSeconds + 60
     }
+
+    var shouldShowDistanceMetrics: Bool {
+        !ActivityDistanceMetricsExpectation.suppresses(
+            activityType: activityType,
+            title: title,
+            icon: icon
+        )
+    }
 }
 
 struct ActivitySessionSnapshot: Identifiable, Hashable {
@@ -88,6 +96,8 @@ struct ActivityDaySnapshot: Identifiable, Hashable {
     let sessions: [ActivitySessionSnapshot]
     let hourlyActivityPoints: [ActivityTimelinePoint]
     let historicalSameWeekdayPoints: [ActivityHistoricalPoint]
+    /// Primary sleep session associated with this calendar day (typically the prior night).
+    let sleepInterval: DateInterval?
 
     static let empty = ActivityDaySnapshot(
         date: Date(),
@@ -102,7 +112,8 @@ struct ActivityDaySnapshot: Identifiable, Hashable {
         recoveryPercent: 0,
         sessions: [],
         hourlyActivityPoints: (0...23).map { ActivityTimelinePoint(hour: $0, activeCalories: 0) },
-        historicalSameWeekdayPoints: []
+        historicalSameWeekdayPoints: [],
+        sleepInterval: nil
     )
 }
 
@@ -164,7 +175,14 @@ struct ActivityIntelligenceView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
                         ActivityHeroCard(snapshot: snapshot)
-                        ActivityTimelineCard(points: snapshot.hourlyActivityPoints)
+                        ActivityDailyMetricsCard(snapshot: snapshot)
+                        ActivityTimelineCard(
+                            points: snapshot.hourlyActivityPoints,
+                            totalActiveCalories: snapshot.activeCalories,
+                            activityGoal: snapshot.activityGoal,
+                            dayStart: Calendar.current.startOfDay(for: snapshot.date),
+                            sleepInterval: snapshot.sleepInterval
+                        )
                         WeeklyContextCard(
                             selectedSnapshot: snapshot,
                             weekSnapshots: viewModel.weekSnapshots
@@ -221,7 +239,7 @@ struct ActivityIntelligenceView: View {
 
                 Text(activityDetailsDateTitle)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -231,11 +249,11 @@ struct ActivityIntelligenceView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -249,7 +267,7 @@ struct ActivityIntelligenceView: View {
         }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
     }
@@ -298,7 +316,7 @@ private struct ActivityHeroCard: View {
 
                 Text(WeekFitLocalizedString(insightText))
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -312,39 +330,29 @@ private struct ActivityHeroCard: View {
     }
 
     private var activityRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.075), lineWidth: 4)
-
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            ActivityStyle.activityColor.opacity(0.60),
-                            ActivityStyle.activityColor,
-                            ActivityStyle.green,
-                            ActivityStyle.teal.opacity(0.85)
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .shadow(color: ActivityStyle.activityColor.opacity(0.15), radius: 4)
-
+        WeekFitProgressRing(
+            progress: progress,
+            color: WeekFitProgressRingColor.activity,
+            size: 70,
+            strokeWidth: 4,
+            gradientColors: [
+                WeekFitProgressRingColor.activity.opacity(0.80),
+                WeekFitProgressRingColor.activity,
+                Color(red: 0.36, green: 0.90, blue: 0.38),
+                Color(red: 0.22, green: 0.84, blue: 0.88).opacity(0.94)
+            ]
+        ) {
             VStack(spacing: -2) {
                 Text("\(snapshot.activityPercent)")
                     .font(.system(size: ActivityTypography.heroScore, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("activity.score")
+                Text(WeekFitLocalizedString("activity.score"))
                     .font(.system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
             }
         }
-        .frame(width: 70, height: 70)
     }
 
     private var statusText: String {
@@ -395,13 +403,128 @@ private struct ActivityHeroCard: View {
     }
 }
 
+// MARK: - Daily Metrics
+
+private struct ActivityDailyMetricsCard: View {
+    let snapshot: ActivityDaySnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            SectionLabel(WeekFitLocalizedString("activity.details.section.keyMetrics"))
+
+            HStack(alignment: .top, spacing: 8) {
+                compactMetric(
+                    title: WeekFitLocalizedString("today.status.metric.exercise"),
+                    value: exerciseText,
+                    icon: "figure.run",
+                    color: ActivityStyle.activityColor
+                )
+
+                compactMetric(
+                    title: WeekFitLocalizedString("today.status.metric.stand"),
+                    value: standText,
+                    icon: "figure.stand",
+                    color: ActivityStyle.green
+                )
+
+                compactMetric(
+                    title: WeekFitLocalizedString("common.unit.vo2"),
+                    value: vo2Text,
+                    icon: "lungs.fill",
+                    color: ActivityStyle.teal
+                )
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .activityCard(glow: ActivityStyle.activityColor.opacity(0.035))
+    }
+
+    private var exerciseText: String {
+        let minutes = max(0, snapshot.exerciseMinutes)
+
+        if minutes <= 0 {
+            return "—"
+        }
+
+        if minutes < 60 {
+            return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), minutes)
+        }
+
+        return String(format: "%.1f %@", Double(minutes) / 60.0, WeekFitLocalizedString("common.unit.hoursShort"))
+    }
+
+    private var standText: String {
+        snapshot.standHours > 0 ? "\(snapshot.standHours)/12" : "—"
+    }
+
+    private var vo2Text: String {
+        snapshot.vo2Max > 0 ? String(format: "%.1f", snapshot.vo2Max) : "—"
+    }
+
+    private func compactMetric(
+        title: String,
+        value: String,
+        icon: String,
+        color: Color
+    ) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.14))
+                    .frame(width: 30, height: 30)
+
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
+
+                Text(value)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(WeekFitTheme.whiteOpacity(0.026))
+        }
+    }
+}
+
 // MARK: - Timeline
 
 private struct ActivityTimelineCard: View {
     let points: [ActivityTimelinePoint]
+    let totalActiveCalories: Int
+    let activityGoal: Int
+    let dayStart: Date
+    let sleepInterval: DateInterval?
+
+    private static let sleepNoiseThresholdKcal = 8.0
+    private static let minimumChartScaleKcal = 60.0
 
     private var maxCalories: Double {
-        max(points.map(\.activeCalories).max() ?? 0, 1)
+        points.map { displayCalories(for: $0) }.max() ?? 0
+    }
+
+    private var chartYAxisMax: Double {
+        let peak = max(maxCalories, 1)
+        let goalBaseline = Double(max(activityGoal, 300)) * 0.12
+        return max(peak * 1.15, goalBaseline, Self.minimumChartScaleKcal)
     }
 
     private var peakPoint: ActivityTimelinePoint? {
@@ -432,7 +555,7 @@ private struct ActivityTimelineCard: View {
 
                 activityMetric(
                     title: WeekFitLocalizedString("activity.metric.activeKcal"),
-                    value: "\(peakCalories)",
+                    value: "\(totalActiveCalories)",
                     icon: "flame.fill",
                     color: ActivityStyle.green
                 )
@@ -441,31 +564,32 @@ private struct ActivityTimelineCard: View {
             Chart(points) { point in
                 BarMark(
                     x: .value("Hour", point.hour),
-                    y: .value("Calories", point.activeCalories),
+                    y: .value("Calories", displayCalories(for: point)),
                     width: .fixed(8)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .foregroundStyle(barGradient(for: point.activeCalories))
+                .foregroundStyle(barGradient(for: point))
             }
+            .chartYScale(domain: 0...chartYAxisMax)
             .chartXAxis {
                 AxisMarks(values: [0, 3, 6, 9, 12, 15, 18, 21]) { value in
                     AxisValueLabel {
                         if let hour = value.as(Int.self) {
                             Text(String(format: "%02d", hour))
                                 .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.45))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.45))
                         }
                     }
                 }
             }
             .chartYAxis {
                 AxisMarks(values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine().foregroundStyle(Color.white.opacity(0.045))
+                    AxisGridLine().foregroundStyle(WeekFitTheme.whiteOpacity(0.045))
                     AxisValueLabel {
                         if let number = value.as(Double.self) {
                             Text("\(Int(number))")
                                 .font(.system(size: 9, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.38))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                         }
                     }
                 }
@@ -500,12 +624,12 @@ private struct ActivityTimelineCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(WeekFitLocalizedString(title))
                     .font(.system(size: ActivityTypography.metricSecondary, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
                     .lineLimit(1)
 
                 Text(value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
                     .monospacedDigit()
@@ -514,15 +638,21 @@ private struct ActivityTimelineCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func barGradient(for value: Double) -> LinearGradient {
-        let ratio = value / maxCalories
+    private func barGradient(for point: ActivityTimelinePoint) -> LinearGradient {
+        let value = displayCalories(for: point)
+        let ratio = value / chartYAxisMax
 
         let colors: [Color]
 
         if value <= 0 {
             colors = [
-                Color.white.opacity(0.04),
-                Color.white.opacity(0.015)
+                WeekFitTheme.whiteOpacity(0.04),
+                WeekFitTheme.whiteOpacity(0.015)
+            ]
+        } else if isSleepNoise(point) {
+            colors = [
+                WeekFitTheme.whiteOpacity(0.06),
+                WeekFitTheme.whiteOpacity(0.02)
             ]
         } else if ratio >= 0.75 {
             colors = [
@@ -537,11 +667,34 @@ private struct ActivityTimelineCard: View {
         } else {
             colors = [
                 ActivityStyle.teal.opacity(0.45),
-                Color.white.opacity(0.05)
+                WeekFitTheme.whiteOpacity(0.05)
             ]
         }
 
         return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+    }
+
+    private func displayCalories(for point: ActivityTimelinePoint) -> Double {
+        guard point.activeCalories > 0 else { return 0 }
+        if isSleepNoise(point) { return 0 }
+        return point.activeCalories
+    }
+
+    private func isSleepNoise(_ point: ActivityTimelinePoint) -> Bool {
+        guard point.activeCalories < Self.sleepNoiseThresholdKcal else { return false }
+        return hourIntersectsSleep(point.hour)
+    }
+
+    private func hourIntersectsSleep(_ hour: Int) -> Bool {
+        guard let sleepInterval else { return false }
+
+        let calendar = Calendar.current
+        guard let hourStart = calendar.date(byAdding: .hour, value: hour, to: dayStart),
+              let hourEnd = calendar.date(byAdding: .hour, value: hour + 1, to: dayStart) else {
+            return false
+        }
+
+        return sleepInterval.intersects(DateInterval(start: hourStart, end: hourEnd))
     }
 }
 
@@ -729,7 +882,7 @@ private struct WeeklyContextCard: View {
 
                         ZStack(alignment: .bottom) {
                             Capsule()
-                                .fill(Color.white.opacity(item.isSelected ? 0.075 : 0.040))
+                                .fill(WeekFitTheme.whiteOpacity(item.isSelected ? 0.075 : 0.040))
                                 .frame(width: item.isSelected ? 13 : 10, height: chartHeight)
 
                             Capsule()
@@ -761,7 +914,7 @@ private struct WeeklyContextCard: View {
     private func barFill(for item: WeeklyContextItem) -> LinearGradient {
         let colors: [Color] = item.isSelected
         ? [ActivityStyle.activityColor, ActivityStyle.teal.opacity(0.75)]
-        : [Color.white.opacity(0.38), Color.white.opacity(0.18)]
+        : [WeekFitTheme.whiteOpacity(0.38), WeekFitTheme.whiteOpacity(0.18)]
 
         return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
     }
@@ -830,7 +983,7 @@ private struct SessionsCard: View {
                 if !sessions.isEmpty {
                     Text(WeekFitCountPluralization.phrase(count: sessions.count, category: .session))
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
                 }
             }
 
@@ -867,11 +1020,11 @@ private struct SessionRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(session.title)
                         .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
 
                     Text(session.timeRange)
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.46))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
                 }
 
                 Spacer()
@@ -879,12 +1032,12 @@ private struct SessionRow: View {
                 HStack(spacing: 6) {
                     Text(DurationFormatter.fullMinutes(session.durationMinutes))
                         .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.86))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
                         .monospacedDigit()
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: ActivityTypography.helperText, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.24))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
                 }
             }
         }
@@ -895,6 +1048,90 @@ private struct SessionRow: View {
 }
 
 // MARK: - Session Detail
+
+private struct ActivitySessionSourcePresentation {
+    enum Kind {
+        case appleWatch
+        case healthKit
+        case planner
+        case other(String)
+    }
+
+    let kind: Kind
+
+    init(source: String?) {
+        let trimmed = source?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let normalized = trimmed.lowercased()
+
+        switch normalized {
+        case "apple watch", "applewatch":
+            kind = .appleWatch
+        case "planner", "today":
+            kind = .planner
+        case "apple health", "applehealth", "healthkit", "appleworkout":
+            kind = .healthKit
+        case "":
+            kind = .healthKit
+        default:
+            if normalized.contains("watch") {
+                kind = .appleWatch
+            } else {
+                kind = .other(trimmed.isEmpty ? normalized : trimmed)
+            }
+        }
+    }
+
+    var badgeSystemImage: String {
+        switch kind {
+        case .appleWatch:
+            return "applewatch"
+        case .healthKit:
+            return "heart.text.square.fill"
+        case .planner:
+            return "calendar.badge.checkmark"
+        case .other:
+            return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    var badgeText: String {
+        switch kind {
+        case .appleWatch:
+            return String(
+                format: WeekFitLocalizedString("activity.syncedFrom"),
+                WeekFitLocalizedString("activity.data.source.appleWatch")
+            )
+        case .healthKit:
+            return String(
+                format: WeekFitLocalizedString("activity.syncedFrom"),
+                WeekFitLocalizedString("activity.data.source.appleHealth")
+            )
+        case .planner:
+            return WeekFitLocalizedString("activity.loggedFromPlan")
+        case .other(let name):
+            return String(format: WeekFitLocalizedString("activity.syncedFrom"), name)
+        }
+    }
+
+    var footerText: String {
+        switch kind {
+        case .planner:
+            return WeekFitLocalizedString("activity.dataFromPlan")
+        case .appleWatch:
+            return String(
+                format: WeekFitLocalizedString("activity.dataFrom"),
+                WeekFitLocalizedString("activity.data.source.appleWatch")
+            )
+        case .healthKit:
+            return String(
+                format: WeekFitLocalizedString("activity.dataFrom"),
+                WeekFitLocalizedString("activity.data.source.appleHealth")
+            )
+        case .other(let name):
+            return String(format: WeekFitLocalizedString("activity.dataFrom"), name)
+        }
+    }
+}
 
 struct ActivitySessionDetailView: View {
     let session: ActivitySessionSnapshot
@@ -908,6 +1145,8 @@ struct ActivitySessionDetailView: View {
     @State private var isRoutePreviewEnabled = true
     @State private var isClosing = false
     @State private var remainingSupplementalLoads = 0
+    @State private var supplementalMetricsSettled = false
+    @State private var routeLoadingSettled = false
 
     private var detail: ActivitySessionDetailSnapshot? {
         loadedDetail ?? session.detail
@@ -919,6 +1158,14 @@ struct ActivitySessionDetailView: View {
 
     private var routePoints: [WorkoutRoutePoint] {
         detail?.routePoints ?? []
+    }
+
+    private var routeMapRenderIdentity: String {
+        guard let first = routePoints.first, let last = routePoints.last else {
+            return "route-empty"
+        }
+
+        return "route-\(routePoints.count)-\(first.latitude)-\(first.longitude)-\(last.latitude)-\(last.longitude)"
     }
 
     private var sessionDurationSeconds: TimeInterval {
@@ -1076,28 +1323,24 @@ struct ActivitySessionDetailView: View {
             ActivityStyle.screenBackground
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                header
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 9) {
+                    sessionHeroCard
+                    metricsCard
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 9) {
-                        sessionHeroCard
-                        metricsCard
-
-                        if isHeartRateLoading || !heartRateSamples.isEmpty {
-                            heartRateCard
-                        }
-
-                        if isRouteLoading || routePoints.count > 1 {
-                            routeCard
-                        }
-
-                        footer
+                    if isHeartRateLoading || !heartRateSamples.isEmpty {
+                        heartRateCard
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 5)
-                    .padding(.bottom, 36)
+
+                    if isRouteLoading || routePoints.count > 1 {
+                        routeCard
+                    }
+
+                    footer
                 }
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 36)
             }
         }
         .preferredColorScheme(.dark)
@@ -1117,37 +1360,22 @@ struct ActivitySessionDetailView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 13) {
-            Spacer()
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                closeDetail()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
-                    .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
-                    }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
+    private var closeButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            closeDetail()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
+                .overlay {
+                    Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
+                }
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 11)
-        .background {
-            ActivityStyle.screenBackground.ignoresSafeArea(edges: .top)
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.white.opacity(0.04))
-                .frame(height: 1)
-        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(AppText.Common.Action.close))
     }
 
     private func closeDetail() {
@@ -1163,68 +1391,73 @@ struct ActivitySessionDetailView: View {
     }
 
     private var sessionHeroCard: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 14) {
             ZStack {
                 Circle()
                     .fill(session.color.opacity(0.12))
-                    .frame(width: 108, height: 108)
+                    .frame(width: 84, height: 84)
 
                 Circle()
                     .stroke(session.color.opacity(0.90), lineWidth: 2)
-                    .frame(width: 108, height: 108)
+                    .frame(width: 84, height: 84)
 
                 Image(systemName: session.icon)
-                    .font(.system(size: 43, weight: .semibold))
+                    .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(session.color)
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(session.title)
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(session.title)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+
+                    Spacer(minLength: 0)
+
+                    closeButton
+                }
 
                 Text(activityDateText)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
                     .lineLimit(1)
 
                 Text(detailTimeRange)
                     .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                     .lineLimit(1)
                     .minimumScaleFactor(0.84)
 
                 HStack(spacing: 5) {
-                    Image(systemName: "applewatch")
+                    Image(systemName: sourcePresentation.badgeSystemImage)
                         .font(.system(size: 11, weight: .bold))
 
-                    Text(syncedText)
+                    Text(sourcePresentation.badgeText)
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
                 }
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .background {
                     Capsule()
-                        .fill(Color.white.opacity(0.045))
+                        .fill(WeekFitTheme.whiteOpacity(0.045))
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 5)
+        .padding(.horizontal, 2)
         .padding(.vertical, 2)
+    }
+
+    private var sourcePresentation: ActivitySessionSourcePresentation {
+        ActivitySessionSourcePresentation(source: detail?.source)
     }
 
     private var activityDateText: String {
         localizedDetailsDate(session.startDate)
-    }
-
-    private var syncedText: String {
-        let source = detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")
-        return String(format: WeekFitLocalizedString("activity.syncedFrom"), source)
     }
 
     private var detailTimeRange: String {
@@ -1269,7 +1502,7 @@ struct ActivitySessionDetailView: View {
                     }
                 }
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                 .monospacedDigit()
             }
 
@@ -1306,19 +1539,19 @@ struct ActivitySessionDetailView: View {
                             if let minute = value.as(Double.self) {
                                 Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), Int(minute.rounded())))
                                     .font(.system(size: 9, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.38))
+                                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                             }
                         }
                     }
                 }
                 .chartYAxis {
                     AxisMarks(values: heartRateYAxisValues) { value in
-                        AxisGridLine().foregroundStyle(Color.white.opacity(0.055))
+                        AxisGridLine().foregroundStyle(WeekFitTheme.whiteOpacity(0.055))
                         AxisValueLabel {
                             if let number = value.as(Double.self) {
                                 Text("\(Int(number))")
                                     .font(.system(size: 9, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.38))
+                                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                             }
                         }
                     }
@@ -1356,6 +1589,7 @@ struct ActivitySessionDetailView: View {
                         isRouteMapPresented = true
                     } label: {
                         WorkoutRouteMapPreview(points: routePoints, color: session.color)
+                            .id(routeMapRenderIdentity)
                             .frame(height: 132)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -1365,7 +1599,7 @@ struct ActivitySessionDetailView: View {
                                         LinearGradient(
                                             colors: [
                                                 session.color.opacity(0.55),
-                                                Color.white.opacity(0.14),
+                                                WeekFitTheme.whiteOpacity(0.14),
                                                 session.color.opacity(0.22)
                                             ],
                                             startPoint: .topLeading,
@@ -1396,7 +1630,8 @@ struct ActivitySessionDetailView: View {
                         )
                     }
 
-                    if let distanceKm = detail?.distanceKm {
+                    if let detail, detail.shouldShowDistanceMetrics,
+                       let distanceKm = detail.distanceKm {
                         routeMetric(
                             title: "activity.metric.distance",
                             value: MetricFormatter.distance(distanceKm),
@@ -1415,7 +1650,7 @@ struct ActivitySessionDetailView: View {
 
     private var timeInZonesCard: some View {
         VStack(alignment: .leading, spacing: 11) {
-            SectionLabel("activity.timeInZones")
+            SectionLabel(WeekFitLocalizedString("activity.timeInZones"))
 
             HStack(spacing: 14) {
                 ZoneDonutView(zones: heartRateZones)
@@ -1430,14 +1665,14 @@ struct ActivitySessionDetailView: View {
 
                             Text(zone.title)
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.72))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                                 .frame(width: 42, alignment: .leading)
                                 .lineLimit(1)
 
                             GeometryReader { proxy in
                                 ZStack(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color.white.opacity(0.065))
+                                        .fill(WeekFitTheme.whiteOpacity(0.065))
 
                                     Capsule()
                                         .fill(zone.color)
@@ -1448,7 +1683,7 @@ struct ActivitySessionDetailView: View {
 
                             Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.70))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(width: 58, alignment: .trailing)
@@ -1456,7 +1691,7 @@ struct ActivitySessionDetailView: View {
 
                             Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.44))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.44))
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(width: 34, alignment: .trailing)
@@ -1473,9 +1708,9 @@ struct ActivitySessionDetailView: View {
     }
 
     private var footer: some View {
-        Text(String(format: WeekFitLocalizedString("activity.dataFrom"), detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")))
+        Text(sourcePresentation.footerText)
             .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-            .foregroundStyle(.white.opacity(0.38))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 3)
     }
@@ -1505,7 +1740,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let distanceKm = detail?.distanceKm {
+        if let detail, detail.shouldShowDistanceMetrics, let distanceKm = detail.distanceKm {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.distance",
@@ -1541,7 +1776,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let speed = detail?.averageSpeedKmh {
+        if let detail, detail.shouldShowDistanceMetrics, let speed = detail.averageSpeedKmh {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.avgSpeed",
@@ -1553,7 +1788,7 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let maxSpeedKmh {
+        if detail?.shouldShowDistanceMetrics == true, let maxSpeedKmh {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.maxSpeed",
@@ -1607,8 +1842,8 @@ struct ActivitySessionDetailView: View {
     private var metricsColumnCount: Int {
         let count = metricItems.count
 
-        if count >= 7 {
-            return 4
+        if count >= 6 {
+            return 3
         }
 
         if count >= 4 {
@@ -1619,6 +1854,7 @@ struct ActivitySessionDetailView: View {
     }
 
     private var maxSpeedKmh: Double? {
+        guard detail?.shouldShowDistanceMetrics != false else { return nil }
         guard routePoints.count > 1 else { return nil }
 
         let speeds = zip(routePoints, routePoints.dropFirst()).compactMap { start, end -> Double? in
@@ -1648,11 +1884,11 @@ struct ActivitySessionDetailView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(WeekFitLocalizedString(title))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
 
                 Text(value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                     .monospacedDigit()
             }
         }
@@ -1701,19 +1937,25 @@ struct ActivitySessionDetailView: View {
     private func loadSupplementalDetails() async {
         guard let workoutID = session.workoutID else { return }
 
-        if let cached = ActivitySessionDetailCache.detail(for: workoutID) {
-            loadedDetail = cached
-            return
-        }
-
         let baseDetail = detail
         let activityType = baseDetail?.activityType ?? .other
         let start = baseDetail?.startDate ?? session.startDate
         let end = baseDetail?.endDate ?? session.endDate
+        let expectsRoute = ActivityRouteExpectation.expectsRoute(for: activityType)
 
+        if let cached = ActivitySessionDetailCache.detail(
+            for: workoutID,
+            activityType: activityType
+        ) {
+            loadedDetail = cached
+            return
+        }
+
+        supplementalMetricsSettled = false
+        routeLoadingSettled = !expectsRoute
         isHeartRateLoading = true
-        isRouteLoading = true
-        remainingSupplementalLoads = 3
+        isRouteLoading = expectsRoute
+        remainingSupplementalLoads = 2
 
         Task {
             let metrics = await healthManager.loadWorkoutSupplementalMetrics(
@@ -1728,7 +1970,7 @@ struct ActivitySessionDetailView: View {
                     mergeSupplementalDetails(metrics)
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                finishMetricsSupplementalLoad(for: workoutID)
             }
         }
 
@@ -1745,27 +1987,80 @@ struct ActivitySessionDetailView: View {
                     mergeSupplementalDetails(heartRate)
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                finishMetricsSupplementalLoad(for: workoutID)
             }
         }
 
-        Task {
+        if expectsRoute {
+            Task {
+                await loadRouteDetailsWithRetry(
+                    workoutID: workoutID,
+                    start: start,
+                    end: end
+                )
+            }
+        }
+    }
+
+    private func loadRouteDetailsWithRetry(
+        workoutID: UUID,
+        start: Date,
+        end: Date
+    ) async {
+        let retryDelaysSeconds: [TimeInterval] = [0, 1.5, 3, 6, 10, 15]
+        let retryStart = Date()
+
+        for (attemptIndex, scheduledOffset) in retryDelaysSeconds.enumerated() {
+            if Task.isCancelled { return }
+
+            let elapsed = Date().timeIntervalSince(retryStart)
+            let wait = scheduledOffset - elapsed
+            if wait > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            }
+
+            if Task.isCancelled { return }
+
             let route = await healthManager.loadWorkoutRouteDetails(
                 for: workoutID,
                 start: start,
                 end: end
             )
 
-            await MainActor.run {
-                isRouteLoading = false
+            let loadedRoute = (route?.routePoints.count ?? 0) > 1
 
-                if let route, route.routePoints.count > 1 {
+            await MainActor.run {
+                if let route, loadedRoute {
                     mergeSupplementalDetails(route)
+                    isRoutePreviewEnabled = true
                 }
 
-                finishSupplementalLoad(for: workoutID)
+                let isLastAttempt = attemptIndex == retryDelaysSeconds.count - 1
+                if loadedRoute || isLastAttempt {
+                    isRouteLoading = false
+                    routeLoadingSettled = true
+                    cacheDetailIfReady(for: workoutID)
+                }
+            }
+
+            if loadedRoute {
+                return
             }
         }
+    }
+
+    private func finishMetricsSupplementalLoad(for workoutID: UUID) {
+        remainingSupplementalLoads = max(remainingSupplementalLoads - 1, 0)
+
+        if remainingSupplementalLoads == 0 {
+            supplementalMetricsSettled = true
+            cacheDetailIfReady(for: workoutID)
+        }
+    }
+
+    private func cacheDetailIfReady(for workoutID: UUID) {
+        guard supplementalMetricsSettled, routeLoadingSettled, let loadedDetail else { return }
+        ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
     }
 
     private func mergeSupplementalDetails(_ supplemental: WorkoutHealthDetailSnapshot) {
@@ -1796,13 +2091,9 @@ struct ActivitySessionDetailView: View {
             steps: supplemental.steps ?? base?.steps,
             cadence: supplemental.cadence ?? base?.cadence
         )
-    }
 
-    private func finishSupplementalLoad(for workoutID: UUID) {
-        remainingSupplementalLoads = max(remainingSupplementalLoads - 1, 0)
-
-        if remainingSupplementalLoads == 0, let loadedDetail {
-            ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
+        if supplemental.routePoints.count > 1 {
+            isRoutePreviewEnabled = true
         }
     }
 }
@@ -1833,11 +2124,86 @@ private struct HeartRateZoneDefinition: Identifiable, Hashable {
 }
 
 @MainActor
+private enum ActivityDistanceMetricsExpectation {
+    static func suppresses(
+        activityType: HKWorkoutActivityType,
+        title: String,
+        icon: String
+    ) -> Bool {
+        switch activityType {
+        case .traditionalStrengthTraining,
+             .functionalStrengthTraining,
+             .yoga,
+             .flexibility,
+             .coreTraining,
+             .pilates,
+             .mindAndBody,
+             .cooldown:
+            return true
+        default:
+            break
+        }
+
+        let haystack = [title, icon].joined(separator: " ").lowercased()
+
+        if containsAny(haystack, [
+            "upper body", "lower body", "full body", "strength", "gym",
+            "weights", "dumbbell", "barbell", "сил", "зал", "трениров",
+            "figure.strengthtraining", "figure.core.training"
+        ]) {
+            return true
+        }
+
+        if containsAny(haystack, ["yoga", "йога", "figure.yoga"]) {
+            return true
+        }
+
+        if containsAny(haystack, [
+            "stretch", "stretching", "flexibility", "mobility", "растяж", "мобил",
+            "cooldown", "figure.cooldown"
+        ]) {
+            return true
+        }
+
+        return false
+    }
+
+    private static func containsAny(_ text: String, _ tokens: [String]) -> Bool {
+        tokens.contains { text.contains($0) }
+    }
+}
+
+@MainActor
+private enum ActivityRouteExpectation {
+    static func expectsRoute(for activityType: HKWorkoutActivityType) -> Bool {
+        switch activityType {
+        case .running, .walking, .hiking, .cycling,
+             .wheelchairWalkPace, .wheelchairRunPace,
+             .crossCountrySkiing, .downhillSkiing, .snowboarding,
+             .skatingSports, .rowing, .paddleSports:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+@MainActor
 private enum ActivitySessionDetailCache {
     private static var details: [UUID: ActivitySessionDetailSnapshot] = [:]
 
-    static func detail(for workoutID: UUID) -> ActivitySessionDetailSnapshot? {
-        details[workoutID]
+    static func detail(
+        for workoutID: UUID,
+        activityType: HKWorkoutActivityType
+    ) -> ActivitySessionDetailSnapshot? {
+        guard let cached = details[workoutID] else { return nil }
+
+        if ActivityRouteExpectation.expectsRoute(for: activityType),
+           cached.routePoints.count <= 1 {
+            return nil
+        }
+
+        return cached
     }
 
     static func store(_ detail: ActivitySessionDetailSnapshot, for workoutID: UUID) {
@@ -1871,12 +2237,12 @@ private struct HeartRateZoneLegendRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(WeekFitLocalizedString(zone.title))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(isActive ? 0.74 : 0.44))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.74 : 0.44))
                     .lineLimit(1)
 
                 Text(zone.range)
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(isActive ? 0.42 : 0.28))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.42 : 0.28))
                     .lineLimit(1)
             }
             .frame(width: 70, alignment: .leading)
@@ -1884,7 +2250,7 @@ private struct HeartRateZoneLegendRow: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.055))
+                        .fill(WeekFitTheme.whiteOpacity(0.055))
 
                     Capsule()
                         .fill(zone.color.opacity(isActive ? 0.95 : 0.20))
@@ -1895,7 +2261,7 @@ private struct HeartRateZoneLegendRow: View {
 
             Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(isActive ? 0.70 : 0.40))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.70 : 0.40))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 58, alignment: .trailing)
@@ -1903,7 +2269,7 @@ private struct HeartRateZoneLegendRow: View {
 
             Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(isActive ? 0.48 : 0.34))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.48 : 0.34))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 34, alignment: .trailing)
@@ -1953,7 +2319,7 @@ private struct SessionDetailSkeletonLine: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.018))
+                .fill(WeekFitTheme.whiteOpacity(0.018))
         }
     }
 }
@@ -1989,30 +2355,33 @@ private struct SessionMetricGridCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
+            HStack(alignment: .top, spacing: 5) {
                 Image(systemName: item.icon)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(item.color)
                     .frame(width: 14)
+                    .padding(.top, 1)
 
                 Text(WeekFitLocalizedString(item.title))
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.78)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(minHeight: 26, alignment: .topLeading)
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(item.value)
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
 
                 if !item.unit.isEmpty {
                     Text(item.unit)
                         .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
                         .lineLimit(1)
                 }
             }
@@ -2034,7 +2403,7 @@ private struct ZoneDonutView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: 12)
+                .stroke(WeekFitTheme.whiteOpacity(0.07), lineWidth: 12)
 
             ForEach(donutSegments) { segment in
                 Circle()
@@ -2049,9 +2418,9 @@ private struct ZoneDonutView: View {
                     .foregroundStyle(.white)
                     .monospacedDigit()
 
-                Text("activity.min")
+                Text(WeekFitLocalizedString("activity.min"))
                     .font(.system(size: ActivityTypography.helperText, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
             }
         }
     }
@@ -2165,6 +2534,8 @@ private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
 
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
     private var coordinates: [CLLocationCoordinate2D] {
         WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
     }
@@ -2177,7 +2548,7 @@ private struct WorkoutRouteMapPreview: View {
         ZStack {
             RouteMapRenderGate {
                 if let mapRegion {
-                    Map(initialPosition: .region(mapRegion), interactionModes: []) {
+                    Map(position: $cameraPosition, interactionModes: []) {
                         routeContent
                     }
                     .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
@@ -2206,20 +2577,32 @@ private struct WorkoutRouteMapPreview: View {
 
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .padding(7)
                         .background {
                             Circle()
                                 .fill(.black.opacity(0.52))
                                 .overlay {
                                     Circle()
-                                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                                        .stroke(WeekFitTheme.whiteOpacity(0.16), lineWidth: 1)
                                 }
                         }
                         .padding(8)
                 }
             }
             .allowsHitTesting(false)
+        }
+        .onAppear {
+            updateCameraPosition()
+        }
+        .onChange(of: points.count) { _, _ in
+            updateCameraPosition()
+        }
+    }
+
+    private func updateCameraPosition() {
+        if let mapRegion {
+            cameraPosition = .region(mapRegion)
         }
     }
 
@@ -2242,7 +2625,7 @@ private struct WorkoutRouteMapPreview: View {
                     .frame(width: 9, height: 9)
                     .overlay {
                         Circle()
-                            .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                            .stroke(WeekFitTheme.whiteOpacity(0.92), lineWidth: 2)
                     }
             }
         }
@@ -2250,7 +2633,7 @@ private struct WorkoutRouteMapPreview: View {
         if let finish = coordinates.last, coordinates.count > 1 {
             Annotation("", coordinate: finish, anchor: .center) {
                 Circle()
-                    .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                    .stroke(WeekFitTheme.whiteOpacity(0.95), lineWidth: 2)
                     .background(Circle().fill(color.opacity(0.35)))
                     .frame(width: 11, height: 11)
             }
@@ -2306,6 +2689,11 @@ private struct WorkoutRouteDetailMapView: View {
                 canRenderMap = true
             }
         }
+        .onChange(of: points.count) { _, _ in
+            if let region = WorkoutRouteGeometry.mapRegion(for: points) {
+                cameraPosition = .region(region)
+            }
+        }
         .onDisappear {
             canRenderMap = false
             isDismissing = false
@@ -2321,7 +2709,7 @@ private struct WorkoutRouteDetailMapView: View {
 
                 Text(title)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2332,11 +2720,11 @@ private struct WorkoutRouteDetailMapView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                     .frame(width: 42, height: 42)
-                    .background(Circle().fill(Color.white.opacity(0.075)))
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
                     .overlay {
-                        Circle().stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)
@@ -2410,7 +2798,7 @@ private struct RouteEndpointMarker: View {
                 .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
 
             Circle()
-                .stroke(Color.white.opacity(0.95), lineWidth: 2)
+                .stroke(WeekFitTheme.whiteOpacity(0.95), lineWidth: 2)
                 .frame(width: style == .start ? 14 : 16, height: style == .start ? 14 : 16)
 
             if style == .finish {
@@ -2429,13 +2817,13 @@ private struct EmptySessionsRow: View {
             CircleIcon(systemName: "figure.walk", color: ActivityStyle.activityColor, size: 36)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("activity.noWorkoutsRecorded")
+                Text(WeekFitLocalizedString("activity.noWorkoutsRecorded"))
                     .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
 
-                Text("activity.activityTotalsAreShownFromAppleHealth")
+                Text(WeekFitLocalizedString("activity.activityTotalsAreShownFromAppleHealth"))
                     .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
             }
 
             Spacer()
@@ -2476,7 +2864,7 @@ private struct SectionLabel: View {
         Text(text)
             .font(.system(size: ActivityTypography.sectionLabel, weight: .bold, design: .rounded))
             .tracking(1.8)
-            .foregroundStyle(.white.opacity(0.68))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
     }
 }
 
@@ -2497,20 +2885,20 @@ private enum ActivityTypography {
 }
 
 private enum ActivityStyle {
-    static let screenBackground = Color(red: 0.018, green: 0.019, blue: 0.022)
-    static let cardBackground = Color(red: 0.045, green: 0.048, blue: 0.055)
-    static let innerCardBackground = Color.white.opacity(0.035)
-    static let border = Color.white.opacity(0.065)
+    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
+    static var border: Color { WeekFitTheme.border }
 
-    static let activityColor = Color(red: 0.16, green: 0.80, blue: 0.43)
-    static let green = Color(red: 0.45, green: 0.78, blue: 0.45)
-    static let teal = Color(red: 0.25, green: 0.78, blue: 0.82)
-    static let blue = Color(red: 0.30, green: 0.72, blue: 0.95)
-    static let purple = Color(red: 0.58, green: 0.40, blue: 0.95)
-    static let yellow = Color(red: 0.96, green: 0.86, blue: 0.20)
-    static let orange = Color(red: 0.96, green: 0.54, blue: 0.16)
-    static let amber = Color(red: 0.92, green: 0.68, blue: 0.30)
-    static let red = Color(red: 0.96, green: 0.42, blue: 0.42)
+    static var activityColor: Color { WeekFitTheme.accent(Color(red: 0.16, green: 0.80, blue: 0.43)) }
+    static var green: Color { WeekFitTheme.accent(Color(red: 0.45, green: 0.78, blue: 0.45)) }
+    static var teal: Color { WeekFitTheme.accent(Color(red: 0.25, green: 0.78, blue: 0.82)) }
+    static var blue: Color { WeekFitTheme.accent(Color(red: 0.30, green: 0.72, blue: 0.95)) }
+    static var purple: Color { WeekFitTheme.accent(Color(red: 0.58, green: 0.40, blue: 0.95)) }
+    static var yellow: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.86, blue: 0.20)) }
+    static var orange: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.54, blue: 0.16)) }
+    static var amber: Color { WeekFitTheme.accent(Color(red: 0.92, green: 0.68, blue: 0.30)) }
+    static var red: Color { WeekFitTheme.accent(Color(red: 0.96, green: 0.42, blue: 0.42)) }
 }
 
 private enum DurationFormatter {
@@ -2615,8 +3003,8 @@ private extension View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.030),
-                                Color.white.opacity(0.004)
+                                WeekFitTheme.whiteOpacity(0.030),
+                                WeekFitTheme.whiteOpacity(0.004)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -2650,7 +3038,7 @@ private extension View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
     }
 }

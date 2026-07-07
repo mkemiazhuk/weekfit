@@ -25,7 +25,7 @@ struct PrivacySettingsView: View {
 
                         Text(WeekFitLocalizedString("privacy.settings.body"))
                             .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.58))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }

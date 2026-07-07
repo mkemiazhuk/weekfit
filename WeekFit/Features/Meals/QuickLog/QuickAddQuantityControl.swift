@@ -9,8 +9,8 @@ struct QuickAddQuantityControl: View {
     let onIncrement: () -> Void
     let onDecrement: () -> Void
 
-    private let collapsedSize: CGFloat = 42
-    private let expandedWidth: CGFloat = 96
+    private let collapsedSize: CGFloat = QuickActionSheetDesign.Row.actionButtonSize
+    private let expandedWidth: CGFloat = QuickActionSheetDesign.Row.actionExpandedWidth
 
     var body: some View {
         ZStack {
@@ -41,7 +41,7 @@ struct QuickAddQuantityControl: View {
                     }
 
                 Image(systemName: isSelected ? "checkmark" : "plus")
-                    .font(.system(size: isSelected ? 13 : 17, weight: .bold))
+                    .font(.system(size: isSelected ? 11.5 : 15, weight: .semibold))
                     .foregroundStyle(accentColor)
                     .frame(width: collapsedSize, height: collapsedSize)
 
@@ -67,8 +67,8 @@ struct QuickAddQuantityControl: View {
             stepperButton(systemName: "minus", action: onDecrement)
 
             Text(QuickLogServingMath.formattedQuantity(max(quantity, 1)))
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.94))
+                .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
                 .monospacedDigit()
                 .frame(minWidth: 24)
 
@@ -92,9 +92,9 @@ struct QuickAddQuantityControl: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(accentColor)
-                .frame(width: 28, height: 28)
+                .frame(width: 26, height: 26)
                 .background {
                     Circle()
                         .fill(accentColor.opacity(0.14))

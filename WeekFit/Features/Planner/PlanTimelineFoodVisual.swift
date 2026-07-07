@@ -155,7 +155,8 @@ enum PlanTimelineNutritionVisualResolver {
         .filter { !$0.isEmpty }
 
         for filename in candidates {
-            if let image = MealPhotoStore.image(for: filename),
+            if let image = MealPhotoStore.timelineImage(for: filename)
+                ?? MealPhotoStore.image(for: filename),
                FoodImageQualityValidator.isDisplayable(image) {
                 return image
             }
@@ -242,9 +243,9 @@ struct PlanTimelineNutritionAvatar: View {
         case .assetImage(let name, _):
             Image(name)
                 .resizable()
-                .scaledToFill()
+                .interpolation(.high)
+                .scaledToFit()
                 .frame(width: contentSize, height: contentSize)
-                .clipShape(Circle())
 
         case .localPhoto(let image, _):
             Image(uiImage: image)

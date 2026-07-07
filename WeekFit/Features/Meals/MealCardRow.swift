@@ -5,6 +5,8 @@ struct MealCardRow: View {
     var isQuickLogMode: Bool = false
     var onPlusTap: (() -> Void)? = nil
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
+
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let textTertiary = WeekFitTheme.tertiaryText
@@ -25,6 +27,8 @@ struct MealCardRow: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         HStack(spacing: isQuickLogMode ? 12 : 12) {
             mealImage
                 .frame(
@@ -36,7 +40,7 @@ struct MealCardRow: View {
                 HStack(alignment: .center, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .center, spacing: 6) {
-                            Text(meal.shortTitle)
+                            Text(meal.isFoodProduct ? meal.title : meal.localizedShortTitle)
                                 .font(.system(
                                     size: isQuickLogMode ? 17.2 : 15.4,
                                     weight: .bold,
@@ -65,7 +69,7 @@ struct MealCardRow: View {
                             }
                         }
 
-                        Text(meal.subtitle)
+                        Text(meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle)
                             .font(.system(
                                 size: isQuickLogMode ? 12.4 : 11.5,
                                 weight: .medium
@@ -127,7 +131,7 @@ struct MealCardRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: isQuickLogMode ? 23 : 20, style: .continuous)
                 .stroke(
-                    Color.white.opacity(0.035),
+                    WeekFitTheme.whiteOpacity(0.035),
                     lineWidth: 1
                 )
         }
@@ -153,14 +157,17 @@ struct MealCardRow: View {
             } else if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealImage(items)
 
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
-                Image(meal.imageName)
-                    .resizable()
-                    .scaledToFill()
+            } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
+                PremiumAssetImage(
+                    imageName: meal.imageName,
+                    style: .mealCard,
+                    accentColor: textTertiary,
+                    fallbackSystemName: "fork.knife"
+                )
 
             } else {
                 RoundedRectangle(cornerRadius: isQuickLogMode ? 18 : 12)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(WeekFitTheme.whiteOpacity(0.04))
                     .overlay {
                         Image(systemName: "fork.knife")
                             .font(.system(size: isQuickLogMode ? 20 : 14))
@@ -209,11 +216,11 @@ struct MealCardRow: View {
                 .foregroundStyle(textPrimary.opacity(0.9))
                 .frame(maxWidth: .infinity)
 
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
-            Rectangle().fill(Color.white.opacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
@@ -221,7 +228,7 @@ struct MealCardRow: View {
         .frame(height: isQuickLogMode ? 20 : 18)
         .background {
             Capsule()
-                .fill(Color.white.opacity(isQuickLogMode ? 0.030 : 0.025))
+                .fill(WeekFitTheme.whiteOpacity(isQuickLogMode ? 0.030 : 0.025))
         }
     }
 

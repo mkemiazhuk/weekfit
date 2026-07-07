@@ -95,16 +95,6 @@ struct CoachMetricsSnapshot {
     }
 }
 
-struct CoachGuidanceSnapshot {
-    let id: UUID
-    let createdAt: Date
-    let source: String
-    let metricsSnapshotID: UUID
-    let inputSignature: String
-    let guidance: CoachGuidanceV3
-}
-
-
 // Хелпер-структуры КБЖУ
 struct NutritionGoals {
     var calories: Double

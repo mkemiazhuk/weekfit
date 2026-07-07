@@ -15,7 +15,6 @@ final class NutritionViewModel: ObservableObject {
     @Published var currentMetrics: DailyNutritionMetrics?
     @Published var currentProfile: UserNutritionProfile?
     @Published private(set) var coachMetricsSnapshot: CoachMetricsSnapshot?
-    @Published private(set) var coachGuidanceSnapshot: CoachGuidanceSnapshot?
     @Published private(set) var coachStateRefreshID = UUID()
     
     @Published var manualWaterLiters: Double = 0
@@ -27,6 +26,9 @@ final class NutritionViewModel: ObservableObject {
     private var cachedPlannedActivities: [PlannedActivity] = []
     private var lastNutritionStateSignature = ""
     private let repository = NutritionRepository()
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     init() { load() }
 
@@ -40,13 +42,17 @@ final class NutritionViewModel: ObservableObject {
         nutritionResult = nil
         currentMetrics = nil
         currentProfile = nil
-        coachMetricsSnapshot = nil
-        coachGuidanceSnapshot = nil
+        invalidateCoachActivityReferences()
         coachStateRefreshID = UUID()
         manualWaterLiters = 0
-        cachedPlannedActivities = []
-        lastNutritionStateSignature = ""
         trackedNutritionDayStart = nil
+    }
+
+    /// Clears coach-side caches that retain live `PlannedActivity` model references.
+    func invalidateCoachActivityReferences() {
+        cachedPlannedActivities = []
+        coachMetricsSnapshot = nil
+        lastNutritionStateSignature = ""
     }
 
     /// Clears day-scoped nutrition totals when the selected calendar day changes.
@@ -61,7 +67,6 @@ final class NutritionViewModel: ObservableObject {
         currentMetrics = nil
         nutritionResult = nil
         coachMetricsSnapshot = nil
-        coachGuidanceSnapshot = nil
         coachStateRefreshID = UUID()
     }
 
@@ -111,14 +116,6 @@ final class NutritionViewModel: ObservableObject {
         let mealFats = Double(completedMeals.reduce(0) { $0 + $1.fats })
         let mealFiber = Double(completedMeals.reduce(0) { $0 + $1.fiber })
 
-        if !completedMeals.isEmpty {
-            updatedMetrics.calories = max(updatedMetrics.calories, mealCalories)
-            updatedMetrics.protein = max(updatedMetrics.protein, mealProtein)
-            updatedMetrics.carbs = max(updatedMetrics.carbs, mealCarbs)
-            updatedMetrics.fats = max(updatedMetrics.fats, mealFats)
-            updatedMetrics.fiber = max(updatedMetrics.fiber, mealFiber)
-        }
-        
         if isEarlyMorning && !hasLoggedMeals && completedMeals.isEmpty {
             updatedMetrics.calories = 0.0
             updatedMetrics.protein = 0.0
@@ -127,7 +124,14 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.waterLiters = 0.0
         } else {
             let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
-            updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
+
+            // Planned logs reconcile every pass so deletions shrink totals.
+            updatedMetrics.calories = max(metrics.calories, mealCalories)
+            updatedMetrics.protein = max(metrics.protein, mealProtein)
+            updatedMetrics.carbs = max(metrics.carbs, mealCarbs)
+            updatedMetrics.fats = max(metrics.fats, mealFats)
+            updatedMetrics.fiber = max(metrics.fiber, mealFiber)
+            updatedMetrics.waterLiters = max(metrics.waterLiters, loggedWaterLiters)
         }
 
         // Передача сквозного контекста в обновленный NutritionCoreEngine
@@ -194,41 +198,6 @@ final class NutritionViewModel: ObservableObject {
         )
         #endif
         coachStateRefreshID = newRefreshID
-    }
-
-    func committedCoachGuidance(
-        metricsSnapshotID: UUID,
-        inputSignature: String
-    ) -> CoachGuidanceV3? {
-        guard let snapshot = coachGuidanceSnapshot,
-              snapshot.metricsSnapshotID == metricsSnapshotID,
-              snapshot.inputSignature == inputSignature else {
-            return nil
-        }
-
-        return snapshot.guidance
-    }
-
-    func commitCoachGuidance(
-        _ guidance: CoachGuidanceV3,
-        metricsSnapshotID: UUID,
-        inputSignature: String,
-        source: String
-    ) {
-        if let existing = coachGuidanceSnapshot,
-           existing.metricsSnapshotID == metricsSnapshotID,
-           existing.inputSignature == inputSignature {
-            return
-        }
-
-        coachGuidanceSnapshot = CoachGuidanceSnapshot(
-            id: UUID(),
-            createdAt: Date(),
-            source: source,
-            metricsSnapshotID: metricsSnapshotID,
-            inputSignature: inputSignature,
-            guidance: guidance
-        )
     }
 
     private func nutritionStateSignature(
@@ -490,13 +459,14 @@ final class NutritionViewModel: ObservableObject {
     }
 
     private func isTrainingActivity(_ activity: PlannedActivity) -> Bool {
-        let kind = CoachActivityContextResolverV3.kind(for: activity)
+        let snapshot = CoachPlannedActivitySnapshot(from: activity)
+        let kind = CoachActivityContextResolver.kind(for: snapshot)
         return kind == .workout || kind == .endurance
     }
 
     private func trainingStress(_ activities: [PlannedActivity]) -> Int {
         activities.reduce(0) { total, activity in
-            switch CoachActivityContextResolverV3.load(for: activity) {
+            switch CoachActivityContextResolver.load(for: CoachPlannedActivitySnapshot(from: activity)) {
             case .low:
                 return total + 1
             case .moderate:

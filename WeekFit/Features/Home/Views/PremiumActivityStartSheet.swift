@@ -12,32 +12,27 @@ struct PremiumActivityStartSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
+    @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var coachInputProvider: CoachInputProvider
+    @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var allPlannedActivities: [PlannedActivity]
 
     @State private var currentSubTab: String = "Workout"
 
-    @Namespace private var tabNamespace
-
     private var activeLiveActivity: PlannedActivity? {
         let now = Date()
         let calendar = Calendar.current
 
         return allPlannedActivities.first { activity in
-            guard !activity.isCompleted,
-                  !activity.isSkipped,
-                  calendar.isDate(activity.date, inSameDayAs: now),
+            guard calendar.isDate(activity.date, inSameDayAs: now),
                   isTrackableLiveActivity(activity)
             else { return false }
 
-            let endLimit = calendar.date(
-                byAdding: .minute,
-                value: max(activity.durationMinutes, 1),
-                to: activity.date
-            ) ?? activity.date
-
-            return activity.date <= now && now <= endLimit
+            return activity.terminalState(now: now) == .active
         }
     }
 
@@ -85,145 +80,36 @@ struct PremiumActivityStartSheet: View {
 
                 if let liveItem = liveActivity {
                     liveSessionCard(liveItem)
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 14)
+                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                        .padding(.bottom, 12)
                 }
 
-                segmentedControl
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 8)
-
-                contextLine
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
+                QuickActionSheetSegmentedControl(
+                    segments: [
+                        QuickActionSheetSegment(
+                            id: "Workout",
+                            title: WeekFitLocalizedString("home.activityStart.tab.workout")
+                        ),
+                        QuickActionSheetSegment(
+                            id: "Recovery",
+                            title: WeekFitLocalizedString("home.activityStart.tab.recovery")
+                        )
+                    ],
+                    selection: $currentSubTab
+                )
+                .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                .padding(.bottom, QuickActionSheetDesign.Layout.segmentedBottomPadding)
 
                 activityOptionsList(liveActivity: liveActivity)
             }
         }
     }
 
-    private var grabber: some View {
-        Capsule()
-            .fill(.white.opacity(0.18))
-            .frame(width: 42, height: 4)
-    }
-
-    private var ambientGlow: some View {
-        VStack {
-            Circle()
-                .fill(selectedAccent.opacity(0.12))
-                .frame(width: 260, height: 260)
-                .blur(radius: 70)
-                .offset(y: -110)
-
-            Spacer()
-        }
-        .allowsHitTesting(false)
-    }
-
-    private var sheetHeader: some View {
-        ZStack {
-            VStack(spacing: 3) {
-                Text(activeLiveActivity != nil ? WeekFitLocalizedString("home.activityStart.activeSession.title") : WeekFitLocalizedString("home.activityStart.title"))
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.96))
-
-                Text(activeLiveActivity != nil ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle") : WeekFitLocalizedString("home.activityStart.subtitle"))
-                    .font(.system(size: 11.8, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.38))
-                    .lineLimit(1)
-            }
-
-            HStack {
-                Spacer()
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    isPresented = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .frame(width: 34, height: 34)
-                        .background(
-                            Circle()
-                                .fill(.white.opacity(0.055))
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(.white.opacity(0.055), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .frame(height: 48)
-    }
-
-    private var segmentedControl: some View {
-        HStack(spacing: 0) {
-            segmentButton(id: "Workout", title: WeekFitLocalizedString("home.activityStart.tab.workout"))
-            segmentButton(id: "Recovery", title: WeekFitLocalizedString("home.activityStart.tab.recovery"))
-        }
-        .padding(3)
-        .frame(height: 38)
-        .background(
-            Capsule()
-                .fill(.white.opacity(0.036))
-        )
-        .overlay {
-            Capsule()
-                .stroke(.white.opacity(0.040), lineWidth: 1)
-        }
-    }
-
-    private func segmentButton(id: String, title: String) -> some View {
-        let isSelected = currentSubTab == id
-
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-            withAnimation(.spring(response: 0.26, dampingFraction: 0.88)) {
-                currentSubTab = id
-            }
-        } label: {
-            Text(title)
-                .font(.system(size: 13.4, weight: isSelected ? .bold : .semibold, design: .rounded))
-                .foregroundStyle(isSelected ? .white.opacity(0.96) : .white.opacity(0.42))
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: .infinity)
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(.white.opacity(0.105))
-                            .overlay {
-                                Capsule()
-                                    .stroke(.white.opacity(0.075), lineWidth: 1)
-                            }
-                            .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var contextLine: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(selectedAccent.opacity(0.78))
-                .frame(width: 5, height: 5)
-
-            Text(currentSubTab == "Workout" ? WeekFitLocalizedString("home.activityStart.context.workout") : WeekFitLocalizedString("home.activityStart.context.recovery"))
-                .font(.system(size: 11.8, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.42))
-
-            Spacer()
-        }
-    }
-
     private func activityOptionsList(liveActivity: PlannedActivity?) -> some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 10) {
+            VStack(spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
+                QuickActionCoachRecommendationSlot()
+
                 ForEach(selectedPlannerType.options, id: \.title) { option in
                     let isBlocked = liveActivity != nil
                     let duration = defaultDuration(for: option, type: selectedPlannerType)
@@ -245,9 +131,8 @@ struct PremiumActivityStartSheet: View {
                     }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 2)
-            .padding(.bottom, 24)
+            .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+            .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
         }
     }
 
@@ -346,36 +231,11 @@ struct PremiumActivityStartSheet: View {
     }
 
     private func localizedOptionTitle(_ title: String) -> String {
-        switch title {
-        case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
-        case "Running": return WeekFitLocalizedString("planner.option.running")
-        case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")
-        case "Core": return WeekFitLocalizedString("planner.option.core")
-        case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")
-        case "Full Body": return WeekFitLocalizedString("planner.option.fullBody")
-        case "Tennis": return WeekFitLocalizedString("planner.option.tennis")
-        case "Squash": return WeekFitLocalizedString("planner.option.squash")
-        case "Stretching": return WeekFitLocalizedString("planner.option.stretching")
-        case "Walk": return WeekFitLocalizedString("planner.option.walk")
-        case "Sauna": return WeekFitLocalizedString("planner.option.sauna")
-        case "Yoga": return WeekFitLocalizedString("planner.option.yoga")
-        case "Breathing": return WeekFitLocalizedString("planner.option.breathing")
-        default: return WeekFitCoachRuntimeLocalizedString(title)
-        }
+        PlannerOptionLocalization.localizedTitle(for: title)
     }
 
     private func localizedOptionSubtitle(_ subtitle: String) -> String {
-        switch subtitle {
-        case "Endurance": return WeekFitLocalizedString("planner.option.subtitle.endurance")
-        case "Cardio": return WeekFitLocalizedString("planner.option.subtitle.cardio")
-        case "Strength": return WeekFitLocalizedString("planner.option.subtitle.strength")
-        case "High Intensity": return WeekFitLocalizedString("planner.option.subtitle.highIntensity")
-        case "Mobility": return WeekFitLocalizedString("planner.option.subtitle.mobility")
-        case "Light recovery": return WeekFitLocalizedString("planner.option.subtitle.lightRecovery")
-        case "Relax": return WeekFitLocalizedString("planner.option.subtitle.relax")
-        case "Calm": return WeekFitLocalizedString("planner.option.subtitle.calm")
-        default: return WeekFitCoachRuntimeLocalizedString(subtitle)
-        }
+        PlannerOptionLocalization.localizedSubtitle(for: subtitle)
     }
 
     private func liveSessionCard(_ liveItem: PlannedActivity) -> some View {
@@ -413,7 +273,7 @@ struct PremiumActivityStartSheet: View {
 
                 Text(localizedOptionTitle(liveItem.title))
                     .font(.system(size: 15.2, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                     .lineLimit(1)
 
                 liveProgressText(startedAt: liveItem.date, maxMinutes: liveItem.durationMinutes)
@@ -429,7 +289,7 @@ struct PremiumActivityStartSheet: View {
                 } label: {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
@@ -484,7 +344,7 @@ struct PremiumActivityStartSheet: View {
             Text(timeText)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
                 .frame(width: 82, alignment: .trailing)
         }
     }
@@ -497,7 +357,7 @@ struct PremiumActivityStartSheet: View {
             Text(String(format: WeekFitLocalizedString("home.activityStart.progressFormat"), elapsedMinutes, maxMinutes))
                 .font(.system(size: 10.6, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
                 .lineLimit(1)
         }
     }
@@ -505,16 +365,26 @@ struct PremiumActivityStartSheet: View {
     private func stopLiveSession(_ activity: PlannedActivity) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            activity.isCompleted = true
+        let passedMinutes = max(1, Int(Date().timeIntervalSince(activity.date) / 60))
 
-            let passedMinutes = Int(Date().timeIntervalSince(activity.date) / 60)
-            activity.durationMinutes = max(1, min(passedMinutes, max(activity.durationMinutes, 1)))
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            activity.actualDurationMinutes = passedMinutes
+            activity.isCompleted = true
 
             try? modelContext.save()
 
             refreshID = UUID()
             isPresented = false
         }
+
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coachCoordinator,
+            nutritionViewModel: nutritionViewModel,
+            inputProvider: coachInputProvider,
+            reason: "todayActivityStop"
+        )
+        activityCoordinator.refresh()
+        appSession.triggerHealthRefresh(source: "todayActivityStop")
+        appSession.triggerCoachRefresh(source: "todayActivityStop")
     }
 }

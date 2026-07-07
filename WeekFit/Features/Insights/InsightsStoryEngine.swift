@@ -20,10 +20,14 @@ struct InsightsStoryCandidate {
 
     var evidence: InsightsEvidence {
         InsightsEvidence(
-            label: "WHY THIS STORY",
+            label: InsightsLocalization.Section.whyThisStory,
             confidenceLabel: Self.confidenceLabel(for: confidence),
             confidenceValue: confidence,
-            sourceSummary: "\(storyType.label) • Impact \(Int(impactScore.rounded()))/100",
+            sourceSummary: InsightsLocalization.format(
+                "insights.story.sourceSummaryFormat",
+                InsightsLocalization.storyTypeLabel(storyType),
+                Int(impactScore.rounded())
+            ),
             recencyText: trend.timeframe,
             bullets: [
                 driver.text,
@@ -46,30 +50,11 @@ struct InsightsStoryCandidate {
     private static func confidenceLabel(for confidence: Double) -> String {
         switch confidence {
         case 0.78...:
-            return "High Confidence"
+            return InsightsLocalization.Confidence.high
         case 0.55..<0.78:
-            return "Medium Confidence"
+            return InsightsLocalization.Confidence.medium
         default:
-            return "Low Confidence"
-        }
-    }
-}
-
-private extension InsightsStoryType {
-    var label: String {
-        switch self {
-        case .changeStory:
-            return "Change story"
-        case .riskStory:
-            return "Risk story"
-        case .opportunityStory:
-            return "Opportunity story"
-        case .anomalyStory:
-            return "Anomaly story"
-        case .plateauReversalStory:
-            return "Plateau story"
-        case .maintenanceStory:
-            return "Maintenance story"
+            return InsightsLocalization.Confidence.low
         }
     }
 }
@@ -108,23 +93,29 @@ enum InsightsStoryEngine {
             let driver = InsightSupportCard(
                 role: .strongestPattern,
                 domain: .consistency,
-                title: "No dominant insight",
-                text: "No change, risk, opportunity or anomaly is strong enough to rank yet.",
+                title: InsightsLocalization.text("insights.fallback.stable.driver.title"),
+                text: InsightsLocalization.text("insights.fallback.stable.driver.text"),
                 icon: "checkmark.seal.fill",
                 accent: hero.accent,
                 metrics: [
-                    InsightTrendMetric(label: "Read", value: "no insight", direction: .stable, detail: "not enough separation", benchmark: "keep watching")
+                    InsightTrendMetric(
+                        label: InsightsLocalization.text("insights.signal.read"),
+                        value: InsightsLocalization.text("insights.signal.value.noInsight"),
+                        direction: .stable,
+                        detail: InsightsLocalization.text("insights.signal.detail.notEnoughSeparation"),
+                        benchmark: InsightsLocalization.text("insights.signal.detail.keepWatching")
+                    )
                 ]
             )
             let action = InsightsFocusNext(
-                label: "ACTION",
-                title: "Keep collecting signal",
-                text: "surface the next real change, risk, opportunity or anomaly",
-                action: "Keep logging sleep, recovery, food and training for the next 7 days.",
+                label: InsightsLocalization.Section.action,
+                title: InsightsLocalization.text("insights.fallback.stable.action.title"),
+                text: InsightsLocalization.text("insights.story.outcome.surfaceNextChange"),
+                action: InsightsLocalization.text("insights.fallback.stable.action.action"),
                 icon: hero.icon,
                 accent: hero.accent,
                 domain: .consistency,
-                actionTitle: "Open Coach",
+                actionTitle: InsightsLocalization.text("insights.action.openCoach"),
                 actionDestination: .tab(.coach)
             )
 
@@ -143,23 +134,29 @@ enum InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .strongestPattern,
             domain: .missingData,
-            title: "Insufficient overlap",
-            text: "Insights needs more overlapping sleep, recovery, training and nutrition data before ranking stories.",
+            title: InsightsLocalization.text("insights.fallback.baseline.driver.title"),
+            text: InsightsLocalization.text("insights.fallback.baseline.driver.text"),
             icon: "sparkles",
             accent: hero.accent,
             metrics: [
-                InsightTrendMetric(label: "Read", value: "building", direction: .stable, detail: "not enough data", benchmark: "complete 7 days")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.read"),
+                    value: InsightsLocalization.text("insights.signal.value.building"),
+                    direction: .stable,
+                    detail: InsightsLocalization.text("insights.signal.detail.notEnoughData"),
+                    benchmark: InsightsLocalization.text("insights.signal.detail.complete7Days")
+                )
             ]
         )
         let action = InsightsFocusNext(
-            label: "ACTION",
-            title: "Build a complete baseline",
-            text: "unlock a real ranked insight",
-            action: "Log sleep, meals, drinks and activity every day for the next 7 days.",
+            label: InsightsLocalization.Section.action,
+            title: InsightsLocalization.text("insights.fallback.baseline.action.title"),
+            text: InsightsLocalization.text("insights.story.outcome.unlockRankedInsight"),
+            action: InsightsLocalization.text("insights.fallback.baseline.action.action"),
             icon: "sparkles",
             accent: hero.accent,
             domain: .missingData,
-            actionTitle: "Log Today",
+            actionTitle: InsightsLocalization.text("insights.action.logToday"),
             actionDestination: .tab(.today)
         )
 
@@ -424,28 +421,35 @@ private extension InsightsStoryEngine {
             impactScore: min(96, 58 + abs(delta) * 4 + (recent < 68 ? 12 : 0)),
             confidence: confidenceValue,
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: latest >= 72 ? "Recovery remains healthy but is declining" : "Recovery is losing momentum",
-                subtitle: "Recovery is down \(Int(abs(delta).rounded())) points versus baseline.",
-                takeaway: "Stabilize recovery before increasing load.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: latest >= 72
+                    ? InsightsLocalization.text("insights.story.recovery.decline.titleHealthy")
+                    : InsightsLocalization.text("insights.story.recovery.decline.titleLosing"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.recovery.decline.subtitleFormat",
+                    Int(abs(delta).rounded())
+                ),
+                takeaway: InsightsLocalization.text("insights.story.recovery.decline.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(latest)",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: driver.domain == .sleep ? "Restore sleep before increasing load" : "Stabilize the driver before adding load",
+                title: driver.domain == .sleep
+                    ? InsightsLocalization.text("insights.story.recovery.decline.action.sleepTitle")
+                    : InsightsLocalization.text("insights.story.recovery.decline.action.driverTitle"),
                 action: driver.domain == .sleep
-                    ? "Sleep at least 7 hours on 5 of the next 7 nights."
-                    : "Keep every workout easy or Zone 2 for the next 7 days."
+                    ? InsightsLocalization.text("insights.story.recovery.decline.action.sleepAction")
+                    : InsightsLocalization.text("insights.story.recovery.decline.action.easyWorkouts")
             )
         )
     }
@@ -472,20 +476,26 @@ private extension InsightsStoryEngine {
             driver = InsightSupportCard(
                 role: .resilience,
                 domain: .sleep,
-                title: "Sleep Consistency",
-                text: "Sleep is at the level that supports recovery.",
+                title: InsightsLocalization.text("insights.story.driver.sleepConsistency.title"),
+                text: InsightsLocalization.text("insights.story.driver.sleepConsistency.text"),
                 icon: "moon.fill",
                 accent: WeekFitTheme.meal,
                 metrics: [
-                    InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: .stable, detail: "average", benchmark: "Target: 7h")
+                    InsightTrendMetric(
+                        label: InsightsLocalization.text("insights.signal.sleep"),
+                        value: "\(formatOneDecimal(recentSleep))h",
+                        direction: .stable,
+                        detail: InsightsLocalization.text("insights.signal.average"),
+                        benchmark: InsightsLocalization.text("insights.signal.target7h")
+                    )
                 ]
             )
         } else if volume.hasMeaningfulLoad, loadChange <= 10 {
             driver = InsightSupportCard(
                 role: .workload,
                 domain: .activity,
-                title: "Controlled Load",
-                text: "Training load has stayed controlled while recovery improved.",
+                title: InsightsLocalization.text("insights.story.driver.controlledLoad.title"),
+                text: InsightsLocalization.text("insights.story.driver.controlledLoad.text"),
                 icon: "figure.run",
                 accent: WeekFitTheme.meal,
                 metrics: [
@@ -502,28 +512,33 @@ private extension InsightsStoryEngine {
             impactScore: min(88, 52 + delta * 4),
             confidence: storyConfidence(primaryDays: recoveryRecords.count, pairedDays: max(sleepRecords.count, records.filter(\.hasActivitySignal).count)),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Recovery resilience is improving",
-                subtitle: "Recovery has rebounded \(Int(delta.rounded())) points versus baseline.",
-                takeaway: "Protect the routine that created the rebound.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.recovery.rebound.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.recovery.rebound.subtitleFormat",
+                    Int(delta.rounded())
+                ),
+                takeaway: InsightsLocalization.text("insights.story.recovery.rebound.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(Int(recent.rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: driver.domain == .sleep ? "Protect the sleep routine" : "Keep load increases gradual",
+                title: driver.domain == .sleep
+                    ? InsightsLocalization.text("insights.story.recovery.rebound.action.sleepTitle")
+                    : InsightsLocalization.text("insights.story.recovery.rebound.action.loadTitle"),
                 action: driver.domain == .sleep
-                    ? "Keep sleep above 7 hours on 5 of the next 7 nights."
-                    : "Do not increase training volume by more than 10% over the next 7 days."
+                    ? InsightsLocalization.text("insights.story.recovery.rebound.action.sleepAction")
+                    : InsightsLocalization.text("insights.story.recovery.rebound.action.loadAction")
             )
         )
     }
@@ -543,12 +558,18 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .resilience,
             domain: .recovery,
-            title: "Recovery Plateau",
-            text: "Recovery improved earlier, then flattened.",
+            title: InsightsLocalization.text("insights.story.driver.recoveryPlateau.title"),
+            text: InsightsLocalization.text("insights.story.driver.recoveryPlateau.text"),
             icon: "equal.circle.fill",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Recent trend", value: "flat", direction: .stable, detail: "after improvement", benchmark: "plateau")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.recentTrend"),
+                    value: InsightsLocalization.text("insights.signal.value.flat"),
+                    direction: .stable,
+                    detail: InsightsLocalization.text("insights.signal.detail.afterImprovement"),
+                    benchmark: InsightsLocalization.text("insights.signal.benchmark.plateau")
+                )
             ]
         )
 
@@ -558,26 +579,26 @@ private extension InsightsStoryEngine {
             impactScore: 64,
             confidence: storyConfidence(primaryDays: recoveryRecords.count, pairedDays: recoveryRecords.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Recovery plateau detected",
-                subtitle: "Recovery improved, then stopped progressing.",
-                takeaway: "Find the next limiter before adding load.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.recovery.plateau.title"),
+                subtitle: InsightsLocalization.text("insights.story.recovery.plateau.subtitle"),
+                takeaway: InsightsLocalization.text("insights.story.recovery.plateau.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "equal.circle.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(Int(recent.rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Hold volume while testing the next limiter",
-                action: "Keep training volume flat for the next 7 days."
+                title: InsightsLocalization.text("insights.story.recovery.plateau.action.title"),
+                action: InsightsLocalization.text("insights.story.recovery.plateau.action.action")
             )
         )
     }
@@ -604,20 +625,38 @@ private extension InsightsStoryEngine {
 
         let sleepGap = max(0, 7.0 - recentSleep)
         let recoveryGap = recentRecovery - 72
-        let trendTitle = recoveryDeclining ? "Recovery is starting to lose support" : "Recovery is holding despite short sleep"
+        let trendTitle = recoveryDeclining
+            ? InsightsLocalization.text("insights.story.sleepPressure.trendLosingSupport")
+            : InsightsLocalization.text("insights.story.sleepPressure.trendHoldingDespite")
         let driverText = recoveryDeclining
-            ? "sleep is \(formatOneDecimal(sleepGap))h below target while recovery slipped \(Int(abs(recoveryDelta).rounded())) points"
-            : "sleep is \(formatOneDecimal(sleepGap))h below target, but recovery stayed \(recoveryGap >= 0 ? "above" : "near") baseline"
+            ? InsightsLocalization.format(
+                "insights.story.driver.sleepDuration.gapDecliningFormat",
+                sleepGap,
+                Int(abs(recoveryDelta).rounded())
+            )
+            : InsightsLocalization.format(
+                "insights.story.driver.sleepDuration.gapStableFormat",
+                sleepGap,
+                recoveryGap >= 0
+                    ? InsightsLocalization.text("insights.story.driver.sleepDuration.above")
+                    : InsightsLocalization.text("insights.story.driver.sleepDuration.near")
+            )
 
         let driver = InsightSupportCard(
             role: .limitingFactor,
             domain: .sleep,
-            title: "Sleep Duration",
+            title: InsightsLocalization.text("insights.story.driver.sleepDuration.title"),
             text: driverText,
             icon: "moon.fill",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: sleepDeclining ? .decreasing : .stable, detail: "average", benchmark: "Target: 7h")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.sleep"),
+                    value: "\(formatOneDecimal(recentSleep))h",
+                    direction: sleepDeclining ? .decreasing : .stable,
+                    detail: InsightsLocalization.text("insights.signal.average"),
+                    benchmark: InsightsLocalization.text("insights.signal.target7h")
+                )
             ]
         )
 
@@ -627,29 +666,37 @@ private extension InsightsStoryEngine {
             impactScore: min(82, 46 + max(0, 7.0 - recentSleep) * 10 + (sleepDeclining ? 8 : 0) + (recoveryDeclining ? 14 : 0) + (recoveryStable ? 12 : 0)),
             confidence: storyConfidence(primaryDays: sleepRecords.count, pairedDays: recoverySleepRecords.filter { $0.sleepMinutes > 0 && $0.recoveryScore > 0 }.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
+                label: InsightsLocalization.Section.trend,
                 title: trendTitle,
                 subtitle: recoveryDeclining
-                    ? "Recovery is down \(Int(abs(recoveryDelta).rounded())) points while sleep is below target."
-                    : "Sleep is \(formatOneDecimal(recentSleep))h vs a 7h target, but recovery has not dropped.",
-                takeaway: "Keep sleep above 7h before increasing training load.",
-                timeframe: "Last 30 Days",
+                    ? InsightsLocalization.format(
+                        "insights.story.sleepPressure.subtitleDecliningFormat",
+                        Int(abs(recoveryDelta).rounded())
+                    )
+                    : InsightsLocalization.format(
+                        "insights.story.sleepPressure.subtitleStableFormat",
+                        recentSleep
+                    ),
+                takeaway: InsightsLocalization.text("insights.story.sleepPressure.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(recoveryRecords.last?.recoveryScore ?? Int(recentRecovery.rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Keep sleep above 7h before adding load",
-                text: recoveryDeclining ? "restore recovery margin" : "preserve recovery margin",
-                action: "keep sleep above 7h before adding load"
+                title: InsightsLocalization.text("insights.story.sleepPressure.action.title"),
+                text: recoveryDeclining
+                    ? InsightsLocalization.text("insights.story.outcome.restoreRecoveryMargin")
+                    : InsightsLocalization.text("insights.story.outcome.preserveRecoveryMargin"),
+                action: InsightsLocalization.text("insights.story.sleepPressure.action.action")
             )
         )
     }
@@ -670,12 +717,21 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .limitingFactor,
             domain: .sleep,
-            title: "Sleep Duration",
-            text: "sleep is \(formatOneDecimal(sleepGap))h below target, which reduces margin before load increases",
+            title: InsightsLocalization.text("insights.story.driver.sleepDuration.title"),
+            text: InsightsLocalization.format(
+                "insights.story.driver.sleepDuration.belowTargetFormat",
+                sleepGap
+            ),
             icon: "moon.fill",
             accent: WeekFitTheme.purple,
             metrics: [
-                InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: sleepDeclining ? .decreasing : .stable, detail: "average", benchmark: "Target: 7h")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.sleep"),
+                    value: "\(formatOneDecimal(recentSleep))h",
+                    direction: sleepDeclining ? .decreasing : .stable,
+                    detail: InsightsLocalization.text("insights.signal.average"),
+                    benchmark: InsightsLocalization.text("insights.signal.target7h")
+                )
             ]
         )
 
@@ -685,26 +741,29 @@ private extension InsightsStoryEngine {
             impactScore: min(76, 48 + max(0, 7.0 - recentSleep) * 11 + (sleepDeclining ? 10 : 0)),
             confidence: storyConfidence(primaryDays: sleepRecords.count, pairedDays: sleepRecords.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Sleep duration is below target",
-                subtitle: "\(formatOneDecimal(recentSleep))h average vs a 7h target.",
-                takeaway: "Restore sleep before changing training load.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.sleepBelowTarget.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.sleepBelowTarget.subtitleFormat",
+                    recentSleep
+                ),
+                takeaway: InsightsLocalization.text("insights.story.sleepBelowTarget.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "moon.fill",
                 accent: WeekFitTheme.purple,
                 graphValues: sleepDurationTrendValues(sleepRecords),
                 targetValue: 7.0 / 8.0,
-                targetLabel: "7h target",
+                targetLabel: InsightsLocalization.text("insights.story.target.sleep7h"),
                 badgeValue: "\(formatOneDecimal(recentSleep))h",
-                badgeLabel: "average",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.average"),
                 domain: .sleep,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForStory(
-                title: "Keep sleep above 7h before adding load",
-                text: "close the sleep-duration gap",
-                action: "keep sleep above 7h before adding load",
+                title: InsightsLocalization.text("insights.story.sleepPressure.action.title"),
+                text: InsightsLocalization.text("insights.story.outcome.closeSleepGap"),
+                action: InsightsLocalization.text("insights.story.sleepPressure.action.action"),
                 icon: "moon.zzz.fill",
                 accent: WeekFitTheme.purple,
                 domain: .sleep,
@@ -732,12 +791,18 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .limitingFactor,
             domain: .sleep,
-            title: "Weekend Sleep",
-            text: "Weekend sleep is lower than weekdays.",
+            title: InsightsLocalization.text("insights.story.driver.weekendSleep.title"),
+            text: InsightsLocalization.text("insights.story.driver.weekendSleep.text"),
             icon: "calendar",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Weekend gap", value: "-\(Int(recoveryGap.rounded()))", direction: .decreasing, detail: "recovery points", benchmark: "vs weekdays")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.weekendGap"),
+                    value: "-\(Int(recoveryGap.rounded()))",
+                    direction: .decreasing,
+                    detail: InsightsLocalization.text("insights.signal.recoveryPoints"),
+                    benchmark: InsightsLocalization.text("insights.signal.vsWeekdays")
+                )
             ]
         )
 
@@ -747,26 +812,29 @@ private extension InsightsStoryEngine {
             impactScore: min(86, 54 + recoveryGap * 3),
             confidence: storyConfidence(primaryDays: paired.count, pairedDays: weekend.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Weekend recovery is weaker",
-                subtitle: "Weekend recovery is \(Int(recoveryGap.rounded())) points lower than weekdays.",
-                takeaway: "Protect weekend wake time.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.weekendRecovery.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.weekendRecovery.subtitleFormat",
+                    Int(recoveryGap.rounded())
+                ),
+                takeaway: InsightsLocalization.text("insights.story.weekendRecovery.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(paired.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(Int(average(Array(paired.suffix(7)).map { Double($0.recoveryScore) }).rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Protect weekend sleep timing",
-                action: "Keep weekend wake time within 60 minutes of weekdays for the next 2 weekends."
+                title: InsightsLocalization.text("insights.story.weekendRecovery.action.title"),
+                action: InsightsLocalization.text("insights.story.weekendRecovery.action.action")
             )
         )
     }
@@ -791,12 +859,20 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .workload,
             domain: .activity,
-            title: "Training Load",
-            text: stableMismatch ? "load is high, but recovery stayed above baseline" : "training load is outpacing the recovery response",
+            title: InsightsLocalization.text("insights.story.driver.trainingLoad.title"),
+            text: stableMismatch
+                ? InsightsLocalization.text("insights.story.driver.trainingLoad.highStable")
+                : InsightsLocalization.text("insights.story.driver.trainingLoad.outpacingShort"),
             icon: "figure.run",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Load", value: workloadCategory(volume), direction: .increasing, detail: volume.badgeValue, benchmark: "above recent base")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.load"),
+                    value: InsightsLocalization.localizedWorkloadCategory(workloadCategory(volume)),
+                    direction: .increasing,
+                    detail: volume.badgeValue,
+                    benchmark: InsightsLocalization.text("insights.signal.aboveRecentBase")
+                )
             ]
         )
 
@@ -806,35 +882,45 @@ private extension InsightsStoryEngine {
             impactScore: min(94, 58 + loadPressure * 0.5 + max(0, -recoveryDelta) * 3),
             confidence: storyConfidence(primaryDays: records.filter(\.hasActivitySignal).count, pairedDays: recoveryRecords.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: stableMismatch ? "Recovery is absorbing high load" : "Recovery is not keeping up with load",
-                subtitle: stableMismatch ? "Load is high, but recovery stayed above baseline." : "Recovery is soft while training load is elevated.",
-                takeaway: stableMismatch ? "Confirm sustainability before adding load." : "Hold training volume until recovery stabilizes.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: stableMismatch
+                    ? InsightsLocalization.text("insights.story.trainingLoad.trendAbsorbing")
+                    : InsightsLocalization.text("insights.story.trainingLoad.trendNotKeepingUp"),
+                subtitle: stableMismatch
+                    ? InsightsLocalization.text("insights.story.trainingLoad.subtitleStable")
+                    : InsightsLocalization.text("insights.story.trainingLoad.subtitleRisk"),
+                takeaway: stableMismatch
+                    ? InsightsLocalization.text("insights.story.trainingLoad.takeawayStable")
+                    : InsightsLocalization.text("insights.story.trainingLoad.takeawayRisk"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 visualization: .correlation(
                     primary: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                     secondary: smoothedTrendValues(recoverySleepRecords.map(\.activityLoadGraphValue)),
-                    primaryLabel: "recovery",
-                    secondaryLabel: "load"
+                    primaryLabel: InsightsLocalization.text("insights.signal.correlation.recovery"),
+                    secondaryLabel: InsightsLocalization.text("insights.signal.correlation.load")
                 ),
                 badgeValue: "\(Int(recentRecovery.rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: stableMismatch ? "Hold current load for 7 days before increasing" : "Hold current training volume",
-                text: stableMismatch ? "confirm the load is sustainable" : "let recovery catch up",
+                title: stableMismatch
+                    ? InsightsLocalization.text("insights.story.trainingLoad.action.holdBeforeIncrease")
+                    : InsightsLocalization.text("insights.story.trainingLoad.action.holdVolume"),
+                text: stableMismatch
+                    ? InsightsLocalization.text("insights.story.outcome.confirmLoadSustainable")
+                    : InsightsLocalization.text("insights.story.outcome.letRecoveryCatchUp"),
                 action: stableMismatch
-                    ? "hold current load for 7 days before increasing"
-                    : "Do not add sessions or increase volume for the next 7 days."
+                    ? InsightsLocalization.text("insights.story.trainingLoad.action.holdLoadAction")
+                    : InsightsLocalization.text("insights.story.trainingLoad.action.noIncreaseAction")
             )
         )
     }
@@ -855,12 +941,18 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .workload,
             domain: .activity,
-            title: "Active Calories",
-            text: "Daily activity volume has fallen below baseline.",
+            title: InsightsLocalization.text("insights.story.driver.activeCalories.title"),
+            text: InsightsLocalization.text("insights.story.driver.activeCalories.text"),
             icon: "flame.fill",
             accent: accent,
             metrics: [
-                InsightTrendMetric(label: "Active calories", value: "-\(Int(drop.rounded()))", direction: .decreasing, detail: "per day", benchmark: "vs baseline")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.activeCalories"),
+                    value: "-\(Int(drop.rounded()))",
+                    direction: .decreasing,
+                    detail: InsightsLocalization.text("insights.signal.perDay"),
+                    benchmark: InsightsLocalization.text("insights.signal.vsBaseline")
+                )
             ]
         )
 
@@ -870,26 +962,26 @@ private extension InsightsStoryEngine {
             impactScore: min(78, 46 + (drop / max(baseline, 1)) * 80),
             confidence: storyConfidence(primaryDays: calorieRecords.count, pairedDays: calorieRecords.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Active calories are declining",
-                subtitle: "Daily active calories are down versus baseline.",
-                takeaway: "Rebuild activity consistency before adding intensity.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.activeCalories.title"),
+                subtitle: InsightsLocalization.text("insights.story.activeCalories.subtitle"),
+                takeaway: InsightsLocalization.text("insights.story.activeCalories.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "flame.fill",
                 accent: accent,
                 graphValues: smoothedTrendValues(calorieRecords.map { min(max($0.metrics.activeCalories / max(baseline, 1), 0), 1) }),
                 targetValue: 0.85,
-                targetLabel: "baseline",
+                targetLabel: InsightsLocalization.text("insights.story.badge.baseline"),
                 badgeValue: "\(Int(recent.rounded()))",
-                badgeLabel: "cal/day",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.calPerDay"),
                 domain: .activity,
                 actionDestination: .detail(.activity)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Rebuild activity consistency",
-                action: "Complete 30 minutes of Zone 2 activity on 4 of the next 7 days."
+                title: InsightsLocalization.text("insights.story.activeCalories.action.title"),
+                action: InsightsLocalization.text("insights.story.activeCalories.action.action")
             )
         )
     }
@@ -917,12 +1009,18 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .limitingFactor,
             domain: .nutrition,
-            title: "Protein Consistency",
-            text: "Protein consistency is below the level needed to support adaptation.",
+            title: InsightsLocalization.text("insights.story.driver.proteinConsistency.title"),
+            text: InsightsLocalization.text("insights.story.driver.proteinConsistency.text"),
             icon: "fork.knife",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Protein", value: "\(hitDays)/7", direction: .decreasing, detail: "target days", benchmark: "Target: 6 of 7 days")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.protein"),
+                    value: "\(hitDays)/7",
+                    direction: .decreasing,
+                    detail: InsightsLocalization.text("insights.signal.targetDays"),
+                    benchmark: InsightsLocalization.text("insights.signal.target6of7")
+                )
             ]
         )
 
@@ -932,26 +1030,31 @@ private extension InsightsStoryEngine {
             impactScore: min(74, 44 + Double(max(0, 6 - hitDays)) * 4 + max(0, 1 - averageProtein / proteinGoal) * 16 + (decliningSupport ? 10 : 0)),
             confidence: storyConfidence(primaryDays: nutritionRecords.count, pairedDays: nutritionRecords.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: decliningSupport ? "Recovery support is getting weaker" : "Recovery is missing a nutrition signal",
-                subtitle: "Protein target was hit on \(hitDays) of the last 7 logged days.",
-                takeaway: "Make protein consistent before changing training.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: decliningSupport
+                    ? InsightsLocalization.text("insights.story.protein.trendWeaker")
+                    : InsightsLocalization.text("insights.story.protein.trendMissingSignal"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.protein.subtitleFormat",
+                    hitDays
+                ),
+                takeaway: InsightsLocalization.text("insights.story.protein.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(recoveryRecords.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(Int(recentRecovery.rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Use protein to support recovery",
-                action: "Hit your protein target on at least 6 of the next 7 days."
+                title: InsightsLocalization.text("insights.story.protein.action.title"),
+                action: InsightsLocalization.text("insights.story.protein.action.action")
             )
         )
     }
@@ -975,12 +1078,18 @@ private extension InsightsStoryEngine {
         let driver = InsightSupportCard(
             role: .relationship,
             domain: .hydration,
-            title: "Hydration on hard days",
-            text: "Hydration is separating recovery after higher-load days.",
+            title: InsightsLocalization.text("insights.story.driver.hydrationHardDays.title"),
+            text: InsightsLocalization.text("insights.story.driver.hydrationHardDays.text"),
             icon: "drop.fill",
             accent: WeekFitTheme.meal,
             metrics: [
-                InsightTrendMetric(label: "Hard days", value: lift > 0 ? "+\(Int(lift.rounded()))" : "\(Int(lift.rounded()))", direction: lift > 0 ? .increasing : .decreasing, detail: "recovery points", benchmark: "hydrated vs low-fluid")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.hardDays"),
+                    value: lift > 0 ? "+\(Int(lift.rounded()))" : "\(Int(lift.rounded()))",
+                    direction: lift > 0 ? .increasing : .decreasing,
+                    detail: InsightsLocalization.text("insights.signal.recoveryPoints"),
+                    benchmark: InsightsLocalization.text("insights.signal.hydratedVsLowFluid")
+                )
             ]
         )
 
@@ -990,26 +1099,29 @@ private extension InsightsStoryEngine {
             impactScore: min(76, 46 + abs(lift) * 4),
             confidence: storyConfidence(primaryDays: paired.count, pairedDays: highLoadDays.count),
             trend: InsightsHeroInsight(
-                label: "TREND",
-                title: "Hard-day recovery is uneven",
-                subtitle: "Recovery changes by \(Int(abs(lift).rounded())) points based on hard-day hydration.",
-                takeaway: "Prioritize fluids around hard training.",
-                timeframe: "Last 30 Days",
+                label: InsightsLocalization.Section.trend,
+                title: InsightsLocalization.text("insights.story.hydration.title"),
+                subtitle: InsightsLocalization.format(
+                    "insights.story.hydration.subtitleFormat",
+                    Int(abs(lift).rounded())
+                ),
+                takeaway: InsightsLocalization.text("insights.story.hydration.takeaway"),
+                timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
                 icon: "heart.fill",
                 accent: WeekFitTheme.meal,
                 graphValues: smoothedTrendValues(normalizedRecoveryValues(Array(paired.suffix(30)))),
                 targetValue: 0.72,
-                targetLabel: "72 target",
+                targetLabel: InsightsLocalization.text("insights.story.target.recovery72"),
                 badgeValue: "\(Int(average(Array(paired.suffix(7)).map { Double($0.recoveryScore) }).rounded()))",
-                badgeLabel: "Recovery",
+                badgeLabel: InsightsLocalization.text("insights.story.badge.recovery"),
                 domain: .recovery,
                 actionDestination: .detail(.recovery)
             ),
             driver: driver,
             action: actionForDriver(
                 driver,
-                title: "Prioritize fluids around hard sessions",
-                action: "Drink at least 750ml in the 2 hours after each hard session this week."
+                title: InsightsLocalization.text("insights.story.hydration.action.title"),
+                action: InsightsLocalization.text("insights.story.hydration.action.action")
             )
         )
     }
@@ -1029,12 +1141,18 @@ private extension InsightsStoryEngine {
             return InsightSupportCard(
                 role: .limitingFactor,
                 domain: .sleep,
-                title: "Sleep Duration",
-                text: "Sleep is below the level needed to protect recovery.",
+                title: InsightsLocalization.text("insights.story.driver.sleepDuration.title"),
+                text: InsightsLocalization.text("insights.story.driver.sleepDuration.belowRecovery"),
                 icon: "moon.fill",
                 accent: recoveryAccent,
                 metrics: [
-                    InsightTrendMetric(label: "Sleep", value: "\(formatOneDecimal(recentSleep))h", direction: .decreasing, detail: "average", benchmark: "Target: 7h")
+                    InsightTrendMetric(
+                        label: InsightsLocalization.text("insights.signal.sleep"),
+                        value: "\(formatOneDecimal(recentSleep))h",
+                        direction: .decreasing,
+                        detail: InsightsLocalization.text("insights.signal.average"),
+                        benchmark: InsightsLocalization.text("insights.signal.target7h")
+                    )
                 ]
             )
         }
@@ -1044,8 +1162,8 @@ private extension InsightsStoryEngine {
             return InsightSupportCard(
                 role: .workload,
                 domain: .activity,
-                title: "Training Load",
-                text: "Training load is outpacing the recovery response.",
+                title: InsightsLocalization.text("insights.story.driver.trainingLoad.title"),
+                text: InsightsLocalization.text("insights.story.driver.trainingLoad.outpacing"),
                 icon: "figure.run",
                 accent: recoveryAccent,
                 metrics: [
@@ -1057,12 +1175,18 @@ private extension InsightsStoryEngine {
         return InsightSupportCard(
             role: .resilience,
             domain: .recovery,
-            title: "Recovery Consistency",
-            text: "Recovery itself is the clearest changed signal.",
+            title: InsightsLocalization.text("insights.story.driver.recoveryConsistency.title"),
+            text: InsightsLocalization.text("insights.story.driver.recoveryConsistency.text"),
             icon: "heart.fill",
             accent: recoveryAccent,
             metrics: [
-                InsightTrendMetric(label: "Recovery", value: "down", direction: .decreasing, detail: "vs baseline", benchmark: "recent 7 days")
+                InsightTrendMetric(
+                    label: InsightsLocalization.text("insights.signal.recovery"),
+                    value: InsightsLocalization.text("insights.signal.value.down"),
+                    direction: .decreasing,
+                    detail: InsightsLocalization.text("insights.signal.vsBaselineShort"),
+                    benchmark: InsightsLocalization.text("insights.signal.recent7Days")
+                )
             ]
         )
     }
@@ -1094,7 +1218,7 @@ private extension InsightsStoryEngine {
         destination: InsightsActionDestination?
     ) -> InsightsFocusNext {
         InsightsFocusNext(
-            label: "ACTION",
+            label: InsightsLocalization.Section.action,
             title: title,
             text: text,
             action: action,
@@ -1109,17 +1233,17 @@ private extension InsightsStoryEngine {
     static func expectedOutcome(for domain: InsightsDomain) -> String {
         switch domain {
         case .sleep:
-            return "restore recovery margin"
+            return InsightsLocalization.text("insights.story.outcome.restoreRecoveryMargin")
         case .recovery:
-            return "confirm recovery is responding"
+            return InsightsLocalization.text("insights.story.outcome.confirmRecoveryResponding")
         case .activity:
-            return "confirm the load is sustainable"
+            return InsightsLocalization.text("insights.story.outcome.confirmLoadSustainable")
         case .nutrition:
-            return "make recovery easier to explain"
+            return InsightsLocalization.text("insights.story.outcome.makeRecoveryEasierToExplain")
         case .hydration:
-            return "make hard-day recovery easier to compare"
+            return InsightsLocalization.text("insights.story.outcome.makeHardDayRecoveryEasier")
         case .consistency, .missingData:
-            return "surface a real ranked insight"
+            return InsightsLocalization.text("insights.story.outcome.surfaceRankedInsight")
         }
     }
 
@@ -1141,23 +1265,23 @@ private extension InsightsStoryEngine {
     static func storyActionTitle(for destination: InsightsActionDestination?) -> String {
         switch destination {
         case .detail(.recovery):
-            return "View Recovery Analysis"
+            return InsightsLocalization.text("insights.action.viewRecoveryAnalysis")
         case .detail(.activity):
-            return "Review Training Trends"
+            return InsightsLocalization.text("insights.action.reviewTrainingTrends")
         case .detail(.nutrition):
-            return "Explore Nutrition Details"
+            return InsightsLocalization.text("insights.action.exploreNutritionDetails")
         case .tab(.coach):
-            return "Open Coach"
+            return InsightsLocalization.text("insights.action.openCoach")
         case .tab(.today):
-            return "Log Today"
+            return InsightsLocalization.text("insights.action.logToday")
         case .tab(.meals):
-            return "Open Nutrition"
+            return InsightsLocalization.text("insights.action.openNutrition")
         case .tab(.calendar):
-            return "Open Plan"
+            return InsightsLocalization.text("insights.action.openPlan")
 //        case .tab(.highlights):
 //            return "Open Highlights"
         case nil:
-            return "Review Details"
+            return InsightsLocalization.text("insights.action.reviewDetails")
         }
     }
 
@@ -1183,18 +1307,20 @@ private extension InsightsStoryEngine {
         let graph = smoothedTrendValues(normalizedRecoveryValues(Array(validRecovery.suffix(30))))
 
         return InsightsHeroInsight(
-            label: "TREND",
-            title: "No dominant insight yet",
-            subtitle: "Recovery, sleep, activity and nutrition do not show a ranked change, risk, opportunity or anomaly.",
-            takeaway: "Keep logging until a real pattern emerges.",
-            timeframe: "Last 30 Days",
+            label: InsightsLocalization.Section.trend,
+            title: InsightsLocalization.text("insights.fallback.stable.hero.title"),
+            subtitle: InsightsLocalization.text("insights.fallback.stable.hero.subtitle"),
+            takeaway: InsightsLocalization.text("insights.fallback.stable.hero.takeaway"),
+            timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
             icon: "checkmark.seal.fill",
             accent: WeekFitTheme.meal,
             graphValues: graph,
             targetValue: latest == nil ? nil : 0.72,
-            targetLabel: latest == nil ? nil : "72 target",
+            targetLabel: latest == nil ? nil : InsightsLocalization.text("insights.story.target.recovery72"),
             badgeValue: latest.map(String.init) ?? "—",
-            badgeLabel: latest == nil ? "pattern" : "Recovery",
+            badgeLabel: latest == nil
+                ? InsightsLocalization.text("insights.story.badge.pattern")
+                : InsightsLocalization.text("insights.story.badge.recovery"),
             domain: .consistency,
             actionDestination: .tab(.coach)
         )
@@ -1205,16 +1331,16 @@ private extension InsightsStoryEngine {
         recoverySleepRecords: [InsightsDayRecord]
     ) -> InsightsHeroInsight {
         InsightsHeroInsight(
-            label: "TREND",
-            title: "Building your patterns",
-            subtitle: "Log sleep, meals, drinks and activities for a few more days to unlock trends.",
-            takeaway: "Start with one consistent week.",
-            timeframe: "Last 30 Days",
+            label: InsightsLocalization.Section.trend,
+            title: InsightsLocalization.text("insights.fallback.baseline.hero.title"),
+            subtitle: InsightsLocalization.text("insights.fallback.baseline.hero.subtitle"),
+            takeaway: InsightsLocalization.text("insights.fallback.baseline.hero.takeaway"),
+            timeframe: InsightsLocalization.text("insights.story.timeframe.last30Days"),
             icon: "brain.head.profile",
             accent: WeekFitTheme.meal,
             graphValues: [],
             badgeValue: "—",
-            badgeLabel: "patterns",
+            badgeLabel: InsightsLocalization.text("insights.story.badge.patterns"),
             domain: .missingData,
             actionDestination: .tab(.today)
         )
@@ -1263,11 +1389,11 @@ private extension InsightsStoryEngine {
         let change = workloadBaselineChange(volume)
         let direction: InsightTrendDirection = change > 8 ? .increasing : change < -8 ? .decreasing : .stable
         return InsightTrendMetric(
-            label: "Load",
-            value: workloadCategory(volume),
+            label: InsightsLocalization.text("insights.signal.load"),
+            value: InsightsLocalization.localizedWorkloadCategory(workloadCategory(volume)),
             direction: direction,
             detail: volume.badgeValue,
-            benchmark: "recent base"
+            benchmark: InsightsLocalization.text("insights.signal.recentBase")
         )
     }
 
@@ -1378,43 +1504,43 @@ private extension InsightsDomainIntelligenceEngine {
 
         let trend: String
         if recoveryDelta <= -4 {
-            trend = "Recovery needs attention"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.needsAttention")
         } else if score >= 72, recentSleep > 0, recentSleep < 7 {
-            trend = "Recovery remains resilient"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.resilient")
         } else if score >= 72, loadRecent >= loadBaseline + 10 {
-            trend = "Recovery remains resilient"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.resilient")
         } else if recoveryDelta >= 4 {
-            trend = "Recovery is improving"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.improving")
         } else if score >= 72 {
-            trend = "Recovery remains stable"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.stable")
         } else {
-            trend = "Recovery needs support"
+            trend = InsightsLocalization.text("insights.domain.recovery.trend.needsSupport")
         }
 
         let takeaway: String
         if recentSleep > 0, recentSleep < 7, score >= 72 {
-            takeaway = "Your recovery held up even while sleep was lower than usual."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.sleepLower")
         } else if sleepSpread >= 0.55 {
-            takeaway = "Sleep variability is the main reason recovery looks less predictable."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.sleepVariability")
         } else if recentHRV > 0, baselineHRV > 0, recentHRV >= baselineHRV + 4 {
-            takeaway = "Improved HRV helped recovery stay steady under current load."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.hrv")
         } else if recentRHR > 0, baselineRHR > 0, recentRHR <= baselineRHR - 3 {
-            takeaway = "Lower resting heart rate reduced strain and supported recovery."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.rhr")
         } else if loadRecent > loadBaseline + 10 {
-            takeaway = "Training pressure increased without creating a recovery drop."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.loadIncrease")
         } else {
-            takeaway = "Sleep, HRV and resting heart rate stayed aligned enough to support your routine."
+            takeaway = InsightsLocalization.text("insights.domain.recovery.takeaway.aligned")
         }
 
         let focus: String
         if recoveryDelta <= -4 {
-            focus = "Add one recovery day."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.recoveryDay")
         } else if recentSleep > 0, recentSleep < 7 {
-            focus = "Improve sleep consistency."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.sleepConsistency")
         } else if loadRecent > loadBaseline + 10 {
-            focus = "Maintain current load."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.maintainLoad")
         } else {
-            focus = "Maintain current approach."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.maintainApproach")
         }
 
         let chartValues = smoothedValues(recoveryRecords.map { Double($0.recoveryScore) / 100.0 })
@@ -1422,18 +1548,36 @@ private extension InsightsDomainIntelligenceEngine {
             InsightsDomainPage(
             id: "domain.recovery",
             domain: .recovery,
-            label: "RECOVERY",
-            title: "Recovery",
+            label: InsightsLocalization.Section.recovery,
+            title: InsightsLocalization.text("insights.domain.recovery.title"),
             scoreValue: "\(score)",
-            statusText: statusText(for: score),
+            statusText: InsightsLocalization.statusText(for: score),
             headline: trend,
             chartValues: chartValues,
             chartTarget: 0.72,
-            chartTargetLabel: "Target range",
+            chartTargetLabel: InsightsLocalization.text("insights.domain.chartTargetRange"),
             keySignals: [
-                InsightsKeySignal(id: "recovery.sleep", label: "Sleep supports recovery", value: recentSleep >= 7 ? "Sleep stayed inside a healthy range." : "Sleep is the main opportunity to protect recovery."),
-                InsightsKeySignal(id: "recovery.stability", label: "Recovery stabilized", value: recoveryDelta >= -3 ? "Recent scores stopped declining." : "Recent scores are still losing some margin."),
-                InsightsKeySignal(id: "recovery.load", label: "No overload detected", value: loadRecent <= loadBaseline + 10 ? "Recovery stayed resilient under current load." : "Recovery is absorbing a higher training load.")
+                InsightsKeySignal(
+                    id: "recovery.sleep",
+                    label: InsightsLocalization.text("insights.domain.recovery.signal.sleepSupports.label"),
+                    value: recentSleep >= 7
+                        ? InsightsLocalization.text("insights.domain.recovery.signal.sleepSupports.healthy")
+                        : InsightsLocalization.text("insights.domain.recovery.signal.sleepSupports.opportunity")
+                ),
+                InsightsKeySignal(
+                    id: "recovery.stability",
+                    label: InsightsLocalization.text("insights.domain.recovery.signal.stabilized.label"),
+                    value: recoveryDelta >= -3
+                        ? InsightsLocalization.text("insights.domain.recovery.signal.stabilized.positive")
+                        : InsightsLocalization.text("insights.domain.recovery.signal.stabilized.negative")
+                ),
+                InsightsKeySignal(
+                    id: "recovery.load",
+                    label: InsightsLocalization.text("insights.domain.recovery.signal.noOverload.label"),
+                    value: loadRecent <= loadBaseline + 10
+                        ? InsightsLocalization.text("insights.domain.recovery.signal.noOverload.resilient")
+                        : InsightsLocalization.text("insights.domain.recovery.signal.noOverload.absorbing")
+                )
             ],
             standoutText: takeaway,
             focusText: focus,
@@ -1473,39 +1617,39 @@ private extension InsightsDomainIntelligenceEngine {
 
         let trend: String
         if loadPercentChange >= 15, recoveryRecent >= 72 {
-            trend = "Sustainable progress"
+            trend = InsightsLocalization.text("insights.domain.activity.trend.sustainableProgress")
         } else if loadPercentChange >= 15 {
-            trend = "Training needs restraint"
+            trend = InsightsLocalization.text("insights.domain.activity.trend.needsRestraint")
         } else if loadPercentChange <= -18 {
-            trend = "Activity base is fading"
+            trend = InsightsLocalization.text("insights.domain.activity.trend.baseFading")
         } else if score >= 75 {
-            trend = "Training in balance"
+            trend = InsightsLocalization.text("insights.domain.activity.trend.inBalance")
         } else {
-            trend = "Activity base is building"
+            trend = InsightsLocalization.text("insights.domain.activity.trend.baseBuilding")
         }
 
         let takeaway: String
         if Double(recentSessions) >= baselineSessions + 1.0, baselineSessions > 0 {
-            takeaway = "You maintained a repeatable training rhythm without a recovery cost."
+            takeaway = InsightsLocalization.text("insights.domain.activity.takeaway.rhythm")
         } else if activeEnergyRecent > 0, activeEnergyBaseline > 0, activeEnergyRecent <= activeEnergyBaseline * 0.80 {
-            takeaway = "Daily movement softened, which reduced the strength of the activity score."
+            takeaway = InsightsLocalization.text("insights.domain.activity.takeaway.movementSoftened")
         } else if loadPercentChange >= 15, recoveryRecent < 72 {
-            takeaway = "Training load increased faster than recovery capacity."
+            takeaway = InsightsLocalization.text("insights.domain.activity.takeaway.loadFaster")
         } else if standRecent > 0, standBaseline > 0, standRecent >= standBaseline + 1.0 {
-            takeaway = "Daily movement supported training balance without adding strain."
+            takeaway = InsightsLocalization.text("insights.domain.activity.takeaway.movementSupported")
         } else {
-            takeaway = "Workload stayed matched to readiness across the month."
+            takeaway = InsightsLocalization.text("insights.domain.activity.takeaway.matched")
         }
 
         let focus: String
         if loadPercentChange >= 15, recoveryRecent >= 72 {
-            focus = "Maintain current load."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.maintainLoad")
         } else if loadPercentChange >= 15 {
-            focus = "Reduce weekly volume."
+            focus = InsightsLocalization.text("insights.domain.activity.focus.reduceVolume")
         } else if activeEnergyRecent > 0, activeEnergyBaseline > 0, activeEnergyRecent <= activeEnergyBaseline * 0.80 {
-            focus = "Increase easy daily movement."
+            focus = InsightsLocalization.text("insights.domain.activity.focus.increaseMovement")
         } else {
-            focus = "Maintain current approach."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.maintainApproach")
         }
 
         let chartValues = smoothedValues(analysisRecords.map { record in
@@ -1527,18 +1671,34 @@ private extension InsightsDomainIntelligenceEngine {
             InsightsDomainPage(
             id: "domain.activity",
             domain: .activity,
-            label: "ACTIVITY",
-            title: "Activity",
+            label: InsightsLocalization.Section.activity,
+            title: InsightsLocalization.text("insights.domain.activity.title"),
             scoreValue: "\(score)",
-            statusText: statusText(for: score),
+            statusText: InsightsLocalization.statusText(for: score),
             headline: trend,
             chartValues: chartValues,
             chartTarget: 0.70,
-            chartTargetLabel: "Sustainable load",
+            chartTargetLabel: InsightsLocalization.text("insights.domain.chartSustainableLoad"),
             keySignals: [
-                InsightsKeySignal(id: "activity.consistency", label: "Strong consistency", value: "You maintained a repeatable training rhythm."),
-                InsightsKeySignal(id: "activity.load", label: "Load in balance", value: loadPercentChange >= 15 ? "Workload increased without a recovery cost." : "Workload stayed controlled enough to support progress."),
-                InsightsKeySignal(id: "activity.recovery", label: "Recovery matched demand", value: recoveryRecent >= 72 ? "No signs of accumulated fatigue." : "Recovery needs more room before the next progression.")
+                InsightsKeySignal(
+                    id: "activity.consistency",
+                    label: InsightsLocalization.text("insights.domain.activity.signal.consistency.label"),
+                    value: InsightsLocalization.text("insights.domain.activity.signal.consistency.value")
+                ),
+                InsightsKeySignal(
+                    id: "activity.load",
+                    label: InsightsLocalization.text("insights.domain.activity.signal.load.label"),
+                    value: loadPercentChange >= 15
+                        ? InsightsLocalization.text("insights.domain.activity.signal.load.increased")
+                        : InsightsLocalization.text("insights.domain.activity.signal.load.controlled")
+                ),
+                InsightsKeySignal(
+                    id: "activity.recovery",
+                    label: InsightsLocalization.text("insights.domain.activity.signal.recovery.label"),
+                    value: recoveryRecent >= 72
+                        ? InsightsLocalization.text("insights.domain.activity.signal.recovery.noFatigue")
+                        : InsightsLocalization.text("insights.domain.activity.signal.recovery.needsRoom")
+                )
             ],
             standoutText: takeaway,
             focusText: focus,
@@ -1580,39 +1740,39 @@ private extension InsightsDomainIntelligenceEngine {
 
         let trend: String
         if proteinGoal > 0, proteinRatio < 0.80 {
-            trend = "Protein remains the opportunity"
+            trend = InsightsLocalization.text("insights.domain.nutrition.trend.proteinOpportunity")
         } else if calorieAlignment >= 0.85, proteinRatio >= 0.85 {
-            trend = "Nutrition supports training"
+            trend = InsightsLocalization.text("insights.domain.nutrition.trend.supportsTraining")
         } else if waterGoal > 0, hydrationRatio < 0.75 {
-            trend = "Hydration is improving"
+            trend = InsightsLocalization.text("insights.domain.nutrition.trend.hydrationImproving")
         } else if mealConsistency < 0.45 {
-            trend = "Nutrition is becoming consistent"
+            trend = InsightsLocalization.text("insights.domain.nutrition.trend.becomingConsistent")
         } else {
-            trend = "Nutrition is in balance"
+            trend = InsightsLocalization.text("insights.domain.nutrition.trend.inBalance")
         }
 
         let takeaway: String
         if proteinGoal > 0, proteinRatio < 0.80 {
-            takeaway = "Protein consistency is still the clearest nutrition opportunity."
+            takeaway = InsightsLocalization.text("insights.domain.nutrition.takeaway.protein")
         } else if waterGoal > 0, hydrationRatio < 0.75 {
-            takeaway = "Hydration is moving toward the range that better supports recovery."
+            takeaway = InsightsLocalization.text("insights.domain.nutrition.takeaway.hydration")
         } else if calorieAlignment >= 0.85 {
-            takeaway = "Energy intake matched activity demand well enough to support training."
+            takeaway = InsightsLocalization.text("insights.domain.nutrition.takeaway.energy")
         } else if mealConsistency < 0.45 {
-            takeaway = "Meal logging is becoming more reliable but still limits confidence."
+            takeaway = InsightsLocalization.text("insights.domain.nutrition.takeaway.mealLogging")
         } else {
-            takeaway = "Nutrition is strong enough to support recovery and training."
+            takeaway = InsightsLocalization.text("insights.domain.nutrition.takeaway.strong")
         }
 
         let focus: String
         if proteinGoal > 0, proteinRatio < 0.80 {
-            focus = "Increase protein intake."
+            focus = InsightsLocalization.text("insights.domain.nutrition.focus.increaseProtein")
         } else if waterGoal > 0, hydrationRatio < 0.75 {
-            focus = "Improve hydration consistency."
+            focus = InsightsLocalization.text("insights.domain.nutrition.focus.hydration")
         } else if mealConsistency < 0.45 {
-            focus = "Log one complete week."
+            focus = InsightsLocalization.text("insights.domain.nutrition.focus.logWeek")
         } else {
-            focus = "Maintain current approach."
+            focus = InsightsLocalization.text("insights.domain.recovery.focus.maintainApproach")
         }
 
         let chartValues = smoothedValues(nutritionRecords.map { record in
@@ -1625,18 +1785,36 @@ private extension InsightsDomainIntelligenceEngine {
             InsightsDomainPage(
             id: "domain.nutrition",
             domain: .nutrition,
-            label: "NUTRITION",
-            title: "Nutrition",
+            label: InsightsLocalization.Section.nutrition,
+            title: InsightsLocalization.text("insights.domain.nutrition.title"),
             scoreValue: "\(score)",
-            statusText: statusText(for: score),
+            statusText: InsightsLocalization.statusText(for: score),
             headline: trend,
             chartValues: chartValues,
             chartTarget: 0.80,
-            chartTargetLabel: "Target range",
+            chartTargetLabel: InsightsLocalization.text("insights.domain.chartTargetRange"),
             keySignals: [
-                InsightsKeySignal(id: "nutrition.protein", label: "Protein remains the opportunity", value: proteinRatio < 0.80 ? "Protein consistency is still below demand." : "Protein is reliable enough to support adaptation."),
-                InsightsKeySignal(id: "nutrition.quality", label: "Meal quality improved", value: mealConsistency >= 0.45 ? "Nutrition became more reliable this month." : "More logged meals will make the pattern clearer."),
-                InsightsKeySignal(id: "nutrition.recovery", label: "Recovery support", value: score >= 72 ? "Nutrition is strong enough to support training." : "Nutrition still has a limiter before harder training.")
+                InsightsKeySignal(
+                    id: "nutrition.protein",
+                    label: InsightsLocalization.text("insights.domain.nutrition.signal.protein.label"),
+                    value: proteinRatio < 0.80
+                        ? InsightsLocalization.text("insights.domain.nutrition.signal.protein.below")
+                        : InsightsLocalization.text("insights.domain.nutrition.signal.protein.reliable")
+                ),
+                InsightsKeySignal(
+                    id: "nutrition.quality",
+                    label: InsightsLocalization.text("insights.domain.nutrition.signal.quality.label"),
+                    value: mealConsistency >= 0.45
+                        ? InsightsLocalization.text("insights.domain.nutrition.signal.quality.reliable")
+                        : InsightsLocalization.text("insights.domain.nutrition.signal.quality.moreMeals")
+                ),
+                InsightsKeySignal(
+                    id: "nutrition.recovery",
+                    label: InsightsLocalization.text("insights.domain.nutrition.signal.recovery.label"),
+                    value: score >= 72
+                        ? InsightsLocalization.text("insights.domain.nutrition.signal.recovery.strong")
+                        : InsightsLocalization.text("insights.domain.nutrition.signal.recovery.limiter")
+                )
             ],
             standoutText: takeaway,
             focusText: focus,
@@ -1648,10 +1826,7 @@ private extension InsightsDomainIntelligenceEngine {
     }
 
     static func statusText(for score: Int) -> String {
-        if score >= 85 { return "Excellent" }
-        if score >= 72 { return "Strong" }
-        if score >= 60 { return "Fair" }
-        return "Needs Attention"
+        InsightsLocalization.statusText(for: score)
     }
 
     static func directionSymbol(current: Double, baseline: Double, lowerIsBetter: Bool = false) -> String {
@@ -1680,17 +1855,35 @@ private extension InsightsDomainIntelligenceEngine {
         let focus: String
         switch page.domain {
         case .recovery:
-            headline = tooPositiveForSignals ? "Recovery stayed strong despite softer signals" : "Recovery is improving but needs support"
-            takeaway = tooPositiveForSignals ? "Recovery quality held while signals softened." : "Readiness is moving up but still has limited margin."
-            focus = tooPositiveForSignals ? "Maintain current approach." : "Improve sleep consistency."
+            headline = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.recovery.validation.strongDespiteSoft")
+                : InsightsLocalization.text("insights.domain.recovery.validation.improvingNeedsSupport")
+            takeaway = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.recovery.validation.strongTakeaway")
+                : InsightsLocalization.text("insights.domain.recovery.validation.improvingTakeaway")
+            focus = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.recovery.focus.maintainApproach")
+                : InsightsLocalization.text("insights.domain.recovery.focus.sleepConsistency")
         case .activity:
-            headline = tooPositiveForSignals ? "Training stayed strong despite lower movement" : "Activity is rebuilding but needs consistency"
-            takeaway = tooPositiveForSignals ? "Load remained sustainable while movement softened." : "Movement is improving but not yet stable."
-            focus = tooPositiveForSignals ? "Maintain current load." : "Increase easy daily movement."
+            headline = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.activity.validation.strongDespiteMovement")
+                : InsightsLocalization.text("insights.domain.activity.validation.rebuilding")
+            takeaway = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.activity.validation.strongTakeaway")
+                : InsightsLocalization.text("insights.domain.activity.validation.rebuildingTakeaway")
+            focus = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.recovery.focus.maintainLoad")
+                : InsightsLocalization.text("insights.domain.activity.focus.increaseMovement")
         case .nutrition:
-            headline = tooPositiveForSignals ? "Nutrition stayed strong despite softer inputs" : "Nutrition is improving but still limited"
-            takeaway = tooPositiveForSignals ? "Nutrition quality held while inputs softened." : "Support is rising but still has a limiter."
-            focus = tooPositiveForSignals ? "Maintain current approach." : "Increase protein intake."
+            headline = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.nutrition.validation.strongDespiteInputs")
+                : InsightsLocalization.text("insights.domain.nutrition.validation.improvingLimited")
+            takeaway = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.nutrition.validation.strongTakeaway")
+                : InsightsLocalization.text("insights.domain.nutrition.validation.improvingTakeaway")
+            focus = tooPositiveForSignals
+                ? InsightsLocalization.text("insights.domain.recovery.focus.maintainApproach")
+                : InsightsLocalization.text("insights.domain.nutrition.focus.increaseProtein")
         default:
             return page
         }

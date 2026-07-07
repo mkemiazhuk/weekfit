@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class HighlightsViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var story: HighlightStory = WeekFitDataSynthesizer.generateMonthlyHighlight(from: [])
     @Published private(set) var dailyMetrics: [DailyMetrics] = []

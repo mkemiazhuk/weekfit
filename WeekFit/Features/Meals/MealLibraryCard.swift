@@ -27,7 +27,7 @@ private struct MealLibraryRecommendationBadge: View {
             Text(title)
                 .font(.system(size: 9.2, weight: .bold, design: .rounded))
                 .tracking(0.2)
-                .foregroundStyle(Color.white.opacity(0.62))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -35,7 +35,7 @@ private struct MealLibraryRecommendationBadge: View {
         .frame(height: 18)
         .background {
             Capsule()
-                .fill(Color.white.opacity(0.05))
+                .fill(WeekFitTheme.whiteOpacity(0.05))
         }
     }
 }
@@ -147,7 +147,7 @@ struct HeroMealLibraryRow: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color.white.opacity(isRecommended ? 0.036 : 0.028),
+                    WeekFitTheme.whiteOpacity(isRecommended ? 0.036 : 0.028),
                     rowBackground.opacity(0.65),
                     Color.black.opacity(0.14)
                 ],
@@ -181,7 +181,8 @@ struct HeroMealLibraryRow: View {
                     offsetScale: 0.28,
                     plateOpacity: 0.24,
                     shadowOpacity: 0.14,
-                    layoutMode: .compactPreview
+                    layoutMode: .compactPreview,
+                    photoTargetPixelSize: MealPhotoStore.libraryRowPixelSize
                 )
             } else if let items = meal.builderImageItems, !items.isEmpty {
                 BuiltMealPlateView(
@@ -193,10 +194,15 @@ struct HeroMealLibraryRow: View {
                     shadowOpacity: 0.14,
                     layoutMode: .compactPreview
                 )
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
+            } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
                 Image(meal.imageName)
                     .resizable()
-                    .scaledToFill()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(
+                        width: MealLibraryCardMetrics.foodWidth * 0.92,
+                        height: MealLibraryCardMetrics.foodHeight * 0.92
+                    )
             } else {
                 Image(systemName: "fork.knife")
                     .font(.system(size: 28, weight: .semibold))
@@ -233,7 +239,7 @@ struct HeroMealLibraryRow: View {
 
     private var pressHighlight: some View {
         RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
-            .fill(Color.white.opacity(isPressed ? 0.045 : 0))
+            .fill(WeekFitTheme.whiteOpacity(isPressed ? 0.045 : 0))
     }
 
     // MARK: Content
@@ -257,25 +263,32 @@ struct HeroMealLibraryRow: View {
                 label: WeekFitLocalizedString("meals.library.macroFats"),
                 labelTint: Color(red: 0.88, green: 0.68, blue: 0.34).opacity(0.36)
             )
+            macroSeparator
+            macroSegment(
+                value: meal.fiber,
+                label: WeekFitLocalizedString("meals.library.macroFiber"),
+                labelTint: WeekFitTheme.green.opacity(0.36)
+            )
         }
         .font(.system(size: 9.4, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .lineLimit(1)
+        .minimumScaleFactor(0.82)
     }
 
     private func macroSegment(value: Int, label: String, labelTint: Color) -> some View {
         HStack(spacing: 2) {
-            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
-                .foregroundStyle(Color.white.opacity(0.52))
-
             Text(label)
                 .foregroundStyle(labelTint)
+
+            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
         }
     }
 
     private var macroSeparator: some View {
         Text("·")
-            .foregroundStyle(Color.white.opacity(0.20))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.20))
             .padding(.horizontal, 4)
     }
 
@@ -301,11 +314,11 @@ struct HeroMealLibraryRow: View {
         } else {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.06))
+                    .fill(WeekFitTheme.whiteOpacity(0.06))
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9.6, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.32))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.32))
             }
             .frame(width: 26, height: 26)
         }
@@ -314,7 +327,7 @@ struct HeroMealLibraryRow: View {
     private var cardBorder: some View {
         RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
             .stroke(
-                Color.white.opacity(isRecommended ? 0.07 : 0.05),
+                WeekFitTheme.whiteOpacity(isRecommended ? 0.07 : 0.05),
                 lineWidth: 1
             )
     }
@@ -353,11 +366,11 @@ struct MealsLibrarySkeletonRow: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
-            .fill(Color.white.opacity(pulse ? 0.055 : 0.028))
+            .fill(WeekFitTheme.whiteOpacity(pulse ? 0.055 : 0.028))
             .frame(height: MealLibraryCardMetrics.cardHeight)
             .overlay {
                 RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.035), lineWidth: 1)
+                    .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
             }
             .onAppear {
                 withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {

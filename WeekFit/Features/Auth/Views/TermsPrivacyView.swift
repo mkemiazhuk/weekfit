@@ -7,9 +7,9 @@ struct TermsPrivacyView: View {
     private let background = Color.black
     private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.58)
-    private let textMuted = Color.white.opacity(0.42)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private let textSecondary = WeekFitTheme.whiteOpacity(0.58)
+    private let textMuted = WeekFitTheme.whiteOpacity(0.42)
 
     private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
 

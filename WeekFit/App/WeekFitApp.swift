@@ -16,6 +16,8 @@ struct WeekFitApp: App {
     @StateObject private var coachCoordinator = CoachCoordinator()
     @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @StateObject private var languageManager = AppLanguageManager()
+    @StateObject private var nightComfort = NightComfortController()
+    @State private var nightComfortLocationService: NightComfortLocationService?
 
     @State private var backgroundEnteredAt: Date?
 
@@ -36,13 +38,28 @@ struct WeekFitApp: App {
                 .environmentObject(coachCoordinator)
                 .environmentObject(activityCoordinator)
                 .environmentObject(languageManager)
+                .environmentObject(nightComfort)
                 .environment(\.locale, languageManager.locale)
+                .environment(\.weekFitPalette, WeekFitSemanticPalette.interpolated(blend: nightComfort.blendFactor))
+                .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)
                 .onAppear {
                     activityCoordinator.start()
+                    activityCoordinator.beforePlannedActivityMutation = {
+                        CoachSnapshotInvalidator.invalidate(
+                            coordinator: coachCoordinator,
+                            nutritionViewModel: nutritionViewModel,
+                            reason: "healthKitActivityReconcile"
+                        )
+                    }
+                    if nightComfortLocationService == nil {
+                        nightComfortLocationService = NightComfortLocationService(nightComfort: nightComfort)
+                    }
+                    nightComfortLocationService?.refreshIfNeeded()
                 }
                 .onChange(of: languageManager.selectedLanguage) { _, language in
                     WeekFitSetCurrentLanguage(language)
                     ActivityNotificationService.shared.refreshLocalizedCategories()
+                    WellnessNotificationService.shared.cancelAll()
                     coachCoordinator.forceRecomputeForLanguageChange(reason: "languageChange.\(language.rawValue)")
                     appSession.triggerHealthRefresh(source: "languageChange")
                     appSession.triggerCoachRefresh(source: "languageChange")
@@ -62,6 +79,12 @@ struct WeekFitApp: App {
 
         case .active:
             activityCoordinator.refresh()
+            nightComfort.handleSceneBecameActive()
+            nightComfortLocationService?.refreshIfNeeded()
+
+            if backgroundEnteredAt != nil {
+                appSession.triggerHealthRefresh(source: "appForeground")
+            }
 
             let shouldReset =
                 backgroundEnteredAt.map {

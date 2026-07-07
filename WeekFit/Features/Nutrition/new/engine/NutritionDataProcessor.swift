@@ -3,6 +3,10 @@ import Foundation
 // MARK: - 🧬 METABOLIC AND LOGIC ENGINES
 
 final class MetabolicRateCalculator {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
+
     func calculateBMR(weight: Double, height: Double, age: Int, sex: BiologicalSex) -> Double {
         let safeWeight = max(weight, 40.0)
         let safeHeight = max(height, 120.0)
@@ -22,6 +26,10 @@ final class MetabolicRateCalculator {
 }
 
 final class DynamicMacroAdjuster {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
+
     private enum CalorieTargetPolicy {
         static let fatLossMultiplier = 0.85
         /// Prevents unrealistically low targets while still leaving a visible gap vs maintenance.
@@ -89,6 +97,10 @@ final class DynamicMacroAdjuster {
 }
 
 final class TimeAdaptiveScoringEngine {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
+
     func applyTimeSmoothing(
         to goals: NutritionGoals,
         currentHour: Int = Calendar.current.component(.hour, from: Date())

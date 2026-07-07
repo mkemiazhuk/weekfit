@@ -3,6 +3,9 @@ import Observation
 
 @Observable
 final class QuickLogSessionStore {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     private(set) var selections: [String: QuickLogSelection] = [:]
 
     var onSheetDismissRequest: ((String) -> Void)?
@@ -77,6 +80,26 @@ final class QuickLogSessionStore {
         guard var selection = selections[itemID] else { return }
         selection.loggedActivityID = nil
         selections[itemID] = selection
+    }
+
+    func removeReferencesToMissingActivities(validActivityIDs: Set<String>) {
+        var didChange = false
+
+        for (itemID, selection) in selections {
+            guard let activityID = selection.loggedActivityID else { continue }
+            guard !validActivityIDs.contains(activityID) else { continue }
+
+            cancelAutoDismiss(for: itemID)
+            selections.removeValue(forKey: itemID)
+            adjustedItemIDs.remove(itemID)
+            didChange = true
+        }
+
+        if didChange {
+            dismissTasks.keys
+                .filter { selections[$0] == nil }
+                .forEach { dismissTasks.removeValue(forKey: $0) }
+        }
     }
 
     func reset() {

@@ -90,6 +90,7 @@ enum AppText {
         static let loading: LocalizedStringResource = "today.status.loading"
         static let deepMetric: LocalizedStringResource = "today.status.metric.deep"
         static let upNextTitle: LocalizedStringResource = "today.upNext.title"
+        static let overviewTitle: LocalizedStringResource = "today.overview.title"
         static let currentSession: LocalizedStringResource = "today.upNext.currentSession"
         static let live: LocalizedStringResource = "today.upNext.live"
         static let noActivitiesPlanned: LocalizedStringResource = "today.upNext.empty"
@@ -111,13 +112,26 @@ enum AppText {
         static let coachCardHighConfidence: LocalizedStringResource = "today.coach.card.highConfidence"
         static let coachCardModerateConfidence: LocalizedStringResource = "today.coach.card.moderateConfidence"
         static let coachCardLimitedConfidence: LocalizedStringResource = "today.coach.card.limitedConfidence"
+        static let coachChipLimitedRecovery: LocalizedStringResource = "today.coach.chip.limitedRecovery"
+        static let recoverySleepNotRecorded: LocalizedStringResource = "today.recovery.sleepNotRecorded"
+        static let recoveryUnavailable: LocalizedStringResource = "today.recovery.unavailable"
         static let connectHealthInsights: LocalizedStringResource = "today.coachInsight.connectHealth"
+        static let coachSettlingTitle: LocalizedStringResource = "today.coach.settling.title"
+        static let coachSettlingMessageSleep: LocalizedStringResource = "today.coach.settling.message.sleep"
+        static let coachSettlingMessageHealth: LocalizedStringResource = "today.coach.settling.message.health"
+        static let coachSettlingMessageSyncing: LocalizedStringResource = "today.coach.settling.message.syncing"
+        static let statusRingAccessibilityHint: LocalizedStringResource = "today.status.ring.accessibilityHint"
+        static let recoveryAssessing: LocalizedStringResource = "today.recovery.assessing"
+        static let recoverySyncingSleep: LocalizedStringResource = "today.recovery.syncingSleep"
         static let quickActionsTitle: LocalizedStringResource = "today.quickActions.title"
         static let logDrinks: LocalizedStringResource = "today.quickActions.logDrinks"
+        static let firstDrink: LocalizedStringResource = "today.quickActions.firstDrink"
+        static let drinksTodayFormat: LocalizedStringResource = "today.quickActions.drinksTodayFormat"
         static let logFood: LocalizedStringResource = "today.quickActions.logFood"
         static let mealsSnacks: LocalizedStringResource = "today.quickActions.mealsSnacks"
         static let startActivity: LocalizedStringResource = "today.quickActions.startActivity"
         static let workoutRecovery: LocalizedStringResource = "today.quickActions.workoutRecovery"
+        static let quickActionsWaterProgressFormat: LocalizedStringResource = "today.quickActions.waterProgressFormat"
         static let verifyLogBlock: LocalizedStringResource = "today.verify.title"
         static let skippedAction: LocalizedStringResource = "today.verify.skipped"
         static let confirmLogAction: LocalizedStringResource = "today.verify.confirm"
@@ -335,6 +349,7 @@ enum AppText {
 
         enum Details {
             static let title: LocalizedStringResource = "nutrition.details.title"
+            static let qualityTitle: LocalizedStringResource = "nutrition.details.quality.title"
             static let scoreTitle: LocalizedStringResource = "nutrition.details.score.title"
             static let estimateNote: LocalizedStringResource = "nutrition.details.estimateNote"
             static let emptyTitle: LocalizedStringResource = "nutrition.details.empty.title"
@@ -458,6 +473,22 @@ enum AppText {
             }
         }
 
+        enum NightComfort {
+            static let title: LocalizedStringResource = "settings.nightComfort.title"
+            static let subtitle: LocalizedStringResource = "settings.nightComfort.subtitle"
+            static let footer: LocalizedStringResource = "settings.nightComfort.footer"
+            static let profileSubtitle: LocalizedStringResource = "settings.nightComfort.profileSubtitle"
+
+            enum Option {
+                static let automatic: LocalizedStringResource = "settings.nightComfort.option.automatic"
+                static let alwaysOn: LocalizedStringResource = "settings.nightComfort.option.alwaysOn"
+                static let off: LocalizedStringResource = "settings.nightComfort.option.off"
+                static let automaticSubtitle: LocalizedStringResource = "settings.nightComfort.option.automaticSubtitle"
+                static let alwaysOnSubtitle: LocalizedStringResource = "settings.nightComfort.option.alwaysOnSubtitle"
+                static let offSubtitle: LocalizedStringResource = "settings.nightComfort.option.offSubtitle"
+            }
+        }
+
         enum ProfileEdit {
             static let title: LocalizedStringResource = "settings.profile.edit.title"
             static let headline: LocalizedStringResource = "settings.profile.edit.headline"
@@ -522,6 +553,7 @@ func WeekFitWarmLocalizationCache() {
 }
 
 func WeekFitSetCurrentLanguage(_ language: AppLanguage) {
+    UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
     WeekFitLocalizationCache.update(language: language)
 }
 

@@ -1,6 +1,14 @@
+# macOS
+.DS_Store
+
 # Xcode
 DerivedData/
+.derived-data/
 .build/
+build/
+
+*.xcresult
+
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -14,13 +22,10 @@ xcuserdata/
 *.moved-aside
 *.xcuserstate
 
-# SwiftPM
+# Swift Package Manager
+.swiftpm/
 Package.resolved
 
-# macOS
-.DS_Store
-
 # Secrets
-.env.derived-data/
-.derived-data/
-build/
+.env
+.env.*timing-audit-failures.txt

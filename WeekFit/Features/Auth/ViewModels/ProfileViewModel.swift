@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     
     @Published var destination: ProfileDestination?
 
@@ -32,6 +35,9 @@ final class ProfileViewModel: ObservableObject {
 
         case .language:
             destination = .language
+
+        case .nightComfort:
+            destination = .nightComfort
 
         case .healthAccess, .appleHealth:
             destination = .healthAccess

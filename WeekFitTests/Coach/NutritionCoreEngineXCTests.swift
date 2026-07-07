@@ -63,7 +63,7 @@ final class NutritionCoreEngineXCTests: XCTestCase {
         XCTAssertEqual(regenerated.first?.actionLabel, result.activeInsights.first?.actionLabel)
     }
 
-    func testNutritionViewModelKeepsHealthKitCaloriesWithoutMealActivities() {
+    func testNutritionViewModelKeepsHealthKitCaloriesWithoutMealActivities() async {
         let viewModel = NutritionViewModel()
         let metrics = DailyNutritionMetrics(
             protein: 0,
@@ -88,7 +88,7 @@ final class NutritionCoreEngineXCTests: XCTestCase {
         XCTAssertGreaterThan(viewModel.nutritionPercent, 0)
     }
 
-    func testNutritionViewModelKeepsIncomingWaterWhenNoHydrationActivities() {
+    func testNutritionViewModelKeepsIncomingWaterWhenNoHydrationActivities() async {
         let viewModel = NutritionViewModel()
         let metrics = DailyNutritionMetrics(
             protein: 0,
@@ -113,7 +113,58 @@ final class NutritionCoreEngineXCTests: XCTestCase {
         XCTAssertEqual(viewModel.coachMetricsSnapshot?.nutritionContext.waterCurrent, 1.2)
     }
 
-    func testCoachInputProviderPreservesHealthKitNutritionWithoutMeals() {
+    func testNutritionViewModelDecreasesWhenPlannedMealIsRemoved() async {
+        let viewModel = NutritionViewModel()
+        let profile = CoachMetricsBuilder.standardProfile()
+        let meal = PlannedActivityBuilder.meal(
+            title: "Lunch",
+            calories: 520,
+            protein: 35,
+            carbs: 40,
+            fats: 18
+        )
+
+        viewModel.updateNutrition(
+            metrics: DailyNutritionMetrics(
+                protein: 0,
+                carbs: 0,
+                fats: 0,
+                fiber: 0,
+                calories: 0,
+                waterLiters: 0,
+                activeCalories: 0,
+                sleepHours: 0,
+                weightKg: 74
+            ),
+            profile: profile,
+            plannedActivities: [meal],
+            debugSource: "test.plannedMealAdded"
+        )
+
+        XCTAssertEqual(viewModel.currentMetrics?.calories, 520)
+
+        viewModel.updateNutrition(
+            metrics: DailyNutritionMetrics(
+                protein: 0,
+                carbs: 0,
+                fats: 0,
+                fiber: 0,
+                calories: 0,
+                waterLiters: 0,
+                activeCalories: 0,
+                sleepHours: 0,
+                weightKg: 74
+            ),
+            profile: profile,
+            plannedActivities: [],
+            debugSource: "test.plannedMealRemoved"
+        )
+
+        XCTAssertEqual(viewModel.currentMetrics?.calories, 0)
+        XCTAssertEqual(viewModel.currentMetrics?.protein, 0)
+    }
+
+    func testCoachInputProviderPreservesHealthKitNutritionWithoutMeals() async {
         let healthManager = HealthManager()
         healthManager.weight = 74
         healthManager.heightCm = 180

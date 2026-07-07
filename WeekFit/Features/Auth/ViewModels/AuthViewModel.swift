@@ -5,6 +5,9 @@ import AuthenticationServices
 
 @MainActor
 final class AuthViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     @Published var isLoggedIn = false
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -15,6 +18,16 @@ final class AuthViewModel: ObservableObject {
     }
 
     private let authService = AuthService()
+
+    /// Cloud sync + account sign-in are not shipped yet; login screen stays the entry point.
+    private static let accountAuthEnabled = false
+
+    init() {
+        guard Self.accountAuthEnabled else { return }
+        Task {
+            await restorePersistedSessionIfNeeded()
+        }
+    }
 
     func signIn(with provider: AuthProvider) async {
         isLoading = true
@@ -30,7 +43,7 @@ final class AuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     func signInWithEmail(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
@@ -101,12 +114,7 @@ final class AuthViewModel: ObservableObject {
             }
 
             do {
-                let user = try await authService.handleAppleCredential(credential)
-
-                print("Apple User ID:", user.id)
-                print("Email:", user.email ?? "No email")
-                print("First Name:", user.firstName ?? "No name")
-
+                _ = try await authService.handleAppleCredential(credential)
                 isLoggedIn = true
             } catch {
                 errorMessage = cleanError(error)
@@ -131,6 +139,26 @@ final class AuthViewModel: ObservableObject {
         isLoggedIn = true
         isLoading = false
         errorMessage = nil
+    }
+
+    /// Enters the app without account sign-in. Apple/email auth remains wired for a future sync release.
+    func continueIntoApp() {
+        isLoggedIn = true
+        errorMessage = nil
+        successMessage = nil
+    }
+
+    func restorePersistedSessionIfNeeded() async {
+        guard Self.accountAuthEnabled else { return }
+        guard !WeekFitUITestSupport.isActive else { return }
+        guard !isLoggedIn else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        if await authService.restoreAppleSessionIfValid() {
+            isLoggedIn = true
+        }
     }
 
     private func cleanError(_ error: Error) -> String {

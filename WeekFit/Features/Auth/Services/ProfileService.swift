@@ -34,6 +34,9 @@
         init(defaults: UserDefaults = .standard) {
             self.defaults = defaults
         }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+        nonisolated deinit {}
 
         func loadUserProfile() -> UserProfile {
             Self.migrateProfileStorageIfNeeded()
@@ -76,6 +79,12 @@
                     title: "Language",
                     subtitle: "Choose the app language",
                     type: .language
+                ),
+                ProfileItem(
+                    icon: "moon.stars.fill",
+                    title: WeekFitLocalizedString("settings.nightComfort.title"),
+                    subtitle: WeekFitLocalizedString("settings.nightComfort.profileSubtitle"),
+                    type: .nightComfort
                 )
             ]
         }

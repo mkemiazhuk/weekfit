@@ -20,6 +20,62 @@ final class HealthManagerIntegrationTests: XCTestCase {
         XCTAssertFalse(manager.isHealthAccessGranted)
         XCTAssertTrue(manager.hasCompletedHealthAccessCheck)
         XCTAssertEqual(manager.recoveryPercent, 0)
+        XCTAssertTrue(manager.hasSettledMetrics(for: Date()))
+    }
+
+    /// Regression for MainActorDeinitStabilization (see MainActorDeinitStabilization.swift).
+    func testEphemeralHealthManagerDeinitAfterPrepareForDisplayDay() async {
+        let manager = HealthManager()
+        let today = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(today)
+
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        manager.prepareForDisplayDay(tomorrow)
+
+        XCTAssertFalse(manager.hasSettledMetrics(for: today))
+        XCTAssertFalse(manager.hasSettledMetrics(for: tomorrow))
+    }
+
+    func testPrepareForDisplayDayClearsSettledMetricsForNewDay() async {
+        let manager = HealthManager()
+        let today = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(today)
+
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        manager.prepareForDisplayDay(tomorrow)
+
+        XCTAssertFalse(manager.hasSettledMetrics(for: today))
+        XCTAssertFalse(manager.hasSettledMetrics(for: tomorrow))
+    }
+
+    func testPrepareForDisplayDayClearsDayScopedTotals() async {
+        let manager = HealthManager()
+        manager.activeCalories = 820
+        manager.recoveryBreakdown = RecoveryScoreBreakdown(
+            sleepDuration: 20,
+            sleepConsistency: 10,
+            sleepContinuity: 12,
+            sleepArchitecture: 8,
+            hrv: 15,
+            restingHeartRate: 8,
+            trainingLoadModifier: 0,
+            total: 73,
+            confidence: .medium,
+            baselineContext: .empty,
+            unavailableSignals: []
+        )
+        manager.hrvSDNN = 62
+        manager.restingHeartRate = 54
+        manager.sleepMinutes = 420
+
+        let dayStart = Calendar.current.startOfDay(for: Date())
+        manager.prepareForDisplayDay(dayStart)
+
+        XCTAssertEqual(manager.activeCalories, 0)
+        XCTAssertEqual(manager.recoveryPercent, 0)
+        XCTAssertEqual(manager.hrvSDNN, 0)
+        XCTAssertEqual(manager.restingHeartRate, 0)
+        XCTAssertEqual(manager.sleepMinutes, 0)
     }
 
     func testActivityMetricsSnapshotRecoveryPercentMatchesBreakdown() {

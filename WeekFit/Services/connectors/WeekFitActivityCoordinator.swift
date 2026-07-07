@@ -5,6 +5,9 @@ import SwiftData
 
 @MainActor
 final class WeekFitActivityCoordinator: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static let shared = WeekFitActivityCoordinator()
 
@@ -17,6 +20,9 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var reconciledWorkoutUUIDs = Set<String>()
+
+    /// Called before deleting or merging SwiftData `PlannedActivity` rows during HealthKit reconciliation.
+    var beforePlannedActivityMutation: (() -> Void)?
 
     private init() {
         bind()
@@ -97,12 +103,43 @@ final class WeekFitActivityCoordinator: ObservableObject {
         clearCompletedWorkoutsBatch()
     }
 
+    /// Pulls completed workouts already stored in Health for the given day and reconciles them
+    /// with the planner. Used when there is no live Watch bridge (phone-only Health activity).
+    func bootstrapHealthWorkouts(
+        for date: Date,
+        healthManager: HealthManager,
+        with activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) async {
+        guard healthManager.isHealthAccessGranted else { return }
+
+        let workouts = await healthManager.loadWorkoutSamples(for: date)
+        guard !workouts.isEmpty else { return }
+
+        for workout in workouts {
+            reconcileCompletedAppleWorkout(
+                workout,
+                with: activities,
+                modelContext: modelContext,
+                forceRetry: true
+            )
+        }
+
+        try? modelContext.save()
+    }
+
     func reconcileCompletedAppleWorkout(
         _ workout: HKWorkout,
         with activities: [PlannedActivity],
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        forceRetry: Bool = false
     ) {
         let workoutUUID = workout.uuid.uuidString
+
+        if DismissedHealthKitWorkoutStore.isDismissed(workoutUUID) {
+            reconciledWorkoutUUIDs.insert(workoutUUID)
+            return
+        }
 
         if let persisted = importedWorkoutIfExists(
             uuid: workoutUUID,
@@ -131,6 +168,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
                 for: workout,
                 in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID }
             ) {
+                notifyPlannedActivityMutation()
                 modelContext.delete(standalone)
                 ActivityReconciler.applySyncedWorkout(workout, to: planned)
             } else {
@@ -141,7 +179,16 @@ final class WeekFitActivityCoordinator: ObservableObject {
             return
         }
 
-        guard !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+        guard forceRetry || !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+            return
+        }
+
+        if let persisted = importedWorkoutIfExists(
+            uuid: workoutUUID,
+            modelContext: modelContext
+        ) {
+            ActivityReconciler.applySyncedWorkout(workout, to: persisted)
+            reconciledWorkoutUUIDs.insert(workoutUUID)
             return
         }
 
@@ -156,6 +203,10 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         reconciledWorkoutUUIDs.insert(workoutUUID)
+    }
+
+    private func notifyPlannedActivityMutation() {
+        beforePlannedActivityMutation?()
     }
 
     private func importedWorkoutIfExists(

@@ -1,12 +1,12 @@
 import SwiftUI
 
 enum QuickLogRowMetrics {
-    static let height: CGFloat = 74
-    static let horizontalPadding: CGFloat = 12
-    static let imageSize: CGFloat = 60
-    static let imageCornerRadius: CGFloat = 16
-    static let cardCornerRadius: CGFloat = 23
-    static let plusButtonSize: CGFloat = 42
+    static let height: CGFloat = QuickActionSheetDesign.Row.height
+    static let horizontalPadding: CGFloat = QuickActionSheetDesign.Row.horizontalPadding
+    static let imageSize: CGFloat = QuickActionSheetDesign.Row.imageSize
+    static let imageCornerRadius: CGFloat = QuickActionSheetDesign.Row.imageCornerRadius
+    static let cardCornerRadius: CGFloat = QuickActionSheetDesign.Row.cardCornerRadius
+    static let plusButtonSize: CGFloat = QuickActionSheetDesign.Row.actionButtonSize
 }
 
 struct QuickLogRowView<ImageContent: View>: View {
@@ -27,28 +27,30 @@ struct QuickLogRowView<ImageContent: View>: View {
     private let cardBackground = WeekFitTheme.cardBackground
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 12) {
+        HStack(spacing: QuickActionSheetDesign.Row.contentSpacing) {
+            HStack(spacing: QuickActionSheetDesign.Row.contentSpacing) {
                 mealImage
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                        .font(QuickActionSheetDesign.Typography.rowTitle)
                         .foregroundStyle(textPrimary)
-                        .tracking(-0.35)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
+                        .tracking(-0.2)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
 
                     Text(subtitle)
-                        .font(.system(size: 12.2, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.56))
+                        .font(QuickActionSheetDesign.Typography.rowSubtitle)
+                        .foregroundStyle(textSecondary.opacity(0.58))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     if let metaText {
                         Text(metaText)
-                            .font(.system(size: 11.2, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textSecondary.opacity(0.62))
+                            .font(QuickActionSheetDesign.Typography.rowMeta)
+                            .foregroundStyle(textSecondary.opacity(0.52))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.82)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,44 +74,14 @@ struct QuickLogRowView<ImageContent: View>: View {
             cornerRadius: QuickLogRowMetrics.cardCornerRadius,
             isSelected: selection.isSelected
         )
-        .shadow(color: accentColor.opacity(selection.isSelected ? 0.05 : 0.035), radius: 12, y: 5)
+        .shadow(color: accentColor.opacity(selection.isSelected ? 0.04 : 0.025), radius: 8, y: 3)
     }
 
     private var mealImage: some View {
         ZStack {
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-            .fill(Color.white.opacity(0.04))
-
             imageContent()
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.04),
-                    Color.black.opacity(0.16)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .blendMode(.multiply)
-            .allowsHitTesting(false)
         }
         .frame(width: QuickLogRowMetrics.imageSize, height: QuickLogRowMetrics.imageSize)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-            .stroke(Color.white.opacity(0.045), lineWidth: 1)
-        }
     }
 }
 
@@ -137,7 +109,7 @@ private extension View {
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .stroke(
-                    Color.white.opacity(isSelected ? 0.06 : 0.035),
+                    WeekFitTheme.whiteOpacity(isSelected ? 0.06 : 0.035),
                     lineWidth: 1
                 )
         }
@@ -157,7 +129,7 @@ private extension View {
                 displayQuantity: 0,
                 imageContent: {
                     Image(systemName: "fork.knife")
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.4))
                 },
                 onPlusTap: {},
                 onIncrement: {},

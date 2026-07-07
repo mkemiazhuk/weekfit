@@ -106,9 +106,6 @@ struct MealBuilderView: View {
                 platePreview
                     .padding(.horizontal, 16)
 
-                nutritionSummary
-                    .padding(.horizontal, 16)
-
                 buildProgress
                     .padding(.horizontal, 16)
 
@@ -158,7 +155,7 @@ struct MealBuilderView: View {
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.012),
+                    WeekFitTheme.whiteOpacity(0.012),
                     .clear,
                     Color.black.opacity(0.13)
                 ],
@@ -171,81 +168,22 @@ struct MealBuilderView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitDetailScreenHeader(
+            title: WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"),
+            subtitle: WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"),
+            titleColor: textPrimary,
+            subtitleColor: textSecondary.opacity(0.76),
+            titleDesign: .default
+        ) {
+            WeekFitDetailScreenBackButton {
                 onCancel?()
                 dismiss()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.045))
-                        .overlay {
-                            Circle()
-                                .stroke(Color.white.opacity(0.065), lineWidth: 1)
-                        }
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.92))
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"))
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.75)
-                    .lineLimit(1)
-
-                Text(WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"))
-                    .font(.system(size: 13.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Button {
+        } trailing: {
+            WeekFitDetailScreenSaveButton(isEnabled: hasUnsavedChanges, accent: accent) {
                 saveMeal()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.09)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    hasUnsavedChanges ? accent.opacity(0.18) : Color.white.opacity(0.065),
-                                    lineWidth: 1
-                                )
-                        }
-
-                    Image(systemName: hasUnsavedChanges ? "checkmark" : "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            hasUnsavedChanges
-                            ? accent.opacity(0.85)
-                            : textSecondary.opacity(0.42)
-                        )
-                }
-                .frame(width: 38, height: 38)
             }
-            .buttonStyle(.plain)
-            .disabled(!hasUnsavedChanges)
-            .scaleEffect(hasUnsavedChanges ? 1.0 : 0.96)
-            .animation(.spring(response: 0.25, dampingFraction: 0.82), value: hasUnsavedChanges)
         }
-        .padding(.bottom, 2)
     }
 
     private var flyingIngredientOverlay: some View {
@@ -356,10 +294,21 @@ struct MealBuilderView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
             selectedIngredientsRow
+
+            MealNutritionSummaryStrip(
+                calories: totalCalories,
+                protein: totalProtein,
+                carbs: totalCarbs,
+                fats: totalFats,
+                fiber: totalFiber,
+                accent: accent,
+                style: .embedded
+            )
+            .padding(.top, 2)
         }
         .padding(.horizontal, 13)
         .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.bottom, 11)
         .background {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
@@ -375,8 +324,8 @@ struct MealBuilderView: View {
                 .overlay(alignment: .topLeading) {
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.065),
-                            Color.white.opacity(0.014),
+                            WeekFitTheme.whiteOpacity(0.065),
+                            WeekFitTheme.whiteOpacity(0.014),
                             .clear
                         ],
                         startPoint: .topLeading,
@@ -387,7 +336,7 @@ struct MealBuilderView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
     }
@@ -505,7 +454,7 @@ struct MealBuilderView: View {
     private var selectedIngredientsRow: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(mealTitle)
+                Text(mealDisplayTitle)
                     .font(.system(size: 17.4, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.28)
@@ -531,51 +480,6 @@ struct MealBuilderView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var nutritionSummary: some View {
-        HStack(spacing: 8) {
-            nutritionTile("meals.nutrition.calories", "\(totalCalories)", "common.unit.kcal", isPrimary: true)
-            nutritionTile("meals.nutrition.protein", "\(totalProtein)", "common.unit.gramShort")
-            nutritionTile("meals.nutrition.carbs", "\(totalCarbs)", "common.unit.gramShort")
-            nutritionTile("meals.nutrition.fats", "\(totalFats)", "common.unit.gramShort")
-        }
-    }
-
-    private func nutritionTile(
-        _ title: String,
-        _ value: String,
-        _ unit: String,
-        isPrimary: Bool = false
-    ) -> some View {
-        VStack(spacing: 1) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
-
-                Text(WeekFitLocalizedString(unit))
-                    .font(.system(size: 9.4, weight: .semibold))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 9.4, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.74))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 46)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(isPrimary ? accent.opacity(0.052) : Color.white.opacity(0.030))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(isPrimary ? accent.opacity(0.17) : Color.white.opacity(0.038), lineWidth: 1)
-        }
-    }
-
     private var buildProgress: some View {
         HStack(spacing: 7) {
             progressPill(selectedIngredients.contains { $0.ingredient.category == .base }, "meals.builder.progress.base")
@@ -598,11 +502,11 @@ struct MealBuilderView: View {
         .frame(height: 28)
         .background {
             Capsule()
-                .fill(active ? accent.opacity(0.075) : Color.white.opacity(0.026))
+                .fill(active ? accent.opacity(0.075) : WeekFitTheme.whiteOpacity(0.026))
         }
         .overlay {
             Capsule()
-                .stroke(active ? accent.opacity(0.12) : Color.white.opacity(0.035), lineWidth: 1)
+                .stroke(active ? accent.opacity(0.12) : WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
         }
     }
 
@@ -659,11 +563,11 @@ struct MealBuilderView: View {
         .padding(.bottom, 11)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.030))
+                .fill(WeekFitTheme.whiteOpacity(0.030))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.040), lineWidth: 1)
+                .stroke(WeekFitTheme.whiteOpacity(0.040), lineWidth: 1)
         }
         .id(category.title)
     }
@@ -691,7 +595,7 @@ struct MealBuilderView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .frame(width: 76, height: 68)
+            .frame(width: 76, height: 62)
 
             if let selected = selectedInstance {
                 HStack(spacing: 0) {
@@ -736,10 +640,12 @@ struct MealBuilderView: View {
                 Text(String(format: WeekFitLocalizedString(ingredient.category == .drinks ? "common.unit.millilitersFormat" : "common.unit.gramValueFormat"), ingredient.defaultGrams))
                     .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.5))
-                    .frame(height: 20)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 18)
+                    .multilineTextAlignment(.center)
             }
         }
-        .frame(width: 76, height: 106)
+        .frame(width: 76, height: 98)
         .background {
             ingredientCardBackground(isSelected: isSelected)
         }
@@ -749,38 +655,46 @@ struct MealBuilderView: View {
         ingredient: MealBuilderIngredient,
         isSelected: Bool
     ) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             if !ingredient.imageName.isEmpty,
                UIImage(named: ingredient.imageName) != nil {
                 Image(ingredient.imageName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 42, height: 32)
+                    .frame(width: 38, height: 30)
                     .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
             } else {
                 Image(systemName: "fork.knife")
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(textSecondary)
-                    .frame(width: 42, height: 32)
+                    .frame(width: 38, height: 30)
             }
 
             Text(ingredient.localizedTitle)
-                .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold))
-                .foregroundStyle(isSelected ? accent : textPrimary.opacity(0.9))
-                .lineLimit(1)
+                .font(.system(size: 10.2, weight: isSelected ? .bold : .semibold, design: .rounded))
+                .foregroundStyle(isSelected ? accent : textPrimary.opacity(0.88))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
                 .minimumScaleFactor(0.65)
+                .frame(maxWidth: .infinity)
         }
-        .padding(.top, 8)
-        .scaleEffect(isSelected ? 1.02 : 1)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
+        .scaleEffect(isSelected ? 1.01 : 1)
     }
 
     private func ingredientCardBackground(isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(Color.white.opacity(isSelected ? 0.05 : 0.02))
+            .fill(
+                isSelected
+                    ? accent.opacity(0.06)
+                    : WeekFitTheme.whiteOpacity(0.022)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(
-                        isSelected ? accent.opacity(0.4) : Color.white.opacity(0.03),
+                        isSelected ? accent.opacity(0.34) : WeekFitTheme.whiteOpacity(0.034),
                         lineWidth: 1
                     )
             }
@@ -791,6 +705,26 @@ struct MealBuilderView: View {
     }
 
     private var mealTitle: String {
+        let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.title
+        let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.title
+        let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.title
+        let extra = selectedIngredients.first { $0.ingredient.category == .extras }?.ingredient.title
+        let drinks = selectedIngredients.first { $0.ingredient.category == .drinks }?.ingredient.title
+
+        if let protein, let base { return "\(protein) \(base)" }
+        if let base, let extra { return "\(extra) \(base)" }
+        if let vegetable, let protein { return "\(protein) \(vegetable)" }
+
+        if let base { return base }
+        if let protein { return protein }
+        if let vegetable { return vegetable }
+        if let extra { return extra }
+        if let drinks { return drinks }
+
+        return editingMeal?.title ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
+    }
+
+    private var mealDisplayTitle: String {
         let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.localizedTitle
         let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.localizedTitle
         let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.localizedTitle
@@ -807,7 +741,7 @@ struct MealBuilderView: View {
         if let extra { return extra }
         if let drinks { return drinks }
 
-        return editingMeal?.title ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
+        return editingMeal?.localizedDisplayTitle ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
     }
 
     private func toggle(_ ingredient: MealBuilderIngredient) {
@@ -945,7 +879,7 @@ struct MealBuilderView: View {
     private func makeMealIngredients() -> [MealsIngredient] {
         selectedIngredients.map { selected in
             MealsIngredient(
-                name: selected.ingredient.localizedTitle,
+                name: selected.ingredient.title,
                 amount: amountText(selected)
             )
         }
@@ -957,7 +891,7 @@ struct MealBuilderView: View {
 
     private func makeSubtitle() -> String {
         selectedIngredients
-            .map { "\($0.ingredient.localizedTitle) (\(amountText($0)))" }
+            .map { "\($0.ingredient.title) (\(amountText($0)))" }
             .joined(separator: " + ")
     }
 

@@ -33,7 +33,7 @@ struct PlanRow: View {
                 ZStack {
                     GeometryReader { geo in
                         Rectangle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(WeekFitTheme.whiteOpacity(0.08))
                             .frame(width: 1.5)
                             .position(x: geo.size.width / 2, y: geo.size.height / 2)
                     }
@@ -51,7 +51,7 @@ struct PlanRow: View {
                 // Иконка
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white.opacity(0.03))
+                        .fill(WeekFitTheme.whiteOpacity(0.03))
                         .frame(width: 44, height: 44)
                     
                     Image(systemName: activity.icon.isEmpty ? "sparkles" : activity.icon)
@@ -61,7 +61,7 @@ struct PlanRow: View {
                 
                 // Текст
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(activity.title)
+                    Text(PlannerOptionLocalization.localizedTitle(for: activity.title))
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                     

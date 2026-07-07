@@ -1,6 +1,9 @@
 import Foundation
 
 final class NutritionRepository {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     func loadMeals() -> [Meals] {
         guard let url = Bundle.main.url(forResource: "meals", withExtension: "json") else {

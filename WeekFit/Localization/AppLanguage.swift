@@ -23,6 +23,9 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 @MainActor
 final class AppLanguageManager: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
     @Published var selectedLanguage: AppLanguage {
         didSet {
             guard selectedLanguage != oldValue else { return }

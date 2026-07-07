@@ -13,14 +13,14 @@ struct WeekFitScreenHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .tracking(-0.65)
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
             }
@@ -92,7 +92,7 @@ struct WeekFitAvatarButton: View {
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 0.8)
+                            .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 0.8)
                             .padding(4)
                     }
 

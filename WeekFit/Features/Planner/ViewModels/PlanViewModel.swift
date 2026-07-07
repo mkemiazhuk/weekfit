@@ -5,6 +5,8 @@ internal import Combine
 @MainActor
 final class PlanViewModel: ObservableObject {
 
+    private let lifecycleToken = "PlanViewModel"
+
     // MARK: - Timeline constants
     let timelineStartHour = 5
     let timelineEndHour = 24
@@ -40,10 +42,40 @@ final class PlanViewModel: ObservableObject {
     @Published var customMeals: [Meals] = []
     @Published var selectedMealID: String?
 
+    var dayKindCacheRevision = ""
+    var dayKindByDayStart: [TimeInterval: PlanDayKind] = [:]
+    var timelineItemsCacheKey = ""
+    var cachedTimelineItems: [PlanTimelineItem] = []
+    private var loadedCustomMealsStorage = ""
+    private var loadedCustomMealsCatalogRevision: UInt = .max
+
+    init() {
+        WeekFitLifecycleTracker.attach(lifecycleToken)
+    }
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {
+        WeekFitLifecycleTracker.detach(lifecycleToken)
+    }
+
     var calendar: Calendar {
         var cal = Calendar.current
         cal.firstWeekday = 2
         return cal
+    }
+
+    /// Token for mounted-tab equality checks; must change when planner UI state changes.
+    var plannerInteractionToken: String {
+        let day = Int(calendar.startOfDay(for: selectedDate).timeIntervalSince1970)
+        let editingID = editingActivity?.id ?? "-"
+        return "\(day)|\(showAddActivity)|\(editingID)|\(plannerDataRevision)"
+    }
+
+    private var plannerDataRevision = 0
+
+    func markPlannerDataChanged() {
+        plannerDataRevision &+= 1
+        invalidateTimelineCache()
     }
 
     var availableMeals: [Meals] {
@@ -122,6 +154,24 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
+    func syncCustomMeals(from meals: [Meals], revision: UInt) {
+        guard loadedCustomMealsCatalogRevision != revision else { return }
+        loadedCustomMealsCatalogRevision = revision
+        customMeals = meals
+
+        if selectedType == .meal,
+           let selectedMealID,
+           !customMeals.contains(where: { $0.id == selectedMealID }) {
+            syncDefaultSelectedMeal()
+        }
+    }
+
+    func loadCustomMealsIfNeeded(from storage: String) {
+        guard storage != loadedCustomMealsStorage else { return }
+        loadedCustomMealsStorage = storage
+        loadCustomMeals(from: storage)
+    }
+
     func plannerOption(for meal: Meals) -> PlannerOption {
         PlannerOption(
             title: meal.title,
@@ -147,8 +197,13 @@ final class PlanViewModel: ObservableObject {
 
     func activities(for date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
         activities
-            .filter { calendar.isDate($0.date, inSameDayAs: date) && !$0.isSkipped }
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
             .sorted { $0.date < $1.date }
+    }
+
+    /// Activities that still count toward day progress (excludes skipped).
+    func countableDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
+        selectedDayActivities(from: activities).filter { !$0.isSkipped }
     }
 
     func selectedDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
@@ -160,7 +215,7 @@ final class PlanViewModel: ObservableObject {
     }
 
     func upcomingDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
-        selectedDayActivities(from: activities).filter { !$0.isCompleted && !$0.isSkipped }
+        countableDayActivities(from: activities).filter { !$0.isCompleted }
     }
 
     func nextUpcomingActivity(from activities: [PlannedActivity]) -> PlannedActivity? {
@@ -168,7 +223,7 @@ final class PlanViewModel: ObservableObject {
     }
 
     func calculateProgress(from activities: [PlannedActivity]) -> Double {
-        let dayActivities = selectedDayActivities(from: activities)
+        let dayActivities = countableDayActivities(from: activities)
         guard !dayActivities.isEmpty else { return 0.18 }
 
         let completed = dayActivities.filter { $0.isCompleted }.count
@@ -397,6 +452,7 @@ final class PlanViewModel: ObservableObject {
             editingActivity.protein = meal?.protein ?? editingActivity.protein
             editingActivity.carbs = meal?.carbs ?? editingActivity.carbs
             editingActivity.fats = meal?.fats ?? editingActivity.fats
+            editingActivity.fiber = meal?.fiber ?? editingActivity.fiber
 
             do {
                 try modelContext.save()
@@ -423,7 +479,8 @@ final class PlanViewModel: ObservableObject {
                 calories: meal?.calories ?? 0,
                 protein: meal?.protein ?? 0,
                 carbs: meal?.carbs ?? 0,
-                fats: meal?.fats ?? 0
+                fats: meal?.fats ?? 0,
+                fiber: meal?.fiber ?? 0
             )
 
             modelContext.insert(activity)
@@ -465,18 +522,43 @@ final class PlanViewModel: ObservableObject {
         resetDragState()
     }
 
-    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    var beforePlannedActivityDeleted: (() -> Void)?
+    var afterPlannedActivityDeleted: (() -> Void)?
 
-        cancelNotifications(for: activity)
-        modelContext.delete(activity)
+    func invalidateTimelineCache() {
+        timelineItemsCacheKey = ""
+        cachedTimelineItems = []
+    }
+
+    func removePlannedActivities(withIDs ids: [String], modelContext: ModelContext) {
+        guard !ids.isEmpty else { return }
+
+        beforePlannedActivityDeleted?()
 
         do {
-            try modelContext.save()
+            try PlannedActivityPersistenceService.deleteActivities(
+                withIDs: ids,
+                modelContext: modelContext,
+                auditSource: "PlanViewModel.removePlannedActivities"
+            )
+            markPlannerDataChanged()
+            afterPlannedActivityDeleted?()
         } catch {
-            print("Failed to delete activity:", error)
+            PlannedActivityPlannerAudit.deleteFailed(ids: ids, error: error, modelContext: modelContext)
         }
+    }
 
+    func removePlannedActivities(_ activities: [PlannedActivity], modelContext: ModelContext) {
+        removePlannedActivities(withIDs: activities.map(\.id), modelContext: modelContext)
+    }
+
+    func removePlannedActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
+        removePlannedActivities([activity], modelContext: modelContext)
+    }
+
+    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        removePlannedActivity(activity, modelContext: modelContext)
         closeAddSheet()
     }
 

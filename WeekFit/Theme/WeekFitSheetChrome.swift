@@ -6,5 +6,6 @@ extension View {
             .presentationBackground(.clear)
             .presentationCornerRadius(cornerRadius)
             .preferredColorScheme(.dark)
+            .environment(\.weekFitPalette, WeekFitPaletteStore.current)
     }
 }

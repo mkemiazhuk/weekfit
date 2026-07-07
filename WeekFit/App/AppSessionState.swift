@@ -3,6 +3,9 @@ internal import Combine
 
 @MainActor
 final class AppSessionState: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)
     @Published private(set) var healthRefreshEvent = AppRefreshEvent(kind: .healthRefresh)
@@ -18,6 +21,7 @@ final class AppSessionState: ObservableObject {
     var healthRefreshTrigger: UUID { healthRefreshEvent.token }
     var coachRefreshTrigger: UUID { coachRefreshEvent.token }
     var localDataResetTrigger: UUID { localDataResetEvent.token }
+    var latestHealthRefreshSources: [String] { healthRefreshEvent.sources }
 
     func triggerReturnToToday() {
         returnToTodayEvent = AppRefreshEvent(kind: .returnToToday)
@@ -60,6 +64,16 @@ final class AppSessionState: ObservableObject {
         isCoachRefreshScheduled = true
         DispatchQueue.main.async { [weak self] in
             self?.flushCoachRefresh()
+        }
+    }
+
+    /// Fires health + coach refresh after the calendar day rolls over.
+    func handleCalendarDayRollover(source: String, returnToToday: Bool = true) {
+        CoachStateStabilizer.markRealityChange(source: "dayRollover.\(source)")
+        triggerHealthRefresh(source: "dayRollover.\(source)")
+        triggerCoachRefresh(source: "dayRollover.\(source)")
+        if returnToToday {
+            triggerReturnToToday()
         }
     }
 

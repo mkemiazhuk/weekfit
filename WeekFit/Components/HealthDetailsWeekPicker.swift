@@ -112,12 +112,12 @@ struct HealthDetailsWeekPicker: View {
             .padding(.vertical, 7)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? accentColor.opacity(0.12) : Color.white.opacity(isToday ? 0.038 : 0.020))
+                    .fill(isSelected ? accentColor.opacity(0.12) : WeekFitTheme.whiteOpacity(isToday ? 0.038 : 0.020))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(
-                        isSelected ? accentColor.opacity(0.28) : Color.white.opacity(isToday ? 0.07 : 0.035),
+                        isSelected ? accentColor.opacity(0.28) : WeekFitTheme.whiteOpacity(isToday ? 0.07 : 0.035),
                         lineWidth: 1
                     )
             }
@@ -139,7 +139,7 @@ struct HealthDetailsWeekPicker: View {
                 .frame(width: 28, height: 48)
                 .background {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(Color.white.opacity(isEnabled ? 0.035 : 0.014))
+                        .fill(WeekFitTheme.whiteOpacity(isEnabled ? 0.035 : 0.014))
                 }
         }
         .buttonStyle(.plain)
@@ -193,6 +193,6 @@ struct HealthDetailsWeekPicker: View {
             return accentColor.opacity(0.13)
         }
 
-        return Color.white.opacity(0.050)
+        return WeekFitTheme.whiteOpacity(0.050)
     }
 }

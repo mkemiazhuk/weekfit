@@ -362,9 +362,13 @@ enum PlanTimelineItemGrouper {
         Calendar.current.isDate(lhs, equalTo: rhs, toGranularity: .minute)
     }
 
-    private static func isWater(_ activity: PlannedActivity) -> Bool {
+    static func isWaterActivity(_ activity: PlannedActivity) -> Bool {
         PlanTimelineNutritionVisualResolver.isWaterActivity(activity)
             || isLegacyWaterActivity(activity)
+    }
+
+    private static func isWater(_ activity: PlannedActivity) -> Bool {
+        isWaterActivity(activity)
     }
 
     private static func isLegacyWaterActivity(_ activity: PlannedActivity) -> Bool {
@@ -445,10 +449,15 @@ enum PlanTimelineEmphasisResolver {
             return false
         }
 
-        switch activityStatus(items[index - 1].representative) {
-        case .completed, .logged, .skipped:
-            return true
-        case .live, .pending, .upcoming:
+        switch activityStatus(items[index].representative) {
+        case .live, .upcoming:
+            switch activityStatus(items[index - 1].representative) {
+            case .completed, .logged, .skipped:
+                return true
+            case .live, .pending, .upcoming:
+                return false
+            }
+        case .pending, .completed, .logged, .skipped:
             return false
         }
     }

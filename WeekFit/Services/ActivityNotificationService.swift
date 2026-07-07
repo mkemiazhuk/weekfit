@@ -2,11 +2,22 @@ import Foundation
 import UserNotifications
 
 final class ActivityNotificationService {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     static let shared = ActivityNotificationService()
 
     private let center = UNUserNotificationCenter.current()
     private let calendar = Calendar.current
+    private let schedulingLock = NSLock()
+    private var scheduleInvalidationVersion: [String: Int] = [:]
+    private var lastScheduleFingerprints: [String: String] = [:]
+
+    private struct ActivityNotificationSchedule {
+        var startReminderDate: Date?
+        var completionCheckDate: Date?
+    }
 
     private init() {
         registerActivityCompletionActions()
@@ -43,12 +54,38 @@ final class ActivityNotificationService {
     }
     
     func cancelAllNotifications() {
+        cancelAllActivityNotifications()
+        WellnessNotificationService.shared.cancelAll()
+    }
+
+    func cancelAllActivityNotifications() {
         let center = UNUserNotificationCenter.current()
 
-        center.removeAllPendingNotificationRequests()
-        center.removeAllDeliveredNotifications()
+        center.getPendingNotificationRequests { requests in
+            let ids = requests
+                .map(\.identifier)
+                .filter { id in
+                    id.hasPrefix("start-")
+                        || id.hasPrefix("completion-")
+                }
 
-        print("🔕 All notifications cancelled")
+            guard !ids.isEmpty else { return }
+            center.removePendingNotificationRequests(withIdentifiers: ids)
+        }
+
+        center.getDeliveredNotifications { notifications in
+            let ids = notifications
+                .map { $0.request.identifier }
+                .filter { id in
+                    id.hasPrefix("start-")
+                        || id.hasPrefix("completion-")
+                }
+
+            guard !ids.isEmpty else { return }
+            center.removeDeliveredNotifications(withIdentifiers: ids)
+        }
+
+        print("🔕 Activity notifications cancelled")
     }
 
     // MARK: - Main Sync API
@@ -59,10 +96,41 @@ final class ActivityNotificationService {
         completionCheckInsEnabled: Bool,
         minutesBefore: Int = 15
     ) {
-        cancelNotifications(for: activity)
+        syncNotifications(
+            for: [activity],
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled,
+            minutesBefore: minutesBefore
+        )
+    }
 
-        guard !activity.isSkipped else { return }
-        guard activityRemindersEnabled || completionCheckInsEnabled else { return }
+    func syncNotifications(
+        for activities: [PlannedActivity],
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool,
+        minutesBefore: Int = 15
+    ) {
+        let now = Date()
+        var pendingSchedules: [(PlannedActivity, ActivityNotificationSchedule, Int)] = []
+
+        for activity in activities {
+            switch syncPreparation(
+                for: activity,
+                activityRemindersEnabled: activityRemindersEnabled,
+                completionCheckInsEnabled: completionCheckInsEnabled,
+                minutesBefore: minutesBefore,
+                now: now
+            ) {
+            case .skip:
+                continue
+            case .cancelOnly:
+                cancelNotifications(for: activity)
+            case .schedule(let schedule, let scheduleVersion):
+                pendingSchedules.append((activity, schedule, scheduleVersion))
+            }
+        }
+
+        guard !pendingSchedules.isEmpty else { return }
 
         checkPermission { [weak self] isAuthorized in
             guard let self else { return }
@@ -72,37 +140,38 @@ final class ActivityNotificationService {
                 return
             }
 
-            if activityRemindersEnabled {
-                self.scheduleStartReminder(for: activity, minutesBefore: minutesBefore)
+            for (activity, schedule, scheduleVersion) in pendingSchedules {
+                self.applyPreparedSchedule(
+                    for: activity,
+                    schedule: schedule,
+                    scheduleVersion: scheduleVersion,
+                    minutesBefore: minutesBefore
+                )
             }
-
-            if completionCheckInsEnabled {
-                self.scheduleCompletionCheck(for: activity)
-            }
-        }
-    }
-
-    func syncNotifications(
-        for activities: [PlannedActivity],
-        activityRemindersEnabled: Bool,
-        completionCheckInsEnabled: Bool,
-        minutesBefore: Int = 15
-    ) {
-        activities.forEach {
-            syncNotifications(
-                for: $0,
-                activityRemindersEnabled: activityRemindersEnabled,
-                completionCheckInsEnabled: completionCheckInsEnabled,
-                minutesBefore: minutesBefore
-            )
         }
     }
 
     // MARK: - Backward-compatible APIs
 
     func scheduleReminder(for activity: PlannedActivity, minutesBefore: Int = 15) {
+        invalidatePendingScheduling(forActivityId: activity.id)
         cancelStartReminder(for: activity)
-        scheduleStartReminder(for: activity, minutesBefore: minutesBefore)
+
+        let reminderDate = calendar.date(
+            byAdding: .minute,
+            value: -minutesBefore,
+            to: activity.date
+        ) ?? activity.date
+
+        guard reminderDate > Date() else { return }
+
+        let scheduleVersion = currentScheduleVersion(forActivityId: activity.id)
+        scheduleStartReminder(
+            for: activity,
+            at: reminderDate,
+            minutesBefore: minutesBefore,
+            scheduleVersion: scheduleVersion
+        )
     }
 
     func cancelReminder(for activity: PlannedActivity) {
@@ -110,29 +179,63 @@ final class ActivityNotificationService {
     }
 
     func cancelReminders(for activities: [PlannedActivity]) {
-        let ids = activities.flatMap { notificationIds(for: $0) }
-        center.removePendingNotificationRequests(withIdentifiers: ids)
+        activities.forEach { cancelNotifications(for: $0) }
     }
 
     func cancelNotifications(for activity: PlannedActivity) {
-        center.removePendingNotificationRequests(
-            withIdentifiers: notificationIds(for: activity)
+        invalidatePendingScheduling(forActivityId: activity.id)
+        clearScheduleFingerprint(forActivityId: activity.id)
+        removeScheduledNotifications(for: activity)
+    }
+
+    private func removeScheduledNotifications(for activity: PlannedActivity) {
+        let ids = notificationIds(for: activity)
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+        scanAndRemoveNotifications(forActivityId: activity.id, excluding: Set(ids))
+    }
+
+    func cancelNotificationsForDeletedActivity(_ activity: PlannedActivity) async {
+        await cancelNotificationsForDeletedActivity(
+            DeletedActivityNotificationTarget(
+                id: activity.id,
+                title: activity.title,
+                date: activity.date
+            )
         )
     }
 
+    func cancelNotificationsForDeletedActivity(_ target: DeletedActivityNotificationTarget) async {
+        let targetActivityId = target.id
+        invalidatePendingScheduling(forActivityId: targetActivityId)
+
+        let ids = notificationIds(forDeletedActivity: target)
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+        await scanAndRemoveNotificationsAwaiting(forActivityId: targetActivityId, excluding: Set(ids))
+    }
+
     func cancelCompletionCheck(for activity: PlannedActivity) {
-        center.removePendingNotificationRequests(
-            withIdentifiers: [
-                completionNotificationId(for: activity),
-                completionLaterNotificationId(for: activity)
-            ]
-        )
+        invalidatePendingScheduling(forActivityId: activity.id)
+
+        let ids = [
+            completionNotificationId(for: activity),
+            completionNotificationIdLegacy(for: activity),
+            completionLaterNotificationId(for: activity),
+            completionLaterNotificationIdLegacy(for: activity)
+        ]
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+        scanAndRemoveNotifications(forActivityId: activity.id, excluding: Set(ids))
     }
 
     func scheduleCompletionCheckLater(
         for activity: PlannedActivity,
         minutesLater: Int = 15
     ) {
+        let activityId = activity.id
+        let scheduleVersion = currentScheduleVersion(forActivityId: activityId)
+
         let laterDate = calendar.date(
             byAdding: .minute,
             value: minutesLater,
@@ -152,7 +255,15 @@ final class ActivityNotificationService {
             date: laterDate
         )
 
-        center.add(request) { error in
+        center.add(request) { [weak self] error in
+            guard let self else { return }
+            guard self.isScheduleVersionCurrent(activityId: activityId, version: scheduleVersion) else {
+                self.center.removePendingNotificationRequests(
+                    withIdentifiers: [request.identifier]
+                )
+                return
+            }
+
             if let error {
                 print("Failed to schedule later completion check:", error)
             } else {
@@ -163,20 +274,219 @@ final class ActivityNotificationService {
 
     // MARK: - Private Scheduling
 
-    private func scheduleStartReminder(
+    private enum SyncPreparationResult {
+        case skip
+        case cancelOnly
+        case schedule(ActivityNotificationSchedule, Int)
+    }
+
+    private func syncPreparation(
         for activity: PlannedActivity,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool,
+        minutesBefore: Int,
+        now: Date
+    ) -> SyncPreparationResult {
+        let fingerprint = scheduleFingerprint(
+            for: activity,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled,
+            minutesBefore: minutesBefore,
+            now: now
+        )
+
+        if isFingerprintCurrent(activityId: activity.id, fingerprint: fingerprint) {
+            return .skip
+        }
+
+        guard !activity.isSkipped, !activity.isCompleted else {
+            storeScheduleFingerprint(activityId: activity.id, fingerprint: fingerprint)
+            return .cancelOnly
+        }
+
+        guard activityRemindersEnabled || completionCheckInsEnabled else {
+            storeScheduleFingerprint(activityId: activity.id, fingerprint: fingerprint)
+            return .cancelOnly
+        }
+
+        let schedule = notificationSchedule(
+            for: activity,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled,
+            minutesBefore: minutesBefore,
+            now: now
+        )
+
+        guard schedule.startReminderDate != nil || schedule.completionCheckDate != nil else {
+            storeScheduleFingerprint(activityId: activity.id, fingerprint: fingerprint)
+            return .cancelOnly
+        }
+
+        storeScheduleFingerprint(activityId: activity.id, fingerprint: fingerprint)
+        invalidatePendingScheduling(forActivityId: activity.id)
+        let scheduleVersion = currentScheduleVersion(forActivityId: activity.id)
+        return .schedule(schedule, scheduleVersion)
+    }
+
+    private func applyPreparedSchedule(
+        for activity: PlannedActivity,
+        schedule: ActivityNotificationSchedule,
+        scheduleVersion: Int,
         minutesBefore: Int
     ) {
-        let reminderDate = calendar.date(
+        let activityId = activity.id
+
+        guard isScheduleVersionCurrent(activityId: activityId, version: scheduleVersion) else {
+            print("Skipping stale notification schedule for deleted/edited activity:", activityId)
+            return
+        }
+
+        removeScheduledNotifications(for: activity)
+
+        if let reminderDate = schedule.startReminderDate {
+            scheduleStartReminder(
+                for: activity,
+                at: reminderDate,
+                minutesBefore: minutesBefore,
+                scheduleVersion: scheduleVersion
+            )
+        }
+
+        if let confirmationDate = schedule.completionCheckDate {
+            scheduleCompletionCheck(
+                for: activity,
+                at: confirmationDate,
+                scheduleVersion: scheduleVersion
+            )
+        }
+    }
+
+    private func notificationSchedule(
+        for activity: PlannedActivity,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool,
+        minutesBefore: Int,
+        now: Date
+    ) -> ActivityNotificationSchedule {
+        var startReminderDate: Date?
+        if activityRemindersEnabled {
+            let reminderDate = calendar.date(
+                byAdding: .minute,
+                value: -minutesBefore,
+                to: activity.date
+            ) ?? activity.date
+            if reminderDate > now {
+                startReminderDate = reminderDate
+            }
+        }
+
+        var scheduledCompletionDate: Date?
+        if completionCheckInsEnabled {
+            let confirmationDate = completionCheckDate(for: activity)
+            if confirmationDate > now {
+                scheduledCompletionDate = confirmationDate
+            }
+        }
+
+        return ActivityNotificationSchedule(
+            startReminderDate: startReminderDate,
+            completionCheckDate: scheduledCompletionDate
+        )
+    }
+
+    private func completionCheckDate(for activity: PlannedActivity) -> Date {
+        if activity.type.lowercased() == "meal" {
+            return calendar.date(
+                byAdding: .minute,
+                value: 30,
+                to: activity.date
+            ) ?? activity.date
+        }
+
+        let endDate = calendar.date(
             byAdding: .minute,
-            value: -minutesBefore,
+            value: activity.durationMinutes,
             to: activity.date
         ) ?? activity.date
 
-        guard reminderDate > Date() else {
-            print("Start reminder date is in the past. Notification skipped.")
-            return
-        }
+        return calendar.date(
+            byAdding: .minute,
+            value: completionDelayMinutes(for: activity),
+            to: endDate
+        ) ?? endDate
+    }
+
+    private func scheduleFingerprint(
+        for activity: PlannedActivity,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool,
+        minutesBefore: Int,
+        now: Date = Date()
+    ) -> String {
+        let schedule = notificationSchedule(
+            for: activity,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled,
+            minutesBefore: minutesBefore,
+            now: now
+        )
+
+        return scheduleFingerprint(
+            for: activity,
+            schedule: schedule,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled,
+            minutesBefore: minutesBefore
+        )
+    }
+
+    private func scheduleFingerprint(
+        for activity: PlannedActivity,
+        schedule: ActivityNotificationSchedule,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool,
+        minutesBefore: Int
+    ) -> String {
+        [
+            activity.id,
+            String(activity.isCompleted),
+            String(activity.isSkipped),
+            String(activity.date.timeIntervalSince1970),
+            String(activity.durationMinutes),
+            activity.type,
+            String(activityRemindersEnabled),
+            String(completionCheckInsEnabled),
+            String(minutesBefore),
+            String(schedule.startReminderDate?.timeIntervalSince1970 ?? -1),
+            String(schedule.completionCheckDate?.timeIntervalSince1970 ?? -1)
+        ].joined(separator: "|")
+    }
+
+    private func isFingerprintCurrent(activityId: String, fingerprint: String) -> Bool {
+        schedulingLock.lock()
+        defer { schedulingLock.unlock() }
+        return lastScheduleFingerprints[activityId] == fingerprint
+    }
+
+    private func storeScheduleFingerprint(activityId: String, fingerprint: String) {
+        schedulingLock.lock()
+        lastScheduleFingerprints[activityId] = fingerprint
+        schedulingLock.unlock()
+    }
+
+    private func clearScheduleFingerprint(forActivityId activityId: String) {
+        schedulingLock.lock()
+        lastScheduleFingerprints.removeValue(forKey: activityId)
+        schedulingLock.unlock()
+    }
+
+    private func scheduleStartReminder(
+        for activity: PlannedActivity,
+        at reminderDate: Date,
+        minutesBefore: Int,
+        scheduleVersion: Int
+    ) {
+        let activityId = activity.id
 
         let content = UNMutableNotificationContent()
         content.title = WeekFitLocalizedString("notifications.activity.upcoming.title")
@@ -194,7 +504,15 @@ final class ActivityNotificationService {
             date: reminderDate
         )
 
-        center.add(request) { error in
+        center.add(request) { [weak self] error in
+            guard let self else { return }
+            guard self.isScheduleVersionCurrent(activityId: activityId, version: scheduleVersion) else {
+                self.center.removePendingNotificationRequests(
+                    withIdentifiers: [request.identifier]
+                )
+                return
+            }
+
             if let error {
                 print("Failed to schedule start reminder:", error)
             } else {
@@ -203,33 +521,12 @@ final class ActivityNotificationService {
         }
     }
 
-    private func scheduleCompletionCheck(for activity: PlannedActivity) {
-        let confirmationDate: Date
-
-        if activity.type.lowercased() == "meal" {
-            confirmationDate = calendar.date(
-                byAdding: .minute,
-                value: 30,
-                to: activity.date
-            ) ?? activity.date
-        } else {
-            let endDate = calendar.date(
-                byAdding: .minute,
-                value: activity.durationMinutes,
-                to: activity.date
-            ) ?? activity.date
-
-            confirmationDate = calendar.date(
-                byAdding: .minute,
-                value: completionDelayMinutes(for: activity),
-                to: endDate
-            ) ?? endDate
-        }
-
-        guard confirmationDate > Date() else {
-            print("Completion check date is in the past. Notification skipped.")
-            return
-        }
+    private func scheduleCompletionCheck(
+        for activity: PlannedActivity,
+        at confirmationDate: Date,
+        scheduleVersion: Int
+    ) {
+        let activityId = activity.id
 
         let content = UNMutableNotificationContent()
         content.title = completionTitle(for: activity)
@@ -244,7 +541,15 @@ final class ActivityNotificationService {
             date: confirmationDate
         )
 
-        center.add(request) { error in
+        center.add(request) { [weak self] error in
+            guard let self else { return }
+            guard self.isScheduleVersionCurrent(activityId: activityId, version: scheduleVersion) else {
+                self.center.removePendingNotificationRequests(
+                    withIdentifiers: [request.identifier]
+                )
+                return
+            }
+
             if let error {
                 print("Failed to schedule completion check:", error)
             } else {
@@ -254,19 +559,119 @@ final class ActivityNotificationService {
     }
 
     private func cancelStartReminder(for activity: PlannedActivity) {
-        center.removePendingNotificationRequests(
-            withIdentifiers: [startNotificationId(for: activity)]
-        )
+        let ids = [
+            startNotificationId(for: activity),
+            startNotificationIdLegacy(for: activity)
+        ]
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+    }
+
+    private func invalidatePendingScheduling(forActivityId activityId: String) {
+        schedulingLock.lock()
+        scheduleInvalidationVersion[activityId, default: 0] += 1
+        schedulingLock.unlock()
+    }
+
+    private func currentScheduleVersion(forActivityId activityId: String) -> Int {
+        schedulingLock.lock()
+        defer { schedulingLock.unlock() }
+        return scheduleInvalidationVersion[activityId, default: 0]
+    }
+
+    private func isScheduleVersionCurrent(activityId: String, version: Int) -> Bool {
+        schedulingLock.lock()
+        defer { schedulingLock.unlock() }
+        return scheduleInvalidationVersion[activityId, default: 0] == version
+    }
+
+    private func scanAndRemoveNotifications(
+        forActivityId activityId: String,
+        excluding excluded: Set<String>
+    ) {
+        Task {
+            await scanAndRemoveNotificationsAwaiting(forActivityId: activityId, excluding: excluded)
+        }
+    }
+
+    private func scanAndRemoveNotificationsAwaiting(
+        forActivityId targetActivityId: String,
+        excluding excluded: Set<String>
+    ) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            var pendingIDs: [String] = []
+            var deliveredIDs: [String] = []
+            var pendingDone = false
+            var deliveredDone = false
+
+            func finishIfReady() {
+                guard pendingDone, deliveredDone else { return }
+
+                let ids = pendingIDs + deliveredIDs
+                if !ids.isEmpty {
+                    center.removePendingNotificationRequests(withIdentifiers: ids)
+                    center.removeDeliveredNotifications(withIdentifiers: ids)
+                }
+
+                continuation.resume()
+            }
+
+            center.getPendingNotificationRequests { [self] requests in
+                pendingIDs = requests.compactMap { request in
+                    guard !excluded.contains(request.identifier) else { return nil }
+                    guard activityId(from: request.content.userInfo) == targetActivityId else { return nil }
+                    return request.identifier
+                }
+                pendingDone = true
+                finishIfReady()
+            }
+
+            center.getDeliveredNotifications { [self] notifications in
+                deliveredIDs = notifications.compactMap { notification in
+                    let identifier = notification.request.identifier
+                    guard !excluded.contains(identifier) else { return nil }
+                    guard activityId(from: notification.request.content.userInfo) == targetActivityId else { return nil }
+                    return identifier
+                }
+                deliveredDone = true
+                finishIfReady()
+            }
+        }
     }
 
     // MARK: - Helpers
 
     private func notificationIds(for activity: PlannedActivity) -> [String] {
+        notificationIds(
+            forDeletedActivity: DeletedActivityNotificationTarget(
+                id: activity.id,
+                title: activity.title,
+                date: activity.date
+            )
+        )
+    }
+
+    private func notificationIds(forDeletedActivity target: DeletedActivityNotificationTarget) -> [String] {
         [
-            startNotificationId(for: activity),
-            completionNotificationId(for: activity),
-            completionLaterNotificationId(for: activity)
+            "start-\(target.id)",
+            "completion-\(target.id)",
+            "completion-later-\(target.id)",
+            "start-\(target.date.timeIntervalSince1970)-\(target.title)",
+            "completion-\(target.date.timeIntervalSince1970)-\(target.title)",
+            "completion-later-\(target.date.timeIntervalSince1970)-\(target.title)"
         ]
+    }
+
+    private func activityId(from userInfo: [AnyHashable: Any]) -> String? {
+        if let id = userInfo[ActivityNotificationKey.activityId] as? String {
+            return id
+        }
+
+        if let id = userInfo[ActivityNotificationKey.activityId] as? NSString {
+            return id as String
+        }
+
+        return nil
     }
 
     private func registerActivityCompletionActions() {
@@ -370,14 +775,26 @@ final class ActivityNotificationService {
     }
 
     private func startNotificationId(for activity: PlannedActivity) -> String {
-        "start-\(activity.date.timeIntervalSince1970)-\(activity.title)"
+        "start-\(activity.id)"
     }
 
     private func completionNotificationId(for activity: PlannedActivity) -> String {
-        "completion-\(activity.date.timeIntervalSince1970)-\(activity.title)"
+        "completion-\(activity.id)"
     }
 
     private func completionLaterNotificationId(for activity: PlannedActivity) -> String {
+        "completion-later-\(activity.id)"
+    }
+
+    private func startNotificationIdLegacy(for activity: PlannedActivity) -> String {
+        "start-\(activity.date.timeIntervalSince1970)-\(activity.title)"
+    }
+
+    private func completionNotificationIdLegacy(for activity: PlannedActivity) -> String {
+        "completion-\(activity.date.timeIntervalSince1970)-\(activity.title)"
+    }
+
+    private func completionLaterNotificationIdLegacy(for activity: PlannedActivity) -> String {
         "completion-later-\(activity.date.timeIntervalSince1970)-\(activity.title)"
     }
 }

@@ -15,6 +15,7 @@ final class QuickLogServingMathTests: XCTestCase {
             protein: 1,
             carbs: 27,
             fats: 0,
+            fiber: 3,
             defaultServingAmount: 1,
             servingUnit: .portion,
             gramsPerServing: 118
@@ -50,6 +51,7 @@ final class QuickLogServingMathTests: XCTestCase {
             protein: 42,
             carbs: 38,
             fats: 18,
+            fiber: 8,
             benefits: [],
             ingredients: [],
             servingGrams: 350
@@ -64,6 +66,7 @@ final class QuickLogServingMathTests: XCTestCase {
         XCTAssertEqual(nutrition.protein, 84)
         XCTAssertEqual(nutrition.carbs, 76)
         XCTAssertEqual(nutrition.fats, 36)
+        XCTAssertEqual(nutrition.fiber, 16)
         XCTAssertEqual(nutrition.portions, 2)
     }
 
@@ -245,6 +248,7 @@ final class QuickLogActivityPortionsTests: XCTestCase {
             protein: 2,
             carbs: 54,
             fats: 0,
+            fiber: 6,
             portions: 2,
             grams: 236,
             milliliters: nil

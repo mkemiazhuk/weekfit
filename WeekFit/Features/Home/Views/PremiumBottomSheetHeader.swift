@@ -8,26 +8,32 @@ struct PremiumBottomSheetHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-
             Capsule()
-                .fill(.white.opacity(0.16))
-                .frame(width: 46, height: 5)
+                .fill(.white.opacity(0.14))
+                .frame(width: 42, height: 4)
                 .padding(.top, 8)
-                .padding(.bottom, 10)
+                .padding(.bottom, 8)
 
-            ZStack {
-
-                VStack(spacing: 4) {
-
+            ZStack(alignment: .top) {
+                VStack(spacing: 3) {
                     Text(title)
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.96))
+                        .font(QuickActionSheetDesign.Typography.headerTitle)
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .allowsTightening(true)
 
                     Text(subtitle)
-                        .font(.system(size: 11.8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.38))
-                        .lineLimit(1)
+                        .font(QuickActionSheetDesign.Typography.headerSubtitle)
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 44)
 
                 HStack {
                     Spacer()
@@ -35,26 +41,25 @@ struct PremiumBottomSheetHeader: View {
                     Button {
                         onClose()
                     } label: {
-
                         Image(systemName: "xmark")
-                            .font(.system(size: 12.5, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.72))
-                            .frame(width: 34, height: 34)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
+                            .frame(width: 32, height: 32)
                             .background(
                                 Circle()
-                                    .fill(.white.opacity(0.055))
+                                    .fill(.white.opacity(0.05))
                             )
                             .overlay {
                                 Circle()
-                                    .stroke(.white.opacity(0.055), lineWidth: 1)
+                                    .stroke(.white.opacity(0.05), lineWidth: 1)
                             }
                     }
                     .buttonStyle(.plain)
+                    .fixedSize()
                 }
             }
-            .frame(height: 48)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 10)
+            .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+            .padding(.bottom, QuickActionSheetDesign.Layout.segmentedTopPadding)
         }
     }
 }

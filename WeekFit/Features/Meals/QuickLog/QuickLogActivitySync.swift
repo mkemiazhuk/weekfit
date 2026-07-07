@@ -16,6 +16,7 @@ enum QuickLogActivitySync {
         if effectivePortions <= 0 {
             if let activityID = selection.loggedActivityID,
                let activity = plannedActivities.first(where: { $0.id == activityID }) {
+                ActivityNotificationService.shared.cancelNotifications(for: activity)
                 modelContext.delete(activity)
                 try? modelContext.save()
             }
@@ -35,6 +36,7 @@ enum QuickLogActivitySync {
             activity.protein = nutrition.protein
             activity.carbs = nutrition.carbs
             activity.fats = nutrition.fats
+            activity.fiber = nutrition.fiber
             activity.durationMinutes = durationMinutes
             activity.isCompleted = true
             activity.isSkipped = false
@@ -57,6 +59,7 @@ enum QuickLogActivitySync {
             protein: nutrition.protein,
             carbs: nutrition.carbs,
             fats: nutrition.fats,
+            fiber: nutrition.fiber,
             isCompleted: true,
             isSkipped: false,
             source: "today"

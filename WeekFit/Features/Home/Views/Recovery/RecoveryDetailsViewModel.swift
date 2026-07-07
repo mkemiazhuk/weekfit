@@ -4,6 +4,9 @@ internal import Combine
 
 @MainActor
 final class RecoveryDetailsViewModel: ObservableObject {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     @Published private(set) var snapshot: RecoveryDaySnapshot = .empty
     @Published private(set) var isLoading = false
@@ -38,27 +41,36 @@ final class RecoveryDetailsViewModel: ObservableObject {
 
         guard loadToken == token else { return }
 
-        let breakdown = RecoveryScoreEngine.calculate(
+        let context = await provider.loadRecoveryScoreContext(
+            for: date,
+            currentBedStart: loadedSnapshot.bedStart
+        )
+
+        let input = RecoveryScoreInput(
             sleepMinutes: loadedSnapshot.asleepMinutes,
             timeInBedMinutes: loadedSnapshot.timeInBedMinutes,
             awakeMinutes: loadedSnapshot.awakeMinutes,
             awakeningsCount: loadedSnapshot.awakeningsCount,
             deepSleepMinutes: loadedSnapshot.deepSleepMinutes,
             remSleepMinutes: loadedSnapshot.remSleepMinutes,
-            hrvSDNN: loadedSnapshot.hrv ?? 0,
-            restingHeartRate: loadedSnapshot.restingHeartRate ?? 0
+            hrvSDNN: loadedSnapshot.hrv,
+            restingHeartRate: loadedSnapshot.restingHeartRate,
+            bedtimeDeviationMinutes: context.bedtimeDeviationMinutes,
+            baseline: context.baseline,
+            priorDayLoad: context.priorDayLoad
         )
+
+        let breakdown = RecoveryScoreEngine.calculate(input)
 
         snapshot = loadedSnapshot.withRecovery(
             score: breakdown.total,
-            breakdown: breakdown
+            breakdown: breakdown,
+            input: input
         )
 
         isLoading = false
     }
 
-    // Kept for backward compatibility if another place still calls the old API.
-    // It now ignores passed Today values and recalculates recovery for the requested date.
     func load(
         for date: Date,
         recoveryScore: Int,
@@ -93,6 +105,8 @@ struct RecoveryDaySnapshot: Equatable {
     let restingHeartRate: Double?
     let hrv: Double?
 
+    let recoveryInput: RecoveryScoreInput?
+
     let insightTitle: String
     let insightText: String
     let actionTitle: String
@@ -114,6 +128,7 @@ struct RecoveryDaySnapshot: Equatable {
         awakeningsCount: 0,
         restingHeartRate: nil,
         hrv: nil,
+        recoveryInput: nil,
         insightTitle: WeekFitLocalizedString("recovery.empty.title"),
         insightText: WeekFitLocalizedString("recovery.empty.text"),
         actionTitle: WeekFitLocalizedString("recovery.empty.actionTitle"),
@@ -137,6 +152,7 @@ struct RecoveryDaySnapshot: Equatable {
             awakeningsCount: 0,
             restingHeartRate: nil,
             hrv: nil,
+            recoveryInput: nil,
             insightTitle: WeekFitLocalizedString("recovery.empty.title"),
             insightText: WeekFitLocalizedString("recovery.empty.text"),
             actionTitle: WeekFitLocalizedString("recovery.empty.actionTitle"),
@@ -146,11 +162,19 @@ struct RecoveryDaySnapshot: Equatable {
 
     func withRecovery(
         score: Int,
-        breakdown: RecoveryScoreBreakdown
+        breakdown: RecoveryScoreBreakdown,
+        input: RecoveryScoreInput
     ) -> RecoveryDaySnapshot {
-        RecoveryDaySnapshot(
+        let clampedScore = min(max(score, 0), 100)
+        let tier = RecoveryScoreEngine.statusTier(
+            score: clampedScore,
+            input: input,
+            breakdown: breakdown
+        )
+
+        return RecoveryDaySnapshot(
             date: date,
-            recoveryScore: min(max(score, 0), 100),
+            recoveryScore: clampedScore,
             recoveryBreakdown: breakdown,
             sleepScore: sleepScore,
             timeInBedMinutes: timeInBedMinutes,
@@ -164,38 +188,62 @@ struct RecoveryDaySnapshot: Equatable {
             awakeningsCount: awakeningsCount,
             restingHeartRate: restingHeartRate,
             hrv: hrv,
-            insightTitle: resolvedInsightTitle(for: min(max(score, 0), 100)),
-            insightText: resolvedInsightText(for: min(max(score, 0), 100)),
-            actionTitle: resolvedActionTitle(for: min(max(score, 0), 100)),
-            actionText: resolvedActionText(for: min(max(score, 0), 100))
+            recoveryInput: input,
+            insightTitle: resolvedInsightTitle(for: clampedScore, tier: tier),
+            insightText: resolvedInsightText(
+                for: clampedScore,
+                tier: tier,
+                input: input,
+                breakdown: breakdown
+            ),
+            actionTitle: resolvedActionTitle(for: clampedScore, tier: tier),
+            actionText: resolvedActionText(for: clampedScore, tier: tier)
         )
     }
 
-    private func resolvedInsightTitle(for score: Int) -> String {
+    private func resolvedInsightTitle(for score: Int, tier: RecoveryScoreEngine.RecoveryStatusTier) -> String {
         guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.title") }
 
-        switch score {
-        case 85...:
-            return WeekFitLocalizedString("recovery.fullyRecovered")
-        case 70..<85:
+        switch tier {
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.wellRecovered")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.moderatelyReady")
-        case 1..<55:
+        case .takeItEasier:
             return WeekFitLocalizedString("recovery.takeItEasier")
-        default:
-            return WeekFitLocalizedString("recovery.empty.title")
+        case .recoveryPriority, .noData:
+            return WeekFitLocalizedString("recovery.takeItEasier")
         }
     }
 
-    private func resolvedInsightText(for score: Int) -> String {
+    private func resolvedInsightText(
+        for score: Int,
+        tier: RecoveryScoreEngine.RecoveryStatusTier,
+        input: RecoveryScoreInput,
+        breakdown: RecoveryScoreBreakdown
+    ) -> String {
         guard hasSleepData else {
             return WeekFitLocalizedString("recovery.empty.text")
+        }
+
+        if breakdown.confidence == .low {
+            return WeekFitLocalizedString("recovery.details.confidence.lowExplanation")
         }
 
         let sleepDurationIsStrong = asleepMinutes >= 420
         let sleepQualityIsStrong = deepSleepMinutes + remSleepMinutes >= Int(Double(asleepMinutes) * 0.35)
         let continuityIsStrong = timeInBedMinutes > 0 && Double(asleepMinutes) / Double(timeInBedMinutes) >= 0.88
+        let physiologyIsStressed = RecoveryScoreEngine.physiologyIsStressed(input: input)
+
+        if physiologyIsStressed {
+            if !sleepDurationIsStrong {
+                return WeekFitLocalizedString("recovery.sleepDurationWasBelowTargetSoRecoveryMayFeel")
+            }
+
+            if breakdown.baselineContext.usesPersonalizedHRV || breakdown.baselineContext.usesPersonalizedRHR {
+                return WeekFitLocalizedString("recovery.recoveryIsModerateKeepIntensityControlledUntilSignalsImprove")
+            }
+        }
 
         if score >= 85 {
             return WeekFitLocalizedString("recovery.sleepDurationContinuityAndSleepStructureWereSupportiveOvernight")
@@ -228,34 +276,30 @@ struct RecoveryDaySnapshot: Equatable {
         return WeekFitLocalizedString("recovery.recoverySignalsAreLowPrioritizeEasyMovementHydrationAnd")
     }
 
-    private func resolvedActionTitle(for score: Int) -> String {
+    private func resolvedActionTitle(for score: Int, tier: RecoveryScoreEngine.RecoveryStatusTier) -> String {
         guard hasSleepData else { return WeekFitLocalizedString("recovery.empty.actionTitle") }
 
-        switch score {
-        case 85...:
-            return WeekFitLocalizedString("recovery.ready")
-        case 70..<85:
+        switch tier {
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.trainNormally")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.details.action.controlIntensity")
-        default:
+        case .takeItEasier, .recoveryPriority, .noData:
             return WeekFitLocalizedString("recovery.recover")
         }
     }
 
-    private func resolvedActionText(for score: Int) -> String {
+    private func resolvedActionText(for score: Int, tier: RecoveryScoreEngine.RecoveryStatusTier) -> String {
         guard hasSleepData else {
             return WeekFitLocalizedString("recovery.empty.actionText")
         }
 
-        switch score {
-        case 85...:
-            return WeekFitLocalizedString("recovery.youCanHandleNormalTrainingLoadToday")
-        case 70..<85:
+        switch tier {
+        case .wellRecovered:
             return WeekFitLocalizedString("recovery.aNormalSessionIsFineButAvoidForcingExtra")
-        case 55..<70:
+        case .moderatelyReady:
             return WeekFitLocalizedString("recovery.chooseModerateWorkAndPayAttentionToHowYou")
-        default:
+        case .takeItEasier, .recoveryPriority, .noData:
             return WeekFitLocalizedString("recovery.keepActivityLightAndFocusOnRecoveryBasics")
         }
     }

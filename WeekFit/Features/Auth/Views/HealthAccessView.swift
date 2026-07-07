@@ -73,15 +73,15 @@ struct HealthAccessView: View {
 
         var qualityLabel: String {
             if qualityScore >= 4 && hasRecentSleep {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Отлично" : "Excellent"
+                return WeekFitLocalizedString("healthAccess.readiness.excellent")
             }
 
             if qualityScore >= 3 {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Хорошо" : "Good"
+                return WeekFitLocalizedString("healthAccess.readiness.good")
             }
 
             if qualityScore >= 2 {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Частично" : "Partial"
+                return WeekFitLocalizedString("healthAccess.readiness.partial")
             }
 
             return WeekFitLocalizedString("healthAccess.status.needsSetup")
@@ -349,7 +349,7 @@ private extension HealthAccessView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.99),
+                            WeekFitTheme.whiteOpacity(0.99),
                             Color(red: 0.96, green: 0.96, blue: 0.97)
                         ],
                         startPoint: .topLeading,
@@ -558,9 +558,9 @@ private extension HealthAccessView {
     func statusTextTint(for kind: StatusKind) -> Color {
         switch kind {
         case .positive:
-            return Color.white.opacity(0.58)
+            return WeekFitTheme.whiteOpacity(0.58)
         case .neutral:
-            return Color.white.opacity(0.46)
+            return WeekFitTheme.whiteOpacity(0.46)
         case .warning:
             return softAmber.opacity(0.82)
         case .danger:
@@ -744,7 +744,7 @@ private extension HealthAccessView {
     }
 
     var neutralTint: Color {
-        Color.white.opacity(0.56)
+        WeekFitTheme.whiteOpacity(0.56)
     }
 
     func statusTint(for kind: StatusKind) -> Color {
@@ -763,9 +763,9 @@ private extension HealthAccessView {
     func readinessIconTint(for kind: StatusKind) -> Color {
         switch kind {
         case .positive:
-            return Color.white.opacity(0.62)
+            return WeekFitTheme.whiteOpacity(0.62)
         case .neutral:
-            return Color.white.opacity(0.46)
+            return WeekFitTheme.whiteOpacity(0.46)
         case .warning:
             return softAmber.opacity(0.72)
         case .danger:
@@ -1318,27 +1318,33 @@ private struct SleepSetupHelpSheet: View {
                     .font(.system(size: 23, weight: .bold))
                     .foregroundStyle(accent.opacity(0.82))
             }
+            .fixedSize()
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(WeekFitLocalizedString("healthAccess.sleepDataNotAppearing"))
                     .font(.system(size: 21, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .allowsTightening(true)
 
                 Text(WeekFitLocalizedString("healthAccess.weekfitReliesOnAppleHealthAndAppleWatchSleep"))
                     .font(.system(size: 13.4, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
                     .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .allowsTightening(true)
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.70))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
                     .frame(width: 30, height: 30)
                     .background(
                         Circle()
@@ -1350,6 +1356,7 @@ private struct SleepSetupHelpSheet: View {
                     )
             }
             .buttonStyle(.plain)
+            .fixedSize()
         }
     }
 

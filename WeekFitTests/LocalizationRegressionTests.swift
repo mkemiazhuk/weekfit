@@ -20,6 +20,14 @@ final class LocalizationRegressionTests: XCTestCase {
             WeekFitLocalizedString("settings.language.title", locale: Locale(identifier: "ru")),
             "Язык"
         )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "en")),
+            "Night Comfort"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "ru")),
+            "Ночной комфорт"
+        )
     }
 
     func testMissingLocalizationFallsBackToKey() {
@@ -101,5 +109,89 @@ final class LocalizationRegressionTests: XCTestCase {
         XCTAssertEqual(insight.actionID, "add_protein")
         XCTAssertEqual(localizedInsight.actionID, "add_protein")
         XCTAssertNotEqual(localizedInsight.actionLabel, insight.actionLabel)
+    }
+
+    func testQuickItemSubtitleRespectsSelectedLanguage() {
+        let water = QuickItem(
+            id: "drink_water",
+            title: "Water",
+            subtitle: "Hydration support",
+            category: .drink,
+            imageName: "ingredient-water",
+            icon: "drop.fill",
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fats: 0,
+            fiber: 0,
+            defaultServingAmount: 250,
+            servingUnit: .milliliters,
+            gramsPerServing: nil,
+            mlPerServing: 250
+        )
+
+        WeekFitSetCurrentLanguage(.english)
+        XCTAssertEqual(QuickItem.localizedSubtitle(for: water), "Hydration support")
+
+        WeekFitSetCurrentLanguage(.russian)
+        XCTAssertEqual(QuickItem.localizedSubtitle(for: water), "Гидратация")
+    }
+
+    func testBuilderMealDisplayLocalizationFollowsSelectedLanguage() {
+        let builderItems = [
+            MealBuilderImageItem(
+                id: "protein_beef",
+                imageName: "ingredient-beef",
+                visualSize: 80,
+                visualDensity: 0.55,
+                supportsStandalonePresentation: true,
+                offsetX: 36,
+                offsetY: 8,
+                rotation: 8,
+                zIndex: 3,
+                grams: 150
+            ),
+            MealBuilderImageItem(
+                id: "veg_cucumber",
+                imageName: "ingredient-cucumber",
+                visualSize: 70,
+                visualDensity: 0.45,
+                supportsStandalonePresentation: true,
+                offsetX: -20,
+                offsetY: 10,
+                rotation: -4,
+                zIndex: 2,
+                grams: 100
+            )
+        ]
+
+        let meal = Meals(
+            id: "localization_test_meal",
+            title: "Говядина Огурец",
+            subtitle: "Говядина (150 г) + Огурец (100 г)",
+            imageName: "plate-dark",
+            type: .balanced,
+            calories: 500,
+            protein: 40,
+            carbs: 10,
+            fats: 30,
+            benefits: [],
+            ingredients: [
+                MealsIngredient(name: "Говядина", amount: "150 г"),
+                MealsIngredient(name: "Огурец", amount: "100 г")
+            ],
+            builderImageItems: builderItems,
+            creationMode: .ingredients
+        )
+
+        WeekFitSetCurrentLanguage(.english)
+        XCTAssertEqual(meal.localizedDisplayTitle, "Beef Cucumber")
+        XCTAssertTrue(meal.localizedDisplayIngredients.allSatisfy { !$0.name.contains("Говядина") })
+        XCTAssertTrue(meal.localizedDisplayIngredients.allSatisfy { !$0.name.contains("Огурец") })
+
+        WeekFitSetCurrentLanguage(.russian)
+        XCTAssertEqual(meal.localizedDisplayTitle, "Говядина Огурец")
+        XCTAssertTrue(meal.localizedDisplayIngredients.contains { $0.name == "Говядина" })
+        XCTAssertTrue(meal.localizedDisplayIngredients.contains { $0.name == "Огурец" })
     }
 }

@@ -3,6 +3,9 @@ import HealthKit
 import WeekFitPlanner
 
 final class ActivityIntelligenceSnapshotProvider {
+    // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
+
+    nonisolated deinit {}
 
     func buildWeekSnapshots(
         endingAt date: Date,
@@ -56,10 +59,12 @@ final class ActivityIntelligenceSnapshotProvider {
         async let hourly = healthManager.loadHourlyActiveCalories(for: date)
         async let workouts = healthManager.loadWorkoutSamples(for: date)
         async let metrics = healthManager.readActivityMetrics(for: date)
+        async let sleep = healthManager.loadRecoverySleepSnapshot(for: date)
 
         let hourlyCalories = await hourly
         let workoutSamples = await workouts
         let dayMetrics = await metrics
+        let sleepSnapshot = await sleep
 
         let activeCalories = Int(dayMetrics.activeCalories.rounded())
         let goal = healthManager.automatedActivityGoal(for: dayMetrics)
@@ -72,6 +77,14 @@ final class ActivityIntelligenceSnapshotProvider {
             for: date,
             healthManager: healthManager
         )
+
+        let sleepInterval: DateInterval? = {
+            guard let bedStart = sleepSnapshot.bedStart,
+                  let wakeTime = sleepSnapshot.wakeTime else {
+                return nil
+            }
+            return DateInterval(start: bedStart, end: wakeTime)
+        }()
 
         return ActivityDaySnapshot(
             date: date,
@@ -88,14 +101,15 @@ final class ActivityIntelligenceSnapshotProvider {
             hourlyActivityPoints: hourlyCalories.enumerated().map {
                 ActivityTimelinePoint(hour: $0.offset, activeCalories: $0.element)
             },
-            historicalSameWeekdayPoints: historicalSameWeekdayPoints
+            historicalSameWeekdayPoints: historicalSameWeekdayPoints,
+            sleepInterval: sleepInterval
         )
     }
 
     func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
         let durationMinutes = max(1, Int(workout.duration / 60.0))
-        let icon = workoutIcon(for: workout.workoutActivityType)
+        let icon = ActivityReconciler.icon(for: workout.workoutActivityType)
         let color = workoutColor(for: workout.workoutActivityType)
         let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let distanceKm = workout.totalDistance.map { $0.doubleValue(for: .meter()) / 1000.0 }
@@ -140,7 +154,20 @@ final class ActivityIntelligenceSnapshotProvider {
         ) ?? activity.date
         let activityType = inferredWorkoutType(for: activity)
         let icon = activity.icon.isEmpty ? "figure.mixed.cardio" : activity.icon
-        let source = activity.isWatchSynced ? "Apple Watch" : activity.source
+        let source: String
+        if activity.isWatchSynced {
+            source = WeekFitLocalizedString("activity.data.source.appleWatch")
+        } else {
+            let normalized = activity.source
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+
+            if normalized.isEmpty || normalized == "planner" || normalized == "today" {
+                source = "planner"
+            } else {
+                source = activity.source
+            }
+        }
 
         return ActivitySessionSnapshot(
             workoutID: activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
@@ -211,21 +238,6 @@ final class ActivityIntelligenceSnapshotProvider {
         case .hiking: return WeekFitLocalizedString("activity.workoutType.hiking")
         case .mindAndBody: return WeekFitLocalizedString("activity.workoutType.recovery")
         default: return WeekFitLocalizedString("activity.workoutType.workout")
-        }
-    }
-
-    private func workoutIcon(for type: HKWorkoutActivityType) -> String {
-        switch type {
-        case .running: return "figure.run"
-        case .walking: return "figure.walk"
-        case .cycling: return "bicycle"
-        case .traditionalStrengthTraining: return "figure.strengthtraining.traditional"
-        case .functionalStrengthTraining: return "figure.strengthtraining.functional"
-        case .yoga: return "figure.mind.and.body"
-        case .swimming: return "figure.pool.swim"
-        case .hiking: return "figure.hiking"
-        case .mindAndBody: return "wind"
-        default: return "figure.mixed.cardio"
         }
     }
 

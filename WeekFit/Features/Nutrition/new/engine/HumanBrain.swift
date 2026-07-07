@@ -12,7 +12,7 @@ enum HumanBrain {
         let baseDayGoals: NutritionGoals
         let fullDayGoals: NutritionGoals
         let smoothedGoals: NutritionGoals
-        let activities: [PlannedActivity]
+        let activities: [CoachPlannedActivitySnapshot]
         
         let past: PastContext
         let current: CurrentContext
@@ -30,8 +30,8 @@ enum HumanBrain {
     }
     
     struct PastContext {
-        let completedWorkouts: [PlannedActivity]
-        let lastCompletedWorkout: PlannedActivity?
+        let completedWorkouts: [CoachPlannedActivitySnapshot]
+        let lastCompletedWorkout: CoachPlannedActivitySnapshot?
         let missedItemsCount: Int
         let completedWorkoutsCount: Int
         let hasHighActivityLoad: Bool
@@ -62,8 +62,8 @@ enum HumanBrain {
     }
     
     struct FutureContext {
-        let upcomingWorkouts: [PlannedActivity]
-        let nextWorkout: PlannedActivity?
+        let upcomingWorkouts: [CoachPlannedActivitySnapshot]
+        let nextWorkout: CoachPlannedActivitySnapshot?
         let hoursToNextWorkout: Double?
         let hasUpcomingWorkout: Bool
         let hasWorkoutSoon: Bool
@@ -126,7 +126,7 @@ enum HumanBrain {
         baseDayGoals: NutritionGoals? = nil,
         fullDayGoals: NutritionGoals,
         smoothedGoals: NutritionGoals,
-        activities: [PlannedActivity]
+        activities: [CoachPlannedActivitySnapshot]
     ) -> State {
         
         let now = Date()
@@ -209,7 +209,7 @@ enum HumanBrain {
 }
 
 extension HumanBrain.State {
-    func refreshedForCurrentLocalTime(activities currentActivities: [PlannedActivity]? = nil) -> HumanBrain.State {
+    func refreshedForCurrentLocalTime(activities currentActivities: [CoachPlannedActivitySnapshot]? = nil) -> HumanBrain.State {
         HumanBrain.build(
             metrics: metrics,
             profile: profile,
@@ -262,7 +262,7 @@ private extension HumanBrain {
         now: Date,
         calendar: Calendar,
         metrics: DailyNutritionMetrics,
-        activities: [PlannedActivity]
+        activities: [CoachPlannedActivitySnapshot]
     ) -> PastContext {
         
         let todayWorkouts = activities.filter {
@@ -356,7 +356,7 @@ private extension HumanBrain {
     
     static func buildFutureContext(
         now: Date,
-        activities: [PlannedActivity]
+        activities: [CoachPlannedActivitySnapshot]
     ) -> FutureContext {
         
         let upcoming = activities
