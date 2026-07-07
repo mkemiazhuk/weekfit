@@ -105,6 +105,7 @@ final class CoachCoordinator: ObservableObject {
             outcome: "allowedLanguageRecompute"
         )
         logVisibleState(state: rawState, reason: reason)
+        persistTodayInsightIfNeeded(from: rawState)
 
         return rawState
     }
@@ -172,8 +173,28 @@ final class CoachCoordinator: ObservableObject {
             outcome: "allowed"
         )
         logVisibleState(state: rawState, reason: reason)
+        persistTodayInsightIfNeeded(from: rawState)
 
         return rawState
+    }
+
+    private func persistTodayInsightIfNeeded(from state: CoachState) {
+        guard state.canRenderTodayCoachInsight,
+              let presentation = state.coachUIPresentation,
+              let selectedDate = state.input?.selectedDate else {
+            return
+        }
+
+        CoachTodayInsightCache.store(
+            presentation: presentation,
+            dayStart: selectedDate,
+            languageCode: Self.currentLanguageCode()
+        )
+        CoachStateStabilizer.markCoachReadyForDay(selectedDate)
+    }
+
+    private static func currentLanguageCode() -> String {
+        UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
     }
 
     private func scheduleSettlingRetry(for input: CoachInputSnapshot, reason: String) {

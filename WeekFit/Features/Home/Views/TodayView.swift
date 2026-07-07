@@ -43,9 +43,6 @@ struct TodayView: View {
     @State private var foodQuickLogToast: String?
     
     @State private var activityToConfirm: PlannedActivity? = nil
-    @State private var stableCoachPresentation: CoachUIPresentation?
-    @State private var coachPresentationSettleTask: Task<Void, Never>?
-    @State private var didScheduleCoachPresentationRetry = false
 
     private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
     private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
@@ -413,7 +410,6 @@ struct TodayView: View {
         }
         .onChange(of: plannedActivities) { _, newActivities in
             debugTodayDataState(source: "TodayView.onChange.plannedActivities")
-            coachPresentationSettleTask?.cancel()
 
             let validActivityIDs = Set(newActivities.map(\.id))
             quickLogSession.removeReferencesToMissingActivities(validActivityIDs: validActivityIDs)
@@ -439,10 +435,6 @@ struct TodayView: View {
                     healthManager: healthManager,
                     nutritionViewModel: nutritionViewModel
                 )
-
-                await MainActor.run {
-                    pinStableCoachPresentationIfReady()
-                }
             }
         }
         .onChange(of: selectedDate) { oldValue, newValue in
@@ -1409,12 +1401,23 @@ struct TodayView: View {
             }
     }
 
-    private var displayedCoachPresentation: CoachUIPresentation? {
-        if let stableCoachPresentation {
-            return stableCoachPresentation
-        }
-        guard coachCoordinator.state.canRenderTodayCoachInsight else { return nil }
-        return coachCoordinator.state.coachUIPresentation
+    private var todayCoachInsightPhase: TodayCoachInsightPhase {
+        TodayCoachInsightResolver.resolve(
+            TodayCoachInsightResolver.Input(
+                coachState: coachCoordinator.state,
+                cachedPresentation: CoachTodayInsightCache.presentation(
+                    for: selectedDate,
+                    languageCode: todayCoachInsightLanguageCode
+                ),
+                shouldShowHealthConnectPrompt: shouldShowHealthConnectPrompt,
+                hasRecoverySignals: hasTodayRecoverySignals,
+                isHealthMetricsSettled: healthManager.hasSettledMetrics(for: selectedDate)
+            )
+        )
+    }
+
+    private var todayCoachInsightLanguageCode: String {
+        languageManager.selectedLanguage.rawValue
     }
 
     private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
@@ -1566,90 +1569,6 @@ struct TodayView: View {
                 coachInsightSection
 //            }
         }
-    }
-
-    private func syncStableCoachPresentation() {
-        coachPresentationSettleTask?.cancel()
-
-        guard coachCoordinator.state.canRenderTodayCoachInsight,
-              let presentation = coachCoordinator.state.coachUIPresentation else {
-            if !healthManager.isHealthAccessRequested {
-                stableCoachPresentation = nil
-            }
-            return
-        }
-
-        if stableCoachPresentation == nil || stableCoachPresentation == presentation {
-            stableCoachPresentation = presentation
-            return
-        }
-
-        coachPresentationSettleTask = Task {
-            try? await Task.sleep(nanoseconds: 450_000_000)
-            guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                guard coachCoordinator.state.canRenderTodayCoachInsight,
-                      let latest = coachCoordinator.state.coachUIPresentation else {
-                    return
-                }
-                stableCoachPresentation = latest
-            }
-        }
-    }
-
-    @MainActor
-    private func bootstrapTodayCoachInsightAfterHealthLoad() {
-        let dayActivities = todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
-        coachInputProvider.refreshFromCurrentState(
-            selectedDate: selectedDate,
-            dayActivities: dayActivities,
-            allPlannedActivities: plannedActivities,
-            healthManager: healthManager,
-            nutritionViewModel: nutritionViewModel,
-            coachCoordinator: coachCoordinator,
-            source: "TodayView.bootstrapCoachInsight"
-        )
-        healthManager.markDisplayMetricsSettled(for: selectedDate)
-        pinStableCoachPresentationIfReady()
-        scheduleCoachPresentationRetryIfNeeded()
-    }
-
-    @MainActor
-    private func scheduleCoachPresentationRetryIfNeeded() {
-        guard stableCoachPresentation == nil, !didScheduleCoachPresentationRetry else { return }
-
-        didScheduleCoachPresentationRetry = true
-        coachPresentationSettleTask?.cancel()
-        coachPresentationSettleTask = Task {
-            try? await Task.sleep(nanoseconds: 650_000_000)
-            guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                guard stableCoachPresentation == nil else { return }
-                let dayActivities = todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
-                coachInputProvider.refreshFromCurrentState(
-                    selectedDate: selectedDate,
-                    dayActivities: dayActivities,
-                    allPlannedActivities: plannedActivities,
-                    healthManager: healthManager,
-                    nutritionViewModel: nutritionViewModel,
-                    coachCoordinator: coachCoordinator,
-                    source: "TodayView.coachPresentationRetry"
-                )
-                pinStableCoachPresentationIfReady()
-            }
-        }
-    }
-
-    @MainActor
-    private func pinStableCoachPresentationIfReady() {
-        coachPresentationSettleTask?.cancel()
-        guard coachCoordinator.state.canRenderTodayCoachInsight,
-              let presentation = coachCoordinator.state.coachUIPresentation else {
-            return
-        }
-        stableCoachPresentation = presentation
     }
 
     private var shouldShowEveningReview: Bool {
@@ -2437,6 +2356,97 @@ struct TodayView: View {
         }
     }
 
+    private func coachInsightCard(presentation: CoachUIPresentation) -> some View {
+        let insightColor = presentation.accentColor
+        let insightTitle = presentation.todayTitle
+        let insightIcon = presentation.icon
+        let insightMessage = presentation.showsLimitedConfidenceBadge
+            ? presentation.recommendation
+            : presentation.todayMessage
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onSelectTab(.coach)
+        } label: {
+            todayPremiumCard(accent: insightColor, featured: true) {
+                HStack(alignment: .top, spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(insightColor.opacity(0.11))
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Circle()
+                                    .stroke(insightColor.opacity(0.18), lineWidth: 1)
+                            }
+
+                        Image(systemName: insightIcon)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(insightColor.opacity(0.92))
+                            .offset(y: coachIconOpticalYOffset(insightIcon))
+                    }
+                    .padding(.top, 2)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(AppText.Today.coachInsightLabel)
+                            .font(.caption2.weight(.bold))
+                            .fontDesign(.rounded)
+                            .tracking(1.45)
+                            .foregroundStyle(insightColor.opacity(0.78))
+
+                        Text(insightTitle)
+                            .font(.callout.weight(.bold))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textPrimary)
+                            .padding(.top, 2)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(3)
+                            .lineSpacing(1)
+                            .minimumScaleFactor(0.92)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
+
+                        if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(insightMessage)
+                                .font(.footnote)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(textSecondary.opacity(0.68))
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if presentation.showsLimitedConfidenceBadge {
+                            todayLimitedRecoveryChip
+                                .padding(.top, 4)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(textTertiary.opacity(0.75))
+                        .padding(.top, 10)
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            String(
+                format: "%@: %@. %@",
+                String(localized: AppText.Today.coachInsightLabel),
+                insightTitle,
+                insightMessage
+            )
+        )
+        .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+        .transition(.identity)
+    }
+
     private var coachInsightSection: some View {
         let now = todayViewModel.now
 
@@ -2512,120 +2522,23 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if let presentation = displayedCoachPresentation {
-                    let insightColor = presentation.accentColor
-                    let insightTitle = presentation.todayTitle
-                    let insightIcon = presentation.icon
-                    let insightMessage = presentation.showsLimitedConfidenceBadge
-                        ? presentation.recommendation
-                        : presentation.todayMessage
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onSelectTab(.coach)
-                    } label: {
-                        todayPremiumCard(accent: insightColor, featured: true) {
-                            HStack(alignment: .top, spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(insightColor.opacity(0.11))
-                                        .frame(width: 40, height: 40)
-                                        .overlay {
-                                            Circle()
-                                                .stroke(insightColor.opacity(0.18), lineWidth: 1)
-                                        }
-
-                                    Image(systemName: insightIcon)
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(insightColor.opacity(0.92))
-                                        .offset(y: coachIconOpticalYOffset(insightIcon))
-                                }
-                                .padding(.top, 2)
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(AppText.Today.coachInsightLabel)
-                                        .font(.caption2.weight(.bold))
-                                        .fontDesign(.rounded)
-                                        .tracking(1.45)
-                                        .foregroundStyle(insightColor.opacity(0.78))
-
-                                    Text(insightTitle)
-                                        .font(.callout.weight(.bold))
-                                        .fontDesign(.rounded)
-                                        .foregroundStyle(textPrimary)
-                                        .padding(.top, 2)
-                                        .multilineTextAlignment(.leading)
-                                        .lineLimit(3)
-                                        .lineSpacing(1)
-                                        .minimumScaleFactor(0.92)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .layoutPriority(1)
-
-                                    if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        Text(insightMessage)
-                                            .font(.footnote)
-                                            .fontDesign(.rounded)
-                                            .foregroundStyle(textSecondary.opacity(0.68))
-                                            .lineSpacing(2)
-                                            .multilineTextAlignment(.leading)
-                                            .lineLimit(3)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-
-                                    if presentation.showsLimitedConfidenceBadge {
-                                        todayLimitedRecoveryChip
-                                            .padding(.top, 4)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .layoutPriority(1)
-
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(textTertiary.opacity(0.75))
-                                    .padding(.top, 10)
-                                    .accessibilityHidden(true)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        String(
-                            format: "%@: %@. %@",
-                            String(localized: AppText.Today.coachInsightLabel),
-                            insightTitle,
-                            insightMessage
-                        )
-                    )
-                    .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
-                    .transition(.identity)
-                } else if shouldShowHealthConnectPrompt {
+                switch todayCoachInsightPhase {
+                case .insight(let presentation, _):
+                    coachInsightCard(presentation: presentation)
+                case .awaitingHealthConnect:
                     coachSettlingCard(needsHealthConnect: true)
-                } else if !hasTodayRecoverySignals {
+                case .awaitingMorningSync:
                     coachSettlingCard(needsHealthConnect: false)
-                } else {
+                case .preparing:
                     coachPreparingCard()
                 }
             }
         }
-        .onChange(of: coachCoordinator.state.id) { _, _ in
-            syncStableCoachPresentation()
-        }
-        .onChange(of: coachCoordinator.state.status) { _, _ in
-            pinStableCoachPresentationIfReady()
-        }
-        .onChange(of: selectedDate) { _, _ in
-            coachPresentationSettleTask?.cancel()
-            stableCoachPresentation = nil
-            didScheduleCoachPresentationRetry = false
-        }
         .sheet(item: $activityToConfirm) { activity in
             missedConfirmationSheet(activity)
-                .presentationDetents([.fraction(0.32)])
-                .presentationDragIndicator(.hidden)
-                .weekFitSheetChrome(cornerRadius: 30)
+                .presentationDetents([.fraction(0.40)])
+                .presentationDragIndicator(.visible)
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
     }
     
@@ -3011,77 +2924,39 @@ struct TodayView: View {
     }
 
     private func missedConfirmationSheet(_ activity: PlannedActivity) -> some View {
-        let accentColor = activity.color
-        
-        return VStack(spacing: 22) {
-            VStack(spacing: 8) {
-                Text(AppText.Today.verifyLogBlock)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(textPrimary)
-                
-                Text(String(format: WeekFitLocalizedString("today.verify.messageFormat"), activityDisplayTitle(activity)))
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .lineSpacing(3)
-            }
-            .padding(.top, 16)
-            
-            HStack(spacing: 12) {
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    withAnimation {
-                        activity.isSkipped = true
-                        activity.isCompleted = false
-                        if activity.source.isEmpty {
-                           activity.source = "planner"
-                       }
-                        try? modelContext.save()
-                        todayViewModel.triggerHealthRefresh()
-                        activityToConfirm = nil
+        PremiumActivityConfirmationSheet(
+            icon: upNextIcon(for: activity),
+            accentColor: activity.color,
+            title: WeekFitLocalizedString("today.verify.title"),
+            messageFormat: WeekFitLocalizedString("today.verify.messageFormat"),
+            highlightedName: activityDisplayTitle(activity),
+            confirmTitle: WeekFitLocalizedString("today.verify.confirm"),
+            skipTitle: WeekFitLocalizedString("today.verify.skipped"),
+            onConfirm: {
+                withAnimation {
+                    activity.isCompleted = true
+                    activity.isSkipped = false
+                    if activity.source.isEmpty {
+                        activity.source = "planner"
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: "xmark.circle")
-                        Text(AppText.Today.skippedAction)
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(textSecondary)
-                    .frame(maxWidth: .infinity).frame(height: 46)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(cardSecondary))
+                    try? modelContext.save()
+                    todayViewModel.triggerHealthRefresh()
+                    activityToConfirm = nil
                 }
-                .buttonStyle(.plain)
-                
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    withAnimation {
-                        activity.isCompleted = true
-                        activity.isSkipped = false
-                        if activity.source.isEmpty {
-                           activity.source = "planner"
-                       }
-                        try? modelContext.save()
-                        todayViewModel.triggerHealthRefresh()
-                        activityToConfirm = nil
+            },
+            onSkip: {
+                withAnimation {
+                    activity.isSkipped = true
+                    activity.isCompleted = false
+                    if activity.source.isEmpty {
+                        activity.source = "planner"
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text(AppText.Today.confirmLogAction)
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity).frame(height: 46)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(accentColor))
+                    try? modelContext.save()
+                    todayViewModel.triggerHealthRefresh()
+                    activityToConfirm = nil
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 16)
-        }
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+        )
     }
     
     private func upNextSubtitle(for activity: PlannedActivity) -> String {
@@ -3175,7 +3050,17 @@ struct TodayView: View {
             nutritionViewModel: nutritionViewModel
         )
         await MainActor.run {
-            bootstrapTodayCoachInsightAfterHealthLoad()
+            let dayActivities = todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
+            coachInputProvider.refreshFromCurrentState(
+                selectedDate: selectedDate,
+                dayActivities: dayActivities,
+                allPlannedActivities: plannedActivities,
+                healthManager: healthManager,
+                nutritionViewModel: nutritionViewModel,
+                coachCoordinator: coachCoordinator,
+                source: "TodayView.healthLoad"
+            )
+            healthManager.markDisplayMetricsSettled(for: selectedDate)
             if !healthManager.isHealthAccessRequested {
                 debugTodayDataState(source: "refreshHealthAndNutritionAsync.noHealthAccess")
             }

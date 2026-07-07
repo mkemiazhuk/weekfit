@@ -344,6 +344,118 @@ final class CoachScenarioTests: XCTestCase {
         XCTAssertEqual(result.context.tomorrowWorkout?.title, "Core")
     }
 
+    func testModerateEveningDayWithTomorrowCoreUsesTomorrowProtection() throws {
+        let evening = date(hour: 19, minute: 36)
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: evening)!
+
+        let walkEnd = evening.addingTimeInterval(-90 * 60)
+        let walkStart = walkEnd.addingTimeInterval(-45 * 60)
+        var completedWalk = PlannedActivity(
+            date: walkStart,
+            type: "recovery",
+            title: "Прогулка",
+            durationMinutes: 45,
+            icon: "figure.walk",
+            colorRed: defaultColors.r,
+            colorGreen: defaultColors.g,
+            colorBlue: defaultColors.b,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        completedWalk.healthKitWorkoutUUID = UUID().uuidString
+
+        let tomorrowCore = PlannedActivity(
+            date: calendar.date(bySettingHour: 10, minute: 30, second: 0, of: tomorrow)!,
+            type: "workout",
+            title: "Core",
+            durationMinutes: 55,
+            icon: "figure.core.training",
+            colorRed: defaultColors.r,
+            colorGreen: defaultColors.g,
+            colorBlue: defaultColors.b
+        )
+
+        let input = makeInput(
+            now: evening,
+            activities: [completedWalk, tomorrowCore],
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitSamplesWithAppGoalEstimate,
+                activeCalories: 423,
+                exerciseMinutes: 55,
+                standHours: nil,
+                activityGoalCalories: 710,
+                activityProgress: 0.59
+            ),
+            brainHour: 19
+        )
+
+        let result = CoachEngine.evaluate(input: input)
+
+        XCTAssertEqual(result.scenario, .tomorrowProtection)
+        XCTAssertEqual(result.context.sessionPhase, .tomorrowProtection)
+        XCTAssertEqual(result.context.tomorrowWorkout?.title, "Core")
+        XCTAssertNotEqual(result.scenario, .walkAfterHeavyLoad)
+
+        let pack = try XCTUnwrap(result.copyPack)
+        let russian = [
+            pack.assessment,
+            pack.recommendation,
+            pack.avoid,
+            pack.nextAction
+        ]
+        .flatMap(\.lines)
+        .map(\.russian)
+        .joined(separator: " ")
+        .lowercased()
+
+        XCTAssertTrue(
+            russian.contains("завтра") ||
+                russian.contains("берегите") ||
+                russian.contains("остаток дня")
+        )
+    }
+
+    func testAfternoonModerateDayWithTomorrowCoreKeepsWalkAfterHeavyLoad() {
+        let afternoon = date(hour: 14, minute: 0)
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: afternoon)!
+
+        let walkStart = afternoon.addingTimeInterval(-35 * 60)
+        var completedWalk = walkActivity(start: walkStart, title: "Afternoon Walk")
+        completedWalk.isCompleted = true
+
+        let tomorrowCore = PlannedActivity(
+            date: calendar.date(bySettingHour: 10, minute: 30, second: 0, of: tomorrow)!,
+            type: "workout",
+            title: "Core",
+            durationMinutes: 55,
+            icon: "figure.core.training",
+            colorRed: defaultColors.r,
+            colorGreen: defaultColors.g,
+            colorBlue: defaultColors.b
+        )
+
+        let input = makeInput(
+            now: afternoon,
+            activities: [completedWalk, tomorrowCore],
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitSamplesWithAppGoalEstimate,
+                activeCalories: 423,
+                exerciseMinutes: 55,
+                standHours: nil,
+                activityGoalCalories: 710,
+                activityProgress: 0.59
+            ),
+            brainHour: 14
+        )
+
+        let result = CoachEngine.evaluate(input: input)
+
+        XCTAssertEqual(result.scenario, .walkAfterHeavyLoad)
+        XCTAssertNotEqual(result.scenario, .tomorrowProtection)
+    }
+
     func testEveningAfterLongRideUsesCoachCopyPack() {
         let evening = date(hour: 21, minute: 30)
         let rideStart = Calendar.current.date(byAdding: .hour, value: -11, to: evening)!

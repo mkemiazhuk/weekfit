@@ -3,7 +3,20 @@ import Foundation
 enum CoachStateStabilizer {
     private static let lock = NSLock()
     private static var syncSettlingUntilBySurface: [String: Date] = [:]
+    private static var coachReadyConfirmedDayStart: Int?
     static let stabilizationInterval: TimeInterval = 0.55
+
+    static func markCoachReadyForDay(_ dayStart: Date, calendar: Calendar = .current) {
+        lock.lock()
+        coachReadyConfirmedDayStart = CoachTodayInsightCache.dayKey(for: dayStart, calendar: calendar)
+        lock.unlock()
+    }
+
+    static func clearCoachReadyForDay() {
+        lock.lock()
+        coachReadyConfirmedDayStart = nil
+        lock.unlock()
+    }
 
     static func markSyncEvent(source: String) {
         let normalized = source.lowercased()
@@ -12,6 +25,7 @@ enum CoachStateStabilizer {
         if isRealityChangeSource(normalized) {
             lock.lock()
             syncSettlingUntilBySurface.removeAll()
+            coachReadyConfirmedDayStart = nil
             lock.unlock()
             return
         }
@@ -42,6 +56,9 @@ enum CoachStateStabilizer {
     static func isSettling(source: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
+        if coachReadyConfirmedDayStart == nil {
+            return false
+        }
         let surfaceKey = surfaceKey(for: source)
         return Date() < (syncSettlingUntilBySurface[surfaceKey] ?? syncSettlingUntilBySurface["shared"] ?? Date.distantPast)
     }

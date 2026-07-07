@@ -249,14 +249,11 @@ enum CoachEngine {
         tomorrowDemand: CoachTomorrowDemand,
         dayLoadBand: CoachDayLoadBand
     ) -> Bool {
-        guard tomorrowDemand == .moderate || tomorrowDemand == .hard else { return false }
-        guard dayLoadBand == .heavy || dayLoadBand == .extreme else { return false }
-        switch timeOfDay {
-        case .afternoon, .evening, .lateEvening:
-            return true
-        default:
-            return false
-        }
+        CoachTomorrowProtectionPolicy.shouldProtect(
+            timeOfDay: timeOfDay,
+            tomorrowDemand: tomorrowDemand,
+            dayLoadBand: dayLoadBand
+        )
     }
 
     private static func shouldPreferTomorrowProtectionOverCompletedFocus(

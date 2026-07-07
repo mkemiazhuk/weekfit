@@ -234,9 +234,9 @@ private struct WeekPlannerLiveQueryView: View {
         }
         .sheet(item: $activityToConfirm) { activity in
             plannerConfirmationSheet(activity)
-                .presentationDetents([.fraction(0.32)])
+                .presentationDetents([.fraction(0.40)])
                 .presentationDragIndicator(.visible)
-                .weekFitSheetChrome(cornerRadius: 30)
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .confirmationDialog(
             WeekFitLocalizedString("planner.delete.title"),
@@ -276,65 +276,21 @@ private struct WeekPlannerLiveQueryView: View {
     }
     
     private func plannerConfirmationSheet(_ activity: PlannedActivity) -> some View {
-        let accent = activityAccent(for: activity)
-
-        return VStack(spacing: 22) {
-            VStack(spacing: 8) {
-                Text(AppText.Planner.confirmActivityTitle)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-
-                Text(String(format: WeekFitLocalizedString("planner.confirm.activityMessageFormat"), activity.title))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .lineSpacing(3)
+        PremiumActivityConfirmationSheet(
+            icon: WeekFitActivityIconResolver.resolve(for: activity),
+            accentColor: activityAccent(for: activity),
+            title: WeekFitLocalizedString("planner.confirm.activityTitle"),
+            messageFormat: WeekFitLocalizedString("planner.confirm.activityMessageFormat"),
+            highlightedName: activity.title,
+            confirmTitle: WeekFitLocalizedString("common.action.done"),
+            skipTitle: WeekFitLocalizedString("planner.action.markSkipped"),
+            onConfirm: {
+                applyPlannerActivityConfirmation(completed: true, for: activity)
+            },
+            onSkip: {
+                applyPlannerActivityConfirmation(completed: false, for: activity)
             }
-            .padding(.top, 16)
-
-            HStack(spacing: 12) {
-                Button {
-                    applyPlannerActivityConfirmation(completed: false, for: activity)
-                } label: {
-                    HStack {
-                        Image(systemName: "xmark.circle")
-                        Text(WeekFitLocalizedString("planner.action.markSkipped"))
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(.white.opacity(0.07))
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    applyPlannerActivityConfirmation(completed: true, for: activity)
-                } label: {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text(AppText.Common.Action.done)
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.black.opacity(0.84))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(accent)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-        }
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+        )
     }
     
     @ViewBuilder
