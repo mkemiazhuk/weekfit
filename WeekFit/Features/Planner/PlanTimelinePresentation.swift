@@ -449,10 +449,15 @@ enum PlanTimelineEmphasisResolver {
             return false
         }
 
-        switch activityStatus(items[index - 1].representative) {
-        case .completed, .logged, .skipped:
-            return true
-        case .live, .pending, .upcoming:
+        switch activityStatus(items[index].representative) {
+        case .live, .upcoming:
+            switch activityStatus(items[index - 1].representative) {
+            case .completed, .logged, .skipped:
+                return true
+            case .live, .pending, .upcoming:
+                return false
+            }
+        case .pending, .completed, .logged, .skipped:
             return false
         }
     }

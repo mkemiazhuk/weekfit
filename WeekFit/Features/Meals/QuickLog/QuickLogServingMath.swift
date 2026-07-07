@@ -82,8 +82,8 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
         let grams = Double(meal.servingGrams ?? 100)
         return QuickLogNutritionProfile(
             id: meal.id,
-            title: meal.isFoodProduct ? meal.title : meal.shortTitle,
-            subtitle: meal.isFoodProduct ? meal.servingDescription : meal.subtitle,
+            title: meal.isFoodProduct ? meal.title : meal.localizedShortTitle,
+            subtitle: meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle,
             imageName: meal.imageName,
             icon: "fork.knife",
             kind: .meal,

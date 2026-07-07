@@ -279,11 +279,11 @@ private struct WeekPlannerLiveQueryView: View {
         PremiumActivityConfirmationSheet(
             icon: WeekFitActivityIconResolver.resolve(for: activity),
             accentColor: activityAccent(for: activity),
-            title: WeekFitLocalizedString("planner.confirm.activityTitle"),
-            messageFormat: WeekFitLocalizedString("planner.confirm.activityMessageFormat"),
+            title: WeekFitLocalizedString("today.verify.title"),
+            messageFormat: WeekFitLocalizedString("today.verify.messageFormat"),
             highlightedName: activity.title,
-            confirmTitle: WeekFitLocalizedString("common.action.done"),
-            skipTitle: WeekFitLocalizedString("planner.action.markSkipped"),
+            confirmTitle: WeekFitLocalizedString("today.verify.confirm"),
+            skipTitle: WeekFitLocalizedString("today.verify.skipped"),
             onConfirm: {
                 applyPlannerActivityConfirmation(completed: true, for: activity)
             },
@@ -541,18 +541,17 @@ private struct WeekPlannerLiveQueryView: View {
 
         withAnimation {
             if completed {
-                liveActivity.isCompleted = true
-                liveActivity.isSkipped = false
+                try? PlannedActivityNotificationConfirmationService.markCompleted(
+                    liveActivity,
+                    modelContext: modelContext
+                )
             } else {
-                liveActivity.isSkipped = true
-                liveActivity.isCompleted = false
+                try? PlannedActivityNotificationConfirmationService.markSkipped(
+                    liveActivity,
+                    modelContext: modelContext
+                )
             }
 
-            if liveActivity.source.isEmpty {
-                liveActivity.source = "planner"
-            }
-
-            try? modelContext.save()
             viewModel.markPlannerDataChanged()
             activityToConfirm = nil
         }
@@ -1566,29 +1565,12 @@ private extension WeekPlannerLiveQueryView {
     }
 
     func activityStatus(for item: PlannedActivity) -> PlanActivityStatus {
-        
-//        print("STATUS DEBUG:", item.title, "completed:", item.isCompleted, "source:", item.source)
-        
         let now = Date()
-
-        let endDate = calendar.date(
-            byAdding: .minute,
-            value: max(item.durationMinutes, 1),
-            to: item.date
-        ) ?? item.date
 
         if item.isSkipped {
             return .skipped
         }
 
-//        if item.isCompleted {
-//            print("STATUS DEBUG:", item.title, "source:", item.source)
-//
-//            return item.source == "today"
-//                ? .logged
-//                : .completed
-//        }
-        
         if item.isCompleted {
             let loggedSources = ["today", "appleWorkout", "healthKit", "appleWatch"]
 
@@ -1603,7 +1585,7 @@ private extension WeekPlannerLiveQueryView {
             return .upcoming
         }
 
-        if item.date <= now && now <= endDate {
+        if item.isActive(at: now) {
             return .live
         }
 

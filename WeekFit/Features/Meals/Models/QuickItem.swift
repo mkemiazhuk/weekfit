@@ -142,15 +142,15 @@ struct QuickItem: Codable, Identifiable, Equatable {
     }
 
     static func localizedSubtitle(for item: QuickItem) -> String {
-        if let localized = russianSubtitlesByID[item.id] {
-            return localized
-        }
-
         let trimmed = item.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return item.subtitle }
 
         guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else {
             return trimmed
+        }
+
+        if let localized = russianSubtitlesByID[item.id] {
+            return localized
         }
 
         return russianSubtitlesByStoredSubtitle[trimmed.lowercased()] ?? trimmed

@@ -12,7 +12,7 @@ final class PlanViewModelTests: XCTestCase {
         calendar = viewModel.calendar
     }
 
-    func testSelectedDayActivitiesFiltersSkippedAndSortsByTime() {
+    func testSelectedDayActivitiesIncludesSkippedAndSortsByTime() {
         let day = calendar.startOfDay(for: Date())
         let morning = calendar.date(byAdding: .hour, value: 8, to: day)!
         let evening = calendar.date(byAdding: .hour, value: 18, to: day)!
@@ -27,7 +27,27 @@ final class PlanViewModelTests: XCTestCase {
         viewModel.selectedDate = day
         let result = viewModel.selectedDayActivities(from: activities)
 
-        XCTAssertEqual(result.map(\.title), ["Morning", "Evening"])
+        XCTAssertEqual(result.map(\.title), ["Morning", "Skipped", "Evening"])
+    }
+
+    func testCalculateProgressExcludesSkippedActivities() {
+        let day = calendar.startOfDay(for: Date())
+        viewModel.selectedDate = day
+
+        let activities = [
+            makeActivity(
+                date: calendar.date(byAdding: .hour, value: 8, to: day)!,
+                title: "Done",
+                isCompleted: true
+            ),
+            makeActivity(
+                date: calendar.date(byAdding: .hour, value: 10, to: day)!,
+                title: "Skipped",
+                isSkipped: true
+            )
+        ]
+
+        XCTAssertEqual(viewModel.calculateProgress(from: activities), 1.0, accuracy: 0.001)
     }
 
     func testCalculateProgressReturnsBaselineWhenDayIsEmpty() {
@@ -50,7 +70,8 @@ final class PlanViewModelTests: XCTestCase {
     private func makeActivity(
         date: Date,
         title: String,
-        isSkipped: Bool = false
+        isSkipped: Bool = false,
+        isCompleted: Bool = false
     ) -> PlannedActivity {
         PlannedActivity(
             date: date,
@@ -61,6 +82,7 @@ final class PlanViewModelTests: XCTestCase {
             colorRed: 0.4,
             colorGreen: 0.7,
             colorBlue: 0.9,
+            isCompleted: isCompleted,
             isSkipped: isSkipped
         )
     }

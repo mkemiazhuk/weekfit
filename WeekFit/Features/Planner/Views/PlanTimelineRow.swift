@@ -28,26 +28,45 @@ enum PlanTimelineLayout {
 struct PlanTimelineNowDivider: View {
 
     @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
+    @State private var pulse = false
+
+    private let liveTint = Color(red: 1.0, green: 0.706, blue: 0.341)
 
     var body: some View {
         HStack(alignment: .center, spacing: PlanTimelineLayout.timeToTimelineSpacing) {
             Color.clear
                 .frame(width: timeColumnWidth)
 
-            Circle()
-                .fill(WeekFitTheme.whiteOpacity(0.22))
-                .frame(width: 4, height: 4)
+            ZStack {
+                Circle()
+                    .fill(liveTint.opacity(pulse ? 0.20 : 0.08))
+                    .frame(width: pulse ? 14 : 10, height: pulse ? 14 : 10)
+
+                Circle()
+                    .fill(liveTint.opacity(pulse ? 0.98 : 0.72))
+                    .frame(width: 6, height: 6)
+            }
+            .frame(width: PlanTimelineLayout.columnWidth)
 
             Text(WeekFitLocalizedString("planner.timeline.now"))
-                .font(.system(size: 9.5, weight: .semibold))
-                .tracking(0.45)
+                .font(.system(size: 9.5, weight: .bold))
+                .tracking(0.55)
                 .textCase(.uppercase)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.30))
+                .foregroundStyle(liveTint.opacity(pulse ? 0.96 : 0.72))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
             Rectangle()
-                .fill(WeekFitTheme.whiteOpacity(0.07))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            liveTint.opacity(pulse ? 0.42 : 0.18),
+                            WeekFitTheme.whiteOpacity(0.05)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .frame(height: 0.5)
 
             Spacer(minLength: 0)
@@ -56,6 +75,11 @@ struct PlanTimelineNowDivider: View {
         .padding(.bottom, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(WeekFitLocalizedString("planner.timeline.now"))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
     }
 }
 
@@ -83,6 +107,14 @@ struct PlanTimelineRow: View {
     @State private var livePulse = false
 
     private var accent: Color { activity.color }
+
+    private var pendingAttentionColor: Color {
+        Color(red: 0.95, green: 0.60, blue: 0.15)
+    }
+
+    private var rowAccent: Color {
+        isPending ? pendingAttentionColor : accent
+    }
 
     private var isLive: Bool {
         status == .live
@@ -182,7 +214,7 @@ struct PlanTimelineRow: View {
             }
 
             PlanTimelineNode(
-                accent: accent,
+                accent: rowAccent,
                 status: status,
                 emphasis: emphasis,
                 livePulse: $livePulse
@@ -202,7 +234,7 @@ struct PlanTimelineRow: View {
 
     private func timelineLine(opacity: Double) -> some View {
         Rectangle()
-            .fill(accent.opacity(opacity))
+            .fill(rowAccent.opacity(opacity))
             .frame(width: PlanTimelineLayout.lineWidth)
             .frame(maxWidth: .infinity)
     }
@@ -236,7 +268,7 @@ struct PlanTimelineRow: View {
     private var activityCard: some View {
         HStack(alignment: .center, spacing: 0) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(accent.opacity(accentBarOpacity))
+                .fill(rowAccent.opacity(accentBarOpacity))
                 .frame(width: PlanTimelineLayout.cardAccentBarWidth)
                 .padding(.vertical, 4)
 
@@ -244,16 +276,24 @@ struct PlanTimelineRow: View {
                 iconView
 
                 VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
-                    Text(displayTitle)
-                        .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
-                        .foregroundStyle(titleColor)
-                        .tracking(-0.22)
-                        .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(1)
+                    HStack(alignment: .center, spacing: 6) {
+                        Text(displayTitle)
+                            .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
+                            .foregroundStyle(titleColor)
+                            .tracking(-0.22)
+                            .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
 
-                    if !metadata.isEmpty {
+                        if isLive {
+                            liveStatusBadge
+                        }
+                    }
+
+                    if isPending {
+                        pendingStatusLine
+                    } else if !metadata.isEmpty {
                         metadataLine
                     }
                 }
@@ -270,8 +310,24 @@ struct PlanTimelineRow: View {
             .padding(.vertical, cardVerticalPadding)
         }
         .background {
-            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .fill(cardFill)
+            Group {
+                if isPending {
+                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    pendingAttentionColor.opacity(0.08),
+                                    Color(red: 0.036, green: 0.040, blue: 0.046).opacity(0.94)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                        .fill(cardFill)
+                }
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
@@ -287,6 +343,22 @@ struct PlanTimelineRow: View {
             radius: emphasis == .next ? 10 : 0,
             y: emphasis == .next ? 2 : 0
         )
+        .shadow(
+            color: liveGlowColor,
+            radius: isLive && livePulse ? 16 : (isLive ? 10 : 0),
+            y: isLive ? 3 : 0
+        )
+        .shadow(
+            color: pendingGlowColor,
+            radius: isPending ? 10 : 0,
+            y: isPending ? 2 : 0
+        )
+        .overlay {
+            if isLive {
+                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                    .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
@@ -294,6 +366,7 @@ struct PlanTimelineRow: View {
     }
 
     private var accentBarOpacity: Double {
+        if isPending { return 0.96 }
         if isLive { return 0.88 }
 
         switch emphasis {
@@ -320,6 +393,10 @@ struct PlanTimelineRow: View {
     }
 
     private var chevronColor: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.45)
+        }
+
         switch emphasis {
         case .next:
             return .white.opacity(0.42)
@@ -354,6 +431,32 @@ struct PlanTimelineRow: View {
         .font(.system(size: subtitleFontSize, weight: .regular))
         .foregroundStyle(metadataColor)
         .lineLimit(1)
+    }
+
+    private var liveStatusBadge: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(accent.opacity(livePulse ? 1.0 : 0.55))
+                .frame(width: 5, height: 5)
+
+            Text(WeekFitLocalizedString("planner.status.live"))
+                .font(.system(size: 9.2, weight: .bold, design: .rounded))
+                .tracking(0.35)
+                .textCase(.uppercase)
+                .foregroundStyle(accent.opacity(livePulse ? 0.98 : 0.82))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background {
+            Capsule()
+                .fill(accent.opacity(livePulse ? 0.18 : 0.11))
+        }
+        .overlay {
+            Capsule()
+                .stroke(accent.opacity(livePulse ? 0.34 : 0.18), lineWidth: 0.75)
+        }
+        .accessibilityHidden(true)
     }
 
     private var watchSourceBadge: some View {
@@ -417,8 +520,12 @@ struct PlanTimelineRow: View {
     }
 
     private var cardFill: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.08)
+        }
+
         if isLive {
-            return accent.opacity(0.10)
+            return accent.opacity(livePulse ? 0.14 : 0.10)
         }
 
         switch emphasis {
@@ -436,8 +543,12 @@ struct PlanTimelineRow: View {
     }
 
     private var cardStroke: Color {
+        if isPending {
+            return pendingAttentionColor.opacity(0.24)
+        }
+
         if isLive {
-            return accent.opacity(0.26)
+            return accent.opacity(livePulse ? 0.42 : 0.28)
         }
 
         switch emphasis {
@@ -457,6 +568,14 @@ struct PlanTimelineRow: View {
     }
 
     private var cardStrokeWidth: CGFloat {
+        if isPending {
+            return 1.0
+        }
+
+        if isLive {
+            return livePulse ? 1.0 : 0.85
+        }
+
         switch emphasis {
         case .next:
             return 0.75
@@ -506,16 +625,51 @@ struct PlanTimelineRow: View {
         emphasis == .next ? accent.opacity(0.10) : .clear
     }
 
+    private var liveGlowColor: Color {
+        isLive ? accent.opacity(livePulse ? 0.24 : 0.14) : .clear
+    }
+
+    private var pendingGlowColor: Color {
+        isPending ? pendingAttentionColor.opacity(0.12) : .clear
+    }
+
+    private var pendingStatusLine: some View {
+        HStack(spacing: 4) {
+            Text(WeekFitLocalizedString("today.pending.title"))
+                .lineLimit(1)
+
+            if let primary = metadata.primary, !primary.isEmpty {
+                Text("·")
+                Text(primary)
+                    .lineLimit(1)
+            }
+        }
+        .font(.system(size: subtitleFontSize, weight: .semibold))
+        .foregroundStyle(pendingAttentionColor.opacity(0.92))
+    }
+
     @ViewBuilder
     private var iconView: some View {
-        WeekFitIconBadge(
-            systemName: resolvedIcon,
-            color: accent,
-            size: .sm,
-            shape: .roundedRect,
-            backgroundOpacity: iconBackgroundOpacity,
-            foregroundOpacity: iconForegroundOpacity
-        )
+        if isPending {
+            ZStack {
+                Circle()
+                    .fill(pendingAttentionColor.opacity(0.10))
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(pendingAttentionColor)
+            }
+        } else {
+            WeekFitIconBadge(
+                systemName: resolvedIcon,
+                color: accent,
+                size: .sm,
+                shape: .roundedRect,
+                backgroundOpacity: iconBackgroundOpacity,
+                foregroundOpacity: iconForegroundOpacity
+            )
+        }
     }
 
     private var iconBackgroundOpacity: Double {
@@ -582,14 +736,40 @@ private struct PlanTimelineNode: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 5.5, weight: .bold))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+            } else if status == .pending {
+                Circle()
+                    .fill(accent.opacity(0.18))
+                    .frame(width: nodeDiameter, height: nodeDiameter)
+                    .shadow(color: accent.opacity(0.24), radius: 3)
+
+                Image(systemName: "exclamationmark")
+                    .font(.system(size: 6, weight: .bold))
+                    .foregroundStyle(accent.opacity(0.96))
             } else if isFilled {
+                if status == .live {
+                    Circle()
+                        .stroke(accent.opacity(livePulse ? 0.52 : 0.20), lineWidth: 1.25)
+                        .frame(
+                            width: nodeDiameter + (livePulse ? 9 : 5),
+                            height: nodeDiameter + (livePulse ? 9 : 5)
+                        )
+
+                    Circle()
+                        .fill(accent.opacity(livePulse ? 0.14 : 0.06))
+                        .frame(
+                            width: nodeDiameter + (livePulse ? 14 : 8),
+                            height: nodeDiameter + (livePulse ? 14 : 8)
+                        )
+                        .blur(radius: 1.5)
+                }
+
                 Circle()
                     .fill(accent.opacity(filledOpacity))
                     .frame(width: nodeDiameter, height: nodeDiameter)
-                    .scaleEffect(status == .live && livePulse ? 1.06 : 1.0)
+                    .scaleEffect(status == .live && livePulse ? 1.14 : 1.0)
                     .shadow(
                         color: accent.opacity(filledShadowOpacity),
-                        radius: status == .live ? 4 : 1.5
+                        radius: status == .live ? (livePulse ? 8 : 5) : 1.5
                     )
 
                 if status == .completed || status == .logged {
@@ -614,21 +794,24 @@ private struct PlanTimelineNode: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: status)
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
         .onAppear {
-            guard status == .live else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                livePulse = true
-            }
+            startLivePulseIfNeeded()
         }
         .onChange(of: status) { _, newValue in
             if newValue == .live {
-                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                    livePulse = true
-                }
+                startLivePulseIfNeeded()
             } else {
                 livePulse = false
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func startLivePulseIfNeeded() {
+        guard status == .live else { return }
+        livePulse = false
+        withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+            livePulse = true
+        }
     }
 
     private var filledOpacity: Double {

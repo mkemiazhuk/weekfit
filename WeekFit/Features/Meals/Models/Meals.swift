@@ -255,6 +255,24 @@ extension Meals {
         )
     }
 
+    var localizedShortTitle: String {
+        localizedDisplayTitle.components(separatedBy: ",").first ?? localizedDisplayTitle
+    }
+
+    var localizedDisplaySubtitle: String {
+        MealBuilderTitleComposer.displaySubtitle(
+            storedSubtitle: subtitle,
+            builderImageItems: builderImageItems
+        )
+    }
+
+    var localizedDisplayIngredients: [MealsIngredient] {
+        MealBuilderTitleComposer.displayIngredients(
+            storedIngredients: ingredients,
+            builderImageItems: builderImageItems
+        )
+    }
+
     var normalizedTitle: String {
         title
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -343,11 +361,9 @@ extension Meals {
 
     var generatedSteps: [String] {
 
-        let ingredientNames = ingredients
+        let ingredientNames = localizedDisplayIngredients
             .prefix(4)
-            .map { ingredient in
-                ingredient.name
-            }
+            .map(\.name)
             .joined(separator: ", ")
 
         return [
@@ -453,11 +469,56 @@ enum MealBuilderTitleComposer {
         compose(from: builderImageItems) ?? storedTitle
     }
 
+    static func displaySubtitle(
+        storedSubtitle: String,
+        builderImageItems: [MealBuilderImageItem]?
+    ) -> String {
+        let selections = resolvedSelections(from: builderImageItems)
+        guard !selections.isEmpty else { return storedSubtitle }
+
+        return selections
+            .map { "\($0.ingredient.localizedTitle) (\(amountText(for: $0.ingredient, grams: $0.grams)))" }
+            .joined(separator: " + ")
+    }
+
+    static func displayIngredients(
+        storedIngredients: [MealsIngredient],
+        builderImageItems: [MealBuilderImageItem]?
+    ) -> [MealsIngredient] {
+        let selections = resolvedSelections(from: builderImageItems)
+        guard !selections.isEmpty else { return storedIngredients }
+
+        return selections.map {
+            MealsIngredient(
+                name: $0.ingredient.localizedTitle,
+                amount: amountText(for: $0.ingredient, grams: $0.grams)
+            )
+        }
+    }
+
+    static func resolvedSelections(
+        from items: [MealBuilderImageItem]?
+    ) -> [(ingredient: MealBuilderIngredient, grams: Int)] {
+        guard let items, !items.isEmpty else { return [] }
+
+        let catalog = Dictionary(uniqueKeysWithValues: MealBuilderDemoData.ingredients.map { ($0.id, $0) })
+        return items.compactMap { item in
+            guard let ingredient = catalog[item.id] else { return nil }
+            return (ingredient, item.grams)
+        }
+    }
+
+    static func amountText(for ingredient: MealBuilderIngredient, grams: Int) -> String {
+        let key = ingredient.category == .drinks
+            ? "common.unit.millilitersFormat"
+            : "common.unit.gramValueFormat"
+        return String(format: WeekFitLocalizedString(key), grams)
+    }
+
     static func compose(from items: [MealBuilderImageItem]?) -> String? {
         guard let items, !items.isEmpty else { return nil }
 
-        let catalog = Dictionary(uniqueKeysWithValues: MealBuilderDemoData.ingredients.map { ($0.id, $0) })
-        let resolvedIngredients = items.compactMap { catalog[$0.id] }
+        let resolvedIngredients = resolvedSelections(from: items).map(\.ingredient)
         guard !resolvedIngredients.isEmpty else { return nil }
 
         func first(in category: MealIngredientCategory) -> MealBuilderIngredient? {

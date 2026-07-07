@@ -59,6 +59,7 @@ struct WeekFitApp: App {
                 .onChange(of: languageManager.selectedLanguage) { _, language in
                     WeekFitSetCurrentLanguage(language)
                     ActivityNotificationService.shared.refreshLocalizedCategories()
+                    WellnessNotificationService.shared.cancelAll()
                     coachCoordinator.forceRecomputeForLanguageChange(reason: "languageChange.\(language.rawValue)")
                     appSession.triggerHealthRefresh(source: "languageChange")
                     appSession.triggerCoachRefresh(source: "languageChange")

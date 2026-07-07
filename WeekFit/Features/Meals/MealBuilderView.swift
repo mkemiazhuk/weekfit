@@ -454,7 +454,7 @@ struct MealBuilderView: View {
     private var selectedIngredientsRow: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(mealTitle)
+                Text(mealDisplayTitle)
                     .font(.system(size: 17.4, weight: .bold))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.28)
@@ -705,6 +705,26 @@ struct MealBuilderView: View {
     }
 
     private var mealTitle: String {
+        let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.title
+        let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.title
+        let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.title
+        let extra = selectedIngredients.first { $0.ingredient.category == .extras }?.ingredient.title
+        let drinks = selectedIngredients.first { $0.ingredient.category == .drinks }?.ingredient.title
+
+        if let protein, let base { return "\(protein) \(base)" }
+        if let base, let extra { return "\(extra) \(base)" }
+        if let vegetable, let protein { return "\(protein) \(vegetable)" }
+
+        if let base { return base }
+        if let protein { return protein }
+        if let vegetable { return vegetable }
+        if let extra { return extra }
+        if let drinks { return drinks }
+
+        return editingMeal?.title ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
+    }
+
+    private var mealDisplayTitle: String {
         let protein = selectedIngredients.first { $0.ingredient.category == .protein }?.ingredient.localizedTitle
         let base = selectedIngredients.first { $0.ingredient.category == .base }?.ingredient.localizedTitle
         let vegetable = selectedIngredients.first { $0.ingredient.category == .vegetables }?.ingredient.localizedTitle
@@ -721,7 +741,7 @@ struct MealBuilderView: View {
         if let extra { return extra }
         if let drinks { return drinks }
 
-        return editingMeal?.title ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
+        return editingMeal?.localizedDisplayTitle ?? WeekFitLocalizedString("meals.builder.defaultMealTitle")
     }
 
     private func toggle(_ ingredient: MealBuilderIngredient) {
@@ -859,7 +879,7 @@ struct MealBuilderView: View {
     private func makeMealIngredients() -> [MealsIngredient] {
         selectedIngredients.map { selected in
             MealsIngredient(
-                name: selected.ingredient.localizedTitle,
+                name: selected.ingredient.title,
                 amount: amountText(selected)
             )
         }
@@ -871,7 +891,7 @@ struct MealBuilderView: View {
 
     private func makeSubtitle() -> String {
         selectedIngredients
-            .map { "\($0.ingredient.localizedTitle) (\(amountText($0)))" }
+            .map { "\($0.ingredient.title) (\(amountText($0)))" }
             .joined(separator: " + ")
     }
 

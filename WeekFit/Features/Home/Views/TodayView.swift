@@ -458,6 +458,11 @@ struct TodayView: View {
         .onChange(of: appSession.localDataResetTrigger) { _, _ in
             handleLocalDataResetCompleted()
         }
+        .onReceive(confirmationState.$pendingActivity) { pending in
+            guard let pending else { return }
+            activityToConfirm = pending
+            confirmationState.pendingActivity = nil
+        }
         .onChange(of: tabIsActive) { _, isActive in
             guard isActive else { return }
             reconcileTodayDayBoundary()
@@ -674,6 +679,9 @@ struct TodayView: View {
         .onChange(of: userSettings.customMealsCatalogRevision) { _, _ in
             refreshQuickLogMealsFromCatalog()
         }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            refreshQuickLogLocalizedRows()
+        }
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
                 QuickActionSheetDesign.Color.sheetBackground
@@ -814,6 +822,18 @@ struct TodayView: View {
         )
     }
 
+    private func refreshQuickLogLocalizedRows() {
+        if !quickLogMeals.isEmpty {
+            setQuickLogMeals(quickLogMeals)
+        }
+        if !quickLogSnacks.isEmpty {
+            setQuickLogSnacks(quickLogSnacks)
+        }
+        if !quickLogDrinks.isEmpty {
+            setQuickLogDrinks(quickLogDrinks)
+        }
+    }
+
     private func refreshQuickLogMealsFromCatalog() {
         setQuickLogMeals(userSettings.customMealsCatalog)
     }
@@ -909,26 +929,9 @@ struct TodayView: View {
         items.map { item in
             QuickItemDisplayRow(
                 item: item,
-                subtitleText: item.localizedSubtitle,
-                metaText: quickItemMetaText(for: item),
                 usesAssetImage: !item.imageName.isEmpty && UIImage(named: item.imageName) != nil
             )
         }
-    }
-
-    private func quickItemMetaText(for item: QuickItem) -> String? {
-        let macros = localizedMacroSummary(protein: item.protein, carbs: item.carbs, fats: item.fats)
-        let hasMacros = item.protein > 0 || item.carbs > 0 || item.fats > 0
-
-        if item.calories > 0, hasMacros {
-            return "\(localizedCalories(item.calories)) • \(macros)"
-        }
-
-        if item.calories > 0 {
-            return localizedCalories(item.calories)
-        }
-
-        return hasMacros ? macros : nil
     }
 
     private func makeQuickMealRows(_ meals: [Meals]) -> [QuickMealDisplayRow] {
@@ -940,9 +943,6 @@ struct TodayView: View {
 
             return QuickMealDisplayRow(
                 meal: meal,
-                title: isFoodProduct ? meal.title : meal.shortTitle,
-                subtitle: quickMealSubtitle(for: meal),
-                macroText: quickMealMacroText(for: meal),
                 usesAssetImage: !isFoodProduct && !meal.imageName.isEmpty && UIImage(named: meal.imageName) != nil,
                 sortedBuilderImageItems: builderImageItems,
                 localPhotoFilename: quickMealPhotoFilename(for: meal),
@@ -959,41 +959,6 @@ struct TodayView: View {
         ]
         .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
         .first { !$0.isEmpty }
-    }
-
-    private func quickMealSubtitle(for meal: Meals) -> String {
-        if meal.isFoodProduct {
-            return meal.servingDescription
-        }
-
-        let subtitle = meal.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return subtitle.isEmpty ? meal.servingDescription : subtitle
-    }
-
-    private func quickMealMacroText(for meal: Meals) -> String {
-        let macros = localizedMacroSummary(protein: meal.protein, carbs: meal.carbs, fats: meal.fats)
-
-        if meal.calories > 0 {
-            return "\(localizedCalories(meal.calories)) • \(macros)"
-        }
-
-        return macros
-    }
-
-    private func localizedMacroSummary(protein: Int, carbs: Int, fats: Int) -> String {
-        [
-            "\(WeekFitLocalizedString("meals.library.macroProtein")) \(localizedGrams(protein))",
-            "\(WeekFitLocalizedString("meals.library.macroCarbs")) \(localizedGrams(carbs))",
-            "\(WeekFitLocalizedString("meals.library.macroFats")) \(localizedGrams(fats))"
-        ].joined(separator: " • ")
-    }
-
-    private func localizedCalories(_ calories: Int) -> String {
-        String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), calories)
-    }
-
-    private func localizedGrams(_ grams: Int) -> String {
-        String(format: WeekFitLocalizedString("common.unit.gramFormat"), grams)
     }
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
@@ -2934,24 +2899,20 @@ struct TodayView: View {
             skipTitle: WeekFitLocalizedString("today.verify.skipped"),
             onConfirm: {
                 withAnimation {
-                    activity.isCompleted = true
-                    activity.isSkipped = false
-                    if activity.source.isEmpty {
-                        activity.source = "planner"
-                    }
-                    try? modelContext.save()
+                    try? PlannedActivityNotificationConfirmationService.markCompleted(
+                        activity,
+                        modelContext: modelContext
+                    )
                     todayViewModel.triggerHealthRefresh()
                     activityToConfirm = nil
                 }
             },
             onSkip: {
                 withAnimation {
-                    activity.isSkipped = true
-                    activity.isCompleted = false
-                    if activity.source.isEmpty {
-                        activity.source = "planner"
-                    }
-                    try? modelContext.save()
+                    try? PlannedActivityNotificationConfirmationService.markSkipped(
+                        activity,
+                        modelContext: modelContext
+                    )
                     todayViewModel.triggerHealthRefresh()
                     activityToConfirm = nil
                 }

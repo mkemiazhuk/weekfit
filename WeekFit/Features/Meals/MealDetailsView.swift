@@ -37,8 +37,8 @@ struct MealDetailsView: View {
     }
 
     private var ingredientsSummary: String {
-        let names = meal.ingredients.map { $0.name }
-        guard !names.isEmpty else { return meal.subtitle }
+        let names = meal.localizedDisplayIngredients.map(\.name)
+        guard !names.isEmpty else { return meal.localizedDisplaySubtitle }
 
         if names.count <= 4 {
             return names.joined(separator: " • ")
@@ -152,7 +152,7 @@ struct MealDetailsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(meal.title)
+                Text(meal.localizedDisplayTitle)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.42)
@@ -268,10 +268,10 @@ struct MealDetailsView: View {
             }
 
             VStack(spacing: 0) {
-                ForEach(Array(meal.ingredients.enumerated()), id: \.element.name) { index, item in
+                ForEach(Array(meal.localizedDisplayIngredients.enumerated()), id: \.element.name) { index, item in
                     ingredientRow(item, index: index)
 
-                    if index != meal.ingredients.count - 1 {
+                    if index != meal.localizedDisplayIngredients.count - 1 {
                         Rectangle()
                             .fill(WeekFitTheme.whiteOpacity(0.045))
                             .frame(height: 1)

@@ -197,8 +197,13 @@ final class PlanViewModel: ObservableObject {
 
     func activities(for date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
         activities
-            .filter { calendar.isDate($0.date, inSameDayAs: date) && !$0.isSkipped }
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
             .sorted { $0.date < $1.date }
+    }
+
+    /// Activities that still count toward day progress (excludes skipped).
+    func countableDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
+        selectedDayActivities(from: activities).filter { !$0.isSkipped }
     }
 
     func selectedDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
@@ -210,7 +215,7 @@ final class PlanViewModel: ObservableObject {
     }
 
     func upcomingDayActivities(from activities: [PlannedActivity]) -> [PlannedActivity] {
-        selectedDayActivities(from: activities).filter { !$0.isCompleted && !$0.isSkipped }
+        countableDayActivities(from: activities).filter { !$0.isCompleted }
     }
 
     func nextUpcomingActivity(from activities: [PlannedActivity]) -> PlannedActivity? {
@@ -218,7 +223,7 @@ final class PlanViewModel: ObservableObject {
     }
 
     func calculateProgress(from activities: [PlannedActivity]) -> Double {
-        let dayActivities = selectedDayActivities(from: activities)
+        let dayActivities = countableDayActivities(from: activities)
         guard !dayActivities.isEmpty else { return 0.18 }
 
         let completed = dayActivities.filter { $0.isCompleted }.count

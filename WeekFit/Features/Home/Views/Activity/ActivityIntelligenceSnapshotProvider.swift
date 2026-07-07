@@ -154,7 +154,20 @@ final class ActivityIntelligenceSnapshotProvider {
         ) ?? activity.date
         let activityType = inferredWorkoutType(for: activity)
         let icon = activity.icon.isEmpty ? "figure.mixed.cardio" : activity.icon
-        let source = activity.isWatchSynced ? "Apple Watch" : activity.source
+        let source: String
+        if activity.isWatchSynced {
+            source = WeekFitLocalizedString("activity.data.source.appleWatch")
+        } else {
+            let normalized = activity.source
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+
+            if normalized.isEmpty || normalized == "planner" || normalized == "today" {
+                source = "planner"
+            } else {
+                source = activity.source
+            }
+        }
 
         return ActivitySessionSnapshot(
             workoutID: activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),

@@ -1049,6 +1049,90 @@ private struct SessionRow: View {
 
 // MARK: - Session Detail
 
+private struct ActivitySessionSourcePresentation {
+    enum Kind {
+        case appleWatch
+        case healthKit
+        case planner
+        case other(String)
+    }
+
+    let kind: Kind
+
+    init(source: String?) {
+        let trimmed = source?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let normalized = trimmed.lowercased()
+
+        switch normalized {
+        case "apple watch", "applewatch":
+            kind = .appleWatch
+        case "planner", "today":
+            kind = .planner
+        case "apple health", "applehealth", "healthkit", "appleworkout":
+            kind = .healthKit
+        case "":
+            kind = .healthKit
+        default:
+            if normalized.contains("watch") {
+                kind = .appleWatch
+            } else {
+                kind = .other(trimmed.isEmpty ? normalized : trimmed)
+            }
+        }
+    }
+
+    var badgeSystemImage: String {
+        switch kind {
+        case .appleWatch:
+            return "applewatch"
+        case .healthKit:
+            return "heart.text.square.fill"
+        case .planner:
+            return "calendar.badge.checkmark"
+        case .other:
+            return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    var badgeText: String {
+        switch kind {
+        case .appleWatch:
+            return String(
+                format: WeekFitLocalizedString("activity.syncedFrom"),
+                WeekFitLocalizedString("activity.data.source.appleWatch")
+            )
+        case .healthKit:
+            return String(
+                format: WeekFitLocalizedString("activity.syncedFrom"),
+                WeekFitLocalizedString("activity.data.source.appleHealth")
+            )
+        case .planner:
+            return WeekFitLocalizedString("activity.loggedFromPlan")
+        case .other(let name):
+            return String(format: WeekFitLocalizedString("activity.syncedFrom"), name)
+        }
+    }
+
+    var footerText: String {
+        switch kind {
+        case .planner:
+            return WeekFitLocalizedString("activity.dataFromPlan")
+        case .appleWatch:
+            return String(
+                format: WeekFitLocalizedString("activity.dataFrom"),
+                WeekFitLocalizedString("activity.data.source.appleWatch")
+            )
+        case .healthKit:
+            return String(
+                format: WeekFitLocalizedString("activity.dataFrom"),
+                WeekFitLocalizedString("activity.data.source.appleHealth")
+            )
+        case .other(let name):
+            return String(format: WeekFitLocalizedString("activity.dataFrom"), name)
+        }
+    }
+}
+
 struct ActivitySessionDetailView: View {
     let session: ActivitySessionSnapshot
     @ObservedObject var healthManager: HealthManager
@@ -1347,10 +1431,10 @@ struct ActivitySessionDetailView: View {
                     .minimumScaleFactor(0.84)
 
                 HStack(spacing: 5) {
-                    Image(systemName: "applewatch")
+                    Image(systemName: sourcePresentation.badgeSystemImage)
                         .font(.system(size: 11, weight: .bold))
 
-                    Text(syncedText)
+                    Text(sourcePresentation.badgeText)
                         .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
@@ -1368,13 +1452,12 @@ struct ActivitySessionDetailView: View {
         .padding(.vertical, 2)
     }
 
-    private var activityDateText: String {
-        localizedDetailsDate(session.startDate)
+    private var sourcePresentation: ActivitySessionSourcePresentation {
+        ActivitySessionSourcePresentation(source: detail?.source)
     }
 
-    private var syncedText: String {
-        let source = detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")
-        return String(format: WeekFitLocalizedString("activity.syncedFrom"), source)
+    private var activityDateText: String {
+        localizedDetailsDate(session.startDate)
     }
 
     private var detailTimeRange: String {
@@ -1625,7 +1708,7 @@ struct ActivitySessionDetailView: View {
     }
 
     private var footer: some View {
-        Text(String(format: WeekFitLocalizedString("activity.dataFrom"), detail?.source ?? WeekFitLocalizedString("activity.data.source.appleHealth")))
+        Text(sourcePresentation.footerText)
             .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
             .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
             .frame(maxWidth: .infinity, alignment: .center)

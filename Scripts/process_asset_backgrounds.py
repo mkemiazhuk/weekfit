@@ -10,6 +10,30 @@ import sys
 
 ASSETS = os.path.join(os.path.dirname(__file__), "..", "WeekFit", "Resources", "Assets.xcassets")
 SKIP_SUBSTRINGS = ("AppIcon", "weekfit-bg")
+# Full-bleed photographic assets must stay opaque; background removal creates black halos in UI cards.
+SKIP_PREFIXES = (
+    "workout-",
+    "recovery-",
+    "habit-",
+    "meal-",
+    "ingredient-",
+    "snack-",
+    "drink-",
+    "breakfast.imageset",
+    "dinner.imageset",
+)
+
+
+def should_skip(path: str) -> bool:
+    if any(skip in path for skip in SKIP_SUBSTRINGS):
+        return True
+
+    rel = os.path.relpath(path, os.path.abspath(ASSETS))
+    imageset = rel.split(os.sep)[0]
+    return any(
+        imageset.startswith(prefix) or imageset == prefix
+        for prefix in SKIP_PREFIXES
+    )
 
 
 def parse_rgb(pixel: str) -> tuple[float, float, float] | None:
@@ -42,7 +66,7 @@ def corner_pixel(path: str) -> str:
 
 
 def remove_background(path: str) -> str:
-    if any(skip in path for skip in SKIP_SUBSTRINGS):
+    if should_skip(path):
         return "skip"
 
     if has_alpha(path):
@@ -74,7 +98,7 @@ def main() -> int:
     changed = 0
 
     for root, _, files in os.walk(assets_root):
-        if any(skip in root for skip in SKIP_SUBSTRINGS):
+        if should_skip(root):
             continue
 
         for filename in files:

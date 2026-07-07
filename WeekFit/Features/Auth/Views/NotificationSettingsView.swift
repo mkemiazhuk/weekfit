@@ -111,10 +111,9 @@ struct NotificationSettingsView: View {
     }
     
     private func syncNotificationsForExistingActivities() {
-        ActivityNotificationService.shared.syncNotifications(
-            for: plannedActivities,
-            activityRemindersEnabled: activityRemindersEnabled,
-            completionCheckInsEnabled: completionCheckInsEnabled
+        NotificationSyncCoordinator.syncAll(
+            plannedActivities: plannedActivities,
+            recoveryPercent: 0
         )
     }
 }
@@ -236,6 +235,7 @@ private extension NotificationSettingsView {
                 if !notificationsAuthorized {
                     activityRemindersEnabled = false
                     completionCheckInsEnabled = false
+                    recoverySuggestionsEnabled = false
                     hydrationRemindersEnabled = false
                     sleepWindDownEnabled = false
                 }

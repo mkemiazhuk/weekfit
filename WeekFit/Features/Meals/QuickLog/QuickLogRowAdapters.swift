@@ -9,11 +9,16 @@ struct QuickLogMealRow: View {
     let onIncrement: () -> Void
     let onDecrement: () -> Void
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
+
     var body: some View {
+        let _ = languageManager.selectedLanguage
+        let meal = row.meal
+
         QuickLogRowView(
-            title: row.title,
-            subtitle: row.subtitle,
-            metaText: row.macroText,
+            title: meal.isFoodProduct ? meal.title : meal.localizedShortTitle,
+            subtitle: quickMealSubtitle(for: meal),
+            metaText: quickMealMacroText(for: meal),
             accentColor: accentColor,
             selection: selection,
             displayQuantity: displayQuantity,
@@ -88,6 +93,29 @@ struct QuickLogMealRow: View {
     private var imageContentCornerRadius: CGFloat {
         QuickLogRowMetrics.imageCornerRadius * 0.70
     }
+
+    private func quickMealSubtitle(for meal: Meals) -> String {
+        if meal.isFoodProduct {
+            return meal.servingDescription
+        }
+
+        let subtitle = meal.localizedDisplaySubtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return subtitle.isEmpty ? meal.servingDescription : subtitle
+    }
+
+    private func quickMealMacroText(for meal: Meals) -> String {
+        let macros = QuickLogLocalizedNutrition.macroSummary(
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fats: meal.fats
+        )
+
+        if meal.calories > 0 {
+            return "\(QuickLogLocalizedNutrition.calories(meal.calories)) • \(macros)"
+        }
+
+        return macros
+    }
 }
 
 struct QuickLogItemRow: View {
@@ -99,11 +127,16 @@ struct QuickLogItemRow: View {
     let onIncrement: () -> Void
     let onDecrement: () -> Void
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
+
     var body: some View {
+        let _ = languageManager.selectedLanguage
+        let item = row.item
+
         QuickLogRowView(
-            title: row.item.localizedTitle,
-            subtitle: row.subtitleText,
-            metaText: row.metaText,
+            title: item.localizedTitle,
+            subtitle: item.localizedSubtitle,
+            metaText: QuickLogLocalizedNutrition.metaText(for: item),
             accentColor: accentColor,
             selection: selection,
             displayQuantity: displayQuantity,
@@ -134,9 +167,6 @@ struct QuickLogItemRow: View {
 
 struct QuickMealDisplayRow: Identifiable, Equatable {
     let meal: Meals
-    let title: String
-    let subtitle: String
-    let macroText: String
     let usesAssetImage: Bool
     let sortedBuilderImageItems: [MealBuilderImageItem]
     let localPhotoFilename: String?
@@ -148,9 +178,40 @@ struct QuickMealDisplayRow: Identifiable, Equatable {
 
 struct QuickItemDisplayRow: Identifiable, Equatable {
     let item: QuickItem
-    let subtitleText: String
-    let metaText: String?
     let usesAssetImage: Bool
 
     var id: String { item.id }
+}
+
+enum QuickLogLocalizedNutrition {
+    static func metaText(for item: QuickItem) -> String? {
+        let macros = macroSummary(protein: item.protein, carbs: item.carbs, fats: item.fats)
+        let hasMacros = item.protein > 0 || item.carbs > 0 || item.fats > 0
+
+        if item.calories > 0, hasMacros {
+            return "\(calories(item.calories)) • \(macros)"
+        }
+
+        if item.calories > 0 {
+            return calories(item.calories)
+        }
+
+        return hasMacros ? macros : nil
+    }
+
+    static func macroSummary(protein: Int, carbs: Int, fats: Int) -> String {
+        [
+            "\(WeekFitLocalizedString("meals.library.macroProtein")) \(grams(protein))",
+            "\(WeekFitLocalizedString("meals.library.macroCarbs")) \(grams(carbs))",
+            "\(WeekFitLocalizedString("meals.library.macroFats")) \(grams(fats))"
+        ].joined(separator: " • ")
+    }
+
+    static func calories(_ calories: Int) -> String {
+        String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), calories)
+    }
+
+    private static func grams(_ grams: Int) -> String {
+        String(format: WeekFitLocalizedString("common.unit.gramFormat"), grams)
+    }
 }

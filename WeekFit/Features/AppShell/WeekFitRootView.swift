@@ -56,6 +56,91 @@ struct WeekFitRootView: View {
     private var plannedActivities: [PlannedActivity]
 
     var body: some View {
+        rootShellWithHealthHandlers
+    }
+
+    private var rootShellWithHealthHandlers: some View {
+        rootShellWithCoreHandlers
+            .onChange(of: healthManager.recoveryPercent) { _, _ in
+                syncNotifications(source: "root.recoveryPercent", includeActivities: false)
+            }
+            .onChange(of: healthManager.lastHealthKitSyncTime) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: healthManager.hasCompletedHealthAccessCheck) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: healthManager.isHealthAccessGranted) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .task(id: coachRefreshInputs) {
+                await refreshCoachInput(source: "rootTask")
+            }
+    }
+
+    private var rootShellWithCoreHandlers: some View {
+        rootShellWithNotificationHandlers
+            .task(id: trackedAppDayStart) {
+                await scheduleNextCalendarDayCheck()
+            }
+            .task(id: coachCoordinator.nextScheduledCheckpoint) {
+                await handleCoachCheckpointIfNeeded()
+            }
+            .onChange(of: selectedTab) { oldValue, newValue in
+                mountedTabs.insert(newValue)
+                handleTabChange(from: oldValue, to: newValue)
+            }
+            .onChange(of: appSession.returnToTodayTrigger) { _, _ in
+                syncCoachRefreshInputs()
+                returnToToday()
+            }
+            .onChange(of: activityCoordinator.completedWorkoutsBatch) { _, _ in
+                Task {
+                    await reconcileHealthWorkouts(source: "root.onChange.completedWorkoutsBatch")
+                }
+            }
+            .onChange(of: watchSyncPlannerSignature) { _, _ in
+                Task {
+                    await reconcileHealthWorkouts(source: "root.onChange.plannedActivities")
+                }
+            }
+            .onChange(of: languageManager.selectedLanguage) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: appSession.healthRefreshTrigger) { _, _ in
+                syncCoachRefreshInputs()
+                handleHealthRefreshEvent()
+            }
+            .onChange(of: appSession.coachRefreshTrigger) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: todaySelectedDate) { _, _ in
+                syncCoachRefreshInputs()
+            }
+            .onChange(of: plannedActivities) { _, _ in
+                refreshPlannedActivitiesSignature(warmPlannerCaches: mountedTabs.contains(.calendar))
+                syncNotifications(source: "root.plannedActivities", includeActivities: true, includeWellness: true)
+            }
+    }
+
+    private var rootShellWithNotificationHandlers: some View {
+        rootShell
+            .onAppear(perform: handleRootAppear)
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
+                syncNotifications(source: "root.sceneActive")
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(for: .activityNotificationAction),
+                perform: handleActivityNotificationAction
+            )
+    }
+
+    private var rootShell: some View {
         ZStack(alignment: .bottom) {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
@@ -86,89 +171,32 @@ struct WeekFitRootView: View {
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 120)
         }
-        .onAppear {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
-                showContent = true
-            }
-            planViewModel.beforePlannedActivityDeleted = {
-                CoachStateStabilizer.markRealityChange(source: "plannerActivityDelete")
-                CoachSnapshotInvalidator.invalidate(
-                    coordinator: coachCoordinator,
-                    nutritionViewModel: nutritionViewModel,
-                    inputProvider: coachInputProvider,
-                    reason: "plannerActivityDelete"
-                )
-            }
-            planViewModel.afterPlannedActivityDeleted = {
-                appSession.triggerCoachRefresh(source: "plannerActivityDelete")
-            }
-            refreshPlannedActivitiesSignature()
-            reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
-            Task {
-                await reconcileHealthWorkouts(
-                    source: "root.onAppear",
-                    bootstrapFromHealth: true
-                )
-            }
+    }
+
+    private func handleRootAppear() {
+        withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
+            showContent = true
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
+        planViewModel.beforePlannedActivityDeleted = {
+            CoachStateStabilizer.markRealityChange(source: "plannerActivityDelete")
+            CoachSnapshotInvalidator.invalidate(
+                coordinator: coachCoordinator,
+                nutritionViewModel: nutritionViewModel,
+                inputProvider: coachInputProvider,
+                reason: "plannerActivityDelete"
+            )
         }
-        .task(id: trackedAppDayStart) {
-            await scheduleNextCalendarDayCheck()
+        planViewModel.afterPlannedActivityDeleted = {
+            appSession.triggerCoachRefresh(source: "plannerActivityDelete")
         }
-        .task(id: coachCoordinator.nextScheduledCheckpoint) {
-            await handleCoachCheckpointIfNeeded()
-        }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            mountedTabs.insert(newValue)
-            handleTabChange(from: oldValue, to: newValue)
-        }
-        .onChange(of: appSession.returnToTodayTrigger) { _, _ in
-            syncCoachRefreshInputs()
-            returnToToday()
-        }
-        .onChange(of: activityCoordinator.completedWorkoutsBatch) { _, _ in
-            Task {
-                await reconcileHealthWorkouts(source: "root.onChange.completedWorkoutsBatch")
-            }
-        }
-        .onChange(of: watchSyncPlannerSignature) { _, _ in
-            Task {
-                await reconcileHealthWorkouts(source: "root.onChange.plannedActivities")
-            }
-        }
-        .onChange(of: languageManager.selectedLanguage) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: appSession.healthRefreshTrigger) { _, _ in
-            syncCoachRefreshInputs()
-            handleHealthRefreshEvent()
-        }
-        .onChange(of: appSession.coachRefreshTrigger) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: todaySelectedDate) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: plannedActivities) { _, _ in
-            refreshPlannedActivitiesSignature(warmPlannerCaches: mountedTabs.contains(.calendar))
-        }
-        .onChange(of: healthManager.lastHealthKitSyncTime) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: healthManager.hasCompletedHealthAccessCheck) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .onChange(of: healthManager.isHealthAccessGranted) { _, _ in
-            syncCoachRefreshInputs()
-        }
-        .task(id: coachRefreshInputs) {
-            await refreshCoachInput(source: "rootTask")
+        refreshPlannedActivitiesSignature()
+        syncNotifications(source: "root.onAppear")
+        reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
+        Task {
+            await reconcileHealthWorkouts(
+                source: "root.onAppear",
+                bootstrapFromHealth: true
+            )
         }
     }
 
@@ -650,5 +678,43 @@ struct WeekFitRootView: View {
             appSession.triggerCoachRefresh(source: "coachCheckpoint")
             syncCoachRefreshInputs()
         }
+    }
+
+    private func syncNotifications(
+        source: String,
+        includeActivities: Bool = true,
+        includeWellness: Bool = true
+    ) {
+        if includeActivities && includeWellness {
+            NotificationSyncCoordinator.syncAll(
+                plannedActivities: plannedActivities,
+                recoveryPercent: healthManager.recoveryPercent,
+                source: source
+            )
+        } else if includeWellness {
+            NotificationSyncCoordinator.syncWellness(
+                plannedActivities: plannedActivities,
+                recoveryPercent: healthManager.recoveryPercent,
+                source: source
+            )
+        } else {
+            NotificationSyncCoordinator.syncActivities(
+                plannedActivities: plannedActivities,
+                source: source
+            )
+        }
+    }
+
+    private func handleActivityNotificationAction(_ notification: Notification) {
+        ActivityNotificationActionProcessor.handle(
+            userInfo: notification.userInfo,
+            modelContext: modelContext,
+            onActivityStateChanged: {
+                appSession.triggerHealthRefresh(source: "notificationAction")
+                if ActivityConfirmationState.shared.pendingActivity != nil {
+                    returnToToday()
+                }
+            }
+        )
     }
 }

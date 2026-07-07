@@ -16,10 +16,14 @@ struct MealNutritionSummaryStrip: View {
     var accent: Color = WeekFitTheme.meal
     var style: Style = .standalone
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
+
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         VStack(spacing: 0) {
             if style == .embedded {
                 Rectangle()

@@ -612,6 +612,40 @@
         }
       }
     },
+    "activity.data.source.appleWatch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch"
+          }
+        }
+      }
+    },
+    "activity.dataFromPlan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged in your plan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись из плана"
+          }
+        }
+      }
+    },
     "activity.dataFrom" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1492,6 +1526,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Синхронизировано из %@"
+          }
+        }
+      }
+    },
+    "activity.loggedFromPlan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged from plan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записано из плана"
           }
         }
       }
@@ -57399,6 +57450,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скоро активность"
+          }
+        }
+      }
+    },
+    "notifications.wellness.hydration.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hydration check-in"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Напоминание о воде"
+          }
+        }
+      }
+    },
+    "notifications.wellness.hydration.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a moment to drink some water."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделайте паузу и выпейте воды."
+          }
+        }
+      }
+    },
+    "notifications.wellness.recovery.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery suggestion"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендация по восстановлению"
+          }
+        }
+      }
+    },
+    "notifications.wellness.recovery.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your body may benefit from a light recovery block today."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сегодня телу может быть полезен лёгкий блок восстановления."
           }
         }
       }

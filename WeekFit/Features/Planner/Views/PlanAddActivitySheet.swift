@@ -1100,15 +1100,21 @@ private extension PlanAddActivitySheet {
     func optionImage(_ option: PlannerOption) -> some View {
         Group {
             if !option.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: option.imageName) {
-                PremiumAssetImage(
-                    imageName: option.imageName,
-                    style: .activityThumbnail,
-                    accentColor: viewModel.selectedType.color,
-                    fallbackSystemName: option.icon
-                )
+                addSheetCoverImage(named: option.imageName)
             } else {
                 fallbackOptionImage(icon: option.icon)
             }
+        }
+        .overlay {
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.00),
+                    Color.black.opacity(0.16)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -1124,14 +1130,7 @@ private extension PlanAddActivitySheet {
         }
 
         if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
-            return AnyView(
-                PremiumAssetImage(
-                    imageName: meal.imageName,
-                    style: .activityThumbnail,
-                    accentColor: viewModel.selectedType.color,
-                    fallbackSystemName: PlannerType.meal.icon
-                )
-            )
+            return AnyView(addSheetCoverImage(named: meal.imageName))
         }
 
         return AnyView(fallbackOptionImage(icon: PlannerType.meal.icon))
@@ -1173,6 +1172,13 @@ private extension PlanAddActivitySheet {
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(viewModel.selectedType.color.opacity(0.68))
         }
+    }
+
+    func addSheetCoverImage(named imageName: String) -> some View {
+        Image(imageName)
+            .resizable()
+            .scaledToFill()
+            .background(Color(red: 0.04, green: 0.045, blue: 0.05))
     }
 
 }

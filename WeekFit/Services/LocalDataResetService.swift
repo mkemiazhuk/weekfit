@@ -98,6 +98,7 @@ final class LocalDataResetService {
                 "notifications.recoverySuggestions",
                 "notifications.hydrationReminders",
                 "notifications.sleepWindDown",
+                WellnessNotificationPreferenceKey.recoveryScheduledDay,
                 "healthkit.workout.syncStartDate"
             ]
 

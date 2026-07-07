@@ -5,6 +5,8 @@ struct MealCardRow: View {
     var isQuickLogMode: Bool = false
     var onPlusTap: (() -> Void)? = nil
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
+
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let textTertiary = WeekFitTheme.tertiaryText
@@ -25,6 +27,8 @@ struct MealCardRow: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         HStack(spacing: isQuickLogMode ? 12 : 12) {
             mealImage
                 .frame(
@@ -36,7 +40,7 @@ struct MealCardRow: View {
                 HStack(alignment: .center, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .center, spacing: 6) {
-                            Text(meal.shortTitle)
+                            Text(meal.isFoodProduct ? meal.title : meal.localizedShortTitle)
                                 .font(.system(
                                     size: isQuickLogMode ? 17.2 : 15.4,
                                     weight: .bold,
@@ -65,7 +69,7 @@ struct MealCardRow: View {
                             }
                         }
 
-                        Text(meal.subtitle)
+                        Text(meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle)
                             .font(.system(
                                 size: isQuickLogMode ? 12.4 : 11.5,
                                 weight: .medium
