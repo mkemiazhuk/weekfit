@@ -220,7 +220,8 @@ private extension ProfileView {
     func healthSystemCard(_ profile: UserProfile) -> some View {
         let cleanName = profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasName = !cleanName.isEmpty
-        let isConnected = healthManager.isHealthAccessGranted
+        let connectionState = healthManager.healthDataConnectionState
+        let isPermissionGranted = healthManager.isHealthAccessGranted
         let needsBodyGoal = viewModel.bodyGoalNeedsSetup(
             weightKg: healthManager.weight,
             heightCm: healthManager.heightCm
@@ -241,18 +242,16 @@ private extension ProfileView {
                             .lineLimit(2)
                             .minimumScaleFactor(0.92)
 
-                        Text(isConnected ? WeekFitLocalizedString("settings.profile.recoverySystemActive") : WeekFitLocalizedString("settings.profile.healthSetupNeeded"))
+                        Text(isPermissionGranted ? WeekFitLocalizedString("settings.profile.recoverySystemActive") : WeekFitLocalizedString("settings.profile.healthSetupNeeded"))
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(isConnected ? accentGreen.opacity(0.92) : textSecondary)
+                            .foregroundStyle(isPermissionGranted ? accentGreen.opacity(0.92) : textSecondary)
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(
                             needsBodyGoal
                                 ? WeekFitLocalizedString("settings.profile.healthSystem.bodyGoalPrompt")
-                                : (isConnected
-                                    ? WeekFitLocalizedString("settings.profile.appleHealthConnected")
-                                    : WeekFitLocalizedString("settings.profile.connectHealthPlanning"))
+                                : profileHealthConnectionSubtitle(for: connectionState)
                         )
                             .font(.system(size: 11.8, weight: .medium))
                             .foregroundStyle(textSecondary.opacity(0.68))
@@ -296,7 +295,7 @@ private extension ProfileView {
             }
             .padding(15)
             .background {
-                heroCardBackground(isConnected: isConnected)
+                heroCardBackground(isConnected: isPermissionGranted)
             }
         }
         .buttonStyle(PressableScaleButtonStyle())
@@ -744,6 +743,19 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.language.option.english")
         case .russian:
             return WeekFitLocalizedString("settings.language.option.russian")
+        }
+    }
+
+    func profileHealthConnectionSubtitle(for state: HealthDataConnectionState) -> String {
+        switch state {
+        case .notRequested, .denied:
+            return WeekFitLocalizedString("settings.profile.connectHealthPlanning")
+        case .connectedWaitingForData:
+            return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
+        case .connectedPartial:
+            return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
+        case .connected:
+            return WeekFitLocalizedString("settings.profile.appleHealthConnected")
         }
     }
 }

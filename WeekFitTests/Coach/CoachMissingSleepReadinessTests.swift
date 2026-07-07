@@ -202,6 +202,44 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
         XCTAssertFalse(assessment.lowercased().contains("not recorded last night"))
     }
 
+    func testRecoveryContextSleepSatisfiesReadinessWhenBrainMetricsSleepMissing() {
+        let now = makeDate(hour: 14)
+        var brainConfig = HumanBrainStateBuilder.Configuration()
+        brainConfig.currentHour = 14
+        brainConfig.metrics = CoachMetricsBuilder.metrics(activeCalories: 400, sleepHours: 0)
+        brainConfig.sleep = .short
+        brainConfig.readiness = .moderate
+        brainConfig.recovery = .stable
+
+        let input = CoachInputSnapshot(
+            selectedDate: now,
+            now: now,
+            brain: HumanBrainStateBuilder.make(brainConfig),
+            plannedActivities: [],
+            dayContext: CoachDayContextBuilder.build(
+                activities: [],
+                selectedDate: now,
+                now: now
+            ),
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 58, sleepHours: 5.0),
+            nutritionContext: CoachNutritionContext(
+                caloriesCurrent: 1_800,
+                caloriesGoal: 2_800,
+                proteinCurrent: 90,
+                proteinGoal: 140,
+                waterCurrent: 1.8,
+                waterGoal: 2.5
+            ),
+            isHealthAccessGranted: true,
+            source: "CoachMissingSleepReadinessTests"
+        )
+
+        let assessment = CoachInputReadiness.assessment(input)
+
+        XCTAssertTrue(assessment.satisfiedConditions.contains("sleepHours"))
+        XCTAssertFalse(assessment.blockingReasons.contains("sleepPlaceholder"))
+    }
+
     // MARK: - Helpers
 
     private func makeMissingSleepInput(

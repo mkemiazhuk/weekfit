@@ -18,10 +18,12 @@ enum CoachSessionPhaseStability {
         guard activity.isCompleted || activity.isPartialCompletion else { return false }
         guard isStabilityEligible(activity) else { return false }
 
-        // Watch-synced workouts with a known actual end are definitive — do not extend
-        // "live" through the planned slot or a post-end grace window.
-        if activity.isWatchSynced,
-           let actualEnd = actualSessionEnd(for: activity),
+        // User or HealthKit ended the session early — do not keep coach in "live" mode.
+        if activity.isPartialCompletion {
+            return false
+        }
+
+        if let actualEnd = actualSessionEnd(for: activity),
            now >= actualEnd {
             return false
         }

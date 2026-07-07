@@ -190,15 +190,17 @@ enum CoachScenarioResolver {
 
     private static func isWalkEveningWindDown(_ context: CoachContext) -> Bool {
         switch context.activityState {
-        case .upcoming, .active, .justFinished:
+        case .upcoming, .active:
             break
-        case .none, .finished:
+        case .justFinished, .none, .finished:
             return false
         }
 
-        return context.sessionPhase == .evening ||
-            ((context.timeOfDay == .evening || context.timeOfDay == .lateEvening) &&
-                context.activityState != .none)
+        guard context.timeOfDay == .evening || context.timeOfDay == .lateEvening else {
+            return context.sessionPhase == .evening
+        }
+
+        return true
     }
 
     private static func isWalkRecoveryAction(_ context: CoachContext) -> Bool {

@@ -63,6 +63,9 @@ enum CoachConversationSemanticTimingAudit {
         }
 
         static func completedRecoveryWalkToday(_ input: CoachCopyBuildInput) -> Bool {
+            if input.modifiers.completedWalkToday {
+                return true
+            }
             switch input.scenario {
             case .walkAfterHeavyLoad, .walkRecoveryAction:
                 return CoachWalkRecoveryActionCopy.phase(for: input) == .completed

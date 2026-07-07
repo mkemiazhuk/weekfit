@@ -194,10 +194,15 @@ struct HeroMealLibraryRow: View {
                     shadowOpacity: 0.14,
                     layoutMode: .compactPreview
                 )
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
+            } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
                 Image(meal.imageName)
                     .resizable()
-                    .scaledToFill()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(
+                        width: MealLibraryCardMetrics.foodWidth * 0.92,
+                        height: MealLibraryCardMetrics.foodHeight * 0.92
+                    )
             } else {
                 Image(systemName: "fork.knife")
                     .font(.system(size: 28, weight: .semibold))
@@ -258,19 +263,26 @@ struct HeroMealLibraryRow: View {
                 label: WeekFitLocalizedString("meals.library.macroFats"),
                 labelTint: Color(red: 0.88, green: 0.68, blue: 0.34).opacity(0.36)
             )
+            macroSeparator
+            macroSegment(
+                value: meal.fiber,
+                label: WeekFitLocalizedString("meals.library.macroFiber"),
+                labelTint: WeekFitTheme.green.opacity(0.36)
+            )
         }
         .font(.system(size: 9.4, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .lineLimit(1)
+        .minimumScaleFactor(0.82)
     }
 
     private func macroSegment(value: Int, label: String, labelTint: Color) -> some View {
         HStack(spacing: 2) {
-            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-
             Text(label)
                 .foregroundStyle(labelTint)
+
+            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
         }
     }
 

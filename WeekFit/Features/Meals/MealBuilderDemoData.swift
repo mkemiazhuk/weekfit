@@ -103,6 +103,70 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     ]
 }
 
+extension MealBuilderIngredient {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case imageName
+        case category
+        case defaultGrams
+        case caloriesPer100g
+        case proteinPer100g
+        case carbsPer100g
+        case fatsPer100g
+        case fiberPer100g
+        case visualSize
+        case visualDensity
+        case supportsStandalonePresentation
+        case offsetX
+        case offsetY
+        case rotation
+        case zIndex
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        imageName = try container.decode(String.self, forKey: .imageName)
+        category = try container.decode(MealIngredientCategory.self, forKey: .category)
+        defaultGrams = try container.decode(Int.self, forKey: .defaultGrams)
+        caloriesPer100g = try container.decode(Double.self, forKey: .caloriesPer100g)
+        proteinPer100g = try container.decode(Double.self, forKey: .proteinPer100g)
+        carbsPer100g = try container.decode(Double.self, forKey: .carbsPer100g)
+        fatsPer100g = try container.decode(Double.self, forKey: .fatsPer100g)
+        fiberPer100g = try container.decodeIfPresent(Double.self, forKey: .fiberPer100g) ?? 0
+        visualSize = try container.decode(Int.self, forKey: .visualSize)
+        visualDensity = try container.decode(CGFloat.self, forKey: .visualDensity)
+        supportsStandalonePresentation = try container.decode(Bool.self, forKey: .supportsStandalonePresentation)
+        offsetX = try container.decode(Int.self, forKey: .offsetX)
+        offsetY = try container.decode(Int.self, forKey: .offsetY)
+        rotation = try container.decode(Int.self, forKey: .rotation)
+        zIndex = try container.decode(Int.self, forKey: .zIndex)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(imageName, forKey: .imageName)
+        try container.encode(category, forKey: .category)
+        try container.encode(defaultGrams, forKey: .defaultGrams)
+        try container.encode(caloriesPer100g, forKey: .caloriesPer100g)
+        try container.encode(proteinPer100g, forKey: .proteinPer100g)
+        try container.encode(carbsPer100g, forKey: .carbsPer100g)
+        try container.encode(fatsPer100g, forKey: .fatsPer100g)
+        try container.encode(fiberPer100g, forKey: .fiberPer100g)
+        try container.encode(visualSize, forKey: .visualSize)
+        try container.encode(visualDensity, forKey: .visualDensity)
+        try container.encode(supportsStandalonePresentation, forKey: .supportsStandalonePresentation)
+        try container.encode(offsetX, forKey: .offsetX)
+        try container.encode(offsetY, forKey: .offsetY)
+        try container.encode(rotation, forKey: .rotation)
+        try container.encode(zIndex, forKey: .zIndex)
+    }
+}
+
 struct SelectedBuilderIngredient: Identifiable, Equatable {
     let ingredient: MealBuilderIngredient
     var grams: Int

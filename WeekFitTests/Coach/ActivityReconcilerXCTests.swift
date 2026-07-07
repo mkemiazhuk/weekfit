@@ -136,6 +136,37 @@ final class ActivityReconcilerXCTests: XCTestCase {
     }
 
     @MainActor
+    func testPersistedWorkoutSurvivesStaleActivitiesArrayOnReconcile() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let synced = workout(from: time(hour: 8, minute: 13), to: time(hour: 8, minute: 45), type: .walking)
+
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        WeekFitActivityCoordinator.shared.reconcileCompletedAppleWorkout(
+            synced,
+            with: [],
+            modelContext: context
+        )
+        try context.save()
+
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        WeekFitActivityCoordinator.shared.reconcileCompletedAppleWorkout(
+            synced,
+            with: [],
+            modelContext: context,
+            forceRetry: true
+        )
+        try context.save()
+
+        let importedActivities = try context.fetch(FetchDescriptor<PlannedActivity>())
+        XCTAssertEqual(importedActivities.count, 1)
+        XCTAssertEqual(importedActivities.first?.healthKitWorkoutUUID, synced.uuid.uuidString)
+    }
+
+    @MainActor
     func testCoordinatorPreservesPlannedSlotWhenCompletingMatchedWorkout() throws {
         let container = try ModelContainer(
             for: PlannedActivity.self,

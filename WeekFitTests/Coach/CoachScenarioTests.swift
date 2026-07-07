@@ -243,6 +243,59 @@ final class CoachScenarioTests: XCTestCase {
         XCTAssertEqual(result.todayInsight.icon, "figure.walk")
     }
 
+    func testCompletedEveningWalkDoesNotSuggestAnotherEveningWalk() throws {
+        let evening = date(hour: 18, minute: 16)
+        let end = evening.addingTimeInterval(-52 * 60)
+        let start = end.addingTimeInterval(-45 * 60)
+        var walk = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Прогулка",
+            durationMinutes: 45,
+            icon: "figure.walk",
+            colorRed: defaultColors.r,
+            colorGreen: defaultColors.g,
+            colorBlue: defaultColors.b,
+            isCompleted: true,
+            source: "appleWorkout"
+        )
+        walk.healthKitWorkoutUUID = UUID().uuidString
+
+        let input = makeInput(
+            now: evening,
+            activities: [walk],
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitSamplesWithAppGoalEstimate,
+                activeCalories: 398,
+                exerciseMinutes: 45,
+                standHours: nil,
+                activityGoalCalories: 710,
+                activityProgress: 0.56
+            ),
+            brainHour: 18
+        )
+
+        let result = CoachEngine.evaluate(input: input)
+        let pack = try XCTUnwrap(result.copyPack)
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let russian = [
+            pack.assessment,
+            pack.recommendation,
+            pack.avoid,
+            pack.nextAction
+        ]
+        .flatMap(\.lines)
+        .map(\.russian)
+        .joined(separator: " ")
+        .lowercased()
+
+        XCTAssertNotEqual(result.scenario, .walkEveningWindDown)
+        XCTAssertEqual(result.scenario, .walkLightDay)
+        XCTAssertTrue(russian.contains("прогулка уже"))
+        XCTAssertFalse(russian.contains("пятнадцать тихих минут"))
+        XCTAssertEqual(bridge.coachTitle, "Прогулка завершена")
+    }
+
     func testHeavyDayWithTomorrowMorningWorkoutUsesTomorrowProtection() throws {
         let evening = date(hour: 20, minute: 15)
         let calendar = Calendar.current

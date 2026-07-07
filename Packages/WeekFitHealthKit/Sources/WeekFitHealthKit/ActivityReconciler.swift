@@ -278,7 +278,7 @@ public enum ActivityReconciler {
             return .running
         }
 
-        if containsAny(text, ["walk", "walking", "ходь"]) {
+        if containsAny(text, ["walk", "walking", "ходь", "прогул"]) {
             return .walking
         }
 

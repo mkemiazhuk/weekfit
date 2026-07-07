@@ -152,6 +152,23 @@ final class TodayViewModel: ObservableObject {
         }
     }
 
+    func reconcileNutritionAfterPlannedActivitiesChange(
+        selectedDate: Date,
+        plannedActivities: [PlannedActivity],
+        healthManager: HealthManager,
+        nutritionViewModel: NutritionViewModel
+    ) async {
+        now = Date()
+        let dayActivities = selectedDayActivities(on: selectedDate, from: plannedActivities)
+        await healthManager.loadNutritionMetrics(for: selectedDate, plannedActivities: dayActivities)
+        updateNutrition(
+            selectedDate: selectedDate,
+            plannedActivities: plannedActivities,
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel
+        )
+    }
+
     func refreshHealthAndNutrition(
         selectedDate: Date,
         plannedActivities: [PlannedActivity],

@@ -76,18 +76,11 @@ private struct MealsTabLayer: View, Equatable {
     }
 }
 
-private struct CalendarTabLayer: View, Equatable {
+private struct CalendarTabLayer: View {
     let isActive: Bool
     let plannedActivitiesRevision: String
     @ObservedObject var viewModel: PlanViewModel
     @ObservedObject var authViewModel: AuthViewModel
-
-    static func == (lhs: CalendarTabLayer, rhs: CalendarTabLayer) -> Bool {
-        guard lhs.isActive == rhs.isActive else { return false }
-        guard lhs.isActive else { return true }
-        return lhs.plannedActivitiesRevision == rhs.plannedActivitiesRevision &&
-            lhs.viewModel.plannerInteractionToken == rhs.viewModel.plannerInteractionToken
-    }
 
     var body: some View {
         WeekPlannerView(
@@ -167,13 +160,12 @@ enum WeekFitMountedTabLayers {
         viewModel: PlanViewModel,
         authViewModel: AuthViewModel
     ) -> some View {
-        EquatableView(
-            content: CalendarTabLayer(
-                isActive: isActive,
-                plannedActivitiesRevision: plannedActivitiesRevision,
-                viewModel: viewModel,
-                authViewModel: authViewModel
-            )
+        // No EquatableView here: planner hosts its own @Query and must refresh on every SwiftData change.
+        CalendarTabLayer(
+            isActive: isActive,
+            plannedActivitiesRevision: plannedActivitiesRevision,
+            viewModel: viewModel,
+            authViewModel: authViewModel
         )
     }
 }

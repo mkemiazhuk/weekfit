@@ -46,6 +46,7 @@ enum WeekFitCountPluralization {
         case minuteAccusative
         case hourNominative
         case ingredientAdded
+        case drink
     }
 
     static func russianForm(for count: Int) -> WeekFitRussianPluralForm {
@@ -230,6 +231,17 @@ enum WeekFitCountPluralization {
         return "Log meals on \(needed) more \(needed == 1 ? "day" : "days") so food can be compared with recovery."
     }
 
+    static func drinksTodaySubtitle(
+        count: Int,
+        locale: Locale = WeekFitCurrentLocale()
+    ) -> String {
+        if isRussian(locale: locale) {
+            return "\(phrase(count: count, category: .drink, locale: locale)) сегодня"
+        }
+
+        return count == 1 ? "1 drink today" : "\(count) drinks today"
+    }
+
     static func insightsLogDrinksOnMoreDaysSubtitle(
         needed: Int,
         locale: Locale = WeekFitCurrentLocale()
@@ -368,6 +380,15 @@ enum WeekFitCountPluralization {
                 russianOne: "добавлен",
                 russianFew: "добавлено",
                 russianMany: "добавлено"
+            )
+
+        case .drink:
+            return .standard(
+                englishOne: "drink",
+                englishOther: "drinks",
+                russianOne: "напиток",
+                russianFew: "напитка",
+                russianMany: "напитков"
             )
         }
     }

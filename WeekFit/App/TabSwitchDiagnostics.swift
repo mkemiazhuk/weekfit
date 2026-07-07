@@ -224,6 +224,61 @@ extension View {
     }
 }
 
+// MARK: - Planner body diagnostics (DEBUG)
+
+enum PlannerBodyDiagnostics {
+    private static let lock = NSLock()
+    private static var bodyEvaluationCount = 0
+    private static var mountStartedAt: CFAbsoluteTime?
+
+    static func markBodyEvaluation() {
+        #if DEBUG
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else { return }
+        lock.lock()
+        if mountStartedAt == nil {
+            mountStartedAt = CFAbsoluteTimeGetCurrent()
+        }
+        bodyEvaluationCount += 1
+        let count = bodyEvaluationCount
+        lock.unlock()
+        TabSwitchProfiler.markEvent("WeekPlannerLiveQueryView.bodyEval count=\(count)")
+        #endif
+    }
+
+    static func reportMountCompleted() {
+        #if DEBUG
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else { return }
+        lock.lock()
+        let startedAt = mountStartedAt
+        let bodyEvaluations = bodyEvaluationCount
+        mountStartedAt = nil
+        bodyEvaluationCount = 0
+        lock.unlock()
+        guard let startedAt else { return }
+        let mountMs = (CFAbsoluteTimeGetCurrent() - startedAt) * 1000
+        TabSwitchProfiler.markEvent(
+            "WeekPlannerLiveQueryView.mountComplete ms=\(String(format: "%.1f", mountMs)) bodyEvals=\(bodyEvaluations)"
+        )
+        #endif
+    }
+
+    @discardableResult
+    static func measure<T>(_ name: String, _ work: () throws -> T) rethrows -> T {
+        #if DEBUG
+        guard CoachDebugSettings.tabSwitchDiagnosticsEnabled else {
+            return try work()
+        }
+        let start = CFAbsoluteTimeGetCurrent()
+        let result = try work()
+        let ms = (CFAbsoluteTimeGetCurrent() - start) * 1000
+        print("[PlannerBodyProfile] \(name) ms=\(String(format: "%.2f", ms))")
+        return result
+        #else
+        return try work()
+        #endif
+    }
+}
+
 // MARK: - Meal memory audit (DEBUG)
 
 enum MealMemoryAudit {

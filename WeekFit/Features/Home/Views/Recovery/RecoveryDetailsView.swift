@@ -206,20 +206,23 @@ private struct RecoveryHeroCard: View {
     }
 
     private var statusText: String {
+        guard let input = snapshot.recoveryInput else {
+            return WeekFitLocalizedString("recovery.details.status.noData")
+        }
+
         switch RecoveryScoreEngine.statusTier(
             score: snapshot.recoveryScore,
-            sleepMinutes: snapshot.asleepMinutes,
-            restingHeartRate: snapshot.restingHeartRate,
-            hrvSDNN: snapshot.hrv
+            input: input,
+            breakdown: snapshot.recoveryBreakdown
         ) {
-        case .fullyRecovered:
-            return WeekFitLocalizedString("recovery.details.status.fullyRecovered")
         case .wellRecovered:
             return WeekFitLocalizedString("recovery.details.status.wellRecovered")
         case .moderatelyReady:
             return WeekFitLocalizedString("recovery.details.status.moderatelyReady")
         case .takeItEasier:
             return WeekFitLocalizedString("recovery.details.status.takeItEasier")
+        case .recoveryPriority:
+            return WeekFitLocalizedString("recovery.details.status.recoveryPriority")
         case .noData:
             return WeekFitLocalizedString("recovery.details.status.noData")
         }
@@ -327,14 +330,30 @@ private struct RecoveryBreakdownCard: View {
             header
 
             VStack(spacing: 9) {
-                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), value: breakdown.sleepDuration, maxValue: 35, icon: "clock.fill", color: RecoveryStyle.recoveryColor)
-                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), value: breakdown.sleepContinuity, maxValue: 25, icon: "waveform.path", color: RecoveryStyle.blue)
-                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepQuality"), value: breakdown.sleepQuality, maxValue: 20, icon: "moon.zzz.fill", color: RecoveryStyle.purple)
-                breakdownRow(title: WeekFitLocalizedString("today.status.metric.hrv"), value: breakdown.hrv, maxValue: 12, icon: "heart.text.square.fill", color: RecoveryStyle.recoveryColor)
-                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), value: breakdown.restingHeartRate, maxValue: 8, icon: "heart.fill", color: RecoveryStyle.red)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), value: breakdown.sleepDuration, maxValue: RecoveryScoreBreakdown.maxSleepDurationContribution, icon: "clock.fill", color: RecoveryStyle.recoveryColor)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepConsistency"), value: breakdown.sleepConsistency, maxValue: RecoveryScoreBreakdown.maxSleepConsistencyContribution, icon: "moon.zzz.fill", color: RecoveryStyle.purple)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), value: breakdown.sleepContinuity, maxValue: RecoveryScoreBreakdown.maxSleepContinuityContribution, icon: "waveform.path", color: RecoveryStyle.blue)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.sleepArchitecture"), value: breakdown.sleepArchitecture, maxValue: RecoveryScoreBreakdown.maxSleepArchitectureContribution, icon: "bed.double.fill", color: RecoveryStyle.deepBlue)
+                breakdownRow(title: WeekFitLocalizedString("today.status.metric.hrv"), value: breakdown.hrv, maxValue: RecoveryScoreBreakdown.maxHRVContribution, icon: "heart.text.square.fill", color: RecoveryStyle.recoveryColor)
+                breakdownRow(title: WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), value: breakdown.restingHeartRate, maxValue: RecoveryScoreBreakdown.maxRestingHeartRateContribution, icon: "heart.fill", color: RecoveryStyle.red)
+
+                if breakdown.trainingLoadModifier < 0 {
+                    breakdownRow(
+                        title: WeekFitLocalizedString("recovery.details.breakdown.trainingLoad"),
+                        value: breakdown.trainingLoadModifier,
+                        maxValue: 0,
+                        icon: "figure.run",
+                        color: RecoveryStyle.red,
+                        showsNegative: true
+                    )
+                }
             }
 
             explanation
+
+            if !breakdown.unavailableSignals.isEmpty {
+                unavailableSignalsNote
+            }
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
@@ -355,11 +374,12 @@ private struct RecoveryBreakdownCard: View {
 
     private var dynamicExplanationTitle: String {
         let items: [(String, Int, Int)] = [
-            (WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), breakdown.sleepDuration, 35),
-            (WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), breakdown.sleepContinuity, 25),
-            (WeekFitLocalizedString("recovery.details.breakdown.sleepQuality"), breakdown.sleepQuality, 20),
-            (WeekFitLocalizedString("today.status.metric.hrv"), breakdown.hrv, 12),
-            (WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), breakdown.restingHeartRate, 8)
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepDuration"), breakdown.sleepDuration, RecoveryScoreBreakdown.maxSleepDurationContribution),
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepConsistency"), breakdown.sleepConsistency, RecoveryScoreBreakdown.maxSleepConsistencyContribution),
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepContinuity"), breakdown.sleepContinuity, RecoveryScoreBreakdown.maxSleepContinuityContribution),
+            (WeekFitLocalizedString("recovery.details.breakdown.sleepArchitecture"), breakdown.sleepArchitecture, RecoveryScoreBreakdown.maxSleepArchitectureContribution),
+            (WeekFitLocalizedString("today.status.metric.hrv"), breakdown.hrv, RecoveryScoreBreakdown.maxHRVContribution),
+            (WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"), breakdown.restingHeartRate, RecoveryScoreBreakdown.maxRestingHeartRateContribution)
         ]
 
         let strongest = items.max {
@@ -385,12 +405,43 @@ private struct RecoveryBreakdownCard: View {
         .padding(.top, 1)
     }
 
+    private var unavailableSignalsNote: some View {
+        Text(unavailableSignalsText)
+            .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.36))
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var unavailableSignalsText: String {
+        let labels = breakdown.unavailableSignals.map { signal in
+            switch signal {
+            case .hrv:
+                return WeekFitLocalizedString("today.status.metric.hrv")
+            case .restingHeartRate:
+                return WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate")
+            case .deepSleep:
+                return WeekFitLocalizedString("today.status.metric.deep")
+            case .remSleep:
+                return WeekFitLocalizedString("recovery.details.sleep.rem")
+            case .priorDayLoad:
+                return WeekFitLocalizedString("recovery.details.breakdown.trainingLoad")
+            }
+        }
+
+        return String(
+            format: WeekFitLocalizedString("recovery.details.unavailableSignalsFormat"),
+            labels.joined(separator: ", ")
+        )
+    }
+
     private func breakdownRow(
         title: String,
         value: Int,
         maxValue: Int,
         icon: String,
-        color: Color
+        color: Color,
+        showsNegative: Bool = false
     ) -> some View {
         HStack(alignment: .center, spacing: 11) {
             ZStack {
@@ -418,15 +469,19 @@ private struct RecoveryBreakdownCard: View {
                             .font(.system(size: RecoveryTypography.metricValue, weight: .bold, design: .rounded))
                             .foregroundStyle(color)
 
-                        Text("/ \(maxValue)")
-                            .font(.system(size: RecoveryTypography.metricSecondary, weight: .medium, design: .rounded))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                        if !showsNegative {
+                            Text("/ \(maxValue)")
+                                .font(.system(size: RecoveryTypography.metricSecondary, weight: .medium, design: .rounded))
+                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                        }
                     }
                     .monospacedDigit()
                 }
 
-                MiniProgressBar(value: value, maxValue: maxValue, color: color)
-                    .frame(height: 3.5)
+                if !showsNegative {
+                    MiniProgressBar(value: value, maxValue: maxValue, color: color)
+                        .frame(height: 3.5)
+                }
             }
         }
     }

@@ -9,6 +9,8 @@ final class CoachCoordinator: ObservableObject {
 
     private var latestInput: CoachInputSnapshot?
     private var lastResolvedFingerprint: CoachInputFingerprint?
+    private var settlingRetryTask: Task<Void, Never>?
+    private nonisolated(unsafe) var settlingRetryTaskForDeinit: Task<Void, Never>?
 
     private(set) var recomputeCount = 0
     private(set) var skippedUnchangedCount = 0
@@ -24,6 +26,7 @@ final class CoachCoordinator: ObservableObject {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
     nonisolated deinit {
+        settlingRetryTaskForDeinit?.cancel()
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
@@ -40,7 +43,11 @@ final class CoachCoordinator: ObservableObject {
         latestInput = nil
         lastResolvedFingerprint = nil
         nextScheduledCheckpoint = nil
-        state = .settling(reason: reason)
+        if state.hasValidGuidance {
+            state = state.preservingPreviousDuringRefresh()
+        } else {
+            state = .settling(reason: reason)
+        }
     }
 
     @discardableResult
@@ -126,6 +133,7 @@ final class CoachCoordinator: ObservableObject {
                 ? state.preservingPreviousDuringRefresh()
                 : .settling(reason: "Coach inputs are still syncing.")
             nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
+            scheduleSettlingRetry(for: input, reason: reason)
             return state
         }
 
@@ -166,6 +174,22 @@ final class CoachCoordinator: ObservableObject {
         logVisibleState(state: rawState, reason: reason)
 
         return rawState
+    }
+
+    private func scheduleSettlingRetry(for input: CoachInputSnapshot, reason: String) {
+        guard !reason.hasSuffix(".settlingRetry") else { return }
+
+        settlingRetryTask?.cancel()
+        let retryReason = "\(reason).settlingRetry"
+        let task = Task { @MainActor [weak self] in
+            let delay = CoachStateStabilizer.stabilizationInterval + 0.05
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            guard self.latestInput != nil else { return }
+            _ = self.recomputeIfNeeded(input: input, reason: retryReason)
+        }
+        settlingRetryTask = task
+        settlingRetryTaskForDeinit = task
     }
 
     private func logVisibleState(state: CoachState, reason: String) {

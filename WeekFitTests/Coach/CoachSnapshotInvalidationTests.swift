@@ -54,11 +54,52 @@ final class CoachSnapshotInvalidationTests: XCTestCase {
         XCTAssertNil(coordinator.state.input)
         XCTAssertNil(nutrition.coachMetricsSnapshot)
 
-        if case .unavailable = coordinator.state.status {
+        if coordinator.state.canRenderTodayCoachInsight {
+            XCTAssertEqual(coordinator.state.status, .refreshingPrevious)
+            XCTAssertNotNil(coordinator.state.coachUIPresentation)
+        } else if case .unavailable = coordinator.state.status {
             // expected settling/unavailable state without cached input
         } else {
-            XCTFail("Expected unavailable coach state after invalidation, got \(coordinator.state.status)")
+            XCTFail("Expected unavailable or preserved coach state after invalidation, got \(coordinator.state.status)")
         }
+    }
+
+    func testInvalidatePreservesPreviousPresentationWhenGuidanceExists() async {
+        let coordinator = CoachCoordinator()
+        let provider = CoachInputProvider()
+        let nutrition = NutritionViewModel()
+        let health = HealthManager()
+        let activity = PlannedActivityBuilder.workout(
+            title: "Ride",
+            at: Date(),
+            durationMinutes: 60
+        )
+
+        await provider.refresh(
+            selectedDate: Date(),
+            plannedActivities: [activity],
+            healthManager: health,
+            nutritionViewModel: nutrition,
+            coachCoordinator: coordinator,
+            source: "preserveInvalidationTest",
+            refreshHealth: false
+        )
+
+        guard coordinator.state.canRenderTodayCoachInsight else {
+            return
+        }
+        let previousTitle = coordinator.state.coachUIPresentation?.todayTitle
+
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coordinator,
+            nutritionViewModel: nutrition,
+            inputProvider: provider,
+            reason: "preserveInvalidationTest"
+        )
+
+        XCTAssertEqual(coordinator.state.status, .refreshingPrevious)
+        XCTAssertEqual(coordinator.state.coachUIPresentation?.todayTitle, previousTitle)
+        XCTAssertTrue(coordinator.state.canRenderTodayCoachInsight)
     }
 
     func testCoachInputNotRetainedAcrossInvalidation() async {

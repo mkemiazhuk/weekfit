@@ -174,6 +174,80 @@ final class CoachStableDayProfileTests: XCTestCase {
         XCTAssertTrue(support.contains("Завтра в плане"))
     }
 
+    func testShortSleepWithTomorrowCyclingUsesTomorrowReserveAndNamesWorkout() throws {
+        let now = date(hour: 20, minute: 0)
+        guard let tomorrowRideStart = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: date(hour: 8, minute: 0)
+        ) else {
+            XCTFail("Missing tomorrow date")
+            return
+        }
+
+        let cycling = PlannedActivity(
+            date: tomorrowRideStart,
+            type: "workout",
+            title: "Cycling",
+            durationMinutes: 210,
+            icon: "figure.outdoor.cycle",
+            colorRed: colors.r,
+            colorGreen: colors.g,
+            colorBlue: colors.b
+        )
+
+        var brainConfig = HumanBrainStateBuilder.Configuration()
+        brainConfig.currentHour = 20
+        brainConfig.metrics = CoachMetricsBuilder.metrics(activeCalories: 636, sleepHours: 5.0)
+        brainConfig.sleep = .short
+        brainConfig.readiness = .moderate
+        brainConfig.recovery = .vulnerable
+
+        let input = CoachInputSnapshot(
+            selectedDate: now,
+            now: now,
+            brain: HumanBrainStateBuilder.make(brainConfig),
+            plannedActivities: [cycling].coachSnapshots(),
+            actualLoad: CoachActualLoadSnapshot(
+                source: .healthKitSamplesWithAppGoalEstimate,
+                activeCalories: 636,
+                exerciseMinutes: 90,
+                standHours: nil,
+                activityGoalCalories: 430,
+                activityProgress: 1.47
+            ),
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 58, sleepHours: 5.0),
+            nutritionContext: CoachNutritionContext(
+                caloriesCurrent: 782,
+                caloriesGoal: 1_752,
+                proteinCurrent: 40,
+                proteinGoal: 120,
+                waterCurrent: 1.0,
+                waterGoal: 3.4
+            ),
+            source: "CoachStableDayProfileTests.tomorrowCyclingShortSleep"
+        )
+
+        let result = CoachEngine.evaluate(input: input)
+        let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+        let pack = try XCTUnwrap(result.copyPack)
+
+        XCTAssertEqual(result.scenario, .stableDay)
+        XCTAssertEqual(resolveProfile(for: result), .tomorrowReserve)
+        XCTAssertEqual(bridge.todayTitle, "Запас на завтра")
+        XCTAssertTrue(bridge.todayMessage.contains("Завтра велосессия"))
+        XCTAssertTrue(bridge.todayMessage.contains("берегите силы"))
+        XCTAssertFalse(bridge.todayMessage.contains("перед"))
+        XCTAssertFalse(bridge.todayMessage.contains("Cycling"))
+        XCTAssertTrue(pack.assessment.lines.first?.russian.contains("Завтра велосессия") == true)
+        XCTAssertTrue(pack.assessment.lines.first?.russian.contains("главная нагрузка") == true)
+        XCTAssertFalse(pack.assessment.lines.first?.russian.contains("Cycling") == true)
+        let support = pack.supportingSignals.lines.map(\.russian).joined(separator: " ")
+        XCTAssertTrue(support.contains("Завтра в плане"))
+        XCTAssertTrue(support.contains("велосессия"))
+        XCTAssertNotEqual(bridge.todayTitle, "День восстановления")
+    }
+
     func testTomorrowReserveWinsOverWorkBankedWhenBothApply() {
         let input = makeStableDayInput(
             completedSerious: .one,

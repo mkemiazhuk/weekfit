@@ -4797,7 +4797,10 @@ struct InsightsView: View {
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
                 fiberGoal: fiberGoal,
-                meals: nutritionMeals(for: nutritionDetailsDate)
+                waterLiters: nutritionWater(for: nutritionDetailsDate),
+                waterGoal: waterGoal,
+                meals: nutritionMeals(for: nutritionDetailsDate),
+                mealCatalog: userSettings.customMealsCatalog
             ) { newDate in
                 nutritionDetailsDate = newDate
             }
@@ -4835,6 +4838,7 @@ struct InsightsView: View {
     private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
     private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
     private var fiberGoal: Double { nutritionViewModel.nutritionResult?.goals.fiber ?? 35.0 }
+    private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
 
     private var currentCoachContext: InsightsCoachContext? {
         makeCoachContext(
@@ -4964,7 +4968,22 @@ struct InsightsView: View {
     }
 
     private func nutritionFiber(for date: Date) -> Double {
-        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fiber })
+        let catalog = userSettings.customMealsCatalog
+        return nutritionMeals(for: date).reduce(0.0) { total, activity in
+            total + Double(PlannedActivityNutritionResolver.resolvedFiber(for: activity, in: catalog))
+        }
+    }
+
+    private func nutritionWater(for date: Date) -> Double {
+        if Calendar.current.isDateInToday(date),
+           let waterLiters = nutritionViewModel.currentMetrics?.waterLiters {
+            return waterLiters
+        }
+
+        let dayActivities = plannedActivities.filter {
+            Calendar.current.isDate($0.date, inSameDayAs: date)
+        }
+        return QuickLogActivityPortions.totalWaterLiters(from: dayActivities)
     }
 }
 

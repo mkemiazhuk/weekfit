@@ -41,6 +41,12 @@ final class PlanViewModelTests: XCTestCase {
         XCTAssertNotEqual(viewModel.plannerInteractionToken, firstToken)
     }
 
+    func testPlannerInteractionTokenChangesWhenPlannerDataChanges() {
+        let firstToken = viewModel.plannerInteractionToken
+        viewModel.markPlannerDataChanged()
+        XCTAssertNotEqual(viewModel.plannerInteractionToken, firstToken)
+    }
+
     private func makeActivity(
         date: Date,
         title: String,

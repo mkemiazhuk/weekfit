@@ -90,6 +90,18 @@ struct WeekFitRootView: View {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
                 showContent = true
             }
+            planViewModel.beforePlannedActivityDeleted = {
+                CoachStateStabilizer.markRealityChange(source: "plannerActivityDelete")
+                CoachSnapshotInvalidator.invalidate(
+                    coordinator: coachCoordinator,
+                    nutritionViewModel: nutritionViewModel,
+                    inputProvider: coachInputProvider,
+                    reason: "plannerActivityDelete"
+                )
+            }
+            planViewModel.afterPlannedActivityDeleted = {
+                appSession.triggerCoachRefresh(source: "plannerActivityDelete")
+            }
             refreshPlannedActivitiesSignature()
             reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
             Task {
@@ -331,6 +343,10 @@ struct WeekFitRootView: View {
         }
 
         coachTabRefreshTask = Task {
+            await reconcileHealthWorkouts(
+                source: "tabChange.coach",
+                bootstrapFromHealth: true
+            )
             await refreshCoachInput(source: "tabChange.coach", refreshHealth: true)
             acknowledgeHealthRefreshEvent()
 
@@ -367,13 +383,13 @@ struct WeekFitRootView: View {
             let sourceLabel = CoachTabHealthRefreshPolicy.summarizeSources(
                 appSession.latestHealthRefreshSources
             )
-            await refreshCoachInput(
-                source: "healthRefreshEvent.\(sourceLabel)",
-                refreshHealth: true
-            )
             await reconcileHealthWorkouts(
                 source: "healthRefreshEvent.\(sourceLabel)",
                 bootstrapFromHealth: true
+            )
+            await refreshCoachInput(
+                source: "healthRefreshEvent.\(sourceLabel)",
+                refreshHealth: true
             )
             acknowledgeHealthRefreshEvent()
         }

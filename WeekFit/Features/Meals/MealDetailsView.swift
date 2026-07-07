@@ -63,8 +63,6 @@ struct MealDetailsView: View {
                     VStack(spacing: 12) {
                         mealPreviewCard
 
-                        nutritionSummary
-
                         ingredientsBlock
 
                         if !meal.generatedSteps.isEmpty {
@@ -169,6 +167,17 @@ struct MealDetailsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            MealNutritionSummaryStrip(
+                calories: meal.calories,
+                protein: meal.protein,
+                carbs: meal.carbs,
+                fats: meal.fats,
+                fiber: meal.fiber,
+                accent: accent,
+                style: .embedded
+            )
+            .padding(.top, 2)
         }
         .padding(.horizontal, 13)
         .padding(.top, 8)
@@ -246,55 +255,10 @@ struct MealDetailsView: View {
         }
     }
 
-    private var nutritionSummary: some View {
-        HStack(spacing: 8) {
-            nutritionTile("nutrition.metric.calories", "\(meal.calories)", "common.unit.kcal", isPrimary: true)
-            nutritionTile("nutrition.metric.protein", "\(meal.protein)", "common.unit.gramShort")
-            nutritionTile("nutrition.metric.carbs", "\(meal.carbs)", "common.unit.gramShort")
-            nutritionTile("nutrition.metric.fats", "\(meal.fats)", "common.unit.gramShort")
-        }
-    }
-
-    private func nutritionTile(
-        _ title: String,
-        _ value: String,
-        _ unit: String,
-        isPrimary: Bool = false
-    ) -> some View {
-        VStack(spacing: 1) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold, design: .rounded))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
-
-                Text(WeekFitLocalizedString(unit))
-                    .font(.system(size: 9.4, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 9.4, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.74))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 46)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(isPrimary ? accent.opacity(0.052) : WeekFitTheme.whiteOpacity(0.030))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(isPrimary ? accent.opacity(0.17) : WeekFitTheme.whiteOpacity(0.038), lineWidth: 1)
-        }
-    }
-
     private var ingredientsBlock: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack {
-                sectionTitle("Ingredients")
+                sectionTitle("meals.section.ingredients")
 
                 Spacer()
 
@@ -379,7 +343,7 @@ struct MealDetailsView: View {
 
     private var stepsBlock: some View {
         VStack(alignment: .leading, spacing: 11) {
-            sectionTitle("Steps")
+            sectionTitle("meals.section.steps")
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(meal.generatedSteps.enumerated()), id: \.offset) { index, step in
@@ -473,6 +437,7 @@ struct MealDetailsView: View {
             protein: meal.protein,
             carbs: meal.carbs,
             fats: meal.fats,
+            fiber: meal.fiber,
             source: isQuickLogMode || mealTargetDate < now ? "nutritionLog" : "planner"
         )
 

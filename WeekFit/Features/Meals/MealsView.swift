@@ -114,7 +114,11 @@ struct MealsView: View {
     }
 
     private var mealsContentRevision: String {
-        "\(mealsViewModel.hasLoadedCustomMeals)-\(mealsViewModel.customMeals.count)-\(mealsViewModel.lastRecommendationSignature)"
+        let mealSignature = mealsViewModel.customMeals
+            .sorted { $0.id < $1.id }
+            .map { "\($0.id):\($0.title)" }
+            .joined(separator: "|")
+        return "\(mealsViewModel.hasLoadedCustomMeals)-\(mealsViewModel.customMeals.count)-\(mealsViewModel.lastRecommendationSignature)-\(userSettings.customMealsCatalogRevision)-\(mealSignature)"
     }
 
     var body: some View {
@@ -253,6 +257,7 @@ struct MealsView: View {
                     onMealLogged?()
                 }
             )
+            .id("\(food.id)-\(food.title)")
             .weekFitSheetChrome(cornerRadius: 36)
         }
         .sheet(isPresented: $showProfile) {
@@ -941,6 +946,7 @@ struct CustomFoodDetailsView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @State private var showEditForm = false
 
     private let background = WeekFitTheme.backgroundColor
@@ -951,6 +957,8 @@ struct CustomFoodDetailsView: View {
     private let accent = WeekFitTheme.meal
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
+
         ZStack {
             background.ignoresSafeArea()
             WeekFitTheme.mealsAmbient
@@ -965,7 +973,6 @@ struct CustomFoodDetailsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 12) {
                         foodPreviewCard
-                        nutritionSummary
                         servingCard
                     }
                     .padding(.horizontal, 16)
@@ -987,6 +994,7 @@ struct CustomFoodDetailsView: View {
                     onFoodUpdated?(updatedFood)
                 }
             )
+            .id("\(food.id)-\(food.title)-edit")
         }
     }
 
@@ -1034,10 +1042,21 @@ struct CustomFoodDetailsView: View {
                     .lineSpacing(1.6)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            MealNutritionSummaryStrip(
+                calories: food.calories,
+                protein: food.protein,
+                carbs: food.carbs,
+                fats: food.fats,
+                fiber: food.fiber,
+                accent: accent,
+                style: .embedded
+            )
+            .padding(.top, 2)
         }
         .padding(.horizontal, 13)
         .padding(.top, 12)
-        .padding(.bottom, 13)
+        .padding(.bottom, 12)
         .background {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
@@ -1056,51 +1075,6 @@ struct CustomFoodDetailsView: View {
                 .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
-    }
-
-    private var nutritionSummary: some View {
-        HStack(spacing: 8) {
-            nutritionTile("nutrition.metric.calories", "\(food.calories)", "common.unit.kcal", isPrimary: true)
-            nutritionTile("nutrition.metric.protein", "\(food.protein)", "common.unit.gramShort")
-            nutritionTile("nutrition.metric.carbs", "\(food.carbs)", "common.unit.gramShort")
-            nutritionTile("nutrition.metric.fats", "\(food.fats)", "common.unit.gramShort")
-        }
-    }
-
-    private func nutritionTile(
-        _ title: String,
-        _ value: String,
-        _ unit: String,
-        isPrimary: Bool = false
-    ) -> some View {
-        VStack(spacing: 1) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.system(size: isPrimary ? 15.8 : 15.2, weight: .bold, design: .rounded))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.94) : textPrimary.opacity(0.94))
-
-                Text(WeekFitLocalizedString(unit))
-                    .font(.system(size: 9.4, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isPrimary ? accent.opacity(0.76) : textSecondary.opacity(0.70))
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 9.4, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.74))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 46)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(isPrimary ? accent.opacity(0.052) : WeekFitTheme.whiteOpacity(0.030))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(isPrimary ? accent.opacity(0.17) : WeekFitTheme.whiteOpacity(0.038), lineWidth: 1)
-        }
     }
 
     private var servingCard: some View {

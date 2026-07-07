@@ -298,12 +298,9 @@ enum CoachCopyRegistry {
                 tomorrowWorkout: input.tomorrowWorkout
             )
         } else if let workout = input.tomorrowWorkout {
-            let title = workout.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !title.isEmpty {
-                assessment = .en(
-                    "Recovery looks solid — \(title) tomorrow already has real work on the calendar.",
-                    "Восстановление в порядке — \(title) завтра уже в календаре."
-                )
+            let copy = CoachWorkoutTitleLocalization.recoverySolidTomorrowScheduled(rawTitle: workout.title)
+            if !copy.english.isEmpty {
+                assessment = .en(copy.english, copy.russian)
             } else {
                 assessment = protectTomorrowFreshDefaultAssessment
             }
@@ -377,6 +374,15 @@ enum CoachCopyRegistry {
     }
 
     private static func lowRecoveryPrepPack(input: CoachCopyBuildInput) -> BasePack {
+        if let imminent = CoachImminentSessionCopyPolicy.basePack(for: input, protective: true) {
+            return BasePack(
+                assessment: imminent.assessment,
+                recommendation: imminent.recommendation,
+                avoid: imminent.avoid,
+                nextAction: imminent.nextAction
+            )
+        }
+
         let activityHint: CoachBilingualText
         switch input.activityType {
         case .cycling, .running:
@@ -436,7 +442,9 @@ enum CoachCopyRegistry {
             }
         }
 
-        if let morningWhy = CoachMorningOverviewPolicy.upcomingActivityWhySignal(for: input), lines.count < 3 {
+        if let morningWhy = CoachMorningOverviewPolicy.upcomingActivityWhySignal(for: input),
+           lines.count < 3,
+           !overlapsDedicatedRecoveryWhySignal(for: input) {
             lines.append(morningWhy)
         }
 
@@ -452,7 +460,9 @@ enum CoachCopyRegistry {
             lines.append(stableDayLowRecoveryWhySignal(for: input))
         }
 
-        if shouldMentionStableDayTomorrowDemandSignal(input), lines.count < 3 {
+        if shouldMentionStableDayTomorrowWorkoutSignal(input), lines.count < 3 {
+            lines.append(tomorrowWorkoutSignal(for: input))
+        } else if shouldMentionStableDayTomorrowDemandSignal(input), lines.count < 3 {
             lines.append(stableDayTomorrowDemandSignal(for: input))
         }
 
@@ -499,7 +509,43 @@ enum CoachCopyRegistry {
             ))
         }
 
-        return CoachCopySection(lines: Array(lines.prefix(3)))
+        return CoachCopySection(lines: dedupeSupportingSignals(Array(lines.prefix(3))))
+    }
+
+    private static func overlapsDedicatedRecoveryWhySignal(for input: CoachCopyBuildInput) -> Bool {
+        if input.scenario == .lowRecoveryPrep, shouldMentionLowRecoveryPrepSignal(input) {
+            return true
+        }
+        if shouldMentionStableDayLowRecoverySignal(input) {
+            return true
+        }
+        return false
+    }
+
+    private static func dedupeSupportingSignals(_ lines: [CoachBilingualText]) -> [CoachBilingualText] {
+        var seenTopics: Set<String> = []
+        var result: [CoachBilingualText] = []
+
+        for line in lines {
+            let topic = supportingSignalTopicKey(line)
+            guard !seenTopics.contains(topic) else { continue }
+            seenTopics.insert(topic)
+            result.append(line)
+        }
+
+        return result
+    }
+
+    private static func supportingSignalTopicKey(_ line: CoachBilingualText) -> String {
+        let candidates = [line.russian, line.english]
+        for text in candidates {
+            if let separator = text.range(of: " —") ?? text.range(of: " -") {
+                return String(text[..<separator.lowerBound])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased()
+            }
+        }
+        return line.russian.lowercased()
     }
 
     private static func shouldMentionHeavyYesterdayRecoveredSignal(_ input: CoachCopyBuildInput) -> Bool {
@@ -593,6 +639,14 @@ enum CoachCopyRegistry {
 
     private static func shouldMentionStableDayTomorrowDemandSignal(_ input: CoachCopyBuildInput) -> Bool {
         CoachStableDayProfile.resolve(for: input) == .tomorrowReserve
+            && !shouldMentionStableDayTomorrowWorkoutSignal(input)
+    }
+
+    private static func shouldMentionStableDayTomorrowWorkoutSignal(_ input: CoachCopyBuildInput) -> Bool {
+        guard CoachStableDayProfile.resolve(for: input) == .tomorrowReserve else { return false }
+        guard let title = input.tomorrowWorkout?.title.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return false }
+        return true
     }
 
     private static func shouldMentionTomorrowWorkoutSignal(_ input: CoachCopyBuildInput) -> Bool {
@@ -603,11 +657,10 @@ enum CoachCopyRegistry {
     }
 
     private static func tomorrowWorkoutSignal(for input: CoachCopyBuildInput) -> CoachBilingualText {
-        let title = input.tomorrowWorkout?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return .en(
-            "\(title) is on the calendar tomorrow.",
-            "Завтра в календаре — \(title)."
+        let copy = CoachWorkoutTitleLocalization.tomorrowCalendarSignal(
+            rawTitle: input.tomorrowWorkout?.title ?? ""
         )
+        return .en(copy.english, copy.russian)
     }
 
     private static func stableDayTomorrowDemandSignal(for input: CoachCopyBuildInput) -> CoachBilingualText {

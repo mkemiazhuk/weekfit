@@ -15,6 +15,8 @@ final class WeekFitUserSettings: ObservableObject {
     @Published private(set) var customMealsCatalog: [Meals] = []
     @Published private(set) var customMealsCatalogRevision: UInt = 0
 
+    private var customMealsPersistGeneration: UInt = 0
+
     private init() {
         ProfileService.migrateProfileStorageIfNeeded()
         profileInitials = ProfileService.resolvedInitials()
@@ -64,9 +66,13 @@ final class WeekFitUserSettings: ObservableObject {
     }
 
     private func persistCustomMealsCatalogToDisk(_ meals: [Meals]) {
+        customMealsPersistGeneration &+= 1
+        let generation = customMealsPersistGeneration
+
         Task.detached(priority: .utility) {
             let encoded = CustomMealStore.encode(meals)
             await MainActor.run { [encoded] in
+                guard generation == self.customMealsPersistGeneration else { return }
                 UserDefaults.standard.set(encoded, forKey: CustomMealStore.storageKey)
                 if self.customMealsStorage != encoded {
                     self.customMealsStorage = encoded

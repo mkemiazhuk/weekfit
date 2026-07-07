@@ -117,11 +117,11 @@ enum CoachCopySubjectGuard {
         case .activeEndurance:
             switch activityType {
             case .cycling:
-                return ["ride", "заезд", "велосипед"]
+                return ["ride", "cycling", "заезд", "велосипед", "велосесс"]
             case .running:
-                return ["run", "пробеж", "бег"]
+                return ["run", "running", "пробеж", "бег"]
             default:
-                return ["session", "тренировк"]
+                return ["session", "training", "тренировк"]
             }
         case .duringEndurance:
             switch activityType {
@@ -189,7 +189,10 @@ enum CoachCopySubjectGuard {
         case .recoveryAfterHeavyYesterday:
             return ["yesterday", "recovery", "legs", "вчера", "восстанов", "ног"]
         case .lowRecoveryPrep:
-            return ["training", "recovery", "endurance", "match", "тренировк", "восстанов", "игр"]
+            return [
+                "training", "recovery", "endurance", "match", "cycling", "running",
+                "ride", "run", "тренировк", "восстанов", "игр", "велосесс", "пробеж", "заезд"
+            ]
         default:
             return []
         }

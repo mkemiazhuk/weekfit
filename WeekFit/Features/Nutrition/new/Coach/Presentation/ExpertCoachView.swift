@@ -148,6 +148,31 @@ struct ExpertCoachView: View {
         healthManager.restingHeartRate > 0
     }
 
+    private var shouldShowCoachPreparingState: Bool {
+        hasTodayRecoverySignals &&
+            coachState.todayCoachInsightHiddenReason == .settling
+    }
+
+    private var coachUnavailableTitleKey: String {
+        if shouldShowHealthConnectPrompt {
+            return "coach.unavailable.title"
+        }
+        if !hasTodayRecoverySignals {
+            return "today.coach.settling.title"
+        }
+        return "coach.unavailable.sleepSync.title"
+    }
+
+    private var coachUnavailableMessageKey: String {
+        if shouldShowHealthConnectPrompt {
+            return "coach.unavailable.message"
+        }
+        if !hasTodayRecoverySignals {
+            return "today.coach.settling.message.sleep"
+        }
+        return "coach.unavailable.sleepSync.message"
+    }
+
     // MARK: - Background
 
     private var ambientBackground: some View {
@@ -164,7 +189,7 @@ struct ExpertCoachView: View {
                 if shouldSurfaceCoach {
                     coachCard
                     storySupportSection
-                } else if isRegistryGap {
+                } else if isRegistryGap || shouldShowCoachPreparingState {
                     registryGapSection
                         .padding(.top, 12)
                 } else {
@@ -239,9 +264,7 @@ struct ExpertCoachView: View {
                             )
                         }
 
-                        #if DEBUG
                         CoachReflectionContinuationView(offer: coachState.reflectionOffer)
-                        #endif
                     }
                 }
                 .padding(.top, 14)
@@ -379,11 +402,11 @@ struct ExpertCoachView: View {
                 .background(Circle().fill(WeekFitTheme.whiteOpacity(0.05)))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(WeekFitLocalizedString(shouldShowHealthConnectPrompt ? "coach.unavailable.title" : "coach.unavailable.sleepSync.title"))
+                Text(WeekFitLocalizedString(coachUnavailableTitleKey))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
 
-                Text(WeekFitLocalizedString(shouldShowHealthConnectPrompt ? "coach.unavailable.message" : "coach.unavailable.sleepSync.message"))
+                Text(WeekFitLocalizedString(coachUnavailableMessageKey))
                     .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary)
             }
@@ -512,6 +535,8 @@ struct ExpertCoachView: View {
                         .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
                 )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
     }
 }
 

@@ -70,33 +70,48 @@ private struct WeekPlannerLiveQueryView: View {
     private var customMealsStorage = ""
     
     @State private var activityToConfirm: PlannedActivity?
+    @State private var timelineItemPendingDelete: PlanTimelineItem?
     @State private var hasPerformedInitialScroll = false
 
     @ScaledMetric(relativeTo: .title3) private var selectedDayTitleFontSize: CGFloat = 19
-    
-    private var effectiveActivitiesRevision: String {
-        if !plannedActivitiesRevision.isEmpty {
-            return plannedActivitiesRevision
-        }
-        return PlannedActivityRefreshSignature.make(from: plannedActivities)
-    }
-
-    private var plannerGateToken: String {
-        let revision = PlannedActivityRefreshSignature.compactToken(from: effectiveActivitiesRevision)
-        return "\(viewModel.plannerInteractionToken)|\(revision)"
-    }
 
     var body: some View {
-        EquatableView(
-            content: PlannerBodyGate(
-                gateToken: plannerGateToken,
-                plannerContent: activePlannerBody
-            )
+        activePlannerBodyFromLiveQuery()
+    }
+
+    private func activePlannerBodyFromLiveQuery() -> some View {
+        PlannerBodyDiagnostics.markBodyEvaluation()
+
+        let activitiesRevision = PlannerBodyDiagnostics.measure("activitiesRevision") {
+            PlannedActivityRefreshSignature.make(from: plannedActivities)
+        }
+
+        let timelineItems = PlannerBodyDiagnostics.measure("timelineItems") {
+            viewModel.timelineItems(from: plannedActivities, revision: activitiesRevision)
+        }
+
+        let selectedDayKind = viewModel.dayKind(
+            for: viewModel.selectedDate,
+            plannedActivities: plannedActivities,
+            revision: activitiesRevision
+        )
+
+        let plannerGateToken = "\(viewModel.plannerInteractionToken)|\(PlannedActivityRefreshSignature.compactToken(from: activitiesRevision))"
+        let _ = plannerGateToken
+
+        return activePlannerBody(
+            activitiesRevision: activitiesRevision,
+            timelineItems: timelineItems,
+            selectedDayKind: selectedDayKind
         )
     }
 
     @ViewBuilder
-    private var activePlannerBody: some View {
+    private func activePlannerBody(
+        activitiesRevision: String,
+        timelineItems: [PlanTimelineItem],
+        selectedDayKind: PlanDayKind
+    ) -> some View {
         let _ = languageManager.selectedLanguage
         #if DEBUG
         let _ = TabSwitchProfiler.mark("WeekPlannerView.body")
@@ -120,7 +135,11 @@ private struct WeekPlannerLiveQueryView: View {
                         }
                     }
                 } content: {
-                    plannerContent
+                    plannerContent(
+                        activitiesRevision: activitiesRevision,
+                        timelineItems: timelineItems,
+                        selectedDayKind: selectedDayKind
+                    )
                 }
                 .blur(radius: viewModel.showAddActivity ? 8 : 0)
                 .opacity(viewModel.showAddActivity ? 0.22 : 1)
@@ -198,7 +217,10 @@ private struct WeekPlannerLiveQueryView: View {
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
                 fiberGoal: fiberGoal,
-                meals: nutritionMeals(for: nutritionDetailsDate)
+                waterLiters: nutritionWater(for: nutritionDetailsDate),
+                waterGoal: waterGoal,
+                meals: nutritionMeals(for: nutritionDetailsDate),
+                mealCatalog: customMeals
             ) { newDate in
                 nutritionDetailsDate = newDate
             }
@@ -216,13 +238,36 @@ private struct WeekPlannerLiveQueryView: View {
                 .presentationDragIndicator(.visible)
                 .weekFitSheetChrome(cornerRadius: 30)
         }
+        .confirmationDialog(
+            WeekFitLocalizedString("planner.delete.title"),
+            isPresented: Binding(
+                get: { timelineItemPendingDelete != nil },
+                set: { if !$0 { timelineItemPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(WeekFitLocalizedString("planner.delete"), role: .destructive) {
+                if let item = timelineItemPendingDelete {
+                    performDeleteTimelineItem(item)
+                    timelineItemPendingDelete = nil
+                }
+            }
+            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) {
+                timelineItemPendingDelete = nil
+            }
+        } message: {
+            Text(deleteConfirmationMessage(for: timelineItemPendingDelete))
+        }
         .onAppear {
             viewModel.syncCustomMeals(
                 from: userSettings.customMealsCatalog,
                 revision: userSettings.customMealsCatalogRevision
             )
             #if DEBUG
-            TabSwitchProfiler.markEvent("WeekPlannerView.onAppear revisionBytes=\(effectiveActivitiesRevision.count)")
+            TabSwitchProfiler.markEvent(
+                "WeekPlannerView.onAppear revisionBytes=\(activitiesRevision.count) timelineCount=\(timelineItems.count)"
+            )
+            PlannerBodyDiagnostics.reportMountCompleted()
             #endif
         }
         .onChange(of: userSettings.customMealsCatalogRevision) { _, revision in
@@ -250,19 +295,7 @@ private struct WeekPlannerLiveQueryView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-                    withAnimation {
-                        activity.isSkipped = true
-                        activity.isCompleted = false
-
-                        if activity.source.isEmpty {
-                            activity.source = "planner"
-                        }
-
-                        try? modelContext.save()
-                        activityToConfirm = nil
-                    }
+                    applyPlannerActivityConfirmation(completed: false, for: activity)
                 } label: {
                     HStack {
                         Image(systemName: "xmark.circle")
@@ -280,19 +313,7 @@ private struct WeekPlannerLiveQueryView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-                    withAnimation {
-                        activity.isCompleted = true
-                        activity.isSkipped = false
-
-                        if activity.source.isEmpty {
-                            activity.source = "planner"
-                        }
-
-                        try? modelContext.save()
-                        activityToConfirm = nil
-                    }
+                    applyPlannerActivityConfirmation(completed: true, for: activity)
                 } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -316,13 +337,21 @@ private struct WeekPlannerLiveQueryView: View {
         .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
     }
     
-    private     var plannerContent: some View {
+    @ViewBuilder
+    private func plannerContent(
+        activitiesRevision: String,
+        timelineItems: [PlanTimelineItem],
+        selectedDayKind: PlanDayKind
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if mode == .week {
-                weekPickerCard
+                weekPickerCard(activitiesRevision: activitiesRevision)
 
-                selectedDayCard
-                    .frame(maxHeight: .infinity)
+                selectedDayCard(
+                    timelineItems: timelineItems,
+                    selectedDayKind: selectedDayKind
+                )
+                .frame(maxHeight: .infinity)
             } else {
                 monthPlaceholderCard
                     .frame(maxHeight: .infinity)
@@ -332,20 +361,244 @@ private struct WeekPlannerLiveQueryView: View {
     }
     
     func deleteActivity(_ activity: PlannedActivity) {
-        Task {
-            await viewModel.removePlannedActivity(activity, modelContext: modelContext)
-        }
+        viewModel.removePlannedActivities(withIDs: [activity.id], modelContext: modelContext)
     }
 
     private func deleteTimelineItem(_ item: PlanTimelineItem) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        logPlannerAction(item: item, action: "delete-requested")
+        timelineItemPendingDelete = item
+    }
+
+    private func performDeleteTimelineItem(_ item: PlanTimelineItem) {
+        logPlannerAction(item: item, action: "delete-confirmed")
+
+        let targetIDs = deleteTargetIDs(for: item)
+        guard !targetIDs.isEmpty else {
+            PlannedActivityPlannerAudit.deleteAborted(
+                reason: "no-deletable-targets-or-skipped",
+                modelContext: modelContext
+            )
+            return
+        }
+
+        for id in targetIDs {
+            logFetchedActivity(id: id, phase: "before-delete")
+        }
+
+        PlannedActivityPlannerAudit.deleteTapped(
+            itemKind: deleteItemKind(for: item),
+            activityIDs: targetIDs,
+            titles: deleteAuditTitles(for: item),
+            dates: deleteAuditDates(for: item),
+            modelContext: modelContext
+        )
+
+        do {
+            viewModel.beforePlannedActivityDeleted?()
+            try PlannedActivityPersistenceService.deleteActivities(
+                withIDs: targetIDs,
+                modelContext: modelContext,
+                auditSource: "WeekPlannerLiveQueryView.performDeleteTimelineItem"
+            )
+            viewModel.markPlannerDataChanged()
+            viewModel.afterPlannedActivityDeleted?()
+
+            for id in targetIDs {
+                logFetchedActivity(id: id, phase: "after-save-same-context")
+            }
+
+            let freshContext = ModelContext(modelContext.container)
+            for id in targetIDs {
+                logFetchedActivity(id: id, phase: "after-save-fresh-context", context: freshContext)
+            }
+
+            PlannedActivityPlannerAudit.deleteCompleted(
+                activityIDs: targetIDs,
+                modelContext: modelContext,
+                queryActivityIDs: plannedActivities.map(\.id)
+            )
+        } catch {
+            PlannedActivityPlannerAudit.deleteFailed(
+                ids: targetIDs,
+                error: error,
+                modelContext: modelContext
+            )
+        }
+    }
+
+    private func logPlannerAction(item: PlanTimelineItem, action: String) {
+        switch item {
+        case .single(let activity):
+            PlannedActivityPlannerAudit.plannerAction(
+                action: action,
+                activity: activity,
+                modelContext: modelContext
+            )
+
+        case .waterGroup(let activities):
+            for activity in activities {
+                PlannedActivityPlannerAudit.plannerAction(
+                    action: action,
+                    activity: activity,
+                    modelContext: modelContext
+                )
+            }
+        }
+    }
+
+    private func logFetchedActivity(
+        id: String,
+        phase: String,
+        context: ModelContext? = nil
+    ) {
+        let fetchContext = context ?? modelContext
+        do {
+            let matches = try fetchActivities(id: id, in: fetchContext)
+            PlannedActivityPlannerAudit.fetchVerification(
+                phase: phase,
+                activityID: id,
+                count: matches.count,
+                matches: matches.map { ($0.title, $0.date, $0.isSkipped) },
+                modelContext: fetchContext
+            )
+        } catch {
+            PlannedActivityPlannerAudit.deleteFailed(
+                ids: [id],
+                error: error,
+                modelContext: fetchContext
+            )
+        }
+    }
+
+    private func fetchActivities(id: String, in context: ModelContext) throws -> [PlannedActivity] {
+        let targetID = id
+        let descriptor = FetchDescriptor<PlannedActivity>(
+            predicate: #Predicate { activity in
+                activity.id == targetID
+            }
+        )
+        return try context.fetch(descriptor)
+    }
+
+    private func deleteItemKind(for item: PlanTimelineItem) -> String {
+        switch item {
+        case .single:
+            return "single"
+        case .waterGroup:
+            return "waterGroup"
+        }
+    }
+
+    private func deleteTargetIDs(for item: PlanTimelineItem) -> [String] {
+        switch item {
+        case .single(let activity):
+            guard !activity.isSkipped else {
+                return []
+            }
+            return [activity.id]
+
+        case .waterGroup(let cachedActivities):
+            return resolvedWaterGroupDeleteIDs(cachedHint: cachedActivities)
+        }
+    }
+
+    private func deleteAuditTitles(for item: PlanTimelineItem) -> [String] {
+        switch item {
+        case .single(let activity):
+            return [activity.title]
+        case .waterGroup(let activities):
+            return activities.map(\.title)
+        }
+    }
+
+    private func deleteAuditDates(for item: PlanTimelineItem) -> [Date] {
+        switch item {
+        case .single(let activity):
+            return [activity.date]
+        case .waterGroup(let activities):
+            return activities.map(\.date)
+        }
+    }
+
+    private func resolvedWaterGroupDeleteIDs(cachedHint: [PlannedActivity]) -> [String] {
+        let hintIDs = Set(cachedHint.map(\.id))
+        let hintMinuteKeys = Set(cachedHint.map(waterGroupMinuteKey(for:)))
+
+        let liveMatches = selectedDayActivities.filter { activity in
+            !activity.isSkipped
+                && PlanTimelineItemGrouper.isWaterActivity(activity)
+                && (hintIDs.contains(activity.id) || hintMinuteKeys.contains(waterGroupMinuteKey(for: activity)))
+        }
+
+        let resolvedIDs = liveMatches.map(\.id)
+        if resolvedIDs.isEmpty {
+            return Array(hintIDs)
+        }
+        return resolvedIDs
+    }
+
+    private func waterGroupMinuteKey(for activity: PlannedActivity) -> DateComponents {
+        calendar.dateComponents([.year, .month, .day, .hour, .minute], from: activity.date)
+    }
+
+    private func deleteConfirmationMessage(for item: PlanTimelineItem?) -> String {
+        guard let item else {
+            return WeekFitLocalizedString("planner.delete.message")
+        }
 
         switch item {
         case .single(let activity):
-            deleteActivity(activity)
+            return String(
+                format: WeekFitLocalizedString("planner.delete.activityMessageFormat"),
+                activity.title
+            )
+        case .waterGroup:
+            return WeekFitLocalizedString("planner.delete.message")
+        }
+    }
 
-        case .waterGroup(let activities):
-            activities.forEach { deleteActivity($0) }
+    private func activityNeedsConfirmation(_ activity: PlannedActivity) -> Bool {
+        resolvedActivityStatus(for: activity) == .pending
+    }
+
+    private func presentActivityConfirmation(for activity: PlannedActivity) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        activityToConfirm = activity
+    }
+
+    private func applyPlannerActivityConfirmation(completed: Bool, for activity: PlannedActivity) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        guard let liveActivity = try? PlannedActivityPersistenceService.fetchActivity(
+            id: activity.id,
+            in: modelContext
+        ) else {
+            return
+        }
+
+        PlannedActivityPlannerAudit.plannerAction(
+            action: completed ? "confirm-completed" : "skip-confirmed",
+            activity: liveActivity,
+            modelContext: modelContext
+        )
+
+        withAnimation {
+            if completed {
+                liveActivity.isCompleted = true
+                liveActivity.isSkipped = false
+            } else {
+                liveActivity.isSkipped = true
+                liveActivity.isCompleted = false
+            }
+
+            if liveActivity.source.isEmpty {
+                liveActivity.source = "planner"
+            }
+
+            try? modelContext.save()
+            viewModel.markPlannerDataChanged()
+            activityToConfirm = nil
         }
     }
 
@@ -358,6 +611,10 @@ private struct WeekPlannerLiveQueryView: View {
             showNutritionDetails = true
 
         case .single(let activity):
+            if activityNeedsConfirmation(activity) {
+                presentActivityConfirmation(for: activity)
+                return
+            }
             openTimelineActivity(activity)
         }
     }
@@ -415,7 +672,7 @@ private struct WeekPlannerLiveQueryView: View {
         case .single(let activity):
             if status == .pending {
                 Button {
-                    activityToConfirm = activity
+                    presentActivityConfirmation(for: activity)
                 } label: {
                     Label(AppText.Common.Action.done, systemImage: "checkmark.circle.fill")
                 }
@@ -485,11 +742,11 @@ private extension WeekPlannerLiveQueryView {
 
 private extension WeekPlannerLiveQueryView {
 
-    var weekPickerCard: some View {
+    func weekPickerCard(activitiesRevision: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             PlanningWeekPicker(
                 selectedDate: $viewModel.selectedDate,
-                dayKind: { viewModel.dayKind(for: $0, plannedActivities: plannedActivities, revision: effectiveActivitiesRevision) }
+                dayKind: { viewModel.dayKind(for: $0, plannedActivities: plannedActivities, revision: activitiesRevision) }
             )
 
             WeekOverviewLegend()
@@ -561,11 +818,17 @@ private struct WeekOverviewLegend: View {
 
 private extension WeekPlannerLiveQueryView {
 
-    var selectedDayCard: some View {
+    @ViewBuilder
+    func selectedDayCard(
+        timelineItems: [PlanTimelineItem],
+        selectedDayKind: PlanDayKind
+    ) -> some View {
+        let timelineFocusItemID = timelineFocusItemID(in: timelineItems)
+
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(selectedDayTitle)
+                    Text(selectedDayKind.legendLabel)
                         .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -624,9 +887,18 @@ private extension WeekPlannerLiveQueryView {
                             let activity = item.representative
                             let status = resolvedActivityStatus(for: activity)
                             let category = PlanTimelineCategory.from(activity: activity)
-                            let emphasis = timelineEmphasis(for: item, status: status)
+                            let emphasis = timelineEmphasis(
+                                for: item,
+                                status: status,
+                                timelineItems: timelineItems,
+                                focusItemID: timelineFocusItemID
+                            )
 
-                            if shouldShowTimelineNowDivider(at: index) {
+                            if shouldShowTimelineNowDivider(
+                                at: index,
+                                in: timelineItems,
+                                focusItemID: timelineFocusItemID
+                            ) {
                                 PlanTimelineNowDivider()
                                     .listRowInsets(
                                         EdgeInsets(top: 0, leading: 6, bottom: 0, trailing: 6)
@@ -648,10 +920,14 @@ private extension WeekPlannerLiveQueryView {
                                 category: category,
                                 status: status,
                                 emphasis: emphasis,
-                                nextEmphasis: timelineNextEmphasis(at: index),
+                                nextEmphasis: timelineNextEmphasis(
+                                    at: index,
+                                    in: timelineItems,
+                                    focusItemID: timelineFocusItemID
+                                ),
                                 isFirst: index == 0,
                                 isLast: index == timelineItems.count - 1,
-                                connectorAbove: timelineConnectorAbove(at: index),
+                                connectorAbove: timelineConnectorAbove(at: index, in: timelineItems),
                                 density: PlanTimelineMetadataBuilder.density(for: item),
                                 showsTimeLabel: PlanTimelineItemGrouper.showsTimeLabel(
                                     at: index,
@@ -666,6 +942,16 @@ private extension WeekPlannerLiveQueryView {
                             }
                             .contextMenu {
                                 timelineItemContextMenu(for: item, status: status)
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                if case .single(let activity) = item, status == .pending {
+                                    Button {
+                                        presentActivityConfirmation(for: activity)
+                                    } label: {
+                                        Label(AppText.Common.Action.done, systemImage: "checkmark.circle.fill")
+                                    }
+                                    .tint(Color(hex: "#FFB457"))
+                                }
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
@@ -696,13 +982,23 @@ private extension WeekPlannerLiveQueryView {
                     .onAppear {
                         guard !hasPerformedInitialScroll else { return }
                         hasPerformedInitialScroll = true
-                        scheduleScrollToRelevantActivity(proxy, animated: false)
+                        scheduleScrollToRelevantActivity(
+                            proxy,
+                            timelineItems: timelineItems,
+                            animated: false
+                        )
                     }
                     .onChange(of: viewModel.selectedDate) { _, _ in
-                        scheduleScrollToRelevantActivity(proxy)
+                        scheduleScrollToRelevantActivity(
+                            proxy,
+                            timelineItems: currentTimelineItems()
+                        )
                     }
                     .onChange(of: selectedDayActivities.count) { _, _ in
-                        scheduleScrollToRelevantActivity(proxy)
+                        scheduleScrollToRelevantActivity(
+                            proxy,
+                            timelineItems: currentTimelineItems()
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -722,7 +1018,7 @@ private extension WeekPlannerLiveQueryView {
         )
     }
 
-    private var timelineFocusItemID: String? {
+    private func timelineFocusItemID(in timelineItems: [PlanTimelineItem]) -> String? {
         PlanTimelineEmphasisResolver.focusItemID(
             in: timelineItems,
             statusFor: { resolvedActivityStatus(for: $0) },
@@ -730,32 +1026,50 @@ private extension WeekPlannerLiveQueryView {
         )
     }
 
-    private func timelineEmphasis(for item: PlanTimelineItem, status: PlanActivityStatus) -> PlanTimelineVisualEmphasis {
+    private func timelineEmphasis(
+        for item: PlanTimelineItem,
+        status: PlanActivityStatus,
+        timelineItems: [PlanTimelineItem],
+        focusItemID: String?
+    ) -> PlanTimelineVisualEmphasis {
         PlanTimelineEmphasisResolver.emphasis(
             for: item,
             status: status,
-            focusItemID: timelineFocusItemID
+            focusItemID: focusItemID
         )
     }
 
-    private func timelineNextEmphasis(at index: Int) -> PlanTimelineVisualEmphasis? {
+    private func timelineNextEmphasis(
+        at index: Int,
+        in timelineItems: [PlanTimelineItem],
+        focusItemID: String?
+    ) -> PlanTimelineVisualEmphasis? {
         guard index + 1 < timelineItems.count else { return nil }
 
         let nextItem = timelineItems[index + 1]
         let nextStatus = resolvedActivityStatus(for: nextItem.representative)
-        return timelineEmphasis(for: nextItem, status: nextStatus)
+        return timelineEmphasis(
+            for: nextItem,
+            status: nextStatus,
+            timelineItems: timelineItems,
+            focusItemID: focusItemID
+        )
     }
 
-    private func shouldShowTimelineNowDivider(at index: Int) -> Bool {
+    private func shouldShowTimelineNowDivider(
+        at index: Int,
+        in timelineItems: [PlanTimelineItem],
+        focusItemID: String?
+    ) -> Bool {
         PlanTimelineEmphasisResolver.shouldShowNowDivider(
             at: index,
             in: timelineItems,
-            focusItemID: timelineFocusItemID,
+            focusItemID: focusItemID,
             statusFor: { resolvedActivityStatus(for: $0) }
         )
     }
 
-    private func timelineConnectorAbove(at index: Int) -> CGFloat {
+    private func timelineConnectorAbove(at index: Int, in timelineItems: [PlanTimelineItem]) -> CGFloat {
         guard index > 0 else { return 0 }
 
         let previous = timelineItems[index - 1]
@@ -766,6 +1080,11 @@ private extension WeekPlannerLiveQueryView {
         if gapMinutes >= 75 { return 6 }
         if gapMinutes >= 45 { return 4 }
         return 0
+    }
+
+    private func currentTimelineItems() -> [PlanTimelineItem] {
+        let revision = PlannedActivityRefreshSignature.make(from: plannedActivities)
+        return viewModel.timelineItems(from: plannedActivities, revision: revision)
     }
     
     private var emptySelectedDay: some View {
@@ -821,18 +1140,27 @@ private extension WeekPlannerLiveQueryView {
 
 private extension WeekPlannerLiveQueryView {
     
-    func scheduleScrollToRelevantActivity(_ proxy: ScrollViewProxy, animated: Bool = true) {
+    func scheduleScrollToRelevantActivity(
+        _ proxy: ScrollViewProxy,
+        timelineItems: [PlanTimelineItem],
+        animated: Bool = true
+    ) {
         Task { @MainActor in
             await Task.yield()
             guard tabIsActive else { return }
-            scrollToRelevantActivity(proxy, animated: animated)
+            scrollToRelevantActivity(proxy, timelineItems: timelineItems, animated: animated)
         }
     }
 
-    func scrollToRelevantActivity(_ proxy: ScrollViewProxy, animated: Bool = true) {
+    func scrollToRelevantActivity(
+        _ proxy: ScrollViewProxy,
+        timelineItems: [PlanTimelineItem],
+        animated: Bool = true
+    ) {
         let anchor = UnitPoint(x: 0.5, y: 0.38)
+        let focusItemID = timelineFocusItemID(in: timelineItems)
         let scrollAction = {
-            if let focusID = timelineFocusItemID {
+            if let focusID = focusItemID {
                 proxy.scrollTo(focusID, anchor: anchor)
                 return
             }
@@ -919,10 +1247,6 @@ private extension WeekPlannerLiveQueryView {
         viewModel.selectedDayActivities(from: plannedActivities)
     }
 
-    private var timelineItems: [PlanTimelineItem] {
-        viewModel.timelineItems(from: plannedActivities, revision: effectiveActivitiesRevision)
-    }
-
     private var customMeals: [Meals] {
         viewModel.customMeals
     }
@@ -936,6 +1260,7 @@ private extension WeekPlannerLiveQueryView {
     private var carbsGoal: Double { nutritionViewModel.nutritionResult?.goals.carbs ?? 330.0 }
     private var fatsGoal: Double { nutritionViewModel.nutritionResult?.goals.fats ?? 90.0 }
     private var fiberGoal: Double { nutritionViewModel.nutritionResult?.goals.fiber ?? 35.0 }
+    private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
 
     private func nutritionMeals(for date: Date) -> [PlannedActivity] {
         plannedActivities
@@ -966,7 +1291,21 @@ private extension WeekPlannerLiveQueryView {
     }
 
     private func nutritionFiber(for date: Date) -> Double {
-        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fiber })
+        nutritionMeals(for: date).reduce(0.0) { total, activity in
+            total + Double(PlannedActivityNutritionResolver.resolvedFiber(for: activity, in: customMeals))
+        }
+    }
+
+    private func nutritionWater(for date: Date) -> Double {
+        if calendar.isDateInToday(date),
+           let waterLiters = nutritionViewModel.currentMetrics?.waterLiters {
+            return waterLiters
+        }
+
+        let dayActivities = plannedActivities.filter {
+            calendar.isDate($0.date, inSameDayAs: date)
+        }
+        return QuickLogActivityPortions.totalWaterLiters(from: dayActivities)
     }
 
     private func matchingCustomMeal(for activity: PlannedActivity) -> Meals? {
@@ -980,12 +1319,8 @@ private extension WeekPlannerLiveQueryView {
         }
     }
 
-    var selectedDayKind: PlanDayKind {
-        viewModel.dayKind(for: viewModel.selectedDate, plannedActivities: plannedActivities, revision: effectiveActivitiesRevision)
-    }
-
-    var selectedDayTitle: String {
-        selectedDayKind.legendLabel
+    func dayKind(for date: Date, activitiesRevision: String) -> PlanDayKind {
+        viewModel.dayKind(for: date, plannedActivities: plannedActivities, revision: activitiesRevision)
     }
 
     private var selectedDayActivityCounts: (workouts: Int, meals: Int, recovery: Int, habits: Int) {
@@ -1103,10 +1438,6 @@ private extension WeekPlannerLiveQueryView {
 
     func dayActivities(for date: Date) -> [PlannedActivity] {
         viewModel.activities(for: date, from: plannedActivities)
-    }
-
-    func dayKind(for date: Date) -> PlanDayKind {
-        viewModel.dayKind(for: date, plannedActivities: plannedActivities, revision: effectiveActivitiesRevision)
     }
 
     func activityAccent(for item: PlannedActivity) -> Color {
@@ -1667,6 +1998,11 @@ private extension WeekPlannerLiveQueryView {
             return quickLocalized
         }
 
+        let plannerLocalized = PlannerOptionLocalization.localizedTitle(for: trimmedTitle)
+        if plannerLocalized != trimmedTitle {
+            return plannerLocalized
+        }
+
         return WeekFitCoachRuntimeLocalizedString(trimmedTitle)
     }
 
@@ -1678,21 +2014,6 @@ private extension WeekPlannerLiveQueryView {
         case .waterGroup(let activities):
             return activities.last.map { timeTitle($0.date) } ?? ""
         }
-    }
-}
-
-// MARK: - Keep-alive gate (skip heavy planner body while tab inactive)
-
-private struct PlannerBodyGate<PlannerContent: View>: View, Equatable {
-    let gateToken: String
-    let plannerContent: PlannerContent
-
-    static func == (lhs: PlannerBodyGate, rhs: PlannerBodyGate) -> Bool {
-        lhs.gateToken == rhs.gateToken
-    }
-
-    var body: some View {
-        plannerContent
     }
 }
 

@@ -64,16 +64,20 @@ struct ActivityMetricsSnapshot: Hashable {
     }
 
     var recoveryBreakdown: RecoveryScoreBreakdown {
-        RecoveryScoreEngine.calculate(
+        let input = RecoveryScoreInput(
             sleepMinutes: sleepMinutes,
             timeInBedMinutes: timeInBedMinutes,
             awakeMinutes: awakeMinutes,
             awakeningsCount: awakeningsCount,
             deepSleepMinutes: deepSleepMinutes,
             remSleepMinutes: remSleepMinutes,
-            hrvSDNN: hrvSDNN,
-            restingHeartRate: restingHeartRate
+            hrvSDNN: hrvSDNN > 0 ? hrvSDNN : nil,
+            restingHeartRate: restingHeartRate > 0 ? restingHeartRate : nil,
+            bedtimeDeviationMinutes: nil,
+            baseline: .empty,
+            priorDayLoad: .empty
         )
+        return RecoveryScoreEngine.calculate(input)
     }
 
     var recoveryPercent: Int {
@@ -184,6 +188,15 @@ struct RecoverySleepSnapshot: Hashable {
     )
 }
 
+/// Permission + sample availability — separate from raw `isHealthAccessGranted`.
+enum HealthDataConnectionState: Equatable {
+    case notRequested
+    case denied
+    case connectedWaitingForData
+    case connectedPartial
+    case connected
+}
+
 @MainActor
 final class HealthManager: ObservableObject {
 
@@ -207,6 +220,25 @@ final class HealthManager: ObservableObject {
     @Published var awakeningsCount: Int = 0
     @Published var bedStart: Date?
     @Published var recoveryBreakdown: RecoveryScoreBreakdown = .empty
+    @Published private(set) var recoveryPhysiologyBaseline: RecoveryPhysiologyBaseline = .empty
+    @Published private(set) var recoveryPriorDayLoad: RecoveryPriorDayLoad = .empty
+    @Published private(set) var recoveryBedtimeDeviationMinutes: Int?
+
+    var currentRecoveryScoreInput: RecoveryScoreInput {
+        RecoveryScoreInput(
+            sleepMinutes: sleepMinutes,
+            timeInBedMinutes: timeInBedMinutes,
+            awakeMinutes: awakeMinutes,
+            awakeningsCount: awakeningsCount,
+            deepSleepMinutes: deepSleepMinutes,
+            remSleepMinutes: remSleepMinutes,
+            hrvSDNN: hrvSDNN > 0 ? hrvSDNN : nil,
+            restingHeartRate: restingHeartRate > 0 ? restingHeartRate : nil,
+            bedtimeDeviationMinutes: recoveryBedtimeDeviationMinutes,
+            baseline: recoveryPhysiologyBaseline,
+            priorDayLoad: recoveryPriorDayLoad
+        )
+    }
     @Published var restingHeartRate: Double = 0
     @Published var hrvSDNN: Double = 0
 
@@ -237,6 +269,7 @@ final class HealthManager: ObservableObject {
     @Published var isRecoveryLoading: Bool = false
 
     private let healthStore = HKHealthStore()
+    private let recoveryScoreProvider = RecoveryHealthKitProvider()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
     private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
     private var inFlightHealthLoad: Task<Void, Never>?
@@ -394,6 +427,23 @@ final class HealthManager: ObservableObject {
     
     var isHealthAccessRequested: Bool {
         UserDefaults.standard.bool(forKey: healthAccessRequestedKey)
+    }
+
+    var healthDataConnectionState: HealthDataConnectionState {
+        guard isHealthAccessRequested else { return .notRequested }
+        guard isHealthAccessGranted else { return .denied }
+
+        let hasActivity = steps > 0 || activeCalories > 0 || exerciseMinutes > 0
+        let hasSleep = sleepMinutes > 0
+        let hasRecoverySignals = hrvSDNN > 0 || restingHeartRate > 0
+
+        if !hasActivity && !hasSleep && !hasRecoverySignals {
+            return .connectedWaitingForData
+        }
+        if !hasSleep {
+            return .connectedPartial
+        }
+        return .connected
     }
 
     func requestAuthorization(
@@ -751,6 +801,7 @@ final class HealthManager: ObservableObject {
             calories = fallback.calories
             waterLiters = plannedWaterIntake(from: plannedActivities, for: date)
             sleepHours = 0
+            loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
             return
         }
 
@@ -788,6 +839,7 @@ final class HealthManager: ObservableObject {
         let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
         waterLiters = max(hkWaterLiters, plannedWaterLiters)
         sleepHours = Double(sleepMinutes) / 60.0
+        loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
         #if DEBUG
         if CoachDebugSettings.todayDataAuditEnabled {
             Self.logger.debug("loadNutritionMetrics date=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) hasHealthFood=\(hasHealthFood, privacy: .public) hkCalories=\(hkCalories, privacy: .public) hkProtein=\(hkProtein, privacy: .public) hkCarbs=\(hkCarbs, privacy: .public) hkWater=\(hkWaterLiters, privacy: .public) plannedWater=\(plannedWaterLiters, privacy: .public) publishedCalories=\(self.calories, privacy: .public) publishedProtein=\(self.protein, privacy: .public) publishedCarbs=\(self.carbs, privacy: .public) publishedWater=\(self.waterLiters, privacy: .public)")
@@ -799,60 +851,42 @@ final class HealthManager: ObservableObject {
     func loadPremiumRecoveryMetrics(for date: Date) async {
         guard isHealthAccessGranted else { return }
 
-        let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: date)
-
-        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
-        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
-
-        async let hrv = readLatestQuantity(
-            .heartRateVariabilitySDNN,
-            unit: .secondUnit(with: .milli),
-            start: sleepStart,
-            end: sleepEnd
+        async let overnightVitals = recoveryScoreProvider.loadOvernightVitals(for: date)
+        async let context = recoveryScoreProvider.loadRecoveryScoreContext(
+            for: date,
+            currentBedStart: bedStart
         )
 
-        async let rhr = readLatestQuantity(
-            .restingHeartRate,
-            unit: .count().unitDivided(by: .minute()),
-            start: sleepStart,
-            end: sleepEnd
-        )
+        let vitals = await overnightVitals
+        let loadedContext = await context
 
-        self.hrvSDNN = await hrv
-        self.restingHeartRate = await rhr
+        self.hrvSDNN = vitals.hrv ?? 0
+        self.restingHeartRate = vitals.restingHeartRate ?? 0
 
-        let bedtimeDeviation = await bedtimeDeviationMinutes(for: date, currentBedStart: bedStart)
-
-        self.recoveryBreakdown = RecoveryScoreEngine.calculate(
+        let input = RecoveryScoreInput(
             sleepMinutes: self.sleepMinutes,
             timeInBedMinutes: self.timeInBedMinutes,
             awakeMinutes: self.awakeMinutes,
             awakeningsCount: self.awakeningsCount,
             deepSleepMinutes: self.deepSleepMinutes,
             remSleepMinutes: self.remSleepMinutes,
-            hrvSDNN: self.hrvSDNN,
-            restingHeartRate: self.restingHeartRate,
-            bedtimeDeviationMinutes: bedtimeDeviation
+            hrvSDNN: vitals.hrv,
+            restingHeartRate: vitals.restingHeartRate,
+            bedtimeDeviationMinutes: loadedContext.bedtimeDeviationMinutes,
+            baseline: loadedContext.baseline,
+            priorDayLoad: loadedContext.priorDayLoad
         )
+
+        self.recoveryBreakdown = RecoveryScoreEngine.calculate(input)
+        self.recoveryPhysiologyBaseline = loadedContext.baseline
+        self.recoveryPriorDayLoad = loadedContext.priorDayLoad
+        self.recoveryBedtimeDeviationMinutes = loadedContext.bedtimeDeviationMinutes
     }
 
     private func bedtimeDeviationMinutes(for date: Date, currentBedStart: Date?) async -> Int? {
-        let calendar = Calendar.current
-        var historicalBedStarts: [Date] = []
-
-        for dayOffset in 1...14 {
-            guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
-            let snapshot = await readRecoverySleepSnapshot(for: pastDate)
-            if let bedStart = snapshot.bedStart {
-                historicalBedStarts.append(bedStart)
-            }
-        }
-
-        return RecoveryScoreEngine.bedtimeDeviationMinutes(
-            currentBedStart: currentBedStart,
-            historicalBedStarts: historicalBedStarts,
-            calendar: calendar
+        await recoveryScoreProvider.bedtimeDeviationMinutes(
+            for: date,
+            currentBedStart: currentBedStart
         )
     }
 
@@ -1010,6 +1044,9 @@ final class HealthManager: ObservableObject {
         awakeningsCount = 0
         bedStart = nil
         recoveryBreakdown = .empty
+        recoveryPhysiologyBaseline = .empty
+        recoveryPriorDayLoad = .empty
+        recoveryBedtimeDeviationMinutes = nil
         restingHeartRate = 0
         hrvSDNN = 0
 

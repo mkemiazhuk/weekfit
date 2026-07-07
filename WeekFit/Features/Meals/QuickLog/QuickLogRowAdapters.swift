@@ -66,12 +66,12 @@ struct QuickLogMealRow: View {
             }
             .frame(width: imageContentSize, height: imageContentSize)
         } else if row.usesAssetImage {
-            Image(row.meal.imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: imageContentSize, height: imageContentSize)
-                .saturation(0.94)
-                .contrast(0.96)
+            PremiumAssetImage(
+                imageName: row.meal.imageName,
+                style: .quickLogThumbnail,
+                accentColor: WeekFitTheme.tertiaryText,
+                fallbackSystemName: "fork.knife"
+            )
         } else {
             Image(systemName: "fork.knife")
                 .font(.system(size: 20))
@@ -101,7 +101,7 @@ struct QuickLogItemRow: View {
 
     var body: some View {
         QuickLogRowView(
-            title: row.item.title,
+            title: row.item.localizedTitle,
             subtitle: row.subtitleText,
             metaText: row.metaText,
             accentColor: accentColor,
@@ -117,10 +117,12 @@ struct QuickLogItemRow: View {
     @ViewBuilder
     private var itemImageContent: some View {
         if row.usesAssetImage {
-            Image(row.item.imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: QuickLogRowMetrics.imageSize * 0.68, height: QuickLogRowMetrics.imageSize * 0.68)
+            PremiumAssetImage(
+                imageName: row.item.imageName,
+                style: .quickLogThumbnail,
+                accentColor: accentColor,
+                fallbackSystemName: row.item.icon
+            )
         } else {
             Image(systemName: row.item.icon)
                 .font(.system(size: 21, weight: .semibold))

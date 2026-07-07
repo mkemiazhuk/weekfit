@@ -131,7 +131,7 @@ enum CoachTeaserCopy {
         case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
             return bi("Evening recovery", "Вечер после нагрузки")
         case .walkLightDay:
-            return bi("Easy walk", "Лёгкая прогулка")
+            return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
             return bi("Evening walk", "Вечерняя прогулка")
         case .walkRecoveryAction:
@@ -200,6 +200,12 @@ enum CoachTeaserCopy {
                 "Вчера ещё в теле — сегодня мягче."
             )
         case .lowRecoveryPrep:
+            if let imminent = CoachImminentSessionCopyPolicy.teaser(
+                for: CoachCopyBuildInput.from(result: result),
+                protective: true
+            ) {
+                return imminent.todayMessage
+            }
             return bi(
                 "Start lighter than the plan says.",
                 "Начните легче, чем в плане."
@@ -218,12 +224,14 @@ enum CoachTeaserCopy {
                 let hadHeavyYesterday = result.context.dayReadiness.hadHeavyYesterday
                 let completedWalk = CoachConversationSemanticTimingAudit.Context
                     .completedRecoveryWalkToday(input)
+                let tomorrowTitle = result.context.tomorrowWorkout?.title
                 return bi(
                     CoachStableDayPresentation.teaserMessage(
                         for: profile,
                         timeOfDay: result.context.timeOfDay,
                         hadHeavyYesterday: hadHeavyYesterday,
                         completedRecoveryWalkToday: completedWalk,
+                        tomorrowWorkoutTitle: tomorrowTitle,
                         russian: false
                     ),
                     CoachStableDayPresentation.teaserMessage(
@@ -231,6 +239,7 @@ enum CoachTeaserCopy {
                         timeOfDay: result.context.timeOfDay,
                         hadHeavyYesterday: hadHeavyYesterday,
                         completedRecoveryWalkToday: completedWalk,
+                        tomorrowWorkoutTitle: tomorrowTitle,
                         russian: true
                     )
                 )
@@ -259,6 +268,12 @@ enum CoachTeaserCopy {
                 )
             )
         case .activeEndurance:
+            if let imminent = CoachImminentSessionCopyPolicy.teaser(
+                for: CoachCopyBuildInput.from(result: result),
+                protective: false
+            ) {
+                return imminent.todayMessage
+            }
             return bi(
                 "Set your pace — don't chase from the gun.",
                 "Настройте темп — не гонитесь с порога."
@@ -327,7 +342,7 @@ enum CoachTeaserCopy {
                 "Вечер лёгкий — без лишней нагрузки."
             )
         case .walkLightDay:
-            return bi("Easy pace — no goal to hit.", "Лёгкий темп — без цели.")
+            return walkLightDayMessage(result: result)
         case .walkEveningWindDown:
             return bi("Slow pace before bed.", "Медленный темп перед сном.")
         case .walkRecoveryAction:
@@ -431,8 +446,20 @@ enum CoachTeaserCopy {
             }
             return bi("Recovery day", "День восстановления")
         case .lowRecoveryPrep:
+            if let imminent = CoachImminentSessionCopyPolicy.teaser(
+                for: CoachCopyBuildInput.from(result: result),
+                protective: true
+            ) {
+                return imminent.coachHeadline
+            }
             return bi("Check readiness", "Проверьте готовность")
         case .activeEndurance:
+            if let imminent = CoachImminentSessionCopyPolicy.teaser(
+                for: CoachCopyBuildInput.from(result: result),
+                protective: false
+            ) {
+                return imminent.coachHeadline
+            }
             return activeEnduranceHeadline(activityType: activityType)
         case .duringRacket:
             return bi("In the match", "В игре")
@@ -453,7 +480,7 @@ enum CoachTeaserCopy {
         case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
             return bi("Day's end", "Завершение дня")
         case .walkLightDay:
-            return bi("Easy walk", "Лёгкая прогулка")
+            return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
             return bi("Evening walk", "Вечерняя прогулка")
         case .walkRecoveryAction:
@@ -513,6 +540,44 @@ enum CoachTeaserCopy {
     }
 
     // MARK: - Helpers
+
+    private static func walkLightDayPhase(from result: CoachEngine.Result) -> CoachWalkRecoveryActionCopy.Phase {
+        CoachWalkRecoveryActionPresentation.phase(for: result.context)
+    }
+
+    private static func walkLightDayTitle(result: CoachEngine.Result) -> CoachBilingualText {
+        let walkPhase = walkLightDayPhase(from: result)
+        switch walkPhase {
+        case .upcoming:
+            return bi("Easy walk", "Лёгкая прогулка")
+        case .live, .completed:
+            return bi(
+                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: false),
+                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: true)
+            )
+        }
+    }
+
+    private static func walkLightDayMessage(result: CoachEngine.Result) -> CoachBilingualText {
+        let walkPhase = walkLightDayPhase(from: result)
+        switch walkPhase {
+        case .upcoming:
+            return bi("Easy pace — no goal to hit.", "Лёгкий темп — без цели.")
+        case .live, .completed:
+            return bi(
+                CoachWalkRecoveryActionPresentation.teaserMessage(
+                    for: walkPhase,
+                    timeOfDay: result.context.timeOfDay,
+                    russian: false
+                ),
+                CoachWalkRecoveryActionPresentation.teaserMessage(
+                    for: walkPhase,
+                    timeOfDay: result.context.timeOfDay,
+                    russian: true
+                )
+            )
+        }
+    }
 
     private static func stableDayProfile(from result: CoachEngine.Result) -> CoachStableDayProfile? {
         CoachStableDayProfile.resolve(

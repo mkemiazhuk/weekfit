@@ -19,7 +19,11 @@ final class AuthViewModel: ObservableObject {
 
     private let authService = AuthService()
 
+    /// Cloud sync + account sign-in are not shipped yet; login screen stays the entry point.
+    private static let accountAuthEnabled = false
+
     init() {
+        guard Self.accountAuthEnabled else { return }
         Task {
             await restorePersistedSessionIfNeeded()
         }
@@ -137,7 +141,15 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
     }
 
+    /// Enters the app without account sign-in. Apple/email auth remains wired for a future sync release.
+    func continueIntoApp() {
+        isLoggedIn = true
+        errorMessage = nil
+        successMessage = nil
+    }
+
     func restorePersistedSessionIfNeeded() async {
+        guard Self.accountAuthEnabled else { return }
         guard !WeekFitUITestSupport.isActive else { return }
         guard !isLoggedIn else { return }
 

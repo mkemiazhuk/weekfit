@@ -101,6 +101,12 @@ enum CoachEngine {
         )
         let dayReadiness = CoachDayReadinessResolver.resolve(from: input)
 
+        let completedWalkToday = CoachActivityClassifier.hasCompletedWalkToday(
+            in: input.plannedActivities,
+            on: input.selectedDate,
+            calendar: calendar
+        )
+
         if let activity = focus.activity,
            shouldPreferTomorrowProtectionOverCompletedFocus(
             input: input,
@@ -119,7 +125,8 @@ enum CoachEngine {
                     tomorrowDemand: tomorrowDemand,
                     timeOfDay: timeOfDay,
                     tomorrowWorkout: tomorrowWorkout,
-                    dayReadiness: dayReadiness
+                    dayReadiness: dayReadiness,
+                    completedWalkToday: completedWalkToday
                 ),
                 input: input
             )
@@ -151,7 +158,8 @@ enum CoachEngine {
                     minutesUntilStart: nil,
                     minutesSinceEnd: nil,
                     dayReadiness: dayReadiness,
-                    lastCompletedSeriousActivityType: lastCompletedSeriousType
+                    lastCompletedSeriousActivityType: lastCompletedSeriousType,
+                    completedWalkToday: completedWalkToday
                 ),
                 input: input
             )
@@ -191,7 +199,8 @@ enum CoachEngine {
                 minutesUntilStart: focus.minutesUntilStart,
                 minutesSinceEnd: focus.minutesSinceEnd,
                 dayReadiness: dayReadiness,
-                lastCompletedSeriousActivityType: lastCompletedSeriousType
+                lastCompletedSeriousActivityType: lastCompletedSeriousType,
+                completedWalkToday: completedWalkToday
             ),
             input: input
         )
@@ -275,7 +284,8 @@ enum CoachEngine {
         tomorrowDemand: CoachTomorrowDemand,
         timeOfDay: CoachTimeOfDay,
         tomorrowWorkout: CoachTomorrowWorkout?,
-        dayReadiness: CoachDayReadiness
+        dayReadiness: CoachDayReadiness,
+        completedWalkToday: Bool
     ) -> CoachContext {
         CoachContext(
             activityFamily: .none,
@@ -295,7 +305,8 @@ enum CoachEngine {
             minutesUntilStart: nil,
             minutesSinceEnd: nil,
             dayReadiness: dayReadiness,
-            lastCompletedSeriousActivityType: lastCompletedSeriousType
+            lastCompletedSeriousActivityType: lastCompletedSeriousType,
+            completedWalkToday: completedWalkToday
         )
     }
 

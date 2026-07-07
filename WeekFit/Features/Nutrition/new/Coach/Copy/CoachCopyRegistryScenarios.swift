@@ -41,8 +41,14 @@ enum CoachCopyRegistryScenarios {
         case .eveningAfterStrength:
             return eveningAfterStrength(input: input)
         case .walkLightDay:
+            if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
+                return CoachWalkRecoveryActionCopy.draft(for: input)
+            }
             return walkLightDay()
         case .walkEveningWindDown:
+            if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
+                return CoachWalkRecoveryActionCopy.draft(for: input)
+            }
             return walkEveningWindDown()
         case .walkRecoveryAction:
             return CoachWalkRecoveryActionCopy.draft(for: input)
@@ -70,6 +76,15 @@ enum CoachCopyRegistryScenarios {
     // MARK: - Endurance
 
     private static func activeEndurance(input: CoachCopyBuildInput) -> Draft {
+        if let imminent = CoachImminentSessionCopyPolicy.basePack(for: input, protective: false) {
+            return Draft(
+                assessment: imminent.assessment.lines[0],
+                recommendation: imminent.recommendation.lines[0],
+                avoid: imminent.avoid.lines[0],
+                nextAction: imminent.nextAction.lines[0]
+            )
+        }
+
         let assessment: CoachBilingualText
         switch input.activityType {
         case .cycling:

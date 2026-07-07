@@ -52,12 +52,17 @@ final class HealthManagerIntegrationTests: XCTestCase {
         let manager = HealthManager()
         manager.activeCalories = 820
         manager.recoveryBreakdown = RecoveryScoreBreakdown(
-            sleepDuration: 80,
-            sleepContinuity: 70,
-            sleepQuality: 75,
-            hrv: 70,
-            restingHeartRate: 75,
-            total: 75
+            sleepDuration: 20,
+            sleepConsistency: 10,
+            sleepContinuity: 12,
+            sleepArchitecture: 8,
+            hrv: 15,
+            restingHeartRate: 8,
+            trainingLoadModifier: 0,
+            total: 73,
+            confidence: .medium,
+            baselineContext: .empty,
+            unavailableSignals: []
         )
         manager.hrvSDNN = 62
         manager.restingHeartRate = 54

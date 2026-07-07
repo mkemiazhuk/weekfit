@@ -31,6 +31,7 @@ struct TodayView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var coachInputProvider: CoachInputProvider
+    @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.tabIsActive) private var tabIsActive
@@ -44,6 +45,7 @@ struct TodayView: View {
     @State private var activityToConfirm: PlannedActivity? = nil
     @State private var stableCoachPresentation: CoachUIPresentation?
     @State private var coachPresentationSettleTask: Task<Void, Never>?
+    @State private var didScheduleCoachPresentationRetry = false
 
     private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
     private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
@@ -184,6 +186,12 @@ struct TodayView: View {
         }
     }
 
+    private var loggedDrinksForSelectedDay: [PlannedActivity] {
+        selectedDayActivities
+            .filter { $0.isCompleted && !$0.isSkipped && $0.type.lowercased() == "drink" }
+            .sorted { $0.date < $1.date }
+    }
+
     private var loggedPlanCalories: Double {
         completedNutritionLogsForSelectedDay
             .reduce(0.0) { $0 + Double($1.calories) }
@@ -210,7 +218,10 @@ struct TodayView: View {
     }
     
     private func nutritionFiber(for date: Date) -> Double {
-        Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fiber })
+        let catalog = userSettings.customMealsCatalog
+        return nutritionMeals(for: date).reduce(0.0) { total, activity in
+            total + Double(PlannedActivityNutritionResolver.resolvedFiber(for: activity, in: catalog))
+        }
     }
 
     private func nutritionMeals(for date: Date) -> [PlannedActivity] {
@@ -240,6 +251,16 @@ struct TodayView: View {
     private func nutritionFats(for date: Date) -> Double {
         Double(nutritionMeals(for: date).reduce(0) { $0 + $1.fats })
     }
+
+    private func nutritionWater(for date: Date) -> Double {
+        if Calendar.current.isDateInToday(date),
+           let waterLiters = nutritionViewModel.currentMetrics?.waterLiters {
+            return waterLiters
+        }
+
+        let dayActivities = todayViewModel.selectedDayActivities(on: date, from: plannedActivities)
+        return QuickLogActivityPortions.totalWaterLiters(from: dayActivities)
+    }
     
     private var currentProtein: Double { healthManager.protein + loggedPlanProtein }
     private var currentCarbs: Double { healthManager.carbs + loggedPlanCarbs }
@@ -256,10 +277,6 @@ struct TodayView: View {
 
     private var caloriesGoal: Double { todayNutritionBudget.totalCalories > 0 ? todayNutritionBudget.totalCalories : 2761.0 }
     private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
-    
-    private var currentWater: Double {
-        QuickLogActivityPortions.totalWaterLiters(from: selectedDayActivities)
-    }
 
     private var hasTodayRecoverySignals: Bool {
         healthManager.sleepMinutes > 0 ||
@@ -359,7 +376,10 @@ struct TodayView: View {
                 carbsGoal: carbsGoal,
                 fatsGoal: fatsGoal,
                 fiberGoal: fiberGoal,
-                meals: nutritionMeals(for: nutritionDetailsDate)
+                waterLiters: nutritionWater(for: nutritionDetailsDate),
+                waterGoal: waterGoal,
+                meals: nutritionMeals(for: nutritionDetailsDate),
+                mealCatalog: userSettings.customMealsCatalog
             ) { newDate in
                 nutritionDetailsDate = newDate
             }
@@ -391,9 +411,39 @@ struct TodayView: View {
                 reconcileTodayDayBoundary()
             }
         }
-        .onChange(of: plannedActivities) { _, _ in
+        .onChange(of: plannedActivities) { _, newActivities in
             debugTodayDataState(source: "TodayView.onChange.plannedActivities")
-            refreshTodayLiveState(refreshHealth: false)
+            coachPresentationSettleTask?.cancel()
+
+            let validActivityIDs = Set(newActivities.map(\.id))
+            quickLogSession.removeReferencesToMissingActivities(validActivityIDs: validActivityIDs)
+
+            let dayActivities = todayViewModel.selectedDayActivities(
+                on: selectedDate,
+                from: newActivities
+            )
+            coachInputProvider.refreshFromCurrentState(
+                selectedDate: selectedDate,
+                dayActivities: dayActivities,
+                allPlannedActivities: newActivities,
+                healthManager: healthManager,
+                nutritionViewModel: nutritionViewModel,
+                coachCoordinator: coachCoordinator,
+                source: "TodayView.plannedActivitiesChanged"
+            )
+
+            Task {
+                await todayViewModel.reconcileNutritionAfterPlannedActivitiesChange(
+                    selectedDate: selectedDate,
+                    plannedActivities: newActivities,
+                    healthManager: healthManager,
+                    nutritionViewModel: nutritionViewModel
+                )
+
+                await MainActor.run {
+                    pinStableCoachPresentationIfReady()
+                }
+            }
         }
         .onChange(of: selectedDate) { oldValue, newValue in
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
@@ -485,6 +535,11 @@ struct TodayView: View {
                 isPresented: $showDirectWorkoutLogSheet,
                 refreshID: healthRefreshBinding
             )
+            .environmentObject(appSession)
+            .environmentObject(coachCoordinator)
+            .environmentObject(nutritionViewModel)
+            .environmentObject(coachInputProvider)
+            .environmentObject(activityCoordinator)
             .presentationDetents([
                 .fraction(0.45),
                 .large
@@ -862,7 +917,7 @@ struct TodayView: View {
         items.map { item in
             QuickItemDisplayRow(
                 item: item,
-                subtitleText: item.subtitle,
+                subtitleText: item.localizedSubtitle,
                 metaText: quickItemMetaText(for: item),
                 usesAssetImage: !item.imageName.isEmpty && UIImage(named: item.imageName) != nil
             )
@@ -1354,14 +1409,12 @@ struct TodayView: View {
             }
     }
 
-    private var coachInsightPlaceholder: some View {
-        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
-            Color.clear
-                .frame(height: 54)
-                .padding(.horizontal, 16)
-                .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+    private var displayedCoachPresentation: CoachUIPresentation? {
+        if let stableCoachPresentation {
+            return stableCoachPresentation
         }
-        .accessibilityHidden(true)
+        guard coachCoordinator.state.canRenderTodayCoachInsight else { return nil }
+        return coachCoordinator.state.coachUIPresentation
     }
 
     private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
@@ -1385,7 +1438,11 @@ struct TodayView: View {
                         .lineSpacing(1)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(needsHealthConnect ? AppText.Today.coachSettlingMessageHealth : AppText.Today.coachSettlingMessageSleep)
+                    Text(
+                        needsHealthConnect
+                            ? AppText.Today.coachSettlingMessageHealth
+                            : AppText.Today.coachSettlingMessageSleep
+                    )
                         .font(.footnote)
                         .fontDesign(.rounded)
                         .foregroundStyle(textSecondary.opacity(0.68))
@@ -1403,6 +1460,53 @@ struct TodayView: View {
             withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
                 livePulse = true
             }
+        }
+    }
+
+    private func coachPreparingCard() -> some View {
+        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(WeekFitTheme.coachAccent.opacity(0.11))
+                        .frame(width: 40, height: 40)
+                        .overlay {
+                            Circle()
+                                .stroke(WeekFitTheme.coachAccent.opacity(0.20), lineWidth: 1)
+                        }
+
+                    Image(systemName: CoachState.registryGapIcon)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.90))
+                }
+                .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AppText.Today.coachInsightLabel)
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.45)
+                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+
+                    Text(CoachState.registryGapTitle)
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .padding(.top, 2)
+                        .lineSpacing(1)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(CoachState.registryGapMessage)
+                        .font(.footnote)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary.opacity(0.68))
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
         }
     }
 
@@ -1508,6 +1612,34 @@ struct TodayView: View {
         )
         healthManager.markDisplayMetricsSettled(for: selectedDate)
         pinStableCoachPresentationIfReady()
+        scheduleCoachPresentationRetryIfNeeded()
+    }
+
+    @MainActor
+    private func scheduleCoachPresentationRetryIfNeeded() {
+        guard stableCoachPresentation == nil, !didScheduleCoachPresentationRetry else { return }
+
+        didScheduleCoachPresentationRetry = true
+        coachPresentationSettleTask?.cancel()
+        coachPresentationSettleTask = Task {
+            try? await Task.sleep(nanoseconds: 650_000_000)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard stableCoachPresentation == nil else { return }
+                let dayActivities = todayViewModel.selectedDayActivities(on: selectedDate, from: plannedActivities)
+                coachInputProvider.refreshFromCurrentState(
+                    selectedDate: selectedDate,
+                    dayActivities: dayActivities,
+                    allPlannedActivities: plannedActivities,
+                    healthManager: healthManager,
+                    nutritionViewModel: nutritionViewModel,
+                    coachCoordinator: coachCoordinator,
+                    source: "TodayView.coachPresentationRetry"
+                )
+                pinStableCoachPresentationIfReady()
+            }
+        }
     }
 
     @MainActor
@@ -1870,19 +2002,17 @@ struct TodayView: View {
     }
 
     private func recoveryStatusLabel(for recoveryPercent: Int) -> String {
+        let input = healthManager.currentRecoveryScoreInput
         switch RecoveryScoreEngine.statusTier(
             score: recoveryPercent,
-            sleepMinutes: healthManager.sleepMinutes,
-            restingHeartRate: healthManager.restingHeartRate,
-            hrvSDNN: healthManager.hrvSDNN
+            input: input,
+            breakdown: healthManager.recoveryBreakdown
         ) {
-        case .fullyRecovered:
-            return WeekFitLocalizedString("today.recovery.ready")
         case .wellRecovered:
             return WeekFitLocalizedString("today.recovery.good")
         case .moderatelyReady:
             return WeekFitLocalizedString("today.recovery.ok")
-        case .takeItEasier, .noData:
+        case .takeItEasier, .recoveryPriority, .noData:
             if recoveryPercent > 0 {
                 return WeekFitLocalizedString("today.recovery.needRest")
             }
@@ -1979,7 +2109,7 @@ struct TodayView: View {
         let neutralIconFill = WeekFitTheme.whiteOpacity(0.07)
         let neutralStroke = WeekFitTheme.whiteOpacity(0.08)
 
-        let activeSession = currentActiveSession(now: now)
+        let activeSession = currentLiveUpNextActivity(now: now)
         let nextActivity = activeSession == nil
             ? nextUpcomingPlannedActivity(now: now)
             : nil
@@ -2069,6 +2199,13 @@ struct TodayView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    String(
+                        format: WeekFitLocalizedString("today.upNext.liveAccessibilityFormat"),
+                        shortDisplayTitle(activityDisplayTitle(activeSession))
+                    )
+                )
             } else if let activity = nextActivity {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2127,6 +2264,13 @@ struct TodayView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(
+                    String(
+                        format: WeekFitLocalizedString("today.upNext.upcomingAccessibilityFormat"),
+                        shortDisplayTitle(activityDisplayTitle(activity)),
+                        upNextSubtitle(for: activity)
+                    )
+                )
 
             } else {
                 Button {
@@ -2260,6 +2404,13 @@ struct TodayView: View {
         return activity.date >= active.date && activity.date <= activeEnd
     }
 
+    private func currentLiveUpNextActivity(now: Date = Date()) -> PlannedActivity? {
+        selectedDayActivities
+            .filter { $0.terminalState(now: now) == .active }
+            .sorted { $0.date < $1.date }
+            .first
+    }
+
     private func currentActiveSession(now: Date = Date()) -> PlannedActivity? {
         selectedDayActivities.first { activity in
             let type = activity.type.lowercased()
@@ -2361,7 +2512,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                if let presentation = stableCoachPresentation {
+                if let presentation = displayedCoachPresentation {
                     let insightColor = presentation.accentColor
                     let insightTitle = presentation.todayTitle
                     let insightIcon = presentation.icon
@@ -2440,22 +2591,35 @@ struct TodayView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        String(
+                            format: "%@: %@. %@",
+                            String(localized: AppText.Today.coachInsightLabel),
+                            insightTitle,
+                            insightMessage
+                        )
+                    )
+                    .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
                     .transition(.identity)
                 } else if shouldShowHealthConnectPrompt {
                     coachSettlingCard(needsHealthConnect: true)
-                } else if healthManager.isHealthAccessRequested {
-                    coachInsightPlaceholder
-                } else {
+                } else if !hasTodayRecoverySignals {
                     coachSettlingCard(needsHealthConnect: false)
+                } else {
+                    coachPreparingCard()
                 }
             }
         }
         .onChange(of: coachCoordinator.state.id) { _, _ in
             syncStableCoachPresentation()
         }
+        .onChange(of: coachCoordinator.state.status) { _, _ in
+            pinStableCoachPresentationIfReady()
+        }
         .onChange(of: selectedDate) { _, _ in
             coachPresentationSettleTask?.cancel()
             stableCoachPresentation = nil
+            didScheduleCoachPresentationRetry = false
         }
         .sheet(item: $activityToConfirm) { activity in
             missedConfirmationSheet(activity)
@@ -2548,7 +2712,6 @@ struct TodayView: View {
     }
 
     private enum QuickActionKind {
-        case drinks
         case food
         case activity
     }
@@ -2587,27 +2750,9 @@ struct TodayView: View {
             .max(by: { $0.date < $1.date })
     }
 
-    private func quickActionHydrationBehind(now: Date) -> Bool {
-        guard waterGoal > 0 else { return false }
-        let ratio = currentWater / waterGoal
-        let hour = Calendar.current.component(.hour, from: now)
-        let dayProgress = min(max(Double(hour - 6) / 14.0, 0.15), 1.0)
-        return ratio < 0.55 || ratio < dayProgress * 0.85
-    }
-
-    private func quickActionFoodLoggingBehind(now: Date) -> Bool {
-        let hour = Calendar.current.component(.hour, from: now)
-        guard hour >= 12 else { return false }
-        let loggedMeals = nutritionMeals(for: selectedDate).filter { $0.type.lowercased() == "meal" }
-        return loggedMeals.isEmpty
-    }
-
     private func quickActionDynamicPriority(now: Date) -> QuickActionKind? {
         if currentActiveSession(now: now) != nil {
             return .activity
-        }
-        if quickActionHydrationBehind(now: now) {
-            return .drinks
         }
         if quickActionFoodLoggingBehind(now: now) {
             return .food
@@ -2615,15 +2760,11 @@ struct TodayView: View {
         return nil
     }
 
-    private func quickActionDrinksSubtitle() -> String {
-        if waterGoal > 0, currentWater < waterGoal {
-            return String(
-                format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
-                currentWater,
-                waterGoal
-            )
-        }
-        return WeekFitLocalizedString("today.quickActions.hydrationOnTrack")
+    private func quickActionFoodLoggingBehind(now: Date) -> Bool {
+        let hour = Calendar.current.component(.hour, from: now)
+        guard hour >= 12 else { return false }
+        let loggedMeals = nutritionMeals(for: selectedDate).filter { $0.type.lowercased() == "meal" }
+        return loggedMeals.isEmpty
     }
 
     private func quickActionFoodSubtitle(now: Date) -> String {
@@ -2637,6 +2778,19 @@ struct TodayView: View {
             return WeekFitLocalizedString("today.quickActions.dinner")
         default:
             return WeekFitLocalizedString("today.quickActions.mealsSnacks")
+        }
+    }
+
+    private func quickActionDrinksSubtitle() -> String {
+        let drinks = loggedDrinksForSelectedDay
+
+        switch drinks.count {
+        case 0:
+            return WeekFitLocalizedString("today.quickActions.firstDrink")
+        case 1:
+            return activityDisplayTitle(drinks[0])
+        default:
+            return WeekFitCountPluralization.drinksTodaySubtitle(count: drinks.count)
         }
     }
 
@@ -2669,7 +2823,7 @@ struct TodayView: View {
             label: WeekFitLocalizedString("today.quickActions.logDrinks"),
             subLabel: drinksSubtitle,
             color: WeekFitTheme.workout,
-            isEmphasized: priority == .drinks,
+            isEmphasized: false,
             toastMessage: drinksQuickLogToast
         ) {
             preloadQuickDrinkLogDataIfNeeded()
@@ -2821,6 +2975,7 @@ struct TodayView: View {
             .padding(.vertical, 2)
         }
         .buttonStyle(QuickActionPressStyle())
+        .accessibilityLabel("\(label), \(subLabel)")
     }
 
     private func coachIconOpticalYOffset(_ systemName: String) -> CGFloat {
@@ -3054,7 +3209,22 @@ struct TodayView: View {
     }
 
     private func activityDisplayTitle(_ activity: PlannedActivity) -> String {
-        WeekFitCoachRuntimeLocalizedString(activity.title)
+        if activity.type.lowercased() == "drink" || activity.imageName == "hydration" {
+            return QuickItem.localizedTitle(forStoredTitle: activity.title)
+        }
+
+        let trimmedTitle = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
+        }
+
+        let plannerLocalized = PlannerOptionLocalization.localizedTitle(for: trimmedTitle)
+        if plannerLocalized != trimmedTitle {
+            return plannerLocalized
+        }
+
+        return WeekFitCoachRuntimeLocalizedString(activity.title)
     }
 
     private var selectedDayActivities: [PlannedActivity] {

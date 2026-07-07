@@ -236,7 +236,7 @@ private extension NutritionDetailsSheet {
                     macroText(WeekFitLocalizedString("meals.library.macroProtein"), meal.protein, color: .purple)
                     macroText(WeekFitLocalizedString("meals.library.macroCarbs"), meal.carbs, color: .orange)
                     macroText(WeekFitLocalizedString("meals.library.macroFats"), meal.fat, color: .pink)
-                    macroText(WeekFitLocalizedString("nutrition.macro.fiber"), meal.fiber, color: .green)
+                    macroText(WeekFitLocalizedString("meals.library.macroFiber"), meal.fiber, color: .green)
                 }
             }
             .padding(.top, 7)
@@ -290,7 +290,7 @@ private extension NutritionDetailsSheet {
                     macroText(WeekFitLocalizedString("meals.library.macroProtein"), 35, color: .purple)
                     macroText(WeekFitLocalizedString("meals.library.macroCarbs"), 60, color: .orange)
                     macroText(WeekFitLocalizedString("meals.library.macroFats"), 15, color: .pink)
-                    macroText(WeekFitLocalizedString("nutrition.macro.fiber"), 8, color: .green)
+                    macroText(WeekFitLocalizedString("meals.library.macroFiber"), 8, color: .green)
                 }
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.caloriesRange"))

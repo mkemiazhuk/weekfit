@@ -12,6 +12,11 @@ struct PremiumActivityStartSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var appSession: AppSessionState
+    @EnvironmentObject private var coachCoordinator: CoachCoordinator
+    @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var coachInputProvider: CoachInputProvider
+    @EnvironmentObject private var activityCoordinator: WeekFitActivityCoordinator
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var allPlannedActivities: [PlannedActivity]
@@ -23,19 +28,11 @@ struct PremiumActivityStartSheet: View {
         let calendar = Calendar.current
 
         return allPlannedActivities.first { activity in
-            guard !activity.isCompleted,
-                  !activity.isSkipped,
-                  calendar.isDate(activity.date, inSameDayAs: now),
+            guard calendar.isDate(activity.date, inSameDayAs: now),
                   isTrackableLiveActivity(activity)
             else { return false }
 
-            let endLimit = calendar.date(
-                byAdding: .minute,
-                value: max(activity.durationMinutes, 1),
-                to: activity.date
-            ) ?? activity.date
-
-            return activity.date <= now && now <= endLimit
+            return activity.terminalState(now: now) == .active
         }
     }
 
@@ -234,36 +231,11 @@ struct PremiumActivityStartSheet: View {
     }
 
     private func localizedOptionTitle(_ title: String) -> String {
-        switch title {
-        case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
-        case "Running": return WeekFitLocalizedString("planner.option.running")
-        case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")
-        case "Core": return WeekFitLocalizedString("planner.option.core")
-        case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")
-        case "Full Body": return WeekFitLocalizedString("planner.option.fullBody")
-        case "Tennis": return WeekFitLocalizedString("planner.option.tennis")
-        case "Squash": return WeekFitLocalizedString("planner.option.squash")
-        case "Stretching": return WeekFitLocalizedString("planner.option.stretching")
-        case "Walk": return WeekFitLocalizedString("planner.option.walk")
-        case "Sauna": return WeekFitLocalizedString("planner.option.sauna")
-        case "Yoga": return WeekFitLocalizedString("planner.option.yoga")
-        case "Breathing": return WeekFitLocalizedString("planner.option.breathing")
-        default: return WeekFitCoachRuntimeLocalizedString(title)
-        }
+        PlannerOptionLocalization.localizedTitle(for: title)
     }
 
     private func localizedOptionSubtitle(_ subtitle: String) -> String {
-        switch subtitle {
-        case "Endurance": return WeekFitLocalizedString("planner.option.subtitle.endurance")
-        case "Cardio": return WeekFitLocalizedString("planner.option.subtitle.cardio")
-        case "Strength": return WeekFitLocalizedString("planner.option.subtitle.strength")
-        case "High Intensity": return WeekFitLocalizedString("planner.option.subtitle.highIntensity")
-        case "Mobility": return WeekFitLocalizedString("planner.option.subtitle.mobility")
-        case "Light recovery": return WeekFitLocalizedString("planner.option.subtitle.lightRecovery")
-        case "Relax": return WeekFitLocalizedString("planner.option.subtitle.relax")
-        case "Calm": return WeekFitLocalizedString("planner.option.subtitle.calm")
-        default: return WeekFitCoachRuntimeLocalizedString(subtitle)
-        }
+        PlannerOptionLocalization.localizedSubtitle(for: subtitle)
     }
 
     private func liveSessionCard(_ liveItem: PlannedActivity) -> some View {
@@ -393,16 +365,26 @@ struct PremiumActivityStartSheet: View {
     private func stopLiveSession(_ activity: PlannedActivity) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            activity.isCompleted = true
+        let passedMinutes = max(1, Int(Date().timeIntervalSince(activity.date) / 60))
 
-            let passedMinutes = Int(Date().timeIntervalSince(activity.date) / 60)
-            activity.durationMinutes = max(1, min(passedMinutes, max(activity.durationMinutes, 1)))
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            activity.actualDurationMinutes = passedMinutes
+            activity.isCompleted = true
 
             try? modelContext.save()
 
             refreshID = UUID()
             isPresented = false
         }
+
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coachCoordinator,
+            nutritionViewModel: nutritionViewModel,
+            inputProvider: coachInputProvider,
+            reason: "todayActivityStop"
+        )
+        activityCoordinator.refresh()
+        appSession.triggerHealthRefresh(source: "todayActivityStop")
+        appSession.triggerCoachRefresh(source: "todayActivityStop")
     }
 }

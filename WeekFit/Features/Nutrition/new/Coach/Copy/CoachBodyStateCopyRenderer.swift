@@ -48,14 +48,16 @@ enum CoachBodyStateCopyRenderer {
             switch stableDayProfile {
             case .workBanked:
                 return applyWorkBankedStableDay(base: base, bodyState: bodyState)
-            case .lowRecoveryRest:
-                return applyLowRecoveryRestStableDay(
-                    base: base,
-                    bodyState: bodyState,
-                    sessionPhase: sessionPhase
-                )
-            default:
-                return applyStableDay(base: base, bodyState: bodyState)
+        case .lowRecoveryRest:
+            return applyLowRecoveryRestStableDay(
+                base: base,
+                bodyState: bodyState,
+                sessionPhase: sessionPhase
+            )
+        case .tomorrowReserve:
+            return base
+        default:
+            return applyStableDay(base: base, bodyState: bodyState)
             }
         case .activeEndurance:
             return applyActiveEndurance(base: base, activityType: activityType, bodyState: bodyState)

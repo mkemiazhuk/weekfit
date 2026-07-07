@@ -74,6 +74,12 @@ enum CoachFocusResolver {
             return selection(for: nextSerious, source: .upcoming, now: input.now, timeOfDay: timeOfDay)
         }
 
+        let completedWalkToday = CoachActivityClassifier.hasCompletedWalkToday(
+            in: dayActivities,
+            on: input.selectedDate,
+            calendar: calendar
+        )
+
         if let lastCompleted = input.dayContext.lastCompletedActivity {
             let minutesSinceEnd = minutesSinceActivityEnd(lastCompleted, now: input.now)
             if shouldKeepRecentCompletedFocus(
@@ -91,7 +97,9 @@ enum CoachFocusResolver {
             }
         }
 
-        if let next = upcoming.first {
+        if let next = upcoming.first(where: { activity in
+            !completedWalkToday || CoachActivityClassifier.type(for: activity) != .walk
+        }) {
             return selection(for: next, source: .upcoming, now: input.now, timeOfDay: timeOfDay)
         }
 

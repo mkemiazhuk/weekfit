@@ -69,13 +69,11 @@ final class CoachInputProvider: ObservableObject {
                 )
             }
 
-            #if DEBUG
             await CoachUnderstandingService.refresh(
                 healthManager: healthManager,
                 through: selectedDate,
                 plannedActivities: plannedActivities
             )
-            #endif
 
             let previousRefreshReason = lastRefreshReason
             refreshFromCurrentState(
@@ -176,7 +174,6 @@ final class CoachInputProvider: ObservableObject {
             debugSource: "CoachInputProvider.\(source)"
         )
 
-        #if DEBUG
         CoachObservationStore.recordToday(
             from: healthManager,
             date: selectedDate,
@@ -184,7 +181,6 @@ final class CoachInputProvider: ObservableObject {
             calorieTarget: nutritionViewModel.nutritionResult.map { Int($0.targetCalories.rounded()) }
         )
         CoachUnderstandingService.evaluateBeliefs()
-        #endif
 
         guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
             coachCoordinator.updateInput(nil)

@@ -136,6 +136,11 @@ final class WeekFitActivityCoordinator: ObservableObject {
     ) {
         let workoutUUID = workout.uuid.uuidString
 
+        if DismissedHealthKitWorkoutStore.isDismissed(workoutUUID) {
+            reconciledWorkoutUUIDs.insert(workoutUUID)
+            return
+        }
+
         if let persisted = importedWorkoutIfExists(
             uuid: workoutUUID,
             modelContext: modelContext
@@ -175,6 +180,15 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }
 
         guard forceRetry || !reconciledWorkoutUUIDs.contains(workoutUUID) else {
+            return
+        }
+
+        if let persisted = importedWorkoutIfExists(
+            uuid: workoutUUID,
+            modelContext: modelContext
+        ) {
+            ActivityReconciler.applySyncedWorkout(workout, to: persisted)
+            reconciledWorkoutUUIDs.insert(workoutUUID)
             return
         }
 

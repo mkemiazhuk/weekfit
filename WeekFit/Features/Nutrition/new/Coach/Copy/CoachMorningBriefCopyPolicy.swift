@@ -53,12 +53,10 @@ enum CoachMorningBriefCopyPolicy {
             )
         }
 
+        let titles = CoachWorkoutTitleLocalization.tomorrowAlreadyScheduled(rawTitle: title)
         return mergeOpener(
             opener,
-            .en(
-                "\(title) tomorrow already has real work on the calendar.",
-                "\(title) завтра уже в календаре."
-            )
+            .en(titles.english, titles.russian)
         )
     }
 

@@ -147,9 +147,7 @@ struct CoachState: Identifiable {
             logCoachRegistryGap(debug: coachIntegrationDebug, reason: reason)
         }
 
-        let reflectionOffer: ReflectionOffer?
-        #if DEBUG
-        reflectionOffer = ReflectionComposer.compose(
+        let reflectionOffer = ReflectionComposer.compose(
             ReflectionComposer.Input(
                 snapshot: input,
                 context: v6Result.context,
@@ -158,9 +156,6 @@ struct CoachState: Identifiable {
                 alertSeverity: v6Result.todayInsight.alertSeverity
             )
         )
-        #else
-        reflectionOffer = nil
-        #endif
 
         return CoachState(
             id: UUID(),

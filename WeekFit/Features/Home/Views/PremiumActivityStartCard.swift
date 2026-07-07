@@ -109,43 +109,40 @@ struct PremiumActivityStartCard: View {
     }
 
     private var imageBlock: some View {
-        ZStack {
+        Group {
             if !imageName.isEmpty, UIImage(named: imageName) != nil {
-                Image(imageName)
-                    .resizable()
-                    .scaledToFill()
+                PremiumAssetImage(
+                    imageName: imageName,
+                    style: .activityThumbnail,
+                    accentColor: accentColor,
+                    fallbackSystemName: systemIcon
+                )
             } else {
-                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                    .fill(accentColor.opacity(0.10))
+                ZStack {
+                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
+                        .fill(accentColor.opacity(0.10))
 
-                Image(systemName: systemIcon)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(accentColor.opacity(0.76))
-                    .offset(y: -0.5)
+                    Image(systemName: systemIcon)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(accentColor.opacity(0.76))
+                        .offset(y: -0.5)
+                }
+                .frame(
+                    width: QuickActionSheetDesign.Row.imageSize,
+                    height: QuickActionSheetDesign.Row.imageSize
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
+                        style: .continuous
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
+                        .stroke(.white.opacity(0.05), lineWidth: 1)
+                }
             }
-
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.0),
-                    .black.opacity(0.16)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                .stroke(.white.opacity(0.05), lineWidth: 1)
         }
-        .frame(
-            width: QuickActionSheetDesign.Row.imageSize,
-            height: QuickActionSheetDesign.Row.imageSize
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
-                style: .continuous
-            )
-        )
     }
 
     private var startControl: some View {

@@ -456,6 +456,38 @@ final class CoachSelectionMatrixTests: XCTestCase {
         )
     }
 
+    func testCompletedWatchWalkSuppressesLaterPlannedWalkFocus() {
+        let now = date(hour: 17, minute: 27)
+        var syncedWalk = completedActivity(
+            title: "Walk",
+            endedMinutesAgo: 12,
+            durationMinutes: 20,
+            relativeTo: now,
+            type: "recovery",
+            icon: "figure.walk"
+        )
+        syncedWalk.source = "appleWorkout"
+        syncedWalk.healthKitWorkoutUUID = UUID().uuidString
+
+        let upcomingWalk = upcomingActivity(
+            title: "Walk",
+            at: now.addingTimeInterval(90 * 60),
+            type: "recovery",
+            icon: "figure.walk",
+            durationMinutes: 20
+        )
+
+        assertSelection(
+            now: now,
+            activities: [syncedWalk, upcomingWalk],
+            allowedScenarios: [.walkLightDay, .walkRecoveryAction, .walkAfterHeavyLoad],
+            expectedSource: .recentCompleted,
+            expectedPhase: .immediatePost,
+            expectedFamily: .recovery,
+            expectedType: .walk
+        )
+    }
+
     // MARK: - 7. Recovery vs training priority
 
     func testCompletedHeavyCycling15MinutesAgoWithUpcomingWalkKeepsPostEndurance() {

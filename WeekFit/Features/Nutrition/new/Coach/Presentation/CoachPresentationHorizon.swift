@@ -41,7 +41,7 @@ enum CoachPresentationHorizonPolicy {
                 conversationPhase: input.conversationPhase,
                 activityState: input.activityState,
                 sessionPhase: input.sessionPhase,
-                minutesUntilStart: nil,
+                minutesUntilStart: input.minutesUntilStart,
                 tomorrowDemand: input.modifiers.tomorrowDemand,
                 hasTomorrowWorkout: input.tomorrowWorkout != nil,
                 isLowRecovery: input.dayReadiness.isLowRecovery || input.dayReadiness.sleepIsLow

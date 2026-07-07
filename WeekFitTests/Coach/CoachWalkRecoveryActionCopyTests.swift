@@ -54,6 +54,27 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         XCTAssertFalse(russian.lowercased().contains("идите"))
     }
 
+    func testCompletedWalkLightDayUsesCompletedChrome() throws {
+        let input = makeInput(
+            sessionPhase: .immediatePost,
+            focusSource: .recentCompleted,
+            activityState: .justFinished,
+            minutesSinceEnd: 55,
+            scenario: .walkLightDay
+        )
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(input))
+        let bridge = try XCTUnwrap(
+            CoachTabPresentationBridge.build(
+                from: makeEngineResult(input: input, pack: pack, scenario: .walkLightDay)
+            )
+        )
+
+        XCTAssertEqual(bridge.todayTitle, "Прогулка завершена")
+        XCTAssertEqual(bridge.coachTitle, "Прогулка завершена")
+        XCTAssertFalse(bridge.todayMessage.contains("без цели"))
+        XCTAssertTrue(joinedRussian(pack).contains("прогулка уже"))
+    }
+
     func testCompletedWalkRecoveryActionRegressionDoesNotUseFutureWalkLanguage() throws {
         let readiness = CoachDayReadiness(
             recoveryPercent: 75,
@@ -92,7 +113,8 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         focusSource: CoachFocusSource,
         activityState: CoachActivityState = .upcoming,
         minutesSinceEnd: Int? = nil,
-        dayReadiness: CoachDayReadiness? = nil
+        dayReadiness: CoachDayReadiness? = nil,
+        scenario: CoachScenarioKey = .walkRecoveryAction
     ) -> CoachCopyBuildInput {
         let readiness = dayReadiness ?? CoachDayReadiness(
             recoveryPercent: 82,
@@ -102,7 +124,7 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
             sleepIsLow: false
         )
         return CoachCopyBuildInput(
-            scenario: .walkRecoveryAction,
+            scenario: scenario,
             modifiers: CoachScenarioModifiers(
                 dayLoad: .heavy,
                 fuelBehind: false,
@@ -132,8 +154,10 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
 
     private func makeEngineResult(
         input: CoachCopyBuildInput,
-        pack: CoachCopyPack
+        pack: CoachCopyPack,
+        scenario: CoachScenarioKey? = nil
     ) -> CoachEngine.Result {
+        let resolvedScenario = scenario ?? input.scenario
         let context = CoachContext(
             activityFamily: .recovery,
             activityType: .walk,
@@ -155,7 +179,7 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
             lastCompletedSeriousActivityType: input.modifiers.lastCompletedActivityType
         )
         let resolution = CoachScenarioResolution(
-            scenario: .walkRecoveryAction,
+            scenario: resolvedScenario,
             modifiers: input.modifiers,
             safetyAlert: nil
         )

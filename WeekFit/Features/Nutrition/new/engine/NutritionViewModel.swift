@@ -116,14 +116,6 @@ final class NutritionViewModel: ObservableObject {
         let mealFats = Double(completedMeals.reduce(0) { $0 + $1.fats })
         let mealFiber = Double(completedMeals.reduce(0) { $0 + $1.fiber })
 
-        if !completedMeals.isEmpty {
-            updatedMetrics.calories = max(updatedMetrics.calories, mealCalories)
-            updatedMetrics.protein = max(updatedMetrics.protein, mealProtein)
-            updatedMetrics.carbs = max(updatedMetrics.carbs, mealCarbs)
-            updatedMetrics.fats = max(updatedMetrics.fats, mealFats)
-            updatedMetrics.fiber = max(updatedMetrics.fiber, mealFiber)
-        }
-        
         if isEarlyMorning && !hasLoggedMeals && completedMeals.isEmpty {
             updatedMetrics.calories = 0.0
             updatedMetrics.protein = 0.0
@@ -132,7 +124,14 @@ final class NutritionViewModel: ObservableObject {
             updatedMetrics.waterLiters = 0.0
         } else {
             let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
-            updatedMetrics.waterLiters = max(updatedMetrics.waterLiters, loggedWaterLiters)
+
+            // Planned logs reconcile every pass so deletions shrink totals.
+            updatedMetrics.calories = max(metrics.calories, mealCalories)
+            updatedMetrics.protein = max(metrics.protein, mealProtein)
+            updatedMetrics.carbs = max(metrics.carbs, mealCarbs)
+            updatedMetrics.fats = max(metrics.fats, mealFats)
+            updatedMetrics.fiber = max(metrics.fiber, mealFiber)
+            updatedMetrics.waterLiters = max(metrics.waterLiters, loggedWaterLiters)
         }
 
         // Передача сквозного контекста в обновленный NutritionCoreEngine

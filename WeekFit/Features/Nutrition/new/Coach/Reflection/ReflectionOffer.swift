@@ -20,7 +20,6 @@ struct ConversationPauseResolution: Equatable, Sendable {
 }
 
 /// Presentation bundle when Coach shares an understanding change at a conversational pause.
-/// Phase 1: never produced — infrastructure placeholder for later phases.
 struct ReflectionOffer: Equatable, Sendable, Identifiable {
     let id: String
     let kind: ReflectionKind

@@ -68,7 +68,14 @@ final class PlanViewModel: ObservableObject {
     var plannerInteractionToken: String {
         let day = Int(calendar.startOfDay(for: selectedDate).timeIntervalSince1970)
         let editingID = editingActivity?.id ?? "-"
-        return "\(day)|\(showAddActivity)|\(editingID)"
+        return "\(day)|\(showAddActivity)|\(editingID)|\(plannerDataRevision)"
+    }
+
+    private var plannerDataRevision = 0
+
+    func markPlannerDataChanged() {
+        plannerDataRevision &+= 1
+        invalidateTimelineCache()
     }
 
     var availableMeals: [Meals] {
@@ -440,6 +447,7 @@ final class PlanViewModel: ObservableObject {
             editingActivity.protein = meal?.protein ?? editingActivity.protein
             editingActivity.carbs = meal?.carbs ?? editingActivity.carbs
             editingActivity.fats = meal?.fats ?? editingActivity.fats
+            editingActivity.fiber = meal?.fiber ?? editingActivity.fiber
 
             do {
                 try modelContext.save()
@@ -466,7 +474,8 @@ final class PlanViewModel: ObservableObject {
                 calories: meal?.calories ?? 0,
                 protein: meal?.protein ?? 0,
                 carbs: meal?.carbs ?? 0,
-                fats: meal?.fats ?? 0
+                fats: meal?.fats ?? 0,
+                fiber: meal?.fiber ?? 0
             )
 
             modelContext.insert(activity)
@@ -508,20 +517,43 @@ final class PlanViewModel: ObservableObject {
         resetDragState()
     }
 
-    func removePlannedActivity(_ activity: PlannedActivity, modelContext: ModelContext) async {
-        await ActivityNotificationService.shared.cancelNotificationsForDeletedActivity(activity)
-        modelContext.delete(activity)
+    var beforePlannedActivityDeleted: (() -> Void)?
+    var afterPlannedActivityDeleted: (() -> Void)?
+
+    func invalidateTimelineCache() {
+        timelineItemsCacheKey = ""
+        cachedTimelineItems = []
+    }
+
+    func removePlannedActivities(withIDs ids: [String], modelContext: ModelContext) {
+        guard !ids.isEmpty else { return }
+
+        beforePlannedActivityDeleted?()
 
         do {
-            try modelContext.save()
+            try PlannedActivityPersistenceService.deleteActivities(
+                withIDs: ids,
+                modelContext: modelContext,
+                auditSource: "PlanViewModel.removePlannedActivities"
+            )
+            markPlannerDataChanged()
+            afterPlannedActivityDeleted?()
         } catch {
-            print("Failed to delete activity:", error)
+            PlannedActivityPlannerAudit.deleteFailed(ids: ids, error: error, modelContext: modelContext)
         }
     }
 
-    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) async {
+    func removePlannedActivities(_ activities: [PlannedActivity], modelContext: ModelContext) {
+        removePlannedActivities(withIDs: activities.map(\.id), modelContext: modelContext)
+    }
+
+    func removePlannedActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
+        removePlannedActivities([activity], modelContext: modelContext)
+    }
+
+    func deleteActivity(_ activity: PlannedActivity, modelContext: ModelContext) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        await removePlannedActivity(activity, modelContext: modelContext)
+        removePlannedActivity(activity, modelContext: modelContext)
         closeAddSheet()
     }
 

@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 struct LoginView: View {
     @ObservedObject var authViewModel: AuthViewModel
@@ -418,31 +417,70 @@ struct LoginView: View {
 
     private var bottomAuthPanel: some View {
         VStack(spacing: 10) {
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.email, .fullName]
-            } onCompletion: { result in
-                Task {
-                    await authViewModel.handleAppleSignIn(result)
-                }
-            }
-            .signInWithAppleButtonStyle(.white)
-            .frame(height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
-            .padding(.horizontal, 14)
-            .accessibilityIdentifier("login.openWeekFit")
-
-            #if DEBUG
             Button {
-                Task {
-                    await authViewModel.signIn(with: .email)
-                }
+                authViewModel.continueIntoApp()
             } label: {
-                Text("Debug: Continue without Apple")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                HStack {
+                    Spacer()
+
+                    Text(WeekFitLocalizedString("login.action.openWeekFit"))
+                        .font(.system(size: 15.0, weight: .semibold))
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    ZStack {
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                            .frame(width: 27, height: 27)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13.2, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(height: 48)
+                .padding(.horizontal, 11)
+                .background {
+                    RoundedRectangle(cornerRadius: 21, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.41, green: 0.68, blue: 0.52),
+                                    Color(red: 0.29, green: 0.53, blue: 0.39),
+                                    Color(red: 0.21, green: 0.39, blue: 0.30)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(alignment: .top) {
+                            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            .white.opacity(0.17),
+                                            champagneGold.opacity(0.04),
+                                            .clear
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .center
+                                    )
+                                )
+                                .frame(height: 22)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                                .stroke(.white.opacity(0.19), lineWidth: 1)
+                        }
+                }
+                .shadow(color: brandGreen.opacity(ambientMotion ? 0.12 : 0.08), radius: 12, x: 0, y: 5)
+                .shadow(color: .black.opacity(0.28), radius: 16, x: 0, y: 8)
             }
-            .padding(.top, 4)
-            #endif
+            .padding(.horizontal, 14)
+            .scaleEffect(ambientMotion ? 1.003 : 1.0)
+            .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: ambientMotion)
+            .accessibilityIdentifier("login.openWeekFit")
 
             VStack(spacing: 4) {
                 HStack(spacing: 6) {

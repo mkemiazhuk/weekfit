@@ -143,10 +143,20 @@ final class ActivityNotificationService {
     }
 
     func cancelNotificationsForDeletedActivity(_ activity: PlannedActivity) async {
-        let targetActivityId = activity.id
+        await cancelNotificationsForDeletedActivity(
+            DeletedActivityNotificationTarget(
+                id: activity.id,
+                title: activity.title,
+                date: activity.date
+            )
+        )
+    }
+
+    func cancelNotificationsForDeletedActivity(_ target: DeletedActivityNotificationTarget) async {
+        let targetActivityId = target.id
         invalidatePendingScheduling(forActivityId: targetActivityId)
 
-        let ids = notificationIds(for: activity)
+        let ids = notificationIds(forDeletedActivity: target)
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
         await scanAndRemoveNotificationsAwaiting(forActivityId: targetActivityId, excluding: Set(ids))
@@ -407,13 +417,23 @@ final class ActivityNotificationService {
     // MARK: - Helpers
 
     private func notificationIds(for activity: PlannedActivity) -> [String] {
+        notificationIds(
+            forDeletedActivity: DeletedActivityNotificationTarget(
+                id: activity.id,
+                title: activity.title,
+                date: activity.date
+            )
+        )
+    }
+
+    private func notificationIds(forDeletedActivity target: DeletedActivityNotificationTarget) -> [String] {
         [
-            startNotificationId(for: activity),
-            startNotificationIdLegacy(for: activity),
-            completionNotificationId(for: activity),
-            completionNotificationIdLegacy(for: activity),
-            completionLaterNotificationId(for: activity),
-            completionLaterNotificationIdLegacy(for: activity)
+            "start-\(target.id)",
+            "completion-\(target.id)",
+            "completion-later-\(target.id)",
+            "start-\(target.date.timeIntervalSince1970)-\(target.title)",
+            "completion-\(target.date.timeIntervalSince1970)-\(target.title)",
+            "completion-later-\(target.date.timeIntervalSince1970)-\(target.title)"
         ]
     }
 

@@ -184,6 +184,8 @@ struct CoachContext: Equatable, Sendable {
     let dayReadiness: CoachDayReadiness
     /// Latest completed serious activity today — for idle `stableDay` copy only.
     let lastCompletedSeriousActivityType: CoachActivityType
+    /// Completed walk logged today — suppresses duplicate walk prompts when idle.
+    let completedWalkToday: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
     let conversationPhase: CoachConversationPhase
     /// Human-readable resolver reason for logs and tests.
@@ -208,6 +210,7 @@ struct CoachContext: Equatable, Sendable {
         minutesSinceEnd: Int?,
         dayReadiness: CoachDayReadiness,
         lastCompletedSeriousActivityType: CoachActivityType,
+        completedWalkToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason
     ) {
@@ -229,6 +232,7 @@ struct CoachContext: Equatable, Sendable {
         self.minutesSinceEnd = minutesSinceEnd
         self.dayReadiness = dayReadiness
         self.lastCompletedSeriousActivityType = lastCompletedSeriousActivityType
+        self.completedWalkToday = completedWalkToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
     }
@@ -495,5 +499,18 @@ enum CoachActivityClassifier {
 
     static func activityCalories(for activity: CoachPlannedActivitySnapshot) -> Int {
         max(activity.calories, 0)
+    }
+
+    static func hasCompletedWalkToday(
+        in activities: [CoachPlannedActivitySnapshot],
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        activities.contains { activity in
+            calendar.isDate(activity.date, inSameDayAs: date) &&
+            !activity.isSkipped &&
+            activity.isCompleted &&
+            type(for: activity) == .walk
+        }
     }
 }

@@ -2,6 +2,12 @@ import SwiftUI
 import HealthKit
 internal import Combine
 
+struct RecoveryScoreContext: Equatable {
+    let baseline: RecoveryPhysiologyBaseline
+    let priorDayLoad: RecoveryPriorDayLoad
+    let bedtimeDeviationMinutes: Int?
+}
+
 final class RecoveryHealthKitProvider {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
@@ -27,6 +33,16 @@ final class RecoveryHealthKitProvider {
             types.insert(hrv)
         }
 
+        if let activeEnergy = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            types.insert(activeEnergy)
+        }
+
+        if let exerciseTime = HKObjectType.quantityType(forIdentifier: .appleExerciseTime) {
+            types.insert(exerciseTime)
+        }
+
+        types.insert(HKObjectType.workoutType())
+
         do {
             try await healthStore.requestAuthorization(toShare: [], read: types)
             return true
@@ -37,14 +53,12 @@ final class RecoveryHealthKitProvider {
 
     func loadSnapshot(for date: Date) async -> RecoveryDaySnapshot {
         async let sleepSamples = loadSleepSamples(for: date)
-
-        async let restingHR = loadLatestQuantity(
+        async let restingHR = loadOvernightMedianQuantity(
             identifier: .restingHeartRate,
             unit: HKUnit.count().unitDivided(by: .minute()),
             for: date
         )
-
-        async let hrv = loadLatestQuantity(
+        async let hrv = loadOvernightMedianQuantity(
             identifier: .heartRateVariabilitySDNN,
             unit: HKUnit.secondUnit(with: .milli),
             for: date
@@ -58,11 +72,41 @@ final class RecoveryHealthKitProvider {
         )
     }
 
+    func loadRecoveryScoreContext(
+        for date: Date,
+        currentBedStart: Date?
+    ) async -> RecoveryScoreContext {
+        async let baseline = loadPhysiologyBaseline(for: date)
+        async let priorDayLoad = loadPriorDayLoad(for: date)
+        async let bedtimeDeviation = bedtimeDeviationMinutes(for: date, currentBedStart: currentBedStart)
+
+        return RecoveryScoreContext(
+            baseline: await baseline,
+            priorDayLoad: await priorDayLoad,
+            bedtimeDeviationMinutes: await bedtimeDeviation
+        )
+    }
+
+    func loadOvernightVitals(for date: Date) async -> (hrv: Double?, restingHeartRate: Double?) {
+        async let hrv = loadOvernightMedianQuantity(
+            identifier: .heartRateVariabilitySDNN,
+            unit: HKUnit.secondUnit(with: .milli),
+            for: date
+        )
+        async let restingHR = loadOvernightMedianQuantity(
+            identifier: .restingHeartRate,
+            unit: HKUnit.count().unitDivided(by: .minute()),
+            for: date
+        )
+
+        return (await hrv, await restingHR)
+    }
+
     func bedtimeDeviationMinutes(for date: Date, currentBedStart: Date?) async -> Int? {
         let calendar = calendar
         var historicalBedStarts: [Date] = []
 
-        for dayOffset in 1...14 {
+        for dayOffset in 1...RecoveryPhysiologyBaseline.preferredWindowDays {
             guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
             let sleepSamples = await loadSleepSamples(for: pastDate)
             if let bedStart = primaryBedStart(from: sleepSamples) {
@@ -74,6 +118,71 @@ final class RecoveryHealthKitProvider {
             currentBedStart: currentBedStart,
             historicalBedStarts: historicalBedStarts,
             calendar: calendar
+        )
+    }
+
+    func loadPhysiologyBaseline(for date: Date) async -> RecoveryPhysiologyBaseline {
+        var hrvValues: [Double] = []
+        var rhrValues: [Double] = []
+
+        for dayOffset in 1...RecoveryPhysiologyBaseline.preferredWindowDays {
+            guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
+
+            if let hrv = await loadOvernightMedianQuantity(
+                identifier: .heartRateVariabilitySDNN,
+                unit: HKUnit.secondUnit(with: .milli),
+                for: pastDate
+            ) {
+                hrvValues.append(hrv)
+            }
+
+            if let rhr = await loadOvernightMedianQuantity(
+                identifier: .restingHeartRate,
+                unit: HKUnit.count().unitDivided(by: .minute()),
+                for: pastDate
+            ) {
+                rhrValues.append(rhr)
+            }
+        }
+
+        return RecoveryPhysiologyBaseline(
+            hrvMedian: RecoveryScoreEngine.medianBaseline(hrvValues),
+            hrvSampleCount: hrvValues.count,
+            restingHeartRateMedian: RecoveryScoreEngine.medianBaseline(rhrValues),
+            restingHeartRateSampleCount: rhrValues.count,
+            windowDays: RecoveryPhysiologyBaseline.preferredWindowDays
+        )
+    }
+
+    func loadPriorDayLoad(for date: Date) async -> RecoveryPriorDayLoad {
+        guard let priorDate = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date)) else {
+            return .empty
+        }
+
+        let dayStart = calendar.startOfDay(for: priorDate)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? priorDate
+
+        async let exerciseMinutes = loadDaySum(
+            identifier: .appleExerciseTime,
+            unit: .minute(),
+            start: dayStart,
+            end: dayEnd
+        )
+        async let activeCalories = loadDaySum(
+            identifier: .activeEnergyBurned,
+            unit: .kilocalorie(),
+            start: dayStart,
+            end: dayEnd
+        )
+        async let workouts = loadWorkouts(start: dayStart, end: dayEnd)
+
+        let resolvedExercise = Int(await exerciseMinutes.rounded())
+        let resolvedWorkouts = await workouts
+
+        return RecoveryPriorDayLoad(
+            exerciseMinutes: resolvedExercise,
+            activeCalories: await activeCalories,
+            workoutCount: resolvedWorkouts.count
         )
     }
 
@@ -135,7 +244,7 @@ final class RecoveryHealthKitProvider {
         }
     }
 
-    private func loadLatestQuantity(
+    private func loadOvernightMedianQuantity(
         identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         for date: Date
@@ -152,27 +261,72 @@ final class RecoveryHealthKitProvider {
             options: []
         )
 
-        let sort = NSSortDescriptor(
-            key: HKSampleSortIdentifierEndDate,
-            ascending: false
-        )
-
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: type,
                 predicate: predicate,
-                limit: 1,
-                sortDescriptors: [sort]
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
             ) { _, samples, error in
                 guard error == nil else {
                     continuation.resume(returning: nil)
                     return
                 }
 
-                let sample = samples?.first as? HKQuantitySample
-                let value = sample?.quantity.doubleValue(for: unit)
+                let values = (samples as? [HKQuantitySample] ?? []).map {
+                    $0.quantity.doubleValue(for: unit)
+                }.filter { $0 > 0 }
 
+                continuation.resume(returning: RecoveryScoreEngine.medianBaseline(values))
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func loadDaySum(
+        identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else {
+            return 0
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, statistics, _ in
+                let value = statistics?.sumQuantity()?.doubleValue(for: unit) ?? 0
                 continuation.resume(returning: value)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func loadWorkouts(start: Date, end: Date) async -> [HKWorkout] {
+        let workoutType = HKObjectType.workoutType()
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                guard error == nil else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                continuation.resume(returning: samples as? [HKWorkout] ?? [])
             }
 
             healthStore.execute(query)
@@ -254,6 +408,7 @@ final class RecoveryHealthKitProvider {
                 awakeningsCount: 0,
                 restingHeartRate: restingHeartRate,
                 hrv: hrv,
+                recoveryInput: nil,
                 insightTitle: "No sleep detected",
                 insightText: "Apple Health does not have sleep data for this night.",
                 actionTitle: "Recommended",
@@ -354,8 +509,6 @@ final class RecoveryHealthKitProvider {
             awakenings: awakenings
         )
 
-        // Recovery score is the single source of truth from HealthManager.
-        // RecoveryDetailsViewModel will inject score + breakdown using withRecovery(...).
         let placeholderRecoveryScore = 0
 
         let insight = makeInsight(
@@ -383,6 +536,7 @@ final class RecoveryHealthKitProvider {
             awakeningsCount: awakenings,
             restingHeartRate: restingHeartRate,
             hrv: hrv,
+            recoveryInput: nil,
             insightTitle: insight.title,
             insightText: insight.text,
             actionTitle: insight.actionTitle,

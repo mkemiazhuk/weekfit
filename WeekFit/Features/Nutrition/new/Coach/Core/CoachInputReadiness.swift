@@ -122,6 +122,10 @@ enum CoachInputReadiness {
         input.recoveryContext.recoveryPercent > 0 || input.recoveryContext.sleepHours > 0
     }
 
+    private static func resolvedSleepHours(for input: CoachInputSnapshot) -> Double {
+        max(input.recoveryContext.sleepHours, input.brain.metrics.sleepHours)
+    }
+
     private static func appendFullRecoveryChecks(
         input: CoachInputSnapshot,
         satisfied: inout [String],
@@ -133,7 +137,7 @@ enum CoachInputReadiness {
             blocked.append("recoveryPlaceholder")
         }
 
-        if input.recoveryContext.sleepHours > 0 && input.brain.metrics.sleepHours > 0 {
+        if input.recoveryContext.sleepHours > 0 && resolvedSleepHours(for: input) > 0 {
             satisfied.append("sleepHours")
         } else {
             blocked.append("sleepPlaceholder")

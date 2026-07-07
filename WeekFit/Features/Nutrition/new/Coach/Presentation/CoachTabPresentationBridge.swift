@@ -82,51 +82,18 @@ enum CoachTabPresentationBridge {
         pack: CoachCopyPack,
         semanticColor: CoachSemanticColor
     ) -> [CoachPresentationWhyRow] {
-        let input = CoachCopyBuildInput.from(result: engineResult)
-        let localizedLines = pack.supportingSignals.lines.map(localizedText)
-        let progress = RelativeProgressPolicy.evaluate(input: input)
-        var rows: [CoachPresentationWhyRow] = []
-        var index = 0
-
-        if progress.shouldSurfaceHydrationWhyRow, input.safetyAlert != .hydrationCritical, index < localizedLines.count,
-           !CoachConversationNutritionPolicy.shouldSuppress(context: engineResult.context) {
-            rows.append(CoachPresentationWhyRow(
-                title: localizedLines[index],
-                icon: "drop.fill",
-                color: CoachPalette.hydration
-            ))
-            index += 1
+        pack.supportingSignals.lines.map { line in
+            let title = localizedText(line)
+            let style = CoachWhyRowPresentation.resolve(
+                title: title,
+                semanticColor: semanticColor.uiColor
+            )
+            return CoachPresentationWhyRow(
+                title: title,
+                icon: style.icon,
+                color: style.color
+            )
         }
-
-        if progress.shouldSurfaceFuelWhyRow, input.safetyAlert != .fuelCritical, index < localizedLines.count,
-           !CoachConversationNutritionPolicy.shouldSuppress(context: engineResult.context) {
-            rows.append(CoachPresentationWhyRow(
-                title: localizedLines[index],
-                icon: "fork.knife",
-                color: CoachPalette.fueling
-            ))
-            index += 1
-        }
-
-        if shouldMentionDayLoadInWhyRows(input), index < localizedLines.count {
-            rows.append(CoachPresentationWhyRow(
-                title: localizedLines[index],
-                icon: "chart.bar.fill",
-                color: semanticColor.uiColor
-            ))
-            index += 1
-        }
-
-        while index < localizedLines.count {
-            rows.append(CoachPresentationWhyRow(
-                title: localizedLines[index],
-                icon: "info.circle.fill",
-                color: semanticColor.uiColor.opacity(0.85)
-            ))
-            index += 1
-        }
-
-        return rows
     }
 
     private static func dedupedWhyRows(
@@ -142,20 +109,28 @@ enum CoachTabPresentationBridge {
             hero.nextAction
         ].filter { !$0.isEmpty }
 
-        return rows.filter { row in
+        var accepted: [CoachPresentationWhyRow] = []
+
+        for row in rows {
             let title = row.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty else { return false }
+            guard !title.isEmpty else { continue }
 
             if heroTexts.contains(where: { CoachUIPresentationDedup.isNearDuplicate($0, title) }) {
-                return false
+                continue
             }
 
             if !safetyCritical, nutritionTopicDuplicated(row: row, heroTexts: heroTexts) {
-                return false
+                continue
             }
 
-            return true
+            if accepted.contains(where: { CoachUIPresentationDedup.isNearDuplicate($0.title, title) }) {
+                continue
+            }
+
+            accepted.append(row)
         }
+
+        return accepted
     }
 
     private static func nutritionTopicDuplicated(
@@ -198,18 +173,6 @@ enum CoachTabPresentationBridge {
         let lower = text.lowercased()
         return lower.contains("first meal is still ahead")
             || text.contains("Первый приём пищи ещё впереди")
-    }
-
-    private static func shouldMentionDayLoadInWhyRows(_ input: CoachCopyBuildInput) -> Bool {
-        guard input.dayLoad == .heavy || input.dayLoad == .extreme else { return false }
-        switch input.scenario {
-        case .morningReadiness, .stableDay, .tomorrowProtection,
-             .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled,
-             .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
-            return true
-        default:
-            return false
-        }
     }
 
     // MARK: - Formatting

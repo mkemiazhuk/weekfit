@@ -73,15 +73,15 @@ struct HealthAccessView: View {
 
         var qualityLabel: String {
             if qualityScore >= 4 && hasRecentSleep {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Отлично" : "Excellent"
+                return WeekFitLocalizedString("healthAccess.readiness.excellent")
             }
 
             if qualityScore >= 3 {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Хорошо" : "Good"
+                return WeekFitLocalizedString("healthAccess.readiness.good")
             }
 
             if qualityScore >= 2 {
-                return WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Частично" : "Partial"
+                return WeekFitLocalizedString("healthAccess.readiness.partial")
             }
 
             return WeekFitLocalizedString("healthAccess.status.needsSetup")

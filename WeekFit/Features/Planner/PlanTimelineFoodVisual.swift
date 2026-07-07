@@ -243,9 +243,9 @@ struct PlanTimelineNutritionAvatar: View {
         case .assetImage(let name, _):
             Image(name)
                 .resizable()
-                .scaledToFill()
+                .interpolation(.high)
+                .scaledToFit()
                 .frame(width: contentSize, height: contentSize)
-                .clipShape(Circle())
 
         case .localPhoto(let image, _):
             Image(uiImage: image)

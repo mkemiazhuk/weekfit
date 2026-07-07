@@ -42,6 +42,7 @@ extension CoachContext {
             minutesSinceEnd: minutesSinceEnd,
             dayReadiness: dayReadiness,
             lastCompletedSeriousActivityType: lastCompletedSeriousActivityType,
+            completedWalkToday: completedWalkToday,
             conversationPhase: resolution.phase,
             conversationPhaseReason: resolution.reason
         )

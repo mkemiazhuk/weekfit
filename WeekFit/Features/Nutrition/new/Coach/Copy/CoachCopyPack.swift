@@ -63,6 +63,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
     let minutesSinceEnd: Int?
     let conversationPhase: CoachConversationPhase
     let morningBriefFacts: CoachMorningBriefFacts?
+    let minutesUntilStart: Int?
+    let focusActivity: CoachPlannedActivitySummary?
     /// Presentation-only — false when user is still in a normal fasting / pre-first-meal window.
     let mealWindowOpen: Bool
     /// Presentation-only — heat, long activity, or critical dehydration risk.
@@ -92,7 +94,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         todayInsight: CoachTodayInsight,
         morningBriefFacts: CoachMorningBriefFacts? = nil
     ) -> CoachCopyBuildInput {
-        CoachCopyBuildInput(
+        let focusActivity = resolvedFocusActivity(context: context, morningBriefFacts: morningBriefFacts)
+        return CoachCopyBuildInput(
             scenario: resolution.scenario,
             modifiers: resolution.modifiers,
             athleteState: CoachAthleteStateResolver.resolve(context: context),
@@ -109,11 +112,21 @@ struct CoachCopyBuildInput: Equatable, Sendable {
             minutesSinceEnd: context.minutesSinceEnd,
             conversationPhase: context.conversationPhase,
             morningBriefFacts: morningBriefFacts,
+            minutesUntilStart: context.minutesUntilStart,
+            focusActivity: focusActivity,
             mealWindowOpen: CoachCopyMealWindowPolicy.isOpen(
                 context: context,
                 fuelState: context.fuelState
             )
         )
+    }
+
+    private static func resolvedFocusActivity(
+        context: CoachContext,
+        morningBriefFacts: CoachMorningBriefFacts?
+    ) -> CoachPlannedActivitySummary? {
+        guard context.sessionPhase == .pre, context.focusSource == .upcoming else { return nil }
+        return morningBriefFacts?.nextActivity
     }
 
     init(
@@ -133,6 +146,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         minutesSinceEnd: Int? = nil,
         conversationPhase: CoachConversationPhase = .steady,
         morningBriefFacts: CoachMorningBriefFacts? = nil,
+        minutesUntilStart: Int? = nil,
+        focusActivity: CoachPlannedActivitySummary? = nil,
         mealWindowOpen: Bool = true,
         dehydrationRisk: Bool = false
     ) {
@@ -152,6 +167,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         self.minutesSinceEnd = minutesSinceEnd
         self.conversationPhase = conversationPhase
         self.morningBriefFacts = morningBriefFacts
+        self.minutesUntilStart = minutesUntilStart
+        self.focusActivity = focusActivity
         self.mealWindowOpen = mealWindowOpen
         self.dehydrationRisk = dehydrationRisk
     }

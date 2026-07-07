@@ -109,25 +109,31 @@ final class CustomMealsXCTests: XCTestCase {
     }
 
     func testIngredientBasedMealCalculationUpdatesWhenGramsChange() throws {
-        let rice = try XCTUnwrap(MealBuilderDemoData.ingredients.first { $0.id == "base_rice" })
-        let chicken = try XCTUnwrap(MealBuilderDemoData.ingredients.first { $0.id == "protein_chicken" })
+        let oatmeal = try XCTUnwrap(MealBuilderDemoData.ingredients.first { $0.id == "base_oatmeal" })
+        let broccoli = try XCTUnwrap(MealBuilderDemoData.ingredients.first { $0.id == "veg_broccoli" })
 
         let firstSelection = [
-            SelectedBuilderIngredient(ingredient: rice, grams: 150),
-            SelectedBuilderIngredient(ingredient: chicken, grams: 160)
+            SelectedBuilderIngredient(ingredient: oatmeal, grams: 80),
+            SelectedBuilderIngredient(ingredient: broccoli, grams: 100)
         ]
 
         let editedSelection = [
-            SelectedBuilderIngredient(ingredient: rice, grams: 200),
-            SelectedBuilderIngredient(ingredient: chicken, grams: 160)
+            SelectedBuilderIngredient(ingredient: oatmeal, grams: 120),
+            SelectedBuilderIngredient(ingredient: broccoli, grams: 100)
         ]
 
         let firstCalories = firstSelection.reduce(0) { $0 + $1.calories }
         let editedCalories = editedSelection.reduce(0) { $0 + $1.calories }
 
-        XCTAssertEqual(firstCalories, 459)
-        XCTAssertEqual(editedCalories, 524)
+        XCTAssertEqual(firstCalories, 346)
+        XCTAssertEqual(editedCalories, 502)
         XCTAssertGreaterThan(editedCalories, firstCalories)
+
+        let firstFiber = firstSelection.reduce(0) { $0 + $1.fiber }
+        let editedFiber = editedSelection.reduce(0) { $0 + $1.fiber }
+        XCTAssertEqual(firstFiber, 11)
+        XCTAssertEqual(editedFiber, 16)
+        XCTAssertGreaterThan(editedFiber, firstFiber)
     }
 
     func testCustomIngredientStorageRoundTrip() {
@@ -158,7 +164,34 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(decoded.first?.title, "Homemade Granola")
         XCTAssertEqual(decoded.first?.defaultGrams, 45)
         XCTAssertEqual(decoded.first?.caloriesPer100g, 410)
+        XCTAssertEqual(decoded.first?.fiberPer100g, 7)
         XCTAssertTrue(CustomIngredientStore.hasDuplicateTitle(" homemade granola ", in: decoded))
+    }
+
+    func testCustomIngredientDecodeDefaultsMissingFiberToZero() throws {
+        let legacyJSON = """
+        [{
+            "id": "legacy_ingredient",
+            "title": "Legacy Base",
+            "imageName": "",
+            "category": "base",
+            "defaultGrams": 100,
+            "caloriesPer100g": 120,
+            "proteinPer100g": 4,
+            "carbsPer100g": 20,
+            "fatsPer100g": 1,
+            "visualSize": 90,
+            "visualDensity": 1.0,
+            "supportsStandalonePresentation": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "rotation": 0,
+            "zIndex": 1
+        }]
+        """
+
+        let decoded = try JSONDecoder().decode([MealBuilderIngredient].self, from: Data(legacyJSON.utf8))
+        XCTAssertEqual(decoded.first?.fiberPer100g, 0)
     }
 
     func testCustomMealStorageRoundTripKeepsNewMetadata() {

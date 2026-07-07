@@ -61,7 +61,7 @@ struct PlanRow: View {
                 
                 // Текст
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(activity.title)
+                    Text(PlannerOptionLocalization.localizedTitle(for: activity.title))
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                     

@@ -75,6 +75,34 @@ struct CoachScenarioModifiers: Equatable, Sendable {
     let stackedDayActiveRisk: Bool
     /// Latest completed serious activity today — idle post-training `stableDay` copy.
     let lastCompletedActivityType: CoachActivityType
+    /// Completed walk logged today — avoids duplicate evening walk prompts.
+    let completedWalkToday: Bool
+
+    init(
+        dayLoad: CoachDayLoadBand,
+        fuelBehind: Bool,
+        hydrationBehind: Bool,
+        tomorrowDemand: CoachTomorrowDemand,
+        activityType: CoachActivityType,
+        durationBand: CoachDurationBand,
+        completedSeriousActivities: CoachCompletedSeriousActivities,
+        timeOfDay: CoachTimeOfDay,
+        stackedDayActiveRisk: Bool,
+        lastCompletedActivityType: CoachActivityType,
+        completedWalkToday: Bool = false
+    ) {
+        self.dayLoad = dayLoad
+        self.fuelBehind = fuelBehind
+        self.hydrationBehind = hydrationBehind
+        self.tomorrowDemand = tomorrowDemand
+        self.activityType = activityType
+        self.durationBand = durationBand
+        self.completedSeriousActivities = completedSeriousActivities
+        self.timeOfDay = timeOfDay
+        self.stackedDayActiveRisk = stackedDayActiveRisk
+        self.lastCompletedActivityType = lastCompletedActivityType
+        self.completedWalkToday = completedWalkToday
+    }
 
     static func from(context: CoachContext, scenario: CoachScenarioKey) -> CoachScenarioModifiers {
         let suppressNutrition = CoachConversationNutritionPolicy.shouldSuppress(context: context)
@@ -88,7 +116,8 @@ struct CoachScenarioModifiers: Equatable, Sendable {
             completedSeriousActivities: context.completedSeriousActivities,
             timeOfDay: context.timeOfDay,
             stackedDayActiveRisk: CoachStackedDayRisk.isActive(context: context, scenario: scenario),
-            lastCompletedActivityType: context.lastCompletedSeriousActivityType
+            lastCompletedActivityType: context.lastCompletedSeriousActivityType,
+            completedWalkToday: context.completedWalkToday
         )
     }
 }

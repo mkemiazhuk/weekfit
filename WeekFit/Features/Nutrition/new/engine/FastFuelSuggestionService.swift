@@ -64,7 +64,7 @@ final class FastFuelSuggestionService {
             if !isLateNight {
                 return [
                     FastFuelItem(
-                        imageName: "figure.walk",
+                        imageName: "recovery-walk",
                         title: "Title",
                         amount: "Amount",
                         reason: "Surplus",
@@ -72,7 +72,7 @@ final class FastFuelSuggestionService {
                         caloriesPer100g: 0.0, proteinPer100g: 0.0, carbsPer100g: 0.0, fatsPer100g: 0.0, standardWeightGrams: 0.0
                     ),
                     FastFuelItem(
-                        imageName: "water-bottle",
+                        imageName: "ingredient-water",
                         title: "Title",
                         amount: "Amount500",
                         reason: "Flush",
@@ -84,7 +84,7 @@ final class FastFuelSuggestionService {
                 // Если перебор глубокой ночью — гулять не заставляем, даем чаек для разгрузки ЖКТ
                 return [
                     FastFuelItem(
-                        imageName: "tea",
+                        imageName: "ingredient-tea",
                         title: "Title",
                         amount: "Amount",
                         reason: "Before Sleep",
@@ -92,7 +92,7 @@ final class FastFuelSuggestionService {
                         caloriesPer100g: 1.0, proteinPer100g: 0.0, carbsPer100g: 0.2, fatsPer100g: 0.0, standardWeightGrams: 250.0
                     ),
                     FastFuelItem(
-                        imageName: "water-bottle",
+                        imageName: "ingredient-water",
                         title: "Title",
                         amount: "Amount300",
                         reason: "Small Flush",
@@ -508,13 +508,13 @@ private extension FastFuelSuggestionService {
     func fetchMasterProductPool() -> [FastFuelItem] {
         return [
             // ✅ ДОБАВЛЕНА ПРОГУЛКА В ОБЩИЙ ПУЛ РЕКОМЕНДАЦИЙ
-            FastFuelItem(imageName: "figure.walk", title: "Title", amount: "Amount", reason: "Carbs", tags: [.activeRecovery], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 0),
+            FastFuelItem(imageName: "recovery-walk", title: "Title", amount: "Amount", reason: "Carbs", tags: [.activeRecovery], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 0),
             
-            FastFuelItem(imageName: "water-bottle", title: "Title", amount: "Amount500", reason: "Hydrate", tags: [.hydration], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 500),
+            FastFuelItem(imageName: "ingredient-water", title: "Title", amount: "Amount500", reason: "Hydrate", tags: [.hydration], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 500),
             FastFuelItem(imageName: "protein-bar", title: "Title", amount: "Amount", reason: "Reason", tags: [.fastProtein], caloriesPer100g: 380, proteinPer100g: 30, carbsPer100g: 25, fatsPer100g: 10, standardWeightGrams: 60),
-            FastFuelItem(imageName: "greek-yogurt", title: "Title", amount: "Amount200g", reason: "Reason", tags: [.slowProtein, .fermented], caloriesPer100g: 73, proteinPer100g: 10, carbsPer100g: 4, fatsPer100g: 2, standardWeightGrams: 200),
-            FastFuelItem(imageName: "kefir", title: "Title", amount: "Amount Glass", reason: "Smooth", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 250),
-            FastFuelItem(imageName: "tea", title: "Title", amount: "Amount", reason: "Baseline", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250)
+            FastFuelItem(imageName: "ingredient-greek-yogurt", title: "Title", amount: "Amount200g", reason: "Reason", tags: [.slowProtein, .fermented], caloriesPer100g: 73, proteinPer100g: 10, carbsPer100g: 4, fatsPer100g: 2, standardWeightGrams: 200),
+            FastFuelItem(imageName: "ingredient-kefir", title: "Title", amount: "Amount Glass", reason: "Smooth", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 250),
+            FastFuelItem(imageName: "ingredient-tea", title: "Title", amount: "Amount", reason: "Baseline", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250)
         ]
     }
 }
@@ -534,38 +534,38 @@ private extension FastFuelSuggestionService {
         if brain?.fuel == .overfueled || decision?.primaryStrategy == .overload {
             return [
                 FastFuelItem(
-                    imageName: "tea", title: "Title", amount: "Amount", reason: "Digestive", tags: [.hydration],
+                    imageName: "ingredient-tea", title: "Title", amount: "Amount", reason: "Digestive", tags: [.hydration],
                     caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250
                 )
             ]
         }
 
         if decision?.needsElectrolytesInsteadOfWater == true {
-            nightItems.append(FastFuelItem(imageName: "kefir", title: "Title", amount: "Amount200ml", reason: "Mineral", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200))
+            nightItems.append(FastFuelItem(imageName: "ingredient-kefir", title: "Title", amount: "Amount200ml", reason: "Mineral", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200))
         }
 
         if decision?.suppressHydrationAdvice != true && decision?.needsElectrolytesInsteadOfWater != true && brain?.hydration != .completed && brain?.hydration != .excessive {
-            nightItems.append(FastFuelItem(imageName: "tea", title: "Title", amount: "Amount", reason: "Sleep", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250))
+            nightItems.append(FastFuelItem(imageName: "ingredient-tea", title: "Title", amount: "Amount", reason: "Sleep", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250))
         }
 
         if waterDeficit > 0.3 && decision?.suppressHydrationAdvice != true && decision?.needsElectrolytesInsteadOfWater != true && brain?.hydration != .completed && brain?.hydration != .excessive {
-            nightItems.append(FastFuelItem(imageName: "water-bottle", title: "Title", amount: "Amount300", reason: "Small Hydration", tags: [.hydration], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 300))
+            nightItems.append(FastFuelItem(imageName: "ingredient-water", title: "Title", amount: "Amount300", reason: "Small Hydration", tags: [.hydration], caloriesPer100g: 0, proteinPer100g: 0, carbsPer100g: 0, fatsPer100g: 0, standardWeightGrams: 300))
         }
 
         if proteinDeficit > 20 {
-            nightItems.append(FastFuelItem(imageName: "kefir", title: "Title", amount: "Amount200ml", reason: "Night Protein", tags: [.fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200))
+            nightItems.append(FastFuelItem(imageName: "ingredient-kefir", title: "Title", amount: "Amount200ml", reason: "Night Protein", tags: [.fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200))
         }
 
-        nightItems.append(FastFuelItem(imageName: "greek-yogurt", title: "Title", amount: "Amount100g", reason: "Reason", tags: [.slowProtein], caloriesPer100g: 121, proteinPer100g: 16, carbsPer100g: 3, fatsPer100g: 5, standardWeightGrams: 100))
+        nightItems.append(FastFuelItem(imageName: "ingredient-greek-yogurt", title: "Title", amount: "Amount100g", reason: "Reason", tags: [.slowProtein], caloriesPer100g: 121, proteinPer100g: 16, carbsPer100g: 3, fatsPer100g: 5, standardWeightGrams: 100))
 
         return nightItems
     }
 
     func fetchNightBackupPool() -> [FastFuelItem] {
         return [
-            FastFuelItem(imageName: "tea", title: "Title", amount: "Amount", reason: "Sleep", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250),
-            FastFuelItem(imageName: "kefir", title: "Title", amount: "Amount200ml", reason: "Night Protein", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200),
-            FastFuelItem(imageName: "greek-yogurt", title: "Title", amount: "Amount100g", reason: "Reason", tags: [.slowProtein], caloriesPer100g: 121, proteinPer100g: 16, carbsPer100g: 3, fatsPer100g: 5, standardWeightGrams: 100)
+            FastFuelItem(imageName: "ingredient-tea", title: "Title", amount: "Amount", reason: "Sleep", tags: [.hydration], caloriesPer100g: 1, proteinPer100g: 0, carbsPer100g: 0.2, fatsPer100g: 0, standardWeightGrams: 250),
+            FastFuelItem(imageName: "ingredient-kefir", title: "Title", amount: "Amount200ml", reason: "Night Protein", tags: [.electrolytes, .fermented, .slowProtein], caloriesPer100g: 40, proteinPer100g: 3, carbsPer100g: 4, fatsPer100g: 1, standardWeightGrams: 200),
+            FastFuelItem(imageName: "ingredient-greek-yogurt", title: "Title", amount: "Amount100g", reason: "Reason", tags: [.slowProtein], caloriesPer100g: 121, proteinPer100g: 16, carbsPer100g: 3, fatsPer100g: 5, standardWeightGrams: 100)
         ]
     }
 

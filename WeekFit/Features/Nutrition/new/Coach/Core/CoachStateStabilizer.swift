@@ -3,7 +3,7 @@ import Foundation
 enum CoachStateStabilizer {
     private static let lock = NSLock()
     private static var syncSettlingUntilBySurface: [String: Date] = [:]
-    private static let stabilizationInterval: TimeInterval = 0.55
+    static let stabilizationInterval: TimeInterval = 0.55
 
     static func markSyncEvent(source: String) {
         let normalized = source.lowercased()
@@ -55,6 +55,8 @@ enum CoachStateStabilizer {
     private static func isRealityChangeSource(_ source: String) -> Bool {
         source.contains("plannedactivities.removed") ||
             source.contains("plannedactivitiesreset") ||
+            source.contains("planneractivitydelete") ||
+            source.contains("plannedactivitieschanged") ||
             source.contains("languagechange") ||
             source.contains("logout") ||
             source.contains("dayrollover") ||

@@ -12,7 +12,8 @@
     "fats": 0,
     "defaultServingAmount": 250,
     "servingUnit": "milliliters",
-    "mlPerServing": 250
+    "mlPerServing": 250,
+    "fiber": 0
   },
   {
     "id": "drink_coffee",
@@ -27,7 +28,8 @@
     "fats": 0,
     "defaultServingAmount": 240,
     "servingUnit": "milliliters",
-    "mlPerServing": 240
+    "mlPerServing": 240,
+    "fiber": 0
   },
   {
     "id": "drink_tea",
@@ -42,7 +44,8 @@
     "fats": 0,
     "defaultServingAmount": 240,
     "servingUnit": "milliliters",
-    "mlPerServing": 240
+    "mlPerServing": 240,
+    "fiber": 0
   },
   {
     "id": "drink_milk",
@@ -57,7 +60,8 @@
     "fats": 5,
     "defaultServingAmount": 250,
     "servingUnit": "milliliters",
-    "mlPerServing": 250
+    "mlPerServing": 250,
+    "fiber": 0
   },
   {
     "id": "drink_orange_juice",
@@ -72,7 +76,8 @@
     "fats": 0,
     "defaultServingAmount": 250,
     "servingUnit": "milliliters",
-    "mlPerServing": 250
+    "mlPerServing": 250,
+    "fiber": 1
   },
   {
     "id": "drink_protein_shake",
@@ -87,7 +92,8 @@
     "fats": 3,
     "defaultServingAmount": 330,
     "servingUnit": "milliliters",
-    "mlPerServing": 330
+    "mlPerServing": 330,
+    "fiber": 1
   },
   {
     "id": "drink_tomato_juice",
@@ -102,7 +108,8 @@
     "fats": 0,
     "defaultServingAmount": 250,
     "servingUnit": "milliliters",
-    "mlPerServing": 250
+    "mlPerServing": 250,
+    "fiber": 1
   },
   {
     "id": "snack_banana",
@@ -117,7 +124,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 118
+    "gramsPerServing": 118,
+    "fiber": 3
   },
   {
     "id": "snack_apple",
@@ -132,7 +140,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 182
+    "gramsPerServing": 182,
+    "fiber": 4
   },
   {
     "id": "snack_orange",
@@ -147,7 +156,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 131
+    "gramsPerServing": 131,
+    "fiber": 3
   },
   {
     "id": "snack_greek_yogurt",
@@ -162,7 +172,8 @@
     "fats": 5,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 170
+    "gramsPerServing": 170,
+    "fiber": 0
   },
   {
     "id": "snack_protein_bar",
@@ -177,7 +188,8 @@
     "fats": 7,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 60
+    "gramsPerServing": 60,
+    "fiber": 3
   },
   {
     "id": "snack_mixed_nuts",
@@ -192,7 +204,8 @@
     "fats": 16,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 28
+    "gramsPerServing": 28,
+    "fiber": 2
   },
   {
     "id": "snack_dark_chocolate",
@@ -207,7 +220,8 @@
     "fats": 12,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 30
+    "gramsPerServing": 30,
+    "fiber": 2
   },
   {
     "id": "snack_rice_cakes",
@@ -222,7 +236,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 18
+    "gramsPerServing": 18,
+    "fiber": 0
   },
   {
     "id": "drink_iced_coffee",
@@ -237,7 +252,56 @@
     "fats": 2,
     "defaultServingAmount": 350,
     "servingUnit": "milliliters",
-    "mlPerServing": 350
+    "mlPerServing": 350,
+    "fiber": 0
+  },
+  {
+    "id": "drink_kefir",
+    "title": "Kefir",
+    "subtitle": "Probiotic dairy drink",
+    "category": "drink",
+    "imageName": "ingredient-kefir",
+    "icon": "takeoutbag.and.cup.and.straw.fill",
+    "calories": 100,
+    "protein": 8,
+    "carbs": 12,
+    "fats": 2,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250,
+    "fiber": 0
+  },
+  {
+    "id": "drink_espresso",
+    "title": "Espresso",
+    "subtitle": "Strong coffee shot",
+    "category": "drink",
+    "imageName": "ingredient-espresso",
+    "icon": "cup.and.saucer.fill",
+    "calories": 3,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0,
+    "defaultServingAmount": 30,
+    "servingUnit": "milliliters",
+    "mlPerServing": 30,
+    "fiber": 0
+  },
+  {
+    "id": "drink_tonic",
+    "title": "Tonic",
+    "subtitle": "Light sparkling refreshment",
+    "category": "drink",
+    "imageName": "ingredient-tonic",
+    "icon": "bubbles.and.sparkles.fill",
+    "calories": 80,
+    "protein": 0,
+    "carbs": 21,
+    "fats": 0,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250,
+    "fiber": 0
   },
   {
     "id": "snack_nectarine",
@@ -252,7 +316,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 140
+    "gramsPerServing": 140,
+    "fiber": 2
   },
   {
     "id": "snack_peach",
@@ -267,7 +332,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 150
+    "gramsPerServing": 150,
+    "fiber": 2
   },
   {
     "id": "snack_watermelon",
@@ -282,7 +348,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 280
+    "gramsPerServing": 280,
+    "fiber": 1
   },
   {
     "id": "snack_strawberries",
@@ -297,7 +364,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 150
+    "gramsPerServing": 150,
+    "fiber": 3
   },
   {
     "id": "snack_blueberries",
@@ -312,7 +380,8 @@
     "fats": 0,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 150
+    "gramsPerServing": 150,
+    "fiber": 4
   },
   {
     "id": "snack_ice_cream",
@@ -327,7 +396,8 @@
     "fats": 11,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 100
+    "gramsPerServing": 100,
+    "fiber": 0
   },
   {
     "id": "snack_cookies",
@@ -342,7 +412,8 @@
     "fats": 7,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 35
+    "gramsPerServing": 35,
+    "fiber": 1
   },
   {
     "id": "snack_croissant",
@@ -357,7 +428,8 @@
     "fats": 12,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 60
+    "gramsPerServing": 60,
+    "fiber": 1
   },
   {
     "id": "snack_muffin",
@@ -372,6 +444,7 @@
     "fats": 12,
     "defaultServingAmount": 1,
     "servingUnit": "portion",
-    "gramsPerServing": 90
+    "gramsPerServing": 90,
+    "fiber": 2
   }
 ]

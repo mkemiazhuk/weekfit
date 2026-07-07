@@ -79,39 +79,9 @@ struct QuickLogRowView<ImageContent: View>: View {
 
     private var mealImage: some View {
         ZStack {
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-            .fill(WeekFitTheme.whiteOpacity(0.04))
-
             imageContent()
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.04),
-                    Color.black.opacity(0.16)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .blendMode(.multiply)
-            .allowsHitTesting(false)
         }
         .frame(width: QuickLogRowMetrics.imageSize, height: QuickLogRowMetrics.imageSize)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: QuickLogRowMetrics.imageCornerRadius,
-                style: .continuous
-            )
-            .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
     }
 }
 

@@ -23,12 +23,18 @@ enum CoachStableDayProfile: String, Equatable, Sendable, CaseIterable {
         guard scenario == .stableDay else { return nil }
 
         if modifiers.completedSeriousActivities == .none,
+           modifiers.tomorrowDemand != .none {
+            return .tomorrowReserve
+        }
+
+        if modifiers.completedSeriousActivities == .none,
            dayReadiness.recoveryDataAvailable,
            dayReadiness.isLowRecovery || dayReadiness.sleepIsLow {
             return .lowRecoveryRest
         }
 
-        if modifiers.tomorrowDemand == .moderate || modifiers.tomorrowDemand == .hard {
+        if modifiers.completedSeriousActivities != .none,
+           modifiers.tomorrowDemand == .moderate || modifiers.tomorrowDemand == .hard {
             return .tomorrowReserve
         }
 
@@ -81,10 +87,17 @@ enum CoachStableDayPresentation {
         timeOfDay: CoachTimeOfDay,
         hadHeavyYesterday: Bool = false,
         completedRecoveryWalkToday: Bool = false,
+        tomorrowWorkoutTitle: String? = nil,
         russian: Bool
     ) -> String {
         switch profile {
         case .emptyDay:
+            if completedRecoveryWalkToday,
+               CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+                return russian
+                    ? "Прогулка уже есть — вечер можно провести спокойно."
+                    : "Walk is already in — keep the evening calm."
+            }
             return russian
                 ? "Маленькие шаги лучше, чем наверстывать позже."
                 : "Small steps beat a late catch-up."
@@ -105,9 +118,10 @@ enum CoachStableDayPresentation {
                 ? "Сегодня лучше без лишней интенсивности."
                 : "Keep optional intensity off the table today."
         case .tomorrowReserve:
-            return russian
-                ? "Берегите силы на завтра."
-                : "Hold reserve for tomorrow's session."
+            return CoachWorkoutTitleLocalization.tomorrowReserveTeaser(
+                rawTitle: tomorrowWorkoutTitle ?? "",
+                russian: russian
+            )
         case .workBanked:
             if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
@@ -175,7 +189,28 @@ enum CoachStableDayCopy {
     }
 
     private static func emptyDayPack(input: CoachCopyBuildInput) -> BasePack {
-        BasePack(
+        if CoachConversationSemanticTimingAudit.Context.completedRecoveryWalkToday(input),
+           CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
+            return BasePack(
+                assessment: .single(.en(
+                    "The walk is already in — the day can settle calmly.",
+                    "Прогулка уже есть — день можно завершить спокойно."
+                )),
+                recommendation: .single(.en(
+                    "Keep the rest of the day unhurried — sleep matters more than extra steps.",
+                    "Остаток дня без спешки — сон важнее лишних шагов."
+                )),
+                avoid: .single(.en(
+                    "Do not force another walk just to chase the activity ring.",
+                    "Не идите ещё раз только ради кольца активности."
+                )),
+                nextAction: .single(CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
+                    mealWindowOpen: input.mealWindowOpen
+                ))
+            )
+        }
+
+        return BasePack(
             assessment: .single(.en(
                 "Nothing urgent is pulling the day off balance.",
                 "День идёт спокойно — ничего срочного."
@@ -281,15 +316,30 @@ enum CoachStableDayCopy {
         if input.modifiers.completedSeriousActivities != .none {
             return tomorrowReserveAfterWorkPack(input: input)
         }
-        return tomorrowReserveFreshPack()
+        return tomorrowReserveFreshPack(input: input)
     }
 
-    private static func tomorrowReserveFreshPack() -> BasePack {
-        BasePack(
-            assessment: .single(.en(
+    private static func tomorrowReserveFreshPack(input: CoachCopyBuildInput) -> BasePack {
+        let workoutTitle = input.tomorrowWorkout?
+            .title
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        let assessment: CoachBilingualText
+        if !workoutTitle.isEmpty {
+            let copy = CoachWorkoutTitleLocalization.tomorrowMainSessionAssessment(
+                rawTitle: workoutTitle,
+                quietDayEmphasis: input.dayReadiness.sleepIsLow || input.dayReadiness.isLowRecovery
+            )
+            assessment = .en(copy.english, copy.russian)
+        } else {
+            assessment = .en(
                 "Tomorrow brings your biggest effort — today is about arriving ready.",
                 "Завтра вас ждёт основная нагрузка — сегодня важно подойти к ней свежим."
-            )),
+            )
+        }
+
+        return BasePack(
+            assessment: .single(assessment),
             recommendation: .single(.en(
                 "Focus on recovery instead of trying to fit in one more workout.",
                 "Сегодня лучше сосредоточиться на восстановлении, а не пытаться успеть ещё одну тренировку."

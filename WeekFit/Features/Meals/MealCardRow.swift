@@ -153,10 +153,13 @@ struct MealCardRow: View {
             } else if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealImage(items)
 
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
-                Image(meal.imageName)
-                    .resizable()
-                    .scaledToFill()
+            } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
+                PremiumAssetImage(
+                    imageName: meal.imageName,
+                    style: .mealCard,
+                    accentColor: textTertiary,
+                    fallbackSystemName: "fork.knife"
+                )
 
             } else {
                 RoundedRectangle(cornerRadius: isQuickLogMode ? 18 : 12)

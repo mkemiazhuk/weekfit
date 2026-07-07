@@ -212,30 +212,22 @@ struct ManualMealFormView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
 
-                Spacer(minLength: 0)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
-                        Text(caloriesDisplay)
-                            .font(.system(size: 20.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(accent)
-                            .tracking(-0.25)
-
-                        Text(WeekFitLocalizedString("common.unit.kcal"))
-                            .font(.system(size: 12.2, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textSecondary.opacity(0.82))
-                            .padding(.bottom, 2)
-                    }
-
-                    macroSummaryLine
-                }
+                MealNutritionSummaryStrip(
+                    calories: intValue(calories),
+                    protein: intValue(protein),
+                    carbs: intValue(carbs),
+                    fats: intValue(fats),
+                    fiber: intValue(fiber),
+                    accent: accent,
+                    style: .embedded
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 108)
+        .frame(height: 112)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
@@ -255,47 +247,6 @@ struct ManualMealFormView: View {
                 .stroke(WeekFitTheme.whiteOpacity(0.075), lineWidth: 1)
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 13, y: 6)
-    }
-
-    private var macroSummaryLine: some View {
-        HStack(spacing: 6) {
-            heroMacroLabel(
-                WeekFitLocalizedString("nutrition.macro.protein.short"),
-                value: proteinDisplay
-            )
-
-            heroMacroSeparator
-
-            heroMacroLabel(
-                WeekFitLocalizedString("nutrition.macro.carbs.short"),
-                value: carbsDisplay
-            )
-
-            heroMacroSeparator
-
-            heroMacroLabel(
-                WeekFitLocalizedString("nutrition.macro.fats.short"),
-                value: fatsDisplay
-            )
-        }
-        .font(.system(size: 13.6, weight: .semibold, design: .rounded))
-        .lineLimit(1)
-        .minimumScaleFactor(0.82)
-    }
-
-    private func heroMacroLabel(_ label: String, value: String) -> some View {
-        HStack(spacing: 3) {
-            Text(label)
-                .foregroundStyle(textPrimary.opacity(0.94))
-
-            Text("\(value)g")
-                .foregroundStyle(textSecondary.opacity(0.86))
-        }
-    }
-
-    private var heroMacroSeparator: some View {
-        Text("|")
-            .foregroundStyle(textSecondary.opacity(0.42))
     }
 
     private var ambientBackground: some View {
@@ -375,14 +326,18 @@ struct ManualMealFormView: View {
                         .scaledToFill()
                         .frame(width: 94, height: 84)
                 } else {
-                    VStack(spacing: 7) {
-                        Image(systemName: "camera.fill")
+                    VStack(spacing: 6) {
+                        Image(systemName: "barcode.viewfinder")
                             .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(textPrimary.opacity(0.82))
+                            .foregroundStyle(accent.opacity(0.88))
 
-                        Image(systemName: "photo")
-                            .font(.system(size: 14, weight: .semibold))
+                        Text(WeekFitLocalizedString("meals.foodForm.photoBarcodeShort"))
+                            .font(.system(size: 8.2, weight: .semibold, design: .rounded))
                             .foregroundStyle(textSecondary.opacity(0.72))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .padding(.horizontal, 2)
                     }
                 }
             }
@@ -642,13 +597,8 @@ struct ManualMealFormView: View {
 
     private var previewTitle: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "New Food" : trimmed
+        return trimmed.isEmpty ? WeekFitLocalizedString("meals.foodForm.preview.newFood") : trimmed
     }
-
-    private var caloriesDisplay: String { displayValue(calories) }
-    private var proteinDisplay: String { displayValue(protein) }
-    private var carbsDisplay: String { displayValue(carbs) }
-    private var fatsDisplay: String { displayValue(fats) }
 
     private func displayValue(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -685,6 +635,7 @@ struct ManualMealFormView: View {
                         pendingOriginalFilename = pendingFilename
                         selectedImage = nil
                         didRemovePhoto = false
+                        analyzePhotoForNutrition(storageImage)
                     }
                 }
             }
@@ -708,9 +659,59 @@ struct ManualMealFormView: View {
                     pendingOriginalFilename = pendingFilename
                     selectedImage = nil
                     didRemovePhoto = false
+                    analyzePhotoForNutrition(storageImage)
                 }
             }
         }
+    }
+
+    private func analyzePhotoForNutrition(_ image: UIImage) {
+        Task {
+            guard let estimate = await FoodPhotoNutritionAnalyzer.analyze(image) else { return }
+
+            let productImage = estimate.shouldReplacePhotoWithProductImage
+                ? await FoodPhotoNutritionAnalyzer.downloadProductImage(from: estimate.productImageURL)
+                : nil
+
+            await MainActor.run {
+                var didApply = false
+
+                if estimate.applyIfPossible(
+                    name: &name,
+                    servingGrams: &servingGrams,
+                    calories: &calories,
+                    protein: &protein,
+                    carbs: &carbs,
+                    fats: &fats,
+                    fiber: &fiber
+                ) {
+                    didApply = true
+                }
+
+                if let productImage,
+                   applyDownloadedProductPhoto(productImage) {
+                    didApply = true
+                }
+
+                if didApply {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+        }
+    }
+
+    private func applyDownloadedProductPhoto(_ image: UIImage) -> Bool {
+        let prepared = FoodPhotoNutritionAnalyzer.preparedMealPhoto(from: image)
+
+        if let pendingOriginalFilename {
+            MealPhotoStore.delete(filename: pendingOriginalFilename)
+        }
+
+        selectedThumbnailImage = prepared.thumbnail
+        pendingOriginalFilename = prepared.pendingFilename
+        selectedImage = nil
+        didRemovePhoto = false
+        return true
     }
 
     private func openCamera() {
@@ -755,6 +756,9 @@ struct ManualMealFormView: View {
 
     private func save() {
         let saveStart = Self.debugStart("save")
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
         guard isSaveEnabled else {
             validationMessage = WeekFitLocalizedString("meals.foodForm.validation.requiredFields")
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
