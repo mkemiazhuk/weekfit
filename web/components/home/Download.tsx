@@ -15,7 +15,7 @@ export default function Download() {
   const reduce = useReducedMotion();
 
   return (
-    <section id="download" className="relative px-5 py-24 md:px-6 md:py-36">
+    <section id="download" className="relative z-[1] px-5 py-24 md:px-6 md:py-36">
       <SectionAmbient tone="morning" />
       <div className="mx-auto max-w-5xl">
         <Reveal>

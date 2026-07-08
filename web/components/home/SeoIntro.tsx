@@ -23,7 +23,7 @@ export default function SeoIntro() {
     <section
       id="about"
       aria-labelledby="about-heading"
-      className="relative px-5 py-14 md:px-6 md:py-20"
+      className="relative z-[1] px-5 py-14 md:px-6 md:py-20"
     >
       <SectionAmbient tone="morning" />
       <div className="mx-auto max-w-6xl">

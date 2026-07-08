@@ -42,7 +42,7 @@ export default function Trust() {
   ];
 
   return (
-    <section id="privacy-teaser" className="relative px-6 py-24 md:py-32">
+    <section id="privacy-teaser" className="relative z-[1] px-6 py-24 md:py-32">
       <SectionAmbient tone="privacy" />
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-12 md:grid-cols-[0.85fr_1.15fr] md:items-start">

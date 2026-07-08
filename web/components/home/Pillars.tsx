@@ -41,7 +41,7 @@ export default function Pillars() {
   ];
 
   return (
-    <section id="pillars" className="relative px-6 py-24 md:py-36">
+    <section id="pillars" className="relative z-[1] px-6 py-24 md:py-36">
       <SectionAmbient tone="activity" />
       <div className="mx-auto max-w-6xl">
         <div className="max-w-2xl">

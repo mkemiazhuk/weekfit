@@ -44,7 +44,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-16 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pt-24"
+      className="relative z-0 isolate mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-28 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pb-16 md:pt-24"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
@@ -146,12 +146,12 @@ export default function Hero() {
           </div>
         </motion.div>
 
-        {/* Floating coach card */}
+        {/* Floating coach card — desktop only; journey section covers coach on mobile */}
         <motion.div
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={reduce ? { duration: 0 } : { duration: 0.9, ease, delay: 1.15 }}
-          className="absolute -bottom-4 -right-2 z-10 w-[220px] sm:-right-8 sm:w-[248px]"
+          className="absolute -bottom-4 -right-2 hidden w-[220px] md:block sm:-right-8 sm:w-[248px]"
         >
           <CoachCard
             accent={pillars.coach}

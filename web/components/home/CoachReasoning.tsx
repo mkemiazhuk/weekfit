@@ -49,7 +49,7 @@ export default function CoachReasoning() {
         };
 
   return (
-    <section id="reasoning" className="relative px-5 py-20 md:px-6 md:py-28">
+    <section id="reasoning" className="relative z-[1] px-5 py-20 md:px-6 md:py-28">
       <SectionAmbient tone="coach" />
       <div className="mx-auto max-w-2xl">
         <Reveal>

@@ -167,7 +167,7 @@ export default function JourneyStage() {
   }
 
   return (
-    <section id="experience" className="relative">
+    <section id="experience" className="relative z-[1]">
       <SectionAmbient tone={current.ambient} />
       <div className="mx-auto max-w-6xl px-6 md:grid md:grid-cols-2 md:gap-16">
         {/* Sticky morphing phone (desktop) */}
