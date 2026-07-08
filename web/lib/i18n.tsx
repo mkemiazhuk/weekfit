@@ -76,7 +76,8 @@ const en = {
     reason:
       "Cardiovascular recovery is excellent. Muscular fatigue from yesterday's ride remains elevated.",
     recommendationLabel: "Recommendation",
-    recommendation: "Move today. Push hard tomorrow.",
+    recommendationToday: "Move today.",
+    recommendationTomorrow: "Push hard tomorrow.",
   },
   seo: {
     kicker: "What is WeekFit",
@@ -238,7 +239,8 @@ const ru: Dict = {
     reason:
       "Сердечно-сосудистое восстановление отличное. Мышечная усталость после вчерашней поездки всё ещё повышена.",
     recommendationLabel: "Рекомендация",
-    recommendation: "Движение сегодня. Интенсив — завтра.",
+    recommendationToday: "Движение сегодня.",
+    recommendationTomorrow: "Интенсив — завтра.",
   },
   seo: {
     kicker: "Что такое WeekFit",
