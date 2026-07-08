@@ -4,14 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 const description =
-  "WeekFit release history and what's coming next — new features, improvements and fixes, one release at a time.";
+  "WeekFit release notes — new features, improvements and fixes.";
 
 export const metadata = pageMetadata({
   path: "/changelog",
   title: "Changelog",
   description,
-  socialTitle: "WeekFit Changelog — Release Notes",
-  keywords: ["WeekFit changelog", "WeekFit updates", "WeekFit release notes"],
 });
 
 export default function Page() {

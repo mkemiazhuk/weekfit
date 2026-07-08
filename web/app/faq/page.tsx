@@ -4,19 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { allFaqs, breadcrumbSchema, faqSchema } from "@/lib/schema";
 
 const description =
-  "Answers to common questions about WeekFit — the AI coach, recovery score, Apple Health integration, nutrition tracking, weekly planning and privacy.";
+  "Frequently asked questions about WeekFit — the AI coach, recovery score, Apple Health, nutrition tracking and privacy.";
 
 export const metadata = pageMetadata({
   path: "/faq",
   title: "FAQ",
   description,
-  socialTitle: "WeekFit FAQ — AI Coach, Recovery & Apple Health",
-  keywords: [
-    "WeekFit FAQ",
-    "AI fitness coach questions",
-    "recovery score explained",
-    "Apple Health app help",
-  ],
 });
 
 export default function Page() {

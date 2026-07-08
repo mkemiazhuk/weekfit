@@ -63,7 +63,7 @@ export default function Hero() {
           {...rise(0.4)}
           className="mt-9 flex flex-wrap items-center justify-center gap-3 md:justify-start"
         >
-          <Button href={SITE.testflightUrl} external>
+          <Button href={SITE.appInstallUrl} external>
             {t.cta.testflight}
           </Button>
           <Button href="#experience" variant="ghost">

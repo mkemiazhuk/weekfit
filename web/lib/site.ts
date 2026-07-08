@@ -9,42 +9,38 @@ export const SITE = {
   url: "https://weekfit.app",
   name: "WeekFit",
   shortName: "WeekFit",
-  title: "WeekFit — AI Fitness Coach for iPhone | Apple Health",
+  title: "WeekFit — AI Fitness Coach for iPhone",
   description:
-    "WeekFit is a calm AI fitness coach for iPhone. It reads your sleep, recovery, activity and nutrition from Apple Health, then tells you the one thing that matters today. Join the free TestFlight beta — private by design, no account required.",
+    "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
   slogan: "Your day, understood.",
-  // Primary + alternate locales (BCP-47 short codes for hreflang / inLanguage).
   defaultLocale: "en",
   locales: ["en", "ru"] as const,
-  // Planned localizations (architecture is ready; content pending).
   plannedLocales: ["pl"] as const,
-  // og:locale style tags.
   ogLocale: "en_US",
-  ogAltLocales: ["ru_RU"],
 
   email: "support@weekfit.app",
-  twitter: "@weekfit", // handle used for twitter:site / :creator (update if it changes)
+  twitter: "@weekfit", // twitter:site / :creator — update if the handle changes
 
-  // Public TestFlight beta (used until the App Store listing is live).
-  testflightUrl: "https://testflight.apple.com/join/t5TKwEff",
+  /**
+   * Single install destination for CTAs and SoftwareApplication.downloadUrl.
+   * At App Store launch, replace with the public App Store URL only here.
+   */
+  appInstallUrl: "https://testflight.apple.com/join/t5TKwEff",
 
-  // Entity corroboration for Knowledge Graph / AI search (add profiles as they launch).
-  sameAs: [
-    "https://testflight.apple.com/join/t5TKwEff",
-  ] as string[],
+  /**
+   * Official social / entity profiles (Organization.sameAs).
+   * Add URLs when accounts exist — do not use install links or placeholders.
+   */
+  sameAs: [] as string[],
 
-  // Fill in when the app ships to enable the Safari Smart App Banner.
-  // Example: "1234567890"
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",
 
-  // Search Console / Webmaster verification tokens (rendered only when set).
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
     bing: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION || "",
     yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || "",
   },
 
-  // Privacy-friendly analytics (rendered only when configured). Plausible preferred.
   analytics: {
     plausibleDomain: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "",
     plausibleSrc:
@@ -52,23 +48,6 @@ export const SITE = {
       "https://plausible.io/js/script.js",
     gaId: process.env.NEXT_PUBLIC_GA_ID || "",
   },
-
-  // Natural keyword set (used as sensible page defaults — never stuffed).
-  keywords: [
-    "WeekFit",
-    "AI fitness coach",
-    "Apple Health app",
-    "recovery tracking",
-    "recovery score",
-    "sleep analysis",
-    "nutrition tracking",
-    "workout planner",
-    "activity tracking",
-    "daily fitness coach",
-    "health dashboard",
-    "workout recovery",
-    "health coaching",
-  ],
 
   featureList: [
     "AI coach that reads recovery, activity, nutrition and sleep",

@@ -4,20 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, privacyPolicySchema } from "@/lib/schema";
 
 const description =
-  "How WeekFit handles your data: local-first, powered by Apple Health, never uploaded to a server, never sold, and never used for advertising.";
+  "How WeekFit handles your data: local-first storage, Apple Health integration, no server upload, no advertising, no data sales.";
 
 export const metadata = pageMetadata({
   path: "/privacy",
   title: "Privacy Policy",
   description,
-  socialTitle: "WeekFit Privacy Policy — Local-First & Apple Health",
-  keywords: [
-    "WeekFit privacy",
-    "Apple Health privacy",
-    "health data privacy",
-    "local-first fitness app",
-    "HealthKit privacy",
-  ],
 });
 
 export default function Page() {

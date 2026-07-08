@@ -29,7 +29,7 @@ export default function DownloadView() {
           <Reveal delay={0.1}>
             <div>
               <div className="mb-6 flex flex-col gap-2">
-                <Button href={SITE.testflightUrl} external>
+                <Button href={SITE.appInstallUrl} external>
                   {t.cta.testflight}
                 </Button>
                 <span className="text-[12px] uppercase tracking-[0.16em] text-white/40">

@@ -13,7 +13,7 @@ export default function SupportView() {
   const c = support[lang];
   const [query, setQuery] = useState("");
 
-  // Honor ?q= deep links (matches WebSite SearchAction schema).
+  // Honor ?q= deep links for shareable filtered FAQ views.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("q");
     if (q) setQuery(q);

@@ -73,7 +73,7 @@ export default function Nav() {
         <div className="flex items-center gap-3">
           <LangToggle />
           <a
-            href={SITE.testflightUrl}
+            href={SITE.appInstallUrl}
             target="_blank"
             rel="noreferrer"
             className="hidden rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-transform hover:-translate-y-0.5 sm:inline-block"
@@ -145,7 +145,7 @@ export default function Nav() {
                 ))}
               </ul>
               <a
-                href={SITE.testflightUrl}
+                href={SITE.appInstallUrl}
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setOpen(false)}

@@ -34,7 +34,7 @@ export default function Download() {
                 </p>
                 <div className="mt-9 flex flex-col items-center gap-6 md:items-start">
                   <div className="flex flex-col items-center gap-2 md:items-start">
-                    <Button href={SITE.testflightUrl} external>
+                    <Button href={SITE.appInstallUrl} external>
                       {t.cta.testflight}
                     </Button>
                     <span className="text-[12px] uppercase tracking-[0.16em] text-white/40">

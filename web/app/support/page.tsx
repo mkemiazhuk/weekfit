@@ -4,20 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 const description =
-  "WeekFit Help Center — setup guides and answers for Apple Health, recovery tracking, nutrition, activities, the AI Coach, planning and troubleshooting.";
+  "WeekFit Help Center — guides for Apple Health setup, recovery tracking, nutrition, the AI Coach and troubleshooting.";
 
 export const metadata = pageMetadata({
   path: "/support",
   title: "Support",
   description,
-  socialTitle: "WeekFit Help Center — Setup & Troubleshooting",
-  keywords: [
-    "WeekFit support",
-    "WeekFit help",
-    "Apple Health setup",
-    "recovery tracking help",
-    "fitness app troubleshooting",
-  ],
 });
 
 export default function Page() {

@@ -4,20 +4,13 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 const description =
-  "Join the WeekFit public beta on TestFlight for iPhone. A calm AI fitness coach built around Apple Health — private by design, free, no account required.";
+  "Install WeekFit on iPhone via TestFlight. An AI fitness coach that reads Apple Health data for recovery, activity and nutrition.";
 
 export const metadata = pageMetadata({
   path: "/download",
   title: "Download",
   description,
-  socialTitle: "Download WeekFit — Join the iPhone Beta",
-  keywords: [
-    "download WeekFit",
-    "WeekFit TestFlight",
-    "WeekFit iPhone app",
-    "AI fitness coach app",
-    "Apple Health fitness app",
-  ],
+  socialTitle: "Download WeekFit for iPhone",
 });
 
 export default function Page() {

@@ -4,21 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 const description =
-  "Guides and insights on recovery, sleep, nutrition and training — and how a daily AI fitness coach helps you act on them.";
+  "Guides on recovery, sleep, nutrition and training — and how an AI fitness coach turns Apple Health data into daily guidance.";
 
 export const metadata = pageMetadata({
   path: "/blog",
   title: "Blog",
   description,
-  socialTitle: "WeekFit Blog — Recovery, Sleep & Training Guides",
-  keywords: [
-    "fitness blog",
-    "recovery insights",
-    "sleep analysis",
-    "nutrition tracking",
-    "training guides",
-    "Apple Health tips",
-  ],
 });
 
 export default function Page() {
