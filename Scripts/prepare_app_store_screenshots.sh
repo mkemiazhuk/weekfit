@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SOURCE_DIR="${1:-/Users/maxk/.cursor/projects/Users-maxk-Dev-WeekFit/assets}"
 OUT="$ROOT/build/app-store-screenshots/manual"
 
-mkdir -p "$OUT/6.7-inch" "$OUT/6.1-inch" "$OUT/source"
+mkdir -p "$OUT/6.7-inch" "$OUT/6.5-inch" "$OUT/6.1-inch" "$OUT/source"
 
 # slug|caption|source filename
 SCENES=(
@@ -43,7 +43,9 @@ for entry in "${SCENES[@]}"; do
 
   cp "$src" "$OUT/source/${slug}.png"
   resize_to "$src" "$OUT/6.7-inch/${slug}.png" 2796 1290
-  resize_to "$src" "$OUT/6.1-inch/${slug}.png" 2556 1179
+  resize_to "$src" "$OUT/6.5-inch/${slug}.png" 2778 1284
+  # App Store Connect 6.1" slot expects 1170×2532.
+  resize_to "$src" "$OUT/6.1-inch/${slug}.png" 2532 1170
   echo "  ✓ $slug"
 done
 
@@ -66,14 +68,16 @@ Upload **01–08** to App Store Connect (09–10 optional).
 ## Folders
 
 - `6.7-inch/` — iPhone 6.7" display (**1290×2796**)
-- `6.1-inch/` — iPhone 6.1" display (**1179×2556**)
+- `6.5-inch/` — iPhone 6.5" display (**1284×2778**)
+- `6.1-inch/` — iPhone 6.1" display (**1170×2532**)
 
 ## App Store Connect
 
 1. **App Store → Screenshots**
 2. Upload `6.7-inch/` files for **6.7" Display**
-3. Upload `6.1-inch/` files for **6.1" Display**
-4. Same order on both sizes
+3. Upload `6.5-inch/` files for **6.5" Display**
+4. Upload `6.1-inch/` files for **6.1" Display**
+5. Same order on all sizes
 
 ## Better quality
 

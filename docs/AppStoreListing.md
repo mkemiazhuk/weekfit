@@ -62,7 +62,7 @@ OPTIONAL PERMISSIONS
 
 WeekFit does not provide medical advice. Always consult a professional for health decisions.
 
-Support: mkemiazhuk@gmail.com
+Support: support@weekfit.app
 ```
 
 ### Russian
@@ -93,7 +93,7 @@ WeekFit использует сон, активность, пульс, трен�
 
 WeekFit не ставит медицинских диагнозов. По вопросам здоровья обращайтесь к специалисту.
 
-Поддержка: mkemiazhuk@gmail.com
+Поддержка: support@weekfit.app
 ```
 
 ---
@@ -154,7 +154,7 @@ NOT INCLUDED IN 1.0:
 WeekFit does not provide medical advice.
 
 Demo account: not required.
-Support: mkemiazhuk@gmail.com
+Support: support@weekfit.app
 ```
 
 ---
@@ -176,22 +176,39 @@ Use `COACH_SCREENSHOT_REVIEW_CHECKLIST.md` before capturing.
 
 ---
 
-## URLs (GitHub Pages)
+## URLs (custom domain: weekfit.app)
 
-After merging to `main` and enabling **GitHub Pages → Source: GitHub Actions** in repo settings:
+Hosted via GitHub Pages on the custom domain `weekfit.app`. After merging to `main`, enable **GitHub Pages → Source: GitHub Actions**, set the custom domain to `weekfit.app`, and configure DNS (see below).
 
 | URL | Purpose |
 |-----|---------|
-| https://mkemiazhuk.github.io/weekfit/privacy.html | **Privacy Policy URL** (App Store Connect) |
-| https://mkemiazhuk.github.io/weekfit/support.html | **Support URL** (App Store Connect) |
+| https://weekfit.app/privacy.html | **Privacy Policy URL** (App Store Connect) |
+| https://weekfit.app/support.html | **Support URL** (App Store Connect) |
 
-Source files: `docs/legal/`. Workflow: `.github/workflows/deploy-legal-pages.yml`.
+Source files: `docs/legal/` (includes `CNAME`). Workflow: `.github/workflows/deploy-legal-pages.yml`.
+
+### DNS setup (apex domain `weekfit.app`)
+
+At the domain registrar, point the apex to GitHub Pages:
+
+- `A` → `185.199.108.153`
+- `A` → `185.199.109.153`
+- `A` → `185.199.110.153`
+- `A` → `185.199.111.153`
+- `AAAA` → `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`
+- (optional) `CNAME` `www` → `mkemiazhuk.github.io`
+
+Enable **Enforce HTTPS** in repo Pages settings once the certificate is issued.
+
+### Email `support@weekfit.app`
+
+Set up a mailbox or forwarding for `support@weekfit.app` (e.g. registrar email forwarding, iCloud+ Custom Domain, or Google Workspace). Add the required `MX` (and `SPF`/`DKIM`) records. This address is used in the app, privacy/support pages, and App Store Connect — it must be live before review.
 
 Suggested Privacy Policy sections:
 1. Data collected (Health, optional camera/location)
 2. Local storage only — no cloud sync in 1.0
 3. No third-party analytics in 1.0
-4. Contact: mkemiazhuk@gmail.com
+4. Contact: support@weekfit.app
 5. Not medical advice disclaimer
 
 ---

@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/build/app-store-screenshots/manual/iphone-15"
 OUT="$ROOT/build/app-store-screenshots/manual/final"
 
-mkdir -p "$OUT/6.1-inch" "$OUT/6.7-inch"
+mkdir -p "$OUT/6.1-inch" "$OUT/6.5-inch" "$OUT/6.7-inch"
 
 # source file|output slug
 SCENES=(
@@ -33,12 +33,14 @@ for entry in "${SCENES[@]}"; do
   fi
 
   cp "$src" "$OUT/6.1-inch/${slug}.png"
+  cp "$src" "$OUT/6.5-inch/${slug}.png"
   cp "$src" "$OUT/6.7-inch/${slug}.png"
+  # App Store Connect 6.1" slot expects 1170×2532 (not native iPhone 15 1179×2556).
+  sips -z 2532 1170 "$OUT/6.1-inch/${slug}.png" >/dev/null
+  sips -z 2778 1284 "$OUT/6.5-inch/${slug}.png" >/dev/null
   sips -z 2796 1290 "$OUT/6.7-inch/${slug}.png" >/dev/null
 
-  w=$(sips -g pixelWidth "$OUT/6.1-inch/${slug}.png" | awk '/pixelWidth/{print $2}')
-  h=$(sips -g pixelHeight "$OUT/6.1-inch/${slug}.png" | awk '/pixelHeight/{print $2}')
-  echo "  ✓ $slug (${w}×${h} → 6.1\", scaled → 6.7\")"
+  echo "  ✓ $slug (6.1\" 1170×2532, 6.5\" 1284×2778, 6.7\" 1290×2796)"
 done
 
 cat > "$OUT/UPLOAD.md" <<'EOF'
@@ -59,14 +61,16 @@ cat > "$OUT/UPLOAD.md" <<'EOF'
 
 ## Folders
 
-- **`6.1-inch/`** — upload as-is → **6.1" Display** (1179×2556)
-- **`6.7-inch/`** — upload → **6.7" Display** (1290×2796, scaled from same iPhone shots)
+- **`6.1-inch/`** — upload → **6.1" Display** (**1170×2532**)
+- **`6.5-inch/`** — upload → **6.5" Display** (**1284×2778**)
+- **`6.7-inch/`** — upload → **6.7" Display** (**1290×2796**)
 
 ## App Store Connect
 
 1. App Store → Screenshots
 2. **6.1" Display** ← drag files from `6.1-inch/` in order 01–08
-3. **6.7" Display** ← drag files from `6.7-inch/` in same order
+3. **6.5" Display** ← drag files from `6.5-inch/` in same order
+4. **6.7" Display** ← drag files from `6.7-inch/` in same order
 
 ## Extra sources (not in main set)
 

@@ -11,7 +11,7 @@ struct HelpSupportView: View {
     @State private var showFAQView = false
     @State private var showGuidesView = false
 
-    private let supportEmail = "mkemiazhuk@gmail.com"
+    private let supportEmail = "support@weekfit.app"
 
     var body: some View {
         ZStack {
