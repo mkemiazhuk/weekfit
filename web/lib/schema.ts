@@ -59,7 +59,8 @@ export function softwareApplicationSchema(): Json {
     operatingSystem: "iOS 17.0 or later",
     description: SITE.description,
     url: SITE.url,
-    downloadUrl: abs("download"),
+    // Note: no downloadUrl until the App Store listing is public — exposing
+    // a non-download destination would be misleading and invalid for the schema.
     image: `${SITE.url}/brand/icon-512.png`,
     screenshot: [
       `${SITE.url}/img/today.jpg`,

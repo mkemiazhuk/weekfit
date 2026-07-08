@@ -14,7 +14,7 @@ export default function WhyWeekFit() {
   ];
 
   return (
-    <section id="why" className="relative px-6 py-28 md:py-36">
+    <section id="why" className="relative px-6 pt-14 pb-28 md:pt-16 md:pb-36">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-[52ch]">
           <Reveal>

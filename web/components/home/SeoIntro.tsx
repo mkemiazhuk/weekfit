@@ -8,7 +8,7 @@ export default function SeoIntro() {
   const s = t.seo;
 
   return (
-    <section className="relative mx-auto max-w-6xl px-6 py-28 md:py-36">
+    <section className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-16">
       <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
         <Reveal>
           <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-brand">
