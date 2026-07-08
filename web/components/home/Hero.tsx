@@ -20,36 +20,6 @@ export default function Hero() {
 
   return (
     <section className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-16 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pt-24">
-      {/* Sunset backdrop — echoes the app's onboarding screen */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[118vh] w-screen -translate-x-1/2 overflow-hidden"
-      >
-        <motion.div
-          initial={reduce ? { opacity: 0.55, scale: 1 } : { opacity: 0, scale: 1.08 }}
-          animate={{ opacity: 0.55, scale: 1 }}
-          transition={reduce ? { duration: 0 } : { duration: 1.8, ease }}
-          className="absolute inset-0 bg-cover bg-[center_22%]"
-          style={{ backgroundImage: "url(/brand/hero-bg.png)" }}
-        />
-        {/* Vertical darkening + dissolve into the canvas */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(6,7,10,0.74) 0%, rgba(6,7,10,0.30) 30%, rgba(6,7,10,0.58) 70%, #06070a 100%)",
-          }}
-        />
-        {/* Left legibility for the headline on wide screens */}
-        <div
-          className="absolute inset-0 hidden md:block"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(6,7,10,0.88) 0%, rgba(6,7,10,0.40) 46%, rgba(6,7,10,0) 76%)",
-          }}
-        />
-      </div>
-
       {/* Copy */}
       <div className="text-center md:text-left">
         <motion.span
