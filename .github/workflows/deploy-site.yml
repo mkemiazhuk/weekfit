@@ -32,6 +32,10 @@ jobs:
         run: npm ci
       - name: Build static site
         working-directory: web
+        env:
+          NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
+          NEXT_PUBLIC_BING_SITE_VERIFICATION: ${{ secrets.BING_SITE_VERIFICATION }}
+          NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ secrets.YANDEX_VERIFICATION }}
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
