@@ -12,7 +12,7 @@ export default function Wordmark({ className }: { className?: string }) {
         className="rounded-[8px]"
       />
       <span className="text-[17px] font-semibold tracking-[-0.02em] text-white">
-        WeekFit
+        Week<span className="text-brand">Fit</span>
       </span>
     </a>
   );
