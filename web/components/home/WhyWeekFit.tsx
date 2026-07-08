@@ -14,7 +14,7 @@ export default function WhyWeekFit() {
   ];
 
   return (
-    <section id="why" className="relative px-6 pt-14 pb-28 md:pt-16 md:pb-36">
+    <section id="why" aria-labelledby="why-heading" className="relative px-6 pt-14 pb-28 md:pt-16 md:pb-36">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-[52ch]">
           <Reveal>
@@ -23,7 +23,10 @@ export default function WhyWeekFit() {
             </span>
           </Reveal>
           <Reveal delay={0.05}>
-            <h2 className="display mt-3 text-[clamp(2.2rem,5vw,3.4rem)] text-white">
+            <h2
+              id="why-heading"
+              className="display mt-3 text-[clamp(2.2rem,5vw,3.4rem)] text-white"
+            >
               {t.why.title}
             </h2>
           </Reveal>

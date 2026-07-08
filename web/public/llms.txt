@@ -1,22 +1,23 @@
 # WeekFit
 
-> AI fitness coach for iPhone. Reads sleep, recovery, activity and nutrition from Apple Health. Private, on-device, no account required.
+> WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.
 
-## Product
+## Entity
 
-- Name: WeekFit
-- Platform: iPhone (iOS 17+)
-- Category: Health / fitness app
+- Product: WeekFit
+- Developer: WeekFit
+- Platform: iPhone (iOS)
+- Category: AI fitness coach
+- Data source: Apple Health
 - Price: Free
 - Status: Public TestFlight beta
-- Privacy: Local-first, no ads, health data not sold
 
 ## Capabilities
 
 - Recovery score from sleep, HRV and resting heart rate
 - Activity and workouts synced from Apple Health
 - Nutrition and macro tracking in daily context
-- AI Coach: daily guidance based on combined health signals
+- AI Coach: daily guidance from combined health signals
 - Weekly workout planning
 
 ## Pages
@@ -28,6 +29,9 @@
 - https://weekfit.app/privacy/
 - https://weekfit.app/terms/
 - https://weekfit.app/contact/
+- https://weekfit.app/press/
+- https://weekfit.app/blog/
+- https://weekfit.app/changelog/
 
 ## Install
 

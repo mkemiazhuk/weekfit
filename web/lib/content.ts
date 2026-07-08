@@ -532,8 +532,9 @@ export const press: Record<
       { label: "Website", value: "weekfit.app" },
     ],
     boilerTitle: "Boilerplate",
-    boilerShort: "WeekFit is a calm AI coach that reads your sleep, activity, nutrition and recovery from Apple Health, and tells you the one thing that matters today.",
-    boilerLong: "WeekFit is a calm AI coach for iOS. Instead of another dashboard of numbers, it interprets the relationships between your sleep, activity, nutrition and recovery — powered by Apple Health and processed on your device — to explain what matters today and how to prepare for it. Private by design, WeekFit requires no account and never uses your health data for advertising.",
+    boilerShort:
+      "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
+    boilerLong: "WeekFit is an AI fitness coach for iOS. Instead of another dashboard of numbers, it interprets the relationships between your sleep, activity, nutrition and recovery — powered by Apple Health and processed on your device — to explain what matters today and how to prepare for it. Private by design, WeekFit requires no account and never uses your health data for advertising.",
     colorsTitle: "Brand colors",
     assetsTitle: "Downloadable assets",
     assetsNote: "App icon and product screenshots. For anything else, get in touch.",

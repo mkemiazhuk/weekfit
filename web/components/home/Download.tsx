@@ -11,10 +11,10 @@ import { useI18n } from "@/lib/i18n";
 export default function Download() {
   const { t } = useI18n();
   return (
-    <section id="download" className="relative px-6 py-28 md:py-40">
+    <section id="download" className="relative px-5 py-20 md:px-6 md:py-40">
       <div className="mx-auto max-w-5xl">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[34px] glass px-8 py-14 md:px-16 md:py-20">
+          <div className="relative overflow-hidden rounded-[28px] glass px-6 py-10 md:rounded-[34px] md:px-16 md:py-20">
             {/* atmosphere bloom */}
             <div
               aria-hidden
@@ -24,15 +24,15 @@ export default function Download() {
                   "radial-gradient(60% 120% at 50% 0%, rgba(102,240,112,0.14), transparent 60%)",
               }}
             />
-            <div className="relative grid items-center gap-12 md:grid-cols-[1.2fr_0.8fr]">
+            <div className="relative grid items-center gap-10 md:grid-cols-[1.2fr_0.8fr] md:gap-12">
               <div className="text-center md:text-left">
-                <h2 className="display text-[clamp(2.2rem,5vw,3.6rem)] text-white">
+                <h2 className="display text-[clamp(1.85rem,5vw,3.6rem)] text-white">
                   {t.cta.title}
                 </h2>
-                <p className="mx-auto mt-5 max-w-[42ch] text-[clamp(1.05rem,2vw,1.2rem)] leading-relaxed text-white/60 md:mx-0">
+                <p className="mx-auto mt-4 max-w-[42ch] text-[15px] leading-relaxed text-white/60 md:mt-5 md:text-[clamp(1.05rem,2vw,1.2rem)] md:mx-0">
                   {t.cta.body}
                 </p>
-                <div className="mt-9 flex flex-col items-center gap-6 md:items-start">
+                <div className="mt-7 flex flex-col items-center gap-5 md:mt-9 md:items-start md:gap-6">
                   <div className="flex flex-col items-center gap-2 md:items-start">
                     <Button href={SITE.appInstallUrl} external>
                       {t.cta.testflight}
@@ -45,7 +45,7 @@ export default function Download() {
                 </div>
               </div>
 
-              <div className="mx-auto w-full max-w-[220px] phone-float">
+              <div className="mx-auto w-full max-w-[190px] phone-float md:max-w-[220px]">
                 <PhoneMockup
                   src="/img/today.jpg"
                   alt="WeekFit Today screen with the day's readiness and rings"

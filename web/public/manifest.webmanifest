@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "WeekFit — A calm AI coach that understands your day",
+  "name": "WeekFit",
   "short_name": "WeekFit",
-  "description": "A calm AI fitness coach that reads your sleep, recovery, activity and nutrition from Apple Health, then tells you the one thing that matters today.",
+  "description": "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -8,13 +8,20 @@ export default function SeoIntro() {
   const s = t.seo;
 
   return (
-    <section className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-16">
+    <section
+      id="about"
+      aria-labelledby="about-heading"
+      className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-16"
+    >
       <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
         <Reveal>
           <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-brand">
             {s.kicker}
           </p>
-          <h2 className="mt-5 text-[clamp(1.9rem,3.6vw,2.7rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-white">
+          <h2
+            id="about-heading"
+            className="mt-5 text-[clamp(1.9rem,3.6vw,2.7rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-white"
+          >
             {s.title}
           </h2>
         </Reveal>

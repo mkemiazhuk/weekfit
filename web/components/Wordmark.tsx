@@ -6,7 +6,7 @@ export default function Wordmark({ className }: { className?: string }) {
     <a href="/" className={clsx("flex items-center gap-2.5", className)}>
       <Image
         src="/brand/icon-192.png"
-        alt="WeekFit"
+        alt="WeekFit app icon"
         width={30}
         height={30}
         className="rounded-[8px]"

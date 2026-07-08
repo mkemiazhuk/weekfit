@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ENTITY } from "./site";
 
 // Loaded once at build time (no network dependency during CI).
 const fontRegular = readFileSync(join(process.cwd(), "assets/Inter-Regular.woff"));
@@ -113,7 +114,7 @@ export function renderOgImage(opts: {
           <div style={{ display: "flex", width: 10, height: 10, borderRadius: 10, background: GREEN }} />
           <span>weekfit.app</span>
           <span style={{ color: "rgba(245,246,248,0.28)" }}>·</span>
-          <span>A calm AI coach for iPhone</span>
+          <span>{ENTITY.category} for {ENTITY.platform}</span>
         </div>
       </div>
     ),

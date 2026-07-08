@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 const description =
-  "WeekFit Help Center — guides for Apple Health setup, recovery tracking, nutrition, the AI Coach and troubleshooting.";
+  "WeekFit Help Center — guides for Apple Health setup, recovery tracking, nutrition, the AI fitness coach and troubleshooting.";
 
 export const metadata = pageMetadata({
   path: "/support",

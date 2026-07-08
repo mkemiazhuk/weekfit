@@ -10,11 +10,7 @@ import JsonLd from "@/components/JsonLd";
 import SkipLink from "@/components/SkipLink";
 import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
-import {
-  organizationSchema,
-  websiteSchema,
-  softwareApplicationSchema,
-} from "@/lib/schema";
+import { entityGraphSchema } from "@/lib/schema";
 
 const home = pageMetadata({
   path: "/",
@@ -77,13 +73,7 @@ export default function RootLayout({
         <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
       </head>
       <body className="min-h-full">
-        <JsonLd
-          data={[
-            organizationSchema(),
-            websiteSchema(),
-            softwareApplicationSchema(),
-          ]}
-        />
+        <JsonLd data={entityGraphSchema()} />
         <I18nProvider>
           <SkipLink />
           <SmoothScroll />

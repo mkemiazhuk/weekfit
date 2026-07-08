@@ -1,4 +1,4 @@
-import { SITE, abs } from "./site";
+import { ENTITY, SITE, abs } from "./site";
 import { support } from "./content";
 
 const ORG_ID = `${SITE.url}/#organization`;
@@ -7,15 +7,14 @@ const APP_ID = `${SITE.url}/#app`;
 
 type Json = Record<string, unknown>;
 
-export function organizationSchema(): Json {
-  const schema: Json = {
-    "@context": "https://schema.org",
+function organizationNode(): Json {
+  const node: Json = {
     "@type": "Organization",
     "@id": ORG_ID,
-    name: SITE.name,
+    name: ENTITY.developer,
     url: SITE.url,
     logo: `${SITE.url}/brand/icon-512.png`,
-    description: SITE.description,
+    description: ENTITY.description,
     contactPoint: {
       "@type": "ContactPoint",
       email: SITE.email,
@@ -25,37 +24,32 @@ export function organizationSchema(): Json {
     },
   };
   if (SITE.sameAs.length > 0) {
-    schema.sameAs = [...SITE.sameAs];
+    node.sameAs = [...SITE.sameAs];
   }
-  return schema;
+  return node;
 }
 
-export function websiteSchema(): Json {
+function websiteNode(): Json {
   return {
-    "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": SITE_ID,
     url: SITE.url,
-    name: SITE.name,
-    description: SITE.description,
+    name: ENTITY.name,
+    description: ENTITY.description,
     inLanguage: SITE.defaultLocale,
     publisher: { "@id": ORG_ID },
+    about: { "@id": APP_ID },
   };
 }
 
-/**
- * SoftwareApplication — properties aligned with Google's documented fields:
- * https://developers.google.com/search/docs/appearance/structured-data/software-app
- */
-export function softwareApplicationSchema(): Json {
+function softwareApplicationNode(): Json {
   return {
-    "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "@id": APP_ID,
-    name: SITE.name,
+    name: ENTITY.name,
     applicationCategory: "HealthApplication",
-    operatingSystem: "iOS",
-    description: SITE.description,
+    operatingSystem: ENTITY.operatingSystem,
+    description: ENTITY.description,
     url: SITE.url,
     downloadUrl: SITE.appInstallUrl,
     image: `${SITE.url}/brand/icon-512.png`,
@@ -70,7 +64,16 @@ export function softwareApplicationSchema(): Json {
       price: "0",
       priceCurrency: "USD",
     },
+    author: { "@id": ORG_ID },
     publisher: { "@id": ORG_ID },
+  };
+}
+
+/** Connected entity graph — Organization, WebSite, and SoftwareApplication as one product. */
+export function entityGraphSchema(): Json {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [organizationNode(), websiteNode(), softwareApplicationNode()],
   };
 }
 
@@ -90,6 +93,7 @@ export function webPageSchema(opts: {
     name: opts.name,
     description: opts.description,
     isPartOf: { "@id": SITE_ID },
+    about: { "@id": APP_ID },
     inLanguage: SITE.defaultLocale,
     ...(opts.datePublished ? { datePublished: opts.datePublished } : {}),
     ...(opts.dateModified ? { dateModified: opts.dateModified } : {}),
@@ -109,6 +113,7 @@ export function privacyPolicySchema(opts: {
     description: opts.description,
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
+    about: { "@id": APP_ID },
     inLanguage: SITE.defaultLocale,
     publisher: { "@id": ORG_ID },
   };
@@ -127,6 +132,7 @@ export function termsOfServiceSchema(opts: {
     description: opts.description,
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
+    about: { "@id": APP_ID },
     inLanguage: SITE.defaultLocale,
     publisher: { "@id": ORG_ID },
   };
@@ -141,6 +147,7 @@ export function faqSchema(qas: { q: string; a: string }[]): Json {
       name: q,
       acceptedAnswer: { "@type": "Answer", text: a },
     })),
+    about: { "@id": APP_ID },
   };
 }
 
@@ -157,7 +164,7 @@ export function breadcrumbSchema(items: { name: string; path: string }[]): Json 
   };
 }
 
-/** English FAQ content — used for FAQPage schema on /faq only. */
+/** English FAQ content — FAQPage schema on /faq only. */
 export function allFaqs(): { q: string; a: string }[] {
   return support.en.categories.flatMap((c) => c.faqs);
 }

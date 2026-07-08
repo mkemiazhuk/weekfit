@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { allFaqs, breadcrumbSchema, faqSchema } from "@/lib/schema";
 
 const description =
-  "Frequently asked questions about WeekFit — the AI coach, recovery score, Apple Health, nutrition tracking and privacy.";
+  "Frequently asked questions about WeekFit — the AI fitness coach, recovery score, Apple Health, nutrition tracking and privacy.";
 
 export const metadata = pageMetadata({
   path: "/faq",
