@@ -5,175 +5,364 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WeekFit — Your day, interpreted</title>
   <meta name="description" content="WeekFit is a calm daily fitness companion for iOS. It reads your Apple Health data and turns it into a clear plan for today — a daily Coach, a visual plan, and meal guidance.">
+  <meta name="theme-color" content="#0b0b0d">
   <meta property="og:title" content="WeekFit — Your day, interpreted">
   <meta property="og:description" content="A calm daily fitness companion. WeekFit connects Apple Health to a daily Coach, a visual plan, and meal guidance — all on your phone.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://weekfit.app/">
+  <meta property="og:image" content="https://weekfit.app/img/today.jpg">
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: dark;
+      --bg: #0b0b0d;
+      --surface: #17171c;
+      --border: #2a2a33;
+      --text: #f2f2f4;
+      --muted: #a8a8b3;
+      --accent: #8fd98a;
+      --accent-2: #4fae72;
+    }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0b0b0d; color: #f2f2f4; margin: 0; line-height: 1.55;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); margin: 0; line-height: 1.55;
       -webkit-font-smoothing: antialiased;
     }
-    a { color: #8fd98a; text-decoration: none; }
+    a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
-    .lang-switch { padding: 18px 0 0; font-size: 0.9rem; color: #6f6f7a; }
-    .lang-switch a { color: #a8a8b3; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
+    img { max-width: 100%; display: block; }
 
-    header.hero {
-      text-align: center;
-      padding: 64px 0 40px;
-      background:
-        radial-gradient(60% 120% at 50% 0%, rgba(143, 217, 138, 0.16), transparent 70%);
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 20;
+      backdrop-filter: saturate(140%) blur(14px);
+      background: rgba(11,11,13,0.72);
+      border-bottom: 1px solid var(--border);
     }
-    .logo {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 72px; height: 72px; border-radius: 20px;
-      background: linear-gradient(160deg, #8fd98a, #4fae72);
-      color: #06210f; font-size: 2rem; font-weight: 800; margin-bottom: 20px;
-      box-shadow: 0 12px 40px rgba(79, 174, 114, 0.35);
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.02em; font-size: 1.1rem; }
+    .brand .mark {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(160deg, var(--accent), var(--accent-2));
+      color: #06210f; display: grid; place-items: center; font-size: 1rem; font-weight: 900;
     }
-    h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); font-weight: 800; letter-spacing: -0.03em; margin: 0 0 12px; }
-    .tagline { font-size: 1.25rem; color: #d6d6dc; margin: 0 auto 8px; max-width: 34ch; }
-    .sub { color: #a8a8b3; margin: 0 auto; max-width: 46ch; }
-    .badge {
-      display: inline-block; margin-top: 28px; padding: 10px 20px;
-      border: 1px solid #2a2a33; border-radius: 999px; color: #a8a8b3; font-size: 0.9rem;
+    .nav-links { display: flex; align-items: center; gap: 22px; }
+    .nav-links a { color: var(--muted); font-size: 0.95rem; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+    .lang-btn {
+      background: transparent; border: 0; color: var(--muted); cursor: pointer;
+      font: inherit; font-size: 0.82rem; padding: 5px 12px;
+    }
+    .lang-btn.active { background: var(--accent); color: #06210f; font-weight: 700; }
+    @media (max-width: 640px) { .nav-links a.navlink { display: none; } }
+
+    /* Hero */
+    .hero { padding: 72px 0 40px; position: relative; overflow: hidden; }
+    .hero::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(70% 90% at 78% 0%, rgba(143,217,138,0.16), transparent 60%);
+      pointer-events: none;
+    }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; position: relative; }
+    .eyebrow {
+      display: inline-block; padding: 7px 14px; border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted); font-size: 0.85rem; margin-bottom: 22px;
+    }
+    h1 { font-size: clamp(2.4rem, 5.5vw, 3.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin: 0 0 18px; }
+    .lead { font-size: 1.18rem; color: var(--muted); max-width: 46ch; margin: 0 0 28px; }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 600;
+      background: var(--accent); color: #06210f;
+    }
+    .btn:hover { text-decoration: none; filter: brightness(1.05); }
+    .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+    .phone {
+      justify-self: center;
+      border: 1px solid var(--border); border-radius: 34px; padding: 8px;
+      background: #05050a; box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+      max-width: 300px;
+    }
+    .phone img { border-radius: 26px; }
+
+    @media (max-width: 860px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 30px; text-align: center; }
+      .lead { margin-left: auto; margin-right: auto; }
+      .hero-actions { justify-content: center; }
+      .phone { max-width: 260px; }
     }
 
-    section { padding: 44px 0; border-top: 1px solid #17171c; }
-    h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 24px; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
-    .card {
-      background: #17171c; border: 1px solid #2a2a33; border-radius: 16px; padding: 22px;
-    }
-    .card h3 { margin: 0 0 8px; font-size: 1.1rem; }
-    .card p { margin: 0; color: #b8b8c0; font-size: 0.97rem; }
+    /* Features */
+    .section { padding: 56px 0; border-top: 1px solid var(--surface); }
+    .section-title { text-align: center; font-size: clamp(1.6rem, 3.5vw, 2.1rem); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .section-sub { text-align: center; color: var(--muted); max-width: 52ch; margin: 0 auto 44px; }
 
-    .note { color: #b8b8c0; }
-    footer {
-      border-top: 1px solid #17171c; padding: 36px 0 56px; text-align: center; color: #6f6f7a;
-      font-size: 0.9rem;
+    .feature { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; margin: 46px 0; }
+    .feature .txt .kicker { color: var(--accent); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .feature .txt h3 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 12px; }
+    .feature .txt p { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    .feature .shot { justify-self: center; border: 1px solid var(--border); border-radius: 26px; padding: 6px; background: #05050a; max-width: 250px; box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
+    .feature .shot img { border-radius: 20px; }
+    .feature.reverse .txt { order: 2; }
+    .feature.reverse .shot { order: 1; }
+    @media (max-width: 760px) {
+      .feature { grid-template-columns: 1fr; gap: 22px; text-align: center; margin: 40px 0; }
+      .feature.reverse .txt { order: 2; }
+      .feature.reverse .shot { order: 1; }
+      .feature .shot { max-width: 220px; }
     }
-    footer .links { margin-bottom: 12px; }
-    footer .links a { margin: 0 10px; color: #a8a8b3; }
-    hr.lang-sep { border: none; border-top: 1px solid #2a2a33; margin: 8px 0 0; }
+
+    /* Health band */
+    .band { background: linear-gradient(160deg, rgba(143,217,138,0.10), rgba(79,174,114,0.04)); border: 1px solid var(--border); border-radius: 22px; padding: 40px; text-align: center; }
+    .band h3 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 12px; }
+    .band p { color: var(--muted); max-width: 60ch; margin: 0 auto; font-size: 1.05rem; }
+
+    /* Gallery */
+    .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .gallery figure { margin: 0; }
+    .gallery .shot { border: 1px solid var(--border); border-radius: 20px; padding: 5px; background: #05050a; }
+    .gallery .shot img { border-radius: 16px; }
+    .gallery figcaption { color: var(--muted); font-size: 0.9rem; text-align: center; margin-top: 10px; }
+    @media (max-width: 760px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Privacy */
+    .privacy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 8px; }
+    .pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+    .pcard h4 { margin: 0 0 8px; font-size: 1.05rem; }
+    .pcard p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+    @media (max-width: 760px) { .privacy-grid { grid-template-columns: 1fr; } }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--surface); padding: 40px 0 60px; text-align: center; color: #6f6f7a; font-size: 0.92rem; }
+    footer .flinks { margin-bottom: 14px; }
+    footer .flinks a { margin: 0 12px; color: var(--muted); }
+    .disclaimer { max-width: 60ch; margin: 14px auto 0; font-size: 0.85rem; color: #6f6f7a; }
   </style>
 </head>
 <body>
-  <div class="wrap lang-switch"><a href="#en">English</a> · <a href="#ru">Русский</a></div>
-
-  <!-- ==================== ENGLISH ==================== -->
-  <section id="en" style="border-top:none;padding-top:0;">
-    <header class="hero">
-      <div class="logo">W</div>
-      <h1>WeekFit</h1>
-      <p class="tagline">Your day, interpreted.</p>
-      <p class="sub">A calm daily fitness companion that reads your Apple Health data and turns it into a clear plan for today.</p>
-      <span class="badge">iPhone · Coming to the App Store</span>
-    </header>
-
-    <div style="padding:8px 0 44px;">
-      <h2>What you get</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Today</h3>
-          <p>Your day at a glance — recovery, upcoming activities, and quick actions in one calm view.</p>
-        </div>
-        <div class="card">
-          <h3>Coach</h3>
-          <p>One leading recommendation that adapts to your sleep, training load, and what's on your schedule.</p>
-        </div>
-        <div class="card">
-          <h3>Plan</h3>
-          <p>A visual timeline for workouts, meals, and the rhythm of your day.</p>
-        </div>
-        <div class="card">
-          <h3>Meals</h3>
-          <p>A meal library and suggestions aligned with your current Coach focus.</p>
-        </div>
+  <nav>
+    <div class="wrap nav-inner">
+      <div class="brand"><span class="mark">W</span> WeekFit</div>
+      <div class="nav-links">
+        <a class="navlink" href="#features" data-i18n="nav_features">Features</a>
+        <a class="navlink" href="privacy.html" data-i18n="nav_privacy">Privacy</a>
+        <a class="navlink" href="support.html" data-i18n="nav_support">Support</a>
+        <span class="lang-toggle">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="ru">RU</button>
+        </span>
       </div>
     </div>
+  </nav>
 
-    <section>
-      <h2>Built around Apple Health</h2>
-      <p class="note">WeekFit uses sleep, activity, heart rate, workouts, and nutrition from Apple Health to personalize your guidance. No account is required to start.</p>
-    </section>
-
-    <section>
-      <h2>Private by design</h2>
-      <p class="note">WeekFit 1.0 keeps your plan and preferences on your device. No cloud accounts, no third-party analytics, no cross-app tracking. Health data is never used for advertising or sold to anyone. Read our <a href="privacy.html">Privacy Policy</a>.</p>
-    </section>
-
-    <section>
-      <h2>Support</h2>
-      <p class="note">Questions or feedback? Email <a href="mailto:support@weekfit.app?subject=WeekFit">support@weekfit.app</a> or visit the <a href="support.html">Support page</a>.</p>
-      <p class="note"><small>WeekFit provides fitness and wellness guidance only and does not provide medical advice.</small></p>
-    </section>
-  </section>
-
-  <hr class="lang-sep">
-
-  <!-- ==================== РУССКИЙ ==================== -->
-  <section id="ru" style="border-top:none;">
-    <header class="hero">
-      <div class="logo">W</div>
-      <h1>WeekFit</h1>
-      <p class="tagline">Ваш день — с пониманием.</p>
-      <p class="sub">Спокойный ежедневный фитнес-компаньон, который читает данные Apple Health и превращает их в понятный план на сегодня.</p>
-      <span class="badge">iPhone · Скоро в App Store</span>
-    </header>
-
-    <div style="padding:8px 0 44px;">
-      <h2>Что внутри</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Сегодня</h3>
-          <p>Обзор дня — восстановление, ближайшие активности и быстрые действия в одном спокойном экране.</p>
-        </div>
-        <div class="card">
-          <h3>Коуч</h3>
-          <p>Одна главная рекомендация с учётом сна, нагрузки и вашего расписания.</p>
-        </div>
-        <div class="card">
-          <h3>План</h3>
-          <p>Визуальная лента тренировок, приёмов пищи и ритма дня.</p>
-        </div>
-        <div class="card">
-          <h3>Питание</h3>
-          <p>Библиотека блюд и подсказки в контексте текущего фокуса Коуча.</p>
+  <header class="hero">
+    <div class="wrap hero-grid">
+      <div class="txt">
+        <span class="eyebrow" data-i18n="hero_badge">iPhone · Coming to the App Store</span>
+        <h1 data-i18n="hero_title">Your day, interpreted.</h1>
+        <p class="lead" data-i18n="hero_lead">A calm daily fitness companion that reads your Apple Health data and turns it into a clear plan for today.</p>
+        <div class="hero-actions">
+          <a class="btn" href="#features" data-i18n="hero_cta1">See how it works</a>
+          <a class="btn secondary" href="support.html" data-i18n="hero_cta2">Support</a>
         </div>
       </div>
+      <div class="phone">
+        <img src="img/today.jpg" width="640" height="1387" alt="WeekFit Today screen">
+      </div>
     </div>
+  </header>
 
-    <section>
-      <h2>На основе Apple Health</h2>
-      <p class="note">WeekFit использует сон, активность, пульс, тренировки и питание из Apple Health для персонализации. Для старта аккаунт не нужен.</p>
+  <main>
+    <section id="features" class="section">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="features_title">Everything in one calm place</h2>
+        <p class="section-sub" data-i18n="features_sub">No noisy dashboards. WeekFit tells one clear story per moment — so you always know what matters today.</p>
+
+        <div class="feature">
+          <div class="txt">
+            <div class="kicker" data-i18n="f1_kicker">Coach</div>
+            <h3 data-i18n="f1_title">Know what to do next</h3>
+            <p data-i18n="f1_text">One leading recommendation that adapts to your sleep, training load, and what's on your schedule.</p>
+          </div>
+          <div class="shot"><img src="img/coach.jpg" width="640" height="1387" alt="WeekFit Coach screen" loading="lazy"></div>
+        </div>
+
+        <div class="feature reverse">
+          <div class="txt">
+            <div class="kicker" data-i18n="f2_kicker">Plan</div>
+            <h3 data-i18n="f2_title">See your whole day</h3>
+            <p data-i18n="f2_text">A visual timeline for workouts, meals, and the natural rhythm of your day.</p>
+          </div>
+          <div class="shot"><img src="img/plan.jpg" width="640" height="1387" alt="WeekFit Plan screen" loading="lazy"></div>
+        </div>
+
+        <div class="feature">
+          <div class="txt">
+            <div class="kicker" data-i18n="f3_kicker">Meals</div>
+            <h3 data-i18n="f3_title">Eat in context</h3>
+            <p data-i18n="f3_text">A meal library and suggestions aligned with your current Coach focus.</p>
+          </div>
+          <div class="shot"><img src="img/meals.jpg" width="640" height="1387" alt="WeekFit Meals screen" loading="lazy"></div>
+        </div>
+      </div>
     </section>
 
-    <section>
-      <h2>Приватность по умолчанию</h2>
-      <p class="note">WeekFit 1.0 хранит план и настройки на вашем устройстве. Без облачных аккаунтов, сторонней аналитики и кросс-приложенческого отслеживания. Данные Health никогда не используются для рекламы и не продаются. См. <a href="privacy.html">Политику конфиденциальности</a>.</p>
+    <section class="section">
+      <div class="wrap">
+        <div class="band">
+          <h3 data-i18n="health_title">Built around Apple Health</h3>
+          <p data-i18n="health_text">WeekFit uses sleep, activity, heart rate, workouts, and nutrition from Apple Health to personalize your guidance. No account is required to start.</p>
+        </div>
+      </div>
     </section>
 
-    <section>
-      <h2>Поддержка</h2>
-      <p class="note">Вопросы или отзывы? Пишите на <a href="mailto:support@weekfit.app?subject=WeekFit">support@weekfit.app</a> или откройте <a href="support.html">страницу поддержки</a>.</p>
-      <p class="note"><small>WeekFit даёт рекомендации по фитнесу и wellness и не заменяет медицинскую консультацию.</small></p>
+    <section class="section">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="gallery_title">More to explore</h2>
+        <p class="section-sub" data-i18n="gallery_sub">Recovery, activity, and nutrition — always in one calm, readable place.</p>
+        <div class="gallery">
+          <figure>
+            <div class="shot"><img src="img/recovery.jpg" width="640" height="1387" alt="Recovery" loading="lazy"></div>
+            <figcaption data-i18n="g_recovery">Recovery at a glance</figcaption>
+          </figure>
+          <figure>
+            <div class="shot"><img src="img/activity.jpg" width="640" height="1387" alt="Activity" loading="lazy"></div>
+            <figcaption data-i18n="g_activity">Activity score &amp; trends</figcaption>
+          </figure>
+          <figure>
+            <div class="shot"><img src="img/nutrition.jpg" width="640" height="1387" alt="Nutrition" loading="lazy"></div>
+            <figcaption data-i18n="g_nutrition">Nutrition quality</figcaption>
+          </figure>
+          <figure>
+            <div class="shot"><img src="img/meal-details.jpg" width="640" height="1387" alt="Meal details" loading="lazy"></div>
+            <figcaption data-i18n="g_meal">Meals in detail</figcaption>
+          </figure>
+        </div>
+      </div>
     </section>
-  </section>
+
+    <section id="privacy" class="section">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="privacy_title">Private by design</h2>
+        <p class="section-sub" data-i18n="privacy_sub">WeekFit 1.0 keeps your plan and preferences on your device.</p>
+        <div class="privacy-grid">
+          <div class="pcard">
+            <h4 data-i18n="p1_title">On your device</h4>
+            <p data-i18n="p1_text">No cloud accounts and no sign-in required to start using the app.</p>
+          </div>
+          <div class="pcard">
+            <h4 data-i18n="p2_title">No tracking</h4>
+            <p data-i18n="p2_text">No third-party analytics and no cross-app tracking or advertising IDs.</p>
+          </div>
+          <div class="pcard">
+            <h4 data-i18n="p3_title">Your health, yours</h4>
+            <p data-i18n="p3_text">Health data is never used for advertising and never sold to anyone.</p>
+          </div>
+        </div>
+        <p class="section-sub" style="margin-top:28px;" data-i18n="privacy_link">Read the full <a href="privacy.html">Privacy Policy</a>.</p>
+      </div>
+    </section>
+  </main>
 
   <footer>
-    <div class="links">
-      <a href="privacy.html">Privacy</a>
-      <a href="support.html">Support</a>
-      <a href="mailto:support@weekfit.app?subject=WeekFit">Contact</a>
+    <div class="wrap">
+      <div class="flinks">
+        <a href="privacy.html" data-i18n="nav_privacy">Privacy</a>
+        <a href="support.html" data-i18n="nav_support">Support</a>
+        <a href="mailto:support@weekfit.app?subject=WeekFit" data-i18n="foot_contact">Contact</a>
+      </div>
+      <div>© 2026 WeekFit</div>
+      <p class="disclaimer" data-i18n="foot_disclaimer">WeekFit provides fitness and wellness guidance only and does not provide medical advice.</p>
     </div>
-    <div>© 2026 WeekFit</div>
   </footer>
+
+  <script>
+    const i18n = {
+      en: {
+        nav_features: "Features", nav_privacy: "Privacy", nav_support: "Support",
+        hero_badge: "iPhone · Coming to the App Store",
+        hero_title: "Your day, interpreted.",
+        hero_lead: "A calm daily fitness companion that reads your Apple Health data and turns it into a clear plan for today.",
+        hero_cta1: "See how it works", hero_cta2: "Support",
+        features_title: "Everything in one calm place",
+        features_sub: "No noisy dashboards. WeekFit tells one clear story per moment — so you always know what matters today.",
+        f1_kicker: "Coach", f1_title: "Know what to do next",
+        f1_text: "One leading recommendation that adapts to your sleep, training load, and what's on your schedule.",
+        f2_kicker: "Plan", f2_title: "See your whole day",
+        f2_text: "A visual timeline for workouts, meals, and the natural rhythm of your day.",
+        f3_kicker: "Meals", f3_title: "Eat in context",
+        f3_text: "A meal library and suggestions aligned with your current Coach focus.",
+        health_title: "Built around Apple Health",
+        health_text: "WeekFit uses sleep, activity, heart rate, workouts, and nutrition from Apple Health to personalize your guidance. No account is required to start.",
+        gallery_title: "More to explore",
+        gallery_sub: "Recovery, activity, and nutrition — always in one calm, readable place.",
+        g_recovery: "Recovery at a glance", g_activity: "Activity score &amp; trends",
+        g_nutrition: "Nutrition quality", g_meal: "Meals in detail",
+        privacy_title: "Private by design",
+        privacy_sub: "WeekFit 1.0 keeps your plan and preferences on your device.",
+        p1_title: "On your device", p1_text: "No cloud accounts and no sign-in required to start using the app.",
+        p2_title: "No tracking", p2_text: "No third-party analytics and no cross-app tracking or advertising IDs.",
+        p3_title: "Your health, yours", p3_text: "Health data is never used for advertising and never sold to anyone.",
+        privacy_link: 'Read the full <a href="privacy.html">Privacy Policy</a>.',
+        foot_contact: "Contact",
+        foot_disclaimer: "WeekFit provides fitness and wellness guidance only and does not provide medical advice."
+      },
+      ru: {
+        nav_features: "Возможности", nav_privacy: "Приватность", nav_support: "Поддержка",
+        hero_badge: "iPhone · Скоро в App Store",
+        hero_title: "Ваш день — с пониманием.",
+        hero_lead: "Спокойный ежедневный фитнес-компаньон, который читает данные Apple Health и превращает их в понятный план на сегодня.",
+        hero_cta1: "Как это работает", hero_cta2: "Поддержка",
+        features_title: "Всё в одном спокойном месте",
+        features_sub: "Никаких перегруженных дашбордов. WeekFit показывает один ясный смысл на момент — вы всегда знаете, что важно сегодня.",
+        f1_kicker: "Коуч", f1_title: "Знайте, что делать дальше",
+        f1_text: "Одна главная рекомендация с учётом сна, нагрузки и вашего расписания.",
+        f2_kicker: "План", f2_title: "Весь день перед глазами",
+        f2_text: "Визуальная лента тренировок, приёмов пищи и естественного ритма дня.",
+        f3_kicker: "Питание", f3_title: "Питание в контексте",
+        f3_text: "Библиотека блюд и подсказки в контексте текущего фокуса Коуча.",
+        health_title: "На основе Apple Health",
+        health_text: "WeekFit использует сон, активность, пульс, тренировки и питание из Apple Health для персонализации. Для старта аккаунт не нужен.",
+        gallery_title: "Что ещё внутри",
+        gallery_sub: "Восстановление, активность и питание — всегда в одном спокойном и понятном месте.",
+        g_recovery: "Восстановление наглядно", g_activity: "Оценка активности и тренды",
+        g_nutrition: "Качество питания", g_meal: "Блюда детально",
+        privacy_title: "Приватность по умолчанию",
+        privacy_sub: "WeekFit 1.0 хранит план и настройки на вашем устройстве.",
+        p1_title: "На вашем устройстве", p1_text: "Без облачных аккаунтов и без обязательного входа для старта.",
+        p2_title: "Без слежки", p2_text: "Без сторонней аналитики, кросс-приложенческого отслеживания и рекламных ID.",
+        p3_title: "Ваше здоровье — ваше", p3_text: "Данные Health никогда не используются для рекламы и не продаются.",
+        privacy_link: 'Читайте полную <a href="privacy.html">Политику конфиденциальности</a>.',
+        foot_contact: "Контакты",
+        foot_disclaimer: "WeekFit даёт рекомендации по фитнесу и wellness и не заменяет медицинскую консультацию."
+      }
+    };
+
+    function setLang(lang) {
+      if (!i18n[lang]) lang = "en";
+      document.documentElement.lang = lang;
+      document.querySelectorAll("[data-i18n]").forEach(function (el) {
+        var v = i18n[lang][el.getAttribute("data-i18n")];
+        if (v !== undefined) el.innerHTML = v;
+      });
+      document.querySelectorAll(".lang-btn").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.lang === lang);
+      });
+      try { localStorage.setItem("weekfit_lang", lang); } catch (e) {}
+    }
+
+    document.querySelectorAll(".lang-btn").forEach(function (b) {
+      b.addEventListener("click", function () { setLang(b.dataset.lang); });
+    });
+
+    var saved = null;
+    try { saved = localStorage.getItem("weekfit_lang"); } catch (e) {}
+    var initial = saved || ((navigator.language || "en").toLowerCase().indexOf("ru") === 0 ? "ru" : "en");
+    setLang(initial);
+  </script>
 </body>
 </html>
