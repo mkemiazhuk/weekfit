@@ -182,6 +182,7 @@ Hosted via GitHub Pages on the custom domain `weekfit.app`. After merging to `ma
 
 | URL | Purpose |
 |-----|---------|
+| https://weekfit.app/ | **Marketing URL** (App Store Connect, optional) |
 | https://weekfit.app/privacy.html | **Privacy Policy URL** (App Store Connect) |
 | https://weekfit.app/support.html | **Support URL** (App Store Connect) |
 
