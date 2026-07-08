@@ -142,7 +142,9 @@ const en = {
     body: "WeekFit is coming to the App Store. Built around Apple Health, private by design.",
     button: "Download on the App Store",
     notify: "Get notified",
-    soon: "Coming soon",
+    testflight: "Join the beta",
+    testflightNote: "Free public beta on TestFlight",
+    soon: "App Store — coming soon",
   },
   footer: {
     tagline: "A calm AI coach that understands your day.",
@@ -300,7 +302,9 @@ const ru: Dict = {
     body: "WeekFit скоро появится в App Store. Работает на данных Apple Health, приватность — в основе.",
     button: "Загрузить в App Store",
     notify: "Сообщить о запуске",
-    soon: "Скоро",
+    testflight: "Открыть бету",
+    testflightNote: "Открытая бета в TestFlight",
+    soon: "App Store — скоро",
   },
   footer: {
     tagline: "Спокойный AI-коуч, который понимает ваш день.",

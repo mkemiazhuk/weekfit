@@ -5,10 +5,8 @@ import PhoneMockup from "../PhoneMockup";
 import AppStoreBadge from "../AppStoreBadge";
 import Button from "../Button";
 import { pillars } from "@/lib/tokens";
+import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
-
-const NOTIFY_HREF =
-  "mailto:support@weekfit.app?subject=Notify%20me%20when%20WeekFit%20launches";
 
 export default function Download() {
   const { t } = useI18n();
@@ -35,7 +33,14 @@ export default function Download() {
                   {t.cta.body}
                 </p>
                 <div className="mt-9 flex flex-col items-center gap-6 md:items-start">
-                  <Button href={NOTIFY_HREF}>{t.cta.notify}</Button>
+                  <div className="flex flex-col items-center gap-2 md:items-start">
+                    <Button href={SITE.testflightUrl} external>
+                      {t.cta.testflight}
+                    </Button>
+                    <span className="text-[12px] uppercase tracking-[0.16em] text-white/40">
+                      {t.cta.testflightNote}
+                    </span>
+                  </div>
                   <AppStoreBadge soon={t.cta.soon} />
                 </div>
               </div>

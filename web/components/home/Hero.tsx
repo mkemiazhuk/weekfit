@@ -5,6 +5,7 @@ import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import CoachCard from "../CoachCard";
 import { pillars } from "@/lib/tokens";
+import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 
 export default function Hero() {
@@ -62,7 +63,9 @@ export default function Hero() {
           {...rise(0.4)}
           className="mt-9 flex flex-wrap items-center justify-center gap-3 md:justify-start"
         >
-          <Button href="#download">{t.hero.ctaPrimary}</Button>
+          <Button href={SITE.testflightUrl} external>
+            {t.cta.testflight}
+          </Button>
           <Button href="#experience" variant="ghost">
             {t.hero.ctaSecondary}
           </Button>

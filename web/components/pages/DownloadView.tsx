@@ -8,9 +8,7 @@ import PhoneMockup from "../PhoneMockup";
 import AppStoreBadge from "../AppStoreBadge";
 import Button from "../Button";
 import Reveal from "../Reveal";
-
-const NOTIFY_HREF =
-  "mailto:support@weekfit.app?subject=Notify%20me%20when%20WeekFit%20launches";
+import { SITE } from "@/lib/site";
 
 export default function DownloadView() {
   const { lang, t } = useI18n();
@@ -30,8 +28,13 @@ export default function DownloadView() {
 
           <Reveal delay={0.1}>
             <div>
-              <div className="mb-6">
-                <Button href={NOTIFY_HREF}>{t.cta.notify}</Button>
+              <div className="mb-6 flex flex-col gap-2">
+                <Button href={SITE.testflightUrl} external>
+                  {t.cta.testflight}
+                </Button>
+                <span className="text-[12px] uppercase tracking-[0.16em] text-white/40">
+                  {t.cta.testflightNote}
+                </span>
               </div>
               <AppStoreBadge soon={c.soon} />
 

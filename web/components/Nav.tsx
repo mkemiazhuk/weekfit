@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Wordmark from "./Wordmark";
 import LangToggle from "./LangToggle";
+import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 
 export default function Nav() {
@@ -72,10 +73,12 @@ export default function Nav() {
         <div className="flex items-center gap-3">
           <LangToggle />
           <a
-            href="/download"
+            href={SITE.testflightUrl}
+            target="_blank"
+            rel="noreferrer"
             className="hidden rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-transform hover:-translate-y-0.5 sm:inline-block"
           >
-            {t.cta.notify}
+            {t.cta.testflight}
           </a>
 
           {/* Mobile menu trigger */}
@@ -142,11 +145,13 @@ export default function Nav() {
                 ))}
               </ul>
               <a
-                href="/download"
+                href={SITE.testflightUrl}
+                target="_blank"
+                rel="noreferrer"
                 onClick={() => setOpen(false)}
                 className="mt-6 block rounded-full bg-white px-5 py-3.5 text-center text-[15px] font-semibold text-black"
               >
-                {t.cta.notify}
+                {t.cta.testflight}
               </a>
             </nav>
           </motion.div>

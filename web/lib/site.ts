@@ -24,6 +24,9 @@ export const SITE = {
   email: "support@weekfit.app",
   twitter: "@weekfit", // handle used for twitter:site / :creator (update if it changes)
 
+  // Public TestFlight beta (used until the App Store listing is live).
+  testflightUrl: "https://testflight.apple.com/join/t5TKwEff",
+
   // Fill in when the app ships to enable the Safari Smart App Banner.
   // Example: "1234567890"
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",

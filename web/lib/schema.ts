@@ -59,8 +59,10 @@ export function softwareApplicationSchema(): Json {
     operatingSystem: "iOS 17.0 or later",
     description: SITE.description,
     url: SITE.url,
-    // Note: no downloadUrl until the App Store listing is public — exposing
-    // a non-download destination would be misleading and invalid for the schema.
+    // Public TestFlight beta is a valid install destination until the App
+    // Store listing goes live (swap to the App Store URL at that point).
+    downloadUrl: SITE.testflightUrl,
+    installUrl: SITE.testflightUrl,
     image: `${SITE.url}/brand/icon-512.png`,
     screenshot: [
       `${SITE.url}/img/today.jpg`,
