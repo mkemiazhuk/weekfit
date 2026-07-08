@@ -23,13 +23,13 @@ export default function Button({
   external,
 }: ButtonProps) {
   const base =
-    "group relative inline-flex items-center justify-center gap-2 rounded-[14px] px-6 py-3.5 text-[15px] font-semibold transition-all duration-300 will-change-transform";
+    "group relative inline-flex items-center justify-center gap-2 rounded-[14px] px-6 py-3.5 text-[15px] font-semibold transition-all duration-300 will-change-transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]";
 
   const styles: Record<Variant, string> = {
     primary:
-      "text-[#04240f] shadow-[0_14px_40px_-8px_rgba(102,188,135,0.5)] hover:-translate-y-0.5 hover:brightness-[1.04]",
+      "text-[#04240f] shadow-[0_14px_40px_-8px_rgba(102,188,135,0.5)] hover:shadow-[0_18px_48px_-6px_rgba(102,188,135,0.55)] hover:brightness-[1.04]",
     ghost:
-      "glass text-white/90 hover:text-white hover:border-white/20",
+      "glass text-white/90 hover:text-white hover:border-white/20 hover:bg-white/[0.06]",
   };
 
   const content = (

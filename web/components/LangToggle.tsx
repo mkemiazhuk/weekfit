@@ -22,8 +22,10 @@ export default function LangToggle() {
           type="button"
           onClick={() => setLang(l)}
           className={clsx(
-            "rounded-full px-2.5 py-1 text-[12px] font-semibold uppercase transition-colors",
-            lang === l ? "bg-white text-black" : "text-white/55 hover:text-white"
+            "rounded-full px-2.5 py-1 text-[12px] font-semibold uppercase transition-all duration-300",
+            lang === l
+              ? "scale-100 bg-white text-black shadow-sm"
+              : "scale-95 text-white/55 hover:scale-100 hover:text-white"
           )}
           aria-pressed={lang === l}
           aria-label={LABELS[l]}

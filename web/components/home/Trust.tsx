@@ -3,6 +3,7 @@
 import Reveal from "../Reveal";
 import { pillars } from "@/lib/tokens";
 import { useI18n } from "@/lib/i18n";
+import SectionAmbient from "../SectionAmbient";
 
 function Glyph({ name, color }: { name: string; color: string }) {
   const paths: Record<string, React.ReactNode> = {
@@ -41,9 +42,10 @@ export default function Trust() {
   ];
 
   return (
-    <section id="privacy-teaser" className="relative px-6 py-28 md:py-36">
+    <section id="privacy-teaser" className="relative px-6 py-24 md:py-32">
+      <SectionAmbient tone="privacy" />
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-14 md:grid-cols-[0.9fr_1.1fr] md:items-start">
+        <div className="grid gap-12 md:grid-cols-[0.85fr_1.15fr] md:items-start">
           <div className="md:sticky md:top-28">
             <Reveal>
               <span className="text-[13px] font-bold uppercase tracking-[0.18em] text-hydration">
@@ -56,14 +58,14 @@ export default function Trust() {
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
-              <p className="mt-5 max-w-[42ch] text-[clamp(1.05rem,2vw,1.2rem)] leading-relaxed text-white/55">
+              <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-white/50">
                 {t.trust.lead}
               </p>
             </Reveal>
             <Reveal delay={0.15}>
               <a
                 href="/privacy"
-                className="mt-7 inline-flex items-center gap-2 text-[15px] font-semibold text-white/85 transition-colors hover:text-white"
+                className="premium-link mt-6 inline-flex items-center gap-2 text-[15px] font-semibold text-white/85"
               >
                 {t.trust.link}
                 <span aria-hidden>→</span>
@@ -71,12 +73,12 @@ export default function Trust() {
             </Reveal>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {items.map((it, i) => (
               <Reveal key={it.key} delay={0.05 * i}>
-                <div className="glass h-full rounded-[22px] p-6">
+                <div className="premium-card glass h-full rounded-[22px] p-5">
                   <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[13px]"
+                    className="flex h-10 w-10 items-center justify-center rounded-[12px]"
                     style={{
                       background: `${it.color}1f`,
                       border: `1px solid ${it.color}33`,
@@ -84,12 +86,8 @@ export default function Trust() {
                   >
                     <Glyph name={it.key} color={it.color} />
                   </div>
-                  <h3 className="mt-5 text-[17px] font-semibold text-white">
-                    {it.name}
-                  </h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-white/55">
-                    {it.desc}
-                  </p>
+                  <h3 className="mt-4 text-[16px] font-semibold text-white">{it.name}</h3>
+                  <p className="mt-1 text-[13px] leading-relaxed text-white/50">{it.desc}</p>
                 </div>
               </Reveal>
             ))}

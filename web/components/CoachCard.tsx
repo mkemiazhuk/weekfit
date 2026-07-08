@@ -22,7 +22,7 @@ export default function CoachCard({
   return (
     <div
       className={clsx(
-        "relative overflow-hidden rounded-[22px] p-5 backdrop-blur-xl",
+        "premium-card relative overflow-hidden rounded-[22px] p-5 backdrop-blur-xl",
         floating && "coach-float",
         className
       )}

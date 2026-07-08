@@ -1,16 +1,20 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useRef } from "react";
 import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import CoachCard from "../CoachCard";
+import HeroRings from "./HeroRings";
 import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
+import SectionAmbient from "../SectionAmbient";
 
 export default function Hero() {
   const { t } = useI18n();
   const reduce = useReducedMotion();
+  const phoneRef = useRef<HTMLDivElement>(null);
 
   const ease = [0.22, 1, 0.36, 1] as const;
   const rise = (delay: number) => ({
@@ -19,8 +23,34 @@ export default function Hero() {
     transition: reduce ? { duration: 0 } : { duration: 0.9, ease, delay },
   });
 
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (reduce || !phoneRef.current) return;
+      const rect = phoneRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / rect.width;
+      const dy = (e.clientY - cy) / rect.height;
+      phoneRef.current.style.transform = `perspective(900px) rotateY(${dx * 6}deg) rotateX(${-dy * 5}deg)`;
+    },
+    [reduce]
+  );
+
+  const onMouseLeave = useCallback(() => {
+    if (phoneRef.current) {
+      phoneRef.current.style.transform =
+        "perspective(900px) rotateY(0deg) rotateX(0deg)";
+    }
+  }, []);
+
   return (
-    <section className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-16 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pt-24">
+    <section
+      className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-16 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pt-24"
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
+      <SectionAmbient tone="morning" />
+
       {/* Copy */}
       <div className="text-center md:text-left">
         <motion.span
@@ -29,7 +59,10 @@ export default function Hero() {
         >
           <span
             className="h-1.5 w-1.5 rounded-full"
-            style={{ background: pillars.activity, boxShadow: `0 0 8px ${pillars.activity}` }}
+            style={{
+              background: pillars.coach,
+              boxShadow: `0 0 8px ${pillars.coach}`,
+            }}
           />
           {t.hero.eyebrow}
         </motion.span>
@@ -54,7 +87,7 @@ export default function Hero() {
 
         <motion.p
           {...rise(0.3)}
-          className="mx-auto mt-6 max-w-[46ch] text-[clamp(1.05rem,2.2vw,1.28rem)] leading-relaxed text-white/60 md:mx-0"
+          className="mx-auto mt-6 max-w-[40ch] text-[clamp(1.05rem,2.2vw,1.22rem)] leading-relaxed text-white/60 md:mx-0"
         >
           {t.hero.lead}
         </motion.p>
@@ -66,7 +99,7 @@ export default function Hero() {
           <Button href={SITE.appInstallUrl} external>
             {t.cta.testflight}
           </Button>
-          <Button href="#experience" variant="ghost">
+          <Button href="#reasoning" variant="ghost">
             {t.hero.ctaSecondary}
           </Button>
         </motion.div>
@@ -74,12 +107,35 @@ export default function Hero() {
 
       {/* Phone composition */}
       <div className="relative mt-16 w-full max-w-[320px] self-center justify-self-center md:mt-0">
+        {/* Breathing glow behind phone */}
         <motion.div
-          initial={reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 40, scale: 0.96 }}
+          aria-hidden
+          className="absolute -inset-[20%] -z-10 rounded-[50%]"
+          style={{
+            background: `radial-gradient(closest-side, ${pillars.recovery}30, transparent 70%)`,
+            filter: "blur(40px)",
+          }}
+          animate={
+            reduce
+              ? {}
+              : { scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }
+          }
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        />
+
+        <motion.div
+          initial={
+            reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 40, scale: 0.96 }
+          }
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={reduce ? { duration: 0 } : { duration: 1.1, ease, delay: 0.3 }}
         >
-          <div className="phone-float">
+          <div
+            ref={phoneRef}
+            className="phone-float relative transition-transform duration-300 ease-out will-change-transform"
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <HeroRings />
             <PhoneMockup
               src="/img/today.jpg"
               alt="WeekFit Today screen showing recovery, activity and nutrition rings"
@@ -99,8 +155,8 @@ export default function Hero() {
           <CoachCard
             accent={pillars.coach}
             state="Ready"
-            title={t.morning.title}
-            body={t.morning.body}
+            title={t.hero.coachTitle}
+            body={t.hero.coachBody}
             floating
           />
         </motion.div>

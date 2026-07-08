@@ -171,6 +171,39 @@ input:focus-visible,
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+/* Premium interactive surfaces */
+.premium-card {
+  transition:
+    transform 0.35s var(--ease-calm),
+    box-shadow 0.35s var(--ease-calm),
+    border-color 0.35s var(--ease-calm);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .premium-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55);
+  }
+}
+.premium-link {
+  transition: color 0.25s var(--ease-calm), gap 0.25s var(--ease-calm);
+}
+@media (hover: hover) {
+  .premium-link:hover {
+    color: #fff;
+    gap: 0.625rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-card {
+    transition: none;
+  }
+  .premium-card:hover {
+    transform: none;
+  }
+}
+
 /* Glass surface — translucent white film with luminous edge */
 .glass {
   background: linear-gradient(

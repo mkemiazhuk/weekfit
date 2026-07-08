@@ -11,32 +11,30 @@ export default function SeoIntro() {
     <section
       id="about"
       aria-labelledby="about-heading"
-      className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-16"
+      className="relative mx-auto max-w-6xl px-6 py-12 md:py-16"
     >
-      <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
-        <Reveal>
+      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between md:gap-12">
+        <Reveal className="max-w-xl">
           <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-brand">
             {s.kicker}
           </p>
           <h2
             id="about-heading"
-            className="mt-5 text-[clamp(1.9rem,3.6vw,2.7rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-white"
+            className="mt-4 text-[clamp(1.6rem,3vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-white"
           >
             {s.title}
           </h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-white/55 md:text-[16px]">
+            {s.p1}
+          </p>
         </Reveal>
 
-        <Reveal delay={0.08}>
-          <div className="space-y-5 text-[clamp(1rem,1.5vw,1.12rem)] leading-relaxed text-white/60">
-            <p>{s.p1}</p>
-            <p>{s.p2}</p>
-          </div>
-
-          <ul className="mt-8 flex flex-wrap gap-2.5">
+        <Reveal delay={0.08} className="shrink-0">
+          <ul className="flex flex-wrap gap-2 md:max-w-[340px] md:justify-end">
             {s.features.map((f) => (
               <li
                 key={f}
-                className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3.5 py-1.5 text-[13px] text-white/70"
+                className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/65 transition-colors hover:border-white/20 hover:text-white/85"
               >
                 {f}
               </li>

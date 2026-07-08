@@ -4,6 +4,7 @@ import Reveal from "../Reveal";
 import ProgressRing from "../ProgressRing";
 import { pillars } from "@/lib/tokens";
 import { useI18n } from "@/lib/i18n";
+import SectionAmbient from "../SectionAmbient";
 
 export default function Pillars() {
   const { t } = useI18n();
@@ -40,9 +41,10 @@ export default function Pillars() {
   ];
 
   return (
-    <section id="pillars" className="relative px-6 py-28 md:py-40">
+    <section id="pillars" className="relative px-6 py-24 md:py-36">
+      <SectionAmbient tone="activity" />
       <div className="mx-auto max-w-6xl">
-        <div className="max-w-3xl">
+        <div className="max-w-2xl">
           <Reveal>
             <span className="text-[13px] font-bold uppercase tracking-[0.18em] text-coach">
               {t.pillars.kicker}
@@ -54,16 +56,16 @@ export default function Pillars() {
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="mt-5 max-w-[54ch] text-[clamp(1.05rem,2vw,1.25rem)] leading-relaxed text-white/55">
+            <p className="mt-4 max-w-[44ch] text-[16px] leading-relaxed text-white/55">
               {t.pillars.lead}
             </p>
           </Reveal>
         </div>
 
-        <div className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((it, i) => (
             <Reveal key={it.name} delay={0.05 * i}>
-              <div className="glass h-full rounded-[22px] p-6">
+              <div className="premium-card glass h-full rounded-[22px] p-6">
                 <ProgressRing
                   value={it.value}
                   color={it.color}
@@ -71,12 +73,8 @@ export default function Pillars() {
                   stroke={7}
                   center={it.center}
                 />
-                <h3 className="mt-6 text-[18px] font-semibold text-white">
-                  {it.name}
-                </h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-white/55">
-                  {it.desc}
-                </p>
+                <h3 className="mt-5 text-[17px] font-semibold text-white">{it.name}</h3>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-white/50">{it.desc}</p>
               </div>
             </Reveal>
           ))}
