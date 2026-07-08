@@ -79,7 +79,7 @@ export default function Hero() {
           <div className="phone-float">
             <PhoneMockup
               src="/img/today.jpg"
-              alt="WeekFit Today"
+              alt="WeekFit Today screen showing recovery, activity and nutrition rings"
               glow={pillars.recovery}
               priority
             />

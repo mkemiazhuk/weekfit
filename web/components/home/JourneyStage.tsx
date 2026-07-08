@@ -10,6 +10,7 @@ import CoachCard from "../CoachCard";
 interface Panel {
   key: string;
   screen: string;
+  screenAlt: string;
   accent: string;
   kicker: string;
   title: string;
@@ -24,6 +25,8 @@ export default function JourneyStage() {
     {
       key: "morning",
       screen: "/img/today.jpg",
+      screenAlt:
+        "WeekFit Today screen showing recovery, activity and nutrition rings",
       accent: pillars.recovery,
       kicker: t.morning.kicker,
       title: t.morning.title,
@@ -33,6 +36,7 @@ export default function JourneyStage() {
     {
       key: "prep",
       screen: "/img/coach.jpg",
+      screenAlt: "WeekFit Coach screen with the day's personalized guidance",
       accent: pillars.coach,
       kicker: t.prep.kicker,
       title: t.prep.title,
@@ -42,6 +46,7 @@ export default function JourneyStage() {
     {
       key: "workout",
       screen: "/img/activity.jpg",
+      screenAlt: "WeekFit Activity screen with workouts synced from Apple Health",
       accent: pillars.activity,
       kicker: t.workout.kicker,
       title: t.workout.title,
@@ -51,6 +56,7 @@ export default function JourneyStage() {
     {
       key: "recovery",
       screen: "/img/nutrition.jpg",
+      screenAlt: "WeekFit Nutrition screen with calories and macro balance",
       accent: pillars.nutrition,
       kicker: t.recovery.kicker,
       title: t.recovery.title,
@@ -60,6 +66,7 @@ export default function JourneyStage() {
     {
       key: "night",
       screen: "/img/recovery.jpg",
+      screenAlt: "WeekFit recovery and sleep wind-down screen for the evening",
       accent: pillars.recovery,
       kicker: t.night.kicker,
       title: t.night.title,
@@ -131,7 +138,7 @@ export default function JourneyStage() {
                     <Image
                       key={p.key}
                       src={p.screen}
-                      alt={`WeekFit ${p.key}`}
+                      alt={i === active ? p.screenAlt : ""}
                       fill
                       sizes="320px"
                       className={clsx(
@@ -204,7 +211,7 @@ export default function JourneyStage() {
                     <div className="relative h-full w-full overflow-hidden rounded-[11%]">
                       <Image
                         src={p.screen}
-                        alt={`WeekFit ${p.key}`}
+                        alt={p.screenAlt}
                         fill
                         sizes="260px"
                         className="object-cover"

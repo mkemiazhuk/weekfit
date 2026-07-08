@@ -13,18 +13,21 @@ export type Lang = "en" | "ru";
 
 const en = {
   nav: {
+    home: "Home",
     features: "Experience",
     pillars: "How it understands you",
     privacy: "Privacy",
     download: "Download",
     support: "Support",
+    menu: "Menu",
+    closeMenu: "Close menu",
   },
   hero: {
     eyebrow: "A calm AI coach",
     titleA: "Your day,",
     titleB: "understood.",
     lead: "WeekFit reads your sleep, activity, nutrition and recovery — then tells you the one thing that matters today.",
-    ctaPrimary: "Download",
+    ctaPrimary: "Get notified",
     ctaSecondary: "See how it works",
     scroll: "Scroll to live the day",
   },
@@ -115,10 +118,30 @@ const en = {
     },
     link: "Read the Privacy Policy",
   },
+  why: {
+    kicker: "Why WeekFit",
+    title: "From data to what to do.",
+    lead: "Most health apps show you numbers. WeekFit reads them together and tells you what actually matters today — so you spend less energy deciding and more doing.",
+    items: {
+      data: {
+        name: "Most apps stop at data",
+        desc: "Charts, rings and stats show what happened. They rarely tell you what to do next.",
+      },
+      matters: {
+        name: "WeekFit finds what matters today",
+        desc: "It reads sleep, recovery, activity and nutrition together and surfaces the one thing worth your attention.",
+      },
+      doing: {
+        name: "Less deciding, more doing",
+        desc: "One clear daily read means less second-guessing — and an obvious next step.",
+      },
+    },
+  },
   cta: {
     title: "Meet the calm in your day.",
     body: "WeekFit is coming to the App Store. Built around Apple Health, private by design.",
     button: "Download on the App Store",
+    notify: "Get notified",
     soon: "Coming soon",
   },
   footer: {
@@ -148,18 +171,21 @@ type Dict = typeof en;
 // Russian mirrors the English structure.
 const ru: Dict = {
   nav: {
+    home: "Главная",
     features: "Обзор",
     pillars: "Как он вас понимает",
     privacy: "Приватность",
     download: "Скачать",
     support: "Поддержка",
+    menu: "Меню",
+    closeMenu: "Закрыть меню",
   },
   hero: {
     eyebrow: "Спокойный AI-коуч",
     titleA: "Ваш день —",
     titleB: "как на ладони.",
     lead: "WeekFit читает ваш сон, активность, питание и восстановление — и подсказывает главное: что важно именно сегодня.",
-    ctaPrimary: "Скачать",
+    ctaPrimary: "Сообщить о запуске",
     ctaSecondary: "Как это работает",
     scroll: "Листайте, чтобы прожить день",
   },
@@ -250,10 +276,30 @@ const ru: Dict = {
     },
     link: "Читать политику конфиденциальности",
   },
+  why: {
+    kicker: "Зачем WeekFit",
+    title: "От данных — к действию.",
+    lead: "Большинство приложений показывают цифры. WeekFit читает их вместе и подсказывает, что действительно важно сегодня — чтобы вы меньше размышляли и больше делали.",
+    items: {
+      data: {
+        name: "Большинство приложений останавливаются на данных",
+        desc: "Графики, кольца и статистика показывают, что произошло. Но редко — что делать дальше.",
+      },
+      matters: {
+        name: "WeekFit находит, что важно сегодня",
+        desc: "Он читает сон, восстановление, активность и питание вместе и выделяет главное, на что стоит обратить внимание.",
+      },
+      doing: {
+        name: "Меньше решать, больше делать",
+        desc: "Один понятный вывод в день — меньше сомнений и очевидный следующий шаг.",
+      },
+    },
+  },
   cta: {
     title: "Впустите спокойствие в свой день.",
     body: "WeekFit скоро появится в App Store. Работает на данных Apple Health, приватность — в основе.",
     button: "Загрузить в App Store",
+    notify: "Сообщить о запуске",
     soon: "Скоро",
   },
   footer: {

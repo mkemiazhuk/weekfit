@@ -3,8 +3,12 @@
 import Reveal from "../Reveal";
 import PhoneMockup from "../PhoneMockup";
 import AppStoreBadge from "../AppStoreBadge";
+import Button from "../Button";
 import { pillars } from "@/lib/tokens";
 import { useI18n } from "@/lib/i18n";
+
+const NOTIFY_HREF =
+  "mailto:support@weekfit.app?subject=Notify%20me%20when%20WeekFit%20launches";
 
 export default function Download() {
   const { t } = useI18n();
@@ -30,7 +34,8 @@ export default function Download() {
                 <p className="mx-auto mt-5 max-w-[42ch] text-[clamp(1.05rem,2vw,1.2rem)] leading-relaxed text-white/60 md:mx-0">
                   {t.cta.body}
                 </p>
-                <div className="mt-9 flex justify-center md:justify-start">
+                <div className="mt-9 flex flex-col items-center gap-6 md:items-start">
+                  <Button href={NOTIFY_HREF}>{t.cta.notify}</Button>
                   <AppStoreBadge soon={t.cta.soon} />
                 </div>
               </div>
@@ -38,7 +43,7 @@ export default function Download() {
               <div className="mx-auto w-full max-w-[220px] phone-float">
                 <PhoneMockup
                   src="/img/today.jpg"
-                  alt="WeekFit"
+                  alt="WeekFit Today screen with the day's readiness and rings"
                   glow={pillars.activity}
                 />
               </div>

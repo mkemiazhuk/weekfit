@@ -6,10 +6,14 @@ import { pillars } from "@/lib/tokens";
 import PageHero from "../PageHero";
 import PhoneMockup from "../PhoneMockup";
 import AppStoreBadge from "../AppStoreBadge";
+import Button from "../Button";
 import Reveal from "../Reveal";
 
+const NOTIFY_HREF =
+  "mailto:support@weekfit.app?subject=Notify%20me%20when%20WeekFit%20launches";
+
 export default function DownloadView() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const c = download[lang];
 
   return (
@@ -20,12 +24,15 @@ export default function DownloadView() {
         <div className="grid items-center gap-14 md:grid-cols-2">
           <Reveal>
             <div className="mx-auto w-full max-w-[300px] phone-float">
-              <PhoneMockup src="/img/today.jpg" alt="WeekFit" glow={pillars.activity} priority />
+              <PhoneMockup src="/img/today.jpg" alt="WeekFit Today screen with the day's readiness and rings" glow={pillars.activity} priority />
             </div>
           </Reveal>
 
           <Reveal delay={0.1}>
             <div>
+              <div className="mb-6">
+                <Button href={NOTIFY_HREF}>{t.cta.notify}</Button>
+              </div>
               <AppStoreBadge soon={c.soon} />
 
               {/* QR */}

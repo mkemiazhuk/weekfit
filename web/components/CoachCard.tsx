@@ -61,9 +61,9 @@ export default function CoachCard({
         <p className="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/45">
           Coach
         </p>
-        <h4 className="mt-1 text-[15px] font-semibold leading-snug text-white">
+        <p className="mt-1 text-[15px] font-semibold leading-snug text-white">
           {title}
-        </h4>
+        </p>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/60">
           {body}
         </p>

@@ -74,5 +74,9 @@ export default function Button({
       </a>
     );
   }
-  return <button className={cls}>{content}</button>;
+  return (
+    <button type="button" className={cls}>
+      {content}
+    </button>
+  );
 }

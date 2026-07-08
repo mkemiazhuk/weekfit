@@ -47,9 +47,9 @@ export default function Footer() {
         </div>
         {columns.map((col) => (
           <div key={col.title}>
-            <h4 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/40">
+            <h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
               {col.title}
-            </h4>
+            </h2>
             <ul className="mt-4 space-y-3">
               {col.links.map((l) => (
                 <li key={l.label}>
@@ -67,10 +67,10 @@ export default function Footer() {
       </div>
 
       <div className="mx-auto mt-16 max-w-6xl border-t border-white/[0.06] pt-8">
-        <p className="text-[13px] text-white/40">
+        <p className="text-[13px] text-white/50">
           © {year} WeekFit. {t.footer.rights}
         </p>
-        <p className="mt-3 max-w-[62ch] text-[12px] leading-relaxed text-white/30">
+        <p className="mt-3 max-w-[62ch] text-[12px] leading-relaxed text-white/45">
           {t.footer.disclaimer}
         </p>
       </div>
