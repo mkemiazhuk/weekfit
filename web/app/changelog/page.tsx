@@ -10,6 +10,7 @@ export const metadata = pageMetadata({
   path: "/changelog",
   title: "Changelog",
   description,
+  socialTitle: "WeekFit Changelog — Release Notes",
   keywords: ["WeekFit changelog", "WeekFit updates", "WeekFit release notes"],
 });
 
@@ -20,7 +21,7 @@ export default function Page() {
         data={[
           webPageSchema({
             path: "/changelog",
-            name: "Changelog",
+            name: "WeekFit Changelog",
             description,
           }),
           breadcrumbSchema([

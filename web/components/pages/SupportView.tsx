@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { support } from "@/lib/content";
 import PageHero from "../PageHero";
@@ -12,6 +12,12 @@ export default function SupportView() {
   const { lang } = useI18n();
   const c = support[lang];
   const [query, setQuery] = useState("");
+
+  // Honor ?q= deep links (matches WebSite SearchAction schema).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setQuery(q);
+  }, []);
 
   const matches: QA[] = useMemo(() => {
     const q = query.trim().toLowerCase();

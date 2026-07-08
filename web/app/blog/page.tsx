@@ -10,6 +10,7 @@ export const metadata = pageMetadata({
   path: "/blog",
   title: "Blog",
   description,
+  socialTitle: "WeekFit Blog — Recovery, Sleep & Training Guides",
   keywords: [
     "fitness blog",
     "recovery insights",
@@ -27,7 +28,7 @@ export default function Page() {
         data={[
           webPageSchema({
             path: "/blog",
-            name: "Blog",
+            name: "WeekFit Blog",
             description,
             type: "CollectionPage",
           }),

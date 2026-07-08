@@ -7,6 +7,7 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Analytics from "@/components/Analytics";
 import JsonLd from "@/components/JsonLd";
+import SkipLink from "@/components/SkipLink";
 import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import {
@@ -72,6 +73,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="h-full antialiased">
+      <head>
+        <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
+      </head>
       <body className="min-h-full">
         <JsonLd
           data={[
@@ -81,10 +85,11 @@ export default function RootLayout({
           ]}
         />
         <I18nProvider>
+          <SkipLink />
           <SmoothScroll />
           <AtmosphereBackground />
           <Nav />
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
           <Footer />
         </I18nProvider>
         <Analytics />

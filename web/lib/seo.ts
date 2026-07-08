@@ -26,17 +26,23 @@ const robots = (index: boolean): Metadata["robots"] => ({
   },
 });
 
+/** Absolute URL for the per-route OG image (post-build .png extension). */
+function ogImageUrl(path: string): string {
+  const base = path === "/" ? SITE.url : abs(path).replace(/\/$/, "");
+  return `${base}/opengraph-image.png`;
+}
+
 /**
  * Build a complete, per-page Metadata object: unique title + description,
  * canonical URL, hreflang alternates, Open Graph + Twitter cards and robots
- * directives. Open Graph / Twitter images are supplied automatically by the
- * `opengraph-image` file convention, so they are intentionally not set here.
+ * directives.
  */
 export function pageMetadata(seo: PageSeo): Metadata {
   const url = abs(seo.path);
   const index = seo.index ?? true;
   const social =
     seo.socialTitle ?? (seo.path === "/" ? SITE.title : `${seo.title} — ${SITE.name}`);
+  const ogImage = ogImageUrl(seo.path);
 
   return {
     title: seo.path === "/" ? undefined : seo.title,
@@ -57,6 +63,15 @@ export function pageMetadata(seo: PageSeo): Metadata {
       description: seo.description,
       locale: SITE.ogLocale,
       alternateLocale: [...SITE.ogAltLocales],
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: social,
+          type: "image/png",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -64,6 +79,7 @@ export function pageMetadata(seo: PageSeo): Metadata {
       creator: SITE.twitter,
       title: social,
       description: seo.description,
+      images: [ogImage],
     },
     robots: robots(index),
   };

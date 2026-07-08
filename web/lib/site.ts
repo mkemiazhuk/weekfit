@@ -9,9 +9,10 @@ export const SITE = {
   url: "https://weekfit.app",
   name: "WeekFit",
   shortName: "WeekFit",
-  title: "WeekFit — A calm AI coach that understands your day",
+  title: "WeekFit — AI Fitness Coach for iPhone | Apple Health",
   description:
-    "WeekFit is a calm AI fitness coach for iPhone. It reads your sleep, recovery, activity and nutrition from Apple Health, then tells you the one thing that matters today. Private by design, no account required.",
+    "WeekFit is a calm AI fitness coach for iPhone. It reads your sleep, recovery, activity and nutrition from Apple Health, then tells you the one thing that matters today. Join the free TestFlight beta — private by design, no account required.",
+  slogan: "Your day, understood.",
   // Primary + alternate locales (BCP-47 short codes for hreflang / inLanguage).
   defaultLocale: "en",
   locales: ["en", "ru"] as const,
@@ -26,6 +27,11 @@ export const SITE = {
 
   // Public TestFlight beta (used until the App Store listing is live).
   testflightUrl: "https://testflight.apple.com/join/t5TKwEff",
+
+  // Entity corroboration for Knowledge Graph / AI search (add profiles as they launch).
+  sameAs: [
+    "https://testflight.apple.com/join/t5TKwEff",
+  ] as string[],
 
   // Fill in when the app ships to enable the Safari Smart App Banner.
   // Example: "1234567890"

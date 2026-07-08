@@ -31,7 +31,7 @@ export default function Footer() {
       links: [
         { label: t.footer.privacy, href: "/privacy" },
         { label: t.footer.terms, href: "/terms" },
-        { label: t.footer.contact, href: "mailto:support@weekfit.app" },
+        { label: t.footer.contact, href: "/contact" },
       ],
     },
   ];

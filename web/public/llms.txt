@@ -1,0 +1,53 @@
+# WeekFit
+
+> WeekFit is a calm AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health, then tells you the one thing that matters today. Private by design. No account required.
+
+## Product
+
+- **Name:** WeekFit
+- **Category:** AI fitness coach / health app
+- **Platform:** iPhone (iOS 17.0+)
+- **Status:** Public TestFlight beta
+- **Pricing:** Free
+- **Privacy:** On-device, local-first, no ads, no data selling
+
+## What WeekFit does
+
+WeekFit turns health data you already have into a clear plan for the day:
+
+1. **Recovery** — sleep, HRV and resting heart rate become a single readiness score
+2. **Activity** — workouts and active energy synced from Apple Health
+3. **Nutrition** — calories and macro balance in context of your day
+4. **Coach** — one calm daily read with the reasoning behind every recommendation
+
+WeekFit works like a coach, not a dashboard. It helps you understand what matters today and reduces decision fatigue.
+
+## Key pages
+
+- Homepage: https://weekfit.app/
+- Download / TestFlight beta: https://weekfit.app/download/
+- FAQ: https://weekfit.app/faq/
+- Support / Help Center: https://weekfit.app/support/
+- Privacy Policy: https://weekfit.app/privacy/
+- Terms of Use: https://weekfit.app/terms/
+- Contact: https://weekfit.app/contact/
+- Changelog: https://weekfit.app/changelog/
+- Press Kit: https://weekfit.app/press/
+
+## Install
+
+- TestFlight (public beta): https://testflight.apple.com/join/t5TKwEff
+
+## Contact
+
+- Email: support@weekfit.app
+- Website: https://weekfit.app/contact/
+
+## Technical
+
+- Sitemap: https://weekfit.app/sitemap.xml
+- Languages: English, Russian (client-side toggle; English is the primary indexed language)
+
+## Disclaimer
+
+WeekFit provides fitness and wellness guidance only. It does not provide medical advice.
