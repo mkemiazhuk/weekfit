@@ -82,7 +82,10 @@ const en = {
   seo: {
     kicker: "What is WeekFit",
     title: "An AI fitness coach for Apple Health.",
-    p1: "One daily read from sleep, recovery, activity and nutrition — with the reasoning behind it. Private, on your device.",
+    p1: "One daily read from sleep, recovery, activity and nutrition — with the reasoning behind it.",
+    privacy: "Private, on your device.",
+    healthLabel: "Data source",
+    healthValue: "Apple Health",
     features: [
       "Recovery score",
       "Sleep & readiness",
@@ -245,7 +248,10 @@ const ru: Dict = {
   seo: {
     kicker: "Что такое WeekFit",
     title: "AI-коуч по фитнесу на основе Apple Health.",
-    p1: "Один вывод в день из сна, восстановления, активности и питания — с объяснением. Приватно, на устройстве.",
+    p1: "Один вывод в день из сна, восстановления, активности и питания — с объяснением.",
+    privacy: "Приватно, на устройстве.",
+    healthLabel: "Источник данных",
+    healthValue: "Apple Health",
     features: [
       "Показатель восстановления",
       "Сон и готовность",
