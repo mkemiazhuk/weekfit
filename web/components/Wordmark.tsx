@@ -43,7 +43,7 @@ export default function Wordmark({
         )}
       >
         <span className="text-white">Week</span>
-        <span className="wordmark-fit">Fit</span>
+        <span className="text-brand">Fit</span>
       </span>
     </a>
   );

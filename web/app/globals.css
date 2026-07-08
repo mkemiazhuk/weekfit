@@ -130,20 +130,7 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
-/* Brand lockup — gold accent matches app icon */
-.wordmark-fit {
-  background: linear-gradient(
-    128deg,
-    #f8e8bc 0%,
-    #e2c06a 38%,
-    #c9a24d 62%,
-    #f5d692 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
+/* Brand lockup — icon frame matches gold app icon; "Fit" uses text-brand in Wordmark */
 .wordmark-icon {
   border-radius: 22%;
   background: linear-gradient(
