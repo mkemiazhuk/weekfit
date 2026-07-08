@@ -152,14 +152,10 @@ export default function CoachReasoning() {
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
                 {r.recommendationLabel}
               </p>
-              <div className="mt-4 space-y-2">
-                <p className="text-[clamp(1.35rem,4.5vw,1.75rem)] font-bold leading-[1.3] tracking-[-0.02em] text-white">
-                  {r.recommendationToday}
-                </p>
-                <p className="text-[clamp(1.35rem,4.5vw,1.75rem)] font-bold leading-[1.3] tracking-[-0.02em] text-white/75">
-                  {r.recommendationTomorrow}
-                </p>
-              </div>
+              <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[clamp(1.25rem,4.2vw,1.65rem)] font-bold leading-[1.35] tracking-[-0.02em]">
+                <span className="text-white">{r.recommendationToday}</span>
+                <span className="text-white/72">{r.recommendationTomorrow}</span>
+              </p>
             </div>
           </motion.div>
         </div>
