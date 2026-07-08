@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
 import { pillars, accents } from "@/lib/tokens";
 import Reveal from "../Reveal";
@@ -16,7 +17,7 @@ const featureMeta: { icon: IconName; color: string }[] = [
 ];
 
 export default function SeoIntro() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const s = t.seo;
 
   return (
@@ -29,7 +30,6 @@ export default function SeoIntro() {
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <div className="glass relative overflow-hidden rounded-[28px] p-6 md:p-10">
-            {/* subtle top glow */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-32"
@@ -40,7 +40,6 @@ export default function SeoIntro() {
             />
 
             <div className="relative">
-              {/* Header */}
               <div className="md:flex md:items-start md:justify-between md:gap-10">
                 <div className="max-w-xl">
                   <p className="text-[13px] font-bold uppercase tracking-[0.16em] text-brand">
@@ -48,7 +47,7 @@ export default function SeoIntro() {
                   </p>
                   <h2
                     id="about-heading"
-                    className="display mt-3 text-[clamp(1.75rem,3.8vw,2.5rem)] text-white"
+                    className="display mt-3 text-[clamp(1.75rem,3.8vw,2.5rem)] leading-[1.08] text-white"
                   >
                     {s.title}
                   </h2>
@@ -71,7 +70,6 @@ export default function SeoIntro() {
                   </p>
                 </div>
 
-                {/* Apple Health badge — desktop */}
                 <div
                   className="premium-card mt-6 hidden shrink-0 items-center gap-3 rounded-[18px] border border-white/[0.1] bg-white/[0.04] px-4 py-3 md:mt-1 md:flex"
                   style={{
@@ -79,7 +77,7 @@ export default function SeoIntro() {
                   }}
                 >
                   <span
-                    className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]"
                     style={{
                       background: `${pillars.hydration}18`,
                       border: `1px solid ${pillars.hydration}33`,
@@ -87,7 +85,7 @@ export default function SeoIntro() {
                   >
                     <Icon name="health" color={pillars.hydration} size={20} />
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">
                       {s.healthLabel}
                     </p>
@@ -98,20 +96,18 @@ export default function SeoIntro() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div
                 aria-hidden
                 className="my-7 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent md:my-8"
               />
 
-              {/* Capability grid */}
               <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                 {s.features.map((label, i) => {
                   const meta = featureMeta[i];
                   return (
                     <li
                       key={label}
-                      className="premium-card flex items-center gap-3 rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-3 py-3 md:px-3.5 md:py-3.5"
+                      className="premium-card flex min-h-[92px] min-w-0 flex-col gap-2.5 overflow-hidden rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-3.5 sm:min-h-0 sm:flex-row sm:items-center sm:gap-3 sm:p-3"
                     >
                       <span
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
@@ -122,7 +118,14 @@ export default function SeoIntro() {
                       >
                         <Icon name={meta.icon} color={meta.color} size={17} />
                       </span>
-                      <span className="text-[13px] font-medium leading-snug text-white/78">
+                      <span
+                        className={clsx(
+                          "min-w-0 flex-1 font-medium leading-[1.35] text-white/78 [overflow-wrap:anywhere]",
+                          lang === "ru"
+                            ? "text-[11.5px] sm:text-[12.5px]"
+                            : "text-[12px] sm:text-[13px]"
+                        )}
+                      >
                         {label}
                       </span>
                     </li>
@@ -130,8 +133,7 @@ export default function SeoIntro() {
                 })}
               </ul>
 
-              {/* Apple Health badge — mobile */}
-              <div className="mt-4 flex items-center gap-3 rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 md:hidden">
+              <div className="mt-4 flex min-w-0 items-center gap-3 overflow-hidden rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 md:hidden">
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
                   style={{
@@ -141,11 +143,13 @@ export default function SeoIntro() {
                 >
                   <Icon name="health" color={pillars.hydration} size={17} />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
                     {s.healthLabel}
                   </p>
-                  <p className="text-[13px] font-semibold text-white/80">{s.healthValue}</p>
+                  <p className="truncate text-[13px] font-semibold text-white/80">
+                    {s.healthValue}
+                  </p>
                 </div>
               </div>
             </div>

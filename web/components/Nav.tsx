@@ -76,7 +76,7 @@ export default function Nav() {
             href={SITE.appInstallUrl}
             target="_blank"
             rel="noreferrer"
-            className="hidden rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-transform hover:-translate-y-0.5 sm:inline-block"
+            className="hidden whitespace-nowrap rounded-full bg-white px-3.5 py-2 text-[12px] font-semibold text-black transition-transform hover:-translate-y-0.5 sm:inline-block md:px-4 md:text-[13px]"
           >
             {t.cta.testflight}
           </a>
