@@ -1,52 +1,70 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import SmoothScroll from "@/components/SmoothScroll";
 import AtmosphereBackground from "@/components/AtmosphereBackground";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import Analytics from "@/components/Analytics";
+import JsonLd from "@/components/JsonLd";
+import { SITE } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
+import {
+  organizationSchema,
+  websiteSchema,
+  softwareApplicationSchema,
+} from "@/lib/schema";
 
-const siteUrl = "https://weekfit.app";
+const home = pageMetadata({
+  path: "/",
+  title: SITE.title,
+  description: SITE.description,
+});
+
+const other: Record<string, string> = {};
+if (SITE.verification.bing) other["msvalidate.01"] = SITE.verification.bing;
+if (SITE.appleAppId) other["apple-itunes-app"] = `app-id=${SITE.appleAppId}`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE.url),
+  ...home,
   title: {
-    default: "WeekFit — A calm AI coach that understands your day",
-    template: "%s — WeekFit",
+    default: SITE.title,
+    template: `%s — ${SITE.name}`,
   },
-  description:
-    "WeekFit reads your sleep, activity, nutrition and recovery from Apple Health, then tells you the one thing that matters today. Private by design.",
-  applicationName: "WeekFit",
-  keywords: [
-    "WeekFit",
-    "AI fitness coach",
-    "Apple Health",
-    "recovery",
-    "nutrition",
-    "activity",
-    "wellness",
-  ],
-  openGraph: {
-    type: "website",
-    url: siteUrl,
-    title: "WeekFit — A calm AI coach that understands your day",
-    description:
-      "It doesn't just collect health data. It understands your day. Built around Apple Health, private by design.",
-    siteName: "WeekFit",
-    images: [{ url: "/img/today.jpg", width: 900, height: 1950 }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "WeekFit — A calm AI coach that understands your day",
-    description:
-      "It doesn't just collect health data. It understands your day.",
-    images: ["/img/today.jpg"],
+  applicationName: SITE.name,
+  authors: [{ name: "WeekFit", url: SITE.url }],
+  creator: "WeekFit",
+  publisher: "WeekFit",
+  category: "health",
+  formatDetection: { telephone: false, address: false, email: false },
+  appleWebApp: {
+    capable: true,
+    title: "WeekFit",
+    statusBarStyle: "black-translucent",
   },
   icons: {
-    icon: "/brand/icon-192.png",
-    apple: "/brand/icon-180.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/brand/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/brand/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/brand/icon-192.png",
+    apple: [{ url: "/brand/icon-180.png", sizes: "180x180" }],
   },
   manifest: "/manifest.webmanifest",
+  verification: {
+    google: SITE.verification.google || undefined,
+    yandex: SITE.verification.yandex || undefined,
+  },
+  ...(Object.keys(other).length ? { other } : {}),
+};
+
+export const viewport: Viewport = {
+  themeColor: "#06070a",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -55,6 +73,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
+        <JsonLd
+          data={[
+            organizationSchema(),
+            websiteSchema(),
+            softwareApplicationSchema(),
+          ]}
+        />
         <I18nProvider>
           <SmoothScroll />
           <AtmosphereBackground />
@@ -62,6 +87,7 @@ export default function RootLayout({
           <main>{children}</main>
           <Footer />
         </I18nProvider>
+        <Analytics />
       </body>
     </html>
   );

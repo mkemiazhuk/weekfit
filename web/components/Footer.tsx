@@ -21,6 +21,7 @@ export default function Footer() {
       links: [
         { label: t.footer.support, href: "/support" },
         { label: t.footer.faq, href: "/faq" },
+        { label: t.footer.blog, href: "/blog" },
         { label: t.footer.changelog, href: "/changelog" },
         { label: t.footer.press, href: "/press" },
       ],

@@ -32,6 +32,20 @@ export default function FaqView() {
             <FAQAccordion items={cat.faqs} />
           </section>
         ))}
+
+        <div className="mt-4 rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-6 text-center">
+          <p className="text-[15px] text-white/70">
+            {lang === "ru"
+              ? "Не нашли ответ? В Центре помощи есть подробные руководства."
+              : "Didn't find your answer? The Help Center has detailed guides."}
+          </p>
+          <a
+            href="/support"
+            className="mt-3 inline-block text-[15px] font-semibold text-brand hover:underline"
+          >
+            {lang === "ru" ? "Перейти в Поддержку →" : "Go to Support →"}
+          </a>
+        </div>
       </div>
     </>
   );
