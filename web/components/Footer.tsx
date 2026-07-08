@@ -67,7 +67,7 @@ export default function Footer() {
         {/* Mobile layout */}
         <div className="md:hidden">
           <div className="space-y-3">
-            <Wordmark />
+            <Wordmark size="lg" />
             <p className="max-w-[36ch] text-[13px] leading-relaxed text-white/50">
               {t.footer.tagline}
             </p>
@@ -99,7 +99,7 @@ export default function Footer() {
         {/* Desktop layout */}
         <div className="hidden gap-12 md:grid md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <Wordmark />
+            <Wordmark size="lg" />
             <p className="mt-4 max-w-[34ch] text-[14px] leading-relaxed text-white/50">
               {t.footer.tagline}
             </p>

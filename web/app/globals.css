@@ -130,6 +130,47 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
+/* Brand lockup — gold accent matches app icon */
+.wordmark-fit {
+  background: linear-gradient(
+    128deg,
+    #f8e8bc 0%,
+    #e2c06a 38%,
+    #c9a24d 62%,
+    #f5d692 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.wordmark-icon {
+  border-radius: 22%;
+  background: linear-gradient(
+    145deg,
+    rgba(245, 191, 92, 0.5) 0%,
+    rgba(245, 191, 92, 0.14) 45%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  box-shadow:
+    0 6px 28px -6px rgba(245, 191, 92, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  padding: 1px;
+}
+
+.wordmark-icon-inner {
+  overflow: hidden;
+  border-radius: 21%;
+  background: #08090c;
+}
+
+.group:hover .wordmark-icon,
+.group:focus-visible .wordmark-icon {
+  box-shadow:
+    0 8px 32px -4px rgba(245, 191, 92, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
 /* Glass surface — translucent white film with luminous edge */
 .glass {
   background: linear-gradient(

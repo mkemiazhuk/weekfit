@@ -1,18 +1,49 @@
 import Image from "next/image";
 import clsx from "clsx";
 
-export default function Wordmark({ className }: { className?: string }) {
+const sizes = {
+  nav: { icon: 36, text: "text-[17px]", gap: "gap-3" },
+  lg: { icon: 42, text: "text-[19px]", gap: "gap-3.5" },
+} as const;
+
+export default function Wordmark({
+  className,
+  size = "nav",
+}: {
+  className?: string;
+  size?: keyof typeof sizes;
+}) {
+  const s = sizes[size];
+
   return (
-    <a href="/" className={clsx("flex items-center gap-2.5", className)}>
-      <Image
-        src="/brand/icon-192.png"
-        alt="WeekFit app icon"
-        width={30}
-        height={30}
-        className="rounded-[8px]"
-      />
-      <span className="text-[17px] font-semibold tracking-[-0.02em] text-white">
-        Week<span className="text-brand">Fit</span>
+    <a
+      href="/"
+      className={clsx(
+        "group inline-flex items-center transition-opacity hover:opacity-95",
+        s.gap,
+        className
+      )}
+    >
+      <span className="wordmark-icon relative shrink-0 transition-shadow duration-300">
+        <span className="wordmark-icon-inner block">
+          <Image
+            src="/brand/icon-192.png"
+            alt=""
+            width={s.icon}
+            height={s.icon}
+            className="block"
+            aria-hidden
+          />
+        </span>
+      </span>
+      <span
+        className={clsx(
+          "display leading-none tracking-[-0.03em]",
+          s.text
+        )}
+      >
+        <span className="text-white">Week</span>
+        <span className="wordmark-fit">Fit</span>
       </span>
     </a>
   );
