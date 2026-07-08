@@ -5,7 +5,6 @@ import { useCallback, useRef } from "react";
 import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import CoachCard from "../CoachCard";
-import HeroRings from "./HeroRings";
 import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
@@ -130,18 +129,20 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={reduce ? { duration: 0 } : { duration: 1.1, ease, delay: 0.3 }}
         >
+          {/* Parallax wrapper — separate from phone-float so transforms don't clash */}
           <div
             ref={phoneRef}
-            className="phone-float relative transition-transform duration-300 ease-out will-change-transform"
+            className="relative transition-transform duration-300 ease-out will-change-transform"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <HeroRings />
-            <PhoneMockup
-              src="/img/today.jpg"
-              alt="WeekFit Today screen showing recovery, activity and nutrition rings"
-              glow={pillars.recovery}
-              priority
-            />
+            <div className="phone-float">
+              <PhoneMockup
+                src="/img/today.jpg"
+                alt="WeekFit Today screen showing recovery, activity and nutrition rings"
+                glow={pillars.recovery}
+                priority
+              />
+            </div>
           </div>
         </motion.div>
 
@@ -150,7 +151,7 @@ export default function Hero() {
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={reduce ? { duration: 0 } : { duration: 0.9, ease, delay: 1.15 }}
-          className="absolute -bottom-6 -right-2 w-[220px] sm:-right-8 sm:w-[248px]"
+          className="absolute -bottom-4 -right-2 z-10 w-[220px] sm:-right-8 sm:w-[248px]"
         >
           <CoachCard
             accent={pillars.coach}

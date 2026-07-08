@@ -42,8 +42,8 @@ export default function CoachReasoning() {
     reduce
       ? {}
       : {
-          initial: { opacity: 0, y: 16, filter: "blur(6px)" },
-          whileInView: { opacity: 1, y: 0, filter: "blur(0px)" },
+          initial: { opacity: 0, y: 16 },
+          whileInView: { opacity: 1, y: 0 },
           viewport: { once: true, margin: "-8% 0px" },
           transition: { duration: 0.75, ease: easeCalm, delay: i * stagger },
         };
