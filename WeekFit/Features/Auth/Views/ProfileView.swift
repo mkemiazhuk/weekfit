@@ -4,6 +4,7 @@ import SwiftData
 struct ProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
@@ -49,12 +50,12 @@ struct ProfileView: View {
         }
         .weekFitTabSwitchModalOverlay()
         .task {
-            let actualAccess = await healthManager.checkReadAuthorizationStatus()
-
-            await MainActor.run {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    healthManager.isHealthAccessGranted = actualAccess
-                }
+            await refreshHealthPermissionState()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task {
+                await refreshHealthPermissionState()
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -242,9 +243,9 @@ private extension ProfileView {
                             .lineLimit(2)
                             .minimumScaleFactor(0.92)
 
-                        Text(isPermissionGranted ? WeekFitLocalizedString("settings.profile.recoverySystemActive") : WeekFitLocalizedString("settings.profile.healthSetupNeeded"))
+                        Text(profileHealthConnectionHeadline(for: connectionState))
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(isPermissionGranted ? accentGreen.opacity(0.92) : textSecondary)
+                            .foregroundStyle(profileHealthConnectionHeadlineColor(for: connectionState))
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -665,9 +666,7 @@ private extension ProfileView {
 
     func displaySubtitle(for item: ProfileItem, showHealthStatus: Bool) -> String? {
         if showHealthStatus {
-            return healthManager.isHealthAccessGranted
-                ? WeekFitLocalizedString("settings.profile.item.healthSignals.connectedSubtitle")
-                : WeekFitLocalizedString("settings.profile.item.healthSignals.setupSubtitle")
+            return profileHealthSignalsRowSubtitle(for: healthManager.healthDataConnectionState)
         }
 
         switch item.type {
@@ -748,14 +747,66 @@ private extension ProfileView {
 
     func profileHealthConnectionSubtitle(for state: HealthDataConnectionState) -> String {
         switch state {
-        case .notRequested, .denied:
+        case .notRequested:
             return WeekFitLocalizedString("settings.profile.connectHealthPlanning")
+        case .denied:
+            return WeekFitLocalizedString("healthAccess.hero.needsSettings.subtitle")
         case .connectedWaitingForData:
             return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
         case .connectedPartial:
             return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
         case .connected:
             return WeekFitLocalizedString("settings.profile.appleHealthConnected")
+        }
+    }
+
+    func profileHealthConnectionHeadline(for state: HealthDataConnectionState) -> String {
+        switch state {
+        case .notRequested:
+            return WeekFitLocalizedString("settings.profile.healthSetupNeeded")
+        case .denied:
+            return WeekFitLocalizedString("healthAccess.hero.needsSettings.title")
+        case .connectedWaitingForData, .connectedPartial:
+            return WeekFitLocalizedString("healthAccess.hero.connected.title")
+        case .connected:
+            return WeekFitLocalizedString("settings.profile.recoverySystemActive")
+        }
+    }
+
+    func profileHealthConnectionHeadlineColor(for state: HealthDataConnectionState) -> Color {
+        switch state {
+        case .connected:
+            return accentGreen.opacity(0.92)
+        case .connectedWaitingForData, .connectedPartial:
+            return accentBlue.opacity(0.88)
+        case .notRequested, .denied:
+            return textSecondary
+        }
+    }
+
+    func profileHealthSignalsRowSubtitle(for state: HealthDataConnectionState) -> String {
+        switch state {
+        case .notRequested:
+            return WeekFitLocalizedString("settings.profile.item.healthSignals.setupSubtitle")
+        case .denied:
+            return WeekFitLocalizedString("healthAccess.hero.needsSettings.subtitle")
+        case .connectedWaitingForData:
+            return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
+        case .connectedPartial:
+            return WeekFitLocalizedString("healthAccess.hero.connected.partial")
+        case .connected:
+            return WeekFitLocalizedString("settings.profile.item.healthSignals.connectedSubtitle")
+        }
+    }
+
+    func refreshHealthPermissionState() async {
+        healthManager.updateAuthorizationStatus()
+        let actualAccess = await healthManager.checkReadAuthorizationStatus()
+
+        await MainActor.run {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                healthManager.isHealthAccessGranted = actualAccess
+            }
         }
     }
 }

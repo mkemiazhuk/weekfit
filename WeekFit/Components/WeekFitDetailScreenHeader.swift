@@ -74,6 +74,7 @@ struct WeekFitDetailScreenBackButton: View {
             .frame(width: 38, height: 38)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(WeekFitLocalizedString("common.action.back"))
     }
 }
 
@@ -82,6 +83,7 @@ struct WeekFitDetailScreenCircleButton: View {
     let systemName: String
     var iconSize: CGFloat = 14
     var iconWeight: Font.Weight = .semibold
+    var accessibilityLabelText: String?
     let action: () -> Void
 
     var body: some View {
@@ -104,6 +106,7 @@ struct WeekFitDetailScreenCircleButton: View {
             .frame(width: 38, height: 38)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabelText ?? systemName)
     }
 }
 
@@ -149,6 +152,7 @@ struct WeekFitDetailScreenSaveButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+        .accessibilityLabel(WeekFitLocalizedString("common.action.save"))
         .scaleEffect(isEnabled ? 1.0 : 0.96)
         .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isEnabled)
     }

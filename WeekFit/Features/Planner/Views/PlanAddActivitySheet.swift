@@ -101,6 +101,11 @@ struct PlanAddActivitySheet: View {
             } message: {
                 Text(viewModel.timeConflictMessage)
             }
+            .alert(WeekFitLocalizedString("planner.saveFailure.title"), isPresented: $viewModel.showSaveFailureAlert) {
+                Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
+            } message: {
+                Text(viewModel.saveFailureMessage)
+            }
             .alert(WeekFitLocalizedString("planner.delete.title"), isPresented: $showDeleteConfirmation) {
                 Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) { }
 

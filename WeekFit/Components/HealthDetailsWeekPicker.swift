@@ -34,7 +34,11 @@ struct HealthDetailsWeekPicker: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            weekNavigationButton(systemName: "chevron.left", isEnabled: true) {
+            weekNavigationButton(
+                systemName: "chevron.left",
+                accessibilityLabel: WeekFitLocalizedString("planner.week.previous"),
+                isEnabled: true
+            ) {
                 moveWeek(by: -1)
             }
 
@@ -58,7 +62,11 @@ struct HealthDetailsWeekPicker: View {
                     }
             )
 
-            weekNavigationButton(systemName: "chevron.right", isEnabled: visibleWeekOffset < 0) {
+            weekNavigationButton(
+                systemName: "chevron.right",
+                accessibilityLabel: WeekFitLocalizedString("planner.week.next"),
+                isEnabled: visibleWeekOffset < 0
+            ) {
                 moveWeek(by: 1)
             }
         }
@@ -127,6 +135,7 @@ struct HealthDetailsWeekPicker: View {
 
     private func weekNavigationButton(
         systemName: String,
+        accessibilityLabel: String,
         isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
@@ -144,6 +153,7 @@ struct HealthDetailsWeekPicker: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private func select(_ date: Date) {

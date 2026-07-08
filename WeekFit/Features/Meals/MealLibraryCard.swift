@@ -139,6 +139,18 @@ struct HeroMealLibraryRow: View {
             }
             runHighlightPulse()
         }
+        .accessibilityElement(children: isQuickLogMode ? .contain : .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+        .accessibilityHint(isQuickLogMode ? "" : WeekFitLocalizedString("meals.library.openDetailsHint"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var rowAccessibilityLabel: String {
+        String(
+            format: WeekFitLocalizedString("meals.library.rowAccessibilityFormat"),
+            meal.localizedDisplayTitle,
+            meal.calories
+        )
     }
 
     // MARK: Background
@@ -311,6 +323,12 @@ struct HeroMealLibraryRow: View {
                     }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(
+                String(
+                    format: WeekFitLocalizedString("meals.quickLog.logFormat"),
+                    meal.localizedDisplayTitle
+                )
+            )
         } else {
             ZStack {
                 Circle()

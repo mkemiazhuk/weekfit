@@ -13,7 +13,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            #if DEBUG
             authViewModel.applyUITestBypassIfNeeded()
+            #endif
         }
     }
 }

@@ -40,6 +40,14 @@
 		5552B9D62FE69F0000A4172A /* Exceptions for "WeekFit" folder in "WeekFit" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Features/Nutrition/new/Coach/Docs/CoachContextLayerAudit.md,
+				Features/Nutrition/new/Coach/Docs/CoachConversationCorrectnessAudit.md,
+				Features/Nutrition/new/Coach/Docs/CoachConversationPhaseSafetyContract.md,
+				Features/Nutrition/new/Coach/Docs/CoachEdgeCaseMatrix.md,
+				Features/Nutrition/new/Coach/Docs/CoachIntelligenceAudit.md,
+				Features/Nutrition/new/Coach/Docs/CoachReflectionArchitectureContract.md,
+				Features/Nutrition/new/Coach/Docs/CoachReflectionProductionAudit.md,
+				Features/Nutrition/new/Coach/Docs/CoachScenarioMatrix.md,
 				Info.plist,
 			);
 			target = 55E7BBE42FB2403E006A4D20 /* WeekFit */;
@@ -434,7 +442,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9.1;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -475,7 +483,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9.1;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

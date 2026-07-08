@@ -347,6 +347,8 @@ struct MealsView: View {
             Group {
                 if !mealsViewModel.hasLoadedCustomMeals {
                     loadingLibraryList
+                } else if nutritionViewModel.catalogLoadFailed && !hasAnyItems {
+                    catalogErrorList
                 } else if !hasAnyItems {
                     emptyLibraryList
                 } else {
@@ -388,6 +390,58 @@ struct MealsView: View {
                 .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+
+            bottomSpacerRow
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .listRowSpacing(0)
+        .scrollIndicators(.hidden)
+        .frame(maxHeight: .infinity)
+    }
+
+    private var catalogErrorList: some View {
+        List {
+            VStack(alignment: .leading, spacing: 14) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(WeekFitTheme.orange.opacity(0.88))
+
+                Text(WeekFitLocalizedString("meals.catalog.loadFailed.title"))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+
+                Text(WeekFitLocalizedString("meals.catalog.loadFailed.message"))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(textSecondary.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    nutritionViewModel.reloadCatalog()
+                } label: {
+                    Text(WeekFitLocalizedString("common.action.retry"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.black.opacity(0.86))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(WeekFitTheme.meal.opacity(0.92))
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(cardSecondary.opacity(0.72))
+            )
+            .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
 
             bottomSpacerRow
         }
@@ -1689,6 +1743,12 @@ private struct RecommendedTodayMealCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(
+            String(
+                format: WeekFitLocalizedString("meals.coachRecommendation.accessibilityFormat"),
+                recommendation.meal.localizedDisplayTitle
+            )
+        )
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)

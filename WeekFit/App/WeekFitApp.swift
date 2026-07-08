@@ -83,6 +83,7 @@ struct WeekFitApp: App {
             nightComfortLocationService?.refreshIfNeeded()
 
             if backgroundEnteredAt != nil {
+                healthManager.updateAuthorizationStatus()
                 appSession.triggerHealthRefresh(source: "appForeground")
             }
 

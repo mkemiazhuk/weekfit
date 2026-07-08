@@ -1,43 +1,60 @@
 import Foundation
 
+enum NutritionCatalogError: Equatable, Error {
+    case mealsFileMissing
+    case mealsDecodeFailed
+    case quickItemsFileMissing
+    case quickItemsDecodeFailed
+}
+
 final class NutritionRepository {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
     nonisolated deinit {}
 
-    func loadMeals() -> [Meals] {
+    func loadMealsResult() -> Result<[Meals], NutritionCatalogError> {
         guard let url = Bundle.main.url(forResource: "meals", withExtension: "json") else {
-            print("meals.json not found")
-            return []
+            return .failure(.mealsFileMissing)
         }
 
         do {
             let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode([Meals].self, from: data)
+            return .success(try JSONDecoder().decode([Meals].self, from: data))
         } catch {
-            print("Failed to decode meals.json:", error)
+            return .failure(.mealsDecodeFailed)
+        }
+    }
+
+    func loadMeals() -> [Meals] {
+        switch loadMealsResult() {
+        case .success(let meals):
+            return meals
+        case .failure:
             return []
         }
     }
-    
-    func loadQuickItems() -> [QuickItem] {
 
+    func loadQuickItemsResult() -> Result<[QuickItem], NutritionCatalogError> {
         guard let url = Bundle.main.url(
             forResource: "drinks_snacks",
             withExtension: "json"
         ) else {
-            print("drinks_snacks.json not found")
-            return []
+            return .failure(.quickItemsFileMissing)
         }
 
         do {
             let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode(
-                [QuickItem].self,
-                from: data
-            )
+            return .success(try JSONDecoder().decode([QuickItem].self, from: data))
         } catch {
-            print("Failed to decode drinks_snacks.json:", error)
+            return .failure(.quickItemsDecodeFailed)
+        }
+    }
+
+    func loadQuickItems() -> [QuickItem] {
+        switch loadQuickItemsResult() {
+        case .success(let items):
+            return items
+        case .failure:
             return []
         }
     }

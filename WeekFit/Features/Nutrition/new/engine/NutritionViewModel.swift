@@ -18,6 +18,7 @@ final class NutritionViewModel: ObservableObject {
     @Published private(set) var coachStateRefreshID = UUID()
     
     @Published var manualWaterLiters: Double = 0
+    @Published private(set) var catalogLoadFailed = false
 
     /// Calendar day the in-memory nutrition totals belong to.
     private(set) var trackedNutritionDayStart: Date?
@@ -30,12 +31,23 @@ final class NutritionViewModel: ObservableObject {
 
     nonisolated deinit {}
 
-    init() { load() }
+    init() { reloadCatalog() }
 
-    func load() { meals = repository.loadMeals() }
+    func reloadCatalog() {
+        switch repository.loadMealsResult() {
+        case .success(let loaded):
+            meals = loaded
+            catalogLoadFailed = false
+        case .failure:
+            meals = []
+            catalogLoadFailed = true
+        }
+    }
+
+    func load() { reloadCatalog() }
 
     func resetLocalState() {
-        load()
+        reloadCatalog()
         plannedMeals = []
         selectedCategory = nil
         selectedMeal = nil

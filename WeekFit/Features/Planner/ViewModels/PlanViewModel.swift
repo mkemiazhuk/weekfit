@@ -30,6 +30,8 @@ final class PlanViewModel: ObservableObject {
 
     @Published var showTimeConflictAlert = false
     @Published var timeConflictMessage = ""
+    @Published var showSaveFailureAlert = false
+    @Published var saveFailureMessage = ""
 
     // MARK: - Drag State
     @Published var draggedActivityID: String?
@@ -462,7 +464,8 @@ final class PlanViewModel: ObservableObject {
                     completionCheckInsEnabled: completionCheckInsEnabled
                 )
             } catch {
-                print("Failed to update planned activity:", error)
+                handleSaveFailure(error)
+                return
             }
         } else {
             let activity = PlannedActivity(
@@ -493,11 +496,19 @@ final class PlanViewModel: ObservableObject {
                     completionCheckInsEnabled: completionCheckInsEnabled
                 )
             } catch {
-                print("Failed to save planned activity:", error)
+                modelContext.delete(activity)
+                handleSaveFailure(error)
+                return
             }
         }
 
         closeAddSheet()
+    }
+
+    private func handleSaveFailure(_ error: Error) {
+        saveFailureMessage = WeekFitLocalizedString("planner.saveFailure.message")
+        showSaveFailureAlert = true
+        print("Failed to save planned activity:", error)
     }
 
     private func displayImageName(for meal: Meals?) -> String {
@@ -591,6 +602,7 @@ final class PlanViewModel: ObservableObject {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         cancelNotifications(for: activity)
+        let previousDate = activity.date
         activity.date = newDate
 
         do {
@@ -601,7 +613,8 @@ final class PlanViewModel: ObservableObject {
                 completionCheckInsEnabled: completionCheckInsEnabled
             )
         } catch {
-            print("Failed to move planned activity:", error)
+            activity.date = previousDate
+            handleSaveFailure(error)
         }
     }
 

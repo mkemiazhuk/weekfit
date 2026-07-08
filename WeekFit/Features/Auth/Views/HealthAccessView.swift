@@ -167,6 +167,7 @@ struct HealthAccessView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
 
+            healthManager.updateAuthorizationStatus()
             refreshStateWithoutAnimation()
 
             Task {
@@ -774,11 +775,35 @@ private extension HealthAccessView {
     }
 
     var watchStatusKind: StatusKind {
-        guard accessState == .connected else { return .neutral }
+        watchStatusPresentation.kind
+    }
 
-        return readiness.isWatchPaired || readiness.hasRecentHeartRate || readiness.hasRecentSleep || readiness.hasRecentWorkout
-            ? .positive
-            : .warning
+    var watchStatusText: String {
+        watchStatusPresentation.text
+    }
+
+    private var watchStatusPresentation: (text: String, kind: StatusKind) {
+        guard accessState == .connected else {
+            return (WeekFitLocalizedString("healthAccess.status.afterAccess"), .neutral)
+        }
+
+        if readiness.isWatchPaired && readiness.isWatchAppInstalled {
+            return (WeekFitLocalizedString("healthAccess.status.paired"), .positive)
+        }
+
+        if readiness.isWatchPaired && !readiness.isWatchAppInstalled {
+            return (WeekFitLocalizedString("healthAccess.status.watchAppNotInstalled"), .warning)
+        }
+
+        if readiness.hasRecentHeartRate || readiness.hasRecentSleep || readiness.hasRecentWorkout {
+            return (WeekFitLocalizedString("healthAccess.status.dataFound"), .positive)
+        }
+
+        if WatchConnectivitySupport.shouldActivateSession {
+            return (WeekFitLocalizedString("healthAccess.status.watchNotPaired"), .warning)
+        }
+
+        return (WeekFitLocalizedString("healthAccess.status.notDetected"), .warning)
     }
 
     var workoutStatusKind: StatusKind {
@@ -797,21 +822,14 @@ private extension HealthAccessView {
     }
 
     var syncStatusKind: StatusKind {
-        accessState == .connected ? .positive : .neutral
-    }
+        guard accessState == .connected else { return .neutral }
 
-    var watchStatusText: String {
-        guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.afterAccess") }
-
-        if readiness.isWatchPaired {
-            return WeekFitLocalizedString("healthAccess.status.paired")
+        guard let lastSync = healthManager.lastHealthKitSyncTime else {
+            return .neutral
         }
 
-        if readiness.hasRecentHeartRate || readiness.hasRecentSleep || readiness.hasRecentWorkout {
-            return WeekFitLocalizedString("healthAccess.status.dataFound")
-        }
-
-        return WeekFitLocalizedString("healthAccess.status.notDetected")
+        let hours = Date().timeIntervalSince(lastSync) / 3600
+        return hours >= 24 ? .warning : .positive
     }
 
     var workoutStatusText: String {
@@ -831,7 +849,7 @@ private extension HealthAccessView {
 
     var syncStatusText: String {
         guard accessState == .connected else { return WeekFitLocalizedString("healthAccess.status.notSynced") }
-        return formattedLastSync(readiness.lastSyncDate)
+        return formattedLastSync(healthManager.lastHealthKitSyncTime)
     }
 
     func formattedLastSync(_ date: Date?) -> String {
@@ -904,21 +922,25 @@ private extension HealthAccessView {
     }
 
     var connectedHeroSubtitle: String {
-        let score = readiness.qualityScore
-
-        if score >= 4 && readiness.hasRecentSleep {
-            return WeekFitLocalizedString("healthAccess.hero.connected.full")
-        }
-
-        if score >= 3 {
+        switch healthManager.healthDataConnectionState {
+        case .connectedWaitingForData:
+            return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
+        case .connectedPartial:
             return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
+        case .connected:
+            if readiness.qualityScore >= 4 && readiness.hasRecentSleep {
+                return WeekFitLocalizedString("healthAccess.hero.connected.full")
+            }
+            if readiness.qualityScore >= 3 {
+                return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
+            }
+            if readiness.qualityScore >= 2 {
+                return WeekFitLocalizedString("healthAccess.hero.connected.partial")
+            }
+            return WeekFitLocalizedString("healthAccess.hero.connected.full")
+        default:
+            return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
         }
-
-        if score >= 2 {
-            return WeekFitLocalizedString("healthAccess.hero.connected.partial")
-        }
-
-        return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
     }
 
     var actionTitle: String {
@@ -1094,7 +1116,7 @@ private extension HealthAccessView {
             hasRecentSleep: isGranted && sleepAvailable,
             hasRecentHeartRate: isGranted && heartRateAvailable,
             backgroundRefreshEnabled: backgroundEnabled,
-            lastSyncDate: isGranted ? Date() : nil
+            lastSyncDate: isGranted ? healthManager.lastHealthKitSyncTime : nil
         )
 
         await MainActor.run {
@@ -1356,6 +1378,7 @@ private struct SleepSetupHelpSheet: View {
                     )
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
             .fixedSize()
         }
     }
