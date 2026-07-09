@@ -35,20 +35,19 @@ export default function Wordmark({
     >
       <span
         className={clsx(
-          "relative shrink-0",
+          "relative block shrink-0",
           iconVariant === "app" ? "wordmark-icon-app" : "wordmark-icon-subtle"
         )}
+        style={{ width: s.icon, height: s.icon }}
       >
-        <span className="wordmark-icon-gold block">
-          <Image
-            src="/brand/logo-gold.png"
-            alt=""
-            width={s.icon}
-            height={s.icon}
-            className="block h-auto w-full"
-            aria-hidden
-          />
-        </span>
+        <Image
+          src="/brand/logo-gold.png"
+          alt=""
+          width={s.icon}
+          height={s.icon}
+          className="block size-full object-contain"
+          aria-hidden
+        />
       </span>
       <span className={clsx("display min-w-0 truncate leading-none tracking-[-0.03em]", s.text)}>
         <span className="text-white">Week</span>
