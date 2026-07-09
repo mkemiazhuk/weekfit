@@ -33,6 +33,7 @@
   /* Premium accent duo (login/marketing) */
   --color-gold: #f5bf5c;
   --color-brand: #66bc87;
+  --color-wordmark-fit: #76a88a;
 
   /* Macros (as rendered in Nutrition Details) */
   --color-protein: #9466f2;
@@ -166,36 +167,43 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
-/* Brand lockup — gold WF monogram */
+/* Brand lockup — gold WF monogram + WeekFit */
 .wordmark-lockup {
   line-height: 1;
+  align-items: center;
 }
-.wordmark-lockup__icon {
+.wordmark-mark {
   display: block;
   line-height: 0;
-  margin-inline-end: -2px;
+  opacity: 0.94;
+  filter: saturate(0.76) brightness(1.1) contrast(0.94);
+  transition:
+    opacity 0.25s var(--ease-calm),
+    filter 0.25s var(--ease-calm);
+}
+.group:hover .wordmark-mark,
+.group:focus-visible .wordmark-mark {
+  opacity: 1;
+  filter: saturate(0.82) brightness(1.12) contrast(0.96);
 }
 .wordmark-lockup__text {
+  display: inline-flex;
+  align-items: baseline;
+  font-weight: 600;
+  letter-spacing: -0.032em;
   line-height: 1;
-  transform: translateY(-0.5px);
-  margin-inline-start: -3px;
+  transform: translateY(0.5px);
+}
+.wordmark-lockup__week {
+  color: rgba(255, 255, 255, 0.96);
+}
+.wordmark-lockup__fit {
+  color: var(--color-wordmark-fit, #76a88a);
 }
 .wordmark-icon-gold {
   display: block;
   line-height: 0;
 }
-.wordmark-icon-subtle {
-  opacity: 0.94;
-  transition:
-    opacity 0.3s var(--ease-calm),
-    filter 0.3s var(--ease-calm);
-}
-.group:hover .wordmark-icon-subtle,
-.group:focus-visible .wordmark-icon-subtle {
-  opacity: 1;
-  filter: drop-shadow(0 0 14px rgba(245, 191, 92, 0.28));
-}
-
 .wordmark-icon-app {
   border-radius: 22%;
   background: linear-gradient(

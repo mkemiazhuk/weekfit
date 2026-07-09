@@ -1,14 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
+import WordmarkMark from "./WordmarkMark";
 
 const sizes = {
-  nav: { text: "text-[17px]", icon: 34, gap: "gap-1", nudge: "1px" },
-  navMobile: { text: "text-[15px]", icon: 30, gap: "gap-0.5", nudge: "1px" },
-  lg: { text: "text-[19px]", icon: 38, gap: "gap-1", nudge: "1px" },
-  footer: { text: "text-[17px]", icon: 34, gap: "gap-1", nudge: "1px" },
+  nav: { fontSize: 17, markScale: 1.25, gap: 16 },
+  navMobile: { fontSize: 15, markScale: 1.18, gap: 15 },
+  lg: { fontSize: 19, markScale: 1.25, gap: 16 },
+  footer: { fontSize: 17, markScale: 1.25, gap: 16 },
 } as const;
 
 export default function Wordmark({
@@ -23,36 +23,29 @@ export default function Wordmark({
 }) {
   const { localePath } = useI18n();
   const s = sizes[size];
+  const markHeight = Math.round(s.fontSize * s.markScale);
 
   return (
     <a
       href={localePath("/")}
+      style={{ gap: s.gap, fontSize: s.fontSize }}
       className={clsx(
         "group wordmark-lockup inline-flex min-w-0 max-w-full items-center transition-opacity hover:opacity-95",
-        s.text,
-        s.gap,
         className
       )}
     >
-      <span
-        className={clsx(
-          "wordmark-lockup__icon relative shrink-0",
-          iconVariant === "app" ? "wordmark-icon-app" : "wordmark-icon-subtle"
-        )}
-        style={{ width: s.icon, height: s.icon, transform: `translateY(${s.nudge})` }}
-      >
-        <Image
-          src="/brand/logo-gold-tab.png"
-          alt=""
-          width={s.icon}
-          height={s.icon}
-          className="block size-full object-contain object-right"
-          aria-hidden
-        />
-      </span>
-      <span className="wordmark-lockup__text display min-w-0 truncate leading-none tracking-[-0.03em]">
-        <span className="text-white">Week</span>
-        <span className="text-brand">Fit</span>
+      {iconVariant === "app" ? (
+        <span className="wordmark-icon-app w-fit p-1">
+          <span className="wordmark-icon-app-inner">
+            <WordmarkMark height={markHeight} />
+          </span>
+        </span>
+      ) : (
+        <WordmarkMark height={markHeight} />
+      )}
+      <span className="wordmark-lockup__text min-w-0 truncate">
+        <span className="wordmark-lockup__week">Week</span>
+        <span className="wordmark-lockup__fit">Fit</span>
       </span>
     </a>
   );
