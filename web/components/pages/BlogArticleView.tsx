@@ -61,7 +61,11 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
           <p className="blog-article-deck">{post.excerpt[lang]}</p>
         </header>
 
-        {showToc && <BlogArticleToc items={toc} title={c.tocTitle} />}
+        {showToc && (
+          <div className="blog-article-toc-slot">
+            <BlogArticleToc items={toc} title={c.tocTitle} />
+          </div>
+        )}
 
         <div className="prose prose-blog blog-article-body">
           <BlogArticleBody sections={sections} />
