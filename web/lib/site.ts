@@ -30,6 +30,11 @@ export const SITE = {
   email: "support@weekfit.app",
   twitter: "@weekfit",
 
+  social: {
+    x: "https://x.com/weekfit",
+    instagram: "https://instagram.com/weekfit",
+  },
+
   /** Single install URL for CTAs and SoftwareApplication.downloadUrl. Swap at App Store launch. */
   appInstallUrl: "https://testflight.apple.com/join/t5TKwEff",
 

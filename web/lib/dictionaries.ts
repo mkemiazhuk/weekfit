@@ -142,7 +142,11 @@ export const en = {
     soon: "App Store — coming soon",
   },
   footer: {
-    tagline: "A calm AI coach that understands your day.",
+    ariaLabel: "Site footer",
+    tagline:
+      "A calm AI coach that understands your day and helps you perform, recover, and live better.",
+    notify: "Get notified",
+    socialLabel: "Social links",
     product: "Product",
     resources: "Resources",
     legal: "Legal",
@@ -152,13 +156,28 @@ export const en = {
     support: "Support",
     faq: "FAQ",
     changelog: "Changelog",
-    press: "Press Kit",
     blog: "Blog",
     privacy: "Privacy",
     terms: "Terms",
     contact: "Contact",
     rights: "All rights reserved.",
     disclaimer: "Fitness and wellness guidance only. Not medical advice.",
+    trustLabel: "Trust and privacy",
+    waitlist: {
+      title: "Stay in the loop",
+      description:
+        "Updates, new features and science-backed insights—straight to your inbox.",
+      placeholder: "Email address",
+      button: "Get notified",
+      note: "No spam. Unsubscribe anytime.",
+      success: "You're on the list. We'll be in touch soon.",
+      error: "Please enter a valid email address.",
+    },
+    trust: {
+      data: "Your data is yours",
+      privacy: "Private by design",
+      health: "Apple Health integration",
+    },
   },
 };
 
@@ -309,7 +328,11 @@ export const ru: Dict = {
     soon: "App Store — скоро",
   },
   footer: {
-    tagline: "Спокойный AI-коуч, который понимает ваш день.",
+    ariaLabel: "Подвал сайта",
+    tagline:
+      "Спокойный AI-коуч, который понимает ваш день и помогает лучше тренироваться, восстанавливаться и жить.",
+    notify: "Сообщить о запуске",
+    socialLabel: "Социальные сети",
     product: "Продукт",
     resources: "Ресурсы",
     legal: "Документы",
@@ -319,13 +342,28 @@ export const ru: Dict = {
     support: "Поддержка",
     faq: "Частые вопросы",
     changelog: "Обновления",
-    press: "Пресс-кит",
     blog: "Блог",
     privacy: "Приватность",
     terms: "Условия",
     contact: "Контакты",
     rights: "Все права защищены.",
     disclaimer: "Рекомендации по фитнесу и здоровью. Не медицинская консультация.",
+    trustLabel: "Доверие и приватность",
+    waitlist: {
+      title: "Будьте в курсе",
+      description:
+        "Обновления, новые функции и материалы на основе науки — прямо на почту.",
+      placeholder: "Email",
+      button: "Сообщить о запуске",
+      note: "Без спама. Отписаться можно в любой момент.",
+      success: "Вы в списке. Скоро свяжемся.",
+      error: "Введите корректный email.",
+    },
+    trust: {
+      data: "Ваши данные — ваши",
+      privacy: "Приватность по умолчанию",
+      health: "Интеграция с Apple Health",
+    },
   },
 };
 

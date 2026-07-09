@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { blogCategories, blogCopy, type BlogPost } from "@/lib/blog";
-import DocArticle from "./DocArticle";
+import BlogArticleBody from "./BlogArticleBody";
 
 function formatDate(iso: string, lang: "en" | "ru") {
   return new Intl.DateTimeFormat(lang === "ru" ? "ru-RU" : "en-US", {
@@ -42,8 +42,8 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
       </h1>
       <p className="mt-4 text-[17px] leading-relaxed text-white/60">{post.excerpt[lang]}</p>
 
-      <div className="prose mt-10">
-        <DocArticle sections={post.sections[lang]} />
+      <div className="prose prose-blog mt-10">
+        <BlogArticleBody sections={post.sections[lang]} />
       </div>
     </article>
   );

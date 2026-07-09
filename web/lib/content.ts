@@ -16,7 +16,17 @@ export interface Category {
 export type Block =
   | { t: "p"; v: string }
   | { t: "h3"; v: string }
-  | { t: "ul"; v: string[] };
+  | { t: "ul"; v: string[] }
+  | { t: "quote"; v: string }
+  | { t: "vo2-drop"; before: string; after: string; labels: [string, string] }
+  | { t: "trend"; values: number[]; caption: string }
+  | {
+      t: "compare";
+      left: { vo2: string; title: string; lines: string[] };
+      right: { vo2: string; title: string; lines: string[] };
+      question?: string;
+    }
+  | { t: "divider" };
 export interface DocSection {
   id: string;
   h: string;
