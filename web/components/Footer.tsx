@@ -80,16 +80,6 @@ export default function Footer() {
         <div className="footer-premium__glow footer-premium__glow--green" />
       </div>
 
-      <div className="footer-support">
-        <div className="footer-support__inner">
-          <p className="footer-support__label">{t.footer.supportBand.label}</p>
-          <p className="footer-support__body">{t.footer.supportBand.body}</p>
-          <a href={`mailto:${SITE.email}`} className="footer-support__cta">
-            {SITE.email}
-          </a>
-        </div>
-      </div>
-
       <div className="footer-premium__inner">
         <h2 id="footer-heading" className="sr-only">
           {t.footer.ariaLabel}

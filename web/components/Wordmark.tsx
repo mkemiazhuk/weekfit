@@ -39,13 +39,13 @@ export default function Wordmark({
           iconVariant === "app" ? "wordmark-icon-app" : "wordmark-icon-subtle"
         )}
       >
-        <span className={iconVariant === "app" ? "wordmark-icon-app-inner block" : "block overflow-hidden rounded-[22%]"}>
+        <span className="wordmark-icon-gold block">
           <Image
-            src="/brand/icon-192.png"
+            src="/brand/logo-gold.png"
             alt=""
             width={s.icon}
             height={s.icon}
-            className="block"
+            className="block h-auto w-full"
             aria-hidden
           />
         </span>

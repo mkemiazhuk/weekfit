@@ -2,10 +2,11 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Button from "../Button";
-import DownloadHeroPhone from "./DownloadHeroPhone";
+import PhoneMockup from "../PhoneMockup";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 import { easeCalm } from "@/lib/motion";
+import { pillars } from "@/lib/tokens";
 
 export default function Download() {
   const { t } = useI18n();
@@ -82,7 +83,21 @@ export default function Download() {
             </div>
 
             <motion.div {...phone} className="download-hero__device">
-              <DownloadHeroPhone />
+              <div className="download-hero-phone">
+                <motion.div
+                  aria-hidden
+                  className="download-hero-phone__glow download-hero-phone__glow--recovery"
+                  animate={reduce ? {} : { opacity: [0.5, 0.85, 0.5], scale: [1, 1.08, 1] }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <div className="phone-float">
+                  <PhoneMockup
+                    src="/img/today.jpg"
+                    alt="WeekFit Today screen with the morning decision"
+                    glow={pillars.recovery}
+                  />
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
