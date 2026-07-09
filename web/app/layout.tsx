@@ -75,7 +75,7 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="/brand/favicon-tab.png?v=3"
+          href="/brand/favicon-tab.png?v=4"
           type="image/png"
           sizes="192x192"
         />

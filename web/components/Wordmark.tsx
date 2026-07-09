@@ -42,7 +42,7 @@ export default function Wordmark({
         style={{ width: s.icon, height: s.icon, transform: `translateY(${s.nudge})` }}
       >
         <Image
-          src="/brand/logo-gold-lockup.png"
+          src="/brand/logo-gold-tab.png"
           alt=""
           width={s.icon}
           height={s.icon}
