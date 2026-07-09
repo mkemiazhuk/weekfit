@@ -242,7 +242,7 @@ export const en = {
   },
   reasoning: {
     kicker: "The Coach",
-    title: "Not a score. The why.",
+    title: "Not more scores. More clarity.",
     yesterday: "Yesterday",
     signals: [
       "Slept 8h 12m",
@@ -610,7 +610,7 @@ export const ru: Dict = {
   },
   reasoning: {
     kicker: "Коуч",
-    title: "Не цифры. Решения.",
+    title: "Не больше цифр. Больше ясности.",
     yesterday: "Вчера",
     signals: [
       "Сон 8ч 12м",
