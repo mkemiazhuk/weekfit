@@ -1,59 +1,91 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import Reveal from "../Reveal";
-import PhoneMockup from "../PhoneMockup";
 import Button from "../Button";
+import DownloadHeroPhone from "./DownloadHeroPhone";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
-import SectionAmbient from "../SectionAmbient";
+import { easeCalm } from "@/lib/motion";
 
 export default function Download() {
   const { t } = useI18n();
   const reduce = useReducedMotion();
 
-  return (
-    <section id="download" className="relative z-[1] section-x section-y-lg">
-      <SectionAmbient tone="morning" />
-      <div className="mx-auto max-w-5xl">
-        <Reveal>
-          <div className="card-panel download-panel relative overflow-hidden glass">
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-72"
-              style={{
-                background:
-                  "radial-gradient(60% 120% at 50% 0%, rgba(46,219,250,0.14), transparent 62%)",
-              }}
-              animate={reduce ? {} : { opacity: [0.75, 1, 0.75] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="relative grid items-center gap-14 md:grid-cols-[1.15fr_0.85fr] md:gap-16">
-              <div className="text-center md:text-left">
-                <p className="font-rounded text-[clamp(2.35rem,5.5vw,3.75rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white/92">
-                  {t.cta.title}
-                </p>
-                <h2 className="display text-balance mt-2 text-[clamp(2rem,5vw,3.35rem)] text-gradient-hero">
-                  {t.cta.subtitle}
-                </h2>
-                <p className="caption mt-7">{t.cta.body}</p>
-                <div className="mt-11 flex flex-col items-center gap-2 md:items-start">
-                  <Button href={SITE.appInstallUrl} external className="min-w-[220px]">
-                    {t.cta.testflight}
-                  </Button>
-                  <span className="caption">{t.cta.testflightNote}</span>
-                </div>
-              </div>
+  const copy = (delay: number, y = 22) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, margin: "-8%" },
+          transition: { duration: 0.95, ease: easeCalm, delay },
+        };
 
-              <div className="mx-auto w-full max-w-[240px] phone-float md:max-w-[280px]">
-                <PhoneMockup
-                  src="/img/today.jpg"
-                  alt="WeekFit Today screen with the morning decision"
-                />
-              </div>
+  const phone = reduce
+    ? {}
+    : {
+        initial: { opacity: 0, y: 48, scale: 0.94 },
+        whileInView: { opacity: 1, y: 0, scale: 1 },
+        viewport: { once: true, margin: "-10%" },
+        transition: { duration: 1.15, ease: easeCalm, delay: 0.58 },
+      };
+
+  return (
+    <section id="download" className="download-hero section-x section-y-lg">
+      <div className="download-hero__backdrop" aria-hidden>
+        <motion.div
+          className="download-hero__orb download-hero__orb--cyan"
+          animate={reduce ? {} : { x: [0, 12, 0], y: [0, -8, 0], scale: [1, 1.06, 1] }}
+          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="download-hero__orb download-hero__orb--violet"
+          animate={reduce ? {} : { x: [0, -16, 0], y: [0, 10, 0], scale: [1.04, 1, 1.04] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        />
+        <motion.div
+          className="download-hero__orb download-hero__orb--green"
+          animate={reduce ? {} : { opacity: [0.35, 0.55, 0.35] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div className="download-hero__noise" />
+      </div>
+
+      <div className="download-hero__stage mx-auto max-w-5xl">
+        <div className="download-hero__panel">
+          <div className="download-hero__grid">
+            <div className="download-hero__copy text-center md:text-left">
+              <motion.p
+                {...copy(0, 18)}
+                className="font-rounded text-[clamp(2.35rem,5.5vw,3.75rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white/94"
+              >
+                {t.cta.title}
+              </motion.p>
+              <motion.h2
+                {...copy(0.12, 20)}
+                className="display text-balance mt-2 text-[clamp(2rem,5vw,3.35rem)] text-gradient-hero"
+              >
+                {t.cta.subtitle}
+              </motion.h2>
+              <motion.p {...copy(0.24, 16)} className="caption mt-7">
+                {t.cta.body}
+              </motion.p>
+              <motion.div
+                {...copy(0.38, 14)}
+                className="mt-11 flex flex-col items-center gap-2.5 md:items-start"
+              >
+                <Button href={SITE.appInstallUrl} external className="btn-premium-glass min-w-[220px]">
+                  {t.cta.testflight}
+                </Button>
+                <span className="caption">{t.cta.testflightNote}</span>
+              </motion.div>
             </div>
+
+            <motion.div {...phone} className="download-hero__device">
+              <DownloadHeroPhone />
+            </motion.div>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   );
