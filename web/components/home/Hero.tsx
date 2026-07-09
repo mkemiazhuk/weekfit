@@ -44,25 +44,21 @@ export default function Hero() {
 
   return (
     <section
-      className="relative z-0 isolate mx-auto flex min-h-screen max-w-6xl flex-col items-center section-x pt-32 pb-28 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12 md:pb-20 md:pt-24"
+      className="relative z-0 isolate mx-auto flex min-h-[92vh] max-w-6xl flex-col items-center section-x pt-32 pb-16 md:grid md:min-h-screen md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12 md:pb-12 md:pt-24"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
       <SectionAmbient tone="morning" />
 
       <div className="text-center md:text-left">
-        <motion.span {...rise(0.05)} className="eyebrow-pill">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{
-              background: pillars.coach,
-              boxShadow: `0 0 8px ${pillars.coach}`,
-            }}
-          />
+        <motion.p
+          {...rise(0.05)}
+          className="font-rounded text-[clamp(3.5rem,12vw,6.5rem)] font-bold leading-[0.92] tracking-[-0.04em] text-white/90"
+        >
           {t.hero.eyebrow}
-        </motion.span>
+        </motion.p>
 
-        <h1 className="display mt-8 text-[clamp(2.8rem,8vw,5.2rem)] text-white">
+        <h1 className="display mt-4 text-[clamp(2.4rem,7vw,4.4rem)] text-white">
           <motion.span {...rise(0.12)} className="block">
             {t.hero.titleA}
           </motion.span>
@@ -71,7 +67,7 @@ export default function Hero() {
           </motion.span>
         </h1>
 
-        <motion.p {...rise(0.3)} className="body-lg mx-auto mt-6 max-w-[38ch] md:mx-0">
+        <motion.p {...rise(0.3)} className="body-lg mx-auto mt-6 max-w-[34ch] md:mx-0">
           {t.hero.lead}
         </motion.p>
 
@@ -82,13 +78,13 @@ export default function Hero() {
           <Button href={SITE.appInstallUrl} external>
             {t.cta.testflight}
           </Button>
-          <Button href={localePath("/#reasoning")} variant="ghost">
+          <Button href={localePath("/experience")} variant="ghost">
             {t.hero.ctaSecondary}
           </Button>
         </motion.div>
       </div>
 
-      <div className="relative mt-20 w-full max-w-[320px] self-center justify-self-center md:mt-0">
+      <div className="relative mt-16 w-full max-w-[340px] self-center justify-self-center md:mt-0">
         <motion.div
           aria-hidden
           className="phone-glow"
@@ -98,9 +94,7 @@ export default function Hero() {
             filter: "blur(40px)",
           }}
           animate={
-            reduce
-              ? {}
-              : { scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }
+            reduce ? {} : { scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }
           }
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -120,18 +114,27 @@ export default function Hero() {
             <div className="phone-float">
               <PhoneMockup
                 src="/img/today.jpg"
-                alt="WeekFit Today screen showing recovery, activity and nutrition rings"
+                alt="WeekFit Today screen with the morning decision"
                 priority
               />
             </div>
           </div>
         </motion.div>
 
+        <motion.p
+          initial={reduce ? { opacity: 1 } : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.8, ease: easeCalm, delay: 0.85 }}
+          className="display mt-6 text-center text-[clamp(1.35rem,3.5vw,1.75rem)] text-white md:text-left"
+        >
+          {t.hero.decision}
+        </motion.p>
+
         <motion.div
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={reduce ? { duration: 0 } : { duration: 0.9, ease: easeCalm, delay: 1.15 }}
-          className="absolute -bottom-4 -right-2 hidden w-[220px] md:block sm:-right-8 sm:w-[248px]"
+          className="absolute -bottom-2 -right-2 hidden w-[220px] md:block sm:-right-8 sm:w-[248px]"
         >
           <CoachCard
             accent={pillars.coach}
@@ -147,7 +150,7 @@ export default function Hero() {
         initial={reduce ? { opacity: 1 } : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={reduce ? { duration: 0 } : { duration: 1, delay: 1.6 }}
-        className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 text-center"
+        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-center md:bottom-8"
       >
         <span className="caption tracking-[0.2em]">{t.hero.scroll}</span>
       </motion.div>

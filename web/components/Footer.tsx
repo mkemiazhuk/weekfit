@@ -54,7 +54,7 @@ export default function Footer() {
 
   const productLinks = [
     { label: t.footer.experience, href: localePath("/#experience") },
-    { label: t.footer.pillars, href: localePath("/#pillars") },
+    { label: t.footer.simulator, href: localePath("/experience") },
     { label: t.footer.download, href: localePath("/download") },
   ];
 

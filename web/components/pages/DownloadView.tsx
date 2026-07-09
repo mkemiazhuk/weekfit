@@ -37,7 +37,7 @@ export default function DownloadView() {
                 </Button>
                 <span className="caption">{t.cta.testflightNote}</span>
               </div>
-              <AppStoreBadge soon={c.soon} />
+              <AppStoreBadge soon={c.soon} footnote={t.cta.appStoreFootnote} />
 
               <div className="mt-10">
                 <h2 className="kicker text-white/40">{c.reqTitle}</h2>

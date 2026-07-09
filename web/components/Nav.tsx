@@ -40,8 +40,8 @@ export default function Nav() {
   const links = [
     { href: localePath("/"), label: t.nav.home },
     { href: localePath("/#experience"), label: t.nav.features },
+    { href: localePath("/experience"), label: t.nav.simulator },
     { href: localePath("/blog"), label: t.nav.blog },
-    { href: localePath("/changelog"), label: t.nav.changelog },
     { href: localePath("/privacy"), label: t.nav.privacy },
     { href: localePath("/support"), label: t.nav.support },
   ];

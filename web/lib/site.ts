@@ -9,7 +9,7 @@ export const ENTITY = {
   name: "WeekFit",
   developer: "WeekFit",
   description:
-    "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
+    "WeekFit reads Apple Health and gives you one clear decision every morning — push, hold, or recover — with visible reasoning. Private on your iPhone.",
   platform: "iPhone",
   operatingSystem: "iOS",
   category: "AI fitness coach",

@@ -1,8 +1,7 @@
 import Hero from "@/components/home/Hero";
+import ProofStrip from "@/components/home/ProofStrip";
 import CoachReasoning from "@/components/home/CoachReasoning";
-import SeoIntro from "@/components/home/SeoIntro";
 import JourneyStage from "@/components/home/JourneyStage";
-import Pillars from "@/components/home/Pillars";
 import Trust from "@/components/home/Trust";
 import Download from "@/components/home/Download";
 import JsonLd from "@/components/JsonLd";
@@ -16,10 +15,9 @@ export default function RuHomePage() {
     <>
       <JsonLd data={entityGraphSchema()} />
       <Hero />
+      <ProofStrip />
       <CoachReasoning />
-      <SeoIntro />
       <JourneyStage />
-      <Pillars />
       <Trust />
       <Download />
     </>

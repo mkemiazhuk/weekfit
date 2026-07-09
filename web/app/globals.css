@@ -440,6 +440,44 @@ input:focus-visible,
   transition: opacity 0.8s var(--ease-calm), transform 0.8s var(--ease-calm);
 }
 
+/* Experience simulator slider */
+.sim-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(102, 188, 135, 0.45)
+  );
+  outline: none;
+}
+.sim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f5f6f8;
+  border: 2px solid rgba(102, 188, 135, 0.8);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+.sim-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f5f6f8;
+  border: 2px solid rgba(102, 188, 135, 0.8);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+.sim-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
 /* Grain / atmosphere helpers */
 .mask-fade-b {
   -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);

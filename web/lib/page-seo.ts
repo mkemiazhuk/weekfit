@@ -8,15 +8,16 @@ export interface PageSeoCopy {
 
 export const HOME_SEO: Record<Locale, PageSeoCopy> = {
   en: {
-    title: "WeekFit — AI Fitness Coach for iPhone",
+    title: "WeekFit — What is today for?",
     description:
-      "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
+      "WeekFit reads Apple Health and gives you one clear decision every morning — push, hold, or recover — with visible reasoning. Private on your iPhone.",
+    socialTitle: "WeekFit — Know what today is for",
   },
   ru: {
-    title: "WeekFit — AI-коуч для iPhone",
+    title: "WeekFit — Для чего сегодня?",
     description:
-      "WeekFit — AI-коуч для iPhone. Читает сон, восстановление, активность и питание из Apple Health и говорит, что важно сегодня. Приватно, без аккаунта.",
-    socialTitle: "WeekFit — AI-коуч для iPhone",
+      "WeekFit читает Apple Health и каждое утро даёт одно ясное решение — давить, держать или восстанавливаться — с объяснением. Приватно на iPhone.",
+    socialTitle: "WeekFit — Для чего сегодня?",
   },
 };
 
@@ -125,6 +126,20 @@ export const PAGE_SEO = {
       title: "Условия использования",
       description:
         "Условия использования WeekFit — правила, отказ от медицинских гарантий, данные Apple Health.",
+    },
+  },
+  experience: {
+    en: {
+      title: "Try it",
+      description:
+        "Interactive Tuesday simulator — adjust sleep, HRV and load to see how WeekFit makes your morning decision.",
+      socialTitle: "Try WeekFit — Tuesday simulator",
+    },
+    ru: {
+      title: "Попробовать",
+      description:
+        "Интерактивный симулятор — настройте сон, ВСР и нагрузку и посмотрите, как WeekFit делает утренний вывод.",
+      socialTitle: "WeekFit — симулятор вторника",
     },
   },
 } as const satisfies Record<string, Record<Locale, PageSeoCopy>>;

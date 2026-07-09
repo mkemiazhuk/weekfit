@@ -9,6 +9,7 @@ type Freq = "monthly" | "yearly" | "weekly";
 
 const routes: [string, number, Freq][] = [
   ["/", 1.0, "monthly"],
+  ["/experience", 0.95, "monthly"],
   ["/download", 0.9, "monthly"],
   ["/support", 0.8, "monthly"],
   ["/faq", 0.7, "monthly"],
