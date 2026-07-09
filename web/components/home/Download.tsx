@@ -32,7 +32,7 @@ export default function Download() {
       };
 
   return (
-    <section id="download" className="download-hero section-x section-y-lg">
+    <section id="download" className="download-hero section-x section-y-lg section-y-lg-bottom-tight">
       <div className="download-hero__backdrop" aria-hidden>
         <motion.div
           className="download-hero__orb download-hero__orb--cyan"
@@ -56,24 +56,24 @@ export default function Download() {
         <div className="download-hero__panel">
           <div className="download-hero__grid">
             <div className="download-hero__copy text-center md:text-left">
-              <motion.p
+              <motion.h2
                 {...copy(0, 18)}
-                className="font-rounded text-[clamp(2.35rem,5.5vw,3.75rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white/94"
+                className="font-rounded text-[clamp(2.35rem,5.5vw,3.75rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white/92"
               >
                 {t.cta.title}
-              </motion.p>
-              <motion.h2
+              </motion.h2>
+              <motion.p
                 {...copy(0.12, 20)}
-                className="display text-balance mt-2 text-[clamp(2rem,5vw,3.35rem)] text-gradient-hero"
+                className="display section-title-lg text-balance mt-2 text-gradient-hero"
               >
                 {t.cta.subtitle}
-              </motion.h2>
-              <motion.p {...copy(0.24, 16)} className="caption mt-7">
+              </motion.p>
+              <motion.p {...copy(0.24, 16)} className="caption mt-6 max-w-[36ch] mx-auto md:mx-0">
                 {t.cta.body}
               </motion.p>
               <motion.div
                 {...copy(0.38, 14)}
-                className="mt-11 flex flex-col items-center gap-2.5 md:items-start"
+                className="mt-10 flex flex-col items-center gap-2 md:items-start"
               >
                 <Button href={SITE.appInstallUrl} external className="btn-premium-glass min-w-[220px]">
                   {t.cta.testflight}

@@ -45,23 +45,23 @@ export default function Trust() {
     <section id="privacy-teaser" className="relative z-[1] section-x section-y-lg">
       <SectionAmbient tone="privacy" />
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-16 md:grid-cols-[0.85fr_1.15fr] md:items-start">
-          <div className="md:sticky md:top-28">
+        <div className="grid gap-14 md:grid-cols-[0.85fr_1.15fr] md:items-start">
+          <div className="md:sticky md:top-32">
             <Reveal>
               <span className="kicker text-hydration">{t.trust.kicker}</span>
             </Reveal>
             <Reveal delay={0.05}>
-              <h2 className="display text-balance mt-4 text-[clamp(2.2rem,5vw,3.4rem)] text-white">
+              <h2 className="display section-title-lg text-balance mt-4 text-white">
                 {t.trust.title}
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
-              <p className="body-md text-balance mt-5 max-w-[30ch]">{t.trust.lead}</p>
+              <p className="body-md section-lead text-balance mt-5">{t.trust.lead}</p>
             </Reveal>
             <Reveal delay={0.15}>
               <a
                 href={localePath("/privacy")}
-                className="premium-link mt-8 inline-flex items-center gap-2 text-[15px] font-semibold text-white/85"
+                className="premium-link mt-7 inline-flex items-center gap-2 text-[15px] font-semibold text-white/72"
               >
                 {t.trust.link}
                 <span aria-hidden>→</span>
@@ -69,7 +69,7 @@ export default function Trust() {
             </Reveal>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3.5 sm:grid-cols-2">
             {items.map((it, i) => (
               <Reveal key={it.key} delay={0.05 * i}>
                 <div className="premium-card card glass h-full p-5">
@@ -82,8 +82,8 @@ export default function Trust() {
                   >
                     <Glyph name={it.key} color={it.color} />
                   </div>
-                  <h3 className="mt-4 text-[16px] font-semibold text-white">{it.name}</h3>
-                  <p className="body-sm mt-1.5 text-[13px]">{it.desc}</p>
+                  <h3 className="mt-4 text-[16px] font-semibold text-white/92">{it.name}</h3>
+                  <p className="body-sm mt-1.5">{it.desc}</p>
                 </div>
               </Reveal>
             ))}

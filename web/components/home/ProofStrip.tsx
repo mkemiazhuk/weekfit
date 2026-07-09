@@ -17,8 +17,8 @@ export default function ProofStrip() {
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent"
       />
-      <div className="mx-auto max-w-6xl section-x py-6 md:py-7">
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4 md:gap-0">
+      <div className="mx-auto max-w-6xl section-x py-7 md:py-8">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-3.5 md:grid-cols-4 md:gap-0">
           {t.proof.items.map((item, i) => (
             <motion.li
               key={item}
@@ -26,7 +26,7 @@ export default function ProofStrip() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-10% 0px" }}
               transition={{ duration: 0.6, ease: easeCalm, delay: i * 0.06 }}
-              className="flex items-center gap-2.5 border-white/[0.06] text-[12.5px] tracking-[-0.01em] text-white/50 md:justify-center md:border-l md:px-6 md:first:border-l-0 md:text-[13px]"
+              className="proof-strip flex items-center gap-2.5 border-white/[0.06] md:justify-center md:border-l md:px-6 md:first:border-l-0"
             >
               <span
                 aria-hidden

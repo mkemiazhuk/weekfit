@@ -165,9 +165,9 @@ export default function JourneyStage() {
   }
 
   return (
-    <section id="experience" className="relative z-[1]">
+    <section id="experience" className="relative z-[1] section-x section-y-inset-top">
       <SectionAmbient tone={current.ambient} />
-      <div className="mx-auto max-w-6xl section-x md:grid md:grid-cols-2 md:gap-16">
+      <div className="mx-auto max-w-6xl md:grid md:grid-cols-2 md:gap-14">
         {/* Sticky morphing phone (desktop) */}
         <div className="hidden md:block">
           <div className="sticky top-0 flex h-screen items-center justify-center">
@@ -222,11 +222,11 @@ export default function JourneyStage() {
               }}
               data-idx={i}
               className={clsx(
-                "relative flex min-h-[78vh] flex-col justify-center py-16 md:min-h-screen md:py-20",
-                p.layout === "statement" && "md:min-h-[70vh]"
+                "relative flex min-h-[72vh] flex-col justify-center py-14 md:min-h-[88vh] md:py-[4.5rem]",
+                p.layout === "statement" && "md:min-h-[68vh]"
               )}
             >
-              <div className="relative mb-8 flex justify-center pb-12 md:hidden md:pb-0">
+              <div className="relative mb-6 flex justify-center pb-10 md:hidden md:pb-0">
                 <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
                 <div className="absolute -bottom-2 left-1/2 w-[min(88vw,240px)] max-w-[240px] -translate-x-1/2">
                   <JourneySignalCard
@@ -251,15 +251,13 @@ export default function JourneyStage() {
                 </span>
                 <h2
                   className={clsx(
-                    "display text-balance mt-4 text-white",
-                    p.layout === "statement"
-                      ? "text-[clamp(2rem,5vw,3.6rem)]"
-                      : "text-[clamp(1.85rem,4.5vw,3.1rem)]"
+                    "display section-title text-balance mt-4 text-white",
+                    p.layout === "statement" && "section-title-lg"
                   )}
                 >
                   {p.title}
                 </h2>
-                <p className="body-md mx-auto mt-4 max-w-[36ch] md:mx-0">{p.body}</p>
+                <p className="body-md section-lead mx-auto mt-4 md:mx-0">{p.body}</p>
               </motion.div>
             </div>
           ))}

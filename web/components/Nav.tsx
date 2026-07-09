@@ -57,7 +57,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto grid h-[3.75rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x lg:h-[4.5rem]"
+        className="mx-auto grid h-[3.75rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 section-x md:flex md:h-16 md:justify-between md:gap-3 lg:h-[4.5rem]"
       >
         <div className="min-w-0 md:hidden">
           <Wordmark size="navMobile" />
@@ -136,7 +136,7 @@ export default function Nav() {
             transition={{ duration: reduce ? 0.15 : 0.28, ease: easeCalm }}
             className="md:hidden"
           >
-            <nav aria-label="Mobile" className="mx-auto max-w-6xl px-4 pb-6 pt-2">
+            <nav aria-label="Mobile" className="mx-auto max-w-6xl section-x pb-6 pt-2">
               <ul className="flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
                 {links.map((l) => (
                   <li key={l.href}>

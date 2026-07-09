@@ -52,22 +52,22 @@ export default function CoachReasoning() {
   return (
     <section id="reasoning" className="relative z-[1] section-x section-y-lg">
       <SectionAmbient tone="coach" />
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-[36rem]">
         <Reveal>
           <span className="kicker text-coach">{r.kicker}</span>
-          <TextReveal as="h2" delay={0.08} className="display text-balance mt-4 text-[clamp(2rem,5vw,3.2rem)] text-white">
+          <TextReveal as="h2" delay={0.08} className="display section-title text-balance mt-4 text-white">
             {r.title}
           </TextReveal>
         </Reveal>
 
-        <div className="mt-14 space-y-0">
+        <div className="mt-12 space-y-0">
           <motion.div {...step(0)} className="card glass card-glass">
             <p className="kicker-sm">{r.yesterday}</p>
             <ul className="mt-4 space-y-2.5">
               {r.signals.map((s, i) => (
                 <motion.li
                   key={s}
-                  className="flex items-center gap-3 text-[15px] text-white/80"
+                  className="flex items-center gap-3 text-[15px] text-white/72"
                   {...(reduce
                     ? {}
                     : {
@@ -96,7 +96,7 @@ export default function CoachReasoning() {
           <FlowArrow reduce={reduce} />
 
           <motion.div {...step(1)} className="flex justify-center py-2">
-            <span className="inline-flex items-center gap-2.5 rounded-full border border-coach/25 bg-coach/10 px-4 py-2 text-[13px] font-medium text-white/75">
+            <span className="inline-flex items-center gap-2.5 rounded-full border border-coach/25 bg-coach/10 px-4 py-2 text-[13px] font-medium text-white/62">
               {!reduce && (
                 <motion.span
                   className="h-1.5 w-1.5 rounded-full bg-coach"
@@ -123,7 +123,7 @@ export default function CoachReasoning() {
           <motion.div {...step(3)} className="space-y-4">
             <div className="card glass card-glass">
               <p className="kicker-sm">{r.reasonLabel}</p>
-              <p className="body-md mt-3 text-white/70">{r.reason}</p>
+              <p className="body-md mt-3 text-white/58">{r.reason}</p>
             </div>
             <div
               className="card card-glass"

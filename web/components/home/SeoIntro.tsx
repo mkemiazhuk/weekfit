@@ -45,12 +45,12 @@ export default function SeoIntro() {
                   <p className="kicker text-brand">{s.kicker}</p>
                   <h2
                     id="about-heading"
-                    className="display mt-4 text-[clamp(1.75rem,3.8vw,2.5rem)] leading-[1.08] text-white"
+                    className="display section-title mt-4 text-white"
                   >
                     {s.title}
                   </h2>
-                  <p className="body-md mt-5">{s.p1}</p>
-                  <p className="mt-4 flex items-center gap-2 text-[14px] font-medium text-white/45">
+                  <p className="body-md section-lead mt-5">{s.p1}</p>
+                  <p className="body-sm mt-4 flex items-center gap-2">
                     <svg
                       viewBox="0 0 24 24"
                       className="h-4 w-4 shrink-0 opacity-70"
@@ -81,7 +81,7 @@ export default function SeoIntro() {
                   </span>
                   <div className="min-w-0">
                     <p className="kicker-sm">{s.healthLabel}</p>
-                    <p className="mt-0.5 text-[14px] font-semibold text-white/85">
+                    <p className="mt-0.5 text-[14px] font-semibold text-white/72">
                       {s.healthValue}
                     </p>
                   </div>
@@ -112,9 +112,9 @@ export default function SeoIntro() {
                       </span>
                       <span
                         className={clsx(
-                          "min-w-0 flex-1 font-medium leading-[1.35] text-white/78 [overflow-wrap:anywhere]",
+                          "min-w-0 flex-1 font-medium leading-[1.35] text-white/68 [overflow-wrap:anywhere]",
                           lang === "ru"
-                            ? "text-[11.5px] sm:text-[12.5px]"
+                            ? "text-[12px] sm:text-[12.5px]"
                             : "text-[12px] sm:text-[13px]"
                         )}
                       >

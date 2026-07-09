@@ -16,7 +16,7 @@ export default function Reveal({
   children,
   className,
   delay = 0,
-  y = 24,
+  y = 20,
 }: RevealProps) {
   const reduce = useReducedMotion();
   const shown = { opacity: 1, y: 0 };
@@ -25,9 +25,9 @@ export default function Reveal({
       className={className}
       initial={reduce ? shown : { opacity: 0, y }}
       whileInView={shown}
-      viewport={{ once: true, margin: "-12% 0px -12% 0px" }}
+      viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
       transition={
-        reduce ? { duration: 0 } : { duration: 0.8, ease: easeCalm, delay }
+        reduce ? { duration: 0 } : { duration: 0.75, ease: easeCalm, delay }
       }
     >
       {children}

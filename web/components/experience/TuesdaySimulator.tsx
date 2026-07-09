@@ -34,7 +34,7 @@ function Slider({
   return (
     <label className="block">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[13px] font-medium text-white/75">{label}</span>
+        <span className="text-[13px] font-medium text-white/62">{label}</span>
         <span className="font-rounded text-[14px] font-semibold tabular-nums text-white">
           {display}
         </span>
@@ -127,18 +127,18 @@ export default function TuesdaySimulator() {
 
   return (
     <>
-      <header className="mx-auto max-w-5xl section-x pt-24 text-center md:pt-32">
+      <header className="sim-page-header mx-auto max-w-5xl section-x text-center">
         <p className="kicker text-brand">{s.kicker}</p>
-        <h1 className="display mt-3 text-[clamp(1.85rem,5.5vw,3.8rem)] text-white md:mt-4">{s.title}</h1>
-        <p className="body-lg mx-auto mt-4 max-w-[38ch] md:mt-5">{s.lead}</p>
+        <h1 className="display section-title-lg mt-3 text-white md:mt-4">{s.title}</h1>
+        <p className="body-lg section-lead mx-auto mt-4 md:mt-5">{s.lead}</p>
       </header>
 
-      <div className="mx-auto max-w-5xl section-x pb-20 pt-8 md:pb-24 md:pt-14">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_1.05fr] lg:gap-12">
-          <div className="flex flex-col gap-5 md:gap-6">
-            <p className="kicker text-white/40">{s.setupKicker}</p>
+      <div className="mx-auto max-w-5xl section-x pb-20 pt-10 md:pb-24 md:pt-12">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_1.05fr] lg:gap-14">
+          <div className="flex flex-col gap-6">
+            <p className="kicker text-white/36">{s.setupKicker}</p>
 
-            <div className="flex flex-col gap-5 md:gap-[1.35rem]">
+            <div className="flex flex-col gap-6">
               <Slider
                 label={s.sleepLabel}
                 value={sleep}
@@ -170,29 +170,29 @@ export default function TuesdaySimulator() {
 
             <div>
               <p className="kicker-sm mb-2">{s.presetsTitle}</p>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
                 {SIMULATOR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-left text-[11.5px] leading-tight text-white/65 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white sm:text-center sm:text-[12px]"
+                    className="sim-preset rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1.5 text-left sm:text-center"
                   >
                     {s.presets[preset.id as keyof typeof s.presets]}
                   </button>
                 ))}
               </div>
-              <p className="mt-2.5 max-w-[34ch] text-[11.5px] leading-snug text-white/32">{s.setupNote}</p>
+              <p className="body-sm mt-3 max-w-[34ch]">{s.setupNote}</p>
             </div>
           </div>
 
           <div className="relative">
             <motion.div
               key={result.decision}
-              initial={reduce ? false : { opacity: 0, y: 12 }}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: easeCalm }}
-              className="card-panel glass overflow-hidden !p-5 md:!p-8"
+              transition={{ duration: 0.5, ease: easeCalm }}
+              className="card-panel glass overflow-hidden !p-5 md:!p-7"
               style={{ boxShadow: `0 40px 80px -32px ${result.accent}44` }}
             >
               <div
@@ -222,7 +222,7 @@ export default function TuesdaySimulator() {
                 >
                   {copy.headline}
                 </p>
-                <p className="body-sm mt-1.5 text-white/65">{copy.subline}</p>
+                <p className="body-sm mt-1.5 text-white/58">{copy.subline}</p>
 
                 <div className="mt-4 border-t border-white/[0.08] pt-4 md:mt-5 md:pt-5">
                   <ReadinessRing

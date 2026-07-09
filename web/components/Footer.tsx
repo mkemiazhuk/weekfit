@@ -134,6 +134,7 @@ export default function Footer() {
             <p className="footer-meta__line">
               © {year} WeekFit · {t.footer.rights}
             </p>
+            <p className="footer-meta__disclaimer">{t.footer.disclaimer}</p>
           </div>
         </div>
       </div>

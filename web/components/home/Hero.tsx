@@ -46,7 +46,7 @@ export default function Hero() {
 
   return (
     <section
-      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.75rem] pb-16 max-md:min-h-0 md:grid md:min-h-screen md:grid-cols-[1fr_0.92fr] md:items-center md:gap-14 md:pb-20 md:pt-28 lg:pb-16"
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.5rem] pb-14 max-md:min-h-0 md:grid md:min-h-[92vh] md:grid-cols-[1fr_1fr] md:items-center md:gap-12 md:pb-[4.5rem] md:pt-[6.75rem] lg:gap-14 lg:pb-16"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
@@ -66,13 +66,13 @@ export default function Hero() {
           </TextReveal>
         </h1>
 
-        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-5 max-w-[32ch] md:mx-0 md:mt-7 lg:mt-6">
+        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-5 max-w-[30ch] md:mx-0 md:mt-6 lg:mt-5">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
           {...fade(0.42)}
-          className="mt-8 flex flex-wrap items-center justify-center gap-2.5 md:mt-11 md:justify-start md:gap-3 lg:mt-8"
+          className="mt-9 flex flex-wrap items-center justify-center gap-3 md:mt-10 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary">
             {t.cta.testflight}
@@ -83,7 +83,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      <div className="hero-phone relative mt-6 w-full max-w-[240px] -translate-y-1 self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px] md:translate-y-0 lg:-mt-4 lg:-translate-y-2">
+      <div className="hero-phone relative mt-7 w-full max-w-[252px] self-center justify-self-center sm:max-w-[272px] md:mt-0 md:max-w-[372px] lg:-mt-3 lg:max-w-[388px] lg:-translate-y-1">
         <motion.div
           aria-hidden
           className="phone-glow"
@@ -144,7 +144,7 @@ export default function Hero() {
         {...fade(1.5)}
         className="scroll-hint group absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10"
       >
-        <span className="caption block tracking-[0.22em] transition-colors group-hover:text-white/55">
+        <span className="caption block tracking-[0.18em] text-white/28 transition-colors group-hover:text-white/45">
           {t.hero.scroll}
         </span>
         <span aria-hidden className="scroll-hint-line mx-auto mt-3" />
