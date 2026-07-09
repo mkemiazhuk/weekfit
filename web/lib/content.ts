@@ -516,7 +516,9 @@ export const press: Record<
     assetsNote: string;
     preferredTitle: string;
     preferredBody: string;
+    preferredNote: string;
     preferredCta: string;
+    preferredLinkLabel: string;
     contactTitle: string;
     contactBody: string;
   }
@@ -543,8 +545,11 @@ export const press: Record<
     assetsNote: "App icon and product screenshots. For anything else, get in touch.",
     preferredTitle: "Preferred source in Google Search",
     preferredBody:
-      "If WeekFit is part of your routine, you can add weekfit.app as a preferred source in Google Search. Your content may appear with a “preferred” badge in Top Stories, AI Overviews and AI Mode.",
-    preferredCta: "Add WeekFit in Google Search",
+      "Google lets readers highlight trusted publishers in Top Stories, AI Overviews and AI Mode. weekfit.app is domain-eligible, but Google curates which sites appear in its source catalog — usually publishers with fresh, regular content.",
+    preferredNote:
+      "weekfit.app is not in the catalog yet. If the search below shows “No results”, Google hasn’t added us — the deeplink will work once it does. We’re publishing guides on recovery, sleep and training to build toward eligibility.",
+    preferredCta: "Check in Google Search",
+    preferredLinkLabel: "Deeplink for when we’re listed",
     contactTitle: "Media contact",
     contactBody: "For interviews, review access or additional assets, email us.",
   },
@@ -569,8 +574,11 @@ export const press: Record<
     assetsNote: "Иконка приложения и скриншоты. За остальным — напишите нам.",
     preferredTitle: "Предпочитаемый источник в Google",
     preferredBody:
-      "Если WeekFit — часть вашей рутины, добавьте weekfit.app как предпочитаемый источник в Google. Контент может появляться с отметкой «preferred» в Top Stories, AI Overviews и AI Mode.",
-    preferredCta: "Добавить WeekFit в Google",
+      "Google позволяет читателям выделять проверенные издания в Top Stories, AI Overviews и AI Mode. weekfit.app подходит по формату домена, но Google сам формирует каталог — обычно это сайты со свежим регулярным контентом.",
+    preferredNote:
+      "weekfit.app пока нет в каталоге. Если поиск показывает «No results», Google ещё не добавил нас — deeplink заработает, когда это произойдёт. Мы публикуем гайды о восстановлении, сне и тренировках, чтобы приблизиться к eligibility.",
+    preferredCta: "Проверить в Google",
+    preferredLinkLabel: "Deeplink на будущее",
     contactTitle: "Контакт для прессы",
     contactBody: "Для интервью, доступа к обзору или дополнительных материалов напишите нам.",
   },

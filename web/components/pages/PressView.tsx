@@ -126,11 +126,18 @@ export default function PressView() {
             <p className="mt-4 max-w-[58ch] text-[15px] leading-relaxed text-white/60">
               {c.preferredBody}
             </p>
-            <div className="mt-6">
+            <p className="mt-3 max-w-[58ch] text-[14px] leading-relaxed text-white/45">
+              {c.preferredNote}
+            </p>
+            <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <Button href={SITE.googlePreferredSourceUrl} external variant="ghost">
                 {c.preferredCta}
               </Button>
+              <code className="rounded-[10px] border border-white/[0.08] bg-black/30 px-3 py-2 text-[12px] text-white/55">
+                {SITE.googlePreferredSourceUrl.replace("https://", "")}
+              </code>
             </div>
+            <p className="mt-3 text-[12px] text-white/35">{c.preferredLinkLabel}</p>
           </div>
         </Reveal>
 
