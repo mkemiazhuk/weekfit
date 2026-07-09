@@ -49,6 +49,10 @@
 
 - TestFlight: https://testflight.apple.com/join/t5TKwEff
 
+## Google Search
+
+- Preferred source deeplink: https://google.com/preferences/source?q=weekfit.app
+
 ## Contact
 
 - support@weekfit.app

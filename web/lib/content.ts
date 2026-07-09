@@ -514,6 +514,9 @@ export const press: Record<
     colorsTitle: string;
     assetsTitle: string;
     assetsNote: string;
+    preferredTitle: string;
+    preferredBody: string;
+    preferredCta: string;
     contactTitle: string;
     contactBody: string;
   }
@@ -538,6 +541,10 @@ export const press: Record<
     colorsTitle: "Brand colors",
     assetsTitle: "Downloadable assets",
     assetsNote: "App icon and product screenshots. For anything else, get in touch.",
+    preferredTitle: "Preferred source in Google Search",
+    preferredBody:
+      "If WeekFit is part of your routine, you can add weekfit.app as a preferred source in Google Search. Your content may appear with a “preferred” badge in Top Stories, AI Overviews and AI Mode.",
+    preferredCta: "Add WeekFit in Google Search",
     contactTitle: "Media contact",
     contactBody: "For interviews, review access or additional assets, email us.",
   },
@@ -560,6 +567,10 @@ export const press: Record<
     colorsTitle: "Цвета бренда",
     assetsTitle: "Материалы для загрузки",
     assetsNote: "Иконка приложения и скриншоты. За остальным — напишите нам.",
+    preferredTitle: "Предпочитаемый источник в Google",
+    preferredBody:
+      "Если WeekFit — часть вашей рутины, добавьте weekfit.app как предпочитаемый источник в Google. Контент может появляться с отметкой «preferred» в Top Stories, AI Overviews и AI Mode.",
+    preferredCta: "Добавить WeekFit в Google",
     contactTitle: "Контакт для прессы",
     contactBody: "Для интервью, доступа к обзору или дополнительных материалов напишите нам.",
   },

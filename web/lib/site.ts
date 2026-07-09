@@ -33,6 +33,9 @@ export const SITE = {
   /** Single install URL for CTAs and SoftwareApplication.downloadUrl. Swap at App Store launch. */
   appInstallUrl: "https://testflight.apple.com/join/t5TKwEff",
 
+  /** Google Search “preferred source” deeplink (domain-level sites only). */
+  googlePreferredSourceUrl: "https://google.com/preferences/source?q=weekfit.app",
+
   /** Official entity profiles (Organization.sameAs). Add when accounts exist. */
   sameAs: [] as string[],
 

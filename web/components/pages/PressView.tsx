@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n";
 import { press, brandColors } from "@/lib/content";
+import { SITE } from "@/lib/site";
 import PageHero from "../PageHero";
 import Button from "../Button";
 import Reveal from "../Reveal";
@@ -114,6 +115,23 @@ export default function PressView() {
               ))}
             </div>
           </section>
+        </Reveal>
+
+        {/* Google preferred source */}
+        <Reveal>
+          <div className="rounded-[26px] border border-white/[0.08] bg-white/[0.03] p-8 md:p-10">
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              {c.preferredTitle}
+            </h2>
+            <p className="mt-4 max-w-[58ch] text-[15px] leading-relaxed text-white/60">
+              {c.preferredBody}
+            </p>
+            <div className="mt-6">
+              <Button href={SITE.googlePreferredSourceUrl} external variant="ghost">
+                {c.preferredCta}
+              </Button>
+            </div>
+          </div>
         </Reveal>
 
         {/* Media contact */}
