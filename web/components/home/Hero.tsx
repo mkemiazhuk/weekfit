@@ -82,7 +82,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      <div className="relative mt-16 w-full max-w-[300px] self-center justify-self-center md:mt-0 md:max-w-[360px]">
+      <div className="relative mt-12 w-full max-w-[240px] self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px]">
         <motion.div
           aria-hidden
           className="phone-glow"
@@ -123,7 +123,7 @@ export default function Hero() {
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
           transition={reduce ? { duration: 0 } : { duration: 0.9, ease: easeCalm, delay: 0.9 }}
-          className="relative z-10 mt-10 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px]"
+          className="relative z-10 mt-8 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px]"
         >
           <CoachCard
             accent={pillars.coach}

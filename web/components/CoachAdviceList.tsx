@@ -18,17 +18,26 @@ export default function CoachAdviceList({
   advice,
   labels,
   compact,
+  essential,
 }: {
   advice: CoachAdvice;
   labels: CoachAdviceLabels;
   compact?: boolean;
+  /** Mobile-friendly: only the three most actionable blocks. */
+  essential?: boolean;
 }) {
-  const rows = [
-    { key: "matters", label: labels.matters, text: advice.matters },
-    { key: "do", label: labels.do, text: advice.do },
-    { key: "avoid", label: labels.avoid, text: advice.avoid },
-    { key: "next", label: labels.next, text: advice.next },
-  ] as const;
+  const rows = essential
+    ? [
+        { key: "matters", label: labels.matters, text: advice.matters },
+        { key: "do", label: labels.do, text: advice.do },
+        { key: "next", label: labels.next, text: advice.next },
+      ]
+    : [
+        { key: "matters", label: labels.matters, text: advice.matters },
+        { key: "do", label: labels.do, text: advice.do },
+        { key: "avoid", label: labels.avoid, text: advice.avoid },
+        { key: "next", label: labels.next, text: advice.next },
+      ];
 
   return (
     <div className={compact ? "mt-3 space-y-2.5" : "mt-4 space-y-3.5"}>
@@ -54,7 +63,7 @@ export default function CoachAdviceList({
           </p>
         </div>
       ))}
-      {advice.why && labels.why ? (
+      {advice.why && labels.why && !essential ? (
         <div className={compact ? "border-t border-white/[0.06] pt-2.5" : "border-t border-white/[0.08] pt-4"}>
           <p className={compact ? "text-[9px] font-bold uppercase tracking-[0.12em] text-white/35" : "kicker-sm"}>
             {labels.why}

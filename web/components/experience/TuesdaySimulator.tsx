@@ -54,29 +54,25 @@ function Slider({
 }
 
 function ReadinessRing({ value, accent, label }: { value: number; accent: string; label: string }) {
-  const r = 36;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
-
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative h-[88px] w-[88px] shrink-0">
+    <div className="flex items-center gap-3 md:gap-4">
+      <div className="relative h-[68px] w-[68px] shrink-0 md:h-[88px] md:w-[88px]">
         <svg viewBox="0 0 88 88" className="h-full w-full -rotate-90" aria-hidden>
-          <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
           <circle
             cx="44"
             cy="44"
-            r={r}
+            r="36"
             fill="none"
             stroke={accent}
             strokeWidth="6"
             strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={offset}
+            strokeDasharray={2 * Math.PI * 36}
+            strokeDashoffset={2 * Math.PI * 36 - (value / 100) * 2 * Math.PI * 36}
             className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center font-rounded text-[22px] font-semibold tabular-nums text-white">
+        <span className="absolute inset-0 flex items-center justify-center font-rounded text-[18px] font-semibold tabular-nums text-white md:text-[22px]">
           {value}
         </span>
       </div>
@@ -166,15 +162,15 @@ export default function TuesdaySimulator() {
 
   return (
     <>
-      <header className="mx-auto max-w-5xl section-x pt-28 text-center md:pt-32">
+      <header className="mx-auto max-w-5xl section-x pt-24 text-center md:pt-32">
         <p className="kicker text-brand">{s.kicker}</p>
-        <h1 className="display mt-4 text-[clamp(2.2rem,6vw,3.8rem)] text-white">{s.title}</h1>
-        <p className="body-lg mx-auto mt-5 max-w-[42ch]">{s.lead}</p>
+        <h1 className="display mt-3 text-[clamp(1.85rem,5.5vw,3.8rem)] text-white md:mt-4">{s.title}</h1>
+        <p className="body-lg mx-auto mt-4 max-w-[38ch] md:mt-5">{s.lead}</p>
       </header>
 
-      <div className="mx-auto max-w-5xl section-x pb-24 pt-10 md:pt-14">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
-          <div className="space-y-8">
+      <div className="mx-auto max-w-5xl section-x pb-20 pt-8 md:pb-24 md:pt-14">
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
+          <div className="space-y-6 md:space-y-8">
             <p className="kicker text-white/40">{s.setupKicker}</p>
             <Slider
               label={s.sleepLabel}
@@ -220,7 +216,7 @@ export default function TuesdaySimulator() {
               </div>
             </div>
 
-            <p className="body-sm max-w-[36ch]">{s.setupNote}</p>
+            <p className="body-sm hidden max-w-[36ch] md:block">{s.setupNote}</p>
           </div>
 
           <div className="relative">
@@ -229,7 +225,7 @@ export default function TuesdaySimulator() {
               initial={reduce ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, ease: easeCalm }}
-              className="card-panel glass overflow-hidden"
+              className="card-panel glass overflow-hidden !p-5 md:!p-10"
               style={{ boxShadow: `0 40px 80px -32px ${result.accent}44` }}
             >
               <div
@@ -254,14 +250,14 @@ export default function TuesdaySimulator() {
                   </span>
                 </div>
                 <p
-                  className="display mt-3 text-[clamp(2rem,5vw,3rem)] leading-[1.05]"
+                  className="display mt-2 text-[clamp(1.45rem,4.5vw,3rem)] leading-[1.08] md:mt-3"
                   style={{ color: result.accent }}
                 >
                   {copy.headline}
                 </p>
-                <p className="body-md mt-4">{copy.subline}</p>
+                <p className="body-sm mt-2 text-white/70 md:body-md md:mt-4">{copy.subline}</p>
 
-                <div className="mt-8 border-t border-white/[0.08] pt-6">
+                <div className="mt-5 border-t border-white/[0.08] pt-4 md:mt-8 md:pt-6">
                   <ReadinessRing
                     value={result.readiness}
                     accent={result.accent}
@@ -269,9 +265,9 @@ export default function TuesdaySimulator() {
                   />
                 </div>
 
-                <div className="mt-8 space-y-4 border-t border-white/[0.08] pt-6">
+                <div className="mt-5 space-y-3 border-t border-white/[0.08] pt-4 md:mt-8 md:space-y-4 md:pt-6">
                   <p className="kicker-sm">{s.signalsTitle}</p>
-                  <ul className="space-y-4">
+                  <ul className="space-y-3 md:space-y-4">
                     <SignalBar
                       label={s.signals.sleep}
                       raw={fmtSleep(sleep)}
@@ -293,23 +289,39 @@ export default function TuesdaySimulator() {
                   </ul>
                 </div>
 
-                <div className="mt-6 border-t border-white/[0.08] pt-6">
-                  <CoachAdviceList
-                    advice={{
-                      matters: copy.matters,
-                      do: copy.do,
-                      avoid: copy.avoid,
-                      next: copy.next,
-                      why: copy.why,
-                    }}
-                    labels={adviceLabels}
-                  />
+                <div className="mt-5 border-t border-white/[0.08] pt-4 md:mt-6 md:pt-6">
+                  <div className="md:hidden">
+                    <CoachAdviceList
+                      advice={{
+                        matters: copy.matters,
+                        do: copy.do,
+                        avoid: copy.avoid,
+                        next: copy.next,
+                        why: copy.why,
+                      }}
+                      labels={adviceLabels}
+                      essential
+                      compact
+                    />
+                  </div>
+                  <div className="hidden md:block">
+                    <CoachAdviceList
+                      advice={{
+                        matters: copy.matters,
+                        do: copy.do,
+                        avoid: copy.avoid,
+                        next: copy.next,
+                        why: copy.why,
+                      }}
+                      labels={adviceLabels}
+                    />
+                  </div>
                 </div>
               </div>
             </motion.div>
 
             <div
-              className="mt-4 flex flex-wrap justify-center gap-1.5"
+              className="mt-3 hidden flex-wrap justify-center gap-1.5 md:flex"
               aria-label={`${ALL_DECISIONS.length} outcomes`}
             >
               {ALL_DECISIONS.map((d) => (
