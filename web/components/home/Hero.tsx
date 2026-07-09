@@ -130,6 +130,7 @@ export default function Hero() {
             state="Ready"
             title={t.hero.coachTitle}
             body={t.hero.coachBody}
+            coachLabel={t.coachAdvice.label}
             floating
           />
         </motion.div>

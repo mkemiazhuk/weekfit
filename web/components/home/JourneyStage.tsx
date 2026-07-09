@@ -12,6 +12,16 @@ import SectionAmbient from "../SectionAmbient";
 
 type AmbientTone = "morning" | "coach" | "activity" | "nutrition" | "recovery";
 
+interface StageCoach {
+  state: string;
+  headline: string;
+  matters: string;
+  do: string;
+  avoid: string;
+  next: string;
+  why?: string;
+}
+
 interface Panel {
   key: string;
   screen: string;
@@ -21,13 +31,14 @@ interface Panel {
   kicker: string;
   title: string;
   body: string;
-  state: string;
+  coach: StageCoach;
   layout: "default" | "statement";
 }
 
 export default function JourneyStage() {
   const { t } = useI18n();
   const reduce = useReducedMotion();
+  const adviceLabels = t.coachAdvice;
 
   const panels: Panel[] = [
     {
@@ -39,7 +50,7 @@ export default function JourneyStage() {
       kicker: t.morning.kicker,
       title: t.morning.title,
       body: t.morning.body,
-      state: "Ready",
+      coach: t.morning.coach,
       layout: "default",
     },
     {
@@ -51,7 +62,7 @@ export default function JourneyStage() {
       kicker: t.prep.kicker,
       title: t.prep.title,
       body: t.prep.body,
-      state: "Prepare",
+      coach: t.prep.coach,
       layout: "statement",
     },
     {
@@ -63,7 +74,7 @@ export default function JourneyStage() {
       kicker: t.workout.kicker,
       title: t.workout.title,
       body: t.workout.body,
-      state: "Training",
+      coach: t.workout.coach,
       layout: "default",
     },
     {
@@ -75,7 +86,7 @@ export default function JourneyStage() {
       kicker: t.recovery.kicker,
       title: t.recovery.title,
       body: t.recovery.body,
-      state: "Recover",
+      coach: t.recovery.coach,
       layout: "default",
     },
     {
@@ -87,7 +98,7 @@ export default function JourneyStage() {
       kicker: t.night.kicker,
       title: t.night.title,
       body: t.night.body,
-      state: "Wind down",
+      coach: t.night.coach,
       layout: "statement",
     },
   ];
@@ -192,14 +203,22 @@ export default function JourneyStage() {
 
               <div
                 key={current.key}
-                className="absolute -bottom-4 -right-6 w-[240px]"
+                className="absolute -bottom-4 -right-6 w-[min(100%,300px)] max-w-[300px]"
                 style={{ animation: reduce ? "none" : "coach-swap 0.6s var(--ease-calm)" }}
               >
                 <CoachCard
                   accent={current.accent}
-                  state={current.state}
-                  title={current.title}
-                  body={current.body}
+                  state={current.coach.state}
+                  title={current.coach.headline}
+                  coachLabel={adviceLabels.label}
+                  advice={{
+                    matters: current.coach.matters,
+                    do: current.coach.do,
+                    avoid: current.coach.avoid,
+                    next: current.coach.next,
+                    why: current.coach.why,
+                  }}
+                  adviceLabels={adviceLabels}
                 />
               </div>
             </div>

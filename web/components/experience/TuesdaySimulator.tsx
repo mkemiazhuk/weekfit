@@ -3,20 +3,17 @@
 import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
-import { pillars } from "@/lib/tokens";
 import { easeCalm } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
+import {
+  resolveSimulator,
+  SIMULATOR_PRESETS,
+  type SimulatorDecision,
+  type SignalInsight,
+} from "@/lib/simulator";
+import CoachAdviceList from "../CoachAdviceList";
 import Button from "../Button";
 import { SITE } from "@/lib/site";
-
-type Decision = "push" | "hold" | "recover";
-
-function computeDecision(sleep: number, hrv: number, load: number): Decision {
-  if (sleep < 6 || hrv < -8) return "recover";
-  if (sleep >= 7.5 && hrv >= 5 && load <= 55) return "push";
-  if (load >= 75 && hrv < 0) return "recover";
-  return "hold";
-}
 
 function Slider({
   label,
@@ -56,6 +53,87 @@ function Slider({
   );
 }
 
+function ReadinessRing({ value, accent, label }: { value: number; accent: string; label: string }) {
+  const r = 36;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="relative h-[88px] w-[88px] shrink-0">
+        <svg viewBox="0 0 88 88" className="h-full w-full -rotate-90" aria-hidden>
+          <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle
+            cx="44"
+            cy="44"
+            r={r}
+            fill="none"
+            stroke={accent}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center font-rounded text-[22px] font-semibold tabular-nums text-white">
+          {value}
+        </span>
+      </div>
+      <div>
+        <p className="kicker-sm">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SignalBar({
+  label,
+  raw,
+  insight,
+  levelLabel,
+}: {
+  label: string;
+  raw: string;
+  insight: SignalInsight;
+  levelLabel: string;
+}) {
+  return (
+    <li className="space-y-2">
+      <div className="flex items-baseline justify-between gap-4 text-[14px]">
+        <span className="text-white/50">{label}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-medium tabular-nums text-white/85">{raw}</span>
+          <span className="text-[12px] text-white/35">{levelLabel}</span>
+        </div>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+        <motion.div
+          className="h-full rounded-full bg-white/70"
+          initial={false}
+          animate={{ width: `${insight.score}%` }}
+          transition={{ duration: 0.45, ease: easeCalm }}
+        />
+      </div>
+    </li>
+  );
+}
+
+const ALL_DECISIONS: SimulatorDecision[] = [
+  "peak",
+  "push",
+  "quality",
+  "move",
+  "active_recovery",
+  "technique",
+  "light_move",
+  "protect",
+  "recover",
+  "full_rest",
+  "hrv_rebuild",
+  "stacked_fatigue",
+];
+
 export default function TuesdaySimulator() {
   const { t, lang, localePath } = useI18n();
   const s = t.experience;
@@ -65,14 +143,10 @@ export default function TuesdaySimulator() {
   const [hrv, setHrv] = useState(8);
   const [load, setLoad] = useState(48);
 
-  const decision = useMemo(() => computeDecision(sleep, hrv, load), [sleep, hrv, load]);
-  const copy = s.decisions[decision];
-  const accent =
-    decision === "push"
-      ? pillars.activity
-      : decision === "recover"
-        ? pillars.recovery
-        : pillars.coach;
+  const result = useMemo(() => resolveSimulator({ sleep, hrv, load }), [sleep, hrv, load]);
+  const copy = s.decisions[result.decision];
+  const categoryLabel = s.categories[result.category];
+  const adviceLabels = t.coachAdvice;
 
   const fmtSleep = (h: number) => {
     const hrs = Math.floor(h);
@@ -82,11 +156,13 @@ export default function TuesdaySimulator() {
   const fmtHrv = (v: number) => `${v > 0 ? "+" : ""}${v}%`;
   const fmtLoad = (v: number) => `${v}%`;
 
-  const signals = [
-    { label: s.signals.sleep, value: fmtSleep(sleep) },
-    { label: s.signals.hrv, value: fmtHrv(hrv) },
-    { label: s.signals.load, value: fmtLoad(load) },
-  ];
+  const levelLabel = (level: SignalInsight["level"]) => s.signalLevels[level];
+
+  const applyPreset = (preset: (typeof SIMULATOR_PRESETS)[number]) => {
+    setSleep(preset.sleep);
+    setHrv(preset.hrv);
+    setLoad(preset.load);
+  };
 
   return (
     <>
@@ -127,71 +203,126 @@ export default function TuesdaySimulator() {
               display={fmtLoad(load)}
               onChange={setLoad}
             />
+
+            <div>
+              <p className="kicker-sm mb-3">{s.presetsTitle}</p>
+              <div className="flex flex-wrap gap-2">
+                {SIMULATOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-[13px] text-white/70 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    {s.presets[preset.id as keyof typeof s.presets]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <p className="body-sm max-w-[36ch]">{s.setupNote}</p>
           </div>
 
           <div className="relative">
             <motion.div
-              key={decision}
+              key={result.decision}
               initial={reduce ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, ease: easeCalm }}
               className="card-panel glass overflow-hidden"
-              style={{ boxShadow: `0 40px 80px -32px ${accent}44` }}
+              style={{ boxShadow: `0 40px 80px -32px ${result.accent}44` }}
             >
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 top-0 h-40"
                 style={{
-                  background: `radial-gradient(80% 120% at 50% 0%, ${accent}22, transparent 70%)`,
+                  background: `radial-gradient(80% 120% at 50% 0%, ${result.accent}22, transparent 70%)`,
                 }}
               />
               <div className="relative">
-                <p className="kicker-sm">{s.resultKicker}</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="kicker-sm">{s.resultKicker}</p>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide"
+                    style={{
+                      color: result.accent,
+                      background: `${result.accent}18`,
+                      border: `1px solid ${result.accent}33`,
+                    }}
+                  >
+                    {categoryLabel}
+                  </span>
+                </div>
                 <p
                   className="display mt-3 text-[clamp(2rem,5vw,3rem)] leading-[1.05]"
-                  style={{ color: accent }}
+                  style={{ color: result.accent }}
                 >
                   {copy.headline}
                 </p>
                 <p className="body-md mt-4">{copy.subline}</p>
 
-                <div className="mt-8 space-y-2 border-t border-white/[0.08] pt-6">
+                <div className="mt-8 border-t border-white/[0.08] pt-6">
+                  <ReadinessRing
+                    value={result.readiness}
+                    accent={result.accent}
+                    label={s.readinessLabel}
+                  />
+                </div>
+
+                <div className="mt-8 space-y-4 border-t border-white/[0.08] pt-6">
                   <p className="kicker-sm">{s.signalsTitle}</p>
-                  <ul className="mt-3 space-y-2">
-                    {signals.map((sig) => (
-                      <li
-                        key={sig.label}
-                        className="flex items-center justify-between gap-4 text-[14px]"
-                      >
-                        <span className="text-white/50">{sig.label}</span>
-                        <span className="font-medium tabular-nums text-white/85">{sig.value}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-4">
+                    <SignalBar
+                      label={s.signals.sleep}
+                      raw={fmtSleep(sleep)}
+                      insight={result.sleep}
+                      levelLabel={levelLabel(result.sleep.level)}
+                    />
+                    <SignalBar
+                      label={s.signals.hrv}
+                      raw={fmtHrv(hrv)}
+                      insight={result.hrv}
+                      levelLabel={levelLabel(result.hrv.level)}
+                    />
+                    <SignalBar
+                      label={s.signals.load}
+                      raw={fmtLoad(load)}
+                      insight={result.load}
+                      levelLabel={levelLabel(result.load.level)}
+                    />
                   </ul>
                 </div>
 
-                <p className="body-sm mt-6 border-t border-white/[0.06] pt-5">{copy.reason}</p>
+                <div className="mt-6 border-t border-white/[0.08] pt-6">
+                  <CoachAdviceList
+                    advice={{
+                      matters: copy.matters,
+                      do: copy.do,
+                      avoid: copy.avoid,
+                      next: copy.next,
+                      why: copy.why,
+                    }}
+                    labels={adviceLabels}
+                  />
+                </div>
               </div>
             </motion.div>
 
-            <div className="mt-3 flex justify-center gap-2">
-              {(["push", "hold", "recover"] as Decision[]).map((d) => (
+            <div
+              className="mt-4 flex flex-wrap justify-center gap-1.5"
+              aria-label={`${ALL_DECISIONS.length} outcomes`}
+            >
+              {ALL_DECISIONS.map((d) => (
                 <span
                   key={d}
+                  title={s.decisions[d].headline}
                   aria-hidden
                   className={clsx(
                     "h-1.5 rounded-full transition-all duration-500",
-                    d === decision ? "w-8" : "w-1.5",
-                    d === decision ? "opacity-100" : "opacity-25"
+                    d === result.decision ? "w-5 opacity-100" : "w-1.5 opacity-20"
                   )}
                   style={{
-                    background:
-                      d === "push"
-                        ? pillars.activity
-                        : d === "recover"
-                          ? pillars.recovery
-                          : pillars.coach,
+                    background: d === result.decision ? result.accent : "rgba(255,255,255,0.5)",
                   }}
                 />
               ))}

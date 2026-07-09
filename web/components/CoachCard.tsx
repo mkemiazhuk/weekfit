@@ -1,12 +1,16 @@
 "use client";
 
 import clsx from "clsx";
+import CoachAdviceList, { type CoachAdvice, type CoachAdviceLabels } from "./CoachAdviceList";
 
 interface CoachCardProps {
   accent: string;
   state: string;
   title: string;
-  body: string;
+  body?: string;
+  coachLabel?: string;
+  advice?: CoachAdvice;
+  adviceLabels?: CoachAdviceLabels;
   className?: string;
   floating?: boolean;
 }
@@ -16,6 +20,9 @@ export default function CoachCard({
   state,
   title,
   body,
+  coachLabel = "Coach",
+  advice,
+  adviceLabels,
   className,
   floating,
 }: CoachCardProps) {
@@ -57,9 +64,13 @@ export default function CoachCard({
           />
           {state}
         </span>
-        <p className="kicker-sm mt-3">Coach</p>
+        <p className="kicker-sm mt-3">{coachLabel}</p>
         <p className="mt-1 text-[15px] font-semibold leading-snug text-white">{title}</p>
-        <p className="body-sm mt-1.5 text-[12.5px]">{body}</p>
+        {advice && adviceLabels ? (
+          <CoachAdviceList advice={advice} labels={adviceLabels} compact />
+        ) : body ? (
+          <p className="body-sm mt-1.5 text-[12.5px]">{body}</p>
+        ) : null}
       </div>
     </div>
   );
