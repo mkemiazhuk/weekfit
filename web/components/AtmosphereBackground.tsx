@@ -61,7 +61,7 @@ export default function AtmosphereBackground() {
     <div
       ref={rootRef}
       aria-hidden
-      className="atmosphere fixed inset-0 -z-10 overflow-hidden"
+      className="atmosphere pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       style={
         {
           "--b1": "#080f1a",

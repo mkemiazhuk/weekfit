@@ -71,7 +71,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="antialiased">
       <head>
         <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
         <script
@@ -88,7 +88,9 @@ export default function RootLayout({
           <SmoothScroll />
           <AtmosphereBackground />
           <Nav />
-          <main id="main-content">{children}</main>
+          <main id="main-content" className="relative z-0">
+            {children}
+          </main>
           <Footer />
         </I18nProvider>
         <Analytics />

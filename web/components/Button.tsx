@@ -4,7 +4,7 @@ import React from "react";
 import clsx from "clsx";
 
 type Variant = "primary" | "ghost";
-type Size = "sm" | "md";
+type Size = "xs" | "sm" | "md";
 
 interface ButtonProps {
   href?: string;
@@ -18,6 +18,7 @@ interface ButtonProps {
 }
 
 const sizes: Record<Size, string> = {
+  xs: "rounded-button min-h-9 px-3 py-1.5 text-[12px]",
   sm: "rounded-button px-4 py-2 text-[13px]",
   md: "rounded-button px-6 py-3.5 text-[15px]",
 };

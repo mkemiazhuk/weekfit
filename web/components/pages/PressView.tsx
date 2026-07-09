@@ -29,13 +29,17 @@ export default function PressView() {
         {/* Icon + quick facts */}
         <Reveal>
           <div className="card-panel grid items-center gap-8 glass md:grid-cols-[auto_1fr]">
-            <Image
-              src="/brand/icon-512.png"
-              alt="WeekFit app icon"
-              width={128}
-              height={128}
-              className="rounded-xl"
-            />
+            <div className="wordmark-icon-app w-fit p-1">
+              <div className="wordmark-icon-app-inner">
+                <Image
+                  src="/brand/icon-512.png"
+                  alt="WeekFit app icon"
+                  width={128}
+                  height={128}
+                  className="block rounded-[18%]"
+                />
+              </div>
+            </div>
             <div>
               <h2 className="kicker text-white/40">
                 {c.factsTitle}

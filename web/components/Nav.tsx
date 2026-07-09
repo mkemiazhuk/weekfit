@@ -57,9 +57,10 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto flex h-16 max-w-6xl items-center justify-between section-x"
+        className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 md:h-16 md:gap-3 md:section-x"
       >
-        <Wordmark />
+        <Wordmark size="navMobile" className="min-w-0 shrink md:hidden" />
+        <Wordmark size="nav" className="hidden min-w-0 shrink md:inline-flex" />
 
         <div className="hidden items-center gap-6 lg:gap-8 md:flex">
           {links.slice(1).map((l) => (
@@ -73,13 +74,26 @@ export default function Nav() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <LangToggle />
+        <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
+          <div className="md:hidden">
+            <LangToggle compact />
+          </div>
+          <div className="hidden md:block">
+            <LangToggle />
+          </div>
+          <Button
+            href={SITE.appInstallUrl}
+            external
+            size="xs"
+            className="shrink-0 md:hidden"
+          >
+            {t.cta.testflight}
+          </Button>
           <Button
             href={SITE.appInstallUrl}
             external
             size="sm"
-            className="hidden sm:inline-flex"
+            className="hidden md:inline-flex"
           >
             {t.cta.testflight}
           </Button>
@@ -90,7 +104,7 @@ export default function Nav() {
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? t.nav.closeMenu : t.nav.menu}
-            className="relative -mr-1 grid h-10 w-10 place-items-center rounded-full text-white transition-colors hover:bg-white/[0.06] md:hidden"
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full text-white transition-colors hover:bg-white/[0.06] md:hidden"
           >
             <span className="relative block h-3.5 w-5" aria-hidden>
               <span

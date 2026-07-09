@@ -7,9 +7,15 @@ import { motion, useReducedMotion } from "framer-motion";
 import { pillars } from "@/lib/tokens";
 import { easeCalm } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
+import JourneySignalCard from "../JourneySignalCard";
 import SectionAmbient from "../SectionAmbient";
 
 type AmbientTone = "morning" | "coach" | "activity" | "nutrition" | "recovery";
+
+interface StageSignal {
+  signal: string;
+  tip: string;
+}
 
 interface Panel {
   key: string;
@@ -20,6 +26,7 @@ interface Panel {
   kicker: string;
   title: string;
   body: string;
+  coach: StageSignal;
   layout: "default" | "statement";
 }
 
@@ -37,6 +44,7 @@ export default function JourneyStage() {
       kicker: t.morning.kicker,
       title: t.morning.title,
       body: t.morning.body,
+      coach: t.morning.coach,
       layout: "default",
     },
     {
@@ -48,6 +56,7 @@ export default function JourneyStage() {
       kicker: t.prep.kicker,
       title: t.prep.title,
       body: t.prep.body,
+      coach: t.prep.coach,
       layout: "statement",
     },
     {
@@ -59,6 +68,7 @@ export default function JourneyStage() {
       kicker: t.workout.kicker,
       title: t.workout.title,
       body: t.workout.body,
+      coach: t.workout.coach,
       layout: "default",
     },
     {
@@ -70,6 +80,7 @@ export default function JourneyStage() {
       kicker: t.recovery.kicker,
       title: t.recovery.title,
       body: t.recovery.body,
+      coach: t.recovery.coach,
       layout: "default",
     },
     {
@@ -81,6 +92,7 @@ export default function JourneyStage() {
       kicker: t.night.kicker,
       title: t.night.title,
       body: t.night.body,
+      coach: t.night.coach,
       layout: "statement",
     },
   ];
@@ -158,7 +170,7 @@ export default function JourneyStage() {
         {/* Sticky morphing phone (desktop) */}
         <div className="hidden md:block">
           <div className="sticky top-0 flex h-screen items-center justify-center">
-            <div className="relative w-full max-w-[280px]">
+            <div className="relative w-full max-w-[300px]">
               <div
                 className="phone-frame transition-shadow duration-700"
                 style={{
@@ -182,6 +194,18 @@ export default function JourneyStage() {
                   ))}
                 </div>
               </div>
+
+              <div
+                key={current.key}
+                className="absolute -bottom-4 -right-6 w-[min(100%,240px)] max-w-[240px]"
+                style={{ animation: reduce ? "none" : "coach-swap 0.6s var(--ease-calm)" }}
+              >
+                <JourneySignalCard
+                  accent={current.accent}
+                  signal={current.coach.signal}
+                  tip={current.coach.tip}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -196,12 +220,20 @@ export default function JourneyStage() {
               }}
               data-idx={i}
               className={clsx(
-                "relative flex min-h-[52vh] flex-col justify-center py-10 md:min-h-screen md:py-20",
+                "relative flex min-h-[78vh] flex-col justify-center py-16 md:min-h-screen md:py-20",
                 p.layout === "statement" && "md:min-h-[70vh]"
               )}
             >
-              <div className="mb-6 flex justify-center md:hidden">
-                <PhoneFrame panel={p} className="max-w-[200px]" sizes="200px" />
+              <div className="relative mb-8 flex justify-center pb-12 md:hidden md:pb-0">
+                <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
+                <div className="absolute -bottom-2 left-1/2 w-[min(88vw,240px)] max-w-[240px] -translate-x-1/2">
+                  <JourneySignalCard
+                    accent={p.accent}
+                    signal={p.coach.signal}
+                    tip={p.coach.tip}
+                    floating
+                  />
+                </div>
               </div>
 
               <motion.div
@@ -216,15 +248,15 @@ export default function JourneyStage() {
                 </span>
                 <h2
                   className={clsx(
-                    "display text-balance mt-3 text-white md:mt-4",
+                    "display text-balance mt-4 text-white",
                     p.layout === "statement"
-                      ? "text-[clamp(1.75rem,5vw,3.6rem)]"
-                      : "text-[clamp(1.6rem,4.5vw,3.1rem)]"
+                      ? "text-[clamp(2rem,5vw,3.6rem)]"
+                      : "text-[clamp(1.85rem,4.5vw,3.1rem)]"
                   )}
                 >
                   {p.title}
                 </h2>
-                <p className="body-md mx-auto mt-3 hidden max-w-[36ch] md:mx-0 md:block md:mt-4">{p.body}</p>
+                <p className="body-md mx-auto mt-4 max-w-[36ch] md:mx-0">{p.body}</p>
               </motion.div>
             </div>
           ))}

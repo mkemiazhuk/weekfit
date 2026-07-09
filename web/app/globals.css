@@ -166,8 +166,20 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
-/* Brand lockup — icon frame matches gold app icon; "Fit" uses text-brand in Wordmark */
-.wordmark-icon {
+/* Brand lockup — web mark in nav/footer; full app icon on press/download */
+.wordmark-mark-web {
+  border-radius: 22%;
+  transition:
+    filter 0.3s var(--ease-calm),
+    box-shadow 0.3s var(--ease-calm);
+}
+.group:hover .wordmark-mark-web,
+.group:focus-visible .wordmark-mark-web {
+  filter: brightness(1.08);
+  box-shadow: 0 0 20px -6px rgba(46, 219, 250, 0.35);
+}
+
+.wordmark-icon-app {
   border-radius: 22%;
   background: linear-gradient(
     145deg,
@@ -181,14 +193,14 @@ input:focus-visible,
   padding: 1px;
 }
 
-.wordmark-icon-inner {
+.wordmark-icon-app-inner {
   overflow: hidden;
   border-radius: 21%;
   background: #08090c;
 }
 
-.group:hover .wordmark-icon,
-.group:focus-visible .wordmark-icon {
+.group:hover .wordmark-icon-app,
+.group:focus-visible .wordmark-icon-app {
   box-shadow:
     0 8px 32px -4px rgba(245, 191, 92, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -1101,6 +1113,81 @@ input:focus-visible,
   content: "·";
   margin-right: 0.35rem;
   opacity: 0.55;
+}
+
+@media (max-width: 639px) {
+  .footer-premium {
+    padding: 1.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .footer-premium__inner {
+    gap: 0.75rem;
+  }
+
+  .footer-composition {
+    gap: 1.1rem;
+  }
+
+  .footer-brand__tagline {
+    margin-top: 0.35rem;
+    max-width: 28ch;
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .footer-socials {
+    margin-top: 0.35rem;
+    gap: 0;
+  }
+
+  .footer-social {
+    width: 1.65rem;
+    height: 1.65rem;
+    color: rgba(255, 255, 255, 0.22);
+  }
+
+  .footer-nav-title {
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    color: rgba(245, 191, 92, 0.26);
+  }
+
+  .footer-nav-title::after {
+    width: 0.65rem;
+    margin-top: 0.25rem;
+    opacity: 0.7;
+  }
+
+  .footer-nav-list {
+    margin-top: 0.3rem;
+  }
+
+  .footer-link {
+    min-height: 1.35rem;
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.32);
+  }
+
+  .footer-bottom {
+    gap: 0.45rem;
+    padding-top: 0.65rem;
+  }
+
+  .footer-meta__line {
+    font-size: 0.625rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.24);
+  }
+
+  .footer-trust {
+    gap: 0.15rem 0.5rem;
+  }
+
+  .footer-trust-item {
+    font-size: 0.625rem;
+    color: rgba(255, 255, 255, 0.22);
+  }
 }
 
 @media (min-width: 768px) {
