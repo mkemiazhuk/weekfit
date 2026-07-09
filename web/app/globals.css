@@ -1179,7 +1179,7 @@ input:focus-visible,
 .footer-hero__tagline {
   margin: 0.65rem 0 0;
   max-width: none;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.45;
   letter-spacing: -0.015em;
   color: rgba(255, 255, 255, 0.52);
@@ -1237,7 +1237,7 @@ input:focus-visible,
 
 .footer-nav-title {
   margin: 0;
-  font-size: 0.5625rem;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1265,7 +1265,7 @@ input:focus-visible,
   display: flex;
   align-items: center;
   min-height: 1.65rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: -0.008em;
   color: rgba(255, 255, 255, 0.46);
@@ -1303,7 +1303,7 @@ input:focus-visible,
 
 .footer-meta__line {
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.45;
   letter-spacing: -0.004em;
   color: rgba(255, 255, 255, 0.28);
@@ -1321,7 +1321,7 @@ input:focus-visible,
 }
 
 .footer-trust-item {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.4;
   letter-spacing: -0.004em;
   color: rgba(255, 255, 255, 0.28);
@@ -1406,7 +1406,7 @@ input:focus-visible,
   .footer-hero__tagline {
     margin-top: 0.45rem;
     max-width: 30ch;
-    font-size: 0.71875rem;
+    font-size: 0.8125rem;
     line-height: 1.5;
     color: rgba(255, 255, 255, 0.34);
   }
@@ -1457,7 +1457,7 @@ input:focus-visible,
   }
 
   .footer-nav-title {
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
     letter-spacing: 0.16em;
     color: rgba(245, 191, 92, 0.36);
   }
@@ -1475,7 +1475,7 @@ input:focus-visible,
   .footer-link {
     display: inline-flex;
     min-height: 1.3rem;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.34);
   }
 
@@ -1489,7 +1489,7 @@ input:focus-visible,
   }
 
   .footer-meta__line {
-    font-size: 0.59375rem;
+    font-size: 0.6875rem;
     color: rgba(255, 255, 255, 0.22);
   }
 
@@ -1502,7 +1502,7 @@ input:focus-visible,
   }
 
   .footer-trust-item {
-    font-size: 0.59375rem;
+    font-size: 0.6875rem;
     color: rgba(255, 255, 255, 0.22);
     white-space: nowrap;
   }
