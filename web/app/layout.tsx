@@ -45,15 +45,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/brand/favicon-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/brand/favicon-tab.png", type: "image/png", sizes: "192x192" },
       { url: "/brand/favicon-32.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/brand/favicon-16.png", type: "image/png", sizes: "16x16" },
-      { url: "/brand/icon-192.png", type: "image/png", sizes: "192x192" },
-      { url: "/brand/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: "/brand/favicon-48.png",
-    apple: [{ url: "/brand/icon-180.png", sizes: "180x180" }],
+    shortcut: "/brand/favicon-tab.png",
+    apple: [{ url: "/brand/favicon-tab.png", sizes: "192x192" }],
   },
   manifest: "/manifest.webmanifest",
   verification: {
@@ -76,6 +73,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="antialiased">
       <head>
+        <link
+          rel="icon"
+          href="/brand/favicon-tab.png?v=3"
+          type="image/png"
+          sizes="192x192"
+        />
         <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
         <script
           dangerouslySetInnerHTML={{
