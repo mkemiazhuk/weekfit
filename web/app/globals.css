@@ -972,13 +972,13 @@ input:focus-visible,
 @media (min-width: 1024px) {
   .blog-article-toc {
     position: sticky;
-    top: 6.5rem;
+    top: var(--toc-read-offset, 6.5rem);
     z-index: 2;
   }
 
   .blog-article-toc__inner {
     padding-top: 2.75rem;
-    max-height: calc(100vh - 6.5rem - 2rem);
+    max-height: calc(100vh - var(--toc-read-offset, 6.5rem) - 2rem);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
@@ -1102,7 +1102,7 @@ input:focus-visible,
 }
 
 .prose-blog h2 {
-  scroll-margin-top: 6.5rem;
+  scroll-margin-top: var(--toc-read-offset, 6.5rem);
   margin: 0 0 1rem;
   font-size: 1.4375rem;
   font-weight: 700;
