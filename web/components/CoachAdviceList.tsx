@@ -19,33 +19,43 @@ export default function CoachAdviceList({
   labels,
   compact,
   essential,
+  decision,
 }: {
   advice: CoachAdvice;
   labels: CoachAdviceLabels;
   compact?: boolean;
   /** Mobile-friendly: only the three most actionable blocks. */
   essential?: boolean;
+  /** Simulator card: why + what to do only. */
+  decision?: boolean;
 }) {
-  const rows = essential
+  const rows = decision
     ? [
-        { key: "matters", label: labels.matters, text: advice.matters },
+        ...(advice.why && labels.why
+          ? [{ key: "why", label: labels.why, text: advice.why }]
+          : []),
         { key: "do", label: labels.do, text: advice.do },
-        { key: "next", label: labels.next, text: advice.next },
       ]
-    : [
-        { key: "matters", label: labels.matters, text: advice.matters },
-        { key: "do", label: labels.do, text: advice.do },
-        { key: "avoid", label: labels.avoid, text: advice.avoid },
-        { key: "next", label: labels.next, text: advice.next },
-      ];
+    : essential
+      ? [
+          { key: "matters", label: labels.matters, text: advice.matters },
+          { key: "do", label: labels.do, text: advice.do },
+          { key: "next", label: labels.next, text: advice.next },
+        ]
+      : [
+          { key: "matters", label: labels.matters, text: advice.matters },
+          { key: "do", label: labels.do, text: advice.do },
+          { key: "avoid", label: labels.avoid, text: advice.avoid },
+          { key: "next", label: labels.next, text: advice.next },
+        ];
 
   return (
-    <div className={compact ? "mt-3 space-y-2.5" : "mt-4 space-y-3.5"}>
+    <div className={compact || decision ? "space-y-2.5" : "mt-4 space-y-3.5"}>
       {rows.map((row) => (
         <div key={row.key}>
           <p
             className={
-              compact
+              compact || decision
                 ? "text-[9px] font-bold uppercase tracking-[0.12em] text-white/35"
                 : "kicker-sm text-white/40"
             }
@@ -54,7 +64,7 @@ export default function CoachAdviceList({
           </p>
           <p
             className={
-              compact
+              compact || decision
                 ? "mt-0.5 text-[12.5px] leading-snug text-white/78"
                 : "body-sm mt-1 text-white/75"
             }
@@ -63,7 +73,7 @@ export default function CoachAdviceList({
           </p>
         </div>
       ))}
-      {advice.why && labels.why && !essential ? (
+      {advice.why && labels.why && !essential && !decision ? (
         <div className={compact ? "border-t border-white/[0.06] pt-2.5" : "border-t border-white/[0.08] pt-4"}>
           <p className={compact ? "text-[9px] font-bold uppercase tracking-[0.12em] text-white/35" : "kicker-sm"}>
             {labels.why}

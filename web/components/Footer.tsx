@@ -12,6 +12,29 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
+function NavGroup({
+  title,
+  links,
+  className,
+}: {
+  title: string;
+  links: { label: string; href: string }[];
+  className?: string;
+}) {
+  return (
+    <nav className={className} aria-label={title}>
+      <h3 className="footer-nav-title">{title}</h3>
+      <ul className="footer-nav-list">
+        {links.map((l) => (
+          <li key={l.href}>
+            <FooterLink href={l.href}>{l.label}</FooterLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 function SocialIcon({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
   return (
     <a
@@ -29,13 +52,20 @@ export default function Footer() {
   const { t, localePath } = useI18n();
   const year = new Date().getFullYear();
 
-  const links = [
+  const productLinks = [
     { label: t.footer.experience, href: localePath("/#experience") },
     { label: t.footer.simulator, href: localePath("/experience") },
     { label: t.footer.download, href: localePath("/download") },
+  ];
+
+  const resourceLinks = [
     { label: t.footer.support, href: localePath("/support") },
     { label: t.footer.faq, href: localePath("/faq") },
     { label: t.footer.blog, href: localePath("/blog") },
+    { label: t.footer.changelog, href: localePath("/changelog") },
+  ];
+
+  const legalLinks = [
     { label: t.footer.privacy, href: localePath("/privacy") },
     { label: t.footer.terms, href: localePath("/terms") },
     { label: t.footer.contact, href: localePath("/contact") },
@@ -58,6 +88,7 @@ export default function Footer() {
         <div className="footer-composition">
           <div className="footer-brand">
             <Wordmark size="footer" className="footer-brand__logo" />
+            <p className="footer-brand__tagline">{t.footer.tagline}</p>
             <ul className="footer-socials" aria-label={t.footer.socialLabel}>
               {xUrl && (
                 <li>
@@ -90,21 +121,24 @@ export default function Footer() {
             </ul>
           </div>
 
-          <nav className="footer-inline-nav" aria-label={t.footer.ariaLabel}>
-            <ul className="footer-inline-nav__list">
-              {links.map((l) => (
-                <li key={l.href}>
-                  <FooterLink href={l.href}>{l.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <NavGroup title={t.footer.product} links={productLinks} className="footer-nav-group" />
+          <NavGroup title={t.footer.resources} links={resourceLinks} className="footer-nav-group" />
+          <NavGroup title={t.footer.legal} links={legalLinks} className="footer-nav-group" />
         </div>
 
         <div className="footer-bottom">
-          <p className="footer-meta__line">
-            © {year} WeekFit · {t.footer.disclaimer}
-          </p>
+          <div className="footer-meta">
+            <p className="footer-meta__line">
+              © {year} WeekFit · {t.footer.rights}
+            </p>
+            <p className="footer-meta__line">{t.footer.disclaimer}</p>
+          </div>
+
+          <ul className="footer-trust" aria-label={t.footer.trustLabel}>
+            <li className="footer-trust-item">{t.footer.trust.data}</li>
+            <li className="footer-trust-item">{t.footer.trust.privacy}</li>
+            <li className="footer-trust-item">{t.footer.trust.health}</li>
+          </ul>
         </div>
       </div>
     </footer>
