@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import clsx from "clsx";
 
 interface JourneySignalCardProps {
@@ -8,8 +7,6 @@ interface JourneySignalCardProps {
   signal: string;
   tip: string;
   detail?: string;
-  image?: string;
-  imageAlt?: string;
   className?: string;
   floating?: boolean;
 }
@@ -19,8 +16,6 @@ export default function JourneySignalCard({
   signal,
   tip,
   detail,
-  image,
-  imageAlt = "",
   className,
   floating,
 }: JourneySignalCardProps) {
@@ -37,35 +32,26 @@ export default function JourneySignalCard({
         boxShadow: `0 24px 60px -20px ${accent}55, 0 10px 30px -15px rgba(0,0,0,0.6)`,
       }}
     >
-      <div className="relative flex items-start gap-3">
-        {image ? (
-          <div
-            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[14px] md:h-12 md:w-12"
-            style={{ boxShadow: `0 0 0 1px ${accent}33` }}
-          >
-            <Image src={image} alt={imageAlt} fill sizes="48px" className="object-cover" />
-          </div>
-        ) : (
+      <div className="relative flex items-start gap-2.5">
+        <span
+          aria-hidden
+          className="mt-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+          style={{
+            color: accent,
+            background: `${accent}1a`,
+            border: `1px solid ${accent}33`,
+          }}
+        >
           <span
-            aria-hidden
-            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] md:h-12 md:w-12"
-            style={{
-              color: accent,
-              background: `${accent}1a`,
-              border: `1px solid ${accent}33`,
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
-            />
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold leading-snug text-white md:text-[15px]">{signal}</p>
-          <p className="mt-1.5 text-[12.5px] leading-snug text-white/62 md:text-[13px]">{tip}</p>
+            className="signal-dot-pulse h-1.5 w-1.5 rounded-full"
+            style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
+          />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold leading-snug text-white">{signal}</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-white/58">{tip}</p>
           {detail ? (
-            <p className="mt-1.5 text-[11.5px] leading-snug text-white/42 md:text-[12px]">{detail}</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-white/42">{detail}</p>
           ) : null}
         </div>
       </div>
