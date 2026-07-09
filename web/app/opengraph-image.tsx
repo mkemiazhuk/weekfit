@@ -8,9 +8,9 @@ export const alt = SITE.title;
 
 export default function Image() {
   return renderOgImage({
-    kicker: "AI fitness coach",
-    title: "Your day, understood.",
+    kicker: "Your AI coach",
+    title: "One clear call for today.",
     subtitle:
-      "WeekFit reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today.",
+      "What to do now, why it matters, and how to adjust.",
   });
 }

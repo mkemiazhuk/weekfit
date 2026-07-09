@@ -114,7 +114,7 @@ export function renderOgImage(opts: {
           <div style={{ display: "flex", width: 10, height: 10, borderRadius: 10, background: GREEN }} />
           <span>weekfit.app</span>
           <span style={{ color: "rgba(245,246,248,0.28)" }}>·</span>
-          <span>{ENTITY.category} for {ENTITY.platform}</span>
+          <span>{ENTITY.socialFooter ?? `${ENTITY.category} for ${ENTITY.platform}`}</span>
         </div>
       </div>
     ),

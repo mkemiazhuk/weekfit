@@ -548,8 +548,8 @@ export const press: Record<
     ],
     boilerTitle: "Boilerplate",
     boilerShort:
-      "WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.",
-    boilerLong: "WeekFit is an AI fitness coach for iOS. Instead of another dashboard of numbers, it interprets the relationships between your sleep, activity, nutrition and recovery — powered by Apple Health and processed on your device — to explain what matters today and how to prepare for it. Private by design, WeekFit requires no account and never uses your health data for advertising.",
+      "WeekFit is your AI coach, powered by Apple Health. One clear call for today — what to do now, why it matters, and how to adjust. Private on your iPhone.",
+    boilerLong: "WeekFit is your AI coach for iOS, powered by Apple Health. Instead of another dashboard of numbers, it turns sleep, activity, nutrition and recovery into one clear call for today — what to do now, why it matters, and how to adjust. Private by design, WeekFit requires no account and never uses your health data for advertising.",
     colorsTitle: "Brand colors",
     assetsTitle: "Downloadable assets",
     assetsNote: "App icon and product screenshots. For anything else, get in touch.",
@@ -577,7 +577,8 @@ export const press: Record<
       { label: "Сайт", value: "weekfit.app" },
     ],
     boilerTitle: "Описание",
-    boilerShort: "WeekFit — спокойный AI-коуч, который читает сон, активность, питание и восстановление из Apple Health и подсказывает, что важно именно сегодня.",
+    boilerShort:
+      "WeekFit — ваш AI-коуч на основе Apple Health. Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться. Приватно на iPhone.",
     boilerLong: "WeekFit — спокойный AI-коуч для iOS. Вместо очередной панели с цифрами он видит связи между сном, активностью, питанием и восстановлением — на основе Apple Health и с обработкой прямо на устройстве — и объясняет, что важно сегодня и как к этому подготовиться. Приватность заложена в основу: без аккаунта, и данные о здоровье никогда не используются для рекламы.",
     colorsTitle: "Цвета бренда",
     assetsTitle: "Материалы для загрузки",

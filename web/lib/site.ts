@@ -11,10 +11,11 @@ export const ENTITY = {
   alternateNames: ["Week Fit"] as const,
   developer: "WeekFit",
   description:
-    "WeekFit reads Apple Health and gives you one clear decision every morning — push, hold, or recover — with visible reasoning. Private on your iPhone.",
+    "One clear call for today — what to do now, why it matters, and how to adjust. Private on your iPhone.",
   platform: "iPhone",
   operatingSystem: "iOS",
   category: "AI fitness coach",
+  socialFooter: "Powered by Apple Health",
   dataSource: "Apple Health",
 } as const;
 
@@ -22,7 +23,7 @@ export const SITE = {
   url: "https://weekfit.app",
   name: ENTITY.name,
   shortName: ENTITY.name,
-  title: `${ENTITY.name} — AI Fitness Coach for iPhone`,
+  title: `${ENTITY.name} — What is today for?`,
   description: ENTITY.description,
   defaultLocale: "en",
   locales: ["en", "ru"] as const,

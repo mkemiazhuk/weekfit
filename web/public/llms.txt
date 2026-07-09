@@ -1,6 +1,6 @@
 # WeekFit
 
-> WeekFit is an AI fitness coach for iPhone. It reads sleep, recovery, activity and nutrition from Apple Health and tells you what matters today. Private by design, no account required.
+> Your AI coach, powered by Apple Health. One clear call for today — what to do now, why it matters, and how to adjust. Private on your iPhone.
 
 ## Entity
 
