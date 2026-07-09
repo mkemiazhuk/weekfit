@@ -177,6 +177,8 @@ input:focus-visible,
   line-height: 0;
   opacity: 0.94;
   filter: saturate(0.76) brightness(1.1) contrast(0.94);
+  transform: scale(1.06);
+  transform-origin: center right;
   transition:
     opacity 0.25s var(--ease-calm),
     filter 0.25s var(--ease-calm);

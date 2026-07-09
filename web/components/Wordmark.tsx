@@ -5,10 +5,10 @@ import { useI18n } from "@/lib/i18n";
 import WordmarkMark from "./WordmarkMark";
 
 const sizes = {
-  nav: { fontSize: 17, markScale: 1.25, gap: 16 },
-  navMobile: { fontSize: 15, markScale: 1.18, gap: 15 },
-  lg: { fontSize: 19, markScale: 1.25, gap: 16 },
-  footer: { fontSize: 17, markScale: 1.25, gap: 16 },
+  nav: { fontSize: 17, markScale: 1.52, gap: 16 },
+  navMobile: { fontSize: 15, markScale: 1.38, gap: 15 },
+  lg: { fontSize: 19, markScale: 1.5, gap: 16 },
+  footer: { fontSize: 17, markScale: 1.52, gap: 16 },
 } as const;
 
 export default function Wordmark({
