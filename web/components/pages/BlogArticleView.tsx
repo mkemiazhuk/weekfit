@@ -19,30 +19,32 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
   const cat = blogCategories.find((item) => item.slug === post.category);
 
   return (
-    <article className="relative z-[1] mx-auto max-w-3xl section-x page-pb pt-32 md:pt-36">
-      <Link
-        href={localePath("/blog")}
-        className="text-[14px] font-medium text-white/50 transition-colors hover:text-white"
-      >
-        ← {c.kicker}
-      </Link>
+    <article className="blog-article relative z-[1] mx-auto max-w-[47.5rem] section-x pb-16 pt-28 md:pb-20 md:pt-32">
+      <header className="blog-article-header">
+        <Link
+          href={localePath("/blog")}
+          className="blog-article-back text-[14px] font-medium text-white/50 transition-colors hover:text-white/88"
+        >
+          ← {c.kicker}
+        </Link>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-white/40">
-        {cat && <span style={{ color: cat.color }}>{cat.name[lang]}</span>}
-        <span aria-hidden>·</span>
-        <time dateTime={post.date}>{formatDate(post.date, lang)}</time>
-        <span aria-hidden>·</span>
-        <span>
-          {post.readMinutes} {c.readMin}
-        </span>
-      </div>
+        <div className="blog-article-meta mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-white/40">
+          {cat && <span style={{ color: cat.color }}>{cat.name[lang]}</span>}
+          <span aria-hidden>·</span>
+          <time dateTime={post.date}>{formatDate(post.date, lang)}</time>
+          <span aria-hidden>·</span>
+          <span>
+            {post.readMinutes} {c.readMin}
+          </span>
+        </div>
 
-      <h1 className="display mt-5 text-[clamp(2rem,5vw,2.75rem)] leading-[1.08] text-white">
-        {post.title[lang]}
-      </h1>
-      <p className="mt-4 text-[17px] leading-relaxed text-white/60">{post.excerpt[lang]}</p>
+        <h1 className="blog-article-title display mt-4 text-[clamp(2.125rem,4.8vw,2.875rem)] leading-[1.06] tracking-[-0.032em] text-white">
+          {post.title[lang]}
+        </h1>
+        <p className="blog-article-deck mt-3">{post.excerpt[lang]}</p>
+      </header>
 
-      <div className="prose prose-blog mt-10">
+      <div className="prose prose-blog mt-8 md:mt-9">
         <BlogArticleBody sections={post.sections[lang]} />
       </div>
     </article>

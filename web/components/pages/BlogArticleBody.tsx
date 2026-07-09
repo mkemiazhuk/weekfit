@@ -26,7 +26,7 @@ function Vo2Drop({
   labels: [string, string];
 }) {
   return (
-    <div className="blog-vo2-drop not-prose surface-subtle my-8 grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-5 sm:gap-5 sm:p-6">
+    <div className="blog-vo2-drop not-prose surface-subtle my-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-5 sm:my-7 sm:gap-5 sm:p-6">
       <div className="text-center">
         <p className="kicker-sm">
           {labels[0]}
@@ -64,7 +64,7 @@ function TrendChart({ values, caption }: { values: number[]; caption: string }) 
   const chartHeight = 96;
 
   return (
-    <figure className="blog-trend not-prose surface-subtle my-8 p-5 sm:p-6">
+    <figure className="blog-trend not-prose surface-subtle my-6 p-5 sm:my-7 sm:p-6">
       <div className="flex items-end gap-1.5 sm:gap-2" style={{ height: chartHeight }}>
         {values.map((v, i) => {
           const barHeight = Math.max(((v - min) / range) * chartHeight, 10);
@@ -123,7 +123,7 @@ function CompareCards({
   );
 
   return (
-    <figure className="blog-compare not-prose my-8">
+    <figure className="blog-compare not-prose my-6 sm:my-7">
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
         {card(left, pillars.recovery)}
         {card(right, pillars.activity)}
