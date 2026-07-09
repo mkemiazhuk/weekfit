@@ -17,29 +17,17 @@ function headingTop(id: string): number | null {
 function resolveActiveSection(items: TocItem[]): string | undefined {
   if (!items.length) return undefined;
 
-  const body = document.querySelector(".blog-article-body");
-  if (body) {
-    const bodyBottom = body.getBoundingClientRect().bottom;
-    if (bodyBottom <= window.innerHeight + 48) {
-      return items[items.length - 1].id;
-    }
-  }
-
-  let closestId = items[0].id;
-  let closestDist = Infinity;
+  let active = items[0].id;
 
   for (const item of items) {
     const top = headingTop(item.id);
     if (top === null) continue;
-
-    const dist = Math.abs(top - READ_LINE);
-    if (dist < closestDist) {
-      closestDist = dist;
-      closestId = item.id;
+    if (top <= READ_LINE + 1) {
+      active = item.id;
     }
   }
 
-  return closestId;
+  return active;
 }
 
 export default function BlogArticleToc({
