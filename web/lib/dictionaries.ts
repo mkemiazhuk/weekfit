@@ -263,7 +263,7 @@ export const en = {
   seo: {
     kicker: "What is WeekFit",
     title: "An AI fitness coach for Apple Health.",
-    p1: "WeekFit (also searched as Week Fit) is one daily read from Apple Health — with the reasoning behind it.",
+    p1: "One clear call for today — what to do now, why it matters, and how to adjust.",
     privacy: "Private, on your device.",
     healthLabel: "Data source",
     healthValue: "Apple Health",
@@ -631,7 +631,7 @@ export const ru: Dict = {
   seo: {
     kicker: "Что такое WeekFit",
     title: "AI-коуч для Apple Health.",
-    p1: "WeekFit оценивает ваше состояние и план дня, чтобы помочь понять, когда есть, тренироваться, восстанавливаться или отдыхать.",
+    p1: "Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться.",
     privacy: "Приватно, на устройстве.",
     healthLabel: "Источник данных",
     healthValue: "Apple Health",
