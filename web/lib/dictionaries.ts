@@ -195,8 +195,9 @@ export const en = {
     body: "Sleep, HRV and yesterday's load — one read before you start your day.",
     ringLabel: "Recovery",
     coach: {
-      signal: "Recovery ready",
-      tip: "Start steady today.",
+      signal: "Recovery ready — balanced start",
+      tip: "Sleep and HRV support a steady day. No need to chase intensity before lunch.",
+      detail: "Check the rings once, then move on with your morning.",
     },
   },
   prep: {
@@ -205,7 +206,8 @@ export const en = {
     body: "Fuel and water timed to your session — not a template.",
     coach: {
       signal: "Session at 18:00",
-      tip: "Eat 90 min before.",
+      tip: "Eat a real meal 90 minutes before — carbs and protein, not a bar in the car.",
+      detail: "Hydrate through the afternoon so the main set lands well.",
     },
   },
   workout: {
@@ -214,7 +216,8 @@ export const en = {
     body: "Workouts from Apple Health update your day the moment you finish.",
     coach: {
       signal: "Green readiness",
-      tip: "Hit the main set.",
+      tip: "Run the planned main set while your legs are still fresh.",
+      detail: "Skip bonus volume — save the extra push for a peak day.",
     },
   },
   recovery: {
@@ -222,8 +225,9 @@ export const en = {
     title: "Recover properly.",
     body: "Stretching, food and sleep — between sessions, not afterthought.",
     coach: {
-      signal: "Legs still loaded",
-      tip: "Easy spin, no load.",
+      signal: "Legs still loaded from yesterday",
+      tip: "Easy spin 30–40 min — move blood, don't add load.",
+      detail: "Keep heart rate easy; tomorrow's read improves when you respect the strain.",
     },
   },
   night: {
@@ -231,8 +235,9 @@ export const en = {
     title: "Wind down.",
     body: "Everything calms. WeekFit quietly prepares tomorrow.",
     coach: {
-      signal: "Sleep is the work",
-      tip: "In bed by 22:30.",
+      signal: "Sleep is the work tonight",
+      tip: "Aim for bed by 22:30 — screens down 30 minutes before.",
+      detail: "Light refuel if you trained late; tomorrow's call starts with how you close tonight.",
     },
   },
   reasoning: {
@@ -558,8 +563,9 @@ export const ru: Dict = {
     body: "Сон, ВСР и вчерашняя нагрузка — один вывод, прежде чем начать день.",
     ringLabel: "Восстановление",
     coach: {
-      signal: "Восстановление в норме",
-      tip: "Сегодня без пика.",
+      signal: "Восстановление в норме — ровный старт",
+      tip: "Сон и ВСР поддерживают спокойный день. Не гонитесь за интенсивом до обеда.",
+      detail: "Один взгляд на кольца — и можно жить утро дальше.",
     },
   },
   prep: {
@@ -568,7 +574,8 @@ export const ru: Dict = {
     body: "Питание и вода по времени сессии — не шаблон.",
     coach: {
       signal: "Сессия в 18:00",
-      tip: "Еда за 90 мин до.",
+      tip: "Нормальная еда за 90 мин до — углеводы и белок, не батончик в машине.",
+      detail: "Пейте воду днём, чтобы основной блок прошёл легче.",
     },
   },
   workout: {
@@ -577,7 +584,8 @@ export const ru: Dict = {
     body: "Тренировки из Apple Health обновляют день сразу после.",
     coach: {
       signal: "Готовность зелёная",
-      tip: "Делайте основной блок.",
+      tip: "Сделайте запланированный основной блок, пока ноги свежие.",
+      detail: "Без дополнительного объёма — лишний push оставьте на пиковый день.",
     },
   },
   recovery: {
@@ -585,8 +593,9 @@ export const ru: Dict = {
     title: "Восстанавливайтесь.",
     body: "Растяжка, еда и сон — между сессиями, не в конце.",
     coach: {
-      signal: "Ноги ещё загружены",
-      tip: "Лёгкий спин, без нагрузки.",
+      signal: "Ноги ещё загружены после вчера",
+      tip: "Лёгкий спин 30–40 мин — кровь в ноги, без новой нагрузки.",
+      detail: "Пульс легко; завтрашний вывод лучше, когда уважаете strain.",
     },
   },
   night: {
@@ -594,8 +603,9 @@ export const ru: Dict = {
     title: "Закройте день.",
     body: "Всё успокаивается. WeekFit тихо готовит завтра.",
     coach: {
-      signal: "Сон — главная задача",
-      tip: "В постель к 22:30.",
+      signal: "Сон — главная задача сегодня",
+      tip: "В постель к 22:30 — экраны выключить за 30 минут.",
+      detail: "Лёгкий перекус, если тренировались поздно; завтра начинается с того, как вы закроете вечер.",
     },
   },
   reasoning: {

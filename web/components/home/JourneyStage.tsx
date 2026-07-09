@@ -15,12 +15,15 @@ type AmbientTone = "morning" | "coach" | "activity" | "nutrition" | "recovery";
 interface StageSignal {
   signal: string;
   tip: string;
+  detail: string;
 }
 
 interface Panel {
   key: string;
   screen: string;
   screenAlt: string;
+  coachImage: string;
+  coachImageAlt: string;
   accent: string;
   ambient: AmbientTone;
   kicker: string;
@@ -39,6 +42,8 @@ export default function JourneyStage() {
       key: "morning",
       screen: "/img/today.jpg",
       screenAlt: "WeekFit Today screen showing recovery, activity and nutrition rings",
+      coachImage: "/img/today.jpg",
+      coachImageAlt: "Today rings and morning read",
       accent: pillars.recovery,
       ambient: "morning",
       kicker: t.morning.kicker,
@@ -49,10 +54,12 @@ export default function JourneyStage() {
     },
     {
       key: "prep",
-      screen: "/img/coach.jpg",
-      screenAlt: "WeekFit Coach screen with the day's personalized guidance",
-      accent: pillars.coach,
-      ambient: "coach",
+      screen: "/img/meals.jpg",
+      screenAlt: "WeekFit Meals screen with pre-workout nutrition guidance",
+      coachImage: "/img/nutrition.jpg",
+      coachImageAlt: "Nutrition and meal guidance",
+      accent: pillars.nutrition,
+      ambient: "nutrition",
       kicker: t.prep.kicker,
       title: t.prep.title,
       body: t.prep.body,
@@ -63,6 +70,8 @@ export default function JourneyStage() {
       key: "workout",
       screen: "/img/activity.jpg",
       screenAlt: "WeekFit Activity screen with workouts synced from Apple Health",
+      coachImage: "/img/activity.jpg",
+      coachImageAlt: "Workout and activity sync",
       accent: pillars.activity,
       ambient: "activity",
       kicker: t.workout.kicker,
@@ -75,6 +84,8 @@ export default function JourneyStage() {
       key: "recovery",
       screen: "/img/recovery.jpg",
       screenAlt: "WeekFit recovery screen with stretching and sleep guidance",
+      coachImage: "/img/recovery.jpg",
+      coachImageAlt: "Recovery and mobility guidance",
       accent: pillars.recovery,
       ambient: "recovery",
       kicker: t.recovery.kicker,
@@ -85,8 +96,10 @@ export default function JourneyStage() {
     },
     {
       key: "night",
-      screen: "/img/nutrition.jpg",
-      screenAlt: "WeekFit Nutrition screen with evening refuel guidance",
+      screen: "/img/recovery.jpg",
+      screenAlt: "WeekFit evening recovery and sleep preparation",
+      coachImage: "/img/meal-details.jpg",
+      coachImageAlt: "Evening refuel and wind-down",
       accent: pillars.recovery,
       ambient: "recovery",
       kicker: t.night.kicker,
@@ -197,13 +210,16 @@ export default function JourneyStage() {
 
               <div
                 key={current.key}
-                className="absolute -bottom-4 -right-6 w-[min(100%,240px)] max-w-[240px]"
+                className="absolute -bottom-4 -right-6 w-[min(100%,272px)] max-w-[272px]"
                 style={{ animation: reduce ? "none" : "coach-swap 0.6s var(--ease-calm)" }}
               >
                 <JourneySignalCard
                   accent={current.accent}
                   signal={current.coach.signal}
                   tip={current.coach.tip}
+                  detail={current.coach.detail}
+                  image={current.coachImage}
+                  imageAlt={current.coachImageAlt}
                 />
               </div>
             </div>
@@ -226,11 +242,14 @@ export default function JourneyStage() {
             >
               <div className="relative mb-8 flex justify-center pb-12 md:hidden md:pb-0">
                 <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
-                <div className="absolute -bottom-2 left-1/2 w-[min(88vw,240px)] max-w-[240px] -translate-x-1/2">
+                <div className="absolute -bottom-2 left-1/2 w-[min(92vw,272px)] max-w-[272px] -translate-x-1/2">
                   <JourneySignalCard
                     accent={p.accent}
                     signal={p.coach.signal}
                     tip={p.coach.tip}
+                    detail={p.coach.detail}
+                    image={p.coachImage}
+                    imageAlt={p.coachImageAlt}
                     floating
                   />
                 </div>
