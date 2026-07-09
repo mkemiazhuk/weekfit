@@ -176,7 +176,7 @@ input:focus-visible,
 }
 .wordmark-lockup__text {
   line-height: 1;
-  transform: translateY(-0.01em);
+  transform: translateY(-0.5px);
 }
 .wordmark-icon-gold {
   display: block;

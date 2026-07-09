@@ -5,10 +5,10 @@ import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
 
 const sizes = {
-  nav: { text: "text-[17px]", icon: "1.14em", gap: "gap-2.5", nudge: "0.04em" },
-  navMobile: { text: "text-[15px]", icon: "1.14em", gap: "gap-2", nudge: "0.035em" },
-  lg: { text: "text-[19px]", icon: "1.12em", gap: "gap-3", nudge: "0.04em" },
-  footer: { text: "text-[17px]", icon: "1.14em", gap: "gap-2.5", nudge: "0.04em" },
+  nav: { text: "text-[17px]", icon: 34, gap: "gap-2.5", nudge: "1px" },
+  navMobile: { text: "text-[15px]", icon: 30, gap: "gap-2", nudge: "1px" },
+  lg: { text: "text-[19px]", icon: 38, gap: "gap-3", nudge: "1px" },
+  footer: { text: "text-[17px]", icon: 34, gap: "gap-2.5", nudge: "1px" },
 } as const;
 
 export default function Wordmark({
@@ -44,8 +44,8 @@ export default function Wordmark({
         <Image
           src="/brand/logo-gold-lockup.png"
           alt=""
-          width={48}
-          height={48}
+          width={s.icon}
+          height={s.icon}
           className="block size-full object-contain object-center"
           aria-hidden
         />
