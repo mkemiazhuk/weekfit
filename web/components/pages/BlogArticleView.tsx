@@ -19,7 +19,7 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
   const cat = blogCategories.find((item) => item.slug === post.category);
 
   return (
-    <article className="blog-article relative z-[1] mx-auto max-w-[47.5rem] section-x pb-16 pt-28 md:pb-20 md:pt-32">
+    <article className="blog-article relative z-[1] mx-auto section-x pb-16 pt-28 md:pb-20 md:pt-32">
       <header className="blog-article-header">
         <Link
           href={localePath("/blog")}
@@ -28,7 +28,7 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
           ← {c.kicker}
         </Link>
 
-        <div className="blog-article-meta mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-white/40">
+        <div className="blog-article-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-white/40">
           {cat && <span style={{ color: cat.color }}>{cat.name[lang]}</span>}
           <span aria-hidden>·</span>
           <time dateTime={post.date}>{formatDate(post.date, lang)}</time>
@@ -38,13 +38,13 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
           </span>
         </div>
 
-        <h1 className="blog-article-title display mt-4 text-[clamp(2.125rem,4.8vw,2.875rem)] leading-[1.06] tracking-[-0.032em] text-white">
+        <h1 className="blog-article-title display text-[clamp(2.125rem,4.8vw,2.9375rem)] leading-[1.05] tracking-[-0.034em] text-white">
           {post.title[lang]}
         </h1>
-        <p className="blog-article-deck mt-3">{post.excerpt[lang]}</p>
+        <p className="blog-article-deck">{post.excerpt[lang]}</p>
       </header>
 
-      <div className="prose prose-blog mt-8 md:mt-9">
+      <div className="prose prose-blog blog-article-body">
         <BlogArticleBody sections={post.sections[lang]} />
       </div>
     </article>
