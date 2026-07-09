@@ -118,6 +118,13 @@ export const blogCategories: BlogCategory[] = [
   },
 ];
 
+export function blogSectionsToc(sections: DocSection[]): { id: string; label: string }[] {
+  return sections.filter((s) => s.h.trim()).map((s) => ({ id: s.id, label: s.h }));
+}
+
+/** Minimum headed sections before the sticky table of contents appears. */
+export const BLOG_TOC_MIN_SECTIONS = 3;
+
 export const blogPosts: BlogPost[] = [
   {
     slug: "what-is-a-recovery-score",
@@ -316,7 +323,7 @@ export const blogPosts: BlogPost[] = [
 
 export const blogCopy: Record<
   Lang,
-  { kicker: string; title: string; lead: string; empty: string; categoriesTitle: string; latestTitle: string; readMin: string }
+  { kicker: string; title: string; lead: string; empty: string; categoriesTitle: string; latestTitle: string; readMin: string; tocTitle: string }
 > = {
   en: {
     kicker: "Blog",
@@ -326,6 +333,7 @@ export const blogCopy: Record<
     categoriesTitle: "Topics",
     latestTitle: "Latest",
     readMin: "min read",
+    tocTitle: "In this article",
   },
   ru: {
     kicker: "Блог",
@@ -335,5 +343,6 @@ export const blogCopy: Record<
     categoriesTitle: "Темы",
     latestTitle: "Новое",
     readMin: "мин",
+    tocTitle: "В статье",
   },
 };

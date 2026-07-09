@@ -916,6 +916,14 @@ input:focus-visible,
   max-width: 48.75rem; /* 780px */
 }
 
+.blog-article--with-toc {
+  max-width: 61.75rem; /* 180px toc + 48px gap + 760px body */
+}
+
+.blog-article-grid {
+  display: block;
+}
+
 .blog-article-header {
   max-width: 48.75rem;
 }
@@ -928,6 +936,107 @@ input:focus-visible,
   .blog-article-body {
     margin-top: 2.75rem;
   }
+}
+
+@media (min-width: 1024px) {
+  .blog-article-grid--toc {
+    display: grid;
+    grid-template-columns: 11.25rem minmax(0, 47.5rem);
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  .blog-article-grid--toc .blog-article-header {
+    grid-column: 2;
+    max-width: none;
+    margin-bottom: 2.75rem;
+  }
+
+  .blog-article-grid--toc .blog-article-toc {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .blog-article-grid--toc .blog-article-body {
+    grid-column: 2;
+    grid-row: 2;
+    max-width: none;
+    margin-top: 0;
+  }
+}
+
+/* Sticky section nav */
+.blog-article-toc__inner {
+  position: sticky;
+  top: 7rem;
+}
+
+.blog-toc-kicker {
+  margin: 0 0 1rem;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.blog-toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.blog-toc-link {
+  display: block;
+  margin-left: -1px;
+  padding: 0.625rem 0 0.625rem 1rem;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  transition:
+    border-color 0.25s var(--ease-calm),
+    color 0.25s var(--ease-calm);
+}
+
+.blog-toc-link:hover {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.blog-toc-link--active {
+  border-left-color: var(--color-brand);
+}
+
+.blog-toc-index {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.32);
+  transition: color 0.25s var(--ease-calm);
+}
+
+.blog-toc-link--active .blog-toc-index {
+  color: rgba(102, 188, 135, 0.72);
+}
+
+.blog-toc-label {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  color: rgba(255, 255, 255, 0.48);
+  transition: color 0.25s var(--ease-calm);
+}
+
+.blog-toc-link:hover .blog-toc-label {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.blog-toc-link--active .blog-toc-label {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .blog-article-meta {
@@ -974,7 +1083,7 @@ input:focus-visible,
 }
 
 .prose-blog h2 {
-  scroll-margin-top: 5.5rem;
+  scroll-margin-top: 6rem;
   margin: 0 0 1rem;
   font-size: 1.4375rem;
   font-weight: 700;
