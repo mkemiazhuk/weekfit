@@ -134,14 +134,7 @@ export default function Footer() {
             <p className="footer-meta__line">
               © {year} WeekFit · {t.footer.rights}
             </p>
-            <p className="footer-meta__line">{t.footer.disclaimer}</p>
           </div>
-
-          <ul className="footer-trust" aria-label={t.footer.trustLabel}>
-            <li className="footer-trust-item">{t.footer.trust.data}</li>
-            <li className="footer-trust-item">{t.footer.trust.privacy}</li>
-            <li className="footer-trust-item">{t.footer.trust.health}</li>
-          </ul>
         </div>
       </div>
     </footer>
