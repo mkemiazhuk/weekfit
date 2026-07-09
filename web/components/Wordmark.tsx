@@ -5,10 +5,10 @@ import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
 
 const sizes = {
-  nav: { icon: 36, text: "text-[17px]", gap: "gap-3" },
-  navMobile: { icon: 30, text: "text-[15px]", gap: "gap-2" },
-  lg: { icon: 42, text: "text-[19px]", gap: "gap-3.5" },
-  footer: { icon: 36, text: "text-[17px]", gap: "gap-2.5" },
+  nav: { text: "text-[17px]", icon: "1.14em", gap: "gap-2.5", nudge: "0.04em" },
+  navMobile: { text: "text-[15px]", icon: "1.14em", gap: "gap-2", nudge: "0.035em" },
+  lg: { text: "text-[19px]", icon: "1.12em", gap: "gap-3", nudge: "0.04em" },
+  footer: { text: "text-[17px]", icon: "1.14em", gap: "gap-2.5", nudge: "0.04em" },
 } as const;
 
 export default function Wordmark({
@@ -29,27 +29,28 @@ export default function Wordmark({
       href={localePath("/")}
       className={clsx(
         "group wordmark-lockup inline-flex min-w-0 max-w-full items-center transition-opacity hover:opacity-95",
+        s.text,
         s.gap,
         className
       )}
     >
       <span
         className={clsx(
-          "relative block shrink-0",
+          "wordmark-lockup__icon relative shrink-0",
           iconVariant === "app" ? "wordmark-icon-app" : "wordmark-icon-subtle"
         )}
-        style={{ width: s.icon, height: s.icon }}
+        style={{ width: s.icon, height: s.icon, transform: `translateY(${s.nudge})` }}
       >
         <Image
-          src="/brand/logo-gold.png"
+          src="/brand/logo-gold-lockup.png"
           alt=""
-          width={s.icon}
-          height={s.icon}
-          className="block size-full object-contain"
+          width={48}
+          height={48}
+          className="block size-full object-contain object-center"
           aria-hidden
         />
       </span>
-      <span className={clsx("display min-w-0 truncate leading-none tracking-[-0.03em]", s.text)}>
+      <span className="wordmark-lockup__text display min-w-0 truncate leading-none tracking-[-0.03em]">
         <span className="text-white">Week</span>
         <span className="text-brand">Fit</span>
       </span>
