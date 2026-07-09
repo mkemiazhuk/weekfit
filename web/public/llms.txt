@@ -23,15 +23,27 @@
 ## Pages
 
 - https://weekfit.app/
+- https://weekfit.app/ru/
 - https://weekfit.app/download/
+- https://weekfit.app/ru/download/
 - https://weekfit.app/faq/
+- https://weekfit.app/ru/faq/
 - https://weekfit.app/support/
+- https://weekfit.app/ru/support/
 - https://weekfit.app/privacy/
+- https://weekfit.app/ru/privacy/
 - https://weekfit.app/terms/
+- https://weekfit.app/ru/terms/
 - https://weekfit.app/contact/
+- https://weekfit.app/ru/contact/
 - https://weekfit.app/press/
+- https://weekfit.app/ru/press/
 - https://weekfit.app/blog/
+- https://weekfit.app/ru/blog/
+- https://weekfit.app/blog/recovery/what-is-a-recovery-score/
+- https://weekfit.app/ru/blog/recovery/what-is-a-recovery-score/
 - https://weekfit.app/changelog/
+- https://weekfit.app/ru/changelog/
 
 ## Install
 

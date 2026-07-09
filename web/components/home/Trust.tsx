@@ -32,7 +32,7 @@ function Glyph({ name, color }: { name: string; color: string }) {
 }
 
 export default function Trust() {
-  const { t } = useI18n();
+  const { t, localePath } = useI18n();
 
   const items = [
     { key: "device", color: pillars.recovery, ...t.trust.items.device },
@@ -64,7 +64,7 @@ export default function Trust() {
             </Reveal>
             <Reveal delay={0.15}>
               <a
-                href="/privacy"
+                href={localePath("/privacy")}
                 className="premium-link mt-6 inline-flex items-center gap-2 text-[15px] font-semibold text-white/85"
               >
                 {t.trust.link}

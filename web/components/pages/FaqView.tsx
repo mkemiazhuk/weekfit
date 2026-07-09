@@ -7,7 +7,7 @@ import Icon from "../Icon";
 import FAQAccordion from "../FAQAccordion";
 
 export default function FaqView() {
-  const { lang } = useI18n();
+  const { lang, localePath } = useI18n();
   const c = support[lang];
   return (
     <>
@@ -40,7 +40,7 @@ export default function FaqView() {
               : "Didn't find your answer? The Help Center has detailed guides."}
           </p>
           <a
-            href="/support"
+            href={localePath("/support")}
             className="mt-3 inline-block text-[15px] font-semibold text-brand hover:underline"
           >
             {lang === "ru" ? "Перейти в Поддержку →" : "Go to Support →"}

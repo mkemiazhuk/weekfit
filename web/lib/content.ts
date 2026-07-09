@@ -1,4 +1,4 @@
-import type { Lang } from "./i18n";
+import type { Lang } from "./dictionaries";
 import type { IconName } from "@/components/Icon";
 import { pillars, pastels } from "./tokens";
 

@@ -10,12 +10,14 @@ import JsonLd from "@/components/JsonLd";
 import SkipLink from "@/components/SkipLink";
 import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
+import { HOME_SEO } from "@/lib/page-seo";
 import { entityGraphSchema } from "@/lib/schema";
 
 const home = pageMetadata({
   path: "/",
-  title: SITE.title,
-  description: SITE.description,
+  locale: "en",
+  title: HOME_SEO.en.title,
+  description: HOME_SEO.en.description,
 });
 
 const other: Record<string, string> = {};
@@ -71,6 +73,11 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <head>
         <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var p=location.pathname;var l=(p==='/ru'||p.indexOf('/ru/')===0)?'ru':'en';document.documentElement.lang=l})();`,
+          }}
+        />
       </head>
       <body className="min-h-full">
         <JsonLd data={entityGraphSchema()} />

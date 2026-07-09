@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { SITE, abs } from "./site";
+import { SITE } from "./site";
+import { absLocalized, hreflangAlternates, type Locale } from "./locale";
 
 export interface PageSeo {
   path: string;
@@ -8,6 +9,7 @@ export interface PageSeo {
   /** Full OG/Twitter title override (defaults to "<title> — WeekFit"). */
   socialTitle?: string;
   index?: boolean;
+  locale?: Locale;
 }
 
 const robots = (index: boolean): Metadata["robots"] => ({
@@ -22,27 +24,25 @@ const robots = (index: boolean): Metadata["robots"] => ({
   },
 });
 
-function ogImageUrl(path: string): string {
-  const base = path === "/" ? SITE.url : abs(path).replace(/\/$/, "");
-  return `${base}/opengraph-image.png`;
+function ogImageUrl(path: string, locale: Locale): string {
+  const localized = absLocalized(path, locale).replace(/\/$/, "");
+  return `${localized}/opengraph-image.png`;
 }
 
 export function pageMetadata(seo: PageSeo): Metadata {
-  const url = abs(seo.path);
+  const locale = seo.locale ?? "en";
+  const url = absLocalized(seo.path, locale);
   const index = seo.index ?? true;
   const social =
-    seo.socialTitle ?? (seo.path === "/" ? SITE.title : `${seo.title} — ${SITE.name}`);
-  const ogImage = ogImageUrl(seo.path);
+    seo.socialTitle ?? (seo.path === "/" ? seo.title : `${seo.title} — ${SITE.name}`);
+  const ogImage = ogImageUrl(seo.path, locale);
 
   return {
-    title: seo.path === "/" ? undefined : seo.title,
+    title: seo.path === "/" ? seo.title : seo.title,
     description: seo.description,
     alternates: {
       canonical: url,
-      languages: {
-        "x-default": url,
-        en: url,
-      },
+      languages: hreflangAlternates(seo.path),
     },
     openGraph: {
       type: "website",
@@ -50,7 +50,8 @@ export function pageMetadata(seo: PageSeo): Metadata {
       siteName: SITE.name,
       title: social,
       description: seo.description,
-      locale: SITE.ogLocale,
+      locale: locale === "ru" ? "ru_RU" : "en_US",
+      alternateLocale: locale === "ru" ? ["en_US"] : ["ru_RU"],
       images: [
         {
           url: ogImage,

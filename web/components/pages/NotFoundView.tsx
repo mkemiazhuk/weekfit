@@ -5,7 +5,7 @@ import { notFound } from "@/lib/content";
 import Button from "../Button";
 
 export default function NotFoundView() {
-  const { lang } = useI18n();
+  const { lang, localePath } = useI18n();
   const c = notFound[lang];
   return (
     <section className="mx-auto flex min-h-[80vh] max-w-2xl flex-col items-center justify-center px-6 text-center">
@@ -27,7 +27,7 @@ export default function NotFoundView() {
         {c.lead}
       </p>
       <div className="mt-8">
-        <Button href="/">{c.cta}</Button>
+        <Button href={localePath("/")}>{c.cta}</Button>
       </div>
     </section>
   );

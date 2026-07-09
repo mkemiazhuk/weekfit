@@ -11,7 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import SectionAmbient from "../SectionAmbient";
 
 export default function Hero() {
-  const { t } = useI18n();
+  const { t, localePath } = useI18n();
   const reduce = useReducedMotion();
   const phoneRef = useRef<HTMLDivElement>(null);
 
@@ -98,7 +98,7 @@ export default function Hero() {
           <Button href={SITE.appInstallUrl} external>
             {t.cta.testflight}
           </Button>
-          <Button href="#reasoning" variant="ghost">
+          <Button href={localePath("/#reasoning")} variant="ghost">
             {t.hero.ctaSecondary}
           </Button>
         </motion.div>

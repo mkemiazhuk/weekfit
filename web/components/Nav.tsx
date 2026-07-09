@@ -9,7 +9,7 @@ import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 
 export default function Nav() {
-  const { t } = useI18n();
+  const { t, localePath } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -37,10 +37,10 @@ export default function Nav() {
   }, [open]);
 
   const links = [
-    { href: "/", label: t.nav.home },
-    { href: "/#experience", label: t.nav.features },
-    { href: "/privacy", label: t.nav.privacy },
-    { href: "/support", label: t.nav.support },
+    { href: localePath("/"), label: t.nav.home },
+    { href: localePath("/#experience"), label: t.nav.features },
+    { href: localePath("/privacy"), label: t.nav.privacy },
+    { href: localePath("/support"), label: t.nav.support },
   ];
 
   return (

@@ -1,4 +1,5 @@
 import { ENTITY, SITE, abs } from "./site";
+import { absLocalized, type Locale } from "./locale";
 import { support } from "./content";
 
 const ORG_ID = `${SITE.url}/#organization`;
@@ -36,7 +37,7 @@ function websiteNode(): Json {
     url: SITE.url,
     name: ENTITY.name,
     description: ENTITY.description,
-    inLanguage: SITE.defaultLocale,
+    inLanguage: ["en", "ru"],
     publisher: { "@id": ORG_ID },
     about: { "@id": APP_ID },
   };
@@ -84,17 +85,19 @@ export function webPageSchema(opts: {
   type?: string;
   dateModified?: string;
   datePublished?: string;
+  locale?: Locale;
 }): Json {
+  const locale = opts.locale ?? "en";
   return {
     "@context": "https://schema.org",
     "@type": opts.type ?? "WebPage",
-    "@id": `${abs(opts.path)}#webpage`,
-    url: abs(opts.path),
+    "@id": `${absLocalized(opts.path, locale)}#webpage`,
+    url: absLocalized(opts.path, locale),
     name: opts.name,
     description: opts.description,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    inLanguage: SITE.defaultLocale,
+    inLanguage: locale,
     ...(opts.datePublished ? { datePublished: opts.datePublished } : {}),
     ...(opts.dateModified ? { dateModified: opts.dateModified } : {}),
   };
@@ -114,7 +117,7 @@ export function privacyPolicySchema(opts: {
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    inLanguage: SITE.defaultLocale,
+    inLanguage: ["en", "ru"],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -133,7 +136,7 @@ export function termsOfServiceSchema(opts: {
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    inLanguage: SITE.defaultLocale,
+    inLanguage: ["en", "ru"],
     publisher: { "@id": ORG_ID },
   };
 }
@@ -151,7 +154,10 @@ export function faqSchema(qas: { q: string; a: string }[]): Json {
   };
 }
 
-export function breadcrumbSchema(items: { name: string; path: string }[]): Json {
+export function breadcrumbSchema(
+  items: { name: string; path: string }[],
+  locale: Locale = "en"
+): Json {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -159,12 +165,38 @@ export function breadcrumbSchema(items: { name: string; path: string }[]): Json 
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: abs(it.path),
+      item: absLocalized(it.path, locale),
     })),
   };
 }
 
-/** English FAQ content — FAQPage schema on /faq only. */
-export function allFaqs(): { q: string; a: string }[] {
-  return support.en.categories.flatMap((c) => c.faqs);
+export function blogPostingSchema(opts: {
+  path: string;
+  headline: string;
+  description: string;
+  datePublished: string;
+  dateModified?: string;
+  locale: Locale;
+}): Json {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${absLocalized(opts.path, opts.locale)}#article`,
+    url: absLocalized(opts.path, opts.locale),
+    headline: opts.headline,
+    description: opts.description,
+    datePublished: opts.datePublished,
+    dateModified: opts.dateModified ?? opts.datePublished,
+    inLanguage: opts.locale,
+    author: { "@id": ORG_ID },
+    publisher: { "@id": ORG_ID },
+    isPartOf: { "@id": SITE_ID },
+    about: { "@id": APP_ID },
+    image: `${SITE.url}/img/today.jpg`,
+  };
+}
+
+/** FAQ content for FAQPage schema. */
+export function allFaqs(locale: Locale = "en"): { q: string; a: string }[] {
+  return support[locale].categories.flatMap((c) => c.faqs);
 }

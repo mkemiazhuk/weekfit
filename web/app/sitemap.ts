@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
-import { abs } from "@/lib/site";
+import { absLocalized } from "@/lib/locale";
+import { blogPostPath, blogPosts } from "@/lib/blog";
+import { LOCALES } from "@/lib/locale";
 
 export const dynamic = "force-static";
 
@@ -20,10 +22,27 @@ const routes: [string, number, Freq][] = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  return routes.map(([path, priority, changeFrequency]) => ({
-    url: abs(path),
-    lastModified: now,
-    changeFrequency,
-    priority,
-  }));
+  const entries: MetadataRoute.Sitemap = [];
+
+  for (const locale of LOCALES) {
+    for (const [path, priority, changeFrequency] of routes) {
+      entries.push({
+        url: absLocalized(path, locale),
+        lastModified: now,
+        changeFrequency,
+        priority,
+      });
+    }
+
+    for (const post of blogPosts) {
+      entries.push({
+        url: absLocalized(blogPostPath(post), locale),
+        lastModified: new Date(post.date),
+        changeFrequency: "monthly",
+        priority: 0.55,
+      });
+    }
+  }
+
+  return entries;
 }

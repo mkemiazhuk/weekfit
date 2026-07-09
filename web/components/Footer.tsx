@@ -38,27 +38,27 @@ function LinkColumn({
 }
 
 export default function Footer() {
-  const { t } = useI18n();
+  const { t, localePath } = useI18n();
   const year = new Date().getFullYear();
 
   const productLinks = [
-    { label: t.footer.experience, href: "/#experience" },
-    { label: t.footer.pillars, href: "/#pillars" },
-    { label: t.footer.download, href: "/download" },
+    { label: t.footer.experience, href: localePath("/#experience") },
+    { label: t.footer.pillars, href: localePath("/#pillars") },
+    { label: t.footer.download, href: localePath("/download") },
   ];
 
   const resourceLinks = [
-    { label: t.footer.support, href: "/support" },
-    { label: t.footer.faq, href: "/faq" },
-    { label: t.footer.blog, href: "/blog" },
-    { label: t.footer.changelog, href: "/changelog" },
-    { label: t.footer.press, href: "/press" },
+    { label: t.footer.support, href: localePath("/support") },
+    { label: t.footer.faq, href: localePath("/faq") },
+    { label: t.footer.blog, href: localePath("/blog") },
+    { label: t.footer.changelog, href: localePath("/changelog") },
+    { label: t.footer.press, href: localePath("/press") },
   ];
 
   const legalLinks = [
-    { label: t.footer.privacy, href: "/privacy" },
-    { label: t.footer.terms, href: "/terms" },
-    { label: t.footer.contact, href: "/contact" },
+    { label: t.footer.privacy, href: localePath("/privacy") },
+    { label: t.footer.terms, href: localePath("/terms") },
+    { label: t.footer.contact, href: localePath("/contact") },
   ];
 
   return (

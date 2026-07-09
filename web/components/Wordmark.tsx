@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import clsx from "clsx";
+import { useI18n } from "@/lib/i18n";
 
 const sizes = {
   nav: { icon: 36, text: "text-[17px]", gap: "gap-3" },
@@ -13,11 +16,12 @@ export default function Wordmark({
   className?: string;
   size?: keyof typeof sizes;
 }) {
+  const { localePath } = useI18n();
   const s = sizes[size];
 
   return (
     <a
-      href="/"
+      href={localePath("/")}
       className={clsx(
         "group inline-flex items-center transition-opacity hover:opacity-95",
         s.gap,
