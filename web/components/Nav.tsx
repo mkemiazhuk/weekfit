@@ -57,7 +57,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto grid h-14 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x lg:h-[4.5rem]"
+        className="mx-auto grid h-[3.75rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x lg:h-[4.5rem]"
       >
         <div className="min-w-0 md:hidden">
           <Wordmark size="navMobile" />
@@ -78,13 +78,13 @@ export default function Nav() {
           ))}
         </div>
 
-        <div className="flex items-center justify-end gap-1.5 md:gap-3">
-          <div className="max-md:[&_.lang-toggle-btn]:px-1.5 max-md:[&_.lang-toggle-btn]:py-0.5 max-md:[&_.lang-toggle-btn]:text-[10px]">
+        <div className="flex items-center justify-end gap-2.5 md:gap-3">
+          <div className="max-md:[&_.lang-toggle]:p-0.5 max-md:[&_.lang-toggle-btn]:min-h-8 max-md:[&_.lang-toggle-btn]:min-w-8 max-md:[&_.lang-toggle-btn]:px-2 max-md:[&_.lang-toggle-btn]:py-1 max-md:[&_.lang-toggle-btn]:text-[11px]">
             <LangToggle />
           </div>
 
           <div className="md:hidden">
-            <Button href={SITE.appInstallUrl} external size="xs">
+            <Button href={SITE.appInstallUrl} external size="xs" className="btn-nav-mobile-cta">
               {t.cta.testflight}
             </Button>
           </div>
@@ -100,7 +100,7 @@ export default function Nav() {
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? t.nav.closeMenu : t.nav.menu}
-            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full text-white transition-colors hover:bg-white/[0.06] md:hidden"
+            className="nav-menu-btn relative grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition-[background,transform,color] duration-300 active:scale-[0.94] md:hidden"
           >
             <span className="relative block h-3.5 w-5" aria-hidden>
               <span

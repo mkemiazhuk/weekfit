@@ -45,7 +45,7 @@ export default function Hero() {
 
   return (
     <section
-      className="hero-polish relative z-0 isolate mx-auto flex min-h-[92vh] max-w-6xl flex-col items-center section-x pt-[7.5rem] pb-24 md:grid md:min-h-screen md:grid-cols-[1fr_0.92fr] md:items-center md:gap-14 md:pb-20 md:pt-28 lg:pb-16"
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.75rem] pb-16 max-md:min-h-0 md:grid md:min-h-screen md:grid-cols-[1fr_0.92fr] md:items-center md:gap-14 md:pb-20 md:pt-28 lg:pb-16"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
@@ -56,7 +56,7 @@ export default function Hero() {
           {t.hero.eyebrow}
         </motion.p>
 
-        <h1 className="display text-balance mt-6 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.96] tracking-[-0.038em] text-white lg:leading-[0.92]">
+        <h1 className="display text-balance mt-5 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.94] tracking-[-0.038em] text-white md:mt-6 md:leading-[0.96] lg:leading-[0.92]">
           <TextReveal delay={0.1} as="span" className="text-white">
             {t.hero.titleA}
           </TextReveal>
@@ -65,13 +65,13 @@ export default function Hero() {
           </TextReveal>
         </h1>
 
-        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-7 max-w-[32ch] md:mx-0 lg:mt-6">
+        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-5 max-w-[32ch] md:mx-0 md:mt-7 lg:mt-6">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
           {...fade(0.42)}
-          className="mt-11 flex flex-wrap items-center justify-center gap-3 md:justify-start lg:mt-8"
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5 md:mt-11 md:justify-start md:gap-3 lg:mt-8"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary">
             {t.cta.testflight}
@@ -82,7 +82,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      <div className="hero-phone relative mt-12 w-full max-w-[240px] self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px] lg:-mt-4 lg:-translate-y-2">
+      <div className="hero-phone relative mt-6 w-full max-w-[240px] -translate-y-1 self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px] md:translate-y-0 lg:-mt-4 lg:-translate-y-2">
         <motion.div
           aria-hidden
           className="phone-glow"
@@ -120,12 +120,12 @@ export default function Hero() {
         </motion.div>
 
         <motion.div
-          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={
-            reduce ? { duration: 0 } : { duration: 1.1, ease: easeCalm, delay: 1.05 }
+            reduce ? { duration: 0 } : { duration: 1.15, ease: easeCalm, delay: 0.95 }
           }
-          className="hero-coach-card relative z-10 mt-8 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px] lg:-bottom-6"
+          className="hero-coach-card relative z-10 mt-6 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px] lg:-bottom-6"
         >
           <CoachCard
             accent={pillars.coach}
@@ -141,7 +141,7 @@ export default function Hero() {
       <motion.a
         href="#reasoning"
         {...fade(1.5)}
-        className="scroll-hint group absolute bottom-8 left-1/2 -translate-x-1/2 md:bottom-10"
+        className="scroll-hint group absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10"
       >
         <span className="caption block tracking-[0.22em] transition-colors group-hover:text-white/55">
           {t.hero.scroll}

@@ -75,6 +75,7 @@ export default function AtmosphereBackground() {
       }
     >
       <div className="atm-base" />
+      <div className="atm-mobile-light" />
       <div className="atm-volumetric" />
       <div className="atm-glow atm-glow-1" />
       <div className="atm-glow atm-glow-2" />

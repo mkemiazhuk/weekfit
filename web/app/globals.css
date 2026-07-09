@@ -1101,10 +1101,224 @@ input:focus-visible,
   .atm-glow-1,
   .atm-glow-2,
   .atm-volumetric,
+  .atm-mobile-light,
   .atm-base,
   .phone-float-hero,
   .btn-hero-primary::after {
     animation: none !important;
+  }
+}
+
+/* ============================================================
+   Mobile polish — landing hero, nav, atmosphere (< lg)
+   ============================================================ */
+.atm-mobile-light {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .atm-mobile-light {
+    display: block;
+    position: absolute;
+    inset: -6%;
+    pointer-events: none;
+    opacity: 0.42;
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% 12%,
+        rgba(var(--g1), calc(var(--g1a) * 0.7)),
+        transparent 58%
+      ),
+      radial-gradient(
+        ellipse 70% 45% at 20% 80%,
+        rgba(var(--g2), calc(var(--g2a) * 0.55)),
+        transparent 62%
+      );
+    animation: atm-mobile-light-drift 44s var(--ease-calm) infinite;
+  }
+
+  .atm-base {
+    background-size: 100% 135%;
+    animation: atm-base-drift-mobile 54s var(--ease-calm) infinite;
+  }
+
+  .atm-glow-1 {
+    animation: atm-breathe-1-mobile 28s var(--ease-calm) infinite;
+  }
+
+  .atm-glow-2 {
+    animation: atm-breathe-2-mobile 36s var(--ease-calm) infinite;
+  }
+
+  .hero-lead {
+    color: rgba(255, 255, 255, 0.64);
+  }
+
+  .btn-hero-primary {
+    isolation: isolate;
+  }
+
+  .btn-hero-primary::after {
+    content: "";
+    position: absolute;
+    inset: -5px -6px;
+    border-radius: calc(var(--radius-button) + 3px);
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 50%,
+      rgba(102, 188, 135, 0.32),
+      transparent 70%
+    );
+    opacity: 0.26;
+    z-index: -1;
+    animation: hero-cta-breathe 6s var(--ease-calm) infinite;
+    pointer-events: none;
+  }
+
+  .btn-hero-glass {
+    background: linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.035) 42%,
+      rgba(255, 255, 255, 0.018) 100%
+    ) !important;
+    border: 1px solid rgba(255, 255, 255, 0.11) !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-weight: 500 !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 14px 40px -26px rgba(0, 0, 0, 0.52),
+      0 0 0 0.5px rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(20px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(145%) !important;
+    transition:
+      transform 0.35s var(--ease-calm),
+      box-shadow 0.35s var(--ease-calm),
+      border-color 0.35s var(--ease-calm),
+      background 0.35s var(--ease-calm) !important;
+  }
+
+  .btn-hero-glass:active {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    background: linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.03) 42%,
+      rgba(255, 255, 255, 0.015) 100%
+    ) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 2px 8px rgba(0, 0, 0, 0.14),
+      0 8px 24px -16px rgba(0, 0, 0, 0.45) !important;
+    transform: scale(0.97) !important;
+  }
+
+  .btn-touch:active {
+    transition-duration: 0.12s;
+  }
+
+  .phone-float-hero {
+    animation: float-soft-mobile 10s var(--ease-calm) infinite;
+  }
+
+  .hero-phone .phone-glow {
+    filter: blur(40px);
+    opacity: 0.78;
+  }
+}
+
+@media (max-width: 767px) {
+  .btn-nav-mobile-cta {
+    min-height: 32px !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.01em;
+    box-shadow: 0 6px 18px -10px rgba(102, 188, 135, 0.2) !important;
+  }
+
+  .btn-nav-mobile-cta:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 4px 14px -10px rgba(102, 188, 135, 0.16) !important;
+  }
+
+  .nav-menu-btn:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-touch {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-hero-primary:active {
+    transform: scale(0.97) !important;
+    box-shadow: 0 10px 32px -8px rgba(102, 188, 135, 0.42) !important;
+  }
+
+  .hero-polish ~ section.section-y {
+    padding-top: 4.5rem;
+    padding-bottom: 4.5rem;
+  }
+
+  .hero-polish ~ section.section-y-lg {
+    padding-top: 5.5rem;
+    padding-bottom: 5.5rem;
+  }
+
+  .hero-polish + section + section.section-y {
+    padding-top: 3.5rem;
+  }
+}
+
+@keyframes atm-mobile-light-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.38;
+  }
+  50% {
+    transform: translate3d(0, -1.2%, 0);
+    opacity: 0.48;
+  }
+}
+
+@keyframes atm-base-drift-mobile {
+  0%,
+  100% {
+    background-position: 50% 0%;
+  }
+  50% {
+    background-position: 50% 14%;
+  }
+}
+
+@keyframes atm-breathe-1-mobile {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, 1.5vh, 0) scale(1.04);
+  }
+}
+
+@keyframes atm-breathe-2-mobile {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -1vh, 0) scale(1.05);
+  }
+}
+
+@keyframes float-soft-mobile {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
   }
 }
 
