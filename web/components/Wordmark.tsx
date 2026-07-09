@@ -5,10 +5,10 @@ import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
 
 const sizes = {
-  nav: { text: "text-[17px]", icon: 34, gap: "gap-2.5", nudge: "1px" },
-  navMobile: { text: "text-[15px]", icon: 30, gap: "gap-2", nudge: "1px" },
-  lg: { text: "text-[19px]", icon: 38, gap: "gap-3", nudge: "1px" },
-  footer: { text: "text-[17px]", icon: 34, gap: "gap-2.5", nudge: "1px" },
+  nav: { text: "text-[17px]", icon: 34, gap: "gap-1", nudge: "1px" },
+  navMobile: { text: "text-[15px]", icon: 30, gap: "gap-0.5", nudge: "1px" },
+  lg: { text: "text-[19px]", icon: 38, gap: "gap-1", nudge: "1px" },
+  footer: { text: "text-[17px]", icon: 34, gap: "gap-1", nudge: "1px" },
 } as const;
 
 export default function Wordmark({
@@ -46,7 +46,7 @@ export default function Wordmark({
           alt=""
           width={s.icon}
           height={s.icon}
-          className="block size-full object-contain object-center"
+          className="block size-full object-contain object-right"
           aria-hidden
         />
       </span>

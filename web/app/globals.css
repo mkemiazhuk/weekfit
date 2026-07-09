@@ -173,10 +173,12 @@ input:focus-visible,
 .wordmark-lockup__icon {
   display: block;
   line-height: 0;
+  margin-inline-end: -2px;
 }
 .wordmark-lockup__text {
   line-height: 1;
   transform: translateY(-0.5px);
+  margin-inline-start: -3px;
 }
 .wordmark-icon-gold {
   display: block;
