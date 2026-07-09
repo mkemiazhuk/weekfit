@@ -172,6 +172,7 @@ export const en = {
       note: "No spam. Unsubscribe anytime.",
       success: "You're on the list. We'll be in touch soon.",
       error: "Please enter a valid email address.",
+      close: "Close",
     },
     trust: {
       data: "Your data is yours",
@@ -358,6 +359,7 @@ export const ru: Dict = {
       note: "Без спама. Отписаться можно в любой момент.",
       success: "Вы в списке. Скоро свяжемся.",
       error: "Введите корректный email.",
+      close: "Закрыть",
     },
     trust: {
       data: "Ваши данные — ваши",

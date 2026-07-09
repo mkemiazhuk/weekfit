@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 const sizes = {
   nav: { icon: 36, text: "text-[17px]", gap: "gap-3" },
   lg: { icon: 42, text: "text-[19px]", gap: "gap-3.5" },
-  footer: { icon: 54, text: "text-[24px]", gap: "gap-4" },
+  footer: { icon: 48, text: "text-[22px]", gap: "gap-3.5" },
 } as const;
 
 export default function Wordmark({
