@@ -1,5 +1,6 @@
 import Hero from "@/components/home/Hero";
 import ProofStrip from "@/components/home/ProofStrip";
+import SeoIntro from "@/components/home/SeoIntro";
 import CoachReasoning from "@/components/home/CoachReasoning";
 import JourneyStage from "@/components/home/JourneyStage";
 import Trust from "@/components/home/Trust";
@@ -16,6 +17,7 @@ export default function Home() {
       <JsonLd data={entityGraphSchema()} />
       <Hero />
       <ProofStrip />
+      <SeoIntro />
       <CoachReasoning />
       <JourneyStage />
       <Trust />

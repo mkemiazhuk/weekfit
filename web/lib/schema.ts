@@ -13,6 +13,7 @@ function organizationNode(): Json {
     "@type": "Organization",
     "@id": ORG_ID,
     name: ENTITY.developer,
+    alternateName: [...ENTITY.alternateNames],
     url: SITE.url,
     logo: `${SITE.url}/brand/icon-512.png`,
     description: ENTITY.description,
@@ -24,9 +25,7 @@ function organizationNode(): Json {
       url: abs("contact"),
     },
   };
-  if (SITE.sameAs.length > 0) {
-    node.sameAs = [...SITE.sameAs];
-  }
+  node.sameAs = [...SITE.sameAs];
   return node;
 }
 
@@ -36,6 +35,7 @@ function websiteNode(): Json {
     "@id": SITE_ID,
     url: SITE.url,
     name: ENTITY.name,
+    alternateName: [...ENTITY.alternateNames],
     description: ENTITY.description,
     inLanguage: ["en", "ru"],
     publisher: { "@id": ORG_ID },
@@ -48,6 +48,7 @@ function softwareApplicationNode(): Json {
     "@type": "SoftwareApplication",
     "@id": APP_ID,
     name: ENTITY.name,
+    alternateName: [...ENTITY.alternateNames],
     applicationCategory: "HealthApplication",
     operatingSystem: ENTITY.operatingSystem,
     description: ENTITY.description,

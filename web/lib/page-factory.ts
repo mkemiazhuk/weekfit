@@ -13,6 +13,7 @@ export function homeMetadata(locale: Locale): Metadata {
     title: copy.title,
     description: copy.description,
     socialTitle: copy.socialTitle,
+    keywords: copy.keywords,
   });
 }
 

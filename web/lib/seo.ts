@@ -6,6 +6,7 @@ export interface PageSeo {
   path: string;
   title: string;
   description: string;
+  keywords?: string[];
   /** Full OG/Twitter title override (defaults to "<title> — WeekFit"). */
   socialTitle?: string;
   index?: boolean;
@@ -40,6 +41,7 @@ export function pageMetadata(seo: PageSeo): Metadata {
   return {
     title: seo.path === "/" ? seo.title : seo.title,
     description: seo.description,
+    ...(seo.keywords?.length ? { keywords: seo.keywords } : {}),
     alternates: {
       canonical: url,
       languages: hreflangAlternates(seo.path),

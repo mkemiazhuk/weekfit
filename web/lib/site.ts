@@ -7,6 +7,8 @@
 /** Canonical machine-readable product identity. */
 export const ENTITY = {
   name: "WeekFit",
+  /** Spaced variant people often type in search. */
+  alternateNames: ["Week Fit"] as const,
   developer: "WeekFit",
   description:
     "WeekFit reads Apple Health and gives you one clear decision every morning — push, hold, or recover — with visible reasoning. Private on your iPhone.",
@@ -41,8 +43,11 @@ export const SITE = {
   /** Google Search “preferred source” deeplink (domain-level sites only). */
   googlePreferredSourceUrl: "https://google.com/preferences/source?q=weekfit.app",
 
-  /** Official entity profiles (Organization.sameAs). Add when accounts exist. */
-  sameAs: [] as string[],
+  /** Official entity profiles (Organization.sameAs). */
+  sameAs: [
+    "https://x.com/weekfit",
+    "https://instagram.com/weekfit",
+  ] as const,
 
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",
 
