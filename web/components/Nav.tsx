@@ -57,7 +57,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto grid h-14 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x"
+        className="mx-auto grid h-14 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x lg:h-[4.5rem]"
       >
         <div className="min-w-0 md:hidden">
           <Wordmark size="navMobile" />
@@ -66,12 +66,12 @@ export default function Nav() {
           <Wordmark size="nav" />
         </div>
 
-        <div className="hidden items-center gap-6 lg:gap-8 md:flex">
+        <div className="hidden items-center gap-8 md:flex lg:gap-10">
           {links.slice(1).map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-[14px] text-white/55 transition-colors duration-300 hover:text-white max-lg:text-[13px]"
+              className="nav-link text-[14px] font-normal text-white/55 transition-colors duration-300 hover:text-white max-lg:text-[13px] lg:text-[15px] lg:font-medium lg:text-white/58 lg:hover:text-white/92"
             >
               {l.label}
             </a>
@@ -89,7 +89,7 @@ export default function Nav() {
             </Button>
           </div>
           <div className="hidden md:block">
-            <Button href={SITE.appInstallUrl} external size="sm">
+            <Button href={SITE.appInstallUrl} external size="nav" className="btn-nav-cta">
               {t.cta.testflight}
             </Button>
           </div>

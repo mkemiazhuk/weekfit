@@ -45,7 +45,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative z-0 isolate mx-auto flex min-h-[92vh] max-w-6xl flex-col items-center section-x pt-[7.5rem] pb-24 md:grid md:min-h-screen md:grid-cols-[1fr_0.92fr] md:items-center md:gap-14 md:pb-20 md:pt-28"
+      className="hero-polish relative z-0 isolate mx-auto flex min-h-[92vh] max-w-6xl flex-col items-center section-x pt-[7.5rem] pb-24 md:grid md:min-h-screen md:grid-cols-[1fr_0.92fr] md:items-center md:gap-14 md:pb-20 md:pt-28 lg:pb-16"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
@@ -56,7 +56,7 @@ export default function Hero() {
           {t.hero.eyebrow}
         </motion.p>
 
-        <h1 className="display text-balance mt-6 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.96] tracking-[-0.038em] text-white">
+        <h1 className="display text-balance mt-6 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.96] tracking-[-0.038em] text-white lg:leading-[0.92]">
           <TextReveal delay={0.1} as="span" className="text-white">
             {t.hero.titleA}
           </TextReveal>
@@ -65,24 +65,24 @@ export default function Hero() {
           </TextReveal>
         </h1>
 
-        <motion.p {...fade(0.32)} className="body-lg text-balance mx-auto mt-7 max-w-[32ch] md:mx-0">
+        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-7 max-w-[32ch] md:mx-0 lg:mt-6">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
           {...fade(0.42)}
-          className="mt-11 flex flex-wrap items-center justify-center gap-3 md:justify-start"
+          className="mt-11 flex flex-wrap items-center justify-center gap-3 md:justify-start lg:mt-8"
         >
-          <Button href={SITE.appInstallUrl} external>
+          <Button href={SITE.appInstallUrl} external className="btn-hero-primary">
             {t.cta.testflight}
           </Button>
-          <Button href={localePath("/experience")} variant="ghost">
+          <Button href={localePath("/experience")} variant="ghost" className="btn-hero-glass">
             {t.hero.ctaSecondary}
           </Button>
         </motion.div>
       </div>
 
-      <div className="relative mt-12 w-full max-w-[240px] self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px]">
+      <div className="hero-phone relative mt-12 w-full max-w-[240px] self-center justify-self-center sm:max-w-[260px] md:mt-0 md:max-w-[360px] lg:-mt-4 lg:-translate-y-2">
         <motion.div
           aria-hidden
           className="phone-glow"
@@ -106,10 +106,10 @@ export default function Hero() {
         >
           <div
             ref={phoneRef}
-            className="relative mx-auto transition-transform duration-500 ease-out will-change-transform"
+            className="relative mx-auto transition-transform duration-500 ease-out will-change-transform lg:duration-700"
             style={{ transformStyle: "preserve-3d" }}
           >
-            <div className="phone-float">
+            <div className="phone-float phone-float-hero">
               <PhoneMockup
                 src="/img/today.jpg"
                 alt="WeekFit Today screen with the morning decision"
@@ -120,10 +120,12 @@ export default function Hero() {
         </motion.div>
 
         <motion.div
-          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 22 }}
+          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={reduce ? { duration: 0 } : { duration: 0.9, ease: easeCalm, delay: 0.9 }}
-          className="relative z-10 mt-8 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px]"
+          transition={
+            reduce ? { duration: 0 } : { duration: 1.1, ease: easeCalm, delay: 1.05 }
+          }
+          className="hero-coach-card relative z-10 mt-8 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px] lg:-bottom-6"
         >
           <CoachCard
             accent={pillars.coach}
