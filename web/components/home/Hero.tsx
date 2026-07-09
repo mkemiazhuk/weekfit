@@ -11,6 +11,7 @@ import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 import { easeCalm } from "@/lib/motion";
 import SectionAmbient from "../SectionAmbient";
+import HeroLocalTime from "./HeroLocalTime";
 
 export default function Hero() {
   const { t, localePath } = useI18n();
@@ -52,8 +53,8 @@ export default function Hero() {
       <SectionAmbient tone="morning" />
 
       <div className="relative text-center md:max-w-[34rem] md:text-left">
-        <motion.p {...fade(0.05)} className="hero-time">
-          {t.hero.eyebrow}
+        <motion.p {...fade(0.05)} className="hero-time" aria-hidden>
+          <HeroLocalTime fallback={t.hero.eyebrow} />
         </motion.p>
 
         <h1 className="display text-balance mt-5 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.94] tracking-[-0.038em] text-white md:mt-6 md:leading-[0.96] lg:leading-[0.92]">
