@@ -8,7 +8,7 @@ const tones: Record<AmbientTone, string> = {
   morning:
     "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(46,219,250,0.07), transparent 70%)",
   recovery:
-    "radial-gradient(ellipse 70% 45% at 30% 20%, rgba(140,102,217,0.08), transparent 65%)",
+    "radial-gradient(ellipse 70% 45% at 30% 20%, rgba(46,219,250,0.07), transparent 65%)",
   activity:
     "radial-gradient(ellipse 75% 50% at 70% 30%, rgba(102,240,112,0.06), transparent 68%)",
   nutrition:

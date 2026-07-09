@@ -13,7 +13,7 @@ export default function FAQAccordion({ items }: { items: QA[] }) {
   const reduce = useReducedMotion();
 
   return (
-    <div className="divide-y divide-white/[0.08] overflow-hidden rounded-[22px] border border-white/[0.08] bg-white/[0.02]">
+    <div className="card divide-y divide-white/[0.08] overflow-hidden border border-white/[0.08] bg-white/[0.02]">
       {items.map((it, i) => {
         const isOpen = open === i;
         return (

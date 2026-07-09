@@ -30,12 +30,12 @@ export default function BlogView() {
 
   return (
     <>
-      <PageHero kicker={c.kicker} kickerColor="#66bc87" title={c.title} lead={c.lead} />
+      <PageHero kicker={c.kicker} title={c.title} lead={c.lead} />
 
-      <div className="mx-auto max-w-5xl px-6 pb-28">
+      <div className="mx-auto max-w-5xl section-x page-pb">
         {sorted.length > 0 && (
           <section className="mb-12">
-            <h2 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.14em] text-white/40">
+            <h2 className="kicker mb-5 text-white/40">
               {c.latestTitle}
             </h2>
             <div className="grid gap-4">
@@ -55,19 +55,16 @@ export default function BlogView() {
 
         <p className="mb-8 text-[15px] text-white/50">{c.empty}</p>
 
-        <h2 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <h2 className="kicker mb-6 text-white/40">
           {c.categoriesTitle}
         </h2>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {blogCategories.map((cat, i) => (
             <Reveal key={cat.slug} delay={i * 0.04}>
-              <article
-                className="h-full rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-6"
-                style={{ boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)` }}
-              >
+              <article className="surface-subtle h-full p-6">
                 <span
-                  className="mb-4 flex h-11 w-11 items-center justify-center rounded-[13px]"
+                  className="icon-tile mb-4 h-11 w-11"
                   style={{ background: `${cat.color}1f`, border: `1px solid ${cat.color}33` }}
                 >
                   <Icon name={cat.icon} color={cat.color} size={22} />
@@ -103,7 +100,7 @@ function PostCard({
     <Reveal delay={delay}>
       <Link
         href={href}
-        className="premium-card group block rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-6 transition-colors hover:border-white/[0.14]"
+        className="premium-card surface-subtle group block p-6 transition-colors hover:border-white/[0.14]"
       >
         <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium uppercase tracking-[0.12em] text-white/40">
           {cat && (

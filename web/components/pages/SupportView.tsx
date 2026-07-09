@@ -48,7 +48,7 @@ export default function SupportView() {
         </div>
       </PageHero>
 
-      <div className="mx-auto max-w-3xl px-6 pb-28">
+      <div className="mx-auto max-w-3xl section-x page-pb">
         {query.trim() ? (
           matches.length ? (
             <FAQAccordion items={matches} />
@@ -57,7 +57,7 @@ export default function SupportView() {
           )
         ) : (
           <>
-            <h2 className="mb-8 text-[13px] font-semibold uppercase tracking-[0.14em] text-white/40">
+            <h2 className="kicker mb-8 text-white/40">
               {c.browse}
             </h2>
             <div className="space-y-12">
@@ -65,7 +65,7 @@ export default function SupportView() {
                 <section key={cat.title}>
                   <div className="mb-4 flex items-center gap-3">
                     <span
-                      className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+                      className="icon-tile"
                       style={{ background: `${cat.color}1f`, border: `1px solid ${cat.color}33` }}
                     >
                       <Icon name={cat.icon} color={cat.color} size={20} />
@@ -81,7 +81,7 @@ export default function SupportView() {
           </>
         )}
 
-        <div className="mt-16 rounded-[26px] glass p-8 text-center">
+        <div className="card-panel mt-16 glass text-center">
           <h3 className="text-[20px] font-semibold text-white">
             {c.contactTitle}
           </h3>

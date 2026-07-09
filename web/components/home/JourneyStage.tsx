@@ -68,20 +68,20 @@ export default function JourneyStage() {
     },
     {
       key: "recovery",
-      screen: "/img/nutrition.jpg",
-      screenAlt: "WeekFit Nutrition screen with calories and macro balance",
-      accent: pillars.nutrition,
-      ambient: "nutrition",
+      screen: "/img/recovery.jpg",
+      screenAlt: "WeekFit recovery screen with stretching and sleep guidance",
+      accent: pillars.recovery,
+      ambient: "recovery",
       kicker: t.recovery.kicker,
       title: t.recovery.title,
       body: t.recovery.body,
-      state: "Refuel",
+      state: "Recover",
       layout: "default",
     },
     {
       key: "night",
-      screen: "/img/recovery.jpg",
-      screenAlt: "WeekFit recovery and sleep wind-down screen for the evening",
+      screen: "/img/nutrition.jpg",
+      screenAlt: "WeekFit Nutrition screen with evening refuel guidance",
       accent: pillars.recovery,
       ambient: "recovery",
       kicker: t.night.kicker,
@@ -134,23 +134,15 @@ export default function JourneyStage() {
       <div className={clsx("relative w-full", className)}>
         <div
           aria-hidden
-          className="absolute -inset-[16%] -z-10 rounded-[50%] transition-all duration-700"
+          className="phone-glow transition-all duration-700"
           style={{
             background: `radial-gradient(closest-side, ${panel.accent}3d, transparent 70%)`,
             filter: "blur(38px)",
           }}
         />
-        <div
-          className="relative w-full overflow-hidden rounded-[13.5%] p-[3%] transition-shadow duration-500"
-          style={{
-            aspectRatio: "900 / 1950",
-            background: "linear-gradient(150deg, #202227, #0c0d11 60%, #060709)",
-            border: "1px solid rgba(255,255,255,0.14)",
-            boxShadow: "0 60px 130px -30px rgba(0,0,0,0.75), inset 0 0 0 1.5px rgba(255,255,255,0.04)",
-          }}
-        >
-          <div className="absolute left-1/2 top-[2.4%] z-20 h-[2.4%] w-[30%] -translate-x-1/2 rounded-full bg-black" />
-          <div className="relative h-full w-full overflow-hidden rounded-[11%]">
+        <div className="phone-frame transition-shadow duration-500">
+          <div aria-hidden className="phone-island" />
+          <div className="phone-screen">
             <Image src={panel.screen} alt={panel.screenAlt} fill sizes={sizes} className="object-cover" />
             <div
               aria-hidden
@@ -169,22 +161,19 @@ export default function JourneyStage() {
   return (
     <section id="experience" className="relative z-[1]">
       <SectionAmbient tone={current.ambient} />
-      <div className="mx-auto max-w-6xl px-6 md:grid md:grid-cols-2 md:gap-16">
+      <div className="mx-auto max-w-6xl section-x md:grid md:grid-cols-2 md:gap-16">
         {/* Sticky morphing phone (desktop) */}
         <div className="hidden md:block">
           <div className="sticky top-0 flex h-screen items-center justify-center">
             <div className="relative w-full max-w-[300px]">
               <div
-                className="relative w-full overflow-hidden rounded-[13.5%] p-[3%] transition-shadow duration-700"
+                className="phone-frame transition-shadow duration-700"
                 style={{
-                  aspectRatio: "900 / 1950",
-                  background: "linear-gradient(150deg, #202227, #0c0d11 60%, #060709)",
-                  border: "1px solid rgba(255,255,255,0.14)",
                   boxShadow: `0 60px 130px -30px rgba(0,0,0,0.75), 0 0 60px -20px ${current.accent}33`,
                 }}
               >
-                <div className="absolute left-1/2 top-[2.4%] z-20 h-[2.4%] w-[30%] -translate-x-1/2 rounded-full bg-black" />
-                <div className="relative h-full w-full overflow-hidden rounded-[11%]">
+                <div aria-hidden className="phone-island" />
+                <div className="phone-screen">
                   {panels.map((p, i) => (
                     <Image
                       key={p.key}
@@ -227,11 +216,11 @@ export default function JourneyStage() {
               }}
               data-idx={i}
               className={clsx(
-                "relative flex min-h-[78vh] flex-col justify-center py-14 md:min-h-screen md:py-16",
+                "relative flex min-h-[78vh] flex-col justify-center py-16 md:min-h-screen md:py-20",
                 p.layout === "statement" && "md:min-h-[70vh]"
               )}
             >
-              <div className="mb-8 flex justify-center md:hidden">
+              <div className="mb-10 flex justify-center md:hidden">
                 <PhoneFrame panel={p} className="max-w-[260px]" sizes="260px" />
               </div>
 
@@ -241,15 +230,12 @@ export default function JourneyStage() {
                 viewport={{ once: true, margin: "-20% 0px" }}
                 transition={{ duration: 0.7, ease: easeCalm }}
               >
-                <span
-                  className="text-[13px] font-bold uppercase tracking-[0.18em]"
-                  style={{ color: p.accent }}
-                >
+                <span className="kicker" style={{ color: p.accent }}>
                   {p.kicker}
                 </span>
                 <h2
                   className={clsx(
-                    "display mt-3 text-white",
+                    "display mt-4 text-white",
                     p.layout === "statement"
                       ? "text-[clamp(2.4rem,5vw,3.6rem)]"
                       : "text-[clamp(2rem,4.5vw,3.1rem)]"
@@ -257,9 +243,7 @@ export default function JourneyStage() {
                 >
                   {p.title}
                 </h2>
-                <p className="mt-3 max-w-[38ch] text-[16px] leading-relaxed text-white/55 md:mt-4">
-                  {p.body}
-                </p>
+                <p className="body-md mt-4 max-w-[36ch]">{p.body}</p>
               </motion.div>
             </div>
           ))}

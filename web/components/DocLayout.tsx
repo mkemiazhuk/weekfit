@@ -36,11 +36,11 @@ export default function DocLayout({
   }, [toc]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pb-32">
+    <div className="mx-auto max-w-5xl section-x page-pb">
       <div className="gap-12 md:grid md:grid-cols-[220px_1fr]">
         <aside className="hidden md:block">
           <div className="sticky top-28">
-            <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.14em] text-white/40">
+            <p className="kicker mb-4 text-white/40">
               {tocTitle}
             </p>
             <nav className="space-y-1 border-l border-white/10">

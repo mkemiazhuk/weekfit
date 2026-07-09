@@ -5,8 +5,10 @@ import clsx from "clsx";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Wordmark from "./Wordmark";
 import LangToggle from "./LangToggle";
+import Button from "./Button";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
+import { easeCalm } from "@/lib/motion";
 
 export default function Nav() {
   const { t, localePath } = useI18n();
@@ -21,7 +23,6 @@ export default function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Lock scroll and close on Escape while the mobile menu is open.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -56,7 +57,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6"
+        className="mx-auto flex h-16 max-w-6xl items-center justify-between section-x"
       >
         <Wordmark />
 
@@ -74,16 +75,15 @@ export default function Nav() {
 
         <div className="flex items-center gap-3">
           <LangToggle />
-          <a
+          <Button
             href={SITE.appInstallUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden whitespace-nowrap rounded-full bg-white px-3.5 py-2 text-[12px] font-semibold text-black transition-transform hover:-translate-y-0.5 sm:inline-block md:px-4 md:text-[13px]"
+            external
+            size="sm"
+            className="hidden sm:inline-flex"
           >
             {t.cta.testflight}
-          </a>
+          </Button>
 
-          {/* Mobile menu trigger */}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -123,13 +123,10 @@ export default function Nav() {
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-            transition={{ duration: reduce ? 0.15 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: reduce ? 0.15 : 0.28, ease: easeCalm }}
             className="md:hidden"
           >
-            <nav
-              aria-label="Mobile"
-              className="mx-auto max-w-6xl px-6 pb-6 pt-2"
-            >
+            <nav aria-label="Mobile" className="mx-auto max-w-6xl section-x pb-6 pt-2">
               <ul className="flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
                 {links.map((l) => (
                   <li key={l.href}>
@@ -146,15 +143,14 @@ export default function Nav() {
                   </li>
                 ))}
               </ul>
-              <a
+              <Button
                 href={SITE.appInstallUrl}
-                target="_blank"
-                rel="noreferrer"
+                external
+                className="mt-6 w-full"
                 onClick={() => setOpen(false)}
-                className="mt-6 block rounded-full bg-white px-5 py-3.5 text-center text-[15px] font-semibold text-black"
               >
                 {t.cta.testflight}
-              </a>
+              </Button>
             </nav>
           </motion.div>
         )}

@@ -49,24 +49,19 @@ export default function CoachReasoning() {
         };
 
   return (
-    <section id="reasoning" className="relative z-[1] px-5 py-20 md:px-6 md:py-28">
+    <section id="reasoning" className="relative z-[1] section-x section-y-lg">
       <SectionAmbient tone="coach" />
       <div className="mx-auto max-w-2xl">
         <Reveal>
-          <span className="text-[13px] font-bold uppercase tracking-[0.18em] text-coach">
-            {r.kicker}
-          </span>
-          <h2 className="display mt-3 text-[clamp(2rem,5vw,3.2rem)] text-white">
+          <span className="kicker text-coach">{r.kicker}</span>
+          <h2 className="display mt-4 text-[clamp(2rem,5vw,3.2rem)] text-white">
             {r.title}
           </h2>
         </Reveal>
 
-        <div className="mt-12 space-y-0">
-          {/* Yesterday signals */}
-          <motion.div {...step(0)} className="glass rounded-[22px] p-5 md:p-6">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-              {r.yesterday}
-            </p>
+        <div className="mt-14 space-y-0">
+          <motion.div {...step(0)} className="card glass card-glass">
+            <p className="kicker-sm">{r.yesterday}</p>
             <ul className="mt-4 space-y-2.5">
               {r.signals.map((s, i) => (
                 <motion.li
@@ -99,7 +94,6 @@ export default function CoachReasoning() {
 
           <FlowArrow reduce={reduce} />
 
-          {/* Analyzing */}
           <motion.div {...step(1)} className="flex justify-center py-2">
             <span className="inline-flex items-center gap-2.5 rounded-full border border-coach/25 bg-coach/10 px-4 py-2 text-[13px] font-medium text-white/75">
               {!reduce && (
@@ -116,42 +110,29 @@ export default function CoachReasoning() {
 
           <FlowArrow reduce={reduce} />
 
-          {/* Priority */}
-          <motion.div {...step(2)} className="glass rounded-[22px] p-5 md:p-6">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-              {r.priority}
-            </p>
-            <p
-              className="display mt-2 text-[clamp(2rem,6vw,2.8rem)]"
-              style={{ color: pillars.recovery }}
-            >
+          <motion.div {...step(2)} className="card glass card-glass">
+            <p className="kicker-sm">{r.priority}</p>
+            <p className="display mt-2 text-[clamp(2rem,6vw,2.8rem)] text-recovery">
               {r.priorityValue}
             </p>
           </motion.div>
 
           <FlowArrow reduce={reduce} />
 
-          {/* Reason + Recommendation */}
           <motion.div {...step(3)} className="space-y-4">
-            <div className="glass rounded-[22px] p-5 md:p-6">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                {r.reasonLabel}
-              </p>
-              <p className="mt-3 text-[15px] leading-relaxed text-white/70 md:text-[16px]">
-                {r.reason}
-              </p>
+            <div className="card glass card-glass">
+              <p className="kicker-sm">{r.reasonLabel}</p>
+              <p className="body-md mt-3 text-white/70">{r.reason}</p>
             </div>
             <div
-              className="rounded-[22px] p-5 md:p-6"
+              className="card card-glass"
               style={{
                 background: `linear-gradient(150deg, ${pillars.coach}20, rgba(255,255,255,0.04))`,
                 border: `1px solid ${pillars.coach}35`,
                 boxShadow: `0 20px 50px -20px ${pillars.coach}40`,
               }}
             >
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                {r.recommendationLabel}
-              </p>
+              <p className="kicker-sm">{r.recommendationLabel}</p>
               <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[clamp(1.25rem,4.2vw,1.65rem)] font-bold leading-[1.35] tracking-[-0.02em]">
                 <span className="text-white">{r.recommendationToday}</span>
                 <span className="text-white/72">{r.recommendationTomorrow}</span>

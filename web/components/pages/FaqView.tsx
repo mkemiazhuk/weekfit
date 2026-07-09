@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/lib/i18n";
 import { support } from "@/lib/content";
+import { pillars } from "@/lib/tokens";
 import PageHero from "../PageHero";
 import Icon from "../Icon";
 import FAQAccordion from "../FAQAccordion";
@@ -13,16 +14,16 @@ export default function FaqView() {
     <>
       <PageHero
         kicker="FAQ"
-        kickerColor="#8c66d9"
+        kickerColor={pillars.coach}
         title={lang === "ru" ? "Частые вопросы" : "Frequently asked"}
         lead={c.lead}
       />
-      <div className="mx-auto max-w-3xl space-y-12 px-6 pb-28">
+      <div className="mx-auto max-w-3xl space-y-12 section-x page-pb">
         {c.categories.map((cat) => (
           <section key={cat.title}>
             <div className="mb-4 flex items-center gap-3">
               <span
-                className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+                className="icon-tile"
                 style={{ background: `${cat.color}1f`, border: `1px solid ${cat.color}33` }}
               >
                 <Icon name={cat.icon} color={cat.color} size={20} />
@@ -33,7 +34,7 @@ export default function FaqView() {
           </section>
         ))}
 
-        <div className="mt-4 rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-6 text-center">
+        <div className="surface-subtle mt-4 p-6 text-center">
           <p className="text-[15px] text-white/70">
             {lang === "ru"
               ? "Не нашли ответ? В Центре помощи есть подробные руководства."

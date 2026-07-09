@@ -26,9 +26,9 @@ function Vo2Drop({
   labels: [string, string];
 }) {
   return (
-    <div className="blog-vo2-drop not-prose my-8 grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-[20px] border border-white/[0.1] bg-white/[0.04] p-5 sm:gap-5 sm:p-6">
+    <div className="blog-vo2-drop not-prose surface-subtle my-8 grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-5 sm:gap-5 sm:p-6">
       <div className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <p className="kicker-sm">
           {labels[0]}
         </p>
         <p className="display mt-2 text-[clamp(2.4rem,8vw,3.2rem)] leading-none text-white/55">
@@ -43,7 +43,7 @@ function Vo2Drop({
         →
       </div>
       <div className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <p className="kicker-sm">
           {labels[1]}
         </p>
         <p
@@ -64,7 +64,7 @@ function TrendChart({ values, caption }: { values: number[]; caption: string }) 
   const chartHeight = 96;
 
   return (
-    <figure className="blog-trend not-prose my-8 rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6">
+    <figure className="blog-trend not-prose surface-subtle my-8 p-5 sm:p-6">
       <div className="flex items-end gap-1.5 sm:gap-2" style={{ height: chartHeight }}>
         {values.map((v, i) => {
           const barHeight = Math.max(((v - min) / range) * chartHeight, 10);
@@ -107,7 +107,7 @@ function CompareCards({
   question?: string;
 }) {
   const card = (side: typeof left, accent: string) => (
-    <div className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+    <div className="surface-chip p-4 sm:p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">
         {side.title}
       </p>

@@ -20,7 +20,7 @@ export default function ChangelogView() {
   return (
     <>
       <PageHero kicker={c.kicker} title={c.title} lead={c.lead} />
-      <div className="mx-auto max-w-3xl px-6 pb-32">
+      <div className="mx-auto max-w-3xl section-x page-pb">
         <div className="relative border-l border-white/10 pl-8">
           {c.releases.map((r) => (
             <Reveal key={r.version}>

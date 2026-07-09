@@ -4,7 +4,7 @@ import clsx from "clsx";
 
 interface CoachCardProps {
   accent: string;
-  state: string; // pill label, e.g. "READY"
+  state: string;
   title: string;
   body: string;
   className?: string;
@@ -22,7 +22,7 @@ export default function CoachCard({
   return (
     <div
       className={clsx(
-        "premium-card relative overflow-hidden rounded-[22px] p-5 backdrop-blur-xl",
+        "premium-card card relative overflow-hidden p-5 backdrop-blur-xl",
         floating && "coach-float",
         className
       )}
@@ -32,7 +32,6 @@ export default function CoachCard({
         boxShadow: `0 24px 60px -20px ${accent}55, 0 10px 30px -15px rgba(0,0,0,0.6)`,
       }}
     >
-      {/* ghost glyph watermark */}
       <svg
         aria-hidden
         viewBox="0 0 24 24"
@@ -58,15 +57,9 @@ export default function CoachCard({
           />
           {state}
         </span>
-        <p className="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/45">
-          Coach
-        </p>
-        <p className="mt-1 text-[15px] font-semibold leading-snug text-white">
-          {title}
-        </p>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/60">
-          {body}
-        </p>
+        <p className="kicker-sm mt-3">Coach</p>
+        <p className="mt-1 text-[15px] font-semibold leading-snug text-white">{title}</p>
+        <p className="body-sm mt-1.5 text-[12.5px]">{body}</p>
       </div>
     </div>
   );

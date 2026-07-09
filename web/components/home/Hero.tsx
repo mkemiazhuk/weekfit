@@ -8,6 +8,7 @@ import CoachCard from "../CoachCard";
 import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
+import { easeCalm } from "@/lib/motion";
 import SectionAmbient from "../SectionAmbient";
 
 export default function Hero() {
@@ -15,11 +16,10 @@ export default function Hero() {
   const reduce = useReducedMotion();
   const phoneRef = useRef<HTMLDivElement>(null);
 
-  const ease = [0.22, 1, 0.36, 1] as const;
   const rise = (delay: number) => ({
     initial: reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 26 },
     animate: { opacity: 1, y: 0 },
-    transition: reduce ? { duration: 0 } : { duration: 0.9, ease, delay },
+    transition: reduce ? { duration: 0 } : { duration: 0.9, ease: easeCalm, delay },
   });
 
   const onMouseMove = useCallback(
@@ -44,18 +44,14 @@ export default function Hero() {
 
   return (
     <section
-      className="relative z-0 isolate mx-auto flex min-h-screen max-w-6xl flex-col items-center px-6 pt-32 pb-28 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:pb-16 md:pt-24"
+      className="relative z-0 isolate mx-auto flex min-h-screen max-w-6xl flex-col items-center section-x pt-32 pb-28 md:grid md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12 md:pb-20 md:pt-24"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
       <SectionAmbient tone="morning" />
 
-      {/* Copy */}
       <div className="text-center md:text-left">
-        <motion.span
-          {...rise(0.05)}
-          className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 py-1.5 text-[13px] text-white/70"
-        >
+        <motion.span {...rise(0.05)} className="eyebrow-pill">
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{
@@ -66,34 +62,22 @@ export default function Hero() {
           {t.hero.eyebrow}
         </motion.span>
 
-        <h1 className="display mt-6 text-[clamp(2.8rem,8vw,5.2rem)] text-white">
+        <h1 className="display mt-8 text-[clamp(2.8rem,8vw,5.2rem)] text-white">
           <motion.span {...rise(0.12)} className="block">
             {t.hero.titleA}
           </motion.span>
-          <motion.span
-            {...rise(0.2)}
-            className="block"
-            style={{
-              background: "linear-gradient(100deg, #66f070, #2edbfa)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
+          <motion.span {...rise(0.2)} className="block text-gradient-hero">
             {t.hero.titleB}
           </motion.span>
         </h1>
 
-        <motion.p
-          {...rise(0.3)}
-          className="mx-auto mt-6 max-w-[40ch] text-[clamp(1.05rem,2.2vw,1.22rem)] leading-relaxed text-white/60 md:mx-0"
-        >
+        <motion.p {...rise(0.3)} className="body-lg mx-auto mt-6 max-w-[38ch] md:mx-0">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
           {...rise(0.4)}
-          className="mt-9 flex flex-wrap items-center justify-center gap-3 md:justify-start"
+          className="mt-10 flex flex-wrap items-center justify-center gap-3 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external>
             {t.cta.testflight}
@@ -104,13 +88,12 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Phone composition */}
-      <div className="relative mt-16 w-full max-w-[320px] self-center justify-self-center md:mt-0">
-        {/* Breathing glow behind phone */}
+      <div className="relative mt-20 w-full max-w-[320px] self-center justify-self-center md:mt-0">
         <motion.div
           aria-hidden
-          className="absolute -inset-[20%] -z-10 rounded-[50%]"
+          className="phone-glow"
           style={{
+            inset: "-20%",
             background: `radial-gradient(closest-side, ${pillars.recovery}30, transparent 70%)`,
             filter: "blur(40px)",
           }}
@@ -127,9 +110,8 @@ export default function Hero() {
             reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 40, scale: 0.96 }
           }
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={reduce ? { duration: 0 } : { duration: 1.1, ease, delay: 0.3 }}
+          transition={reduce ? { duration: 0 } : { duration: 1.1, ease: easeCalm, delay: 0.3 }}
         >
-          {/* Parallax wrapper — separate from phone-float so transforms don't clash */}
           <div
             ref={phoneRef}
             className="relative transition-transform duration-300 ease-out will-change-transform"
@@ -139,18 +121,16 @@ export default function Hero() {
               <PhoneMockup
                 src="/img/today.jpg"
                 alt="WeekFit Today screen showing recovery, activity and nutrition rings"
-                glow={pillars.recovery}
                 priority
               />
             </div>
           </div>
         </motion.div>
 
-        {/* Floating coach card — desktop only; journey section covers coach on mobile */}
         <motion.div
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={reduce ? { duration: 0 } : { duration: 0.9, ease, delay: 1.15 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.9, ease: easeCalm, delay: 1.15 }}
           className="absolute -bottom-4 -right-2 hidden w-[220px] md:block sm:-right-8 sm:w-[248px]"
         >
           <CoachCard
@@ -163,16 +143,13 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll hint */}
       <motion.div
         initial={reduce ? { opacity: 1 } : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={reduce ? { duration: 0 } : { duration: 1, delay: 1.6 }}
-        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-center"
+        className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 text-center"
       >
-        <span className="text-[12px] uppercase tracking-[0.2em] text-white/35">
-          {t.hero.scroll}
-        </span>
+        <span className="caption tracking-[0.2em]">{t.hero.scroll}</span>
       </motion.div>
     </section>
   );

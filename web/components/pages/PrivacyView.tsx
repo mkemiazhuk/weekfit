@@ -29,19 +29,19 @@ export default function PrivacyView() {
       />
 
       {/* Visual data-flow */}
-      <div className="mx-auto max-w-4xl px-6 pb-20">
+      <div className="mx-auto max-w-4xl section-x pb-20">
         <Reveal>
-          <p className="mb-6 text-center text-[13px] font-semibold uppercase tracking-[0.14em] text-white/40">
+          <p className="kicker mb-6 text-center text-white/40">
             {c.flowTitle}
           </p>
           <div className="grid gap-4 md:grid-cols-3">
             {flow.map((f, i) => (
               <div
                 key={i}
-                className="relative rounded-[22px] glass p-6 text-center"
+                className="card glass p-6 text-center"
               >
                 <span
-                  className="mx-auto flex h-12 w-12 items-center justify-center rounded-[14px]"
+                  className="icon-tile mx-auto h-12 w-12 rounded-button"
                   style={{ background: `${f.color}1f`, border: `1px solid ${f.color}33` }}
                 >
                   <Icon name={f.icon} color={f.color} size={24} />

@@ -15,7 +15,7 @@ export const en = {
     eyebrow: "AI that reasons",
     titleA: "Your body,",
     titleB: "understood.",
-    lead: "Sleep, recovery, activity, nutrition — connected. One clear decision, every morning.",
+    lead: "Sleep, recovery, activity, nutrition — one clear decision, every morning.",
     coachTitle: "Move today.",
     coachBody: "Strong recovery. Residual ride fatigue — move today, push tomorrow.",
     ctaPrimary: "Get notified",
@@ -25,13 +25,13 @@ export const en = {
   morning: {
     kicker: "Morning",
     title: "Wake up to clarity.",
-    body: "Sleep and recovery become one calm read — before you decide anything.",
+    body: "Sleep and recovery — one calm read before you decide anything.",
     ringLabel: "Recovery",
   },
   prep: {
     kicker: "Preparation",
     title: "Know how to prepare.",
-    body: "Fuel, hydration, timing — adapted to your plan, not a template.",
+    body: "Fuel and hydration — adapted to your plan, not a template.",
   },
   workout: {
     kicker: "Training",
@@ -41,7 +41,7 @@ export const en = {
   recovery: {
     kicker: "Recovery",
     title: "Recover like it matters.",
-    body: "The Coach shifts toward stretching, nutrition, and sleep as the day softens.",
+    body: "Stretching, nutrition, sleep — as the day softens.",
   },
   night: {
     kicker: "Night",
@@ -71,7 +71,7 @@ export const en = {
   seo: {
     kicker: "What is WeekFit",
     title: "An AI fitness coach for Apple Health.",
-    p1: "One daily read from sleep, recovery, activity and nutrition — with the reasoning behind it.",
+    p1: "One daily read from Apple Health — with the reasoning behind it.",
     privacy: "Private, on your device.",
     healthLabel: "Data source",
     healthValue: "Apple Health",
@@ -87,7 +87,7 @@ export const en = {
   pillars: {
     kicker: "How it understands you",
     title: "Four signals. One story.",
-    lead: "WeekFit reads the relationships between four signals — not just the numbers.",
+    lead: "Four signals. One story — not just the numbers.",
     items: {
       recovery: {
         name: "Recovery",
@@ -110,7 +110,7 @@ export const en = {
   trust: {
     kicker: "Privacy",
     title: "Your health stays yours.",
-    lead: "Built private from the inside out.",
+    lead: "Private from the inside out.",
     items: {
       device: {
         name: "On your device",
@@ -134,8 +134,10 @@ export const en = {
   cta: {
     title: "Ready to stop guessing?",
     subtitle: "Wake up knowing exactly what matters today.",
-    body: "Join the public beta on TestFlight. Built around Apple Health, private by design.",
+    body: "Join the public beta on TestFlight.",
     button: "Download on the App Store",
+    appStoreLine1: "Download on the",
+    appStoreLine2: "App Store",
     notify: "Get notified",
     testflight: "Join the beta",
     testflightNote: "Free public beta on TestFlight",
@@ -202,7 +204,7 @@ export const ru: Dict = {
     eyebrow: "ИИ, который думает",
     titleA: "Меньше шума.",
     titleB: "Ясность.",
-    lead: "Сон, восстановление, активность и питание — в одной картине. Одно ясное решение каждое утро.",
+    lead: "Сон, восстановление, активность и питание — одно ясное решение каждое утро.",
     coachTitle: "Движение сегодня.",
     coachBody: "Восстановление хорошее. После вчерашней поездки — двигайтесь, но без пика.",
     ctaPrimary: "Сообщить о запуске",
@@ -212,7 +214,7 @@ export const ru: Dict = {
   morning: {
     kicker: "Утро",
     title: "Ясность с самого утра.",
-    body: "Сон и восстановление — один спокойный вывод, ещё до первого решения.",
+    body: "Сон и восстановление — один спокойный вывод до первого решения.",
     ringLabel: "Восстановление",
   },
   prep: {
@@ -228,7 +230,7 @@ export const ru: Dict = {
   recovery: {
     kicker: "Восстановление",
     title: "Восстанавливайтесь как следует.",
-    body: "К вечеру Коуч смещается к растяжке, питанию и сну.",
+    body: "Растяжка, питание, сон — к вечеру.",
   },
   night: {
     kicker: "Ночь",
@@ -258,7 +260,7 @@ export const ru: Dict = {
   seo: {
     kicker: "Что такое WeekFit",
     title: "AI-коуч для Apple Health.",
-    p1: "Один вывод в день из сна, восстановления, активности и питания — с объяснением.",
+    p1: "Один вывод в день из Apple Health — с объяснением.",
     privacy: "Приватно, на устройстве.",
     healthLabel: "Источник данных",
     healthValue: "Apple Health",
@@ -274,7 +276,7 @@ export const ru: Dict = {
   pillars: {
     kicker: "Как он вас понимает",
     title: "Четыре сигнала. Одна картина.",
-    lead: "WeekFit видит связи между четырьмя сигналами — не только цифры.",
+    lead: "Четыре сигнала. Одна картина — не только цифры.",
     items: {
       recovery: {
         name: "Восстановление",
@@ -321,8 +323,10 @@ export const ru: Dict = {
   cta: {
     title: "Хватит гадать.",
     subtitle: "Просыпайтесь, зная, что важно сегодня.",
-    body: "Бесплатная бета в TestFlight. Apple Health и приватность — в основе.",
+    body: "Бесплатная бета в TestFlight.",
     button: "Загрузить в App Store",
+    appStoreLine1: "Загрузить в",
+    appStoreLine2: "App Store",
     notify: "Сообщить о запуске",
     testflight: "Попробовать",
     testflightNote: "Бесплатно · TestFlight",

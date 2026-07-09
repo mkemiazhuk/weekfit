@@ -19,7 +19,7 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
   const cat = blogCategories.find((item) => item.slug === post.category);
 
   return (
-    <article className="mx-auto max-w-3xl px-6 pb-28 pt-32 md:pt-36">
+    <article className="mx-auto max-w-3xl section-x page-pb pt-32 md:pt-36">
       <Link
         href={localePath("/blog")}
         className="text-[14px] font-medium text-white/50 transition-colors hover:text-white"

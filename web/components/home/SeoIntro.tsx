@@ -24,12 +24,12 @@ export default function SeoIntro() {
     <section
       id="about"
       aria-labelledby="about-heading"
-      className="relative z-[1] px-5 py-14 md:px-6 md:py-20"
+      className="relative z-[1] section-x section-y"
     >
       <SectionAmbient tone="morning" />
       <div className="mx-auto max-w-6xl">
         <Reveal>
-          <div className="glass relative overflow-hidden rounded-[28px] p-6 md:p-10">
+          <div className="card-panel glass relative overflow-hidden">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-32"
@@ -40,21 +40,17 @@ export default function SeoIntro() {
             />
 
             <div className="relative">
-              <div className="md:flex md:items-start md:justify-between md:gap-10">
+              <div className="md:flex md:items-start md:justify-between md:gap-12">
                 <div className="max-w-xl">
-                  <p className="text-[13px] font-bold uppercase tracking-[0.16em] text-brand">
-                    {s.kicker}
-                  </p>
+                  <p className="kicker text-brand">{s.kicker}</p>
                   <h2
                     id="about-heading"
-                    className="display mt-3 text-[clamp(1.75rem,3.8vw,2.5rem)] leading-[1.08] text-white"
+                    className="display mt-4 text-[clamp(1.75rem,3.8vw,2.5rem)] leading-[1.08] text-white"
                   >
                     {s.title}
                   </h2>
-                  <p className="mt-4 text-[15px] leading-relaxed text-white/60 md:text-[16px]">
-                    {s.p1}
-                  </p>
-                  <p className="mt-3 flex items-center gap-2 text-[14px] font-medium text-white/45">
+                  <p className="body-md mt-5">{s.p1}</p>
+                  <p className="mt-4 flex items-center gap-2 text-[14px] font-medium text-white/45">
                     <svg
                       viewBox="0 0 24 24"
                       className="h-4 w-4 shrink-0 opacity-70"
@@ -71,13 +67,11 @@ export default function SeoIntro() {
                 </div>
 
                 <div
-                  className="premium-card mt-6 hidden shrink-0 items-center gap-3 rounded-[18px] border border-white/[0.1] bg-white/[0.04] px-4 py-3 md:mt-1 md:flex"
-                  style={{
-                    boxShadow: `0 12px 40px -16px ${pillars.hydration}44`,
-                  }}
+                  className="premium-card mt-8 hidden shrink-0 items-center gap-3 surface-chip px-4 py-3 md:mt-1 md:flex"
+                  style={{ boxShadow: `0 12px 40px -16px ${pillars.hydration}44` }}
                 >
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]"
+                    className="icon-tile"
                     style={{
                       background: `${pillars.hydration}18`,
                       border: `1px solid ${pillars.hydration}33`,
@@ -86,9 +80,7 @@ export default function SeoIntro() {
                     <Icon name="health" color={pillars.hydration} size={20} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">
-                      {s.healthLabel}
-                    </p>
+                    <p className="kicker-sm">{s.healthLabel}</p>
                     <p className="mt-0.5 text-[14px] font-semibold text-white/85">
                       {s.healthValue}
                     </p>
@@ -98,19 +90,19 @@ export default function SeoIntro() {
 
               <div
                 aria-hidden
-                className="my-7 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent md:my-8"
+                className="my-8 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent md:my-10"
               />
 
-              <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {s.features.map((label, i) => {
                   const meta = featureMeta[i];
                   return (
                     <li
                       key={label}
-                      className="premium-card flex min-h-[92px] min-w-0 flex-col gap-2.5 overflow-hidden rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-3.5 sm:min-h-0 sm:flex-row sm:items-center sm:gap-3 sm:p-3"
+                      className="premium-card surface-chip flex min-h-[88px] min-w-0 flex-col gap-2.5 p-3.5 sm:min-h-0 sm:flex-row sm:items-center sm:gap-3"
                     >
                       <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
+                        className="icon-tile h-9 w-9"
                         style={{
                           background: `${meta.color}16`,
                           border: `1px solid ${meta.color}30`,
@@ -133,9 +125,9 @@ export default function SeoIntro() {
                 })}
               </ul>
 
-              <div className="mt-4 flex min-w-0 items-center gap-3 overflow-hidden rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 md:hidden">
+              <div className="surface-chip mt-4 flex min-w-0 items-center gap-3 px-3.5 py-3 md:hidden">
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
+                  className="icon-tile h-9 w-9"
                   style={{
                     background: `${pillars.hydration}18`,
                     border: `1px solid ${pillars.hydration}33`,
@@ -144,9 +136,7 @@ export default function SeoIntro() {
                   <Icon name="health" color={pillars.hydration} size={17} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                    {s.healthLabel}
-                  </p>
+                  <p className="kicker-sm">{s.healthLabel}</p>
                   <p className="truncate text-[13px] font-semibold text-white/80">
                     {s.healthValue}
                   </p>
