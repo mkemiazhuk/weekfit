@@ -14,10 +14,10 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
     socialTitle: "WeekFit — Know what today is for",
   },
   ru: {
-    title: "WeekFit — Для чего сегодня?",
+    title: "WeekFit — Что важно сегодня?",
     description:
-      "WeekFit читает Apple Health и каждое утро даёт одно ясное решение — давить, держать или восстанавливаться — с объяснением. Приватно на iPhone.",
-    socialTitle: "WeekFit — Для чего сегодня?",
+      "WeekFit читает Apple Health и каждое утро даёт одно ясное решение — нагрузка, баланс или восстановление — с объяснением. Приватно на iPhone.",
+    socialTitle: "WeekFit — Что важно сегодня?",
   },
 };
 
