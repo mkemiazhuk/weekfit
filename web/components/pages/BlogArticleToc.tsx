@@ -17,14 +17,51 @@ function headingTop(id: string): number | null {
 function resolveActiveSection(items: TocItem[]): string | undefined {
   if (!items.length) return undefined;
 
-  let active = items[0].id;
+  const line = READ_LINE;
+  const body = document.querySelector(".blog-article-body");
+  const bodyBottom = body?.getBoundingClientRect().bottom ?? Infinity;
 
+  // Active when the reading line sits between this H2 and the next one
+  for (let i = 0; i < items.length; i++) {
+    const top = headingTop(items[i].id);
+    if (top === null) continue;
+
+    const end =
+      i < items.length - 1
+        ? headingTop(items[i + 1].id) ?? bodyBottom
+        : bodyBottom;
+
+    if (top <= line + 1 && end > line + 1) {
+      return items[i].id;
+    }
+  }
+
+  // Fallback: last H2 that has scrolled past the reading line
+  let active = items[0].id;
   for (const item of items) {
     const top = headingTop(item.id);
-    if (top === null) continue;
-    if (top <= READ_LINE + 1) {
+    if (top !== null && top <= line + 1) {
       active = item.id;
     }
+  }
+
+  // Final section: page ends before its H2 reaches the read line
+  const last = items[items.length - 1];
+  const lastTop = headingTop(last.id);
+  const prevTop =
+    items.length > 1 ? headingTop(items[items.length - 2].id) : null;
+  const scrollBottom = window.innerHeight + window.scrollY;
+  const nearEnd = document.documentElement.scrollHeight - scrollBottom < 160;
+
+  if (
+    nearEnd &&
+    lastTop !== null &&
+    lastTop > line + 1 &&
+    prevTop !== null &&
+    prevTop <= line + 1 &&
+    lastTop < window.innerHeight
+  ) {
+    active = last.id;
   }
 
   return active;
