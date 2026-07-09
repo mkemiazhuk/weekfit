@@ -235,7 +235,7 @@ export default function JourneyStage() {
                 </span>
                 <h2
                   className={clsx(
-                    "display mt-4 text-white",
+                    "display text-balance mt-4 text-white",
                     p.layout === "statement"
                       ? "text-[clamp(2.4rem,5vw,3.6rem)]"
                       : "text-[clamp(2rem,4.5vw,3.1rem)]"

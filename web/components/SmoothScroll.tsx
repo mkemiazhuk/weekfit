@@ -11,10 +11,10 @@ export default function SmoothScroll() {
     if (reduce) return;
 
     const lenis = new Lenis({
-      duration: 1.1,
-      easing: (t) => 1 - Math.pow(1 - t, 3),
+      duration: 1.05,
+      easing: (t) => 1 - Math.pow(1 - t, 4),
       smoothWheel: true,
-      touchMultiplier: 1.4,
+      touchMultiplier: 1.2,
     });
 
     let raf = 0;

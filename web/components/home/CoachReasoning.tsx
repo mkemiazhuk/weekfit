@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { pillars } from "@/lib/tokens";
 import { easeCalm, stagger } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
+import TextReveal from "../TextReveal";
 import SectionAmbient from "../SectionAmbient";
 import Reveal from "../Reveal";
 
@@ -54,9 +55,9 @@ export default function CoachReasoning() {
       <div className="mx-auto max-w-2xl">
         <Reveal>
           <span className="kicker text-coach">{r.kicker}</span>
-          <h2 className="display mt-4 text-[clamp(2rem,5vw,3.2rem)] text-white">
+          <TextReveal as="h2" delay={0.08} className="display text-balance mt-4 text-[clamp(2rem,5vw,3.2rem)] text-white">
             {r.title}
-          </h2>
+          </TextReveal>
         </Reveal>
 
         <div className="mt-14 space-y-0">

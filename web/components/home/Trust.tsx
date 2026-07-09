@@ -51,12 +51,12 @@ export default function Trust() {
               <span className="kicker text-hydration">{t.trust.kicker}</span>
             </Reveal>
             <Reveal delay={0.05}>
-              <h2 className="display mt-4 text-[clamp(2.2rem,5vw,3.4rem)] text-white">
+              <h2 className="display text-balance mt-4 text-[clamp(2.2rem,5vw,3.4rem)] text-white">
                 {t.trust.title}
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
-              <p className="body-md mt-5 max-w-[32ch]">{t.trust.lead}</p>
+              <p className="body-md text-balance mt-5 max-w-[30ch]">{t.trust.lead}</p>
             </Reveal>
             <Reveal delay={0.15}>
               <a

@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import Analytics from "@/components/Analytics";
 import JsonLd from "@/components/JsonLd";
 import SkipLink from "@/components/SkipLink";
+import ScrollProgress from "@/components/ScrollProgress";
 import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import { HOME_SEO } from "@/lib/page-seo";
@@ -83,6 +84,7 @@ export default function RootLayout({
         <JsonLd data={entityGraphSchema()} />
         <I18nProvider>
           <SkipLink />
+          <ScrollProgress />
           <SmoothScroll />
           <AtmosphereBackground />
           <Nav />

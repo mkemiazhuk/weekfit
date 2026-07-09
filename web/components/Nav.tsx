@@ -51,7 +51,7 @@ export default function Nav() {
       className={clsx(
         "fixed inset-x-0 top-0 z-50 transition-all duration-500",
         scrolled || open
-          ? "border-b border-white/[0.07] bg-canvas/60 backdrop-blur-xl"
+          ? "border-b border-white/[0.08] bg-canvas/72 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-2xl backdrop-saturate-150"
           : "border-b border-transparent"
       )}
     >
@@ -66,7 +66,7 @@ export default function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="text-[14px] text-white/60 transition-colors hover:text-white max-lg:text-[13px]"
+              className="text-[14px] text-white/55 transition-colors duration-300 hover:text-white max-lg:text-[13px]"
             >
               {l.label}
             </a>

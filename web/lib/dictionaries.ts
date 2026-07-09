@@ -16,11 +16,11 @@ export const en = {
     eyebrow: "7:04",
     titleA: "What is",
     titleB: "today for?",
-    lead: "One clear call every morning — push, hold, or recover. With a short reason you can read in seconds.",
+    lead: "One morning call — push, hold, or recover — with the why in plain words.",
     coachTitle: "Move today.",
     coachBody: "Strong recovery. Yesterday's ride still lingers — move today, save the peak for tomorrow.",
-    ctaSecondary: "Try the simulator",
-    scroll: "See the reasoning",
+    ctaSecondary: "Simulator",
+    scroll: "The reasoning",
   },
   proof: {
     ariaLabel: "Product highlights",
@@ -72,8 +72,8 @@ export const en = {
   },
   morning: {
     kicker: "Morning",
-    title: "Wake up to clarity.",
-    body: "Sleep and recovery — one calm read before you decide anything.",
+    title: "Wake up knowing.",
+    body: "Sleep and recovery — one read before the day starts.",
     ringLabel: "Recovery",
   },
   prep: {
@@ -98,7 +98,7 @@ export const en = {
   },
   reasoning: {
     kicker: "The Coach",
-    title: "Not a score. The reason.",
+    title: "Not a score. The why.",
     yesterday: "Yesterday",
     signals: [
       "Slept 8h 12m",
@@ -106,12 +106,12 @@ export const en = {
       "16 km cycling",
       "Protein target reached",
     ],
-    analyzing: "Analyzing relationships",
+    analyzing: "Connecting signals",
     priority: "Today's priority",
     priorityValue: "Recovery",
     reasonLabel: "Why",
     reason:
-      "Cardiovascular recovery is excellent. Muscular fatigue from yesterday's ride remains elevated.",
+      "Cardiovascular recovery is excellent. Muscular fatigue from yesterday's ride is still elevated.",
     recommendationLabel: "Recommendation",
     recommendationToday: "Move today.",
     recommendationTomorrow: "Push hard tomorrow.",
@@ -158,7 +158,7 @@ export const en = {
   trust: {
     kicker: "Privacy",
     title: "Your health stays yours.",
-    lead: "Private from the inside out.",
+    lead: "Private from day one.",
     items: {
       device: {
         name: "On your device",
@@ -186,7 +186,7 @@ export const en = {
     button: "Download on the App Store",
     appStoreLine1: "Download on the",
     appStoreLine2: "App Store",
-    testflight: "Join the beta",
+    testflight: "Get the beta",
     testflightNote: "Free · TestFlight · iPhone",
     soon: "App Store after beta",
     appStoreFootnote: "App Store launch follows the public beta.",
@@ -240,11 +240,11 @@ export const ru: Dict = {
     eyebrow: "7:04",
     titleA: "Что важно",
     titleB: "сегодня?",
-    lead: "Каждое утро — одно решение: нагрузка, баланс или восстановление. С коротким объяснением, почему.",
+    lead: "Одно решение каждое утро — с понятным «почему».",
     coachTitle: "Движение сегодня.",
-    coachBody: "Восстановление хорошее. После вчерашней поездки — двигайтесь, но без пика.",
+    coachBody: "Восстановление хорошее. Вчерашняя поездка ещё в теле — двигайтесь, пик оставьте на завтра.",
     ctaSecondary: "Симулятор",
-    scroll: "Почему так",
+    scroll: "Как устроен вывод",
   },
   proof: {
     ariaLabel: "О продукте",
@@ -296,8 +296,8 @@ export const ru: Dict = {
   },
   morning: {
     kicker: "Утро",
-    title: "Ясность с самого утра.",
-    body: "Сон и восстановление — один спокойный вывод до первого решения.",
+    title: "Просыпайтесь, зная.",
+    body: "Сон и восстановление — один вывод до начала дня.",
     ringLabel: "Восстановление",
   },
   prep: {
@@ -322,7 +322,7 @@ export const ru: Dict = {
   },
   reasoning: {
     kicker: "Коуч",
-    title: "Не оценка. Объяснение.",
+    title: "Не цифра. Смысл.",
     yesterday: "Вчера",
     signals: [
       "Сон 8ч 12м",
@@ -330,12 +330,12 @@ export const ru: Dict = {
       "16 км велосипед",
       "Белок — цель достигнута",
     ],
-    analyzing: "Смотрит на связи",
+    analyzing: "Связывает сигналы",
     priority: "Приоритет сегодня",
     priorityValue: "Восстановление",
     reasonLabel: "Почему",
     reason:
-      "Сердечно-сосудистое восстановление отличное. Мышечная усталость после вчерашней поездки всё ещё повышена.",
+      "Сердце восстановилось отлично. Мышечная усталость после вчерашней поездки всё ещё повышена.",
     recommendationLabel: "Рекомендация",
     recommendationToday: "Движение сегодня.",
     recommendationTomorrow: "Интенсив — завтра.",
@@ -382,7 +382,7 @@ export const ru: Dict = {
   trust: {
     kicker: "Приватность",
     title: "Ваше здоровье остаётся вашим.",
-    lead: "Приватность заложена в основу.",
+    lead: "Приватность — с первого дня.",
     items: {
       device: {
         name: "На вашем устройстве",
@@ -410,7 +410,7 @@ export const ru: Dict = {
     button: "Загрузить в App Store",
     appStoreLine1: "Загрузить в",
     appStoreLine2: "App Store",
-    testflight: "В бета",
+    testflight: "Установить",
     testflightNote: "Бесплатно · TestFlight · iPhone",
     soon: "App Store после беты",
     appStoreFootnote: "App Store откроется после публичной беты.",

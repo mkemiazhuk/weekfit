@@ -235,8 +235,11 @@ input:focus-visible,
     rgba(255, 255, 255, 0.02)
   );
   border: 1px solid var(--color-border-subtle);
-  backdrop-filter: saturate(150%) blur(18px);
-  -webkit-backdrop-filter: saturate(150%) blur(18px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 24px 80px -40px rgba(0, 0, 0, 0.55);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
 }
 
 /* Thin luminous hairline used across cards */
@@ -416,10 +419,117 @@ input:focus-visible,
 
 /* Hero title gradient */
 .text-gradient-hero {
-  background: linear-gradient(100deg, var(--color-activity), var(--color-recovery));
+  background: linear-gradient(
+    100deg,
+    var(--color-activity) 0%,
+    var(--color-recovery) 48%,
+    var(--color-activity) 100%
+  );
+  background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation: gradient-shift 10s var(--ease-calm) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient-hero {
+    animation: none;
+    background-size: 100% auto;
+  }
+}
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Hero time stamp */
+.hero-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-rounded);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.28em;
+  color: rgba(255, 255, 255, 0.42);
+}
+.hero-time::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-recovery);
+  box-shadow: 0 0 12px rgba(46, 219, 250, 0.55);
+  animation: time-pulse 3.2s var(--ease-calm) infinite;
+}
+@keyframes time-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scroll progress */
+.scroll-progress {
+  background: linear-gradient(
+    90deg,
+    rgba(102, 188, 135, 0.15),
+    var(--color-brand) 40%,
+    var(--color-recovery) 100%
+  );
+  box-shadow: 0 0 20px rgba(102, 188, 135, 0.35);
+}
+
+/* Scroll hint */
+.scroll-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+.scroll-hint-line {
+  display: block;
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent);
+  animation: scroll-line 2.2s var(--ease-calm) infinite;
+}
+@keyframes scroll-line {
+  0% {
+    opacity: 0.2;
+    transform: scaleY(0.55);
+    transform-origin: top;
+  }
+  45% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0.35);
+    transform-origin: bottom;
+  }
+}
+
+.proof-dot {
+  box-shadow: 0 0 8px rgba(102, 188, 135, 0.55);
 }
 
 /* Eyebrow pill */
@@ -438,6 +548,39 @@ input:focus-visible,
 /* Unified reveal motion — used by Reveal.tsx via easeCalm */
 .motion-reveal {
   transition: opacity 0.8s var(--ease-calm), transform 0.8s var(--ease-calm);
+}
+
+.download-panel {
+  isolation: isolate;
+}
+.download-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.035) 50%,
+    transparent 58%
+  );
+  transform: translateX(-120%);
+  animation: panel-shine 9s var(--ease-calm) infinite;
+}
+@keyframes panel-shine {
+  0%,
+  72% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .download-panel::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* Experience simulator slider */
@@ -697,6 +840,11 @@ input:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .text-gradient-hero,
+  .hero-time::before,
+  .scroll-hint-line {
+    animation: none !important;
+  }
   html {
     scroll-behavior: auto;
   }
