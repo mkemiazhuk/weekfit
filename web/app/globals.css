@@ -917,7 +917,7 @@ input:focus-visible,
 }
 
 .blog-article--with-toc {
-  max-width: 61.75rem; /* 180px toc + 48px gap + 760px body */
+  max-width: 64rem; /* 200px toc + 64px gap + 760px body */
 }
 
 .blog-article-grid {
@@ -941,20 +941,23 @@ input:focus-visible,
 @media (min-width: 1024px) {
   .blog-article-grid--toc {
     display: grid;
-    grid-template-columns: 11.25rem minmax(0, 47.5rem);
-    column-gap: 3rem;
+    grid-template-columns: 12.5rem minmax(0, 47.5rem);
+    column-gap: 4rem;
     align-items: start;
   }
 
   .blog-article-grid--toc .blog-article-header {
     grid-column: 2;
+    grid-row: 1;
     max-width: none;
     margin-bottom: 2.75rem;
   }
 
   .blog-article-grid--toc .blog-article-toc {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1 / span 2;
+    align-self: start;
+    margin-left: -1rem;
   }
 
   .blog-article-grid--toc .blog-article-body {
@@ -968,14 +971,15 @@ input:focus-visible,
 /* Sticky section nav */
 .blog-article-toc__inner {
   position: sticky;
-  top: 7rem;
+  top: 6.5rem;
+  padding-top: 2.75rem;
 }
 
 .blog-toc-kicker {
-  margin: 0 0 1rem;
-  font-size: 11px;
+  margin: 0 0 1.125rem;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.38);
 }
@@ -990,7 +994,7 @@ input:focus-visible,
 .blog-toc-link {
   display: block;
   margin-left: -1px;
-  padding: 0.625rem 0 0.625rem 1rem;
+  padding: 0.5rem 0 0.875rem 1.125rem;
   border-left: 2px solid transparent;
   text-decoration: none;
   transition:
@@ -1008,11 +1012,11 @@ input:focus-visible,
 
 .blog-toc-index {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.32);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.34);
   transition: color 0.25s var(--ease-calm);
 }
 
@@ -1022,12 +1026,12 @@ input:focus-visible,
 
 .blog-toc-label {
   display: block;
-  margin-top: 0.125rem;
-  font-size: 13px;
+  margin-top: 0.1875rem;
+  font-size: 14.5px;
   font-weight: 500;
-  line-height: 1.35;
-  letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.38;
+  letter-spacing: -0.014em;
+  color: rgba(255, 255, 255, 0.5);
   transition: color 0.25s var(--ease-calm);
 }
 
@@ -1036,7 +1040,8 @@ input:focus-visible,
 }
 
 .blog-toc-link--active .blog-toc-label {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.94);
+  font-weight: 600;
 }
 
 .blog-article-meta {
