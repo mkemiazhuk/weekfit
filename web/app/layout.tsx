@@ -5,7 +5,6 @@ import SmoothScroll from "@/components/SmoothScroll";
 import AtmosphereBackground from "@/components/AtmosphereBackground";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { WaitlistProvider } from "@/lib/waitlist";
 import Analytics from "@/components/Analytics";
 import JsonLd from "@/components/JsonLd";
 import SkipLink from "@/components/SkipLink";
@@ -83,14 +82,12 @@ export default function RootLayout({
       <body className="min-h-full">
         <JsonLd data={entityGraphSchema()} />
         <I18nProvider>
-          <WaitlistProvider>
-            <SkipLink />
-            <SmoothScroll />
-            <AtmosphereBackground />
-            <Nav />
-            <main id="main-content">{children}</main>
-            <Footer />
-          </WaitlistProvider>
+          <SkipLink />
+          <SmoothScroll />
+          <AtmosphereBackground />
+          <Nav />
+          <main id="main-content">{children}</main>
+          <Footer />
         </I18nProvider>
         <Analytics />
       </body>
