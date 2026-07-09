@@ -39,6 +39,8 @@ export default function Nav() {
   const links = [
     { href: localePath("/"), label: t.nav.home },
     { href: localePath("/#experience"), label: t.nav.features },
+    { href: localePath("/blog"), label: t.nav.blog },
+    { href: localePath("/changelog"), label: t.nav.changelog },
     { href: localePath("/privacy"), label: t.nav.privacy },
     { href: localePath("/support"), label: t.nav.support },
   ];
@@ -58,12 +60,12 @@ export default function Nav() {
       >
         <Wordmark />
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-6 lg:gap-8 md:flex">
           {links.slice(1).map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-[14px] text-white/60 transition-colors hover:text-white"
+              className="text-[14px] text-white/60 transition-colors hover:text-white max-lg:text-[13px]"
             >
               {l.label}
             </a>

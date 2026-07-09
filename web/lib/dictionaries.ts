@@ -6,6 +6,8 @@ export const en = {
     privacy: "Privacy",
     download: "Download",
     support: "Support",
+    blog: "Blog",
+    changelog: "Changelog",
     menu: "Menu",
     closeMenu: "Close menu",
   },
@@ -156,8 +158,7 @@ export const en = {
     terms: "Terms",
     contact: "Contact",
     rights: "All rights reserved.",
-    disclaimer:
-      "WeekFit provides fitness and wellness guidance only and does not provide medical advice.",
+    disclaimer: "Fitness and wellness guidance only. Not medical advice.",
   },
 };
 
@@ -172,6 +173,8 @@ export const ru: Dict = {
     privacy: "Приватность",
     download: "Скачать",
     support: "Поддержка",
+    blog: "Блог",
+    changelog: "Обновления",
     menu: "Меню",
     closeMenu: "Закрыть меню",
   },
@@ -322,8 +325,7 @@ export const ru: Dict = {
     terms: "Условия",
     contact: "Контакты",
     rights: "Все права защищены.",
-    disclaimer:
-      "WeekFit даёт рекомендации по фитнесу и здоровому образу жизни и не заменяет консультацию врача.",
+    disclaimer: "Рекомендации по фитнесу и здоровью. Не медицинская консультация.",
   },
 };
 

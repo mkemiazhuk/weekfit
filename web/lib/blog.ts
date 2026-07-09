@@ -296,6 +296,166 @@ export const blogPosts: BlogPost[] = [
       ],
     },
   },
+  {
+    slug: "vo2-max-plain-language",
+    category: "training",
+    date: "2026-07-02",
+    readMinutes: 5,
+    title: {
+      en: "VO₂ max, in plain language",
+      ru: "VO₂ max простыми словами",
+    },
+    excerpt: {
+      en: "Apple Watch gives you a number. Here’s what it actually means — and what to do with it.",
+      ru: "Apple Watch показывает цифру. Что она значит — и что с ней делать.",
+    },
+    sections: {
+      en: [
+        {
+          id: "the-number",
+          h: "The number on your wrist",
+          blocks: [
+            {
+              t: "p",
+              v: "Open the Fitness app and you’ll see VO₂ max — a single number, usually somewhere between 30 and 60 for most adults. It looks precise. It feels official. And it’s easy to stare at it every Monday and wonder if you’re getting worse.",
+            },
+            {
+              t: "p",
+              v: "Here’s the simple version: VO₂ max is an estimate of how much oxygen your body can use during hard exercise. Higher generally means better cardiovascular fitness. Apple Watch calculates it from outdoor walks, runs and hikes — not from sitting at your desk.",
+            },
+          ],
+        },
+        {
+          id: "estimate-not-test",
+          h: "It’s an estimate — not a lab test",
+          blocks: [
+            {
+              t: "p",
+              v: "A real VO₂ max test involves a mask, a treadmill, and someone in a lab coat. Your watch does something clever but different: it watches your pace and heart rate during workouts and fits a model. Useful — absolutely. Identical to clinical testing — no.",
+            },
+            {
+              t: "p",
+              v: "That’s fine. You don’t need lab precision to know whether your cardio fitness is moving in the right direction. You need a consistent signal over weeks, not a perfect number on one Tuesday.",
+            },
+          ],
+        },
+        {
+          id: "what-changes-it",
+          h: "What actually moves the needle",
+          blocks: [
+            {
+              t: "p",
+              v: "VO₂ max tends to drift up when you do regular aerobic work — brisk walking, easy runs, cycling, anything that keeps your heart rate elevated for 20–40 minutes, several times a week. It drifts down when you stop, get sick, or pile on stress without recovery.",
+            },
+            {
+              t: "p",
+              v: "Age matters too. A number that would be average at 45 can look excellent at 65. Apple Health shows age and sex bands for a reason — compare yourself to your demographic, not to a 25-year-old runner on Instagram.",
+            },
+          ],
+        },
+        {
+          id: "dont-chase",
+          h: "What not to do",
+          blocks: [
+            {
+              t: "p",
+              v: "Don’t sprint every workout trying to bump the score. Don’t ignore recovery because the number dipped after a hard week. A drop after illness, travel, or a block of intense training is normal — it’s your body, not a broken watch.",
+            },
+            {
+              t: "p",
+              v: "And don’t treat VO₂ max as a health diagnosis. It’s one lens on fitness. Sleep, resting heart rate, HRV, and how you actually feel matter just as much for deciding what today should look like.",
+            },
+          ],
+        },
+        {
+          id: "weekfit-context",
+          h: "How it fits your day",
+          blocks: [
+            {
+              t: "p",
+              v: "WeekFit reads VO₂ max from Apple Health alongside sleep, recovery and activity. It doesn’t worship the number — it puts it in context. Strong VO₂ max with poor sleep still means take it easy. Moderate VO₂ max after a great night might mean go for that run.",
+            },
+            {
+              t: "p",
+              v: "The point isn’t another metric to optimise. It’s knowing how your cardio base fits with everything else — so you train when it helps, and back off when it doesn’t.",
+            },
+          ],
+        },
+      ],
+      ru: [
+        {
+          id: "the-number",
+          h: "Цифра на запястье",
+          blocks: [
+            {
+              t: "p",
+              v: "Откройте «Фитнес» — там VO₂ max: одно число, обычно где-то между 30 и 60. Выглядит точно. Хочется каждый понедельник проверять, не стало ли хуже.",
+            },
+            {
+              t: "p",
+              v: "Простыми словами: VO₂ max — оценка того, сколько кислорода тело может использовать при нагрузке. Чем выше, тем лучше выносливость. Apple Watch считает это по прогулкам, бегу и походам на улице — не за рабочим столом.",
+            },
+          ],
+        },
+        {
+          id: "estimate-not-test",
+          h: "Это оценка, не лаборатория",
+          blocks: [
+            {
+              t: "p",
+              v: "Настоящий тест — маска, беговая дорожка, лаборатория. Часы делают другое, но полезное: смотрят на темп и пульс во время тренировок и подгоняют модель. Точно для тренда — да. Как в клинике — нет.",
+            },
+            {
+              t: "p",
+              v: "И это нормально. Для понимания, куда движется форма, нужны недели стабильных данных — не идеальная цифра во вторник.",
+            },
+          ],
+        },
+        {
+          id: "what-changes-it",
+          h: "Что реально влияет",
+          blocks: [
+            {
+              t: "p",
+              v: "VO₂ max растёт, когда вы регулярно делаете аэробику — быстрая ходьба, лёгкий бег, велик, 20–40 минут несколько раз в неделю. Падает, когда останавливаетесь, болеете или копите усталость без восстановления.",
+            },
+            {
+              t: "p",
+              v: "Возраст тоже важен. Средний показатель в 45 и в 65 — разные истории. Apple Health показывает возрастные группы не просто так — сравнивайте себя с собой и своей группой, а не с блогером-марафонцем.",
+            },
+          ],
+        },
+        {
+          id: "dont-chase",
+          h: "Чего не стоит делать",
+          blocks: [
+            {
+              t: "p",
+              v: "Не нужно каждую тренировку рвать ради цифры. Не игнорируйте восстановление, если показатель просел после тяжёлой недели. Спад после болезни, поездки или блока нагрузки — нормален. Это тело, не сломанные часы.",
+            },
+            {
+              t: "p",
+              v: "И не воспринимайте VO₂ max как диагноз. Это один ракурс. Сон, пульс покоя, ВСР и самочувствие не менее важны, когда решаете, как выглядит сегодняшний день.",
+            },
+          ],
+        },
+        {
+          id: "weekfit-context",
+          h: "Как это ложится на ваш день",
+          blocks: [
+            {
+              t: "p",
+              v: "WeekFit читает VO₂ max из Apple Health вместе со сном, восстановлением и активностью. Не поклоняется цифре — ставит её в контекст. Высокий VO₂ max при плохом сне — повод не форсировать. Средний VO₂ max после хорошей ночи — можно идти на пробежку.",
+            },
+            {
+              t: "p",
+              v: "Смысл не в ещё одной метрике для оптимизации. А в том, чтобы понимать, как выносливость сочетается со всем остальным — и тренироваться, когда это помогает, а не когда «надо поднять число».",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export const blogCopy: Record<

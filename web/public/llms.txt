@@ -42,6 +42,8 @@
 - https://weekfit.app/ru/blog/
 - https://weekfit.app/blog/recovery/what-is-a-recovery-score/
 - https://weekfit.app/ru/blog/recovery/what-is-a-recovery-score/
+- https://weekfit.app/blog/training/vo2-max-plain-language/
+- https://weekfit.app/ru/blog/training/vo2-max-plain-language/
 - https://weekfit.app/changelog/
 - https://weekfit.app/ru/changelog/
 
