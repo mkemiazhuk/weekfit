@@ -6,25 +6,40 @@ import { useReducedMotion } from "framer-motion";
 import type { TocItem } from "@/components/DocLayout";
 
 /** Fixed nav height + breathing room — matches scroll-margin on .prose-blog h2 */
-const SCROLL_OFFSET = 104;
+const READ_LINE = 104;
+
+function headingTop(id: string): number | null {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  return el.getBoundingClientRect().top;
+}
 
 function resolveActiveSection(items: TocItem[]): string | undefined {
   if (!items.length) return undefined;
 
-  const marker = window.scrollY + SCROLL_OFFSET;
-  let active = items[0].id;
-
-  for (const item of items) {
-    const el = document.getElementById(item.id);
-    if (!el) continue;
-
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    if (top <= marker + 2) {
-      active = item.id;
+  const body = document.querySelector(".blog-article-body");
+  if (body) {
+    const bodyBottom = body.getBoundingClientRect().bottom;
+    if (bodyBottom <= window.innerHeight + 48) {
+      return items[items.length - 1].id;
     }
   }
 
-  return active;
+  let closestId = items[0].id;
+  let closestDist = Infinity;
+
+  for (const item of items) {
+    const top = headingTop(item.id);
+    if (top === null) continue;
+
+    const dist = Math.abs(top - READ_LINE);
+    if (dist < closestDist) {
+      closestDist = dist;
+      closestId = item.id;
+    }
+  }
+
+  return closestId;
 }
 
 export default function BlogArticleToc({
@@ -69,7 +84,7 @@ export default function BlogArticleToc({
       const el = document.getElementById(id);
       if (!el) return;
       setActive(id);
-      const top = el.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
+      const top = el.getBoundingClientRect().top + window.scrollY - READ_LINE;
       window.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
     },
     [reduce]

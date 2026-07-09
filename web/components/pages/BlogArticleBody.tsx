@@ -182,8 +182,8 @@ export default function BlogArticleBody({ sections }: { sections: DocSection[] }
   return (
     <>
       {sections.map((s, si) => (
-        <section key={s.id} id={s.id}>
-          {s.h ? <h2>{s.h}</h2> : null}
+        <section key={s.id}>
+          {s.h ? <h2 id={s.id}>{s.h}</h2> : null}
           {s.blocks.map((b, i) => (
             <BlockView key={`${s.id}-${i}`} block={b} lead={si === 0 && i === 0 && b.t === "p"} />
           ))}
