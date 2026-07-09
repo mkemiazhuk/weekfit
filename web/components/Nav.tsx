@@ -57,10 +57,14 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 md:h-16 md:gap-3 md:section-x"
+        className="mx-auto grid h-14 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 px-4 md:flex md:h-16 md:justify-between md:gap-3 md:section-x"
       >
-        <Wordmark size="navMobile" className="min-w-0 shrink md:hidden" />
-        <Wordmark size="nav" className="hidden min-w-0 shrink md:inline-flex" />
+        <div className="min-w-0 md:hidden">
+          <Wordmark size="navMobile" />
+        </div>
+        <div className="hidden min-w-0 md:block">
+          <Wordmark size="nav" />
+        </div>
 
         <div className="hidden items-center gap-6 lg:gap-8 md:flex">
           {links.slice(1).map((l) => (
@@ -74,29 +78,21 @@ export default function Nav() {
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
-          <div className="md:hidden">
-            <LangToggle compact />
-          </div>
-          <div className="hidden md:block">
+        <div className="flex items-center justify-end gap-1.5 md:gap-3">
+          <div className="max-md:[&_.lang-toggle-btn]:px-1.5 max-md:[&_.lang-toggle-btn]:py-0.5 max-md:[&_.lang-toggle-btn]:text-[10px]">
             <LangToggle />
           </div>
-          <Button
-            href={SITE.appInstallUrl}
-            external
-            size="xs"
-            className="shrink-0 md:hidden"
-          >
-            {t.cta.testflight}
-          </Button>
-          <Button
-            href={SITE.appInstallUrl}
-            external
-            size="sm"
-            className="hidden md:inline-flex"
-          >
-            {t.cta.testflight}
-          </Button>
+
+          <div className="md:hidden">
+            <Button href={SITE.appInstallUrl} external size="xs">
+              {t.cta.testflight}
+            </Button>
+          </div>
+          <div className="hidden md:block">
+            <Button href={SITE.appInstallUrl} external size="sm">
+              {t.cta.testflight}
+            </Button>
+          </div>
 
           <button
             type="button"
@@ -140,7 +136,7 @@ export default function Nav() {
             transition={{ duration: reduce ? 0.15 : 0.28, ease: easeCalm }}
             className="md:hidden"
           >
-            <nav aria-label="Mobile" className="mx-auto max-w-6xl section-x pb-6 pt-2">
+            <nav aria-label="Mobile" className="mx-auto max-w-6xl px-4 pb-6 pt-2">
               <ul className="flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
                 {links.map((l) => (
                   <li key={l.href}>

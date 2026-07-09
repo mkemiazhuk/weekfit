@@ -166,17 +166,15 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
-/* Brand lockup — web mark in nav/footer; full app icon on press/download */
-.wordmark-mark-web {
+/* Brand lockup — subtle app icon in chrome; gold frame on press kit only */
+.wordmark-icon-subtle {
   border-radius: 22%;
-  transition:
-    filter 0.3s var(--ease-calm),
-    box-shadow 0.3s var(--ease-calm);
+  opacity: 0.92;
+  transition: opacity 0.3s var(--ease-calm);
 }
-.group:hover .wordmark-mark-web,
-.group:focus-visible .wordmark-mark-web {
-  filter: brightness(1.08);
-  box-shadow: 0 0 20px -6px rgba(46, 219, 250, 0.35);
+.group:hover .wordmark-icon-subtle,
+.group:focus-visible .wordmark-icon-subtle {
+  opacity: 1;
 }
 
 .wordmark-icon-app {
@@ -1125,7 +1123,19 @@ input:focus-visible,
   }
 
   .footer-composition {
-    gap: 1.1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.25rem;
+    row-gap: 1rem;
+    align-items: start;
+  }
+
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+
+  .footer-nav-group:last-child {
+    grid-column: 1 / -1;
   }
 
   .footer-brand__tagline {

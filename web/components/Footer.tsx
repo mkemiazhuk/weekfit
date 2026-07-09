@@ -87,8 +87,7 @@ export default function Footer() {
 
         <div className="footer-composition">
           <div className="footer-brand">
-            <Wordmark size="navMobile" className="footer-brand__logo md:hidden" />
-            <Wordmark size="footer" className="footer-brand__logo hidden md:inline-flex" />
+            <Wordmark size="footer" className="footer-brand__logo" />
             <p className="footer-brand__tagline">{t.footer.tagline}</p>
             <ul className="footer-socials" aria-label={t.footer.socialLabel}>
               {xUrl && (
