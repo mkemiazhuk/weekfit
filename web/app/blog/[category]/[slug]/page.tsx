@@ -2,22 +2,25 @@ import {
   BlogArticleRoute,
   buildArticleMetadata,
   generateStaticParams,
+  resolveBlogArticleParams,
 } from "@/lib/blog-page";
 
 export { generateStaticParams };
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
-  params: { category: string; slug: string };
+  params: Promise<{ category: string; slug: string }>;
 }) {
-  return buildArticleMetadata("en", params);
+  const resolved = await resolveBlogArticleParams(params);
+  return buildArticleMetadata("en", resolved);
 }
 
-export default function Page({
+export default async function Page({
   params,
 }: {
-  params: { category: string; slug: string };
+  params: Promise<{ category: string; slug: string }>;
 }) {
-  return <BlogArticleRoute locale="en" params={params} />;
+  const resolved = await resolveBlogArticleParams(params);
+  return <BlogArticleRoute locale="en" params={resolved} />;
 }

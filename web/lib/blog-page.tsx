@@ -11,11 +11,19 @@ import { blogPostingSchema, breadcrumbSchema } from "@/lib/schema";
 import { breadcrumbHome } from "@/lib/page-factory";
 import type { Locale } from "@/lib/locale";
 
+export type BlogArticleParams = { category: string; slug: string };
+
 export function generateStaticParams() {
   return blogStaticParams();
 }
 
-function buildArticlePage(locale: Locale, params: { category: string; slug: string }) {
+export async function resolveBlogArticleParams(
+  params: BlogArticleParams | Promise<BlogArticleParams>
+): Promise<BlogArticleParams> {
+  return Promise.resolve(params);
+}
+
+function buildArticlePage(locale: Locale, params: BlogArticleParams) {
   const post = getBlogPost(params.category, params.slug);
   if (!post) notFound();
 
@@ -48,10 +56,7 @@ function buildArticlePage(locale: Locale, params: { category: string; slug: stri
   );
 }
 
-export function buildArticleMetadata(
-  locale: Locale,
-  params: { category: string; slug: string }
-) {
+export function buildArticleMetadata(locale: Locale, params: BlogArticleParams) {
   const post = getBlogPost(params.category, params.slug);
   if (!post) return {};
   return pageMetadata({
@@ -67,7 +72,7 @@ export function BlogArticleRoute({
   params,
 }: {
   locale: Locale;
-  params: { category: string; slug: string };
+  params: BlogArticleParams;
 }) {
   return buildArticlePage(locale, params);
 }
