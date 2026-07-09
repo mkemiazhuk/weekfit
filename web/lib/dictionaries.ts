@@ -262,7 +262,7 @@ export const en = {
   },
   seo: {
     kicker: "What is WeekFit",
-    title: "An AI fitness coach for Apple Health.",
+    title: "Your AI coach, powered by Apple Health.",
     p1: "One clear call for today — what to do now, why it matters, and how to adjust.",
     privacy: "Private, on your device.",
     healthLabel: "Data source",
@@ -630,7 +630,7 @@ export const ru: Dict = {
   },
   seo: {
     kicker: "Что такое WeekFit",
-    title: "AI-коуч для Apple Health.",
+    title: "Ваш AI-коуч на основе Apple Health.",
     p1: "Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться.",
     privacy: "Приватно, на устройстве.",
     healthLabel: "Источник данных",
