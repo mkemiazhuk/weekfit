@@ -348,7 +348,7 @@ export const en = {
     terms: "Terms",
     contact: "Contact",
     rights: "All rights reserved.",
-    disclaimer: "Fitness and wellness guidance only. Not medical advice.",
+    disclaimer: "Not medical advice.",
     trustLabel: "Trust and privacy",
     trust: {
       data: "Your data is yours",
@@ -711,7 +711,7 @@ export const ru: Dict = {
     terms: "Условия",
     contact: "Контакты",
     rights: "Все права защищены.",
-    disclaimer: "Рекомендации по фитнесу и здоровью. Не медицинская консультация.",
+    disclaimer: "Не мед. консультация.",
     trustLabel: "Доверие и приватность",
     trust: {
       data: "Ваши данные — ваши",
