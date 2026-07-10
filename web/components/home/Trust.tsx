@@ -45,7 +45,7 @@ export default function Trust() {
     <section id="privacy-teaser" className="relative z-[1] section-x section-y-lg">
       <SectionAmbient tone="privacy" />
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-14 md:grid-cols-[0.85fr_1.15fr] md:items-start">
+        <div className="grid gap-14 md:grid-cols-[0.85fr_1.15fr] md:items-start md:gap-16">
           <div className="md:sticky md:top-32">
             <Reveal>
               <span className="kicker text-hydration">{t.trust.kicker}</span>
@@ -72,7 +72,7 @@ export default function Trust() {
           <div className="grid gap-3.5 sm:grid-cols-2">
             {items.map((it, i) => (
               <Reveal key={it.key} delay={0.05 * i}>
-                <div className="premium-card card glass h-full p-5">
+                <div className="premium-card surface-quiet h-full p-5">
                   <div
                     className="icon-tile icon-tile-accent"
                     style={{ "--accent-color": it.color } as React.CSSProperties}

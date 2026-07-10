@@ -196,7 +196,7 @@ export default function TuesdaySimulator() {
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="sim-preset rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-left sm:text-center"
+                    className="sim-preset rounded-full border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-left transition-[color,background,border-color] duration-[var(--duration-micro)] sm:text-center"
                   >
                     {s.presets[preset.id as keyof typeof s.presets]}
                   </button>
@@ -206,23 +206,22 @@ export default function TuesdaySimulator() {
             </div>
           </div>
 
-          <div className="relative min-h-[28rem] lg:min-h-[32rem]">
+          <div className="sim-result-stack">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={result.decision}
-                initial={reduce ? false : { opacity: 0, y: 8 }}
+                initial={reduce ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? undefined : { opacity: 0, y: -6 }}
+                exit={reduce ? undefined : { opacity: 0, y: -8 }}
                 transition={{ duration: durationCard, ease: easeCalm }}
                 className="sim-result-panel card-panel card-panel-compact glass"
                 style={{ "--sim-accent": `${result.accent}22` } as React.CSSProperties}
               >
-                <div className="relative">
+                <div className="relative flex h-full flex-col">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="kicker-sm">{s.resultKicker}</p>
-                    <motion.span
-                      layout
-                      className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide"
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide transition-colors duration-[var(--duration-micro)]"
                       style={{
                         color: result.accent,
                         background: `${result.accent}14`,
@@ -230,58 +229,52 @@ export default function TuesdaySimulator() {
                       }}
                     >
                       {categoryLabel}
-                    </motion.span>
+                    </span>
                   </div>
 
-                  <motion.p
-                    key={`${result.decision}-headline`}
-                    initial={reduce ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: durationUI, ease: easeCalm, delay: 0.04 }}
-                    className="display mt-2.5 text-[clamp(1.35rem,3.8vw,2.25rem)] leading-[1.08]"
-                    style={{ color: result.accent }}
-                  >
-                    {copy.headline}
-                  </motion.p>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={`${result.decision}-copy`}
+                      initial={reduce ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduce ? undefined : { opacity: 0, y: -6 }}
+                      transition={{ duration: durationUI, ease: easeCalm }}
+                      className="sim-result-copy mt-2.5 flex-1"
+                    >
+                      <p
+                        className="display text-[clamp(1.35rem,3.8vw,2.25rem)] leading-[1.08]"
+                        style={{ color: result.accent }}
+                      >
+                        {copy.headline}
+                      </p>
 
-                  <motion.p
-                    key={`${result.decision}-subline`}
-                    initial={reduce ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: durationUI, ease: easeCalm, delay: 0.08 }}
-                    className="body-md mt-2 text-white/52"
-                  >
-                    {copy.subline}
-                  </motion.p>
+                      <p className="body-md mt-2 text-white/52">{copy.subline}</p>
 
-                  <div className="mt-5 border-t border-white/[0.06] pt-5">
-                    <ReadinessRing
-                      value={result.readiness}
-                      accent={result.accent}
-                      label={s.readinessLabel}
-                      animate={!reduce}
-                    />
-                  </div>
+                      <div className="mt-5 border-t border-white/[0.06] pt-5">
+                        <ReadinessRing
+                          value={result.readiness}
+                          accent={result.accent}
+                          label={s.readinessLabel}
+                          animate={!reduce}
+                        />
+                      </div>
 
-                  <motion.div
-                    initial={reduce ? false : { opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: durationCard, ease: easeCalm, delay: 0.1 }}
-                    className="mt-5 border-t border-white/[0.06] pt-5"
-                  >
-                    <CoachAdviceList
-                      advice={{
-                        matters: copy.matters,
-                        do: copy.do,
-                        avoid: copy.avoid,
-                        next: copy.next,
-                        why: copy.why,
-                      }}
-                      labels={adviceLabels}
-                      decision
-                      compact
-                    />
-                  </motion.div>
+                      <div className="mt-5 border-t border-white/[0.06] pt-5">
+                        <CoachAdviceList
+                          advice={{
+                            matters: copy.matters,
+                            do: copy.do,
+                            avoid: copy.avoid,
+                            next: copy.next,
+                            why: copy.why,
+                          }}
+                          labels={adviceLabels}
+                          decision
+                          compact
+                        />
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </AnimatePresence>

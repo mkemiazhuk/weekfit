@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import React from "react";
-import { easeCalm, durationReveal } from "@/lib/motion";
+import { easeReveal, durationReveal } from "@/lib/motion";
 
 interface RevealProps {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export default function Reveal({
       whileInView={shown}
       viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
       transition={
-        reduce ? { duration: 0 } : { duration: durationReveal, ease: easeCalm, delay }
+        reduce ? { duration: 0 } : { duration: durationReveal, ease: easeReveal, delay }
       }
     >
       {children}

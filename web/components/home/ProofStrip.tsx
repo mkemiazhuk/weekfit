@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import { easeCalm, durationUI } from "@/lib/motion";
+import { easeReveal, durationUI } from "@/lib/motion";
 
 export default function ProofStrip() {
   const { t } = useI18n();
@@ -11,7 +11,7 @@ export default function ProofStrip() {
   return (
     <section
       aria-label={t.proof.ariaLabel}
-      className="relative z-[1] border-y border-white/[0.06] bg-white/[0.015]"
+      className="relative z-[1] border-y border-white/[0.05] bg-white/[0.012]"
     >
       <div
         aria-hidden
@@ -25,7 +25,7 @@ export default function ProofStrip() {
               initial={reduce ? {} : { opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-10% 0px" }}
-              transition={{ duration: durationUI, ease: easeCalm, delay: i * 0.06 }}
+              transition={{ duration: durationUI, ease: easeReveal, delay: i * 0.05 }}
               className="proof-strip flex items-center gap-2.5 border-white/[0.06] md:justify-center md:border-l md:px-6 md:first:border-l-0"
             >
               <span

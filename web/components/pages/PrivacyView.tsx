@@ -2,65 +2,57 @@
 
 import { useI18n } from "@/lib/i18n";
 import { privacy } from "@/lib/content";
-import { pillars } from "@/lib/tokens";
+import { pillars, accents } from "@/lib/tokens";
 import PageHero from "../PageHero";
 import DocLayout from "../DocLayout";
 import DocArticle from "./DocArticle";
 import Reveal from "../Reveal";
 import Icon from "../Icon";
+import AppleHealthMark from "../AppleHealthMark";
 
 export default function PrivacyView() {
   const { lang } = useI18n();
   const c = privacy[lang];
 
   const flow = [
-    { icon: "health" as const, color: pillars.nutrition, text: c.flow.from },
-    { icon: "shield" as const, color: pillars.recovery, text: c.flow.on },
-    { icon: "sparkles" as const, color: pillars.activity, text: c.flow.never },
+    { icon: "health" as const, color: accents.appleHealth, text: c.flow.from, apple: true },
+    { icon: "shield" as const, color: pillars.recovery, text: c.flow.on, apple: false },
+    { icon: "sparkles" as const, color: pillars.activity, text: c.flow.never, apple: false },
   ];
 
   return (
     <>
       <PageHero
         kicker={c.kicker}
-        kickerColor={pillars.hydration}
+        kickerColor={pillars.recovery}
         title={c.title}
         lead={c.lead}
       />
 
-      {/* Visual data-flow */}
       <div className="mx-auto max-w-4xl section-x pb-20">
         <Reveal>
-          <p className="kicker mb-6 text-center text-white/40">
-            {c.flowTitle}
-          </p>
-          <div className="grid gap-4 md:grid-cols-3">
+          <p className="kicker mb-6 text-center text-white/42">{c.flowTitle}</p>
+          <div className="privacy-flow-grid">
             {flow.map((f, i) => (
-              <div
-                key={i}
-                className="card glass p-6 text-center"
-              >
+              <div key={i} className="privacy-flow-card">
                 <span
-                  className="icon-tile mx-auto h-12 w-12 rounded-button"
-                  style={{ background: `${f.color}1f`, border: `1px solid ${f.color}33` }}
+                  className="privacy-flow-card__icon"
+                  style={{ "--accent-color": f.color } as React.CSSProperties}
                 >
-                  <Icon name={f.icon} color={f.color} size={24} />
+                  {f.apple ? (
+                    <AppleHealthMark size={22} />
+                  ) : (
+                    <Icon name={f.icon} color={f.color} size={22} />
+                  )}
                 </span>
-                <p className="mt-4 text-[14px] leading-relaxed text-white/70">
-                  {f.text}
-                </p>
-                {i < flow.length - 1 && (
-                  <span className="absolute -right-3 top-1/2 hidden -translate-y-1/2 text-white/25 md:block">
-                    →
-                  </span>
-                )}
+                <p className="privacy-flow-card__text">{f.text}</p>
               </div>
             ))}
           </div>
         </Reveal>
       </div>
 
-      <p className="mb-10 text-center text-[13px] text-white/40">{c.updated}</p>
+      <p className="privacy-updated mb-10 text-center">{c.updated}</p>
 
       <DocLayout
         tocTitle={c.tocTitle}

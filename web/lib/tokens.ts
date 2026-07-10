@@ -19,6 +19,7 @@ export const pastels = {
 export const accents = {
   gold: "#f5bf5c",
   brand: "#66bc87",
+  appleHealth: "#ff2d55",
 } as const;
 
 export type RGB = [number, number, number];
