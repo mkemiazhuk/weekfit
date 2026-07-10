@@ -68,16 +68,15 @@ export default function Hero() {
           transition={reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeReveal, delay: 0.22 }}
         >
           <HeroDeviceShowcase
-            phoneSrc="/img/today.jpg"
-            phoneAlt="WeekFit Today screen with the morning decision"
             priority
+            launchBadge={t.hero.launchBadge}
             watchScreen={
               <WatchCoachScreen
-                accent={pillars.coach}
-                state="Ready"
-                title={t.hero.coachTitle}
-                body={t.hero.coachBody}
-                coachLabel={t.coachAdvice.label}
+                accent={pillars.activity}
+                state={t.hero.watchState}
+                title={t.hero.watchTitle}
+                body={t.hero.watchBody}
+                coachLabel={t.hero.watchLabel}
               />
             }
           />
