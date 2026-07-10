@@ -106,6 +106,7 @@ export default function Nav() {
   ];
 
   return (
+    <>
     <header
       className={clsx(
         "site-header fixed inset-x-0 top-0 z-50 transition-[border-color,background-color,box-shadow] duration-[var(--duration-surface)] ease-[cubic-bezier(0.22,1,0.36,1)]",
@@ -181,71 +182,72 @@ export default function Nav() {
           </button>
         </div>
       </nav>
-
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.button
-              type="button"
-              aria-label={t.nav.closeMenu}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: reduce ? 0.12 : 0.22, ease: easeCalm }}
-              className="mobile-menu-scrim fixed inset-0 z-[48] touch-manipulation border-0 md:hidden"
-              onClick={closeMenu}
-            />
-            <motion.div
-              id="mobile-menu"
-              ref={menuPanelRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label={t.nav.menu}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
-              transition={{ duration: reduce ? 0.12 : 0.28, ease: easeCalm }}
-              className="mobile-menu-panel fixed inset-x-0 bottom-0 z-[49] flex flex-col overflow-y-auto overscroll-contain md:hidden"
-            >
-              <nav aria-label="Mobile" className="mobile-menu-panel__inner mx-auto flex w-full max-w-6xl flex-1 flex-col section-x">
-                <ul className="mobile-menu-links flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
-                  {mobileMenuLinks.map((l) => (
-                    <li key={l.href}>
-                      <a
-                        href={l.href}
-                        onClick={closeMenu}
-                        className="mobile-menu-link flex min-h-11 items-center justify-between py-3 text-[17px] font-medium text-white/82 transition-colors hover:text-white active:text-white"
-                      >
-                        {l.label}
-                        <span aria-hidden className="text-white/30">
-                          →
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mobile-menu-lang mt-6">
-                  <p className="caption mb-2.5 text-white/38">
-                    {t.nav.menu === "Menu" ? "Language" : "Язык"}
-                  </p>
-                  <LangToggle variant="menu" />
-                </div>
-
-                <Button
-                  href={SITE.appInstallUrl}
-                  external
-                  size="md"
-                  className="mobile-menu-cta mt-8 w-full"
-                  onClick={closeMenu}
-                >
-                  {t.cta.testflight}
-                </Button>
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </header>
+
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.button
+            type="button"
+            aria-label={t.nav.closeMenu}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduce ? 0.12 : 0.22, ease: easeCalm }}
+            className="mobile-menu-scrim fixed inset-0 z-[45] touch-manipulation border-0 md:hidden"
+            onClick={closeMenu}
+          />
+          <motion.div
+            id="mobile-menu"
+            ref={menuPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.nav.menu}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            transition={{ duration: reduce ? 0.12 : 0.28, ease: easeCalm }}
+            className="mobile-menu-panel fixed inset-x-0 bottom-0 z-[48] flex flex-col overflow-y-auto overscroll-contain md:hidden"
+          >
+            <nav aria-label="Mobile" className="mobile-menu-panel__inner mx-auto flex w-full max-w-6xl flex-1 flex-col section-x">
+              <ul className="mobile-menu-links flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
+                {mobileMenuLinks.map((l) => (
+                  <li key={l.href}>
+                    <a
+                      href={l.href}
+                      onClick={closeMenu}
+                      className="mobile-menu-link flex min-h-11 items-center justify-between py-3 text-[17px] font-medium text-white/82 transition-colors hover:text-white active:text-white"
+                    >
+                      {l.label}
+                      <span aria-hidden className="text-white/30">
+                        →
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mobile-menu-lang mt-6">
+                <p className="caption mb-2.5 text-white/38">
+                  {t.nav.menu === "Menu" ? "Language" : "Язык"}
+                </p>
+                <LangToggle variant="menu" />
+              </div>
+
+              <Button
+                href={SITE.appInstallUrl}
+                external
+                size="md"
+                className="mobile-menu-cta mt-8 w-full"
+                onClick={closeMenu}
+              >
+                {t.cta.testflight}
+              </Button>
+            </nav>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+    </>
   );
 }

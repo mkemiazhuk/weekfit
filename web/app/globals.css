@@ -131,7 +131,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
-  --site-header-offset: calc(3.75rem + var(--safe-top));
+  --site-header-offset: calc(3.5rem + var(--safe-top));
   --page-pb: 7rem;
   --measure-narrow: 32ch;
   --measure-prose: 42rem;
