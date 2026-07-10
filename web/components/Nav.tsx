@@ -101,6 +101,8 @@ export default function Nav() {
   const mobileMenuLinks = [
     { href: localePath("/"), label: t.nav.home },
     { href: localePath("/#experience"), label: t.nav.features },
+    { href: localePath("/experience"), label: t.nav.simulator },
+    { href: localePath("/blog"), label: t.nav.blog },
     { href: localePath("/privacy"), label: t.nav.privacy },
     { href: localePath("/support"), label: t.nav.support },
   ];
@@ -209,40 +211,67 @@ export default function Nav() {
             transition={{ duration: reduce ? 0.12 : 0.28, ease: easeCalm }}
             className="mobile-menu-panel fixed inset-x-0 bottom-0 z-[48] flex flex-col overflow-y-auto overscroll-contain md:hidden"
           >
-            <nav aria-label="Mobile" className="mobile-menu-panel__inner mx-auto flex w-full max-w-6xl flex-1 flex-col section-x">
-              <ul className="mobile-menu-links flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
-                {mobileMenuLinks.map((l) => (
-                  <li key={l.href}>
-                    <a
-                      href={l.href}
-                      onClick={closeMenu}
-                      className="mobile-menu-link flex min-h-11 items-center justify-between py-3 text-[17px] font-medium text-white/82 transition-colors hover:text-white active:text-white"
-                    >
-                      {l.label}
-                      <span aria-hidden className="text-white/30">
-                        →
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+            <nav
+              aria-label="Mobile"
+              className="mobile-menu-panel__inner mx-auto flex w-full max-w-6xl flex-1 flex-col section-x"
+            >
+              <div className="mobile-menu-atmosphere" aria-hidden />
 
-              <div className="mobile-menu-lang mt-6">
-                <p className="caption mb-2.5 text-white/38">
-                  {t.nav.menu === "Menu" ? "Language" : "Язык"}
-                </p>
-                <LangToggle variant="menu" />
+              <div className="mobile-menu-links-card">
+                <p className="mobile-menu-kicker">{t.nav.menu}</p>
+                <ul className="mobile-menu-links">
+                  {mobileMenuLinks.map((l, i) => (
+                    <motion.li
+                      key={l.href}
+                      initial={reduce ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: reduce ? 0 : 0.05 + i * 0.035,
+                        duration: reduce ? 0 : 0.32,
+                        ease: easeCalm,
+                      }}
+                    >
+                      <a
+                        href={l.href}
+                        onClick={closeMenu}
+                        className="mobile-menu-link"
+                      >
+                        <span>{l.label}</span>
+                        <span className="mobile-menu-link__chev" aria-hidden>
+                          <svg viewBox="0 0 16 16" width={14} height={14} fill="none">
+                            <path
+                              d="M6 4l4 4-4 4"
+                              stroke="currentColor"
+                              strokeWidth={1.5}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </a>
+                    </motion.li>
+                  ))}
+                </ul>
               </div>
 
-              <Button
-                href={SITE.appInstallUrl}
-                external
-                size="md"
-                className="mobile-menu-cta mt-8 w-full"
-                onClick={closeMenu}
-              >
-                {t.cta.testflight}
-              </Button>
+              <div className="mobile-menu-footer">
+                <div className="mobile-menu-util">
+                  <p className="mobile-menu-kicker">
+                    {t.nav.menu === "Menu" ? "Language" : "Язык"}
+                  </p>
+                  <LangToggle variant="menu" />
+                </div>
+
+                <Button
+                  href={SITE.appInstallUrl}
+                  external
+                  size="md"
+                  className="mobile-menu-cta btn-premium-glass w-full"
+                  onClick={closeMenu}
+                >
+                  {t.cta.testflight}
+                </Button>
+              </div>
             </nav>
           </motion.div>
         </>

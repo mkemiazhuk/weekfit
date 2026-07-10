@@ -35,8 +35,12 @@ export const SITE = {
 
   social: {
     x: "https://x.com/weekfit",
-    instagram: "https://instagram.com/weekfit",
+    /** Canonical Instagram profile (redirect target + schema sameAs). */
+    instagram: "https://www.instagram.com/weekfit/",
   },
+
+  /** On-site short link for bio, QR codes, and footer. */
+  instagramRedirectPath: "/instagram/",
 
   /** Single install URL for CTAs and SoftwareApplication.downloadUrl. Swap at App Store launch. */
   appInstallUrl: "https://testflight.apple.com/join/t5TKwEff",
@@ -47,7 +51,7 @@ export const SITE = {
   /** Official entity profiles (Organization.sameAs). */
   sameAs: [
     "https://x.com/weekfit",
-    "https://instagram.com/weekfit",
+    "https://www.instagram.com/weekfit/",
   ] as const,
 
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",

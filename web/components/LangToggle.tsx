@@ -19,7 +19,7 @@ export default function LangToggle({ variant = "default" }: { variant?: "default
       className={clsx(
         "lang-toggle inline-flex shrink-0 rounded-full border p-0.5",
         isMenu
-          ? "lang-toggle--menu w-full max-w-[12.5rem] border-white/[0.08] bg-white/[0.04]"
+          ? "lang-toggle--menu w-full border-white/[0.08] bg-white/[0.04]"
           : "border-white/10 bg-white/[0.03]"
       )}
     >

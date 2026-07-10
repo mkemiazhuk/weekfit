@@ -72,7 +72,7 @@ export default function Footer() {
   ];
 
   const xUrl = SITE.social.x;
-  const instagramUrl = SITE.social.instagram;
+  const instagramUrl = SITE.instagramRedirectPath;
 
   return (
     <footer className="footer-premium" aria-labelledby="footer-heading">

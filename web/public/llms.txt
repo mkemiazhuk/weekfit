@@ -51,6 +51,11 @@
 
 - TestFlight: https://testflight.apple.com/join/t5TKwEff
 
+## Social
+
+- Instagram: https://weekfit.app/instagram/
+- X: https://x.com/weekfit
+
 ## Google Search
 
 - Preferred source deeplink: https://google.com/preferences/source?q=weekfit.app
