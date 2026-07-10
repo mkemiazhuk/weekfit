@@ -58,7 +58,7 @@ export default function Download() {
             <div className="download-hero__copy text-center md:text-left">
               <motion.h2
                 {...copy(0, 18)}
-                className="font-rounded text-[clamp(2.35rem,5.5vw,3.75rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white/92"
+                className="hero-title display text-white/92"
               >
                 {t.cta.title}
               </motion.h2>

@@ -57,7 +57,7 @@ export default function Hero() {
           <HeroLocalTime fallback={t.hero.eyebrow} />
         </motion.p>
 
-        <h1 className="display text-balance mt-5 text-[clamp(2.65rem,7.5vw,4.75rem)] leading-[0.94] tracking-[-0.038em] text-white md:mt-6 md:leading-[0.96] lg:leading-[0.92]">
+        <h1 className="hero-title display text-balance mt-4 text-white md:mt-5">
           <TextReveal delay={0.1} as="span" className="text-white">
             {t.hero.titleA}
           </TextReveal>
@@ -66,13 +66,13 @@ export default function Hero() {
           </TextReveal>
         </h1>
 
-        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-5 max-w-[30ch] md:mx-0 md:mt-6 lg:mt-5">
+        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-4 max-w-[30ch] md:mx-0 md:mt-5">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
           {...fade(0.42)}
-          className="mt-9 flex flex-wrap items-center justify-center gap-3 md:mt-10 md:justify-start"
+          className="mt-8 flex flex-wrap items-center justify-center gap-3 md:mt-9 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary">
             {t.cta.testflight}

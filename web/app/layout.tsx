@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { GeistSans } from "geist/font/sans";
+import clsx from "clsx";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import SmoothScroll from "@/components/SmoothScroll";
@@ -71,7 +73,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="antialiased">
+    <html lang="en" className={clsx(GeistSans.variable, "antialiased")}>
       <head>
         <link
           rel="icon"

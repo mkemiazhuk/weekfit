@@ -71,7 +71,7 @@ export default function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="nav-link text-[14px] font-normal text-white/55 transition-colors duration-300 hover:text-white max-lg:text-[13px] lg:text-[15px] lg:font-medium lg:text-white/58 lg:hover:text-white/92"
+              className="nav-link transition-colors duration-300 hover:text-white max-lg:text-[0.8125rem] lg:hover:text-white/90"
             >
               {l.label}
             </a>

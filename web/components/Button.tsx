@@ -35,7 +35,7 @@ export default function Button({
   onClick,
 }: ButtonProps) {
   const base = clsx(
-    "btn-touch group relative inline-flex items-center justify-center gap-2 font-semibold",
+    "btn-touch btn-text group relative inline-flex items-center justify-center gap-2 font-medium",
     "touch-manipulation select-none transition-all duration-300 will-change-transform",
     "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
     sizes[size]
