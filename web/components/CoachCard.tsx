@@ -56,7 +56,7 @@ export default function CoachCard({
         >
           <span
             className="h-1.5 w-1.5 rounded-full"
-            style={{ background: accent }}
+            style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
           />
           {state}
         </span>

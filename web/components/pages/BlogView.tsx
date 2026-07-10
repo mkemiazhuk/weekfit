@@ -100,9 +100,9 @@ function PostCard({
     <Reveal delay={delay}>
       <Link
         href={href}
-        className="blog-post-card group block"
+        className="premium-card surface-subtle group block p-6 transition-colors hover:border-white/[0.14]"
       >
-        <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium uppercase tracking-[0.1em] text-white/38">
+        <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium uppercase tracking-[0.12em] text-white/40">
           {cat && (
             <span style={{ color: cat.color }}>{cat.name[lang]}</span>
           )}
@@ -113,11 +113,11 @@ function PostCard({
             {post.readMinutes} {readLabel}
           </span>
         </div>
-        <h3 className="mt-3 text-[19px] font-semibold leading-snug text-white transition-colors group-hover:text-white/92">
+        <h3 className="mt-3 text-[20px] font-semibold text-white transition-colors group-hover:text-brand">
           {post.title[lang]}
         </h3>
-        <p className="mt-2.5 text-[15px] leading-relaxed text-white/52">{post.excerpt[lang]}</p>
-        <span className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-white/58 group-hover:text-white/78">
+        <p className="mt-2 text-[15px] leading-relaxed text-white/55">{post.excerpt[lang]}</p>
+        <span className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-white/70 group-hover:text-white">
           {lang === "ru" ? "Читать" : "Read"}
           <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
             →

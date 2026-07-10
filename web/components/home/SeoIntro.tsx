@@ -32,10 +32,10 @@ export default function SeoIntro() {
           <div className="card-panel glass relative overflow-hidden">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-28"
+              className="pointer-events-none absolute inset-x-0 top-0 h-32"
               style={{
                 background:
-                  "radial-gradient(70% 100% at 50% 0%, rgba(46,219,250,0.06), transparent 70%)",
+                  "radial-gradient(70% 100% at 50% 0%, rgba(46,219,250,0.1), transparent 70%)",
               }}
             />
 
@@ -108,8 +108,8 @@ export default function SeoIntro() {
                         className={clsx(
                           "min-w-0 flex-1 font-medium leading-[1.35] text-white/68 [overflow-wrap:anywhere]",
                           lang === "ru"
-                            ? "text-[13px] sm:text-[13px]"
-                            : "text-[13px] sm:text-[13.5px]"
+                            ? "text-[12px] sm:text-[12.5px]"
+                            : "text-[12px] sm:text-[13px]"
                         )}
                       >
                         {label}

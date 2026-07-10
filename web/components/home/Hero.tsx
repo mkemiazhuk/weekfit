@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useRef } from "react";
 import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import CoachCard from "../CoachCard";
@@ -15,18 +16,43 @@ import HeroLocalTime from "./HeroLocalTime";
 export default function Hero() {
   const { t, localePath } = useI18n();
   const reduce = useReducedMotion();
+  const phoneRef = useRef<HTMLDivElement>(null);
 
   const fade = (delay: number) => ({
-    initial: reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 },
+    initial: reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 },
     animate: { opacity: 1, y: 0 },
     transition: reduce ? { duration: 0 } : { duration: durationRevealSlow, ease: easeCalm, delay },
   });
 
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (reduce || !phoneRef.current) return;
+      const rect = phoneRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / rect.width;
+      const dy = (e.clientY - cy) / rect.height;
+      phoneRef.current.style.transform = `perspective(900px) rotateY(${dx * 5}deg) rotateX(${-dy * 4}deg)`;
+    },
+    [reduce]
+  );
+
+  const onMouseLeave = useCallback(() => {
+    if (phoneRef.current) {
+      phoneRef.current.style.transform =
+        "perspective(900px) rotateY(0deg) rotateX(0deg)";
+    }
+  }, []);
+
   return (
-    <section className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.25rem] pb-12 max-md:min-h-0 md:grid md:min-h-[90vh] md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-center md:gap-10 md:pb-[4rem] md:pt-[6.5rem] lg:gap-12 lg:pb-14">
+    <section
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.5rem] pb-14 max-md:min-h-0 md:grid md:min-h-[92vh] md:grid-cols-[1fr_1fr] md:items-center md:gap-12 md:pb-[4.5rem] md:pt-[6.75rem] lg:gap-14 lg:pb-16"
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
       <SectionAmbient tone="morning" />
 
-      <div className="relative z-[1] text-center md:max-w-[36rem] md:text-left">
+      <div className="relative text-center md:max-w-[34rem] md:text-left">
         <motion.p {...fade(0.05)} className="hero-time" aria-hidden>
           <HeroLocalTime fallback={t.hero.eyebrow} />
         </motion.p>
@@ -35,20 +61,17 @@ export default function Hero() {
           <TextReveal delay={0.1} as="span" className="text-white">
             {t.hero.titleA}
           </TextReveal>
-          <TextReveal delay={0.16} as="span" className="text-gradient-hero mt-1 md:mt-0.5">
+          <TextReveal delay={0.18} as="span" className="text-gradient-hero mt-1 md:mt-0.5">
             {t.hero.titleB}
           </TextReveal>
         </h1>
 
-        <motion.p
-          {...fade(0.28)}
-          className="body-lg hero-lead text-balance mx-auto mt-4 max-w-[var(--measure-prose)] md:mx-0 md:mt-5"
-        >
+        <motion.p {...fade(0.32)} className="body-lg hero-lead text-balance mx-auto mt-4 max-w-[30ch] md:mx-0 md:mt-5">
           {t.hero.lead}
         </motion.p>
 
         <motion.div
-          {...fade(0.38)}
+          {...fade(0.42)}
           className="mt-8 flex flex-wrap items-center justify-center gap-3 md:mt-9 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary">
@@ -60,31 +83,50 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      <div className="hero-phone hero-phone-stage relative z-[2] mt-8 self-center justify-self-center md:mt-0 md:justify-self-end">
+      <div className="hero-phone relative mt-7 w-full max-w-[252px] self-center justify-self-center sm:max-w-[272px] md:mt-0 md:max-w-[372px] lg:-mt-3 lg:max-w-[388px] lg:-translate-y-1">
+        <motion.div
+          aria-hidden
+          className="phone-glow"
+          style={{
+            inset: "-22%",
+            background: `radial-gradient(closest-side, ${pillars.recovery}28, transparent 72%)`,
+            filter: "blur(44px)",
+          }}
+          animate={
+            reduce ? {} : { scale: [1, 1.06, 1], opacity: [0.65, 1, 0.65] }
+          }
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        />
+
         <motion.div
           initial={
-            reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 28, scale: 0.98 }
+            reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 36, scale: 0.97 }
           }
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={
-            reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.22 }
-          }
+          transition={reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.28 }}
         >
-          <PhoneMockup
-            src="/img/today.jpg"
-            alt="WeekFit Today screen with the morning decision"
-            priority
-            hero
-          />
+          <div
+            ref={phoneRef}
+            className="relative mx-auto transition-transform duration-[var(--duration-hero)] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <div className="phone-float phone-float-hero">
+              <PhoneMockup
+                src="/img/today.jpg"
+                alt="WeekFit Today screen with the morning decision"
+                priority
+              />
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
-          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={
-            reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.72 }
+            reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.95 }
           }
-          className="hero-coach-card relative z-10 mt-5 w-full md:absolute md:-bottom-6 md:-left-2 md:mt-0 md:w-[248px] lg:-bottom-4"
+          className="hero-coach-card relative z-10 mt-6 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px] lg:-bottom-6"
         >
           <CoachCard
             accent={pillars.coach}
@@ -92,19 +134,20 @@ export default function Hero() {
             title={t.hero.coachTitle}
             body={t.hero.coachBody}
             coachLabel={t.coachAdvice.label}
+            floating
           />
         </motion.div>
       </div>
 
       <motion.a
         href="#reasoning"
-        {...fade(1.1)}
-        className="scroll-hint group absolute bottom-5 left-1/2 -translate-x-1/2 md:bottom-8"
+        {...fade(1.5)}
+        className="scroll-hint group absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10"
       >
-        <span className="caption block tracking-[0.16em] text-white/26 transition-colors group-hover:text-white/42">
+        <span className="caption block tracking-[0.18em] text-white/28 transition-colors group-hover:text-white/45">
           {t.hero.scroll}
         </span>
-        <span aria-hidden className="scroll-hint-line mx-auto mt-2.5" />
+        <span aria-hidden className="scroll-hint-line mx-auto mt-3" />
       </motion.a>
     </section>
   );

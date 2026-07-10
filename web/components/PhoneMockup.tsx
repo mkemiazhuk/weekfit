@@ -10,7 +10,6 @@ interface PhoneMockupProps {
   glow?: string;
   className?: string;
   priority?: boolean;
-  hero?: boolean;
 }
 
 export default function PhoneMockup({
@@ -19,18 +18,17 @@ export default function PhoneMockup({
   glow = pillars.recovery,
   className,
   priority,
-  hero = false,
 }: PhoneMockupProps) {
   return (
     <div className={clsx("relative", className)}>
       <div
         aria-hidden
-        className={clsx("phone-glow", hero && "phone-glow--hero")}
+        className="phone-glow"
         style={{
-          background: `radial-gradient(closest-side, ${glow}36, transparent 72%)`,
+          background: `radial-gradient(closest-side, ${glow}44, transparent 70%)`,
         }}
       />
-      <div className={clsx("phone-frame", hero && "phone-frame--hero")}>
+      <div className="phone-frame">
         <div aria-hidden className="phone-island" />
         <div className="phone-screen">
           <Image
@@ -38,7 +36,7 @@ export default function PhoneMockup({
             alt={alt}
             fill
             priority={priority}
-            sizes={hero ? "(max-width: 768px) 72vw, 420px" : "(max-width: 768px) 70vw, 320px"}
+            sizes="(max-width: 768px) 70vw, 320px"
             className="object-cover"
           />
           <div
@@ -46,13 +44,13 @@ export default function PhoneMockup({
             className="pointer-events-none absolute inset-0 mix-blend-screen"
             style={{
               background:
-                "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.025) 24%, transparent 48%)",
+                "linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.03) 22%, transparent 46%)",
             }}
           />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
-            style={{ boxShadow: "inset 0 0 36px rgba(0,0,0,0.32)" }}
+            style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.35)" }}
           />
         </div>
       </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
-import { easeCalm, durationUI, durationCard } from "@/lib/motion";
+import { easeCalm, durationUI } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
 import {
   resolveSimulator,
@@ -34,8 +34,8 @@ function Slider({
   return (
     <label className="block">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[13px] font-medium text-white/58">{label}</span>
-        <span className="font-rounded text-[14px] font-semibold tabular-nums text-white/92">
+        <span className="text-[13px] font-medium text-white/62">{label}</span>
+        <span className="font-rounded text-[14px] font-semibold tabular-nums text-white">
           {display}
         </span>
       </div>
@@ -52,25 +52,13 @@ function Slider({
   );
 }
 
-function ReadinessRing({
-  value,
-  accent,
-  label,
-  animate,
-}: {
-  value: number;
-  accent: string;
-  label: string;
-  animate: boolean;
-}) {
-  const circumference = 2 * Math.PI * 36;
-
+function ReadinessRing({ value, accent, label }: { value: number; accent: string; label: string }) {
   return (
     <div className="flex items-center gap-3 md:gap-4">
-      <div className="relative h-[68px] w-[68px] shrink-0 md:h-[76px] md:w-[76px]">
+      <div className="relative h-[68px] w-[68px] shrink-0 md:h-[80px] md:w-[80px]">
         <svg viewBox="0 0 88 88" className="h-full w-full -rotate-90" aria-hidden>
-          <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="6" />
-          <motion.circle
+          <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle
             cx="44"
             cy="44"
             r="36"
@@ -78,22 +66,14 @@ function ReadinessRing({
             stroke={accent}
             strokeWidth="6"
             strokeLinecap="round"
-            strokeDasharray={circumference}
-            animate={{
-              strokeDashoffset: circumference - (value / 100) * circumference,
-            }}
-            transition={animate ? { duration: durationCard, ease: easeCalm } : { duration: 0 }}
+            strokeDasharray={2 * Math.PI * 36}
+            strokeDashoffset={2 * Math.PI * 36 - (value / 100) * 2 * Math.PI * 36}
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
-        <motion.span
-          key={value}
-          initial={animate ? { opacity: 0.4, y: 4 } : false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: durationUI, ease: easeCalm }}
-          className="absolute inset-0 flex items-center justify-center font-rounded text-[17px] font-semibold tabular-nums text-white md:text-[19px]"
-        >
+        <span className="absolute inset-0 flex items-center justify-center font-rounded text-[17px] font-semibold tabular-nums text-white md:text-[20px]">
           {value}
-        </motion.span>
+        </span>
       </div>
       <div>
         <p className="kicker-sm">{label}</p>
@@ -154,11 +134,11 @@ export default function TuesdaySimulator() {
       </header>
 
       <div className="mx-auto max-w-5xl section-x pb-20 pt-10 md:pb-24 md:pt-12">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_1.05fr] lg:gap-12">
-          <div className="sim-controls-panel">
-            <p className="kicker text-white/32">{s.setupKicker}</p>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_1.05fr] lg:gap-14">
+          <div className="flex flex-col gap-6">
+            <p className="kicker text-white/36">{s.setupKicker}</p>
 
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-6">
               <Slider
                 label={s.sleepLabel}
                 value={sleep}
@@ -189,114 +169,101 @@ export default function TuesdaySimulator() {
             </div>
 
             <div>
-              <p className="kicker-sm mb-2.5">{s.presetsTitle}</p>
+              <p className="kicker-sm mb-2">{s.presetsTitle}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
                 {SIMULATOR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="sim-preset rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-left sm:text-center"
+                    className="sim-preset rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1.5 text-left sm:text-center"
                   >
                     {s.presets[preset.id as keyof typeof s.presets]}
                   </button>
                 ))}
               </div>
-              <p className="body-sm mt-3 max-w-[var(--measure-prose)]">{s.setupNote}</p>
+              <p className="body-sm mt-3 max-w-[34ch]">{s.setupNote}</p>
             </div>
           </div>
 
-          <div className="relative min-h-[28rem] lg:min-h-[32rem]">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={result.decision}
-                initial={reduce ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? undefined : { opacity: 0, y: -6 }}
-                transition={{ duration: durationCard, ease: easeCalm }}
-                className="sim-result-panel card-panel card-panel-compact glass"
-                style={{ "--sim-accent": `${result.accent}22` } as React.CSSProperties}
-              >
-                <div className="relative">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="kicker-sm">{s.resultKicker}</p>
-                    <motion.span
-                      layout
-                      className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide"
-                      style={{
-                        color: result.accent,
-                        background: `${result.accent}14`,
-                        border: `1px solid ${result.accent}28`,
-                      }}
-                    >
-                      {categoryLabel}
-                    </motion.span>
-                  </div>
-
-                  <motion.p
-                    key={`${result.decision}-headline`}
-                    initial={reduce ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: durationUI, ease: easeCalm, delay: 0.04 }}
-                    className="display mt-2.5 text-[clamp(1.35rem,3.8vw,2.25rem)] leading-[1.08]"
-                    style={{ color: result.accent }}
+          <div className="relative">
+            <motion.div
+              key={result.decision}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: durationUI, ease: easeCalm }}
+              className="card-panel card-panel-compact glass overflow-hidden"
+              style={{ boxShadow: `var(--shadow-accent) ${result.accent}44` }}
+            >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-36"
+                style={{
+                  background: `radial-gradient(80% 120% at 50% 0%, ${result.accent}22, transparent 70%)`,
+                }}
+              />
+              <div className="relative">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="kicker-sm">{s.resultKicker}</p>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide"
+                    style={{
+                      color: result.accent,
+                      background: `${result.accent}18`,
+                      border: `1px solid ${result.accent}33`,
+                    }}
                   >
-                    {copy.headline}
-                  </motion.p>
-
-                  <motion.p
-                    key={`${result.decision}-subline`}
-                    initial={reduce ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: durationUI, ease: easeCalm, delay: 0.08 }}
-                    className="body-md mt-2 text-white/52"
-                  >
-                    {copy.subline}
-                  </motion.p>
-
-                  <div className="mt-5 border-t border-white/[0.06] pt-5">
-                    <ReadinessRing
-                      value={result.readiness}
-                      accent={result.accent}
-                      label={s.readinessLabel}
-                      animate={!reduce}
-                    />
-                  </div>
-
-                  <motion.div
-                    initial={reduce ? false : { opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: durationCard, ease: easeCalm, delay: 0.1 }}
-                    className="mt-5 border-t border-white/[0.06] pt-5"
-                  >
-                    <CoachAdviceList
-                      advice={{
-                        matters: copy.matters,
-                        do: copy.do,
-                        avoid: copy.avoid,
-                        next: copy.next,
-                        why: copy.why,
-                      }}
-                      labels={adviceLabels}
-                      decision
-                      compact
-                    />
-                  </motion.div>
+                    {categoryLabel}
+                  </span>
                 </div>
-              </motion.div>
-            </AnimatePresence>
+                <p
+                  className="display mt-2 text-[clamp(1.35rem,4vw,2.5rem)] leading-[1.08]"
+                  style={{ color: result.accent }}
+                >
+                  {copy.headline}
+                </p>
+                <p className="body-sm mt-1.5 text-white/58">{copy.subline}</p>
 
-            <div className="sim-outcome-dots" aria-label={`${ALL_DECISIONS.length} outcomes`}>
+                <div className="mt-4 border-t border-white/[0.08] pt-4 md:mt-5 md:pt-5">
+                  <ReadinessRing
+                    value={result.readiness}
+                    accent={result.accent}
+                    label={s.readinessLabel}
+                  />
+                </div>
+
+                <div className="mt-4 border-t border-white/[0.08] pt-4 md:mt-5 md:pt-5">
+                  <CoachAdviceList
+                    advice={{
+                      matters: copy.matters,
+                      do: copy.do,
+                      avoid: copy.avoid,
+                      next: copy.next,
+                      why: copy.why,
+                    }}
+                    labels={adviceLabels}
+                    decision
+                    compact
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+            <div
+              className="mt-3 hidden flex-wrap justify-center gap-1.5 md:flex"
+              aria-label={`${ALL_DECISIONS.length} outcomes`}
+            >
               {ALL_DECISIONS.map((d) => (
                 <span
                   key={d}
                   title={s.decisions[d].headline}
+                  aria-hidden
                   className={clsx(
-                    "sim-outcome-dot",
-                    d === result.decision ? "sim-outcome-dot--active" : "sim-outcome-dot--idle"
+                    "h-1.5 rounded-full transition-all duration-500",
+                    d === result.decision ? "w-5 opacity-100" : "w-1.5 opacity-20"
                   )}
                   style={{
-                    background: d === result.decision ? result.accent : undefined,
+                    background: d === result.decision ? result.accent : "rgba(255,255,255,0.5)",
                   }}
                 />
               ))}
@@ -304,8 +271,8 @@ export default function TuesdaySimulator() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-center gap-4 text-center md:mt-16 md:flex-row md:justify-between md:text-left">
-          <p className="body-lg max-w-[var(--measure-prose)]">{s.closing}</p>
+        <div className="mt-16 flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
+          <p className="body-lg max-w-[36ch]">{s.closing}</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button href={SITE.appInstallUrl} external>
               {t.cta.testflight}
