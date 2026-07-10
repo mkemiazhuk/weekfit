@@ -80,6 +80,8 @@ export default function Download() {
                 <PhoneMockup
                   src="/img/today.jpg"
                   alt="WeekFit Today screen with the morning decision"
+                  depth
+                  width={280}
                 />
                 <div aria-hidden className="hero-product-reflection" />
               </div>

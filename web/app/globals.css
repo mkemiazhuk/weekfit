@@ -512,14 +512,14 @@ input:focus-visible,
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(closest-side at 68% 38%, rgba(46, 219, 250, 0.12), transparent 72%),
-    radial-gradient(closest-side at 22% 72%, rgba(140, 102, 217, 0.1), transparent 68%);
+    radial-gradient(closest-side at 68% 38%, rgba(46, 219, 250, 0.14), transparent 72%),
+    radial-gradient(closest-side at 22% 72%, rgba(140, 102, 217, 0.12), transparent 68%);
   filter: blur(28px);
 }
 .hero-device-scene__inner {
   position: relative;
   z-index: 1;
-  min-height: clamp(20rem, 48vw, 32rem);
+  min-height: clamp(21rem, 50vw, 34rem);
 }
 .hero-device-scene__phone {
   position: relative;
@@ -529,29 +529,121 @@ input:focus-visible,
 }
 .hero-device-scene__watch {
   position: absolute;
-  z-index: 2;
-  left: 0;
-  bottom: 4%;
+  z-index: 3;
+  left: -2%;
+  bottom: 8%;
   width: auto;
 }
 .hero-device-scene__shadow {
   position: absolute;
   z-index: 0;
-  left: 10%;
-  right: 10%;
-  bottom: 0;
-  height: 14%;
+  left: 8%;
+  right: 8%;
+  bottom: 1%;
+  height: 16%;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, transparent 72%);
-  filter: blur(12px);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.58) 0%, transparent 72%);
+  filter: blur(14px);
 }
 @media (max-width: 767px) {
   .hero-device-scene__inner {
-    min-height: clamp(18rem, 62vw, 22rem);
+    min-height: clamp(19rem, 64vw, 24rem);
   }
   .hero-device-scene__watch {
-    left: -2%;
-    bottom: 2%;
+    left: 0;
+    bottom: 4%;
+  }
+}
+
+/* Shared 3D product-shot depth for official device mockups */
+.device-scene-3d {
+  perspective: 1400px;
+  perspective-origin: 52% 42%;
+}
+.device-scene-3d__stage {
+  position: relative;
+  transform-style: preserve-3d;
+}
+.device-scene-3d__phone {
+  transform: rotateY(-20deg) rotateX(7deg);
+  transform-style: preserve-3d;
+  transform-origin: 58% 50%;
+}
+.device-scene-3d__watch {
+  transform: rotateY(-12deg) rotateX(-5deg) translateZ(52px);
+  transform-style: preserve-3d;
+  transform-origin: 50% 62%;
+}
+.device-scene-3d__phone-shine {
+  position: absolute;
+  inset: 4% 6% 8%;
+  z-index: 6;
+  border-radius: 12%;
+  pointer-events: none;
+  background: linear-gradient(
+    128deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 18%,
+    transparent 42%
+  );
+}
+.device-scene-3d__shadow {
+  transform: rotateX(82deg) scale(1.06);
+  transform-origin: center bottom;
+}
+.device-scene-3d--phone-only .device-scene-3d__phone {
+  transform: rotateY(-16deg) rotateX(6deg);
+  transform-origin: 50% 50%;
+}
+.device-scene-3d--phone-only {
+  position: relative;
+}
+.device-scene-3d--phone-only .device-scene-3d__shadow {
+  position: absolute;
+  z-index: 0;
+  left: 12%;
+  right: 12%;
+  bottom: -2%;
+  height: 12%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.52) 0%, transparent 72%);
+  filter: blur(12px);
+}
+.device-mockup-frame {
+  filter: drop-shadow(0 36px 72px rgba(0, 0, 0, 0.52));
+}
+.device-mockup-frame--depth {
+  filter: drop-shadow(0 48px 96px rgba(0, 0, 0, 0.58));
+}
+.device-mockup-frame--watch {
+  filter: drop-shadow(0 28px 56px rgba(0, 0, 0, 0.5));
+}
+.journey-spotlight-phone__ambient {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(24px);
+  transition: background 0.7s ease;
+}
+@media (max-width: 767px) {
+  .device-scene-3d {
+    perspective: 1100px;
+  }
+  .device-scene-3d__phone {
+    transform: rotateY(-14deg) rotateX(5deg);
+  }
+  .device-scene-3d__watch {
+    transform: rotateY(-9deg) rotateX(-3deg) translateZ(32px);
+  }
+  .device-scene-3d--phone-only .device-scene-3d__phone {
+    transform: rotateY(-12deg) rotateX(4deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .device-scene-3d__phone,
+  .device-scene-3d__watch {
+    transform: none;
   }
 }
 

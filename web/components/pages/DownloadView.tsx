@@ -25,6 +25,8 @@ export default function DownloadView() {
                 src="/img/today.jpg"
                 alt="WeekFit Today screen with the day's readiness and rings"
                 priority
+                depth
+                width={300}
               />
             </div>
           </Reveal>

@@ -37,17 +37,17 @@ export default function HeroDeviceShowcase({
   const { phone, watch } = useDeviceWidths();
 
   return (
-    <div className="hero-device-scene">
+    <div className="hero-device-scene device-scene-3d">
       <div aria-hidden className="hero-device-scene__ambient" />
-      <div className="hero-device-scene__inner">
-        <div className="hero-device-scene__phone">
+      <div className="hero-device-scene__inner device-scene-3d__stage">
+        <div className="hero-device-scene__phone device-scene-3d__phone">
           <DeviceMockup
             device={iPhone16Pro}
             color="Black Titanium"
             basePath={MOCKIFY_BASE_PATH}
             showStatusBar={false}
             width={phone}
-            className="hero-device-mockup hero-device-mockup--phone"
+            className="device-mockup-frame device-mockup-frame--depth"
           >
             <Image
               src={phoneSrc}
@@ -58,22 +58,23 @@ export default function HeroDeviceShowcase({
               className="h-full w-full object-cover object-top"
             />
           </DeviceMockup>
+          <div aria-hidden className="device-scene-3d__phone-shine" />
         </div>
 
-        <div className="hero-device-scene__watch">
+        <div className="hero-device-scene__watch device-scene-3d__watch">
           <DeviceMockup
             device={appleWatchUltra2}
             basePath={MOCKIFY_BASE_PATH}
             showStatusBar={false}
             width={watch}
             screenColor="#090a0e"
-            className="hero-device-mockup hero-device-mockup--watch"
+            className="device-mockup-frame device-mockup-frame--watch"
           >
             {watchScreen}
           </DeviceMockup>
         </div>
       </div>
-      <div aria-hidden className="hero-device-scene__shadow" />
+      <div aria-hidden className="hero-device-scene__shadow device-scene-3d__shadow" />
     </div>
   );
 }
