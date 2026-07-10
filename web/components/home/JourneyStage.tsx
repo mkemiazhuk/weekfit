@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import clsx from "clsx";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { pillars } from "@/lib/tokens";
 import { easeCalm, durationCard } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
-import JourneySignalCard from "../JourneySignalCard";
 import SectionAmbient from "../SectionAmbient";
+import JourneySpotlightPhone from "./JourneySpotlightPhone";
 
 type AmbientTone = "morning" | "coach" | "activity" | "nutrition" | "recovery";
 
@@ -75,7 +74,7 @@ export default function JourneyStage() {
     {
       key: "recovery",
       screen: "/img/recovery.jpg",
-      screenAlt: "WeekFit recovery screen with stretching and sleep guidance",
+      screenAlt: "WeekFit recovery screen with training load in the breakdown",
       accent: pillars.recovery,
       ambient: "recovery",
       kicker: t.recovery.kicker,
@@ -87,7 +86,7 @@ export default function JourneyStage() {
     {
       key: "night",
       screen: "/img/coach.jpg",
-      screenAlt: "WeekFit Coach screen with wind-down guidance for the evening",
+      screenAlt: "WeekFit Coach screen with today's recommendation",
       accent: pillars.coach,
       ambient: "coach",
       kicker: t.night.kicker,
@@ -127,82 +126,24 @@ export default function JourneyStage() {
 
   const current = panels[active];
 
-  function StickyPhone({ className, sizes }: { className?: string; sizes: string }) {
-    return (
-      <div className={clsx("journey-stage-phone", className)}>
-        <div
-          aria-hidden
-          className="phone-glow phone-glow--hero transition-all duration-700"
-          style={{
-            background: `radial-gradient(closest-side, ${current.accent}28, transparent 72%)`,
-          }}
-        />
-        <div
-          className="phone-frame phone-frame--hero transition-shadow duration-700"
-          style={{
-            boxShadow: `0 56px 120px -32px rgba(0,0,0,0.78), 0 0 40px -24px ${current.accent}24`,
-          }}
-        >
-          <div aria-hidden className="phone-island" />
-          <div className="phone-screen">
-            {panels.map((p, i) => (
-              <Image
-                key={p.key}
-                src={p.screen}
-                alt={i === active ? p.screenAlt : ""}
-                fill
-                sizes={sizes}
-                className={clsx(
-                  "object-cover transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                  i === active ? "opacity-100" : "opacity-0"
-                )}
-              />
-            ))}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 mix-blend-screen"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 24%, transparent 48%)",
-              }}
-            />
-          </div>
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.key}
-            initial={reduce ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: -4 }}
-            transition={{ duration: durationCard, ease: easeCalm }}
-            className="journey-stage-signal mt-5 w-full"
-          >
-            <JourneySignalCard
-              accent={current.accent}
-              signal={current.coach.signal}
-              tip={current.coach.tip}
-              detail={current.coach.detail}
-            />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    );
-  }
-
   return (
     <section id="experience" className="relative z-[1] section-x section-y-inset-top">
       <SectionAmbient tone={current.ambient} />
 
       <div className="mx-auto max-w-6xl">
         <div className="journey-stage-phone-mobile sticky top-[4.75rem] z-10 mx-auto mb-10 max-w-[252px] md:hidden">
-          <StickyPhone sizes="252px" />
+          <JourneySpotlightPhone panels={panels} activeIndex={active} sizes="252px" />
         </div>
 
         <div className="md:grid md:grid-cols-2 md:gap-14 lg:gap-16">
           <div className="hidden md:block">
             <div className="sticky top-0 flex h-screen items-center justify-center">
-              <StickyPhone className="max-w-[320px]" sizes="320px" />
+              <JourneySpotlightPhone
+                panels={panels}
+                activeIndex={active}
+                className="max-w-[320px]"
+                sizes="320px"
+              />
             </div>
           </div>
 
@@ -225,7 +166,7 @@ export default function JourneyStage() {
                   <div
                     className={clsx(
                       "journey-stage-copy text-center transition-opacity duration-500 md:text-left",
-                      isActive ? "opacity-100" : "opacity-40"
+                      isActive ? "opacity-100" : "opacity-36"
                     )}
                   >
                     <span className="kicker" style={{ color: p.accent }}>
@@ -239,9 +180,34 @@ export default function JourneyStage() {
                     >
                       {p.title}
                     </h2>
-                    <p className="body-lg section-lead mx-auto mt-4 max-w-[var(--measure-prose)] md:mx-0">
-                      {p.body}
-                    </p>
+
+                    <AnimatePresence mode="wait">
+                      {isActive && (
+                        <motion.div
+                          key={p.key}
+                          initial={reduce ? false : { opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={reduce ? undefined : { opacity: 0, y: -6 }}
+                          transition={{ duration: durationCard, ease: easeCalm }}
+                          className="mt-5 max-w-[var(--measure-prose)] mx-auto md:mx-0"
+                        >
+                          <p
+                            className="text-[1.0625rem] font-semibold leading-snug tracking-[-0.018em] md:text-[1.125rem]"
+                            style={{ color: p.accent }}
+                          >
+                            {p.coach.signal}
+                          </p>
+                          <p className="body-lg mt-3">{p.coach.tip}</p>
+                          <p className="body-md mt-2.5">{p.coach.detail}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {!isActive && (
+                      <p className="body-md mt-4 max-w-[var(--measure-prose)] mx-auto md:mx-0">
+                        {p.body}
+                      </p>
+                    )}
                   </div>
                 </div>
               );

@@ -591,67 +591,51 @@ input:focus-visible,
   }
 }
 
-/* Journey — signal card below phone (readable, premium) */
-.journey-signal-card {
-  background: linear-gradient(
-    165deg,
-    rgba(14, 15, 20, 0.98) 0%,
-    rgba(10, 11, 15, 0.99) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    0 22px 50px -22px rgba(0, 0, 0, 0.72),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-.journey-signal-card__accent-bar {
-  position: absolute;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  opacity: 0.9;
-}
-.journey-signal-card__title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.45;
-  letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.94);
-}
-.journey-signal-card__tip {
-  margin-top: 0.375rem;
-  font-size: 0.8125rem;
-  line-height: 1.52;
-  letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.72);
-}
-.journey-signal-card__detail {
-  margin-top: 0.375rem;
-  font-size: 0.75rem;
-  line-height: 1.48;
-  color: rgba(255, 255, 255, 0.52);
-}
-@media (min-width: 768px) {
-  .journey-signal-card__title {
-    font-size: 1rem;
-  }
-  .journey-signal-card__tip {
-    font-size: 0.875rem;
-  }
-  .journey-signal-card__detail {
-    font-size: 0.8125rem;
-  }
+/* Journey — in-phone spotlight (no tooltip; copy lives in scroll column) */
+.journey-spotlight-phone__screen {
+  isolation: isolate;
 }
 
-.journey-stage-phone {
-  position: relative;
+.journey-spotlight-phone__dim {
+  display: none;
+}
+
+.journey-spotlight-phone__lift {
+  position: absolute;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  filter: brightness(1.14) saturate(1.08) contrast(1.02);
+}
+
+.journey-spotlight-phone__cutout {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  background: transparent;
+  box-shadow:
+    0 0 0 9999px rgba(4, 5, 8, 0.38),
+    0 0 0 1.5px color-mix(in srgb, var(--spotlight-accent) 50%, rgba(255, 255, 255, 0.15)),
+    0 0 36px 2px color-mix(in srgb, var(--spotlight-accent) 32%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--spotlight-accent) 14%, transparent);
+}
+
+.journey-stage-phone-mobile {
   width: 100%;
 }
 
-.journey-stage-signal {
-  max-width: 100%;
+.journey-stage-copy {
+  will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-spotlight-phone__cutout,
+  .journey-spotlight-phone__lift {
+    transition: none !important;
+  }
+  .journey-spotlight-phone__screen img {
+    transition: none !important;
+  }
 }
 
 .icon-tile-accent {
