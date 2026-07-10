@@ -28,7 +28,7 @@ export default function ScrollProgress() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-px bg-white/[0.04]"
+      className="scroll-progress-rail pointer-events-none fixed inset-x-0 z-[60] h-px bg-white/[0.04]"
     >
       <div
         className="scroll-progress h-full origin-left"

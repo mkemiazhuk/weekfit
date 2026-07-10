@@ -127,6 +127,11 @@
   --section-y-lg-md: 9rem;
   --section-y-compact: 1.75rem;
   --section-x: clamp(1.25rem, 4.5vw, 1.5rem);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --site-header-offset: calc(3.75rem + var(--safe-top));
   --page-pb: 7rem;
   --measure-narrow: 32ch;
   --measure-prose: 42rem;
@@ -398,6 +403,12 @@ input:focus-visible,
 .section-x {
   padding-left: var(--section-x);
   padding-right: var(--section-x);
+}
+@media (max-width: 767px) {
+  .section-x {
+    padding-left: calc(var(--section-x) + var(--safe-left));
+    padding-right: calc(var(--section-x) + var(--safe-right));
+  }
 }
 .section-y-inset-top {
   padding-top: var(--section-y);
@@ -988,8 +999,12 @@ input:focus-visible,
 }
 
 /* Scroll to top — fixed, right edge */
+.scroll-progress-rail {
+  top: var(--safe-top);
+}
 .scroll-to-top {
-  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  bottom: max(1.25rem, var(--safe-bottom));
+  right: max(1rem, var(--safe-right));
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(
     152deg,
@@ -2255,7 +2270,7 @@ input:focus-visible,
   .btn-touch[class*="min-h"] {
     min-height: 44px;
   }
-  .btn-touch.rounded-button:not(.btn-nav-mobile-cta):not([class*="min-h"]) {
+  .btn-touch.rounded-button:not(.nav-header-cta-btn):not(.mobile-menu-cta):not([class*="min-h"]) {
     min-height: 44px;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -2522,22 +2537,101 @@ input:focus-visible,
 }
 
 @media (max-width: 767px) {
-  .btn-nav-mobile-cta {
-    min-height: 28px !important;
-    padding: 5px 9px !important;
-    font-size: 10.5px !important;
+  .site-header {
+    padding-top: var(--safe-top);
+  }
+
+  .hero-polish {
+    padding-top: calc(6.25rem + var(--safe-top)) !important;
+  }
+
+  .journey-stage-phone-mobile {
+    top: calc(4.75rem + var(--safe-top)) !important;
+  }
+
+  /* Mobile header controls — 44px hit areas, compact visuals */
+  .nav-header-lang .lang-toggle {
+    padding: 0.125rem;
+  }
+  .nav-header-lang .lang-toggle-btn {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding-inline: 0.625rem;
+    touch-action: manipulation;
+  }
+
+  .nav-header-cta-btn {
+    min-height: 2.75rem !important;
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.6875rem !important;
     font-weight: 500 !important;
     letter-spacing: 0.005em;
+    touch-action: manipulation;
     box-shadow: 0 4px 14px -10px rgba(102, 188, 135, 0.18) !important;
   }
-
-  .btn-nav-mobile-cta:active {
+  .nav-header-cta-btn:active {
     transform: scale(0.96) !important;
-    box-shadow: 0 4px 14px -10px rgba(102, 188, 135, 0.16) !important;
   }
 
+  .nav-menu-btn {
+    touch-action: manipulation;
+  }
+  .nav-menu-btn:focus-visible {
+    outline: 2px solid rgba(102, 188, 135, 0.55);
+    outline-offset: 2px;
+  }
   .nav-menu-btn:active {
     background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Full-screen mobile menu */
+  .mobile-menu-scrim {
+    background: rgba(4, 5, 8, 0.62);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+  }
+  .mobile-menu-panel {
+    top: var(--site-header-offset);
+    max-height: calc(100dvh - var(--site-header-offset));
+    padding-bottom: max(1.25rem, var(--safe-bottom));
+    background: linear-gradient(
+      180deg,
+      rgba(8, 9, 12, 0.94) 0%,
+      rgba(6, 7, 10, 0.98) 100%
+    );
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 -24px 64px -32px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+  }
+  .mobile-menu-panel__inner {
+    padding-top: 0.75rem;
+    padding-bottom: max(0.5rem, var(--safe-bottom));
+  }
+  .mobile-menu-link {
+    touch-action: manipulation;
+  }
+  .mobile-menu-link:focus-visible {
+    outline: 2px solid rgba(102, 188, 135, 0.5);
+    outline-offset: -2px;
+    border-radius: 0.375rem;
+  }
+  .mobile-menu-link:active {
+    color: rgba(255, 255, 255, 0.96);
+  }
+  .mobile-menu-lang .lang-toggle {
+    width: 100%;
+    justify-content: center;
+    padding: 0.1875rem;
+  }
+  .mobile-menu-lang .lang-toggle-btn {
+    flex: 1;
+    min-height: 2.75rem;
+    touch-action: manipulation;
+  }
+  .mobile-menu-cta {
+    min-height: 3.25rem !important;
+    touch-action: manipulation;
   }
 
   .btn-touch {
@@ -2547,6 +2641,10 @@ input:focus-visible,
   .btn-hero-primary:active {
     transform: scale(0.97) !important;
     box-shadow: 0 10px 32px -8px rgba(102, 188, 135, 0.42) !important;
+  }
+
+  .download-hero__copy {
+    min-width: 0;
   }
 
   .hero-polish ~ section.section-y {
@@ -2679,6 +2777,16 @@ input:focus-visible,
 
   .btn-nav-cta:active {
     transform: translateY(0) scale(0.98) !important;
+  }
+
+  .nav-header-lang .lang-toggle {
+    padding: 0.125rem;
+  }
+  .nav-header-lang .lang-toggle-btn {
+    min-height: 2rem;
+    min-width: auto;
+    padding: 0.25rem 0.625rem;
+    font-size: 11px;
   }
 
   .btn-hero-primary {

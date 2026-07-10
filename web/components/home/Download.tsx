@@ -43,10 +43,10 @@ export default function Download() {
       <div className="download-hero__stage mx-auto max-w-5xl">
         <div className="download-hero__panel">
           <div className="download-hero__grid">
-            <div className="download-hero__copy text-center md:text-left">
+            <div className="download-hero__copy min-w-0 text-center md:text-left">
               <motion.h2
                 {...copy(0, 16)}
-                className="hero-title display whitespace-nowrap text-white/92"
+                className="hero-title display text-balance min-w-0 text-white/92"
               >
                 {t.cta.title}
               </motion.h2>

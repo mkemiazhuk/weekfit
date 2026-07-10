@@ -4,12 +4,21 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 
+const MOBILE_SCROLL_MQ = "(max-width: 767px)";
+
+function prefersNativeScroll() {
+  return window.matchMedia(MOBILE_SCROLL_MQ).matches;
+}
+
 export default function SmoothScroll() {
   const pathname = usePathname();
   const lenisRef = useRef<Lenis | null>(null);
+  const rafRef = useRef(0);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileMq = window.matchMedia(MOBILE_SCROLL_MQ);
 
     const onScrollTop = (e: Event) => {
       const immediate = (e as CustomEvent<{ immediate?: boolean }>).detail?.immediate;
@@ -23,56 +32,78 @@ export default function SmoothScroll() {
 
     window.addEventListener("weekfit:scroll-top", onScrollTop);
 
-    if (reduce) {
-      return () => window.removeEventListener("weekfit:scroll-top", onScrollTop);
-    }
-
-    const lenis = new Lenis({
-      duration: 1.05,
-      easing: (t) => 1 - Math.pow(1 - t, 4),
-      smoothWheel: true,
-      touchMultiplier: 1.2,
-      syncTouch: true,
-      autoResize: true,
-    });
-    lenisRef.current = lenis;
-
-    let raf = 0;
-    const loop = (time: number) => {
-      lenis.raf(time);
-      raf = requestAnimationFrame(loop);
+    const destroyLenis = () => {
+      cancelAnimationFrame(rafRef.current);
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      lenisRef.current?.destroy();
+      lenisRef.current = null;
     };
-    raf = requestAnimationFrame(loop);
 
-    const resize = () => lenis.resize();
+    const initLenis = () => {
+      if (lenisRef.current) return;
 
-    window.addEventListener("resize", resize);
-    window.addEventListener("load", resize);
+      const lenis = new Lenis({
+        duration: 1.05,
+        easing: (t) => 1 - Math.pow(1 - t, 4),
+        smoothWheel: true,
+        autoResize: true,
+      });
+      lenisRef.current = lenis;
 
-    const main = document.getElementById("main-content");
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(document.documentElement);
-    if (main) ro.observe(main);
+      const loop = (time: number) => {
+        lenis.raf(time);
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      rafRef.current = requestAnimationFrame(loop);
 
-    const t1 = window.setTimeout(resize, 150);
-    const t2 = window.setTimeout(resize, 600);
+      const resize = () => lenis.resize();
+      window.addEventListener("resize", resize);
+      window.addEventListener("load", resize);
+
+      const main = document.getElementById("main-content");
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(document.documentElement);
+      if (main) ro.observe(main);
+
+      const t1 = window.setTimeout(resize, 150);
+      const t2 = window.setTimeout(resize, 600);
+
+      cleanupRef.current = () => {
+        window.removeEventListener("resize", resize);
+        window.removeEventListener("load", resize);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        ro.disconnect();
+      };
+    };
+
+    const sync = () => {
+      if (reduceMq.matches || prefersNativeScroll()) {
+        destroyLenis();
+        return;
+      }
+      initLenis();
+    };
+
+    sync();
+    mobileMq.addEventListener("change", sync);
+    reduceMq.addEventListener("change", sync);
 
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("load", resize);
+      mobileMq.removeEventListener("change", sync);
+      reduceMq.removeEventListener("change", sync);
+      destroyLenis();
       window.removeEventListener("weekfit:scroll-top", onScrollTop);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      ro.disconnect();
-      lenis.destroy();
-      lenisRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const lenis = lenisRef.current;
-    if (!lenis) return;
+    if (!lenis) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      return;
+    }
 
     lenis.resize();
     lenis.scrollTo(0, { immediate: true, force: true });
