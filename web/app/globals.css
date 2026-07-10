@@ -1620,6 +1620,11 @@ input:focus-visible,
   align-items: center;
   gap: 2.5rem;
 }
+.download-hero__title {
+  text-wrap: nowrap;
+  font-size: clamp(1.75rem, 6.4vw, 4.5rem);
+  letter-spacing: -0.034em;
+}
 @media (min-width: 768px) {
   .download-hero__grid {
     grid-template-columns: 1.12fr 0.88fr;

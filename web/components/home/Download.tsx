@@ -46,7 +46,7 @@ export default function Download() {
             <div className="download-hero__copy min-w-0 text-center md:text-left">
               <motion.h2
                 {...copy(0, 16)}
-                className="hero-title display text-balance min-w-0 text-white/92"
+                className="download-hero__title hero-title display min-w-0 text-white/92"
               >
                 {t.cta.title}
               </motion.h2>
