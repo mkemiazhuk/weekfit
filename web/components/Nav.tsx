@@ -62,8 +62,8 @@ export default function Nav() {
         <div className="min-w-0 pr-1 md:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />
         </div>
-        <div className="hidden min-w-0 md:block">
-          <Wordmark size="nav" />
+        <div className="hidden shrink-0 md:block">
+          <Wordmark size="nav" className="wordmark-lockup--nav-desktop" />
         </div>
 
         <div className="hidden items-center gap-8 md:flex lg:gap-10">
@@ -79,7 +79,7 @@ export default function Nav() {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 md:gap-3">
-          <div className="max-md:[&_.lang-toggle]:p-0.5 max-md:[&_.lang-toggle-btn]:min-h-7 max-md:[&_.lang-toggle-btn]:min-w-[1.75rem] max-md:[&_.lang-toggle-btn]:px-1.5 max-md:[&_.lang-toggle-btn]:py-0.5 max-md:[&_.lang-toggle-btn]:text-[10px]">
+          <div className="max-md:[&_.lang-toggle]:p-0.5 max-md:[&_.lang-toggle-btn]:min-h-7 max-md:[&_.lang-toggle-btn]:min-w-[1.75rem] max-md:[&_.lang-toggle-btn]:px-1.5 max-md:[&_.lang-toggle-btn]:py-0.5 max-md:[&_.lang-toggle-btn]:text-[10px] md:[&_.lang-toggle-btn]:min-h-8 md:[&_.lang-toggle-btn]:px-2.5 md:[&_.lang-toggle-btn]:py-1 md:[&_.lang-toggle-btn]:text-[11px]">
             <LangToggle />
           </div>
 

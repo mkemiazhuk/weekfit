@@ -5,8 +5,8 @@ import { useI18n } from "@/lib/i18n";
 import WordmarkMark from "./WordmarkMark";
 
 const sizes = {
-  nav: { markHeight: 29, fontSize: 14, gap: 8 },
-  navMobile: { markHeight: 28, fontSize: 14, gap: 8 },
+  nav: { markHeight: 36, fontSize: 16, gap: 10 },
+  navMobile: { markHeight: 30, fontSize: 15, gap: 9 },
   lg: { markHeight: 32, fontSize: 15, gap: 8 },
   footer: { markHeight: 29, fontSize: 14, gap: 8 },
 } as const;
