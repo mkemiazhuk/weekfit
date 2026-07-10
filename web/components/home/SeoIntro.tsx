@@ -65,6 +65,21 @@ export default function SeoIntro() {
                     </svg>
                     {s.privacy}
                   </p>
+
+                  <div
+                    className="premium-card mt-6 flex min-w-0 items-center gap-3 surface-chip px-3.5 py-3 md:hidden"
+                    style={{ boxShadow: `0 12px 40px -16px ${accents.appleHealth}33` }}
+                  >
+                    <span className="icon-tile apple-health-tile">
+                      <AppleHealthMark size={28} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="kicker-sm">{s.healthLabel}</p>
+                      <p className="mt-0.5 text-[13px] font-semibold text-white/80">
+                        {s.healthValue}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div
@@ -91,27 +106,18 @@ export default function SeoIntro() {
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {s.features.map((label, i) => {
                   const meta = featureMeta[i];
+                  if (meta.icon === "health") return null;
+
                   return (
                     <li
                       key={label}
                       className="premium-card surface-chip flex min-h-[88px] min-w-0 flex-col gap-2.5 p-3.5 sm:min-h-0 sm:flex-row sm:items-center sm:gap-3"
                     >
                       <span
-                        className={clsx(
-                          "icon-tile h-9 w-9",
-                          meta.icon === "health" ? "apple-health-tile" : "icon-tile-accent"
-                        )}
-                        style={
-                          meta.icon === "health"
-                            ? undefined
-                            : ({ "--accent-color": meta.color } as React.CSSProperties)
-                        }
+                        className="icon-tile icon-tile-accent h-9 w-9"
+                        style={{ "--accent-color": meta.color } as React.CSSProperties}
                       >
-                        {meta.icon === "health" ? (
-                          <AppleHealthMark size={28} />
-                        ) : (
-                          <Icon name={meta.icon} color={meta.color} size={17} />
-                        )}
+                        <Icon name={meta.icon} color={meta.color} size={17} />
                       </span>
                       <span
                         className={clsx(
@@ -127,18 +133,6 @@ export default function SeoIntro() {
                   );
                 })}
               </ul>
-
-              <div className="surface-chip mt-4 flex min-w-0 items-center gap-3 px-3.5 py-3 md:hidden">
-                <span className="icon-tile apple-health-tile h-9 w-9">
-                  <AppleHealthMark size={28} />
-                </span>
-                <div className="min-w-0">
-                  <p className="kicker-sm">{s.healthLabel}</p>
-                  <p className="truncate text-[13px] font-semibold text-white/80">
-                    {s.healthValue}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </Reveal>

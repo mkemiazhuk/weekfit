@@ -361,6 +361,9 @@ export const en = {
       health: "Apple Health integration",
     },
   },
+  a11y: {
+    scrollToTop: "Back to top",
+  },
 };
 
 export type Dict = typeof en;
@@ -728,6 +731,9 @@ export const ru: Dict = {
       privacy: "Приватность по умолчанию",
       health: "Интеграция с Apple Health",
     },
+  },
+  a11y: {
+    scrollToTop: "Наверх",
   },
 };
 

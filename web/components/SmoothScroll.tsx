@@ -10,7 +10,22 @@ export default function SmoothScroll() {
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+
+    const onScrollTop = (e: Event) => {
+      const immediate = (e as CustomEvent<{ immediate?: boolean }>).detail?.immediate;
+      const lenis = lenisRef.current;
+      if (lenis) {
+        lenis.scrollTo(0, { immediate: !!immediate, duration: immediate ? 0 : 1.05 });
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: immediate ? "auto" : "smooth" });
+    };
+
+    window.addEventListener("weekfit:scroll-top", onScrollTop);
+
+    if (reduce) {
+      return () => window.removeEventListener("weekfit:scroll-top", onScrollTop);
+    }
 
     const lenis = new Lenis({
       duration: 1.05,
@@ -46,6 +61,7 @@ export default function SmoothScroll() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       window.removeEventListener("load", resize);
+      window.removeEventListener("weekfit:scroll-top", onScrollTop);
       clearTimeout(t1);
       clearTimeout(t2);
       ro.disconnect();

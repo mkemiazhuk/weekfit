@@ -705,31 +705,64 @@ input:focus-visible,
   .journey-stage-panel {
     position: relative;
     z-index: 2;
-    isolation: isolate;
   }
 
   .journey-stage-copy {
     position: relative;
     z-index: 1;
-    padding: 0.75rem 0;
-  }
-
-  .journey-stage-copy::before {
-    content: "";
-    position: absolute;
-    inset: -0.35rem -0.75rem;
-    z-index: -1;
-    border-radius: var(--radius-md);
-    background: linear-gradient(
-      180deg,
-      var(--color-canvas) 0%,
-      color-mix(in srgb, var(--color-canvas) 94%, transparent) 100%
-    );
   }
 }
 
 .journey-stage-copy {
   will-change: opacity;
+}
+
+/* Scroll to top — fixed, right edge */
+.scroll-to-top {
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    152deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+  color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 12px 32px -12px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  transition:
+    opacity var(--duration-ui) var(--ease-calm),
+    transform var(--duration-ui) var(--ease-calm),
+    border-color var(--duration-ui) var(--ease-calm),
+    color var(--duration-ui) var(--ease-calm);
+}
+@media (hover: hover) {
+  .scroll-to-top:hover {
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
+  }
+}
+.scroll-to-top:active {
+  transform: translateY(0) scale(0.96);
+}
+.scroll-to-top--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.scroll-to-top--hidden {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top,
+  .scroll-to-top--hidden,
+  .scroll-to-top--visible {
+    transition: none;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
