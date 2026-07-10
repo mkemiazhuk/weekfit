@@ -24,7 +24,7 @@ export default function Hero() {
 
   return (
     <section
-      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.25rem] pb-12 max-md:min-h-0 md:grid md:min-h-[88vh] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10 md:pb-12 md:pt-[6.5rem] lg:gap-12 lg:pb-14"
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.25rem] pb-12 max-md:min-h-0 md:grid md:min-h-[88vh] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10 md:pb-16 md:pt-[6.5rem] lg:gap-12 lg:pb-[4.5rem]"
     >
       <SectionAmbient tone="morning" />
 

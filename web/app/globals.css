@@ -547,6 +547,23 @@ input:focus-visible,
   padding-right: clamp(2.5rem, 18vw, 5rem);
   min-height: clamp(21rem, 50vw, 34rem);
 }
+@media (min-width: 768px) {
+  .hero-phone {
+    margin-bottom: 0.75rem;
+  }
+  .hero-device-scene {
+    margin-inline: auto 0;
+  }
+  .hero-device-scene__inner {
+    margin-inline: auto 0;
+    transform: translateX(clamp(0.75rem, 2.5vw, 2.25rem));
+  }
+}
+@media (min-width: 1024px) {
+  .hero-device-scene__inner {
+    transform: translateX(clamp(1rem, 3vw, 3rem));
+  }
+}
 .hero-device-scene__phone {
   position: relative;
   z-index: 1;
