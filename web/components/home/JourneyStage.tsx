@@ -1,106 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import clsx from "clsx";
-import { motion, useReducedMotion } from "framer-motion";
-import { pillars } from "@/lib/tokens";
-import { easeCalm } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
-import JourneySignalCard from "../JourneySignalCard";
+import { journeySpotlightSteps } from "@/lib/journeySpotlight";
 import SectionAmbient from "../SectionAmbient";
-
-type AmbientTone = "morning" | "coach" | "activity" | "nutrition" | "recovery";
-
-interface StageSignal {
-  signal: string;
-  tip: string;
-  detail: string;
-}
-
-interface Panel {
-  key: string;
-  screen: string;
-  screenAlt: string;
-  accent: string;
-  ambient: AmbientTone;
-  kicker: string;
-  title: string;
-  body: string;
-  coach: StageSignal;
-  layout: "default" | "statement";
-}
+import JourneySpotlightPhone from "./JourneySpotlightPhone";
 
 export default function JourneyStage() {
   const { t } = useI18n();
-  const reduce = useReducedMotion();
-
-  const panels: Panel[] = [
-    {
-      key: "morning",
-      screen: "/img/today.jpg",
-      screenAlt: "WeekFit Today screen showing recovery, activity and nutrition rings",
-      accent: pillars.recovery,
-      ambient: "morning",
-      kicker: t.morning.kicker,
-      title: t.morning.title,
-      body: t.morning.body,
-      coach: t.morning.coach,
-      layout: "default",
-    },
-    {
-      key: "prep",
-      screen: "/img/meals.jpg",
-      screenAlt: "WeekFit Meals screen with pre-workout nutrition guidance",
-      accent: pillars.nutrition,
-      ambient: "nutrition",
-      kicker: t.prep.kicker,
-      title: t.prep.title,
-      body: t.prep.body,
-      coach: t.prep.coach,
-      layout: "statement",
-    },
-    {
-      key: "workout",
-      screen: "/img/activity.jpg",
-      screenAlt: "WeekFit Activity screen with workouts synced from Apple Health",
-      accent: pillars.activity,
-      ambient: "activity",
-      kicker: t.workout.kicker,
-      title: t.workout.title,
-      body: t.workout.body,
-      coach: t.workout.coach,
-      layout: "default",
-    },
-    {
-      key: "recovery",
-      screen: "/img/recovery.jpg",
-      screenAlt: "WeekFit recovery screen with stretching and sleep guidance",
-      accent: pillars.recovery,
-      ambient: "recovery",
-      kicker: t.recovery.kicker,
-      title: t.recovery.title,
-      body: t.recovery.body,
-      coach: t.recovery.coach,
-      layout: "default",
-    },
-    {
-      key: "night",
-      screen: "/img/coach.jpg",
-      screenAlt: "WeekFit Coach screen with wind-down guidance for the evening",
-      accent: pillars.recovery,
-      ambient: "recovery",
-      kicker: t.night.kicker,
-      title: t.night.title,
-      body: t.night.body,
-      coach: t.night.coach,
-      layout: "statement",
-    },
-  ];
+  const steps = journeySpotlightSteps;
+  const copy = t.journeySteps;
 
   const [active, setActive] = useState(0);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const ratios = useRef<number[]>(panels.map(() => 0));
+  const ratios = useRef<number[]>(steps.map(() => 0));
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -119,148 +33,70 @@ export default function JourneyStage() {
         });
         setActive(best);
       },
-      { rootMargin: "-40% 0px -40% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+      { rootMargin: "-42% 0px -42% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
     );
     panelRefs.current.forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [steps.length]);
 
-  const current = panels[active];
-
-  function PhoneFrame({
-    panel,
-    className,
-    sizes,
-  }: {
-    panel: Panel;
-    className?: string;
-    sizes: string;
-  }) {
-    return (
-      <div className={clsx("relative w-full", className)}>
-        <div
-          aria-hidden
-          className="phone-glow transition-all duration-700"
-          style={{
-            background: `radial-gradient(closest-side, ${panel.accent}3d, transparent 70%)`,
-            filter: "blur(38px)",
-          }}
-        />
-        <div className="phone-frame transition-shadow duration-500">
-          <div aria-hidden className="phone-island" />
-          <div className="phone-screen">
-            <Image src={panel.screen} alt={panel.screenAlt} fill sizes={sizes} className="object-cover" />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 mix-blend-screen"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.03) 22%, transparent 46%)",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const current = steps[active];
 
   return (
     <section id="experience" className="relative z-[1] section-x section-y-inset-top">
       <SectionAmbient tone={current.ambient} />
-      <div className="mx-auto max-w-6xl md:grid md:grid-cols-2 md:gap-14">
-        {/* Sticky morphing phone (desktop) */}
-        <div className="hidden md:block">
-          <div className="sticky top-0 flex h-screen items-center justify-center">
-            <div className="relative w-full max-w-[300px]">
-              <div
-                className="phone-frame transition-shadow duration-700"
-                style={{
-                  boxShadow: `0 60px 130px -30px rgba(0,0,0,0.75), 0 0 60px -20px ${current.accent}33`,
-                }}
-              >
-                <div aria-hidden className="phone-island" />
-                <div className="phone-screen">
-                  {panels.map((p, i) => (
-                    <Image
-                      key={p.key}
-                      src={p.screen}
-                      alt={i === active ? p.screenAlt : ""}
-                      fill
-                      sizes="320px"
-                      className={clsx(
-                        "object-cover transition-opacity duration-700",
-                        i === active ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
 
-              <div
-                key={current.key}
-                className="absolute -bottom-4 -right-8 w-[min(100%,280px)] max-w-[280px]"
-                style={{ animation: reduce ? "none" : "coach-swap 0.6s var(--ease-calm)" }}
-              >
-                <JourneySignalCard
-                  accent={current.accent}
-                  signal={current.coach.signal}
-                  tip={current.coach.tip}
-                  detail={current.coach.detail}
-                />
-              </div>
-            </div>
-          </div>
+      <div className="mx-auto max-w-6xl">
+        <div className="journey-spotlight-phone-mobile sticky top-[4.75rem] z-10 mx-auto mb-8 max-w-[240px] md:hidden">
+          <JourneySpotlightPhone steps={steps} activeIndex={active} sizes="240px" />
         </div>
 
-        {/* Scrolling panels */}
-        <div>
-          {panels.map((p, i) => (
-            <div
-              key={p.key}
-              ref={(el) => {
-                panelRefs.current[i] = el;
-              }}
-              data-idx={i}
-              className={clsx(
-                "relative flex min-h-[72vh] flex-col justify-center py-14 md:min-h-[88vh] md:py-[4.5rem]",
-                p.layout === "statement" && "md:min-h-[68vh]"
-              )}
-            >
-              <div className="relative mb-6 flex justify-center pb-10 md:hidden md:pb-0">
-                <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
-                <div className="absolute -bottom-2 left-1/2 w-[min(92vw,280px)] max-w-[280px] -translate-x-1/2">
-                  <JourneySignalCard
-                    accent={p.accent}
-                    signal={p.coach.signal}
-                    tip={p.coach.tip}
-                    detail={p.coach.detail}
-                    floating
-                  />
-                </div>
-              </div>
+        <div className="md:grid md:grid-cols-2 md:gap-14 lg:gap-16">
+          <div className="hidden md:flex md:sticky md:top-0 md:h-screen md:items-center md:justify-center">
+            <JourneySpotlightPhone
+              steps={steps}
+              activeIndex={active}
+              className="max-w-[320px]"
+              sizes="320px"
+            />
+          </div>
 
-              <motion.div
-                initial={reduce ? {} : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-20% 0px" }}
-                transition={{ duration: 0.7, ease: easeCalm }}
-                className="text-center md:text-left"
-              >
-                <span className="kicker" style={{ color: p.accent }}>
-                  {p.kicker}
-                </span>
-                <h2
-                  className={clsx(
-                    "display section-title text-balance mt-4 text-white",
-                    p.layout === "statement" && "section-title-lg"
-                  )}
+          <div>
+            {steps.map((step, i) => {
+              const stepCopy = copy[step.contentKey];
+              const isActive = i === active;
+
+              return (
+                <div
+                  key={step.id}
+                  ref={(el) => {
+                    panelRefs.current[i] = el;
+                  }}
+                  data-idx={i}
+                  className="relative flex min-h-[52vh] flex-col justify-center py-10 md:min-h-[84vh] md:py-[4.5rem]"
                 >
-                  {p.title}
-                </h2>
-                <p className="body-md section-lead mx-auto mt-4 md:mx-0">{p.body}</p>
-              </motion.div>
-            </div>
-          ))}
+                  <div
+                    className={clsx(
+                      "journey-walkthrough-copy text-center transition-opacity duration-500 md:text-left",
+                      isActive ? "opacity-100" : "opacity-38 md:opacity-42"
+                    )}
+                  >
+                    <span className="kicker" style={{ color: step.accent }}>
+                      {stepCopy.label}
+                    </span>
+                    <h2 className="display section-title text-balance mt-4 text-white">
+                      {stepCopy.signal}
+                    </h2>
+                    <p className="body-lg mt-4 max-w-[var(--measure-prose)] mx-auto md:mx-0">
+                      {stepCopy.tip}
+                    </p>
+                    <p className="body-md mt-3 max-w-[var(--measure-prose)] mx-auto md:mx-0">
+                      {stepCopy.detail}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

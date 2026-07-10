@@ -240,6 +240,38 @@ export const en = {
       detail: "Light refuel if you trained late; tomorrow's call starts with how you close tonight.",
     },
   },
+  journeySteps: {
+    recoveryScore: {
+      label: "Recovery score",
+      signal: "One read for today",
+      tip: "Sleep, HRV and yesterday's load roll into a single readiness score — not a grade, a starting point.",
+      detail: "WeekFit weighs what your body absorbed overnight against what you still carry from recent training.",
+    },
+    hrv: {
+      label: "HRV",
+      signal: "Autonomic recovery, tracked",
+      tip: "Heart rate variability shows how well your nervous system recovered — synced from Apple Health.",
+      detail: "A steady or rising HRV supports harder work; a dip suggests protecting the day.",
+    },
+    sleep: {
+      label: "Sleep",
+      signal: "Last night, counted",
+      tip: "Duration, depth and consistency feed the score — not just hours in bed.",
+      detail: "WeekFit reads sleep architecture alongside bedtime regularity, not a single generic target.",
+    },
+    trainingLoad: {
+      label: "Training load",
+      signal: "Yesterday still counts",
+      tip: "Prior-day strain stays in the model until your body clears it — easy spin beats forcing volume.",
+      detail: "Keep heart rate easy when load is elevated; tomorrow's read improves when you respect the strain.",
+    },
+    coachRec: {
+      label: "Coach recommendation",
+      signal: "What to do now",
+      tip: "One clear call — what matters today, why it matters, and how to adjust meals, training or recovery.",
+      detail: "Interpretation and decision support, not another dashboard of numbers.",
+    },
+  },
   reasoning: {
     kicker: "The Coach",
     title: "Not more scores. More clarity.",
@@ -606,6 +638,38 @@ export const ru: Dict = {
       signal: "Сон — главная задача сегодня",
       tip: "В постель к 22:30 — экраны выключить за 30 минут.",
       detail: "Лёгкий перекус, если тренировались поздно; завтра начинается с того, как вы закроете вечер.",
+    },
+  },
+  journeySteps: {
+    recoveryScore: {
+      label: "Recovery score",
+      signal: "Один вывод на сегодня",
+      tip: "Сон, ВСР и вчерашняя нагрузка складываются в один readiness score — не оценка, а отправная точка.",
+      detail: "WeekFit взвешивает, что тело восстановило за ночь, и что ещё осталось от недавних тренировок.",
+    },
+    hrv: {
+      label: "HRV",
+      signal: "Восстановление нервной системы",
+      tip: "Вариабельность пульса показывает, насколько восстановилась автономная система — данные из Apple Health.",
+      detail: "Стабильный или растущий HRV поддерживает более интенсивный день; снижение — сигнал беречь себя.",
+    },
+    sleep: {
+      label: "Sleep",
+      signal: "Прошлая ночь, в цифрах",
+      tip: "Длительность, глубина и регулярность сна влияют на score — не только часы в кровати.",
+      detail: "WeekFit учитывает архитектуру сна и стабильность времени отхода ко сну, а не один общий таргет.",
+    },
+    trainingLoad: {
+      label: "Training load",
+      signal: "Вчера ещё в модели",
+      tip: "Нагрузка прошлого дня остаётся в расчёте, пока тело её не переработает — лёгкая работа лучше лишнего объёма.",
+      detail: "Держите пульс легко при высоком load; завтрашний вывод улучшится, если уважать strain.",
+    },
+    coachRec: {
+      label: "Coach recommendation",
+      signal: "Что делать сейчас",
+      tip: "Один понятный вывод — что важно сегодня, почему это важно и как скорректировать питание, тренировку или recovery.",
+      detail: "Интерпретация и поддержка решений, а не ещё одна панель с цифрами.",
     },
   },
   reasoning: {

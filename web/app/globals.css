@@ -590,6 +590,45 @@ input:focus-visible,
     font-size: 0.8125rem;
   }
 }
+
+/* Journey — in-phone spotlight walkthrough */
+.journey-spotlight-phone__screen {
+  isolation: isolate;
+}
+
+.journey-spotlight-phone__dim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(6, 7, 10, 0.38);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.journey-spotlight-phone__cutout {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 9999px rgba(6, 7, 10, 0.48),
+    0 0 0 1px color-mix(in srgb, var(--spotlight-accent) 42%, transparent),
+    0 0 28px 1px color-mix(in srgb, var(--spotlight-accent) 28%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--spotlight-accent) 12%, transparent);
+}
+
+.journey-walkthrough-copy {
+  will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-spotlight-phone__cutout {
+    transition: none !important;
+  }
+  .journey-spotlight-phone__screen img {
+    transition: none !important;
+  }
+}
+
 .icon-tile-accent {
   background: color-mix(in srgb, var(--accent-color) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
