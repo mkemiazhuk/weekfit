@@ -116,7 +116,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="site-header__bar mx-auto grid h-[3.75rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:flex md:h-16 md:justify-between md:gap-3 lg:h-[4.5rem]"
+        className="site-header__bar mx-auto grid h-[3.5rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:flex md:h-16 md:justify-between md:gap-3 lg:h-[4.5rem]"
       >
         <div className="min-w-0 pr-1 md:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />
@@ -137,21 +137,11 @@ export default function Nav() {
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-1 min-[360px]:gap-2 md:gap-3">
-          <div className="nav-header-lang hidden min-[360px]:block md:block">
+        <div className="flex shrink-0 items-center justify-end md:gap-3">
+          <div className="hidden md:block">
             <LangToggle />
           </div>
 
-          <div className="nav-header-cta hidden min-[360px]:block md:hidden">
-            <Button
-              href={SITE.appInstallUrl}
-              external
-              size="xs"
-              className="nav-header-cta-btn shrink-0"
-            >
-              {t.cta.testflight}
-            </Button>
-          </div>
           <div className="hidden md:block">
             <Button href={SITE.appInstallUrl} external size="nav" className="btn-nav-cta">
               {t.cta.testflight}
@@ -235,18 +225,18 @@ export default function Nav() {
                   ))}
                 </ul>
 
-                <div className="mobile-menu-lang mt-6 min-[360px]:hidden">
+                <div className="mobile-menu-lang mt-6">
                   <p className="caption mb-2.5 text-white/38">
                     {t.nav.menu === "Menu" ? "Language" : "Язык"}
                   </p>
-                  <LangToggle />
+                  <LangToggle variant="menu" />
                 </div>
 
                 <Button
                   href={SITE.appInstallUrl}
                   external
                   size="md"
-                  className="mobile-menu-cta mt-6 w-full min-[360px]:mt-8"
+                  className="mobile-menu-cta mt-8 w-full"
                   onClick={closeMenu}
                 >
                   {t.cta.testflight}

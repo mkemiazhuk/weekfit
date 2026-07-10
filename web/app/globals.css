@@ -2270,7 +2270,7 @@ input:focus-visible,
   .btn-touch[class*="min-h"] {
     min-height: 44px;
   }
-  .btn-touch.rounded-button:not(.nav-header-cta-btn):not(.mobile-menu-cta):not([class*="min-h"]) {
+  .btn-touch.rounded-button:not(.mobile-menu-cta):not([class*="min-h"]) {
     min-height: 44px;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -2549,30 +2549,7 @@ input:focus-visible,
     top: calc(4.75rem + var(--safe-top)) !important;
   }
 
-  /* Mobile header controls — 44px hit areas, compact visuals */
-  .nav-header-lang .lang-toggle {
-    padding: 0.125rem;
-  }
-  .nav-header-lang .lang-toggle-btn {
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-    padding-inline: 0.625rem;
-    touch-action: manipulation;
-  }
-
-  .nav-header-cta-btn {
-    min-height: 2.75rem !important;
-    padding: 0.375rem 0.75rem !important;
-    font-size: 0.6875rem !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.005em;
-    touch-action: manipulation;
-    box-shadow: 0 4px 14px -10px rgba(102, 188, 135, 0.18) !important;
-  }
-  .nav-header-cta-btn:active {
-    transform: scale(0.96) !important;
-  }
-
+  /* Mobile header — logo + menu only */
   .nav-menu-btn {
     touch-action: manipulation;
   }
@@ -2619,15 +2596,16 @@ input:focus-visible,
   .mobile-menu-link:active {
     color: rgba(255, 255, 255, 0.96);
   }
-  .mobile-menu-lang .lang-toggle {
-    width: 100%;
-    justify-content: center;
-    padding: 0.1875rem;
+  .mobile-menu-lang {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
-  .mobile-menu-lang .lang-toggle-btn {
-    flex: 1;
-    min-height: 2.75rem;
+  .mobile-menu-lang .lang-toggle {
     touch-action: manipulation;
+  }
+  .mobile-menu-lang .lang-toggle-btn:active {
+    transform: scale(0.98);
   }
   .mobile-menu-cta {
     min-height: 3.25rem !important;
@@ -2777,16 +2755,6 @@ input:focus-visible,
 
   .btn-nav-cta:active {
     transform: translateY(0) scale(0.98) !important;
-  }
-
-  .nav-header-lang .lang-toggle {
-    padding: 0.125rem;
-  }
-  .nav-header-lang .lang-toggle-btn {
-    min-height: 2rem;
-    min-width: auto;
-    padding: 0.25rem 0.625rem;
-    font-size: 11px;
   }
 
   .btn-hero-primary {
