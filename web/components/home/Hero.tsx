@@ -69,14 +69,13 @@ export default function Hero() {
         >
           <HeroDeviceShowcase
             priority
-            launchBadge={t.hero.launchBadge}
             watchScreen={
               <WatchCoachScreen
-                accent={pillars.activity}
-                state={t.hero.watchState}
-                title={t.hero.watchTitle}
-                body={t.hero.watchBody}
-                coachLabel={t.hero.watchLabel}
+                accent={pillars.coach}
+                state="Ready"
+                title={t.hero.coachTitle}
+                body={t.hero.coachBody}
+                coachLabel={t.coachAdvice.label}
               />
             }
           />

@@ -72,18 +72,11 @@ export default function Download() {
 
             <motion.div {...phone} className="download-hero__device">
               <div className="download-hero-phone hero-product-stage">
-                <div
-                  aria-hidden
-                  className="download-hero-phone__glow download-hero-phone__glow--recovery pointer-events-none"
-                  style={{ opacity: 0.45 }}
-                />
                 <PhoneMockup
                   src="/img/today.jpg"
                   alt="WeekFit Today screen with the morning decision"
-                  depth
                   width={280}
                 />
-                <div aria-hidden className="hero-product-reflection" />
               </div>
             </motion.div>
           </div>

@@ -1,13 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { appleWatchUltra2, MOCKIFY_BASE_PATH } from "@/lib/device-frames";
-import HeroPhoneLaunchScreen from "./HeroPhoneLaunchScreen";
 
 interface HeroDeviceShowcaseProps {
   watchScreen: ReactNode;
-  launchBadge: string;
   priority?: boolean;
 }
 
@@ -17,7 +16,7 @@ function useDeviceWidths() {
   useEffect(() => {
     const update = () => {
       const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.52) });
+      setWidths({ phone, watch: Math.round(phone * 0.45) });
     };
     update();
     window.addEventListener("resize", update);
@@ -29,7 +28,6 @@ function useDeviceWidths() {
 
 export default function HeroDeviceShowcase({
   watchScreen,
-  launchBadge,
   priority,
 }: HeroDeviceShowcaseProps) {
   const { phone, watch } = useDeviceWidths();
@@ -49,11 +47,17 @@ export default function HeroDeviceShowcase({
             width={phone}
             className="hero-device-mockup hero-device-mockup--phone"
           >
-            <HeroPhoneLaunchScreen priority={priority} badgeLabel={launchBadge} />
+            <Image
+              src="/img/today.jpg"
+              alt="WeekFit Today screen"
+              width={900}
+              height={1950}
+              priority={priority}
+              className="h-full w-full object-cover object-top"
+            />
           </DeviceMockup>
         </div>
 
-        <div aria-hidden className="hero-device-scene__watch-base" />
         <div className="hero-device-scene__watch">
           <DeviceMockup
             device={appleWatchUltra2}
