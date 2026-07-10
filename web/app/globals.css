@@ -238,6 +238,13 @@ input:focus-visible,
   line-height: 1;
   transform: translateY(0.5px);
 }
+
+@media (max-width: 767px) {
+  .wordmark-lockup--nav-mobile .wordmark-lockup__text {
+    font-weight: 500;
+    letter-spacing: -0.026em;
+  }
+}
 .wordmark-lockup__week {
   color: rgba(255, 255, 255, 0.96);
 }
@@ -710,6 +717,43 @@ input:focus-visible,
   .journey-stage-copy {
     position: relative;
     z-index: 1;
+    margin-inline: -0.25rem;
+    padding: 1.125rem 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(
+      165deg,
+      rgba(8, 9, 12, 0.55),
+      rgba(6, 7, 10, 0.42)
+    );
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    box-shadow:
+      0 20px 48px -28px rgba(0, 0, 0, 0.62),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .journey-stage-copy .section-title,
+  .journey-stage-copy .section-title-lg {
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  }
+
+  .journey-stage-copy .body-lg,
+  .journey-stage-copy .body-md,
+  .journey-stage-copy p {
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (max-width: 767px) {
+    .journey-stage-copy {
+      background: linear-gradient(
+        165deg,
+        rgba(8, 9, 12, 0.88),
+        rgba(6, 7, 10, 0.82)
+      );
+    }
   }
 }
 
@@ -2123,12 +2167,12 @@ input:focus-visible,
 
 @media (max-width: 767px) {
   .btn-nav-mobile-cta {
-    min-height: 32px !important;
-    padding: 6px 10px !important;
-    font-size: 11px !important;
+    min-height: 28px !important;
+    padding: 5px 9px !important;
+    font-size: 10.5px !important;
     font-weight: 500 !important;
-    letter-spacing: 0.01em;
-    box-shadow: 0 6px 18px -10px rgba(102, 188, 135, 0.2) !important;
+    letter-spacing: 0.005em;
+    box-shadow: 0 4px 14px -10px rgba(102, 188, 135, 0.18) !important;
   }
 
   .btn-nav-mobile-cta:active {
