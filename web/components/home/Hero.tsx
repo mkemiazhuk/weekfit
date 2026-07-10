@@ -9,7 +9,7 @@ import TextReveal from "../TextReveal";
 import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
-import { easeCalm } from "@/lib/motion";
+import { easeCalm, durationRevealSlow, durationEntrance } from "@/lib/motion";
 import SectionAmbient from "../SectionAmbient";
 import HeroLocalTime from "./HeroLocalTime";
 
@@ -21,7 +21,7 @@ export default function Hero() {
   const fade = (delay: number) => ({
     initial: reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 },
     animate: { opacity: 1, y: 0 },
-    transition: reduce ? { duration: 0 } : { duration: 0.85, ease: easeCalm, delay },
+    transition: reduce ? { duration: 0 } : { duration: durationRevealSlow, ease: easeCalm, delay },
   });
 
   const onMouseMove = useCallback(
@@ -103,11 +103,11 @@ export default function Hero() {
             reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 36, scale: 0.97 }
           }
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={reduce ? { duration: 0 } : { duration: 1.05, ease: easeCalm, delay: 0.28 }}
+          transition={reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.28 }}
         >
           <div
             ref={phoneRef}
-            className="relative mx-auto transition-transform duration-500 ease-out will-change-transform lg:duration-700"
+            className="relative mx-auto transition-transform duration-[var(--duration-hero)] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
             style={{ transformStyle: "preserve-3d" }}
           >
             <div className="phone-float phone-float-hero">
@@ -124,7 +124,7 @@ export default function Hero() {
           initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={
-            reduce ? { duration: 0 } : { duration: 1.15, ease: easeCalm, delay: 0.95 }
+            reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeCalm, delay: 0.95 }
           }
           className="hero-coach-card relative z-10 mt-6 w-full md:absolute md:-bottom-8 md:-right-4 md:mt-0 md:w-[252px] lg:-bottom-6"
         >

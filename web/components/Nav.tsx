@@ -49,9 +49,9 @@ export default function Nav() {
   return (
     <header
       className={clsx(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-500",
+        "fixed inset-x-0 top-0 z-50 transition-[border-color,background-color,box-shadow] duration-[var(--duration-surface)] ease-[cubic-bezier(0.22,1,0.36,1)]",
         scrolled || open
-          ? "border-b border-white/[0.08] bg-canvas/72 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-2xl backdrop-saturate-150"
+          ? "border-b border-white/[0.08] bg-canvas/72 shadow-[var(--shadow-nav)] backdrop-blur-2xl backdrop-saturate-150"
           : "border-b border-transparent"
       )}
     >
@@ -156,7 +156,8 @@ export default function Nav() {
               <Button
                 href={SITE.appInstallUrl}
                 external
-                className="mt-6 w-full"
+                size="md"
+                className="mt-6 w-full btn-nav-mobile-cta"
                 onClick={() => setOpen(false)}
               >
                 {t.cta.testflight}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { easeCalm } from "@/lib/motion";
 
 export interface QA {
   q: string;
@@ -13,7 +14,7 @@ export default function FAQAccordion({ items }: { items: QA[] }) {
   const reduce = useReducedMotion();
 
   return (
-    <div className="card divide-y divide-white/[0.08] overflow-hidden border border-white/[0.08] bg-white/[0.02]">
+    <div className="card glass divide-y divide-white/[0.08] overflow-hidden">
       {items.map((it, i) => {
         const isOpen = open === i;
         return (
@@ -27,7 +28,7 @@ export default function FAQAccordion({ items }: { items: QA[] }) {
                 {it.q}
               </span>
               <span
-                className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-white/15 text-white/70 transition-transform duration-300"
+                className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-white/15 text-white/70 transition-calm"
                 style={{ transform: isOpen ? "rotate(45deg)" : "none" }}
                 aria-hidden
               >

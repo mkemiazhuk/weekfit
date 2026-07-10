@@ -35,8 +35,8 @@ export default function Button({
   onClick,
 }: ButtonProps) {
   const base = clsx(
-    "btn-touch btn-text group relative inline-flex items-center justify-center gap-2 font-medium",
-    "touch-manipulation select-none transition-all duration-300 will-change-transform",
+    "btn-touch btn-text transition-calm group relative inline-flex items-center justify-center gap-2 font-medium",
+    "touch-manipulation select-none will-change-transform",
     "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
     sizes[size]
   );
@@ -44,8 +44,8 @@ export default function Button({
   const styles: Record<Variant, string> = {
     primary: clsx(
       "text-[var(--color-btn-text)]",
-      "shadow-[0_14px_40px_-8px_rgba(102,188,135,0.5)]",
-      "hover:shadow-[0_18px_48px_-6px_rgba(102,188,135,0.55)]",
+      "shadow-[var(--shadow-btn-primary)]",
+      "hover:shadow-[var(--shadow-btn-primary-hover)]",
       "hover:brightness-[1.04]"
     ),
     ghost: "glass text-white/90 hover:text-white hover:border-white/20 hover:bg-white/[0.06]",

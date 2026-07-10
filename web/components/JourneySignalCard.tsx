@@ -22,15 +22,11 @@ export default function JourneySignalCard({
   return (
     <div
       className={clsx(
-        "premium-card card relative overflow-hidden p-4 backdrop-blur-xl md:p-5",
+        "premium-card card card-accent relative overflow-hidden p-5",
         floating && "coach-float",
         className
       )}
-      style={{
-        background: `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0.02))`,
-        border: `1px solid ${accent}3d`,
-        boxShadow: `0 24px 60px -20px ${accent}55, 0 10px 30px -15px rgba(0,0,0,0.6)`,
-      }}
+      style={{ "--accent-color": accent } as React.CSSProperties}
     >
       <div className="relative flex items-start gap-2.5">
         <span

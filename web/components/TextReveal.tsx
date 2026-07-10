@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
-import { easeCalm } from "@/lib/motion";
+import { easeCalm, durationRevealSlow } from "@/lib/motion";
 
 interface TextRevealProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export default function TextReveal({
         className="block"
         initial={{ opacity: 0, y: "108%" }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.95, ease: easeCalm, delay }}
+        transition={{ duration: durationRevealSlow, ease: easeCalm, delay }}
       >
         {children}
       </motion.span>

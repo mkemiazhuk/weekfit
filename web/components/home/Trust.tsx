@@ -74,11 +74,8 @@ export default function Trust() {
               <Reveal key={it.key} delay={0.05 * i}>
                 <div className="premium-card card glass h-full p-5">
                   <div
-                    className="icon-tile"
-                    style={{
-                      background: `${it.color}1f`,
-                      border: `1px solid ${it.color}33`,
-                    }}
+                    className="icon-tile icon-tile-accent"
+                    style={{ "--accent-color": it.color } as React.CSSProperties}
                   >
                     <Glyph name={it.key} color={it.color} />
                   </div>

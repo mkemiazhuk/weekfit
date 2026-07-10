@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
-import { easeCalm } from "@/lib/motion";
+import { easeCalm, durationUI } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
 import {
   resolveSimulator,
@@ -191,9 +191,9 @@ export default function TuesdaySimulator() {
               key={result.decision}
               initial={reduce ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: easeCalm }}
-              className="card-panel glass overflow-hidden !p-5 md:!p-7"
-              style={{ boxShadow: `0 40px 80px -32px ${result.accent}44` }}
+              transition={{ duration: durationUI, ease: easeCalm }}
+              className="card-panel card-panel-compact glass overflow-hidden"
+              style={{ boxShadow: `var(--shadow-accent) ${result.accent}44` }}
             >
               <div
                 aria-hidden

@@ -5,7 +5,7 @@ import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
-import { easeCalm } from "@/lib/motion";
+import { easeCalm, durationRevealSlow, durationEntrance } from "@/lib/motion";
 import { pillars } from "@/lib/tokens";
 
 export default function Download() {
@@ -19,7 +19,7 @@ export default function Download() {
           initial: { opacity: 0, y },
           whileInView: { opacity: 1, y: 0 },
           viewport: { once: true, margin: "-8%" },
-          transition: { duration: 0.95, ease: easeCalm, delay },
+          transition: { duration: durationRevealSlow, ease: easeCalm, delay },
         };
 
   const phone = reduce
@@ -28,7 +28,7 @@ export default function Download() {
         initial: { opacity: 0, y: 48, scale: 0.94 },
         whileInView: { opacity: 1, y: 0, scale: 1 },
         viewport: { once: true, margin: "-10%" },
-        transition: { duration: 1.15, ease: easeCalm, delay: 0.58 },
+        transition: { duration: durationEntrance, ease: easeCalm, delay: 0.58 },
       };
 
   return (
@@ -58,7 +58,7 @@ export default function Download() {
             <div className="download-hero__copy text-center md:text-left">
               <motion.h2
                 {...copy(0, 18)}
-                className="hero-title display text-white/92"
+                className="hero-title display whitespace-nowrap text-white/92"
               >
                 {t.cta.title}
               </motion.h2>

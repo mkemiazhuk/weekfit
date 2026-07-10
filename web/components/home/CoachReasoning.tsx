@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { pillars } from "@/lib/tokens";
-import { easeCalm, stagger } from "@/lib/motion";
+import { easeCalm, stagger, durationReveal } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
 import TextReveal from "../TextReveal";
 import SectionAmbient from "../SectionAmbient";
@@ -46,7 +46,7 @@ export default function CoachReasoning() {
           initial: { opacity: 0, y: 16 },
           whileInView: { opacity: 1, y: 0 },
           viewport: { once: true, margin: "-8% 0px" },
-          transition: { duration: 0.75, ease: easeCalm, delay: i * stagger },
+          transition: { duration: durationReveal, ease: easeCalm, delay: i * stagger },
         };
 
   return (
@@ -126,11 +126,11 @@ export default function CoachReasoning() {
               <p className="body-md mt-3 text-white/58">{r.reason}</p>
             </div>
             <div
-              className="card card-glass"
+              className="card glass card-glass"
               style={{
                 background: `linear-gradient(150deg, ${pillars.coach}20, rgba(255,255,255,0.04))`,
                 border: `1px solid ${pillars.coach}35`,
-                boxShadow: `0 20px 50px -20px ${pillars.coach}40`,
+                boxShadow: `var(--shadow-accent) ${pillars.coach}40`,
               }}
             >
               <p className="kicker-sm">{r.recommendationLabel}</p>

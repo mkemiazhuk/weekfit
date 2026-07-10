@@ -324,7 +324,7 @@ export const en = {
     link: "Read the Privacy Policy",
   },
   cta: {
-    title: "Tomorrow at 7:00",
+    title: "Tomorrow at\u00a07:00",
     subtitle: "You'll know.",
     body: "Free public beta · TestFlight · iPhone",
     button: "Download on the App Store",
@@ -692,7 +692,7 @@ export const ru: Dict = {
     link: "Читать политику конфиденциальности",
   },
   cta: {
-    title: "Завтра в 7:00",
+    title: "Завтра в\u00a07:00",
     subtitle: "Вы будете знать.",
     body: "Бесплатная бета · TestFlight · iPhone",
     button: "Загрузить в App Store",

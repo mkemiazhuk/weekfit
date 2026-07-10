@@ -71,11 +71,8 @@ export default function SeoIntro() {
                   style={{ boxShadow: `0 12px 40px -16px ${pillars.hydration}44` }}
                 >
                   <span
-                    className="icon-tile"
-                    style={{
-                      background: `${pillars.hydration}18`,
-                      border: `1px solid ${pillars.hydration}33`,
-                    }}
+                    className="icon-tile icon-tile-accent"
+                    style={{ "--accent-color": pillars.hydration } as React.CSSProperties}
                   >
                     <Icon name="health" color={pillars.hydration} size={20} />
                   </span>
@@ -102,11 +99,8 @@ export default function SeoIntro() {
                       className="premium-card surface-chip flex min-h-[88px] min-w-0 flex-col gap-2.5 p-3.5 sm:min-h-0 sm:flex-row sm:items-center sm:gap-3"
                     >
                       <span
-                        className="icon-tile h-9 w-9"
-                        style={{
-                          background: `${meta.color}16`,
-                          border: `1px solid ${meta.color}30`,
-                        }}
+                        className="icon-tile icon-tile-accent h-9 w-9"
+                        style={{ "--accent-color": meta.color } as React.CSSProperties}
                       >
                         <Icon name={meta.icon} color={meta.color} size={17} />
                       </span>
@@ -127,11 +121,8 @@ export default function SeoIntro() {
 
               <div className="surface-chip mt-4 flex min-w-0 items-center gap-3 px-3.5 py-3 md:hidden">
                 <span
-                  className="icon-tile h-9 w-9"
-                  style={{
-                    background: `${pillars.hydration}18`,
-                    border: `1px solid ${pillars.hydration}33`,
-                  }}
+                  className="icon-tile icon-tile-accent h-9 w-9"
+                  style={{ "--accent-color": pillars.hydration } as React.CSSProperties}
                 >
                   <Icon name="health" color={pillars.hydration} size={17} />
                 </span>

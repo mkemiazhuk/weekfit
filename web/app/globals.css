@@ -82,6 +82,23 @@
 
   /* Motion easing */
   --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Motion duration */
+  --duration-ui: 0.25s;
+  --duration-surface: 0.35s;
+  --duration-hero: 0.45s;
+  --duration-reveal: 0.75s;
+  --duration-reveal-slow: 0.85s;
+  --duration-entrance: 1.05s;
+
+  /* Shadow system */
+  --shadow-glass: 0 24px 80px -40px rgba(0, 0, 0, 0.55);
+  --shadow-card-hover: 0 24px 60px -24px rgba(0, 0, 0, 0.55);
+  --shadow-card-depth: 0 10px 30px -15px rgba(0, 0, 0, 0.58);
+  --shadow-accent: 0 24px 60px -20px;
+  --shadow-btn-primary: 0 14px 40px -8px rgba(102, 188, 135, 0.5);
+  --shadow-btn-primary-hover: 0 18px 48px -6px rgba(102, 188, 135, 0.55);
+  --shadow-nav: 0 8px 32px -12px rgba(0, 0, 0, 0.45);
 }
 
 :root {
@@ -102,6 +119,8 @@
   /* Layout rhythm */
   --section-y: 5.5rem;
   --section-y-lg: 7.5rem;
+  --section-y-lg-md: 8.5rem;
+  --section-y-compact: 1.75rem;
   --section-x: 1.5rem;
   --page-pb: 7rem;
   --measure-narrow: 32ch;
@@ -161,7 +180,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 a:focus-visible,
 button:focus-visible,
@@ -250,22 +269,29 @@ input:focus-visible,
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+/* Calm transitions — shared across interactive UI */
+.transition-calm {
+  transition-property: transform, box-shadow, filter, border-color, background, color, opacity;
+  transition-duration: var(--duration-ui);
+  transition-timing-function: var(--ease-calm);
+}
+
 /* Premium interactive surfaces */
 .premium-card {
   transition:
-    transform 0.35s var(--ease-calm),
-    box-shadow 0.35s var(--ease-calm),
-    border-color 0.35s var(--ease-calm);
+    transform var(--duration-surface) var(--ease-calm),
+    box-shadow var(--duration-surface) var(--ease-calm),
+    border-color var(--duration-surface) var(--ease-calm);
   will-change: transform;
 }
 @media (hover: hover) {
   .premium-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55);
+    box-shadow: var(--shadow-card-hover);
   }
 }
 .premium-link {
-  transition: color 0.25s var(--ease-calm), gap 0.25s var(--ease-calm);
+  transition: color var(--duration-ui) var(--ease-calm), gap var(--duration-ui) var(--ease-calm);
 }
 @media (hover: hover) {
   .premium-link:hover {
@@ -293,7 +319,7 @@ input:focus-visible,
   border: 1px solid var(--color-border-subtle);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 24px 80px -40px rgba(0, 0, 0, 0.55);
+    var(--shadow-glass);
   backdrop-filter: saturate(160%) blur(20px);
   -webkit-backdrop-filter: saturate(160%) blur(20px);
 }
@@ -318,8 +344,18 @@ input:focus-visible,
 }
 @media (min-width: 768px) {
   .section-y-lg {
-    padding-top: 8.5rem;
-    padding-bottom: 8.5rem;
+    padding-top: var(--section-y-lg-md);
+    padding-bottom: var(--section-y-lg-md);
+  }
+}
+.section-y-compact {
+  padding-top: var(--section-y-compact);
+  padding-bottom: var(--section-y-compact);
+}
+@media (min-width: 768px) {
+  .section-y-compact {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
   }
 }
 .section-x {
@@ -413,7 +449,7 @@ input:focus-visible,
   letter-spacing: -0.012em;
   line-height: 1.2;
   color: rgba(255, 255, 255, 0.52);
-  transition: color 0.3s var(--ease-calm);
+  transition: color var(--duration-ui) var(--ease-calm);
 }
 @media (min-width: 1024px) {
   .nav-link {
@@ -469,6 +505,31 @@ input:focus-visible,
   .card-panel {
     padding: 2.5rem;
   }
+}
+.card-panel-compact {
+  padding: 1.25rem;
+}
+@media (min-width: 768px) {
+  .card-panel-compact {
+    padding: 1.75rem;
+  }
+}
+.card-accent {
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--accent-color) 14%, transparent),
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+  box-shadow: var(--shadow-accent) color-mix(in srgb, var(--accent-color) 33%, transparent),
+    var(--shadow-card-depth);
+}
+.icon-tile-accent {
+  background: color-mix(in srgb, var(--accent-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
 }
 .surface-subtle {
   border-radius: var(--radius-chip);
@@ -730,7 +791,8 @@ input:focus-visible,
 
 /* Unified reveal motion — used by Reveal.tsx via easeCalm */
 .motion-reveal {
-  transition: opacity 0.8s var(--ease-calm), transform 0.8s var(--ease-calm);
+  transition: opacity var(--duration-reveal) var(--ease-calm),
+    transform var(--duration-reveal) var(--ease-calm);
 }
 
 /* Download CTA — cinematic product hero */
@@ -1640,10 +1702,10 @@ input:focus-visible,
     backdrop-filter: blur(20px) saturate(145%) !important;
     -webkit-backdrop-filter: blur(20px) saturate(145%) !important;
     transition:
-      transform 0.35s var(--ease-calm),
-      box-shadow 0.35s var(--ease-calm),
-      border-color 0.35s var(--ease-calm),
-      background 0.35s var(--ease-calm) !important;
+      transform var(--duration-surface) var(--ease-calm),
+      box-shadow var(--duration-surface) var(--ease-calm),
+      border-color var(--duration-surface) var(--ease-calm),
+      background var(--duration-surface) var(--ease-calm) !important;
   }
 
   .btn-hero-glass:active {
@@ -1662,7 +1724,7 @@ input:focus-visible,
   }
 
   .btn-touch:active {
-    transition-duration: 0.12s;
+    transition-duration: var(--duration-ui);
   }
 
   .phone-float-hero {
@@ -1873,11 +1935,11 @@ input:focus-visible,
     backdrop-filter: blur(24px) saturate(150%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
     transition:
-      transform 0.45s var(--ease-calm),
-      box-shadow 0.45s var(--ease-calm),
-      border-color 0.45s var(--ease-calm),
-      background 0.45s var(--ease-calm),
-      color 0.45s var(--ease-calm) !important;
+      transform var(--duration-hero) var(--ease-calm),
+      box-shadow var(--duration-hero) var(--ease-calm),
+      border-color var(--duration-hero) var(--ease-calm),
+      background var(--duration-hero) var(--ease-calm),
+      color var(--duration-hero) var(--ease-calm) !important;
   }
 
   .btn-hero-glass:hover {
@@ -2091,14 +2153,14 @@ input:focus-visible,
   width: 100%;
   max-width: 3.25rem;
   height: 2.75rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   color: rgba(255, 255, 255, 0.42);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   transition:
-    color 0.2s var(--ease-calm),
-    background 0.2s var(--ease-calm),
-    border-color 0.2s var(--ease-calm);
+    color var(--duration-ui) var(--ease-calm),
+    background var(--duration-ui) var(--ease-calm),
+    border-color var(--duration-ui) var(--ease-calm);
 }
 @media (hover: hover) {
   .footer-social:hover {
@@ -2150,11 +2212,11 @@ input:focus-visible,
   font-weight: 400;
   letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.42);
-  transition: color 0.2s var(--ease-calm);
+  transition: color var(--duration-ui) var(--ease-calm);
 }
 .footer-link__text {
   display: inline-block;
-  transition: transform 0.2s var(--ease-calm);
+  transition: transform var(--duration-ui) var(--ease-calm);
 }
 @media (hover: hover) {
   .footer-link:hover {
