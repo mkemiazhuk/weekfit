@@ -550,18 +550,15 @@ input:focus-visible,
 @media (min-width: 768px) {
   .hero-phone {
     margin-bottom: 0.75rem;
+    overflow: visible;
   }
   .hero-device-scene {
     margin-inline: auto 0;
+    max-width: min(100%, calc(var(--hero-phone-max) + 2.5rem));
+    overflow: visible;
   }
   .hero-device-scene__inner {
     margin-inline: auto 0;
-    transform: translateX(clamp(0.75rem, 2.5vw, 2.25rem));
-  }
-}
-@media (min-width: 1024px) {
-  .hero-device-scene__inner {
-    transform: translateX(clamp(1rem, 3vw, 3rem));
   }
 }
 .hero-device-scene__phone {
