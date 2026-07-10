@@ -572,6 +572,32 @@ input:focus-visible,
 .hero-device-mockup--watch img {
   opacity: 1;
 }
+
+.watch-mockup__backplate {
+  position: absolute;
+  z-index: 8;
+  left: 7%;
+  right: 7%;
+  top: 17%;
+  bottom: 11%;
+  border-radius: 19%;
+  background: #000;
+}
+.watch-mockup__screen {
+  z-index: 10;
+  overflow: hidden;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.watch-mockup__frame {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
 @media (max-width: 767px) {
   .hero-device-scene__inner {
     min-height: clamp(19rem, 64vw, 24rem);
@@ -1169,11 +1195,13 @@ input:focus-visible,
   z-index: 1;
   display: flex;
   height: 100%;
+  min-height: 100%;
+  width: 100%;
   flex-direction: column;
   justify-content: center;
-  padding: 10% 8% 9%;
+  padding: 8% 7% 7%;
   text-align: center;
-  background: #090a0e;
+  background: #000;
 }
 .watch-coach-screen__state {
   display: inline-flex;
@@ -1188,8 +1216,8 @@ input:focus-visible,
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-color);
-  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 18%, #000);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 32%, #000);
 }
 .watch-coach-screen__dot {
   width: 0.34em;
@@ -1198,25 +1226,28 @@ input:focus-visible,
   background: var(--accent-color);
 }
 .watch-coach-screen__label {
-  margin-top: 0.55em;
-  font-size: clamp(0.42rem, 2.6vw, 0.48rem);
+  margin-top: 0.45em;
+  font-size: clamp(0.44rem, 2.7vw, 0.52rem);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.48);
+}
+.watch-coach-screen__label:first-child {
+  margin-top: 0;
 }
 .watch-coach-screen__title {
-  margin-top: 0.28em;
-  font-size: clamp(0.58rem, 3.6vw, 0.68rem);
+  margin-top: 0.24em;
+  font-size: clamp(0.62rem, 3.8vw, 0.74rem);
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: -0.015em;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.96);
 }
 .watch-coach-screen__body {
-  margin-top: 0.38em;
-  font-size: clamp(0.48rem, 2.9vw, 0.56rem);
-  line-height: 1.45;
+  margin-top: 0.34em;
+  font-size: clamp(0.5rem, 3vw, 0.58rem);
+  line-height: 1.4;
   letter-spacing: -0.008em;
   color: rgba(255, 255, 255, 0.68);
 }

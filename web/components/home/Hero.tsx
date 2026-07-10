@@ -72,7 +72,6 @@ export default function Hero() {
             watchScreen={
               <WatchCoachScreen
                 accent={pillars.coach}
-                state="Ready"
                 title={t.hero.coachTitle}
                 body={t.hero.coachBody}
                 coachLabel={t.coachAdvice.label}

@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
-import { appleWatchUltra2, MOCKIFY_BASE_PATH } from "@/lib/device-frames";
+import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
+import WatchMockup from "./WatchMockup";
 
 interface HeroDeviceShowcaseProps {
   watchScreen: ReactNode;
@@ -59,16 +60,9 @@ export default function HeroDeviceShowcase({
         </div>
 
         <div className="hero-device-scene__watch">
-          <DeviceMockup
-            device={appleWatchUltra2}
-            basePath={MOCKIFY_BASE_PATH}
-            showStatusBar={false}
-            width={watch}
-            screenColor="#090a0e"
-            className="hero-device-mockup hero-device-mockup--watch"
-          >
+          <WatchMockup width={watch} className="hero-device-mockup hero-device-mockup--watch">
             {watchScreen}
-          </DeviceMockup>
+          </WatchMockup>
         </div>
       </div>
       <div aria-hidden className="hero-device-scene__shadow" />
