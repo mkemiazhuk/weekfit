@@ -140,10 +140,10 @@ export default function JourneyStage() {
       <div className={clsx("relative w-full", className)}>
         <div
           aria-hidden
-          className="phone-glow transition-all duration-700"
+          className="phone-glow transition-all duration-700 opacity-50"
           style={{
-            background: `radial-gradient(closest-side, ${panel.accent}3d, transparent 70%)`,
-            filter: "blur(38px)",
+            background: `radial-gradient(closest-side, ${panel.accent}28, transparent 70%)`,
+            filter: "blur(32px)",
           }}
         />
         <div className="phone-frame transition-shadow duration-500">
@@ -171,11 +171,11 @@ export default function JourneyStage() {
         {/* Sticky morphing phone (desktop) */}
         <div className="hidden md:block">
           <div className="sticky top-0 flex h-screen items-center justify-center">
-            <div className="relative w-full max-w-[300px]">
+            <div className="relative w-full max-w-[320px]">
               <div
-                className="phone-frame transition-shadow duration-700"
+                className="phone-frame phone-frame--hero transition-shadow duration-700"
                 style={{
-                  boxShadow: `0 60px 130px -30px rgba(0,0,0,0.75), 0 0 60px -20px ${current.accent}33`,
+                  boxShadow: `0 48px 100px -28px rgba(0,0,0,0.72), 0 0 48px -24px ${current.accent}22`,
                 }}
               >
                 <div aria-hidden className="phone-island" />
@@ -222,12 +222,12 @@ export default function JourneyStage() {
               }}
               data-idx={i}
               className={clsx(
-                "relative flex min-h-[72vh] flex-col justify-center py-14 md:min-h-[88vh] md:py-[4.5rem]",
-                p.layout === "statement" && "md:min-h-[68vh]"
+                "relative flex min-h-[64vh] flex-col justify-center py-12 md:min-h-[84vh] md:py-[4rem]",
+                p.layout === "statement" && "md:min-h-[64vh]"
               )}
             >
-              <div className="relative mb-6 flex justify-center pb-10 md:hidden md:pb-0">
-                <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
+              <div className="relative mb-6 flex justify-center pb-8 md:hidden md:pb-0">
+                <PhoneFrame panel={p} className="max-w-[240px]" sizes="240px" />
                 <div className="absolute -bottom-2 left-1/2 w-[min(88vw,240px)] max-w-[240px] -translate-x-1/2">
                   <JourneySignalCard
                     accent={p.accent}

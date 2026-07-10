@@ -25,7 +25,7 @@ function Glyph({ name, color }: { name: string; color: string }) {
     ),
   };
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill={color} stroke="none">
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill={color} stroke="none">
       {paths[name]}
     </svg>
   );
@@ -45,23 +45,23 @@ export default function Trust() {
     <section id="privacy-teaser" className="relative z-[1] section-x section-y-lg">
       <SectionAmbient tone="privacy" />
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-14 md:grid-cols-[0.85fr_1.15fr] md:items-start">
+        <div className="grid gap-12 md:grid-cols-[0.9fr_1.1fr] md:items-start md:gap-16">
           <div className="md:sticky md:top-32">
             <Reveal>
               <span className="kicker text-hydration">{t.trust.kicker}</span>
             </Reveal>
             <Reveal delay={0.05}>
-              <h2 className="display section-title-lg text-balance mt-4 text-white">
+              <h2 className="display section-title-lg text-balance mt-4 max-w-[16ch] text-white">
                 {t.trust.title}
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
-              <p className="body-md section-lead text-balance mt-5">{t.trust.lead}</p>
+              <p className="body-lg section-lead mt-5 max-w-[var(--measure-prose)]">{t.trust.lead}</p>
             </Reveal>
-            <Reveal delay={0.15}>
+            <Reveal delay={0.14}>
               <a
                 href={localePath("/privacy")}
-                className="premium-link mt-7 inline-flex items-center gap-2 text-[15px] font-semibold text-white/72"
+                className="premium-link mt-8 inline-flex items-center gap-2 text-[15px] font-medium text-white/68"
               >
                 {t.trust.link}
                 <span aria-hidden>→</span>
@@ -69,18 +69,18 @@ export default function Trust() {
             </Reveal>
           </div>
 
-          <div className="grid gap-3.5 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {items.map((it, i) => (
-              <Reveal key={it.key} delay={0.05 * i}>
-                <div className="premium-card card glass h-full p-5">
+              <Reveal key={it.key} delay={0.04 * i}>
+                <div className="trust-card h-full">
                   <div
-                    className="icon-tile icon-tile-accent"
+                    className="icon-tile icon-tile-accent h-9 w-9"
                     style={{ "--accent-color": it.color } as React.CSSProperties}
                   >
                     <Glyph name={it.key} color={it.color} />
                   </div>
-                  <h3 className="mt-4 text-[16px] font-semibold text-white/92">{it.name}</h3>
-                  <p className="body-sm mt-1.5">{it.desc}</p>
+                  <h3 className="mt-3.5 text-[15px] font-semibold text-white/88">{it.name}</h3>
+                  <p className="body-sm mt-1.5 text-white/42">{it.desc}</p>
                 </div>
               </Reveal>
             ))}

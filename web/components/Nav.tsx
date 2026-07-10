@@ -79,7 +79,7 @@ export default function Nav() {
         </div>
 
         <div className="flex items-center justify-end gap-2.5 md:gap-3">
-          <div className="max-md:[&_.lang-toggle]:p-0.5 max-md:[&_.lang-toggle-btn]:min-h-8 max-md:[&_.lang-toggle-btn]:min-w-8 max-md:[&_.lang-toggle-btn]:px-2 max-md:[&_.lang-toggle-btn]:py-1 max-md:[&_.lang-toggle-btn]:text-[11px]">
+          <div className="max-md:[&_.lang-toggle]:p-0.5 max-md:[&_.lang-toggle-btn]:min-h-8 max-md:[&_.lang-toggle-btn]:min-w-8 max-md:[&_.lang-toggle-btn]:px-2 max-md:[&_.lang-toggle-btn]:py-1 max-md:[&_.lang-toggle-btn]:text-[12px]">
             <LangToggle />
           </div>
 

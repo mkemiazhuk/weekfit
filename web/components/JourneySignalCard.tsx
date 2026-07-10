@@ -39,8 +39,8 @@ export default function JourneySignalCard({
           }}
         >
           <span
-            className="signal-dot-pulse h-1.5 w-1.5 rounded-full"
-            style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: accent }}
           />
         </span>
         <div className="min-w-0">
