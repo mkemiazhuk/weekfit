@@ -528,6 +528,68 @@ input:focus-visible,
   box-shadow: var(--shadow-accent) color-mix(in srgb, var(--accent-color) 33%, transparent),
     var(--shadow-card-depth);
 }
+
+/* Floating coach/signal cards over phone mockups — readable, not glass-over-busy-UI */
+.signal-overlay-card {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    165deg,
+    rgba(14, 15, 20, 0.97) 0%,
+    rgba(9, 10, 14, 0.99) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 28px 56px -16px rgba(0, 0, 0, 0.82),
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+}
+.signal-overlay-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-color) 10%, transparent),
+    transparent 42%
+  );
+}
+.signal-overlay-card__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  color: rgba(255, 255, 255, 0.95);
+}
+.signal-overlay-card__tip {
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.52;
+  letter-spacing: -0.008em;
+  color: rgba(255, 255, 255, 0.76);
+}
+.signal-overlay-card__detail {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.48;
+  letter-spacing: -0.006em;
+  color: rgba(255, 255, 255, 0.58);
+}
+@media (min-width: 768px) {
+  .signal-overlay-card__title {
+    font-size: 1rem;
+  }
+  .signal-overlay-card__tip {
+    font-size: 0.875rem;
+  }
+  .signal-overlay-card__detail {
+    font-size: 0.8125rem;
+  }
+}
 .icon-tile-accent {
   background: color-mix(in srgb, var(--accent-color) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);

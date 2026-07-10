@@ -198,7 +198,7 @@ export default function JourneyStage() {
 
               <div
                 key={current.key}
-                className="absolute -bottom-4 -right-6 w-[min(100%,240px)] max-w-[240px]"
+                className="absolute -bottom-4 -right-8 w-[min(100%,280px)] max-w-[280px]"
                 style={{ animation: reduce ? "none" : "coach-swap 0.6s var(--ease-calm)" }}
               >
                 <JourneySignalCard
@@ -228,7 +228,7 @@ export default function JourneyStage() {
             >
               <div className="relative mb-6 flex justify-center pb-10 md:hidden md:pb-0">
                 <PhoneFrame panel={p} className="max-w-[220px]" sizes="220px" />
-                <div className="absolute -bottom-2 left-1/2 w-[min(88vw,240px)] max-w-[240px] -translate-x-1/2">
+                <div className="absolute -bottom-2 left-1/2 w-[min(92vw,280px)] max-w-[280px] -translate-x-1/2">
                   <JourneySignalCard
                     accent={p.accent}
                     signal={p.coach.signal}
