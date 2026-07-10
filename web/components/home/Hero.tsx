@@ -3,9 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Button from "../Button";
 import HeroDeviceShowcase from "../HeroDeviceShowcase";
-import WatchCoachScreen from "../WatchCoachScreen";
 import TextReveal from "../TextReveal";
-import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 import { easeReveal, durationRevealSlow, durationEntrance } from "@/lib/motion";
@@ -67,17 +65,7 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeReveal, delay: 0.22 }}
         >
-          <HeroDeviceShowcase
-            priority
-            watchScreen={
-              <WatchCoachScreen
-                accent={pillars.coach}
-                title={t.hero.coachTitle}
-                body={t.hero.coachBody}
-                coachLabel={t.coachAdvice.label}
-              />
-            }
-          />
+          <HeroDeviceShowcase priority />
         </motion.div>
       </div>
 

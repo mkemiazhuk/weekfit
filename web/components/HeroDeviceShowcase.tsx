@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 import WatchMockup from "./WatchMockup";
+import WatchCoreStartScreen from "./WatchCoreStartScreen";
 
 interface HeroDeviceShowcaseProps {
-  watchScreen: ReactNode;
   priority?: boolean;
 }
 
@@ -28,7 +28,6 @@ function useDeviceWidths() {
 }
 
 export default function HeroDeviceShowcase({
-  watchScreen,
   priority,
 }: HeroDeviceShowcaseProps) {
   const { phone, watch } = useDeviceWidths();
@@ -61,7 +60,7 @@ export default function HeroDeviceShowcase({
 
         <div className="hero-device-scene__watch">
           <WatchMockup width={watch} className="hero-device-mockup hero-device-mockup--watch">
-            {watchScreen}
+            <WatchCoreStartScreen />
           </WatchMockup>
         </div>
       </div>

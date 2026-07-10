@@ -1219,7 +1219,7 @@ input:focus-visible,
   border-radius: 50%;
   filter: blur(36px);
 }
-.watch-coach-screen {
+.watch-core-start {
   position: relative;
   z-index: 1;
   display: flex;
@@ -1227,58 +1227,76 @@ input:focus-visible,
   min-height: 100%;
   width: 100%;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 8% 7% 7%;
+  padding: 9% 8% 8%;
   text-align: center;
   background: #000;
 }
-.watch-coach-screen__state {
+.watch-core-start__kicker {
+  margin: 0;
+  font-size: clamp(0.42rem, 2.5vw, 0.5rem);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+.watch-core-start__icon {
+  display: grid;
+  place-items: center;
+  margin-top: 0.55em;
+  width: clamp(2rem, 11vw, 2.35rem);
+  height: clamp(2rem, 11vw, 2.35rem);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.watch-core-start__title {
+  margin: 0.45em 0 0;
+  font-size: clamp(0.78rem, 4.6vw, 0.92rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.96);
+}
+.watch-core-start__meta {
+  margin: 0.28em 0 0;
+  font-size: clamp(0.48rem, 2.8vw, 0.56rem);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.008em;
+  color: rgba(255, 255, 255, 0.48);
+}
+.watch-core-start__dot {
+  margin-inline: 0.12em;
+  color: rgba(255, 255, 255, 0.28);
+}
+.watch-core-start__start {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.28em;
-  align-self: center;
+  gap: 0.34em;
+  margin-top: 0.72em;
+  min-width: clamp(4.5rem, 24vw, 5.25rem);
+  padding: 0.42em 0.72em;
   border-radius: 9999px;
-  padding: 0.22em 0.55em;
-  font-size: clamp(0.42rem, 2.8vw, 0.5rem);
+  font-size: clamp(0.5rem, 2.9vw, 0.58rem);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent-color);
-  background: color-mix(in srgb, var(--accent-color) 18%, #000);
-  border: 1px solid color-mix(in srgb, var(--accent-color) 32%, #000);
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.88);
+  background: linear-gradient(
+    165deg,
+    rgba(102, 240, 112, 0.98) 0%,
+    rgba(102, 188, 135, 0.92) 100%
+  );
+  box-shadow:
+    0 6px 18px -8px rgba(102, 240, 112, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-.watch-coach-screen__dot {
-  width: 0.34em;
-  height: 0.34em;
-  border-radius: 50%;
-  background: var(--accent-color);
-}
-.watch-coach-screen__label {
-  margin-top: 0.45em;
-  font-size: clamp(0.44rem, 2.7vw, 0.52rem);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.48);
-}
-.watch-coach-screen__label:first-child {
-  margin-top: 0;
-}
-.watch-coach-screen__title {
-  margin-top: 0.24em;
-  font-size: clamp(0.62rem, 3.8vw, 0.74rem);
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.015em;
-  color: rgba(255, 255, 255, 0.96);
-}
-.watch-coach-screen__body {
-  margin-top: 0.34em;
-  font-size: clamp(0.5rem, 3vw, 0.58rem);
-  line-height: 1.4;
-  letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.68);
+.watch-core-start__start-icon {
+  display: inline-flex;
+  opacity: 0.92;
 }
 
 /* Primary button gradient (shared with Button.tsx) */
