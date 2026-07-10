@@ -169,7 +169,7 @@ input:focus-visible,
   font-family: var(--font-rounded);
 }
 
-/* Brand lockup — gold WF monogram + WeekFit */
+/* Brand lockup — gold WF monogram */
 .wordmark-lockup {
   line-height: 1;
   align-items: center;
@@ -179,11 +179,17 @@ input:focus-visible,
   line-height: 0;
   opacity: 0.94;
   filter: saturate(0.76) brightness(1.1) contrast(0.94);
-  transform: scale(1.1);
-  transform-origin: center right;
   transition:
     opacity 0.25s var(--ease-calm),
     filter 0.25s var(--ease-calm);
+}
+.wordmark-lockup--mark-only .wordmark-mark {
+  transform: scale(1);
+  transform-origin: center;
+}
+.wordmark-lockup:not(.wordmark-lockup--mark-only) .wordmark-mark {
+  transform: scale(1.1);
+  transform-origin: center right;
 }
 .group:hover .wordmark-mark,
 .group:focus-visible .wordmark-mark {

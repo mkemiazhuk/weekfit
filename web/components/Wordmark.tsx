@@ -5,10 +5,10 @@ import { useI18n } from "@/lib/i18n";
 import WordmarkMark from "./WordmarkMark";
 
 const sizes = {
-  nav: { fontSize: 17, markScale: 1.72, gap: 16 },
-  navMobile: { fontSize: 15, markScale: 1.55, gap: 15 },
-  lg: { fontSize: 19, markScale: 1.68, gap: 16 },
-  footer: { fontSize: 17, markScale: 1.72, gap: 16 },
+  nav: { markHeight: 40 },
+  navMobile: { markHeight: 36 },
+  lg: { markHeight: 44 },
+  footer: { markHeight: 38 },
 } as const;
 
 export default function Wordmark({
@@ -22,15 +22,14 @@ export default function Wordmark({
   iconVariant?: "subtle" | "app";
 }) {
   const { localePath } = useI18n();
-  const s = sizes[size];
-  const markHeight = Math.round(s.fontSize * s.markScale);
+  const { markHeight } = sizes[size];
 
   return (
     <a
       href={localePath("/")}
-      style={{ gap: s.gap, fontSize: s.fontSize }}
+      aria-label="WeekFit"
       className={clsx(
-        "group wordmark-lockup inline-flex min-w-0 max-w-full items-center transition-opacity hover:opacity-95",
+        "group wordmark-lockup wordmark-lockup--mark-only inline-flex min-w-0 max-w-full items-center transition-opacity hover:opacity-95",
         className
       )}
     >
@@ -43,10 +42,6 @@ export default function Wordmark({
       ) : (
         <WordmarkMark height={markHeight} />
       )}
-      <span className="wordmark-lockup__text min-w-0 truncate">
-        <span className="wordmark-lockup__week">Week</span>
-        <span className="wordmark-lockup__fit">Fit</span>
-      </span>
     </a>
   );
 }
