@@ -86,8 +86,8 @@ export default function JourneyStage() {
     },
     {
       key: "night",
-      screen: "/img/recovery.jpg",
-      screenAlt: "WeekFit evening recovery and sleep preparation",
+      screen: "/img/coach.jpg",
+      screenAlt: "WeekFit Coach screen with wind-down guidance for the evening",
       accent: pillars.recovery,
       ambient: "recovery",
       kicker: t.night.kicker,

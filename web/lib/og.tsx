@@ -7,8 +7,11 @@ import { ENTITY } from "./site";
 const fontRegular = readFileSync(join(process.cwd(), "assets/Inter-Regular.woff"));
 const fontSemiBold = readFileSync(join(process.cwd(), "assets/Inter-SemiBold.woff"));
 const fontBold = readFileSync(join(process.cwd(), "assets/Inter-Bold.woff"));
-const iconBytes = readFileSync(join(process.cwd(), "public/brand/icon-192.png"));
+const iconBytes = readFileSync(join(process.cwd(), "public/brand/logo-wf-mark.png"));
 const iconSrc = `data:image/png;base64,${iconBytes.toString("base64")}`;
+const MARK_ASPECT = 821 / 929;
+const MARK_HEIGHT = 120;
+const MARK_WIDTH = Math.round(MARK_HEIGHT * MARK_ASPECT);
 
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
@@ -49,19 +52,14 @@ export function renderOgImage(opts: {
           }}
         />
 
-        {/* brand row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        {/* brand row — WF mark only */}
+        <div style={{ display: "flex", alignItems: "center" }}>
           <img
             src={iconSrc}
-            width={76}
-            height={76}
-            style={{ borderRadius: 18 }}
+            width={MARK_WIDTH}
+            height={MARK_HEIGHT}
             alt=""
           />
-          <div style={{ display: "flex", fontSize: 34, fontWeight: 700, letterSpacing: -0.5 }}>
-            <span style={{ color: "#ffffff" }}>Week</span>
-            <span style={{ color: GREEN }}>Fit</span>
-          </div>
         </div>
 
         {/* headline block */}
