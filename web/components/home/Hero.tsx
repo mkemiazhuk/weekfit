@@ -70,8 +70,6 @@ export default function Hero() {
           <HeroDeviceShowcase
             phoneSrc="/img/today.jpg"
             phoneAlt="WeekFit Today screen with the morning decision"
-            phoneGlow={pillars.recovery}
-            watchGlow={pillars.coach}
             priority
             watchScreen={
               <WatchCoachScreen

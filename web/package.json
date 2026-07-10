@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mockifydev/react": "^0.1.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "geist": "^1.7.2",

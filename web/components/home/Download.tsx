@@ -80,7 +80,6 @@ export default function Download() {
                 <PhoneMockup
                   src="/img/today.jpg"
                   alt="WeekFit Today screen with the morning decision"
-                  glow={pillars.recovery}
                 />
                 <div aria-hidden className="hero-product-reflection" />
               </div>
