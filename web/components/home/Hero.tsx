@@ -2,8 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Button from "../Button";
-import PhoneMockup from "../PhoneMockup";
-import WatchMockup from "../WatchMockup";
+import HeroDeviceShowcase from "../HeroDeviceShowcase";
 import WatchCoachScreen from "../WatchCoachScreen";
 import TextReveal from "../TextReveal";
 import { pillars } from "@/lib/tokens";
@@ -61,44 +60,20 @@ export default function Hero() {
       </div>
 
       <div className="hero-phone relative mt-6 w-full self-center justify-self-center md:mt-0 md:justify-self-end">
-        <div
-          aria-hidden
-          className="phone-glow pointer-events-none"
-          style={{
-            inset: "-18%",
-            background: `radial-gradient(closest-side, ${pillars.recovery}20, transparent 74%)`,
-            filter: "blur(40px)",
-            opacity: 0.55,
-          }}
-        />
-
         <motion.div
           initial={
             reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 28, scale: 0.98 }
           }
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeReveal, delay: 0.22 }}
-          className="hero-product-stage"
         >
-          <PhoneMockup
-            src="/img/today.jpg"
-            alt="WeekFit Today screen with the morning decision"
+          <HeroDeviceShowcase
+            phoneSrc="/img/today.jpg"
+            phoneAlt="WeekFit Today screen with the morning decision"
+            phoneGlow={pillars.recovery}
+            watchGlow={pillars.coach}
             priority
-            glow={pillars.recovery}
-          />
-          <div aria-hidden className="hero-product-reflection" />
-        </motion.div>
-
-        <motion.div
-          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={
-            reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeReveal, delay: 0.72 }
-          }
-          className="hero-coach-card hero-watch relative z-10 mt-5 w-full md:absolute md:-bottom-6 md:-right-2 md:mt-0 lg:-bottom-4 lg:-right-3"
-        >
-          <div className="hero-watch-stage mx-auto md:mx-0 md:ml-auto">
-            <WatchMockup glow={pillars.coach}>
+            watchScreen={
               <WatchCoachScreen
                 accent={pillars.coach}
                 state="Ready"
@@ -106,9 +81,8 @@ export default function Hero() {
                 body={t.hero.coachBody}
                 coachLabel={t.coachAdvice.label}
               />
-            </WatchMockup>
-            <div aria-hidden className="hero-watch-reflection" />
-          </div>
+            }
+          />
         </motion.div>
       </div>
 

@@ -73,6 +73,13 @@
   --color-phone-frame-from: #202227;
   --color-phone-frame-mid: #0c0d11;
   --color-phone-frame-to: #060709;
+  --color-device-titanium-from: #454850;
+  --color-device-titanium-mid: #25272e;
+  --color-device-titanium-to: #101216;
+  --color-device-titanium-edge: #686c78;
+  --color-device-titanium-edge-dark: #14161b;
+  --color-device-band: #1a1b20;
+  --color-device-band-highlight: #3a3d45;
 
   /* Type — Geist primary, SF system fallback on Apple */
   --font-sans: var(--font-geist-sans), "Geist", -apple-system, BlinkMacSystemFont,
@@ -482,21 +489,93 @@ input:focus-visible,
 
 /* Hero — product photography treatment */
 .hero-phone {
-  --hero-phone-max: min(100%, 268px);
+  --hero-phone-max: min(100%, 300px);
 }
 @media (min-width: 640px) {
   .hero-phone {
-    --hero-phone-max: min(100%, 292px);
+    --hero-phone-max: min(100%, 320px);
   }
 }
 @media (min-width: 768px) {
   .hero-phone {
-    --hero-phone-max: min(100%, 400px);
+    --hero-phone-max: min(100%, 460px);
   }
 }
 @media (min-width: 1024px) {
   .hero-phone {
-    --hero-phone-max: min(100%, 420px);
+    --hero-phone-max: min(100%, 500px);
+  }
+}
+
+.hero-device-scene {
+  position: relative;
+  width: 100%;
+  max-width: var(--hero-phone-max);
+  margin-inline: auto;
+  perspective: 1400px;
+  perspective-origin: 52% 42%;
+}
+.hero-device-scene__ambient {
+  position: absolute;
+  inset: -8% -12% -4%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 68% 38%, rgba(46, 219, 250, 0.14), transparent 72%),
+    radial-gradient(closest-side at 22% 72%, rgba(140, 102, 217, 0.12), transparent 68%);
+  filter: blur(28px);
+}
+.hero-device-scene__inner {
+  position: relative;
+  z-index: 1;
+  transform-style: preserve-3d;
+  min-height: clamp(22rem, 52vw, 34rem);
+}
+.hero-device-scene__phone {
+  position: relative;
+  z-index: 1;
+  transform: rotateY(-22deg) rotateX(7deg);
+  transform-style: preserve-3d;
+  transform-origin: 58% 50%;
+}
+.hero-device-scene__watch {
+  position: absolute;
+  z-index: 3;
+  left: -2%;
+  bottom: 10%;
+  width: clamp(7.5rem, 34%, 11.5rem);
+  transform: rotateY(-14deg) rotateX(-5deg) translateZ(48px);
+  transform-style: preserve-3d;
+  transform-origin: 50% 60%;
+}
+.hero-device-scene__shadow {
+  position: absolute;
+  z-index: 0;
+  left: 8%;
+  right: 8%;
+  bottom: 2%;
+  height: 18%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.58) 0%, transparent 72%);
+  filter: blur(14px);
+  transform: rotateX(82deg) scale(1.05);
+  transform-origin: center bottom;
+}
+@media (max-width: 767px) {
+  .hero-device-scene {
+    perspective: 1100px;
+  }
+  .hero-device-scene__inner {
+    min-height: clamp(19rem, 68vw, 24rem);
+  }
+  .hero-device-scene__phone {
+    transform: rotateY(-14deg) rotateX(4deg);
+  }
+  .hero-device-scene__watch {
+    left: 0;
+    bottom: 6%;
+    width: clamp(6.75rem, 38%, 8.5rem);
+    transform: rotateY(-10deg) rotateX(-3deg) translateZ(28px);
   }
 }
 
@@ -511,6 +590,14 @@ input:focus-visible,
 .hero-phone .phone-frame {
   border-color: rgba(255, 255, 255, 0.09);
   box-shadow: var(--shadow-product);
+}
+.hero-phone .phone-frame--premium {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 72px 140px -42px rgba(0, 0, 0, 0.82),
+    0 28px 48px -24px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .hero-product-reflection {
@@ -530,32 +617,25 @@ input:focus-visible,
 .hero-coach-card {
   opacity: 0.96;
 }
-@media (min-width: 768px) {
-  .hero-coach-card {
-    width: min(100%, 156px);
-  }
-}
 
-.hero-watch {
-  --hero-watch-max: min(100%, 148px);
-}
-@media (min-width: 768px) {
-  .hero-watch {
-    --hero-watch-max: min(100%, 156px);
-  }
-}
-
-.hero-watch-stage {
+.hero-device-scene .hero-watch-stage {
   position: relative;
   width: 100%;
-  max-width: var(--hero-watch-max);
-  margin-inline: auto;
-  transition: transform var(--duration-hero) var(--ease-calm);
+  max-width: none;
+  margin-inline: 0;
 }
 
 .hero-phone .watch-frame {
   border-color: rgba(255, 255, 255, 0.09);
   box-shadow: var(--shadow-product);
+}
+.hero-phone .watch-frame--premium {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 48px 96px -36px rgba(0, 0, 0, 0.78),
+    0 18px 36px -18px rgba(0, 0, 0, 0.52),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .hero-watch-reflection {
@@ -1076,6 +1156,235 @@ input:focus-visible,
   line-height: 1.45;
   letter-spacing: -0.008em;
   color: rgba(255, 255, 255, 0.68);
+}
+
+/* Premium device mockups — Apple-style 3/4 product photography */
+.phone-mockup--premium,
+.watch-mockup--premium {
+  transform-style: preserve-3d;
+}
+.phone-frame--premium {
+  overflow: visible;
+  transform-style: preserve-3d;
+  background: linear-gradient(
+    148deg,
+    var(--color-device-titanium-from) 0%,
+    var(--color-device-titanium-mid) 52%,
+    var(--color-device-titanium-to) 100%
+  );
+}
+.phone-edge {
+  position: absolute;
+  top: 1.8%;
+  bottom: 1.8%;
+  z-index: 0;
+  border-radius: 2px;
+}
+.phone-edge--right {
+  right: -2.4%;
+  width: 2.4%;
+  background: linear-gradient(
+    180deg,
+    var(--color-device-titanium-edge) 0%,
+    var(--color-device-titanium-edge-dark) 42%,
+    #08090c 100%
+  );
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.08),
+    1px 0 2px rgba(0, 0, 0, 0.35);
+  transform: translateZ(-2px);
+}
+.phone-edge--left {
+  left: -1.1%;
+  width: 1.1%;
+  background: linear-gradient(180deg, #5a5e68 0%, #1c1e24 100%);
+  opacity: 0.55;
+  transform: translateZ(-4px);
+}
+.phone-button {
+  position: absolute;
+  left: -1.6%;
+  z-index: 2;
+  width: 0.55%;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #6b707a 0%, #2a2d34 55%, #14161b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 0 0.5px rgba(0, 0, 0, 0.45);
+}
+.phone-button--action {
+  top: 24%;
+  height: 7.5%;
+}
+.phone-button--volume-up {
+  top: 34%;
+  height: 5.5%;
+}
+.phone-button--volume-down {
+  top: 41%;
+  height: 5.5%;
+}
+.phone-chassis-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 14%,
+    transparent 34%
+  );
+}
+.phone-island--premium {
+  height: 2.6%;
+  width: 31%;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.phone-island--premium::before,
+.phone-island--premium::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: #0a0b0f;
+  transform: translateY(-50%);
+}
+.phone-island--premium::before {
+  right: 18%;
+  width: 9%;
+  height: 42%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.phone-island--premium::after {
+  right: 32%;
+  width: 5%;
+  height: 24%;
+  opacity: 0.85;
+}
+
+.watch-frame--premium {
+  overflow: visible;
+  transform-style: preserve-3d;
+  border-radius: 22%;
+  padding: 5%;
+  background: linear-gradient(
+    152deg,
+    #3f424b 0%,
+    var(--color-device-titanium-mid) 48%,
+    #0c0d11 100%
+  );
+}
+.watch-band {
+  position: absolute;
+  left: 18%;
+  width: 64%;
+  z-index: -1;
+  border-radius: 18%;
+  background: linear-gradient(
+    180deg,
+    var(--color-device-band-highlight) 0%,
+    var(--color-device-band) 28%,
+    #0d0e12 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.watch-band--top {
+  top: -18%;
+  height: 22%;
+}
+.watch-band--bottom {
+  bottom: -18%;
+  height: 22%;
+}
+.watch-edge {
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  z-index: 0;
+  border-radius: 2px;
+}
+.watch-edge--right {
+  right: -3%;
+  width: 3%;
+  background: linear-gradient(
+    180deg,
+    var(--color-device-titanium-edge) 0%,
+    var(--color-device-titanium-edge-dark) 100%
+  );
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.07);
+}
+.watch-edge--left {
+  left: -1.4%;
+  width: 1.4%;
+  background: linear-gradient(180deg, #555962 0%, #181a20 100%);
+  opacity: 0.5;
+}
+.watch-chassis-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.03) 16%,
+    transparent 36%
+  );
+}
+.watch-crown--premium {
+  right: -5%;
+  top: 26%;
+  width: 6.5%;
+  height: 19%;
+  border-radius: 4px;
+  background: linear-gradient(
+    180deg,
+    #7a7f8a 0%,
+    #3a3e48 38%,
+    #181a20 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.55);
+}
+.watch-crown-ring {
+  position: absolute;
+  right: -5.8%;
+  top: 25.2%;
+  z-index: 31;
+  width: 7.8%;
+  height: 20.6%;
+  border-radius: 5px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px rgba(140, 102, 217, 0.72);
+  opacity: 0.95;
+}
+.watch-side-button--premium {
+  right: -4.4%;
+  top: 48%;
+  width: 5%;
+  height: 11%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #6d727c 0%, #252830 100%);
+}
+.watch-frame--premium .watch-coach-screen__title {
+  font-size: clamp(0.62rem, 3.8vw, 0.74rem);
+}
+.watch-frame--premium .watch-coach-screen__body {
+  font-size: clamp(0.5rem, 3vw, 0.58rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-device-scene__phone,
+  .hero-device-scene__watch {
+    transform: none;
+  }
 }
 
 /* Primary button gradient (shared with Button.tsx) */
