@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { absLocalized } from "@/lib/locale";
-import { blogPostPath, blogPosts } from "@/lib/blog";
+import { blogCategoryPath, blogCategories, blogPostPath, blogPosts } from "@/lib/blog";
 import { LOCALES } from "@/lib/locale";
 
 export const dynamic = "force-static";
@@ -41,6 +41,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
         lastModified: new Date(post.date),
         changeFrequency: "monthly",
         priority: 0.55,
+      });
+    }
+
+    for (const category of blogCategories) {
+      entries.push({
+        url: absLocalized(blogCategoryPath(category.slug), locale),
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.5,
       });
     }
   }

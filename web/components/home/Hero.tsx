@@ -3,7 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
-import CoachCard from "../CoachCard";
+import WatchMockup from "../WatchMockup";
+import WatchCoachScreen from "../WatchCoachScreen";
 import TextReveal from "../TextReveal";
 import { pillars } from "@/lib/tokens";
 import { SITE } from "@/lib/site";
@@ -94,16 +95,20 @@ export default function Hero() {
           transition={
             reduce ? { duration: 0 } : { duration: durationEntrance, ease: easeReveal, delay: 0.72 }
           }
-          className="hero-coach-card relative z-10 mt-5 w-full md:absolute md:-bottom-6 md:-right-2 md:mt-0 lg:-bottom-4 lg:-right-3"
+          className="hero-coach-card hero-watch relative z-10 mt-5 w-full md:absolute md:-bottom-6 md:-right-2 md:mt-0 lg:-bottom-4 lg:-right-3"
         >
-          <CoachCard
-            accent={pillars.coach}
-            state="Ready"
-            title={t.hero.coachTitle}
-            body={t.hero.coachBody}
-            coachLabel={t.coachAdvice.label}
-            floating
-          />
+          <div className="hero-watch-stage mx-auto md:mx-0 md:ml-auto">
+            <WatchMockup glow={pillars.coach}>
+              <WatchCoachScreen
+                accent={pillars.coach}
+                state="Ready"
+                title={t.hero.coachTitle}
+                body={t.hero.coachBody}
+                coachLabel={t.coachAdvice.label}
+              />
+            </WatchMockup>
+            <div aria-hidden className="hero-watch-reflection" />
+          </div>
         </motion.div>
       </div>
 

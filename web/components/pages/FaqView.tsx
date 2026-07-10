@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n";
 import { support } from "@/lib/content";
 import { pillars } from "@/lib/tokens";
 import PageHero from "../PageHero";
-import Icon from "../Icon";
+import TopicIcon, { topicIconTileClassName, topicIconTileStyle } from "../TopicIcon";
 import FAQAccordion from "../FAQAccordion";
 
 export default function FaqView() {
@@ -23,10 +23,10 @@ export default function FaqView() {
           <section key={cat.title}>
             <div className="mb-4 flex items-center gap-3">
               <span
-                className="icon-tile"
-                style={{ background: `${cat.color}1f`, border: `1px solid ${cat.color}33` }}
+                className={topicIconTileClassName(cat.icon)}
+                style={topicIconTileStyle(cat.icon, cat.color)}
               >
-                <Icon name={cat.icon} color={cat.color} size={20} />
+                <TopicIcon icon={cat.icon} color={cat.color} size={20} />
               </span>
               <h2 className="text-[18px] font-semibold text-white">{cat.title}</h2>
             </div>

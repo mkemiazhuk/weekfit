@@ -22,7 +22,11 @@ const paths: Record<IconName, React.ReactNode> = {
     <path d="M12 3a9 9 0 1 0 9 9c-4 1-8-2-8-6 0-1.5.4-2.5 1-4-.7-.06-1.4 0-2 1z" />
   ),
   nutrition: (
-    <path d="M7 2v8a3 3 0 0 0 6 0V2M10 2v20M17 2c-1.5 1-2 3-2 6s.5 4 2 5v9" />
+    <>
+      <path d="M8 5v6a2 2 0 0 0 4 0V5" />
+      <path d="M10 5v14" />
+      <path d="M16 5v4a2.5 2.5 0 0 1-2.5 2.5v9" />
+    </>
   ),
   activity: <path d="M3 12h4l3 8 4-16 3 8h4" />,
   coach: (

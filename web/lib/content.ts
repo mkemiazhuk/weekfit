@@ -1,6 +1,6 @@
 import type { Lang } from "./dictionaries";
 import type { IconName } from "@/components/Icon";
-import { pillars, pastels } from "./tokens";
+import { accents, pillars, pastels } from "./tokens";
 
 // ---------- shared types ----------
 export interface QA {
@@ -75,7 +75,7 @@ export const support: Record<
       },
       {
         icon: "health",
-        color: pillars.nutrition,
+        color: accents.appleHealth,
         title: "Apple Health",
         faqs: [
           { q: "Why should I connect Apple Health?", a: "Sleep, heart rate, workouts, energy and nutrition are what let Coach personalize your day. Without Health access, personalization is limited." },
@@ -160,7 +160,7 @@ export const support: Record<
       },
       {
         icon: "health",
-        color: pillars.nutrition,
+        color: accents.appleHealth,
         title: "Apple Health",
         faqs: [
           { q: "Зачем подключать Apple Health?", a: "Сон, пульс, тренировки, энергия и питание позволяют Коучу персонализировать день. Без доступа персонализация ограничена." },

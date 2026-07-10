@@ -3,6 +3,7 @@ import type { DocSection } from "./content";
 import { vo2MaxArticleSections } from "./blog/vo2-max-article";
 import { preWorkoutNutritionArticleSections } from "./blog/pre-workout-nutrition-article";
 import type { IconName } from "@/components/Icon";
+import { accents } from "./tokens";
 
 // ============================================================
 // Blog architecture (content-ready, articles pending).
@@ -36,6 +37,24 @@ export interface BlogPost {
 
 export function blogPostPath(post: Pick<BlogPost, "category" | "slug">): string {
   return `/blog/${post.category}/${post.slug}`;
+}
+
+export function blogCategoryPath(category: string): string {
+  return `/blog/${category}`;
+}
+
+export function getBlogCategory(slug: string): BlogCategory | undefined {
+  return blogCategories.find((c) => c.slug === slug);
+}
+
+export function getBlogPostsByCategory(category: string): BlogPost[] {
+  return blogPosts
+    .filter((p) => p.category === category)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+export function blogCategoryStaticParams() {
+  return blogCategories.map((c) => ({ category: c.slug }));
 }
 
 export function getBlogPost(category: string, slug: string): BlogPost | undefined {
@@ -90,7 +109,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "apple-health",
     icon: "health",
-    color: "#4088f2",
+    color: accents.appleHealth,
     name: { en: "Apple Health", ru: "Apple Health" },
     desc: {
       en: "Getting the most from Apple Health and HealthKit inside a private, on-device coach.",
@@ -339,7 +358,20 @@ export const blogPosts: BlogPost[] = [
 
 export const blogCopy: Record<
   Lang,
-  { kicker: string; title: string; lead: string; empty: string; categoriesTitle: string; latestTitle: string; readMin: string; tocTitle: string }
+  {
+    kicker: string;
+    title: string;
+    lead: string;
+    empty: string;
+    categoriesTitle: string;
+    latestTitle: string;
+    readMin: string;
+    tocTitle: string;
+    categoryBack: string;
+    categoryPostsTitle: string;
+    categoryEmpty: string;
+    viewTopic: string;
+  }
 > = {
   en: {
     kicker: "Blog",
@@ -350,6 +382,10 @@ export const blogCopy: Record<
     latestTitle: "Latest",
     readMin: "min read",
     tocTitle: "In this article",
+    categoryBack: "All topics",
+    categoryPostsTitle: "Articles",
+    categoryEmpty: "No articles in this topic yet — check back soon.",
+    viewTopic: "View articles",
   },
   ru: {
     kicker: "Блог",
@@ -360,5 +396,9 @@ export const blogCopy: Record<
     latestTitle: "Новое",
     readMin: "мин",
     tocTitle: "В статье",
+    categoryBack: "Все темы",
+    categoryPostsTitle: "Статьи",
+    categoryEmpty: "В этой теме пока нет статей — загляните позже.",
+    viewTopic: "Смотреть статьи",
   },
 };

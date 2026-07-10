@@ -1,6 +1,7 @@
 "use client";
 
 import Reveal from "../Reveal";
+import AppleHealthMark from "../AppleHealthMark";
 import { pillars } from "@/lib/tokens";
 import { useI18n } from "@/lib/i18n";
 import SectionAmbient from "../SectionAmbient";
@@ -8,9 +9,6 @@ import SectionAmbient from "../SectionAmbient";
 function Glyph({ name, color }: { name: string; color: string }) {
   const paths: Record<string, React.ReactNode> = {
     device: <rect x="7" y="2.5" width="10" height="19" rx="2.5" />,
-    health: (
-      <path d="M12 21s-7-4.35-7-9.5A3.5 3.5 0 0 1 12 8a3.5 3.5 0 0 1 7 3.5C19 16.65 12 21 12 21z" />
-    ),
     noads: (
       <>
         <circle cx="12" cy="12" r="9" fill="none" stroke={color} strokeWidth="2" />
@@ -73,12 +71,18 @@ export default function Trust() {
             {items.map((it, i) => (
               <Reveal key={it.key} delay={0.05 * i}>
                 <div className="premium-card surface-quiet h-full p-5">
-                  <div
-                    className="icon-tile icon-tile-accent"
-                    style={{ "--accent-color": it.color } as React.CSSProperties}
-                  >
-                    <Glyph name={it.key} color={it.color} />
-                  </div>
+                  {it.key === "health" ? (
+                    <div className="icon-tile apple-health-tile">
+                      <AppleHealthMark size={24} />
+                    </div>
+                  ) : (
+                    <div
+                      className="icon-tile icon-tile-accent"
+                      style={{ "--accent-color": it.color } as React.CSSProperties}
+                    >
+                      <Glyph name={it.key} color={it.color} />
+                    </div>
+                  )}
                   <h3 className="mt-4 text-[16px] font-semibold text-white/92">{it.name}</h3>
                   <p className="body-sm mt-1.5">{it.desc}</p>
                 </div>
