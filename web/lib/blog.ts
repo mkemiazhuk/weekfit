@@ -1,6 +1,7 @@
 import type { Lang } from "./dictionaries";
 import type { DocSection } from "./content";
 import { vo2MaxArticleSections } from "./blog/vo2-max-article";
+import { preWorkoutNutritionArticleSections } from "./blog/pre-workout-nutrition-article";
 import type { IconName } from "@/components/Icon";
 
 // ============================================================
@@ -126,6 +127,21 @@ export function blogSectionsToc(sections: DocSection[]): { id: string; label: st
 export const BLOG_TOC_MIN_SECTIONS = 3;
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "eating-around-workouts",
+    category: "nutrition",
+    date: "2026-07-10",
+    readMinutes: 8,
+    title: {
+      en: "What to eat before, during and after a workout — the simple version",
+      ru: "Как питаться до, во время и после тренировки — простым языком",
+    },
+    excerpt: {
+      en: "Three hours before, mid-session, after — what to watch, what to pack, and what a friend who actually trains would tell you.",
+      ru: "За три часа, во время, после — на что смотреть, что взять с собой и что сказал бы друг, который реально тренируется.",
+    },
+    sections: preWorkoutNutritionArticleSections,
+  },
   {
     slug: "what-is-a-recovery-score",
     category: "recovery",

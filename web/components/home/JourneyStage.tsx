@@ -131,11 +131,11 @@ export default function JourneyStage() {
       <SectionAmbient tone={current.ambient} />
 
       <div className="mx-auto max-w-6xl">
-        <div className="journey-stage-phone-mobile sticky top-[4.75rem] z-10 mx-auto mb-10 max-w-[252px] md:hidden">
+        <div className="journey-stage-phone-mobile sticky top-[4.75rem] z-[1] mx-auto mb-10 max-w-[252px] md:hidden">
           <JourneySpotlightPhone panels={panels} activeIndex={active} sizes="252px" />
         </div>
 
-        <div className="md:grid md:grid-cols-2 md:gap-14 lg:gap-16">
+        <div className="journey-stage-scroll md:grid md:grid-cols-2 md:gap-14 lg:gap-16">
           <div className="hidden md:block">
             <div className="sticky top-0 flex h-screen items-center justify-center">
               <JourneySpotlightPhone
@@ -159,7 +159,7 @@ export default function JourneyStage() {
                   }}
                   data-idx={i}
                   className={clsx(
-                    "relative flex min-h-[68vh] flex-col justify-center py-12 md:min-h-[86vh] md:py-[4.5rem]",
+                    "journey-stage-panel relative flex min-h-[68vh] flex-col justify-center py-12 md:min-h-[86vh] md:py-[4.5rem]",
                     p.layout === "statement" && "md:min-h-[72vh]"
                   )}
                 >

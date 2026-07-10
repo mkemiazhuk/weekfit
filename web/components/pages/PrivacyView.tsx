@@ -35,16 +35,18 @@ export default function PrivacyView() {
           <div className="privacy-flow-grid">
             {flow.map((f, i) => (
               <div key={i} className="privacy-flow-card">
-                <span
-                  className="privacy-flow-card__icon"
-                  style={{ "--accent-color": f.color } as React.CSSProperties}
-                >
-                  {f.apple ? (
-                    <AppleHealthMark size={22} />
-                  ) : (
+                {f.apple ? (
+                  <span className="privacy-flow-card__icon privacy-flow-card__icon--app">
+                    <AppleHealthMark size={36} />
+                  </span>
+                ) : (
+                  <span
+                    className="privacy-flow-card__icon"
+                    style={{ "--accent-color": f.color } as React.CSSProperties}
+                  >
                     <Icon name={f.icon} color={f.color} size={22} />
-                  )}
-                </span>
+                  </span>
+                )}
                 <p className="privacy-flow-card__text">{f.text}</p>
               </div>
             ))}

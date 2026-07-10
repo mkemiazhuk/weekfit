@@ -71,11 +71,8 @@ export default function SeoIntro() {
                   className="premium-card mt-8 hidden shrink-0 items-center gap-3 surface-chip px-4 py-3 md:mt-1 md:flex"
                   style={{ boxShadow: `0 12px 40px -16px ${accents.appleHealth}33` }}
                 >
-                  <span
-                    className="icon-tile icon-tile-accent apple-health-tile"
-                    style={{ "--accent-color": accents.appleHealth } as React.CSSProperties}
-                  >
-                    <AppleHealthMark size={20} />
+                  <span className="icon-tile apple-health-tile">
+                    <AppleHealthMark size={28} />
                   </span>
                   <div className="min-w-0">
                     <p className="kicker-sm">{s.healthLabel}</p>
@@ -101,13 +98,17 @@ export default function SeoIntro() {
                     >
                       <span
                         className={clsx(
-                          "icon-tile icon-tile-accent h-9 w-9",
-                          meta.icon === "health" && "apple-health-tile"
+                          "icon-tile h-9 w-9",
+                          meta.icon === "health" ? "apple-health-tile" : "icon-tile-accent"
                         )}
-                        style={{ "--accent-color": meta.color } as React.CSSProperties}
+                        style={
+                          meta.icon === "health"
+                            ? undefined
+                            : ({ "--accent-color": meta.color } as React.CSSProperties)
+                        }
                       >
                         {meta.icon === "health" ? (
-                          <AppleHealthMark size={17} />
+                          <AppleHealthMark size={28} />
                         ) : (
                           <Icon name={meta.icon} color={meta.color} size={17} />
                         )}
@@ -128,11 +129,8 @@ export default function SeoIntro() {
               </ul>
 
               <div className="surface-chip mt-4 flex min-w-0 items-center gap-3 px-3.5 py-3 md:hidden">
-                <span
-                  className="icon-tile icon-tile-accent apple-health-tile h-9 w-9"
-                  style={{ "--accent-color": accents.appleHealth } as React.CSSProperties}
-                >
-                  <AppleHealthMark size={17} />
+                <span className="icon-tile apple-health-tile h-9 w-9">
+                  <AppleHealthMark size={28} />
                 </span>
                 <div className="min-w-0">
                   <p className="kicker-sm">{s.healthLabel}</p>

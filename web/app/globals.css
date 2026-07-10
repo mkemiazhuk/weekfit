@@ -693,6 +693,39 @@ input:focus-visible,
 
 .journey-stage-phone-mobile {
   width: 100%;
+  pointer-events: none;
+}
+
+.journey-stage-scroll {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 767px) {
+  .journey-stage-panel {
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
+  }
+
+  .journey-stage-copy {
+    position: relative;
+    z-index: 1;
+    padding: 0.75rem 0;
+  }
+
+  .journey-stage-copy::before {
+    content: "";
+    position: absolute;
+    inset: -0.35rem -0.75rem;
+    z-index: -1;
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      180deg,
+      var(--color-canvas) 0%,
+      color-mix(in srgb, var(--color-canvas) 94%, transparent) 100%
+    );
+  }
 }
 
 .journey-stage-copy {
@@ -714,8 +747,10 @@ input:focus-visible,
   border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
 }
 .apple-health-tile {
-  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);
+  background: transparent;
+  border: none;
+  padding: 0;
+  overflow: visible;
 }
 .surface-subtle {
   border-radius: var(--radius-chip);
@@ -1759,6 +1794,13 @@ input:focus-visible,
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent-color) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+
+.privacy-flow-card__icon--app {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: none;
 }
 
 .privacy-flow-card__text {
