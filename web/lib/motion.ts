@@ -3,6 +3,7 @@ export const easeCalm = [0.22, 1, 0.36, 1] as const;
 
 /** Shared motion durations (seconds). */
 export const durationUI = 0.5;
+export const durationCard = 0.36;
 export const durationReveal = 0.75;
 export const durationRevealSlow = 0.85;
 export const durationEntrance = 1.05;
