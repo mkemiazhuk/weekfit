@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-"""Export layered hero watch assets from the natural 176611c cutout.
+"""Export hero-watch-ultra.png from the official product photo.
 
-The hero uses two PNG layers instead of trying to seal weave holes in one file:
-
-1. hero-watch-ultra-straps.png — strap fabric with a solid alpha envelope
-2. hero-watch-ultra-body.png     — titanium case, lugs, and screen on top
-
-Strap holes keep their original thread colours; only alpha becomes opaque inside
-the fabric envelope so the phone UI cannot bleed through the weave.
+Keeps the natural photo cutout (176611c): perimeter background removal only.
+No strap repainting, gap fills, or layered exports.
 """
 
 from __future__ import annotations
@@ -16,128 +11,90 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
-from scipy import ndimage
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = Path("/tmp/hero-watch-176611c.png")
-OUT_STRAPS = ROOT / "public/img/hero-watch-ultra-straps.png"
-OUT_BODY = ROOT / "public/img/hero-watch-ultra-body.png"
-OUT_LEGACY = ROOT / "public/img/hero-watch-ultra.png"
+SOURCE = Path(
+    "/Users/maxk/.cursor/projects/Users-maxk-Dev-WeekFit/assets/"
+    "image-62f44bd2-0c12-429f-b56d-f3ac7f705cbb.png"
+)
+EDITED = Path("/tmp/hero-watch-edited.png")
+OUT = ROOT / "public/img/hero-watch-ultra.png"
 
-STRAP_TOP_END = 0.24
-CASE_BOTTOM_START = 0.76
-STRAP_TAIL_START = 0.87
-FABRIC_ROW_MAX = 260
-LUG_SIDE_LEFT = 100
-LUG_SIDE_RIGHT = 330
-GAP_FILL_ROWS = (0.83, 0.87)  # block the case-to-strap air gap over the phone UI
+CROP_OFFSET = (166, 93)
+CROP_SIZE = (434, 716)
+FLOOD_THRESHOLD = 40
 
 
-def load_base_rgba() -> tuple[np.ndarray, np.ndarray]:
-    if not BASE.exists():
-        with BASE.open("wb") as handle:
-            subprocess.run(
-                [
-                    "git",
-                    "-C",
-                    str(ROOT.parent),
-                    "show",
-                    "176611c:web/public/img/hero-watch-ultra.png",
-                ],
-                check=True,
-                stdout=handle,
-            )
-    px = np.array(Image.open(BASE).convert("RGBA"))
-    return px[:, :, :3].astype(np.float32), px[:, :, 3].copy()
+def build_edited_source() -> None:
+    subprocess.run(
+        [
+            "magick",
+            str(SOURCE),
+            "-fuzz",
+            "18%",
+            "-fill",
+            "black",
+            "-opaque",
+            "#384028",
+            "-fuzz",
+            "25%",
+            "-fill",
+            "white",
+            "-opaque",
+            "#9eff00",
+            "-fill",
+            "black",
+            "-draw",
+            "rectangle 422,282 534,312",
+            "-font",
+            "Helvetica-Bold",
+            "-pointsize",
+            "34",
+            "-fill",
+            "white",
+            "-gravity",
+            "NorthEast",
+            "-annotate",
+            "+212+311",
+            "07:00",
+            str(EDITED),
+        ],
+        check=True,
+    )
 
 
-def build_fabric_mask(alpha: np.ndarray) -> np.ndarray:
-    h, w = alpha.shape
-    top_end = int(h * STRAP_TOP_END)
-    case_bottom = int(h * CASE_BOTTOM_START)
-    strap_tail = int(h * STRAP_TAIL_START)
-    gap_y0 = int(h * GAP_FILL_ROWS[0])
-    gap_y1 = int(h * GAP_FILL_ROWS[1])
+def key_background(img: Image.Image) -> Image.Image:
+    keyed = img.convert("RGBA")
+    width, height = keyed.size
+    seeds: list[tuple[int, int]] = []
+    for x in range(0, width, 12):
+        seeds.extend([(x, 0), (x, height - 1)])
+    for y in range(0, height, 12):
+        seeds.extend([(0, y), (width - 1, y)])
 
-    fabric = np.zeros_like(alpha, dtype=bool)
-
-    for y in range(h):
-        xs = np.where(alpha[y] > 0)[0]
-        if xs.size == 0:
+    draw = ImageDraw.Draw(keyed)
+    for seed in seeds:
+        r, g, b, a = keyed.getpixel(seed)
+        if a == 0 or max(r, g, b) > FLOOD_THRESHOLD:
             continue
+        ImageDraw.floodfill(keyed, seed, (0, 0, 0, 0), thresh=FLOOD_THRESHOLD)
 
-        if y < top_end:
-            span = int(xs[-1] - xs[0] + 1)
-            if span <= FABRIC_ROW_MAX:
-                fabric[y, xs[0] : xs[-1] + 1] = True
-            continue
-
-        if y >= strap_tail:
-            fabric[y, xs[0] : xs[-1] + 1] = True
-            continue
-
-        if y >= case_bottom:
-            for part in (xs[xs < LUG_SIDE_LEFT], xs[xs > LUG_SIDE_RIGHT]):
-                if part.size >= 8:
-                    fabric[y, part[0] : part[-1] + 1] = True
-
-    # Hero-only bridge across the real air gap so the phone UI does not show through.
-    for y in range(gap_y0, gap_y1 + 1):
-        xs = np.where(alpha[y] > 0)[0]
-        if xs.size == 0:
-            continue
-        fabric[y, xs[0] : xs[-1] + 1] = True
-
-    return fabric
-
-
-def fill_fabric_holes(rgb: np.ndarray, alpha: np.ndarray, fabric: np.ndarray) -> np.ndarray:
-    out = rgb.copy()
-    source = (alpha > 0) & fabric
-    holes = fabric & (alpha == 0)
-    if not holes.any() or not source.any():
-        return out
-
-    _, (iy, ix) = ndimage.distance_transform_edt(~source, return_indices=True)
-    hy, hx = np.where(holes)
-    out[hy, hx] = rgb[iy[hy, hx], ix[hy, hx]]
-    return out
-
-
-def save_rgba(rgb: np.ndarray, alpha: np.ndarray, path: Path) -> None:
-    rgba = np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
-    rgba[alpha == 0] = 0
-    path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(rgba, mode="RGBA").save(path, optimize=False)
+    return keyed
 
 
 def main() -> None:
-    rgb, alpha = load_base_rgba()
-    fabric = build_fabric_mask(alpha)
+    build_edited_source()
+    keyed = key_background(Image.open(EDITED))
+    ox, oy = CROP_OFFSET
+    w, h = CROP_SIZE
+    cropped = keyed.crop((ox, oy, ox + w, oy + h))
 
-    strap_rgb = fill_fabric_holes(rgb, alpha, fabric)
-    strap_alpha = np.where(fabric, 255, 0).astype(np.uint8)
-
-    body_mask = (alpha > 0) & ~fabric
-    body_alpha = np.where(body_mask, alpha, 0).astype(np.uint8)
-    body_rgb = rgb.copy()
-    body_rgb[body_alpha == 0] = 0
-
-    save_rgba(strap_rgb, strap_alpha, OUT_STRAPS)
-    save_rgba(body_rgb, body_alpha, OUT_BODY)
-
-    flat_alpha = np.maximum(strap_alpha, body_alpha)
-    flat_rgb = np.where(strap_alpha[:, :, None] > 0, strap_rgb, body_rgb)
-    save_rgba(flat_rgb, flat_alpha, OUT_LEGACY)
-
-    print(
-        "saved",
-        OUT_STRAPS.name,
-        OUT_BODY.name,
-        OUT_LEGACY.name,
-        f"fabric_px={int(fabric.sum())}",
-    )
+    rgba = np.array(cropped)
+    rgba[rgba[:, :, 3] == 0] = 0
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
+    print(f"saved {OUT} size={cropped.size}")
 
 
 if __name__ == "__main__":

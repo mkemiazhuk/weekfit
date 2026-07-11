@@ -570,25 +570,21 @@ input:focus-visible,
   z-index: 2;
   right: clamp(0.25rem, 3vw, 1.25rem);
   bottom: clamp(0.75rem, 5vw, 2.25rem);
-  aspect-ratio: 434 / 716;
   opacity: 1;
   pointer-events: none;
   background: transparent;
 }
-.hero-device-mockup--watch-straps,
-.hero-device-mockup--watch-body {
-  position: absolute;
-  inset: 0;
+.hero-device-mockup--watch {
+  position: relative;
+  z-index: 1;
   display: block;
   background: transparent;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.38))
     drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
 }
-.hero-device-mockup--watch-body {
-  z-index: 2;
-}
-.hero-device-mockup--watch-straps {
-  z-index: 1;
+.hero-device-mockup--watch img {
+  opacity: 1;
+  background: transparent;
 }
 .hero-device-scene__shadow {
   position: absolute;
@@ -606,12 +602,6 @@ input:focus-visible,
   z-index: 1;
   filter: none;
 }
-.hero-device-mockup--watch-straps img,
-.hero-device-mockup--watch-body img {
-  opacity: 1;
-  background: transparent;
-}
-
 .watch-mockup__backplate {
   position: absolute;
   z-index: 8;
