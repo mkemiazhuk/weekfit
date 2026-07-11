@@ -601,11 +601,11 @@ input:focus-visible,
 .watch-mockup__backplate {
   position: absolute;
   z-index: 8;
-  left: 7%;
-  right: 7%;
-  top: 17%;
-  bottom: 11%;
-  border-radius: 19%;
+  left: 18.67%;
+  right: 16.67%;
+  top: 26.38%;
+  bottom: 27.55%;
+  border-radius: 7.33%;
   background: #000;
 }
 .watch-mockup__screen {
