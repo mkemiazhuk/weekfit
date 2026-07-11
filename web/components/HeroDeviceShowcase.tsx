@@ -56,16 +56,27 @@ export default function HeroDeviceShowcase({
           </DeviceMockup>
         </div>
 
-        <div className="hero-device-scene__watch">
+        <div className="hero-device-scene__watch" style={{ width: watch }}>
           <Image
-            src="/img/hero-watch-ultra.png?v=6"
+            src="/img/hero-watch-ultra-straps.png?v=7"
             alt=""
             aria-hidden
             width={434}
             height={716}
             sizes={`${watch}px`}
             style={{ width: watch, height: "auto" }}
-            className="hero-device-mockup hero-device-mockup--watch"
+            className="hero-device-mockup hero-device-mockup--watch-straps"
+            priority={priority}
+          />
+          <Image
+            src="/img/hero-watch-ultra-body.png?v=7"
+            alt=""
+            aria-hidden
+            width={434}
+            height={716}
+            sizes={`${watch}px`}
+            style={{ width: watch, height: "auto" }}
+            className="hero-device-mockup hero-device-mockup--watch-body"
             priority={priority}
           />
         </div>
