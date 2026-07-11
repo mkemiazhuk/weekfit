@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 import WatchMockup from "./WatchMockup";
-import WatchCoreStartScreen from "./WatchCoreStartScreen";
+import WatchModularUltraScreen from "./WatchModularUltraScreen";
 
 interface HeroDeviceShowcaseProps {
   priority?: boolean;
@@ -60,7 +60,7 @@ export default function HeroDeviceShowcase({
 
         <div className="hero-device-scene__watch">
           <WatchMockup width={watch} className="hero-device-mockup hero-device-mockup--watch">
-            <WatchCoreStartScreen />
+            <WatchModularUltraScreen />
           </WatchMockup>
         </div>
       </div>
