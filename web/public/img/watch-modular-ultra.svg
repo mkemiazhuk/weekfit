@@ -3,7 +3,7 @@
 
   <!-- Outer compass ring -->
   <circle cx="250" cy="279" r="238" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-  <g stroke="rgba(255,255,255,0.14)" stroke-linecap="round">
+  <g stroke="rgba(255,255,255,0.15)" stroke-linecap="round">
     <g stroke-width="1.2">
       <line x1="250" y1="44" x2="250" y2="54"/>
       <line x1="354" y1="72" x2="348" y2="81"/>
@@ -18,7 +18,7 @@
       <line x1="72" y1="164" x2="82" y2="168"/>
       <line x1="146" y1="72" x2="152" y2="81"/>
     </g>
-    <g stroke-width="0.7" opacity="0.55">
+    <g stroke-width="0.65" opacity="0.55">
       <line x1="302" y1="52" x2="299" y2="58"/>
       <line x1="398" y1="108" x2="393" y2="112"/>
       <line x1="448" y1="228" x2="442" y2="229"/>
@@ -47,34 +47,35 @@
   <circle cx="144" cy="422" r="3" fill="rgba(255,255,255,0.28)"/>
 
   <!-- Header -->
-  <text x="250" y="112" fill="rgba(255,255,255,0.52)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" letter-spacing="0.14em" text-anchor="middle">UP NEXT</text>
-  <text x="250" y="130" fill="rgba(255,255,255,0.38)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="500" letter-spacing="0.08em" text-anchor="middle">CORE &#183; 45 MIN</text>
+  <text x="250" y="112" fill="rgba(255,255,255,0.52)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" letter-spacing="0.14em" text-anchor="middle">WEST MARINA</text>
+  <text x="250" y="130" fill="rgba(255,255,255,0.38)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="500" letter-spacing="0.08em" text-anchor="middle">385FT</text>
 
   <!-- Center time -->
-  <text x="250" y="296" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="100" font-weight="700" letter-spacing="-0.035em" text-anchor="middle">07:00</text>
+  <text x="250" y="296" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="100" font-weight="700" letter-spacing="-0.035em" text-anchor="middle">10:09</text>
 
-  <!-- Top-left recovery arc -->
-  <path d="M72 176a86 86 0 0 1 58 52" stroke="rgba(46,219,250,0.16)" stroke-width="7.5" stroke-linecap="round"/>
-  <path d="M72 176a86 86 0 0 1 50 68" stroke="#2EDBFA" stroke-width="7.5" stroke-linecap="round"/>
-  <text x="78" y="166" fill="rgba(255,255,255,0.42)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="600">RCV</text>
-  <text x="86" y="248" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="34" font-weight="700">81</text>
+  <!-- Top-left elevation arc -->
+  <path d="M62 176a86 86 0 0 1 58 52" stroke="rgba(46,219,250,0.16)" stroke-width="7.5" stroke-linecap="round"/>
+  <path d="M62 176a86 86 0 0 1 50 68" stroke="#2EDBFA" stroke-width="7.5" stroke-linecap="round"/>
+  <text x="68" y="166" fill="rgba(255,255,255,0.42)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="600">-120&#176;</text>
+  <text x="74" y="248" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="34" font-weight="700">385</text>
 
-  <!-- Top-right activity -->
+  <!-- Top-right parked car -->
   <circle cx="402" cy="178" r="24" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-  <circle cx="402" cy="178" r="17" stroke="rgba(46,219,250,0.22)" stroke-width="2.8" fill="none"/>
-  <path d="M402 163a15 15 0 0 1 11.7 23.5" stroke="#2EDBFA" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-  <text x="402" y="222" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="20" font-weight="700" text-anchor="middle">65%</text>
-  <text x="402" y="238" fill="rgba(255,255,255,0.42)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="600" letter-spacing="0.08em" text-anchor="middle">ACTIVITY</text>
+  <rect x="392" y="174" width="20" height="10" rx="2.5" stroke="rgba(255,255,255,0.78)" stroke-width="1.6" fill="none"/>
+  <circle cx="396" cy="186" r="1.8" fill="rgba(255,255,255,0.78)"/>
+  <circle cx="408" cy="186" r="1.8" fill="rgba(255,255,255,0.78)"/>
+  <text x="402" y="222" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="20" font-weight="700" text-anchor="middle">10MI</text>
+  <text x="402" y="238" fill="rgba(255,255,255,0.42)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="600" letter-spacing="0.08em" text-anchor="middle">PARKED CAR</text>
 
-  <!-- Bottom-left core -->
+  <!-- Bottom-left elevation -->
   <circle cx="98" cy="400" r="20" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
   <path d="M88 402l5-7 5 7 5-7" stroke="rgba(255,255,255,0.72)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <text x="98" y="442" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" text-anchor="middle">CORE</text>
+  <text x="98" y="442" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" text-anchor="middle">385FT</text>
 
-  <!-- Bottom-right large complication -->
+  <!-- Bottom-right tide -->
   <circle cx="398" cy="392" r="60" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
   <circle cx="398" cy="392" r="52" stroke="rgba(46,219,250,0.1)" stroke-width="0.8"/>
   <path d="M372 374c10-12 22-12 26 0s18 12 26 0" stroke="rgba(46,219,250,0.55)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-  <text x="398" y="404" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="44" font-weight="700" text-anchor="middle">45</text>
-  <text x="398" y="466" fill="rgba(255,255,255,0.62)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" letter-spacing="0.06em" text-anchor="middle">MIN &#8593;</text>
+  <text x="398" y="404" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="44" font-weight="700" text-anchor="middle">1.8</text>
+  <text x="398" y="466" fill="rgba(255,255,255,0.62)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" letter-spacing="0.06em" text-anchor="middle">FT &#8593;</text>
 </svg>

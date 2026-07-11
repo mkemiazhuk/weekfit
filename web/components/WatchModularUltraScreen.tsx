@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-/** Pre-rendered Modular Ultra face — PNG @2x for crisp scaling in the watch cutout. */
+/** Apple Modular Ultra reference face — pre-rendered PNG for the hero watch cutout. */
 export default function WatchModularUltraScreen() {
   return (
     <div className="watch-modular" aria-hidden>
