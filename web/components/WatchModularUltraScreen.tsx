@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-/** Apple Modular Ultra reference photo — extracted from the official product shot. */
+/** Flat cycling workout screen — cropped from Apple reference art. */
 export default function WatchModularUltraScreen() {
   return (
     <div className="watch-modular" aria-hidden>
