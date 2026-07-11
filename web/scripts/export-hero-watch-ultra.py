@@ -70,7 +70,8 @@ def seal_weave_holes(
 
     gap_rows = np.zeros(y1 - y0, dtype=bool)
     for i, y in enumerate(range(y0, y1)):
-        if original_alpha[y, xa : xb + 1].sum() == 0:
+        row = original_alpha[y, xa : xb + 1]
+        if row.sum() == 0 or row.mean() < 4:
             gap_rows[i] = True
 
     for _ in range(WEAVE_PASSES):
@@ -96,8 +97,8 @@ def seal_weave_holes(
 
     for i, y in enumerate(range(y0, y1)):
         if gap_rows[i]:
-            out_a[y, xa : xb + 1] = original_alpha[y, xa : xb + 1]
-            out_r[y, xa : xb + 1] = rgb[y, xa : xb + 1]
+            out_a[y, :] = original_alpha[y]
+            out_r[y, :] = rgb[y]
 
     return out_r, out_a
 
