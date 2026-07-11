@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
+import WatchMockup from "./WatchMockup";
+import WatchModularUltraScreen from "./WatchModularUltraScreen";
 
 interface HeroDeviceShowcaseProps {
   priority?: boolean;
@@ -15,7 +17,7 @@ function useDeviceWidths() {
   useEffect(() => {
     const update = () => {
       const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.51) });
+      setWidths({ phone, watch: Math.round(phone * 0.45) });
     };
     update();
     window.addEventListener("resize", update);
@@ -56,29 +58,10 @@ export default function HeroDeviceShowcase({
           </DeviceMockup>
         </div>
 
-        <div className="hero-device-scene__watch" style={{ width: watch }}>
-          <Image
-            src="/img/hero-watch-ultra-straps.png?v=7"
-            alt=""
-            aria-hidden
-            width={434}
-            height={716}
-            sizes={`${watch}px`}
-            style={{ width: watch, height: "auto" }}
-            className="hero-device-mockup hero-device-mockup--watch-straps"
-            priority={priority}
-          />
-          <Image
-            src="/img/hero-watch-ultra-body.png?v=7"
-            alt=""
-            aria-hidden
-            width={434}
-            height={716}
-            sizes={`${watch}px`}
-            style={{ width: watch, height: "auto" }}
-            className="hero-device-mockup hero-device-mockup--watch-body"
-            priority={priority}
-          />
+        <div className="hero-device-scene__watch">
+          <WatchMockup width={watch} className="hero-device-mockup hero-device-mockup--watch">
+            <WatchModularUltraScreen />
+          </WatchMockup>
         </div>
       </div>
       <div aria-hidden className="hero-device-scene__shadow" />

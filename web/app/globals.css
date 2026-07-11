@@ -568,27 +568,10 @@ input:focus-visible,
 .hero-device-scene__watch {
   position: absolute;
   z-index: 2;
-  right: clamp(0.25rem, 3vw, 1.25rem);
-  bottom: clamp(0.75rem, 5vw, 2.25rem);
-  aspect-ratio: 434 / 716;
+  right: clamp(0.75rem, 5vw, 2rem);
+  bottom: clamp(1.25rem, 7vw, 3rem);
   opacity: 1;
-  pointer-events: none;
-  background: transparent;
-}
-.hero-device-mockup--watch-straps,
-.hero-device-mockup--watch-body {
-  position: absolute;
-  inset: 0;
-  display: block;
-  background: transparent;
-  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.38))
-    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
-}
-.hero-device-mockup--watch-body {
-  z-index: 2;
-}
-.hero-device-mockup--watch-straps {
-  z-index: 1;
+  isolation: isolate;
 }
 .hero-device-scene__shadow {
   position: absolute;
@@ -606,20 +589,23 @@ input:focus-visible,
   z-index: 1;
   filter: none;
 }
-.hero-device-mockup--watch-straps img,
-.hero-device-mockup--watch-body img {
+.hero-device-mockup--watch {
+  position: relative;
+  z-index: 1;
+  filter: none;
+}
+.hero-device-mockup--watch img {
   opacity: 1;
-  background: transparent;
 }
 
 .watch-mockup__backplate {
   position: absolute;
   z-index: 8;
-  left: 18.67%;
-  right: 16.67%;
-  top: 26.38%;
-  bottom: 27.55%;
-  border-radius: 7.33%;
+  left: 7%;
+  right: 7%;
+  top: 17%;
+  bottom: 11%;
+  border-radius: 19%;
   background: #000;
 }
 .watch-mockup__screen {
@@ -1233,6 +1219,131 @@ input:focus-visible,
   border-radius: 50%;
   filter: blur(36px);
 }
+.watch-modular {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+.watch-modular__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+.watch-modular__header {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  z-index: 1;
+  width: 74%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.watch-modular__header-line {
+  display: block;
+  font-size: clamp(0.28rem, 1.55vw, 0.34rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.58);
+  line-height: 1.2;
+}
+.watch-modular__header-line--sub {
+  margin-top: 0.18em;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.watch-modular__time {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  margin: 0;
+  transform: translate(-50%, -44%);
+  font-size: clamp(1.28rem, 7.2vw, 1.72rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.98);
+}
+.watch-modular__corner {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.watch-modular__corner--tl {
+  top: 17%;
+  left: 7%;
+  flex-direction: column;
+  gap: 0.05em;
+}
+.watch-modular__corner--tr {
+  top: 17%;
+  right: 7%;
+}
+.watch-modular__corner--bl {
+  bottom: 15%;
+  left: 7%;
+}
+.watch-modular__corner--br {
+  bottom: 13%;
+  right: 6%;
+}
+.watch-modular__metric {
+  font-size: clamp(0.42rem, 2.4vw, 0.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1;
+}
+.watch-modular__chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12em;
+  min-width: clamp(1.35rem, 7vw, 1.65rem);
+  min-height: clamp(1.35rem, 7vw, 1.65rem);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: clamp(0.34rem, 1.9vw, 0.4rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.watch-modular__chip--compact {
+  min-width: clamp(1.55rem, 8vw, 1.85rem);
+  border-radius: 0.55em;
+  padding: 0.18em 0.22em;
+}
+.watch-modular__hero-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1em;
+  width: clamp(2.15rem, 11.5vw, 2.65rem);
+  height: clamp(2.15rem, 11.5vw, 2.65rem);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 35% 28%, rgba(102, 240, 112, 0.22), rgba(255, 255, 255, 0.04) 68%);
+  border: 1px solid rgba(102, 240, 112, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font-size: clamp(0.34rem, 1.85vw, 0.4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Primary button gradient (shared with Button.tsx) */
 .btn-primary-bg {
   background: linear-gradient(
