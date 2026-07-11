@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PIL import Image
 from scipy import ndimage
@@ -23,6 +24,7 @@ OUT = ROOT / "public/img/hero-watch-ultra.png"
 FABRIC_THRESHOLD = 22
 STRAP_TOP_END = 0.24
 STRAP_BOTTOM_START = 0.76
+MIN_ROW_FABRIC = 6
 
 
 def run_magick_edits() -> None:
@@ -104,39 +106,6 @@ def fabric_pixels(rgb: np.ndarray) -> np.ndarray:
     return (max_c > FABRIC_THRESHOLD) & (blue > red + 2)
 
 
-def fill_strap_holes(rgb: np.ndarray, support: np.ndarray) -> np.ndarray:
-    out = rgb.copy()
-    seeds = fabric_pixels(out) | (
-        (out.max(axis=2) > FABRIC_THRESHOLD) & ndimage.binary_dilation(support, iterations=12)
-    )
-
-    for _ in range(4):
-        holes = support & ~seeds
-        if not holes.any():
-            break
-        _, (iy, ix) = ndimage.distance_transform_edt(~seeds, return_indices=True)
-        hy, hx = np.where(holes)
-        out[hy, hx] = out[iy[hy, hx], ix[hy, hx]]
-        seeds = (out.max(axis=2) > FABRIC_THRESHOLD) & (support | seeds)
-
-    dark = support & (out.max(axis=2) < FABRIC_THRESHOLD)
-    if dark.any():
-        h, _, _ = out.shape
-        hy, hx = np.where(dark)
-        for y, x in zip(hy, hx):
-            for ny in range(y - 1, max(y - 12, -1), -1):
-                if support[ny, x] and out[ny, x].max() > FABRIC_THRESHOLD:
-                    out[y, x] = out[ny, x]
-                    break
-            else:
-                for ny in range(y + 1, min(y + 12, h)):
-                    if support[ny, x] and out[ny, x].max() > FABRIC_THRESHOLD:
-                        out[y, x] = out[ny, x]
-                        break
-
-    return out
-
-
 def strap_column_bounds(fabric_band: np.ndarray) -> tuple[int, int] | None:
     cols = np.where(fabric_band.any(axis=0))[0]
     if cols.size == 0:
@@ -144,43 +113,65 @@ def strap_column_bounds(fabric_band: np.ndarray) -> tuple[int, int] | None:
     return int(cols[0]), int(cols[-1])
 
 
-def solidify_strap_band(
+def inpaint_strap_rgb(rgb: np.ndarray, support: np.ndarray) -> np.ndarray:
+    """Fill weave holes using OpenCV while preserving original fabric texture."""
+    max_c = rgb.max(axis=2)
+    holes = (support & (max_c < 40)).astype(np.uint8) * 255
+    if not holes.any():
+        return rgb
+
+    source = np.clip(rgb, 0, 255).astype(np.uint8)
+    inpainted = cv2.inpaint(source, holes, 3, cv2.INPAINT_NS)
+    return inpainted.astype(np.float32)
+
+
+def apply_original_strap(
     rgb: np.ndarray,
     alpha: np.ndarray,
     y0: int,
     y1: int,
-    *,
-    row_start: int = 0,
-) -> tuple[np.ndarray, np.ndarray, slice]:
-    """Make every row of the strap cross-section fully opaque."""
-    band_fabric = fabric_pixels(rgb[y0:y1])
+) -> tuple[np.ndarray, np.ndarray, slice, np.ndarray]:
+    """Replace the strap band with opaque pixels from the original product photo."""
+    band_rgb = rgb[y0:y1]
+    band_fabric = fabric_pixels(band_rgb)
     bounds = strap_column_bounds(band_fabric)
     if bounds is None:
-        return rgb, alpha, slice(y0, y0)
+        return rgb, alpha, slice(y0, y0), np.zeros_like(alpha, dtype=bool)
 
     xa, xb = bounds
     out_rgb = rgb.copy()
     out_alpha = alpha.copy()
     support = np.zeros_like(alpha, dtype=bool)
 
-    close_kernel = np.ones((3, 11), dtype=bool)
+    close_kernel = np.ones((3, 13), dtype=bool)
     closed = ndimage.binary_closing(band_fabric, structure=close_kernel, iterations=1)
     closed = ndimage.binary_dilation(closed, iterations=2)
 
-    fabric_rows = np.where(closed.any(axis=1))[0]
-    if fabric_rows.size == 0:
-        return rgb, alpha, slice(y0, y0)
+    active_rows: list[int] = []
+    for i in range(closed.shape[0]):
+        fabric_count = int(closed[i].sum())
+        alpha_count = int((out_alpha[y0 + i, xa : xb + 1] > 0).sum())
+        if fabric_count >= MIN_ROW_FABRIC or alpha_count >= MIN_ROW_FABRIC:
+            active_rows.append(i)
 
-    row_first = max(int(fabric_rows[0]), row_start)
-    row_last = int(fabric_rows[-1])
-    for i in range(row_first, row_last + 1):
+    if not active_rows:
+        return rgb, alpha, slice(y0, y0), support
+
+    for i in range(active_rows[0], active_rows[-1] + 1):
         y = y0 + i
+        fabric_count = int(closed[i].sum())
+        alpha_count = int((out_alpha[y, xa : xb + 1] > 0).sum())
+        if fabric_count == 0 and alpha_count == 0:
+            continue
         support[y, xa : xb + 1] = True
 
-    out_rgb = fill_strap_holes(out_rgb, support)
+    out_rgb = inpaint_strap_rgb(out_rgb, support)
     out_alpha[support] = 255
-    out_rgb = fill_strap_holes(out_rgb, support)
-    return out_rgb, out_alpha, slice(y0 + row_first, y0 + row_last + 1)
+    out_rgb = inpaint_strap_rgb(out_rgb, support)
+
+    solid_rows = np.where(support[y0:y1].any(axis=1))[0]
+    row_slice = slice(y0 + int(solid_rows[0]), y0 + int(solid_rows[-1]) + 1)
+    return out_rgb, out_alpha, row_slice, support
 
 
 def main() -> None:
@@ -197,28 +188,27 @@ def main() -> None:
     top_end = int(h * STRAP_TOP_END)
     bottom_start = int(h * STRAP_BOTTOM_START)
 
-    rgb, alpha, top_rows = solidify_strap_band(rgb, alpha, 0, top_end)
-    bottom_cutoff = int((h - bottom_start) * 0.45)
-    rgb, alpha, bottom_rows = solidify_strap_band(
-        rgb, alpha, bottom_start, h, row_start=bottom_cutoff
+    rgb, alpha, top_rows, top_support = apply_original_strap(rgb, alpha, 0, top_end)
+    rgb, alpha, bottom_rows, bottom_support = apply_original_strap(
+        rgb, alpha, bottom_start, h
     )
 
-    max_c = rgb.max(axis=2)
     rgba = np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
     rgba[alpha == 0] = 0
 
-    for name, rows, y0, y1 in (
-        ("top", top_rows, 0, top_end),
-        ("bottom", bottom_rows, bottom_start, h),
+    for name, rows, support, y0, y1 in (
+        ("top", top_rows, top_support, 0, top_end),
+        ("bottom", bottom_rows, bottom_support, bottom_start, h),
     ):
         band_fabric = fabric_pixels(rgb[y0:y1])
         bounds = strap_column_bounds(band_fabric)
         if bounds is None:
             continue
         xa, xb = bounds
+        mask = support[rows, xa : xb + 1]
         sub_alpha = alpha[rows, xa : xb + 1]
-        holes = int((sub_alpha == 0).sum())
-        print(f"{name} envelope {xa}-{xb} transparent={holes}")
+        holes = int(((sub_alpha == 0) & mask).sum())
+        print(f"{name} envelope {xa}-{xb} rows {rows.start}-{rows.stop} transparent={holes}")
         if holes:
             raise RuntimeError(f"{name} strap still has transparent pixels")
 
