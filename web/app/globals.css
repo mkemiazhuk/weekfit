@@ -568,10 +568,10 @@ input:focus-visible,
 .hero-device-scene__watch {
   position: absolute;
   z-index: 2;
-  right: clamp(0.75rem, 5vw, 2rem);
-  bottom: clamp(1.25rem, 7vw, 3rem);
+  right: clamp(0.25rem, 3vw, 1.25rem);
+  bottom: clamp(0.75rem, 5vw, 2.25rem);
   opacity: 1;
-  isolation: isolate;
+  pointer-events: none;
 }
 .hero-device-scene__shadow {
   position: absolute;
@@ -592,7 +592,9 @@ input:focus-visible,
 .hero-device-mockup--watch {
   position: relative;
   z-index: 1;
-  filter: none;
+  display: block;
+  filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.52))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.28));
 }
 .hero-device-mockup--watch img {
   opacity: 1;

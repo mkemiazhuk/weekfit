@@ -15,7 +15,7 @@ function useDeviceWidths() {
   useEffect(() => {
     const update = () => {
       const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.52) });
+      setWidths({ phone, watch: Math.round(phone * 0.6) });
     };
     update();
     window.addEventListener("resize", update);
@@ -61,8 +61,8 @@ export default function HeroDeviceShowcase({
             src="/img/hero-watch-ultra.png"
             alt=""
             aria-hidden
-            width={744}
-            height={904}
+            width={434}
+            height={716}
             sizes={`${watch}px`}
             style={{ width: watch, height: "auto" }}
             className="hero-device-mockup hero-device-mockup--watch"
