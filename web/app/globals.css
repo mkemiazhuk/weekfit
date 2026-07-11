@@ -1227,7 +1227,7 @@ input:focus-visible,
   background: #000;
 }
 .watch-modular__img {
-  object-fit: contain;
+  object-fit: cover;
 }
 
 /* Primary button gradient (shared with Button.tsx) */
