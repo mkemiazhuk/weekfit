@@ -15,7 +15,7 @@ function useDeviceWidths() {
   useEffect(() => {
     const update = () => {
       const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.6) });
+      setWidths({ phone, watch: Math.round(phone * 0.51) });
     };
     update();
     window.addEventListener("resize", update);
