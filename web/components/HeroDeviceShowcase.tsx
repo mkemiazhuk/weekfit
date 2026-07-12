@@ -15,7 +15,7 @@ function useDeviceWidths() {
   useEffect(() => {
     const update = () => {
       const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.51) });
+      setWidths({ phone, watch: Math.round(phone * 0.485) });
     };
     update();
     window.addEventListener("resize", update);
@@ -58,7 +58,7 @@ export default function HeroDeviceShowcase({
 
         <div className="hero-device-scene__watch">
           <Image
-            src="/img/hero-watch-ultra-overlay.png?v=3"
+            src="/img/hero-watch-ultra-overlay.png?v=4"
             alt=""
             aria-hidden
             width={434}

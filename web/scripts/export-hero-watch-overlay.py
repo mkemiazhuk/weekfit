@@ -19,10 +19,25 @@ OUT = ROOT / "public/img/hero-watch-ultra-overlay.png"
 
 STRAP_TOP_END = 0.24
 CASE_BOTTOM_START = 0.76
-STRAP_TAIL_START = 0.87
 TOP_STRAP_MAX_SPAN = 260
-LUG_SIDE_LEFT = 100
-LUG_SIDE_RIGHT = 330
+MIN_FABRIC_RUN = 8
+
+
+def opaque_runs(xs: np.ndarray) -> list[tuple[int, int]]:
+    if xs.size == 0:
+        return []
+    runs: list[tuple[int, int]] = []
+    start = int(xs[0])
+    prev = int(xs[0])
+    for x in xs[1:]:
+        x = int(x)
+        if x == prev + 1:
+            prev = x
+        else:
+            runs.append((start, prev))
+            start = prev = x
+    runs.append((start, prev))
+    return runs
 
 
 def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
@@ -30,7 +45,6 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
     h, w = alpha.shape
     top_end = int(h * STRAP_TOP_END)
     case_bottom = int(h * CASE_BOTTOM_START)
-    strap_tail = int(h * STRAP_TAIL_START)
     envelope = np.zeros((h, w), dtype=bool)
 
     for y in range(h):
@@ -41,19 +55,14 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
         if xs.size == 0:
             continue
 
-        if y < top_end:
-            span = int(xs[-1] - xs[0] + 1)
-            if span <= TOP_STRAP_MAX_SPAN:
-                envelope[y, xs[0] : xs[-1] + 1] = True
-            continue
-
-        if y >= strap_tail:
+        span = int(xs[-1] - xs[0] + 1)
+        if span <= TOP_STRAP_MAX_SPAN:
             envelope[y, xs[0] : xs[-1] + 1] = True
             continue
 
-        for part in (xs[xs < LUG_SIDE_LEFT], xs[xs > LUG_SIDE_RIGHT]):
-            if part.size >= 8:
-                envelope[y, part[0] : part[-1] + 1] = True
+        for run_start, run_end in opaque_runs(xs):
+            if run_end - run_start + 1 >= MIN_FABRIC_RUN:
+                envelope[y, run_start : run_end + 1] = True
 
     return envelope
 

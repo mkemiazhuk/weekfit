@@ -40,7 +40,7 @@ export default function Hero() {
           </TextReveal>
         </h1>
 
-        <motion.p {...fade(0.28)} className="body-lg hero-lead text-balance mx-auto mt-4 md:mx-0 md:mt-4">
+        <motion.p {...fade(0.28)} className="body-lg hero-lead text-balance mx-auto md:mx-0">
           {t.hero.lead}
         </motion.p>
 

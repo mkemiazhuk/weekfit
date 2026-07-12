@@ -124,20 +124,19 @@ export default function Nav() {
         <div className="min-w-0 pr-1 md:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />
         </div>
-        <div className="hidden shrink-0 md:block">
-          <Wordmark size="nav" className="wordmark-lockup--nav-desktop" />
-        </div>
-
-        <div className="hidden items-center gap-8 md:flex lg:gap-10">
-          {desktopLinks.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="nav-link transition-colors duration-300 hover:text-white max-lg:text-[0.8125rem] lg:hover:text-white/90"
-            >
-              {l.label}
-            </a>
-          ))}
+        <div className="hidden min-w-0 md:flex md:flex-1 md:items-center md:gap-5 lg:gap-6">
+          <Wordmark size="nav" className="wordmark-lockup--nav-desktop shrink-0" />
+          <div className="flex min-w-0 items-center gap-5 lg:gap-6">
+            {desktopLinks.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="nav-link transition-colors duration-300 hover:text-white max-lg:text-[0.8125rem] lg:hover:text-white/90"
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center justify-end md:gap-3">
