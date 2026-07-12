@@ -96,6 +96,13 @@ const robots = readFileSync(join(OUT, "robots.txt"), "utf8");
 if (robots.includes(`${SITE}/sitemap.xml`)) pass("robots references sitemap");
 else fail("robots missing sitemap reference");
 
+const googleHtmlFile = "googlebe868e9843b46f53.html";
+if (existsSync(join(OUT, googleHtmlFile))) pass(`google verification file ${googleHtmlFile}`);
+else fail(`missing google verification file ${googleHtmlFile}`);
+
+if (home.includes('name="google-site-verification"')) pass("google verification meta on homepage");
+else fail("homepage missing google-site-verification meta");
+
 const allFiles = walk(OUT);
 for (const f of allFiles) {
   if (FORBIDDEN.some((x) => f.includes(x))) fail(`forbidden export path: ${f}`);

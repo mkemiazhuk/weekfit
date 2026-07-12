@@ -57,7 +57,9 @@ export const SITE = {
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",
 
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+    /** Matches public/googlebe868e9843b46f53.html — not secret. */
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "be868e9843b46f53",
     bing: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION || "",
     yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || "",
   },
