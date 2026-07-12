@@ -9,7 +9,7 @@ export interface SpotlightRegion {
 /** Spotlight regions tuned per screenshot — highlights the UI that matches each panel's story. */
 export const journeyPanelSpotlights: Record<string, SpotlightRegion> = {
   /** Today — overview rings (recovery, activity, nutrition) */
-  morning: { top: 27, left: 3.5, width: 93, height: 27, radius: 18 },
+  morning: { top: 22.5, left: 3.5, width: 93, height: 29.5, radius: 18 },
   /** Meals — pre-workout guidance card */
   prep: { top: 34, left: 5, width: 90, height: 24, radius: 16 },
   /** Activity — training rings / session block */
