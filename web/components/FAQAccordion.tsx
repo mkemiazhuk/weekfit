@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { easeCalm } from "@/lib/motion";
 
 export interface QA {
   q: string;

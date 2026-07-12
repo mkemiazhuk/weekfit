@@ -81,12 +81,14 @@ export default function Nav() {
 
     window.addEventListener("keydown", onKeyDown);
 
+    const menuButton = menuButtonRef.current;
+
     return () => {
       document.body.style.overflow = prevOverflow;
       document.body.style.touchAction = prevTouchAction;
       inertTargets.forEach((el) => el.removeAttribute("inert"));
       window.removeEventListener("keydown", onKeyDown);
-      requestAnimationFrame(() => menuButtonRef.current?.focus());
+      requestAnimationFrame(() => menuButton?.focus());
     };
   }, [open, closeMenu]);
 

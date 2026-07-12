@@ -54,6 +54,8 @@ export function renderOgImage(opts: {
 
         {/* brand row — WF mark only */}
         <div style={{ display: "flex", alignItems: "center" }}>
+          {/* next/og ImageResponse requires native img, not next/image */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={iconSrc}
             width={MARK_WIDTH}

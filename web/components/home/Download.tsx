@@ -6,7 +6,6 @@ import PhoneMockup from "../PhoneMockup";
 import { SITE } from "@/lib/site";
 import { useI18n } from "@/lib/i18n";
 import { easeReveal, durationRevealSlow, durationEntrance } from "@/lib/motion";
-import { pillars } from "@/lib/tokens";
 
 export default function Download() {
   const { t } = useI18n();
