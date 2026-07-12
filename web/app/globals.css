@@ -568,8 +568,8 @@ input:focus-visible,
 .hero-device-scene__watch {
   position: absolute;
   z-index: 2;
-  right: clamp(0.25rem, 3vw, 1.25rem);
-  bottom: clamp(0.75rem, 5vw, 2.25rem);
+  right: clamp(0rem, 2.25vw, 0.875rem);
+  bottom: clamp(1.05rem, 5.75vw, 2.65rem);
   opacity: 1;
   pointer-events: none;
   background: transparent;
@@ -633,7 +633,7 @@ input:focus-visible,
     padding-right: clamp(1.75rem, 14vw, 2.75rem);
   }
   .hero-device-scene__watch {
-    bottom: clamp(0.85rem, 5vw, 1.5rem);
+    bottom: clamp(1.15rem, 5.75vw, 1.85rem);
   }
 }
 
