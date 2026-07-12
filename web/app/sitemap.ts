@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { absLocalized } from "@/lib/locale";
-import { blogCategoryPath, blogCategories, blogPostPath, blogPosts } from "@/lib/blog";
+import { blogCategoryPath, blogCategoriesWithPosts, blogPostPath, blogPosts } from "@/lib/blog";
 import { LOCALES } from "@/lib/locale";
 
 export const dynamic = "force-static";
@@ -44,7 +44,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       });
     }
 
-    for (const category of blogCategories) {
+    for (const category of blogCategoriesWithPosts()) {
       entries.push({
         url: absLocalized(blogCategoryPath(category.slug), locale),
         lastModified: now,

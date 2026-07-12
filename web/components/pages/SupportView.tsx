@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useI18n } from "@/lib/i18n";
 import { support } from "@/lib/content";
 import PageHero from "../PageHero";
@@ -8,16 +8,17 @@ import TopicIcon, { topicIconTileClassName, topicIconTileStyle } from "../TopicI
 import FAQAccordion, { QA } from "../FAQAccordion";
 import Button from "../Button";
 
+function readUrlQuery() {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("q") ?? "";
+}
+
 export default function SupportView() {
   const { lang } = useI18n();
   const c = support[lang];
-  const [query, setQuery] = useState("");
-
-  // Honor ?q= deep links for shareable filtered FAQ views.
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("q");
-    if (q) setQuery(q);
-  }, []);
+  const urlQuery = useSyncExternalStore(() => () => {}, readUrlQuery, () => "");
+  const [draft, setDraft] = useState<string | null>(null);
+  const query = draft ?? urlQuery;
 
   const matches: QA[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -39,7 +40,7 @@ export default function SupportView() {
             </svg>
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => setDraft(e.target.value)}
               placeholder={c.search}
               className="w-full bg-transparent text-[15px] text-white placeholder:text-white/40 focus:outline-none"
               aria-label={c.search}

@@ -107,18 +107,21 @@ export function webPageSchema(opts: {
 export function privacyPolicySchema(opts: {
   description: string;
   dateModified: string;
+  locale?: Locale;
 }): Json {
+  const locale = opts.locale ?? "en";
+  const url = absLocalized("privacy", locale);
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${abs("privacy")}#webpage`,
-    url: abs("privacy"),
-    name: "WeekFit Privacy Policy",
+    "@id": `${url}#webpage`,
+    url,
+    name: locale === "ru" ? "Политика конфиденциальности WeekFit" : "WeekFit Privacy Policy",
     description: opts.description,
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    inLanguage: ["en", "ru"],
+    inLanguage: locale,
     publisher: { "@id": ORG_ID },
   };
 }
@@ -126,18 +129,21 @@ export function privacyPolicySchema(opts: {
 export function termsOfServiceSchema(opts: {
   description: string;
   dateModified: string;
+  locale?: Locale;
 }): Json {
+  const locale = opts.locale ?? "en";
+  const url = absLocalized("terms", locale);
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${abs("terms")}#webpage`,
-    url: abs("terms"),
-    name: "WeekFit Terms of Use",
+    "@id": `${url}#webpage`,
+    url,
+    name: locale === "ru" ? "Условия использования WeekFit" : "WeekFit Terms of Use",
     description: opts.description,
     dateModified: opts.dateModified,
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    inLanguage: ["en", "ru"],
+    inLanguage: locale,
     publisher: { "@id": ORG_ID },
   };
 }
@@ -178,7 +184,11 @@ export function blogPostingSchema(opts: {
   datePublished: string;
   dateModified?: string;
   locale: Locale;
+  image?: string;
 }): Json {
+  const image = opts.image?.startsWith("http")
+    ? opts.image
+    : `${SITE.url}${opts.image ?? "/img/today.jpg"}`;
   return {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -193,7 +203,7 @@ export function blogPostingSchema(opts: {
     publisher: { "@id": ORG_ID },
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
-    image: `${SITE.url}/img/today.jpg`,
+    image,
   };
 }
 

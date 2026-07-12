@@ -24,8 +24,7 @@ export default function HeroLocalTime({ fallback = "7:04" }: Props) {
   const [current, setCurrent] = useState(fallback);
   const [outgoing, setOutgoing] = useState<string | null>(null);
   const hasSynced = useRef(false);
-  const currentRef = useRef(current);
-  currentRef.current = current;
+  const currentRef = useRef(fallback);
 
   useEffect(() => {
     let fadeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -43,6 +42,7 @@ export default function HeroLocalTime({ fallback = "7:04" }: Props) {
         setCurrent(next);
       }
 
+      currentRef.current = next;
       hasSynced.current = true;
     };
 

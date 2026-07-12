@@ -14,6 +14,7 @@ interface ButtonProps {
   className?: string;
   icon?: React.ReactNode;
   external?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -32,6 +33,7 @@ export default function Button({
   className,
   icon,
   external,
+  disabled,
   onClick,
 }: ButtonProps) {
   const base = clsx(
@@ -84,7 +86,7 @@ export default function Button({
     );
   }
   return (
-    <button type="button" className={cls}>
+    <button type="button" className={cls} onClick={onClick} disabled={disabled}>
       {content}
     </button>
   );

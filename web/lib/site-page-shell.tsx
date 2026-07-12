@@ -38,11 +38,13 @@ export function buildSitePage(
       primary = privacyPolicySchema({
         description: copy.description,
         dateModified: "2026-07-08",
+        locale,
       });
     } else if (key === "terms") {
       primary = termsOfServiceSchema({
         description: copy.description,
         dateModified: "2026-07-08",
+        locale,
       });
     } else {
       primary = webPageSchema({

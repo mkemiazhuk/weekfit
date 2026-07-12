@@ -83,7 +83,6 @@ export default function RootLayout({
           type="image/png"
           sizes="192x192"
         />
-        <link rel="preload" href="/img/today.jpg" as="image" type="image/jpeg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var p=location.pathname;var l=(p==='/ru'||p.indexOf('/ru/')===0)?'ru':'en';document.documentElement.lang=l})();`,

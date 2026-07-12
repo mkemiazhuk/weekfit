@@ -20,7 +20,9 @@ export default function AppStoreBadge({
       }`}
     >
       <span
-        aria-disabled="true"
+        role="img"
+        tabIndex={-1}
+        aria-label={soon ? `${t.cta.appStoreLine2}. ${soon}` : t.cta.appStoreLine2}
         className="inline-flex cursor-default items-center gap-3 rounded-button border border-white/10 bg-black/40 px-5 py-3 opacity-60"
       >
         <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white/80" aria-hidden>

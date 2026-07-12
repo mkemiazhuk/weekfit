@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/fix-og.mjs",
+    "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify-release.mjs",
     "start": "next start",
     "lint": "eslint"
   },

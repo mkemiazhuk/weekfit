@@ -6,7 +6,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import { usePathname } from "next/navigation";
 import { dictionaries, type Dict, type Lang } from "./dictionaries";
@@ -27,13 +26,11 @@ const I18nContext = createContext<I18nValue | null>(null);
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const forcedLocale = useForcedLocale();
-  const pathLocale = forcedLocale ?? localeFromPathname(pathname ?? "/");
-  const [lang, setLangState] = useState<Lang>(pathLocale);
+  const lang = forcedLocale ?? localeFromPathname(pathname ?? "/");
 
   useEffect(() => {
-    setLangState(pathLocale);
-    document.documentElement.lang = pathLocale;
-  }, [pathLocale]);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback(
     (next: Lang) => {
@@ -43,11 +40,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem("weekfit_lang", next);
       } catch {}
-      if (target !== pathname) {
-        window.location.assign(target);
-        return;
-      }
-      setLangState(next);
+      window.location.assign(target);
     },
     [pathname]
   );

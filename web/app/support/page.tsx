@@ -1,34 +1,6 @@
 import SupportView from "@/components/pages/SupportView";
-import JsonLd from "@/components/JsonLd";
-import { pageMetadata } from "@/lib/seo";
-import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { buildSitePage } from "@/lib/site-page-shell";
 
-const description =
-  "WeekFit Help Center — guides for Apple Health setup, recovery tracking, nutrition, the AI fitness coach and troubleshooting.";
-
-export const metadata = pageMetadata({
-  path: "/support",
-  title: "Support",
-  description,
-});
-
-export default function Page() {
-  return (
-    <>
-      <JsonLd
-        data={[
-          webPageSchema({
-            path: "/support",
-            name: "WeekFit Help Center",
-            description,
-          }),
-          breadcrumbSchema([
-            { name: "Home", path: "/" },
-            { name: "Support", path: "/support" },
-          ]),
-        ]}
-      />
-      <SupportView />
-    </>
-  );
-}
+const { metadata, Page } = buildSitePage("support", "en", SupportView);
+export { metadata };
+export default Page;

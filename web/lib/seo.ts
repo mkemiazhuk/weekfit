@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SITE } from "./site";
 import { absLocalized, hreflangAlternates, type Locale } from "./locale";
+import { ogImageUrl } from "./og-url";
 
 export interface PageSeo {
   path: string;
@@ -25,18 +26,13 @@ const robots = (index: boolean): Metadata["robots"] => ({
   },
 });
 
-function ogImageUrl(path: string, locale: Locale): string {
-  const localized = absLocalized(path, locale).replace(/\/$/, "");
-  return `${localized}/opengraph-image.png`;
-}
-
 export function pageMetadata(seo: PageSeo): Metadata {
   const locale = seo.locale ?? "en";
   const url = absLocalized(seo.path, locale);
   const index = seo.index ?? true;
   const social =
     seo.socialTitle ?? (seo.path === "/" ? seo.title : `${seo.title} — ${SITE.name}`);
-  const ogImage = ogImageUrl(seo.path, locale);
+  const ogImage = ogImageUrl(seo.path);
 
   return {
     title: seo.path === "/" ? seo.title : seo.title,

@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         working-directory: web
         run: npm ci
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: Lint
+        working-directory: web
+        run: npm run lint
       - name: Build static site
         working-directory: web
         env:

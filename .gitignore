@@ -29,3 +29,7 @@ Package.resolved
 # Secrets
 .env
 .env.*timing-audit-failures.txt
+
+# Web static export scratch / local asset tests
+web/public/reels/.tmp/
+.tmp-transparency-test/

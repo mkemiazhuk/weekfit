@@ -33,6 +33,18 @@ export interface BlogPost {
   excerpt: Record<Lang, string>;
   sections: Record<Lang, DocSection[]>;
   readMinutes: number;
+  /** Absolute path for schema / social (defaults from category). */
+  coverImage?: string;
+}
+
+const CATEGORY_COVER_IMAGES: Record<string, string> = {
+  recovery: "/img/recovery.webp",
+  nutrition: "/img/meals.webp",
+  training: "/img/activity.webp",
+};
+
+export function blogPostCoverImage(post: Pick<BlogPost, "category" | "coverImage">): string {
+  return post.coverImage ?? CATEGORY_COVER_IMAGES[post.category] ?? "/img/today.jpg";
 }
 
 export function blogPostPath(post: Pick<BlogPost, "category" | "slug">): string {
@@ -53,8 +65,12 @@ export function getBlogPostsByCategory(category: string): BlogPost[] {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+export function blogCategoriesWithPosts(): BlogCategory[] {
+  return blogCategories.filter((c) => getBlogPostsByCategory(c.slug).length > 0);
+}
+
 export function blogCategoryStaticParams() {
-  return blogCategories.map((c) => ({ category: c.slug }));
+  return blogCategoriesWithPosts().map((c) => ({ category: c.slug }));
 }
 
 export function getBlogPost(category: string, slug: string): BlogPost | undefined {

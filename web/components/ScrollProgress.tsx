@@ -7,6 +7,7 @@ export default function ScrollProgress() {
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
 
     const update = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -16,8 +17,6 @@ export default function ScrollProgress() {
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
-
-    if (reduce) setProgress(0);
 
     return () => {
       window.removeEventListener("scroll", update);

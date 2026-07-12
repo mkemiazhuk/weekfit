@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import {
   blogCategories,
+  blogCategoriesWithPosts,
   blogCopy,
   blogPosts,
   blogPostPath,
@@ -105,12 +106,14 @@ export default function BlogView() {
           </section>
         )}
 
-        <p className="mb-8 text-[15px] text-white/50">{c.empty}</p>
+        {sorted.length === 0 && (
+          <p className="mb-8 text-[15px] text-white/50">{c.empty}</p>
+        )}
 
         <h2 className="kicker mb-6 text-white/40">{c.categoriesTitle}</h2>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {blogCategories.map((cat, i) => {
+          {blogCategoriesWithPosts().map((cat, i) => {
             const count = blogPosts.filter((p) => p.category === cat.slug).length;
             return (
               <Reveal key={cat.slug} delay={i * 0.04}>

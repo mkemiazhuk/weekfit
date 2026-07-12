@@ -45,6 +45,10 @@ function Slider({
         max={max}
         step={step}
         value={value}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={value}
+        aria-valuetext={display}
         onChange={(e) => onChange(Number(e.target.value))}
         className="sim-slider w-full"
       />
@@ -145,6 +149,11 @@ export default function TuesdaySimulator() {
     setLoad(preset.load);
   };
 
+  const presetActive = (preset: (typeof SIMULATOR_PRESETS)[number]) =>
+    Math.abs(sleep - preset.sleep) < 0.05 &&
+    hrv === preset.hrv &&
+    load === preset.load;
+
   return (
     <>
       <header className="sim-page-header mx-auto max-w-5xl section-x text-center">
@@ -158,7 +167,8 @@ export default function TuesdaySimulator() {
           <div className="sim-controls-panel">
             <p className="kicker text-white/32">{s.setupKicker}</p>
 
-            <div className="flex flex-col gap-5">
+            <fieldset className="flex flex-col gap-5 border-0 p-0">
+              <legend className="sr-only">{s.setupKicker}</legend>
               <Slider
                 label={s.sleepLabel}
                 value={sleep}
@@ -186,16 +196,23 @@ export default function TuesdaySimulator() {
                 display={fmtLoad(load)}
                 onChange={setLoad}
               />
-            </div>
+            </fieldset>
 
             <div>
-              <p className="kicker-sm mb-2.5">{s.presetsTitle}</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+              <p className="kicker-sm mb-2.5" id="sim-presets-label">
+                {s.presetsTitle}
+              </p>
+              <div
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3"
+                role="group"
+                aria-labelledby="sim-presets-label"
+              >
                 {SIMULATOR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
+                    aria-pressed={presetActive(preset)}
                     className="sim-preset rounded-full border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-left transition-[color,background,border-color] duration-[var(--duration-micro)] sm:text-center"
                   >
                     {s.presets[preset.id as keyof typeof s.presets]}
@@ -207,6 +224,7 @@ export default function TuesdaySimulator() {
           </div>
 
           <div className="sim-result-stack">
+            <div aria-live="polite" aria-atomic="true" className="sim-result-live">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={result.decision}
@@ -278,11 +296,18 @@ export default function TuesdaySimulator() {
                 </div>
               </motion.div>
             </AnimatePresence>
+            </div>
 
-            <div className="sim-outcome-dots" aria-label={`${ALL_DECISIONS.length} outcomes`}>
+            <div
+              className="sim-outcome-dots"
+              role="list"
+              aria-label={`${ALL_DECISIONS.length} outcomes`}
+            >
               {ALL_DECISIONS.map((d) => (
                 <span
                   key={d}
+                  role="listitem"
+                  aria-current={d === result.decision ? "true" : undefined}
                   title={s.decisions[d].headline}
                   className={clsx(
                     "sim-outcome-dot",

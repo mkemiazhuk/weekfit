@@ -3,6 +3,7 @@ import BlogArticleView from "@/components/pages/BlogArticleView";
 import JsonLd from "@/components/JsonLd";
 import {
   blogPostPath,
+  blogPostCoverImage,
   blogStaticParams,
   getBlogPost,
 } from "@/lib/blog";
@@ -40,6 +41,7 @@ function buildArticlePage(locale: Locale, params: BlogArticleParams) {
             description: post.excerpt[locale],
             datePublished: post.date,
             locale,
+            image: blogPostCoverImage(post),
           }),
           breadcrumbSchema(
             [

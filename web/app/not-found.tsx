@@ -3,7 +3,17 @@ import NotFoundView from "@/components/pages/NotFoundView";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
-  robots: { index: false, follow: true },
+  description: "This page is not available on WeekFit.",
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Page Not Found — WeekFit",
+    description: "This page is not available on WeekFit.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Page Not Found — WeekFit",
+    description: "This page is not available on WeekFit.",
+  },
 };
 
 export default function NotFound() {

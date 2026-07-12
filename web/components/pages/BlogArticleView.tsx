@@ -12,6 +12,7 @@ import {
 } from "@/lib/blog";
 import BlogArticleBody from "./BlogArticleBody";
 import BlogArticleToc from "./BlogArticleToc";
+import BlogArticleFooter from "./BlogArticleFooter";
 
 function formatDate(iso: string, lang: "en" | "ru") {
   return new Intl.DateTimeFormat(lang === "ru" ? "ru-RU" : "en-US", {
@@ -69,6 +70,7 @@ export default function BlogArticleView({ post }: { post: BlogPost }) {
 
         <div className="prose prose-blog blog-article-body">
           <BlogArticleBody sections={sections} />
+          <BlogArticleFooter post={post} />
         </div>
       </div>
     </article>

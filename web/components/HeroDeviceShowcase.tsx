@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 
@@ -9,27 +8,12 @@ interface HeroDeviceShowcaseProps {
   priority?: boolean;
 }
 
-function useDeviceWidths() {
-  const [widths, setWidths] = useState({ phone: 380, watch: 172 });
-
-  useEffect(() => {
-    const update = () => {
-      const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.485) });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return widths;
-}
+/** Phone/watch widths are driven by CSS variables on `.hero-device-scene` (SSR-safe). */
+const PHONE_RENDER_WIDTH = 380;
 
 export default function HeroDeviceShowcase({
   priority,
 }: HeroDeviceShowcaseProps) {
-  const { phone, watch } = useDeviceWidths();
-
   return (
     <div className="hero-device-scene">
       <div aria-hidden className="hero-device-scene__fx">
@@ -42,15 +26,16 @@ export default function HeroDeviceShowcase({
             color="Natural Titanium"
             basePath={MOCKIFY_BASE_PATH}
             showStatusBar={false}
-            width={phone}
+            width={PHONE_RENDER_WIDTH}
             className="hero-device-mockup hero-device-mockup--phone"
           >
             <Image
-              src="/img/today.jpg"
+              src="/img/today.webp"
               alt="WeekFit Today screen"
               width={900}
               height={1950}
               priority={priority}
+              sizes="(max-width: 767px) 280px, 380px"
               className="h-full w-full object-cover object-top"
             />
           </DeviceMockup>
@@ -63,8 +48,7 @@ export default function HeroDeviceShowcase({
             aria-hidden
             width={434}
             height={716}
-            sizes={`${watch}px`}
-            style={{ width: watch, height: "auto" }}
+            sizes="(max-width: 767px) 136px, 184px"
             className="hero-device-mockup hero-device-mockup--watch"
             priority={priority}
           />

@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { pillars } from "@/lib/tokens";
 import { easeCalm, durationCard } from "@/lib/motion";
 import { useI18n } from "@/lib/i18n";
+import { screenImagePath } from "@/lib/screen-images";
 import SectionAmbient from "../SectionAmbient";
 import JourneySpotlightPhone from "./JourneySpotlightPhone";
 
@@ -37,7 +38,7 @@ export default function JourneyStage() {
   const panels: Panel[] = [
     {
       key: "morning",
-      screen: "/img/today.jpg",
+      screen: screenImagePath("today"),
       screenAlt: "WeekFit Today screen showing recovery, activity and nutrition rings",
       accent: pillars.recovery,
       ambient: "morning",
@@ -49,7 +50,7 @@ export default function JourneyStage() {
     },
     {
       key: "prep",
-      screen: "/img/meals.jpg",
+      screen: screenImagePath("meals"),
       screenAlt: "WeekFit Meals screen with pre-workout nutrition guidance",
       accent: pillars.nutrition,
       ambient: "nutrition",
@@ -61,7 +62,7 @@ export default function JourneyStage() {
     },
     {
       key: "workout",
-      screen: "/img/activity.jpg",
+      screen: screenImagePath("activity"),
       screenAlt: "WeekFit Activity screen with workouts synced from Apple Health",
       accent: pillars.activity,
       ambient: "activity",
@@ -73,7 +74,7 @@ export default function JourneyStage() {
     },
     {
       key: "recovery",
-      screen: "/img/recovery.jpg",
+      screen: screenImagePath("recovery"),
       screenAlt: "WeekFit recovery screen with training load in the breakdown",
       accent: pillars.recovery,
       ambient: "recovery",
@@ -85,7 +86,7 @@ export default function JourneyStage() {
     },
     {
       key: "night",
-      screen: "/img/coach.jpg",
+      screen: screenImagePath("coach"),
       screenAlt: "WeekFit Coach screen with today's recommendation",
       accent: pillars.coach,
       ambient: "coach",

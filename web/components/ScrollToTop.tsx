@@ -31,6 +31,8 @@ export default function ScrollToTop() {
     <button
       type="button"
       onClick={scrollUp}
+      tabIndex={visible ? 0 : -1}
+      aria-hidden={!visible}
       aria-label={t.a11y.scrollToTop}
       className={clsx(
         "scroll-to-top fixed right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full md:right-6",
