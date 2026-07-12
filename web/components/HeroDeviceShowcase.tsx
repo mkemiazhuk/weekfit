@@ -35,7 +35,7 @@ export default function HeroDeviceShowcase({
               width={900}
               height={1950}
               priority={priority}
-              sizes="(max-width: 767px) 230px, 380px"
+              sizes="(max-width: 767px) 280px, 380px"
               className="h-full w-full object-cover object-top"
             />
           </DeviceMockup>
@@ -48,7 +48,7 @@ export default function HeroDeviceShowcase({
             aria-hidden
             width={434}
             height={716}
-            sizes="(max-width: 767px) 92px, 184px"
+            sizes="(max-width: 767px) 136px, 184px"
             className="hero-device-mockup hero-device-mockup--watch"
             priority={priority}
           />
