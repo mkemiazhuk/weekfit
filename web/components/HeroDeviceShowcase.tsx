@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 
@@ -8,12 +9,27 @@ interface HeroDeviceShowcaseProps {
   priority?: boolean;
 }
 
-/** Phone/watch widths are driven by CSS variables on `.hero-device-scene` (SSR-safe). */
-const PHONE_RENDER_WIDTH = 380;
+function useDeviceWidths() {
+  const [widths, setWidths] = useState({ phone: 380, watch: 184 });
+
+  useEffect(() => {
+    const update = () => {
+      const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
+      setWidths({ phone, watch: Math.round(phone * 0.485) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return widths;
+}
 
 export default function HeroDeviceShowcase({
   priority,
 }: HeroDeviceShowcaseProps) {
+  const { phone, watch } = useDeviceWidths();
+
   return (
     <div className="hero-device-scene">
       <div aria-hidden className="hero-device-scene__fx">
@@ -26,7 +42,7 @@ export default function HeroDeviceShowcase({
             color="Natural Titanium"
             basePath={MOCKIFY_BASE_PATH}
             showStatusBar={false}
-            width={PHONE_RENDER_WIDTH}
+            width={phone}
             className="hero-device-mockup hero-device-mockup--phone"
           >
             <Image
@@ -48,7 +64,8 @@ export default function HeroDeviceShowcase({
             aria-hidden
             width={434}
             height={716}
-            sizes="(max-width: 767px) 136px, 184px"
+            sizes={`${watch}px`}
+            style={{ width: watch, height: "auto" }}
             className="hero-device-mockup hero-device-mockup--watch"
             priority={priority}
           />

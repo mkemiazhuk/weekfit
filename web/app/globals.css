@@ -518,13 +518,6 @@ input:focus-visible,
   max-width: var(--hero-phone-max);
   margin-inline: auto;
   overflow-x: clip;
-  --hero-phone-width: 280px;
-  --hero-watch-width: calc(var(--hero-phone-width) * 0.485);
-}
-@media (min-width: 768px) {
-  .hero-device-scene {
-    --hero-phone-width: 380px;
-  }
 }
 .hero-device-scene__fx {
   position: absolute;
@@ -586,8 +579,6 @@ input:focus-visible,
   position: relative;
   z-index: 1;
   display: block;
-  width: var(--hero-watch-width) !important;
-  height: auto !important;
   background: transparent;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.38))
     drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
@@ -611,8 +602,6 @@ input:focus-visible,
   position: relative;
   z-index: 1;
   filter: none;
-  width: var(--hero-phone-width) !important;
-  max-width: 100%;
 }
 .watch-mockup__backplate {
   position: absolute;
