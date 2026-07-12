@@ -119,7 +119,7 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="site-header__bar mx-auto grid h-[3.5rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:grid-cols-[1fr_auto_1fr] md:h-16 lg:h-[4.5rem]"
+        className="site-header__bar mx-auto grid h-[3.25rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:grid-cols-[1fr_auto_1fr] md:h-16 lg:h-[4.5rem]"
       >
         <div className="min-w-0 pr-1 md:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />

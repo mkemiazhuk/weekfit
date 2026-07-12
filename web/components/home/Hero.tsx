@@ -22,7 +22,7 @@ export default function Hero() {
 
   return (
     <section
-      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.25rem] pb-12 max-md:min-h-0 md:grid md:min-h-[88vh] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10 md:pb-16 md:pt-[6.5rem] lg:gap-12 lg:pb-[4.5rem]"
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[5.5rem] pb-14 max-md:min-h-0 md:grid md:min-h-[88vh] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10 md:pb-16 md:pt-[6.5rem] lg:gap-12 lg:pb-[4.5rem]"
     >
       <SectionAmbient tone="morning" />
 
@@ -57,7 +57,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      <div className="hero-phone relative mt-6 w-full self-center justify-self-center md:mt-0 md:justify-self-end">
+      <div className="hero-phone relative mt-10 w-full self-center justify-self-center md:mt-0 md:justify-self-end">
         <motion.div
           initial={
             reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 28, scale: 0.98 }

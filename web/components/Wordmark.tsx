@@ -6,7 +6,7 @@ import WordmarkMark from "./WordmarkMark";
 
 const sizes = {
   nav: { markHeight: 36, fontSize: 16, gap: 10 },
-  navMobile: { markHeight: 30, fontSize: 15, gap: 9 },
+  navMobile: { markHeight: 26, fontSize: 14, gap: 8 },
   lg: { markHeight: 32, fontSize: 15, gap: 8 },
   footer: { markHeight: 29, fontSize: 14, gap: 8 },
 } as const;
