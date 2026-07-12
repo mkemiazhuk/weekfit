@@ -489,7 +489,7 @@ input:focus-visible,
   letter-spacing: -0.012em;
   color: rgba(255, 255, 255, 0.52);
   max-width: min(36ch, var(--measure-prose));
-  margin-top: 1.375rem;
+  margin-top: 1.4375rem;
 }
 
 /* Hero — product photography treatment */
@@ -782,13 +782,13 @@ input:focus-visible,
   font-weight: 400;
   letter-spacing: -0.012em;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.38);
   transition: color var(--duration-ui) var(--ease-calm);
 }
 @media (min-width: 1024px) {
   .nav-link {
     font-size: 0.9375rem;
-    color: rgba(255, 255, 255, 0.44);
+    color: rgba(255, 255, 255, 0.4);
   }
 }
 
@@ -948,11 +948,41 @@ input:focus-visible,
   z-index: 4;
   pointer-events: none;
   background: transparent;
+  box-shadow: 0 0 0 9999px rgba(4, 5, 8, 0.34);
+}
+
+.journey-spotlight-phone__cutout::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    142deg,
+    rgba(72, 132, 255, 0.24) 0%,
+    rgba(46, 219, 250, 0.18) 48%,
+    rgba(102, 188, 217, 0.14) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0.72;
+}
+
+.journey-spotlight-phone__cutout::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
   box-shadow:
-    0 0 0 9999px rgba(4, 5, 8, 0.38),
-    0 0 0 1.5px color-mix(in srgb, var(--spotlight-accent) 50%, rgba(255, 255, 255, 0.15)),
-    0 0 36px 2px color-mix(in srgb, var(--spotlight-accent) 32%, transparent),
-    inset 0 0 28px color-mix(in srgb, var(--spotlight-accent) 14%, transparent);
+    0 0 52px 0 rgba(46, 219, 250, 0.07),
+    0 0 72px 6px rgba(59, 130, 246, 0.04);
+  pointer-events: none;
 }
 
 .journey-stage-phone-mobile {
@@ -2449,12 +2479,12 @@ input:focus-visible,
   .btn-hero-glass {
     background: linear-gradient(
       152deg,
-      rgba(255, 255, 255, 0.07) 0%,
-      rgba(255, 255, 255, 0.028) 42%,
-      rgba(255, 255, 255, 0.012) 100%
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0.024) 42%,
+      rgba(255, 255, 255, 0.01) 100%
     ) !important;
-    border: 1px solid rgba(255, 255, 255, 0.07) !important;
-    color: rgba(255, 255, 255, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.055) !important;
+    color: rgba(255, 255, 255, 0.64) !important;
     font-weight: 500 !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -2478,7 +2508,7 @@ input:focus-visible,
       rgba(255, 255, 255, 0.024) 42%,
       rgba(255, 255, 255, 0.01) 100%
     ) !important;
-    color: rgba(255, 255, 255, 0.78) !important;
+    color: rgba(255, 255, 255, 0.72) !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 2px 8px rgba(0, 0, 0, 0.14),
@@ -2823,12 +2853,12 @@ input:focus-visible,
   .btn-hero-glass {
     background: linear-gradient(
       152deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.03) 42%,
-      rgba(255, 255, 255, 0.014) 100%
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.026) 42%,
+      rgba(255, 255, 255, 0.012) 100%
     ) !important;
-    border: 1px solid rgba(255, 255, 255, 0.065) !important;
-    color: rgba(255, 255, 255, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.62) !important;
     font-weight: 500 !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -2846,20 +2876,20 @@ input:focus-visible,
   }
 
   .btn-hero-glass:hover {
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
     background: linear-gradient(
       152deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.038) 42%,
-      rgba(255, 255, 255, 0.018) 100%
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.034) 42%,
+      rgba(255, 255, 255, 0.016) 100%
     ) !important;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 0 rgba(0, 0, 0, 0.12),
       0 22px 56px -24px rgba(0, 0, 0, 0.58),
       0 0 0 0.5px rgba(255, 255, 255, 0.04) !important;
     transform: translateY(-1px) !important;
-    color: rgba(255, 255, 255, 0.88) !important;
+    color: rgba(255, 255, 255, 0.82) !important;
   }
 
   .phone-float-hero {

@@ -119,27 +119,28 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="site-header__bar mx-auto grid h-[3.5rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:flex md:h-16 md:justify-between md:gap-3 lg:h-[4.5rem]"
+        className="site-header__bar mx-auto grid h-[3.5rem] max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 section-x md:grid-cols-[1fr_auto_1fr] md:h-16 lg:h-[4.5rem]"
       >
         <div className="min-w-0 pr-1 md:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />
         </div>
-        <div className="hidden min-w-0 md:flex md:flex-1 md:items-center md:gap-5 lg:gap-6">
-          <Wordmark size="nav" className="wordmark-lockup--nav-desktop shrink-0" />
-          <div className="flex min-w-0 items-center gap-5 lg:gap-6">
-            {desktopLinks.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="nav-link transition-colors duration-300 hover:text-white max-lg:text-[0.8125rem] lg:hover:text-white/90"
-              >
-                {l.label}
-              </a>
-            ))}
-          </div>
+        <div className="hidden shrink-0 justify-self-start md:block">
+          <Wordmark size="nav" className="wordmark-lockup--nav-desktop" />
         </div>
 
-        <div className="flex shrink-0 items-center justify-end md:gap-3">
+        <div className="hidden items-center justify-self-center md:flex md:gap-7 lg:gap-8">
+          {desktopLinks.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="nav-link transition-colors duration-300 hover:text-white max-lg:text-[0.8125rem] lg:hover:text-white/90"
+            >
+              {l.label}
+            </a>
+          ))}
+        </div>
+
+        <div className="col-start-2 flex shrink-0 items-center justify-end justify-self-end md:col-start-3 md:gap-3">
           <div className="hidden md:block">
             <LangToggle />
           </div>
