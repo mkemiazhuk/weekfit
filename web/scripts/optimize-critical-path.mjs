@@ -44,18 +44,6 @@ function optimizeHtml(html) {
   const sheetHref = sheet[1];
   let next = html.replace(sheetTag, "");
 
-  // Also drop any duplicate blocking stylesheet tags Next may emit.
-  next = next.replace(
-    new RegExp(`<link rel="stylesheet" href="${sheetHref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*>`, "g"),
-    ""
-  );
-
-  const asyncSheet = [
-    `<link rel="preload" href="${sheetHref}" as="style">`,
-    `<link rel="stylesheet" href="${sheetHref}" media="print" onload="this.media='all'">`,
-    `<noscript><link rel="stylesheet" href="${sheetHref}"></noscript>`,
-  ].join("");
-
   const preloads = [];
   next = next.replace(/<link rel="preload"[^>]*>/g, (tag) => {
     preloads.push(tag);
@@ -75,14 +63,16 @@ function optimizeHtml(html) {
         tag.includes("/img/hero-watch-ultra-overlay-368.webp")
       );
     }
-    if (tag.includes('as="style"')) {
-      return false;
-    }
     return true;
   });
 
-  // Critical CSS, async full bundle, then high-priority asset preloads.
-  const block = [CRITICAL_TAG, asyncSheet, ...uniquePreloads].join("");
+  // Stylesheet first, then other preloads (LCP images, fonts, scripts).
+  const block = [
+    CRITICAL_TAG,
+    `<link rel="preload" href="${sheetHref}" as="style">`,
+    sheetTag,
+    ...uniquePreloads,
+  ].join("");
 
   const anchor = /<meta name="viewport"[^>]*>/;
   if (!anchor.test(next)) return { html, changed: false };
