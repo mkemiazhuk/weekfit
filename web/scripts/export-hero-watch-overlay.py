@@ -22,6 +22,14 @@ CASE_BOTTOM_START = 0.76
 TOP_STRAP_MAX_SPAN = 260
 MIN_FABRIC_RUN = 8
 
+# Narrow vertical gaps at case↔strap lugs (fractions of overlay size 434×716).
+LUG_GAP_ZONES: tuple[tuple[float, float, float, float], ...] = (
+    (0.132, 0.168, 0.155, 0.245),  # top-left lug
+    (0.132, 0.168, 0.685, 0.775),  # top-right lug
+    (0.845, 0.872, 0.155, 0.245),  # bottom-left lug
+    (0.845, 0.872, 0.685, 0.775),  # bottom-right lug
+)
+
 
 def opaque_runs(xs: np.ndarray) -> list[tuple[int, int]]:
     if xs.size == 0:
@@ -67,6 +75,28 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
     return envelope
 
 
+def seal_lug_gaps(rgb: np.ndarray, alpha: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Opaque black only in narrow case↔strap lug gaps (not full strap width)."""
+    h, w = alpha.shape
+    out_rgb = rgb.copy()
+    out_alpha = alpha.copy()
+    sealed = 0
+
+    for y0f, y1f, x0f, x1f in LUG_GAP_ZONES:
+        y0, y1 = int(h * y0f), max(int(h * y1f), int(h * y0f) + 1)
+        x0, x1 = int(w * x0f), max(int(w * x1f), int(w * x0f) + 1)
+        zone_alpha = out_alpha[y0:y1, x0:x1]
+        gap = zone_alpha == 0
+        sealed += int(gap.sum())
+        zone_alpha[gap] = 255
+        out_alpha[y0:y1, x0:x1] = zone_alpha
+        zone_rgb = out_rgb[y0:y1, x0:x1]
+        zone_rgb[gap] = 0
+        out_rgb[y0:y1, x0:x1] = zone_rgb
+
+    return out_rgb, out_alpha, sealed
+
+
 def main() -> None:
     px = np.array(Image.open(SOURCE).convert("RGBA"))
     rgb = px[:, :, :3].copy()
@@ -80,19 +110,19 @@ def main() -> None:
     out_alpha[holes] = 255
     out_alpha[sheer] = 255
 
-    rgba = np.dstack([rgb, out_alpha]).astype(np.uint8)
+    out_rgb, out_alpha, lug_sealed = seal_lug_gaps(rgb, out_alpha)
+
+    rgba = np.dstack([out_rgb, out_alpha]).astype(np.uint8)
     rgba[out_alpha == 0] = 0
 
     changed_alpha = (out_alpha != alpha).sum()
-    changed_rgb = np.any(rgb != px[:, :, :3], axis=2).sum()
-    if changed_rgb:
-        raise RuntimeError("RGB was modified unexpectedly")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
     print(
         f"saved {OUT.name} holes_sealed={int(holes.sum())} "
-        f"sheer_sealed={int(sheer.sum())} alpha_changed={int(changed_alpha)}"
+        f"sheer_sealed={int(sheer.sum())} lug_sealed={lug_sealed} "
+        f"alpha_changed={int(changed_alpha)}"
     )
 
 

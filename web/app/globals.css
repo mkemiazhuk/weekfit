@@ -575,6 +575,36 @@ input:focus-visible,
   pointer-events: none;
   background: transparent;
 }
+.hero-device-scene__watch-lug-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-device-scene__watch-lug {
+  position: absolute;
+  background: #000;
+  pointer-events: none;
+  /* Match LUG_GAP_ZONES in export-hero-watch-overlay.py */
+  width: 9%;
+  height: 3.6%;
+}
+.hero-device-scene__watch-lug--tl {
+  top: 13.2%;
+  left: 15.5%;
+}
+.hero-device-scene__watch-lug--tr {
+  top: 13.2%;
+  left: 68.5%;
+}
+.hero-device-scene__watch-lug--bl {
+  top: 84.5%;
+  left: 15.5%;
+}
+.hero-device-scene__watch-lug--br {
+  top: 84.5%;
+  left: 68.5%;
+}
 .hero-device-mockup--watch {
   position: relative;
   z-index: 1;

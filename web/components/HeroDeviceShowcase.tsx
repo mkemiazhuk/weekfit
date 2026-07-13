@@ -58,8 +58,14 @@ export default function HeroDeviceShowcase({
         </div>
 
         <div className="hero-device-scene__watch">
+          <div aria-hidden className="hero-device-scene__watch-lug-mask">
+            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--tl" />
+            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--tr" />
+            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--bl" />
+            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--br" />
+          </div>
           <Image
-            src="/img/hero-watch-ultra-overlay.png?v=6"
+            src="/img/hero-watch-ultra-overlay.png?v=7"
             alt=""
             aria-hidden
             width={434}
