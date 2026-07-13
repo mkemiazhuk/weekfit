@@ -16,6 +16,7 @@ import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import { HOME_SEO } from "@/lib/page-seo";
 import { entityGraphSchema } from "@/lib/schema";
+import { WATCH_OVERLAY_VERSION } from "@/lib/responsive-images";
 
 const home = pageMetadata({
   path: "/",
@@ -85,10 +86,19 @@ export default function RootLayout({
         />
         <link
           rel="preload"
-          href="/img/today.webp"
+          href="/img/today-560.webp"
           as="image"
           type="image/webp"
           fetchPriority="high"
+          media="(max-width: 767px)"
+        />
+        <link
+          rel="preload"
+          href="/img/today-760.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+          media="(min-width: 768px)"
         />
         <link
           rel="preload"
@@ -98,7 +108,21 @@ export default function RootLayout({
         />
         <link
           rel="preload"
-          href="/img/hero-watch-ultra-overlay.webp?v=10"
+          href={`/img/hero-watch-ultra-overlay-272.webp?v=${WATCH_OVERLAY_VERSION}`}
+          as="image"
+          type="image/webp"
+          media="(max-width: 767px)"
+        />
+        <link
+          rel="preload"
+          href={`/img/hero-watch-ultra-overlay-368.webp?v=${WATCH_OVERLAY_VERSION}`}
+          as="image"
+          type="image/webp"
+          media="(min-width: 768px)"
+        />
+        <link
+          rel="preload"
+          href="/brand/logo-wf-mark-36.webp"
           as="image"
           type="image/webp"
         />

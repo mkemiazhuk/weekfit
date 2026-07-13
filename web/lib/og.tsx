@@ -7,7 +7,7 @@ import { ENTITY } from "./site";
 const fontRegular = readFileSync(join(process.cwd(), "assets/Inter-Regular.woff"));
 const fontSemiBold = readFileSync(join(process.cwd(), "assets/Inter-SemiBold.woff"));
 const fontBold = readFileSync(join(process.cwd(), "assets/Inter-Bold.woff"));
-const iconBytes = readFileSync(join(process.cwd(), "public/brand/logo-wf-mark.png"));
+const iconBytes = readFileSync(join(process.cwd(), "assets-src/brand/logo-wf-mark.png"));
 const iconSrc = `data:image/png;base64,${iconBytes.toString("base64")}`;
 const MARK_ASPECT = 821 / 929;
 const MARK_HEIGHT = 120;

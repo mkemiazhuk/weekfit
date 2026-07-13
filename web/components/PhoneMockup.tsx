@@ -1,13 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Image from "next/image";
 import clsx from "clsx";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
+import ScreenShotImage from "./ScreenShotImage";
+import type { ScreenImageKey } from "@/lib/screen-images";
 
 interface PhoneMockupProps {
   src?: string;
+  screenKey?: ScreenImageKey;
   alt?: string;
   children?: ReactNode;
   className?: string;
@@ -20,6 +22,7 @@ interface PhoneMockupProps {
 
 export default function PhoneMockup({
   src,
+  screenKey = "today",
   alt = "",
   children,
   className,
@@ -28,12 +31,11 @@ export default function PhoneMockup({
   depth = false,
 }: PhoneMockupProps) {
   const screen = children ?? (
-    src ? (
-      <Image
-        src={src}
+    src || screenKey ? (
+      <ScreenShotImage
+        name={screenKey}
         alt={alt}
-        width={900}
-        height={1950}
+        phoneWidthPx={width}
         priority={priority}
         sizes={`${width}px`}
         className="h-full w-full object-cover object-top"

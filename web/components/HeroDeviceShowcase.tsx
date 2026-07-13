@@ -4,6 +4,13 @@ import Image from "next/image";
 import { useEffect, useState, type CSSProperties } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
+import {
+  WATCH_OVERLAY_VERSION,
+  watchOverlayDimensions,
+  watchOverlayPath,
+  watchVariantForWidth,
+} from "@/lib/responsive-images";
+import ScreenShotImage from "@/components/ScreenShotImage";
 
 interface HeroDeviceShowcaseProps {
   priority?: boolean;
@@ -29,6 +36,8 @@ export default function HeroDeviceShowcase({
   priority,
 }: HeroDeviceShowcaseProps) {
   const { phone, watch } = useDeviceWidths();
+  const watchVariant = watchVariantForWidth(watch);
+  const watchDims = watchOverlayDimensions(watchVariant);
 
   const sceneStyle = {
     "--watch-w": `${watch}px`,
@@ -49,11 +58,10 @@ export default function HeroDeviceShowcase({
             width={phone}
             className="hero-device-mockup hero-device-mockup--phone"
           >
-            <Image
-              src="/img/today.webp"
+            <ScreenShotImage
+              name="today"
               alt="WeekFit Today screen"
-              width={900}
-              height={1950}
+              phoneWidthPx={phone}
               priority={priority}
               sizes="(max-width: 767px) 280px, 380px"
               className="h-full w-full object-cover object-top"
@@ -66,11 +74,11 @@ export default function HeroDeviceShowcase({
 
         <div className="hero-device-scene__watch">
           <Image
-            src="/img/hero-watch-ultra-overlay.webp?v=10"
+            src={`${watchOverlayPath(watchVariant)}?v=${WATCH_OVERLAY_VERSION}`}
             alt=""
             aria-hidden
-            width={434}
-            height={716}
+            width={watchDims.width}
+            height={watchDims.height}
             sizes={`${watch}px`}
             style={{ width: watch, height: "auto" }}
             className="hero-device-mockup hero-device-mockup--watch"

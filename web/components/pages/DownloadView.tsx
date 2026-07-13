@@ -8,7 +8,6 @@ import AppStoreBadge from "../AppStoreBadge";
 import Button from "../Button";
 import Reveal from "../Reveal";
 import { SITE } from "@/lib/site";
-import { screenImagePath } from "@/lib/screen-images";
 
 export default function DownloadView() {
   const { lang, t } = useI18n();
@@ -23,7 +22,7 @@ export default function DownloadView() {
           <Reveal>
             <div className="mx-auto w-full max-w-[300px] phone-float">
               <PhoneMockup
-                src={screenImagePath("today")}
+                screenKey="today"
                 alt="WeekFit Today screen with the day's readiness and rings"
                 priority
                 depth

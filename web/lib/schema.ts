@@ -56,10 +56,10 @@ function softwareApplicationNode(): Json {
     downloadUrl: SITE.appInstallUrl,
     image: `${SITE.url}/brand/icon-512.png`,
     screenshot: [
-      `${SITE.url}/img/today.webp`,
-      `${SITE.url}/img/coach.webp`,
-      `${SITE.url}/img/activity.webp`,
-      `${SITE.url}/img/nutrition.webp`,
+      `${SITE.url}/img/today-760.webp`,
+      `${SITE.url}/img/coach-760.webp`,
+      `${SITE.url}/img/activity-760.webp`,
+      `${SITE.url}/img/nutrition-760.webp`,
     ],
     offers: {
       "@type": "Offer",
@@ -188,7 +188,7 @@ export function blogPostingSchema(opts: {
 }): Json {
   const image = opts.image?.startsWith("http")
     ? opts.image
-    : `${SITE.url}${opts.image ?? "/img/today.webp"}`;
+    : `${SITE.url}${opts.image ?? "/img/today-760.webp"}`;
   return {
     "@context": "https://schema.org",
     "@type": "BlogPosting",

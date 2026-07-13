@@ -8,6 +8,11 @@ import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 import { springSoft } from "@/lib/motion";
 import {
+  screenKeyFromPath,
+  screenVariantForPhoneWidth,
+  screenVariantPath,
+} from "@/lib/responsive-images";
+import {
   journeyPanelSpotlights,
   spotlightImagePosition,
   type SpotlightRegion,
@@ -46,6 +51,15 @@ export default function JourneySpotlightPhone({
   const imgPos = spotlightImagePosition(region);
   const transition = reduce ? { duration: 0 } : springSoft;
   const width = parseWidth(sizes);
+  const screenVariant = screenVariantForPhoneWidth(width);
+
+  const resolveScreen = (path: string) => {
+    const key = screenKeyFromPath(path);
+    if (!key) return path;
+    return screenVariantPath(key, screenVariant);
+  };
+
+  const activeScreen = resolveScreen(panel.screen);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -85,7 +99,7 @@ export default function JourneySpotlightPhone({
                 panels.map((p, i) => (
                   <Image
                     key={p.key}
-                    src={p.screen}
+                    src={resolveScreen(p.screen)}
                     alt={i === activeIndex ? p.screenAlt : ""}
                     fill
                     sizes={sizes}
@@ -114,7 +128,7 @@ export default function JourneySpotlightPhone({
                     className="absolute bg-cover bg-top"
                     style={{
                       ...imgPos,
-                      backgroundImage: `url(${panel.screen})`,
+                      backgroundImage: `url(${activeScreen})`,
                     }}
                   />
                 </motion.div>

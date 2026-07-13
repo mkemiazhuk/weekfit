@@ -26,8 +26,16 @@ const PRUNE_PATHS = [
   "img/recovery.jpg",
   "img/coach.jpg",
   "img/nutrition.jpg",
-  // PNG kept for the export pipeline; WebP is ~78% smaller on the wire.
+  // PNG kept for the export pipeline; sized WebP variants ship instead.
   "img/hero-watch-ultra-overlay.png",
+  "img/hero-watch-ultra-overlay.webp",
+  "img/today.webp",
+  "img/meals.webp",
+  "img/activity.webp",
+  "img/recovery.webp",
+  "img/coach.webp",
+  "img/nutrition.webp",
+  "brand/logo-wf-mark.png",
 ];
 
 let removed = 0;

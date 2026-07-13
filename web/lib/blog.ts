@@ -39,14 +39,14 @@ export interface BlogPost {
 }
 
 const CATEGORY_COVER_IMAGES: Record<string, string> = {
-  recovery: "/img/recovery.webp",
-  nutrition: "/img/meals.webp",
-  training: "/img/activity.webp",
-  sleep: "/img/recovery.webp",
+  recovery: "/img/recovery-760.webp",
+  nutrition: "/img/meals-760.webp",
+  training: "/img/activity-760.webp",
+  sleep: "/img/recovery-760.webp",
 };
 
 export function blogPostCoverImage(post: Pick<BlogPost, "category" | "coverImage">): string {
-  return post.coverImage ?? CATEGORY_COVER_IMAGES[post.category] ?? "/img/today.webp";
+  return post.coverImage ?? CATEGORY_COVER_IMAGES[post.category] ?? "/img/today-760.webp";
 }
 
 export function blogPostPath(post: Pick<BlogPost, "category" | "slug">): string {
