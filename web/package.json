@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
     "typecheck": "tsc --noEmit",
+    "copylint": "node scripts/copy-lint.mjs",
     "verify": "node scripts/verify-release.mjs",
     "start": "next start",
     "lint": "eslint"

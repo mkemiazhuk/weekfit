@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         working-directory: web
         run: npm run lint
+      - name: Copy lint (RU editorial)
+        working-directory: web
+        run: npm run copylint
       - name: Build static site
         working-directory: web
         env:
