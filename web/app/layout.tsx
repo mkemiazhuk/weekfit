@@ -3,15 +3,12 @@ import { GeistSans } from "geist/font/sans";
 import clsx from "clsx";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
-import SmoothScroll from "@/components/SmoothScroll";
-import AtmosphereBackground from "@/components/AtmosphereBackground";
+import ClientEnhancements from "@/components/ClientEnhancements";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Analytics from "@/components/Analytics";
 import JsonLd from "@/components/JsonLd";
 import SkipLink from "@/components/SkipLink";
-import ScrollProgress from "@/components/ScrollProgress";
-import ScrollToTop from "@/components/ScrollToTop";
 import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import { HOME_SEO } from "@/lib/page-seo";
@@ -109,10 +106,7 @@ export default function RootLayout({
         <JsonLd data={entityGraphSchema()} />
         <I18nProvider>
           <SkipLink />
-          <ScrollProgress />
-          <ScrollToTop />
-          <SmoothScroll />
-          <AtmosphereBackground />
+          <ClientEnhancements />
           <Nav />
           <main id="main-content" className="relative z-0">
             {children}

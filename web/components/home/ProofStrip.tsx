@@ -1,12 +1,10 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import { easeReveal, durationUI } from "@/lib/motion";
+import Reveal from "../Reveal";
 
 export default function ProofStrip() {
   const { t } = useI18n();
-  const reduce = useReducedMotion();
 
   return (
     <section
@@ -20,12 +18,11 @@ export default function ProofStrip() {
       <div className="mx-auto max-w-6xl section-x section-y-compact">
         <ul className="grid grid-cols-2 gap-x-4 gap-y-3.5 md:grid-cols-4 md:gap-0">
           {t.proof.items.map((item, i) => (
-            <motion.li
+            <Reveal
               key={item}
-              initial={reduce ? {} : { opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-10% 0px" }}
-              transition={{ duration: durationUI, ease: easeReveal, delay: i * 0.05 }}
+              as="li"
+              delay={i * 0.05}
+              y={8}
               className="proof-strip flex items-center gap-2.5 border-white/[0.06] md:justify-center md:border-l md:px-6 md:first:border-l-0"
             >
               <span
@@ -33,7 +30,7 @@ export default function ProofStrip() {
                 className="proof-dot h-1 w-1 shrink-0 rounded-full bg-brand"
               />
               {item}
-            </motion.li>
+            </Reveal>
           ))}
         </ul>
       </div>

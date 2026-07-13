@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import React from "react";
-import { easeReveal, durationReveal } from "@/lib/motion";
+import clsx from "clsx";
+import React, { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 interface RevealProps {
   children: React.ReactNode;
@@ -17,20 +17,45 @@ export default function Reveal({
   className,
   delay = 0,
   y = 20,
+  as: Tag = "div",
 }: RevealProps) {
   const reduce = useReducedMotion();
-  const shown = { opacity: 1, y: 0 };
+  const ref = useRef<HTMLElement | null>(null);
+  const [visible, setVisible] = useState(reduce);
+
+  useEffect(() => {
+    if (reduce) return;
+
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "-10% 0px -10% 0px", threshold: 0 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [reduce]);
+
   return (
-    <motion.div
-      className={className}
-      initial={reduce ? shown : { opacity: 0, y }}
-      whileInView={shown}
-      viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
-      transition={
-        reduce ? { duration: 0 } : { duration: durationReveal, ease: easeReveal, delay }
-      }
+    <Tag
+      ref={(el: HTMLElement | null) => {
+        ref.current = el;
+      }}
+      className={clsx("motion-reveal", className)}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : `translateY(${y}px)`,
+        transitionDelay: visible ? `${delay}s` : "0s",
+      }}
     >
       {children}
-    </motion.div>
+    </Tag>
   );
 }

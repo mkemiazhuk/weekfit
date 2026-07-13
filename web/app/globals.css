@@ -1468,11 +1468,55 @@ input:focus-visible,
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* Unified reveal motion — used by Reveal.tsx via easeCalm */
+/* Unified reveal motion — used by Reveal.tsx */
 .motion-reveal {
   transition:
     opacity var(--duration-reveal) var(--ease-reveal),
     transform var(--duration-reveal) var(--ease-reveal);
+}
+
+@keyframes text-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(108%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-text-reveal {
+  animation: text-reveal-up var(--duration-reveal-slow) var(--ease-reveal) both;
+}
+
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hero-y, 16px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-hero-fade {
+  animation: hero-fade-in var(--duration-reveal-slow) var(--ease-reveal) both;
+}
+
+.motion-hero-entrance {
+  animation: hero-fade-in var(--duration-entrance) var(--ease-reveal) both;
+}
+
+.hero-device-lcp-phone {
+  overflow: hidden;
+  border-radius: 2.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a0b0f;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* Download CTA — cinematic product hero */
@@ -2436,6 +2480,9 @@ input:focus-visible,
   .download-hero__orb,
   .premium-card,
   .motion-reveal,
+  .motion-text-reveal,
+  .motion-hero-fade,
+  .motion-hero-entrance,
   .transition-calm {
     animation: none !important;
     transition: none !important;

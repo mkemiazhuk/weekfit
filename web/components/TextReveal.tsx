@@ -1,8 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
-import { easeReveal, durationRevealSlow } from "@/lib/motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 interface TextRevealProps {
   children: React.ReactNode;
@@ -25,14 +24,12 @@ export default function TextReveal({
 
   return (
     <Tag className={clsx("block overflow-hidden", className)}>
-      <motion.span
-        className="block"
-        initial={{ opacity: 0, y: "108%" }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: durationRevealSlow, ease: easeReveal, delay }}
+      <span
+        className="motion-text-reveal block"
+        style={{ animationDelay: `${delay}s` }}
       >
         {children}
-      </motion.span>
+      </span>
     </Tag>
   );
 }
