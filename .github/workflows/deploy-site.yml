@@ -47,9 +47,8 @@ jobs:
           NEXT_PUBLIC_BING_SITE_VERIFICATION: ${{ secrets.BING_SITE_VERIFICATION }}
           NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ secrets.YANDEX_VERIFICATION }}
         run: npm run build
-      # GitHub Pages serves ~10m cache TTL. For repeat-visit savings, add Cloudflare Cache Rules:
-      #   /_next/static/* → Cache Everything, Edge TTL 1 year
-      #   /img/*, /mockify/*, /brand/* → Cache Everything, Edge TTL 7 days
+      # GitHub Pages serves max-age=600 for all files; out/_headers is ignored.
+      # For long cache TTL in Lighthouse, use Cloudflare Pages or Cloudflare CDN rules — docs/SiteCaching.md
       - name: Verify SEO artifacts
         working-directory: web
         run: |
