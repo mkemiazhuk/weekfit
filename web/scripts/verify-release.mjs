@@ -86,7 +86,7 @@ if (graphCount === 1) pass("single @graph on homepage");
 else fail(`homepage @graph count: ${graphCount} (expected 1)`);
 
 const sitemap = readFileSync(join(OUT, "sitemap.xml"), "utf8");
-const emptyCategories = ["sleep", "apple-health", "wellness", "coach"];
+const emptyCategories = ["apple-health", "wellness", "coach"];
 for (const cat of emptyCategories) {
   if (sitemap.includes(`/blog/${cat}/`)) fail(`empty category in sitemap: ${cat}`);
   else pass(`empty category excluded: ${cat}`);

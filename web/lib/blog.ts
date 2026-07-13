@@ -2,6 +2,7 @@ import type { Lang } from "./dictionaries";
 import type { DocSection } from "./content";
 import { vo2MaxArticleSections } from "./blog/vo2-max-article";
 import { preWorkoutNutritionArticleSections } from "./blog/pre-workout-nutrition-article";
+import { sleepBetterTonightArticleSections } from "./blog/sleep-better-tonight";
 import type { IconName } from "@/components/Icon";
 import { accents } from "./tokens";
 
@@ -41,6 +42,7 @@ const CATEGORY_COVER_IMAGES: Record<string, string> = {
   recovery: "/img/recovery.webp",
   nutrition: "/img/meals.webp",
   training: "/img/activity.webp",
+  sleep: "/img/recovery.webp",
 };
 
 export function blogPostCoverImage(post: Pick<BlogPost, "category" | "coverImage">): string {
@@ -176,6 +178,21 @@ export const blogPosts: BlogPost[] = [
       ru: "За три часа, во время, после — на что смотреть, что взять с собой и что сказал бы друг, который реально тренируется.",
     },
     sections: preWorkoutNutritionArticleSections,
+  },
+  {
+    slug: "sleep-better-tonight",
+    category: "sleep",
+    date: "2026-07-13",
+    readMinutes: 6,
+    title: {
+      en: "Sleep better tonight — 6 small levers that actually work",
+      ru: "Как спать лучше уже сегодня — 6 маленьких рычагов, которые работают",
+    },
+    excerpt: {
+      en: "A practical sleep reset: light, caffeine, temperature and what to do when you wake up at 3 a.m. No perfection required.",
+      ru: "Практичный перезапуск сна: свет, кофеин, температура и что делать, если проснулись в 3 ночи. Без идеала.",
+    },
+    sections: sleepBetterTonightArticleSections,
   },
   {
     slug: "what-is-a-recovery-score",
