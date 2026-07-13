@@ -58,7 +58,9 @@ function optimizeHtml(html) {
     if (tag.includes('as="image"')) {
       return (
         tag.includes("/img/today-560.webp") ||
-        tag.includes("/img/today-760.webp")
+        tag.includes("/img/today-760.webp") ||
+        tag.includes("/img/hero-watch-ultra-overlay-272.webp") ||
+        tag.includes("/img/hero-watch-ultra-overlay-368.webp")
       );
     }
     return true;

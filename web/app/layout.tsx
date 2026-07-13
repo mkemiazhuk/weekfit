@@ -99,6 +99,22 @@ export default function RootLayout({
           fetchPriority="high"
           media="(min-width: 768px)"
         />
+        <link
+          rel="preload"
+          href={`/img/hero-watch-ultra-overlay-272.webp?v=11`}
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+          media="(max-width: 767px)"
+        />
+        <link
+          rel="preload"
+          href={`/img/hero-watch-ultra-overlay-368.webp?v=11`}
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+          media="(min-width: 768px)"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var p=location.pathname;var l=(p==='/ru'||p.indexOf('/ru/')===0)?'ru':'en';document.documentElement.lang=l})();`,

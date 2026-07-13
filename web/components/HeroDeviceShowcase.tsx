@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 import {
@@ -16,26 +16,24 @@ interface HeroDeviceShowcaseProps {
   priority?: boolean;
 }
 
-function useDeviceWidths() {
-  const [widths, setWidths] = useState({ phone: 380, watch: 184 });
-
-  useEffect(() => {
-    const update = () => {
-      const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-      setWidths({ phone, watch: Math.round(phone * 0.485) });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return widths;
+function readDeviceWidths() {
+  const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
+  return { phone, watch: Math.round(phone * 0.485) };
 }
 
 export default function HeroDeviceShowcase({
   priority,
 }: HeroDeviceShowcaseProps) {
-  const { phone, watch } = useDeviceWidths();
+  const [widths, setWidths] = useState({ phone: 280, watch: 136 });
+
+  useLayoutEffect(() => {
+    const update = () => setWidths(readDeviceWidths());
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const { phone, watch } = widths;
   const watchVariant = watchVariantForWidth(watch);
   const watchDims = watchOverlayDimensions(watchVariant);
 
@@ -63,13 +61,13 @@ export default function HeroDeviceShowcase({
               alt="WeekFit Today screen"
               phoneWidthPx={phone}
               priority={priority}
+              loading="eager"
               sizes="(max-width: 767px) 280px, 380px"
               className="h-full w-full object-cover object-top"
             />
           </DeviceMockup>
         </div>
 
-        {/* Between phone (z=1) and watch (z=2): mask case↔strap slots only */}
         <div aria-hidden className="hero-device-scene__watch-slot-mask" />
 
         <div className="hero-device-scene__watch">
@@ -83,6 +81,7 @@ export default function HeroDeviceShowcase({
             style={{ width: watch, height: "auto" }}
             className="hero-device-mockup hero-device-mockup--watch"
             priority={priority}
+            loading="eager"
           />
         </div>
       </div>
