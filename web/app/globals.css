@@ -575,15 +575,6 @@ input:focus-visible,
   pointer-events: none;
   background: transparent;
 }
-.hero-device-scene__watch-occluder {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(#000, #000) top / 100% 16% no-repeat,
-    linear-gradient(#000, #000) bottom / 100% 16% no-repeat;
-}
 .hero-device-mockup--watch {
   position: relative;
   z-index: 1;
