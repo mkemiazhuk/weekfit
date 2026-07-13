@@ -83,6 +83,25 @@ export default function RootLayout({
           type="image/png"
           sizes="192x192"
         />
+        <link
+          rel="preload"
+          href="/img/today.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          href="/mockify/devices/iPhone%2016%20Pro%20-%20Natural%20Titanium.png"
+          as="image"
+          type="image/png"
+        />
+        <link
+          rel="preload"
+          href="/img/hero-watch-ultra-overlay.webp?v=10"
+          as="image"
+          type="image/webp"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var p=location.pathname;var l=(p==='/ru'||p.indexOf('/ru/')===0)?'ru':'en';document.documentElement.lang=l})();`,

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import Lenis from "lenis";
 
 const MOBILE_SCROLL_MQ = "(max-width: 767px)";
 
@@ -10,9 +9,26 @@ function prefersNativeScroll() {
   return window.matchMedia(MOBILE_SCROLL_MQ).matches;
 }
 
+type LenisInstance = {
+  raf: (time: number) => void;
+  resize: () => void;
+  scrollTo: (
+    target: number,
+    opts?: { immediate?: boolean; duration?: number; force?: boolean }
+  ) => void;
+  destroy: () => void;
+};
+
+type LenisConstructor = new (opts: {
+  duration: number;
+  easing: (t: number) => number;
+  smoothWheel: boolean;
+  autoResize: boolean;
+}) => LenisInstance;
+
 export default function SmoothScroll() {
   const pathname = usePathname();
-  const lenisRef = useRef<Lenis | null>(null);
+  const lenisRef = useRef<LenisInstance | null>(null);
   const rafRef = useRef(0);
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -40,8 +56,12 @@ export default function SmoothScroll() {
       lenisRef.current = null;
     };
 
-    const initLenis = () => {
+    const initLenis = async () => {
       if (lenisRef.current) return;
+
+      const { default: Lenis } = (await import("lenis")) as {
+        default: LenisConstructor;
+      };
 
       const lenis = new Lenis({
         duration: 1.05,
@@ -83,7 +103,7 @@ export default function SmoothScroll() {
         destroyLenis();
         return;
       }
-      initLenis();
+      void initLenis();
     };
 
     sync();

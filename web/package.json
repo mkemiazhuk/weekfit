@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
+    "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/write-cache-headers.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
     "typecheck": "tsc --noEmit",
     "copylint": "node scripts/copy-lint.mjs",
     "verify": "node scripts/verify-release.mjs",
@@ -16,7 +16,6 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "geist": "^1.7.2",
-    "gsap": "^3.15.0",
     "lenis": "^1.3.25",
     "next": "16.2.10",
     "react": "19.2.4",
@@ -31,5 +30,11 @@
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 111",
+    "safari >= 16.4"
+  ]
 }

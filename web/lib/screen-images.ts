@@ -5,6 +5,7 @@ export const SCREEN_IMAGES = {
   activity: { webp: "/img/activity.webp", jpg: "/img/activity.jpg", width: 900, height: 1950 },
   recovery: { webp: "/img/recovery.webp", jpg: "/img/recovery.jpg", width: 900, height: 1950 },
   coach: { webp: "/img/coach.webp", jpg: "/img/coach.jpg", width: 900, height: 1950 },
+  nutrition: { webp: "/img/nutrition.webp", jpg: "/img/nutrition.jpg", width: 900, height: 1950 },
 } as const;
 
 export type ScreenImageKey = keyof typeof SCREEN_IMAGES;

@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const IMG = join(process.cwd(), "public", "img");
-const FILES = ["today", "meals", "activity", "recovery", "coach"];
+const FILES = ["today", "meals", "activity", "recovery", "coach", "nutrition"];
 
 for (const name of FILES) {
   const jpg = join(IMG, `${name}.jpg`);

@@ -120,10 +120,12 @@ def main() -> None:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
+    webp_out = OUT.with_suffix(".webp")
+    Image.fromarray(rgba, mode="RGBA").save(webp_out, format="WEBP", quality=82, method=6)
     print(
         f"saved {OUT.name} holes_sealed={int(holes.sum())} "
         f"sheer_sealed={int(sheer.sum())} band_sealed={band_sealed} "
-        f"alpha_changed={int(changed_alpha)}"
+        f"alpha_changed={int(changed_alpha)} webp={webp_out.name}"
     )
 
 

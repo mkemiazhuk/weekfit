@@ -46,7 +46,7 @@ const CATEGORY_COVER_IMAGES: Record<string, string> = {
 };
 
 export function blogPostCoverImage(post: Pick<BlogPost, "category" | "coverImage">): string {
-  return post.coverImage ?? CATEGORY_COVER_IMAGES[post.category] ?? "/img/today.jpg";
+  return post.coverImage ?? CATEGORY_COVER_IMAGES[post.category] ?? "/img/today.webp";
 }
 
 export function blogPostPath(post: Pick<BlogPost, "category" | "slug">): string {

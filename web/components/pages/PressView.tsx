@@ -7,14 +7,15 @@ import { SITE } from "@/lib/site";
 import PageHero from "../PageHero";
 import Button from "../Button";
 import { accents } from "@/lib/tokens";
+import { screenImagePath } from "@/lib/screen-images";
 import Reveal from "../Reveal";
 
 const screenshots = [
-  { src: "/img/today.jpg", label: "Today" },
-  { src: "/img/coach.jpg", label: "Coach" },
-  { src: "/img/activity.jpg", label: "Activity" },
-  { src: "/img/nutrition.jpg", label: "Nutrition" },
-  { src: "/img/recovery.jpg", label: "Recovery" },
+  { src: screenImagePath("today"), label: "Today" },
+  { src: screenImagePath("coach"), label: "Coach" },
+  { src: screenImagePath("activity"), label: "Activity" },
+  { src: screenImagePath("nutrition"), label: "Nutrition" },
+  { src: screenImagePath("recovery"), label: "Recovery" },
 ];
 
 export default function PressView() {

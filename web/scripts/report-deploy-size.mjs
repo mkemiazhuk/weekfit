@@ -21,7 +21,14 @@ function formatMb(bytes) {
 const bytes = dirSize(OUT);
 console.log(`deploy-size: ${formatMb(bytes)} (${OUT})`);
 
-const forbidden = ["reels/.tmp", "mockify/status-bar"];
+const forbidden = [
+  "reels/.tmp",
+  "mockify/status-bar",
+  "reels/weekfit-launch-reel.mp4",
+  "img/watch-cycling-workout.png",
+  "img/hero-watch-ultra.png",
+  "img/today.jpg",
+];
 function walk(dir, rel = "") {
   const hits = [];
   for (const entry of readdirSync(dir)) {

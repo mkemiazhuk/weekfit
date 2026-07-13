@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Button from "../Button";
 import PhoneMockup from "../PhoneMockup";
 import { SITE } from "@/lib/site";
+import { screenImagePath } from "@/lib/screen-images";
 import { useI18n } from "@/lib/i18n";
 import { easeReveal, durationRevealSlow, durationEntrance } from "@/lib/motion";
 
@@ -72,7 +73,7 @@ export default function Download() {
             <motion.div {...phone} className="download-hero__device">
               <div className="download-hero-phone hero-product-stage">
                 <PhoneMockup
-                  src="/img/today.jpg"
+                  src={screenImagePath("today")}
                   alt="WeekFit Today screen with the morning decision"
                   width={280}
                 />
