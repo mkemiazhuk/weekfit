@@ -22,11 +22,11 @@ CASE_BOTTOM_START = 0.76
 TOP_STRAP_MAX_SPAN = 260
 MIN_FABRIC_RUN = 8
 
-# Horizontal case↔strap slots (434×716 overlay) — main phone bleed source.
-# Measured transparent runs at y≈110 / y≈614: x 109–296 (~25.1%–68.2%).
-CASE_TRANSITION_SLOTS: tuple[tuple[float, float, float, float], ...] = (
-    (0.146, 0.176, 0.170, 0.770),
-    (0.843, 0.874, 0.170, 0.770),
+# Case↔strap transition bands (434×716). Phone bleed extends ~y 82–127 / 576–627
+# inside x 57–355 (~13.1%–81.8%), not the outer strap wings.
+CASE_TRANSITION_BANDS: tuple[tuple[float, float, float, float], ...] = (
+    (0.114, 0.196, 0.131, 0.818),
+    (0.804, 0.886, 0.131, 0.818),
 )
 
 
@@ -74,16 +74,16 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
     return envelope
 
 
-def seal_case_transition_slots(
+def seal_case_transition_bands(
     rgb: np.ndarray, alpha: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray, int]:
-    """Opaque shadow fill in horizontal case↔strap gaps (center slot only)."""
+    """Opaque shadow fill in case↔strap transition (inner band, not outer wings)."""
     h, w = alpha.shape
     out_rgb = rgb.copy()
     out_alpha = alpha.copy()
     sealed = 0
 
-    for y0f, y1f, x0f, x1f in CASE_TRANSITION_SLOTS:
+    for y0f, y1f, x0f, x1f in CASE_TRANSITION_BANDS:
         y0, y1 = int(h * y0f), max(int(h * y1f), int(h * y0f) + 1)
         x0, x1 = int(w * x0f), max(int(w * x1f), int(w * x0f) + 1)
         zone_alpha = out_alpha[y0:y1, x0:x1]
@@ -111,7 +111,7 @@ def main() -> None:
     out_alpha[holes] = 255
     out_alpha[sheer] = 255
 
-    out_rgb, out_alpha, slot_sealed = seal_case_transition_slots(rgb, out_alpha)
+    out_rgb, out_alpha, band_sealed = seal_case_transition_bands(rgb, out_alpha)
 
     rgba = np.dstack([out_rgb, out_alpha]).astype(np.uint8)
     rgba[out_alpha == 0] = 0
@@ -122,7 +122,7 @@ def main() -> None:
     Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
     print(
         f"saved {OUT.name} holes_sealed={int(holes.sum())} "
-        f"sheer_sealed={int(sheer.sum())} slot_sealed={slot_sealed} "
+        f"sheer_sealed={int(sheer.sum())} band_sealed={band_sealed} "
         f"alpha_changed={int(changed_alpha)}"
     )
 

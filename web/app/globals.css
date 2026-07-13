@@ -575,7 +575,7 @@ input:focus-visible,
   pointer-events: none;
   background: transparent;
 }
-/* Matches CASE_TRANSITION_SLOTS in export-hero-watch-overlay.py */
+/* Matches CASE_TRANSITION_BANDS in export-hero-watch-overlay.py */
 .hero-device-scene__watch-slot-mask {
   position: absolute;
   z-index: 1.5;
@@ -585,8 +585,8 @@ input:focus-visible,
   aspect-ratio: 434 / 716;
   pointer-events: none;
   background:
-    linear-gradient(#000, #000) 17% 14.6% / 60% 3.4% no-repeat,
-    linear-gradient(#000, #000) 17% 84.3% / 60% 3.4% no-repeat;
+    linear-gradient(#000, #000) 13.1% 11.4% / 68.7% 8.2% no-repeat,
+    linear-gradient(#000, #000) 13.1% 80.4% / 68.7% 8.2% no-repeat;
 }
 .hero-device-mockup--watch {
   position: relative;

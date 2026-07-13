@@ -66,7 +66,7 @@ export default function HeroDeviceShowcase({
 
         <div className="hero-device-scene__watch">
           <Image
-            src="/img/hero-watch-ultra-overlay.png?v=8"
+            src="/img/hero-watch-ultra-overlay.png?v=9"
             alt=""
             aria-hidden
             width={434}
