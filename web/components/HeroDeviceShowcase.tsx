@@ -57,9 +57,10 @@ export default function HeroDeviceShowcase({
           </DeviceMockup>
         </div>
 
-        <div className="hero-device-scene__watch">
+        <div className="hero-device-scene__watch" style={{ width: watch }}>
+          <div aria-hidden className="hero-device-scene__watch-occluder" />
           <Image
-            src="/img/hero-watch-ultra-overlay.png?v=4"
+            src="/img/hero-watch-ultra-overlay.png?v=5"
             alt=""
             aria-hidden
             width={434}

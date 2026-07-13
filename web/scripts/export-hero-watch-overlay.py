@@ -67,6 +67,34 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
     return envelope
 
 
+def seal_margin_bleed(rgb: np.ndarray, alpha: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Opaque black in transparent top/bottom margins inside watch bbox."""
+    h, _w = alpha.shape
+    ys, xs = np.where(alpha > 0)
+    if ys.size == 0:
+        return rgb, alpha
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+
+    out_rgb = rgb.copy()
+    out_alpha = alpha.copy()
+
+    for y in range(0, y0):
+        cols = out_alpha[y, x0 : x1 + 1] == 0
+        if cols.any():
+            out_alpha[y, x0 : x1 + 1][cols] = 255
+            out_rgb[y, x0 : x1 + 1][cols] = 0
+
+    for y in range(y1 + 1, h):
+        cols = out_alpha[y, x0 : x1 + 1] == 0
+        if cols.any():
+            out_alpha[y, x0 : x1 + 1][cols] = 255
+            out_rgb[y, x0 : x1 + 1][cols] = 0
+
+    return out_rgb, out_alpha
+
+
 def main() -> None:
     px = np.array(Image.open(SOURCE).convert("RGBA"))
     rgb = px[:, :, :3].copy()
@@ -78,19 +106,21 @@ def main() -> None:
     out_alpha = alpha.copy()
     out_alpha[holes] = 255
 
-    rgba = np.dstack([rgb, out_alpha]).astype(np.uint8)
+    out_rgb, out_alpha = seal_margin_bleed(rgb, out_alpha)
+
+    rgba = np.dstack([out_rgb, out_alpha]).astype(np.uint8)
     rgba[out_alpha == 0] = 0
 
     changed_alpha = (out_alpha != alpha).sum()
-    changed_rgb = np.any(rgb != px[:, :, :3], axis=2).sum()
-    if changed_rgb:
-        raise RuntimeError("RGB was modified unexpectedly")
+    margin_rgb = (out_alpha == 255) & (alpha == 0)
+    if np.any(margin_rgb & np.any(out_rgb != 0, axis=2)):
+        raise RuntimeError("Margin bleed used non-black RGB")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
     print(
         f"saved {OUT.name} holes_sealed={int(holes.sum())} "
-        f"alpha_changed={int(changed_alpha)} rgb_changed={int(changed_rgb)}"
+        f"margin_sealed={int(margin_rgb.sum())} alpha_changed={int(changed_alpha)}"
     )
 
 
