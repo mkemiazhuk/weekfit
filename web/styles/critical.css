@@ -1,0 +1,66 @@
+/* Above-the-fold shell — inlined in HTML; full Tailwind bundle loads right after. */
+:root {
+  color-scheme: dark;
+  --color-canvas: #06070a;
+  --color-ink: #f5f6f8;
+  --color-activity: #66f070;
+  --color-recovery: #2edbfa;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --section-x: clamp(1.25rem, 4.5vw, 1.5rem);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --site-header-offset: calc(3.5rem + var(--safe-top));
+  --tracking-display: -0.036em;
+  --tracking-title: -0.03em;
+  --leading-display: 0.98;
+  --leading-title: 1.06;
+  --leading-body: 1.58;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+.display {
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  line-height: var(--leading-title);
+}
+.hero-title {
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: 600;
+}
+.text-gradient-hero {
+  background: linear-gradient(
+    100deg,
+    var(--color-activity) 0%,
+    var(--color-recovery) 48%,
+    var(--color-activity) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.text-balance {
+  text-wrap: balance;
+}
+.section-x {
+  padding-left: var(--section-x);
+  padding-right: var(--section-x);
+}
+.site-header {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 100%;
+  z-index: 50;
+}

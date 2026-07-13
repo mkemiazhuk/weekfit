@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/write-cache-headers.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
+    "build": "node scripts/prune-public.mjs && next build && node scripts/fix-og.mjs && node scripts/write-cache-headers.mjs && node scripts/optimize-critical-path.mjs && node scripts/report-deploy-size.mjs && node scripts/verify-release.mjs",
     "typecheck": "tsc --noEmit",
     "copylint": "node scripts/copy-lint.mjs",
     "images": "node scripts/convert-images.mjs && node scripts/generate-responsive-images.mjs",

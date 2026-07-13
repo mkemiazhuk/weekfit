@@ -16,7 +16,6 @@ import { SITE } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import { HOME_SEO } from "@/lib/page-seo";
 import { entityGraphSchema } from "@/lib/schema";
-import { WATCH_OVERLAY_VERSION } from "@/lib/responsive-images";
 
 const home = pageMetadata({
   path: "/",
@@ -99,32 +98,6 @@ export default function RootLayout({
           type="image/webp"
           fetchPriority="high"
           media="(min-width: 768px)"
-        />
-        <link
-          rel="preload"
-          href="/mockify/devices/iPhone%2016%20Pro%20-%20Natural%20Titanium.png"
-          as="image"
-          type="image/png"
-        />
-        <link
-          rel="preload"
-          href={`/img/hero-watch-ultra-overlay-272.webp?v=${WATCH_OVERLAY_VERSION}`}
-          as="image"
-          type="image/webp"
-          media="(max-width: 767px)"
-        />
-        <link
-          rel="preload"
-          href={`/img/hero-watch-ultra-overlay-368.webp?v=${WATCH_OVERLAY_VERSION}`}
-          as="image"
-          type="image/webp"
-          media="(min-width: 768px)"
-        />
-        <link
-          rel="preload"
-          href="/brand/logo-wf-mark-36.webp"
-          as="image"
-          type="image/webp"
         />
         <script
           dangerouslySetInnerHTML={{
