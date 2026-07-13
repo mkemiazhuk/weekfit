@@ -71,6 +71,12 @@ export default function Footer() {
     { label: t.footer.contact, href: localePath("/contact") },
   ];
 
+  const useCaseLinks = [
+    { label: t.footer.calorieTracker, href: localePath("/calorie-tracker") },
+    { label: t.footer.workoutPlanner, href: localePath("/workout-planner") },
+    { label: t.footer.appleHealthFitness, href: localePath("/apple-health-fitness-app") },
+  ];
+
   const xUrl = SITE.social.x;
   const instagramUrl = SITE.instagramRedirectPath;
 
@@ -125,6 +131,7 @@ export default function Footer() {
           <div className="footer-nav-grid">
             <NavGroup title={t.footer.product} links={productLinks} className="footer-nav-group" />
             <NavGroup title={t.footer.resources} links={resourceLinks} className="footer-nav-group" />
+            <NavGroup title={t.footer.useCases} links={useCaseLinks} className="footer-nav-group" />
             <NavGroup title={t.footer.legal} links={legalLinks} className="footer-nav-group" />
           </div>
         </div>

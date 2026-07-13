@@ -39,6 +39,48 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
 };
 
 export const PAGE_SEO = {
+  "calorie-tracker": {
+    en: {
+      title: "Calorie tracker",
+      description:
+        "WeekFit is a calmer calorie and macro tracker for people who train — built around recovery, activity and Apple Health context. Private on your iPhone.",
+      socialTitle: "WeekFit — Calorie tracker for training",
+    },
+    ru: {
+      title: "Учёт питания",
+      description:
+        "WeekFit — спокойный учёт питания и БЖУ для тех, кто тренируется. Питание в контексте восстановления, активности и Apple Health. Приватно на iPhone.",
+      socialTitle: "WeekFit — учёт питания под тренировки",
+    },
+  },
+  "workout-planner": {
+    en: {
+      title: "Workout planner",
+      description:
+        "Plan your training week and adjust with recovery signals. WeekFit connects sleep, HRV and load into one calm daily decision — powered by Apple Health.",
+      socialTitle: "WeekFit — Workout planner that adapts",
+    },
+    ru: {
+      title: "План тренировок",
+      description:
+        "Планируйте неделю тренировок и корректируйте день по сигналам восстановления. WeekFit связывает сон, ВСР и нагрузку в один вывод — на основе Apple Health.",
+      socialTitle: "WeekFit — план тренировок с учётом восстановления",
+    },
+  },
+  "apple-health-fitness-app": {
+    en: {
+      title: "Apple Health fitness app",
+      description:
+        "An Apple Health fitness app that stays private. WeekFit turns Apple Health signals into daily guidance — no accounts, on-device first.",
+      socialTitle: "WeekFit — Apple Health fitness app",
+    },
+    ru: {
+      title: "Фитнес на Apple Health",
+      description:
+        "Фитнес‑приложение на Apple Health с приватностью по умолчанию. WeekFit превращает сигналы здоровья в ежедневный вывод — без аккаунта, всё на устройстве.",
+      socialTitle: "WeekFit — фитнес на Apple Health",
+    },
+  },
   download: {
     en: {
       title: "Download",

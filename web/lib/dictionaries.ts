@@ -360,6 +360,33 @@ export const en = {
       privacy: "Private by design",
       health: "Apple Health integration",
     },
+    useCases: "Use cases",
+    calorieTracker: "Calorie tracker",
+    workoutPlanner: "Workout planner",
+    appleHealthFitness: "Apple Health app",
+  },
+  useCases: {
+    kicker: "Use cases",
+    title: "Start from what you need today.",
+    lead: "Three entry points for the most common reasons people look for a fitness or calorie app.",
+    cta: "Explore",
+    cards: [
+      {
+        title: "Calorie tracker for training",
+        desc: "Calories and macros in context — recovery, activity and the week ahead.",
+        href: "/calorie-tracker",
+      },
+      {
+        title: "Workout planner that adapts",
+        desc: "Plan the week, adjust the day. Recovery signals guide the call.",
+        href: "/workout-planner",
+      },
+      {
+        title: "Apple Health fitness app",
+        desc: "Powered by Apple Health, private by design, built for calm decisions.",
+        href: "/apple-health-fitness-app",
+      },
+    ],
   },
   a11y: {
     scrollToTop: "Back to top",
@@ -731,6 +758,33 @@ export const ru: Dict = {
       privacy: "Приватность по умолчанию",
       health: "Интеграция с Apple Health",
     },
+    useCases: "Сценарии",
+    calorieTracker: "Учёт питания",
+    workoutPlanner: "План тренировок",
+    appleHealthFitness: "Apple Health",
+  },
+  useCases: {
+    kicker: "Сценарии",
+    title: "Начните с того, что вам нужно сегодня.",
+    lead: "Три входа под самые частые запросы: тренировки, питание и Apple Health.",
+    cta: "Открыть",
+    cards: [
+      {
+        title: "Учёт питания под тренировки",
+        desc: "Калории и БЖУ в контексте — восстановление, активность и неделя вперёд.",
+        href: "/calorie-tracker",
+      },
+      {
+        title: "План тренировок с адаптацией",
+        desc: "Планируем неделю, корректируем день. Решение — по сигналам восстановления.",
+        href: "/workout-planner",
+      },
+      {
+        title: "Фитнес на Apple Health",
+        desc: "Основа — Apple Health, приватность по умолчанию, спокойный вывод каждый день.",
+        href: "/apple-health-fitness-app",
+      },
+    ],
   },
   a11y: {
     scrollToTop: "Наверх",
