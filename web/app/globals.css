@@ -642,13 +642,21 @@ input:focus-visible,
   user-select: none;
 }
 @media (max-width: 767px) {
+  .hero-phone {
+    overflow: visible;
+  }
+  .hero-device-scene {
+    overflow-x: visible;
+    max-width: min(100%, calc(var(--hero-phone-max) + 2rem));
+  }
   .hero-device-scene__inner {
     min-height: clamp(19rem, 64vw, 24rem);
-    padding-right: clamp(1.75rem, 14vw, 2.75rem);
+    padding-right: clamp(2.25rem, 22vw, 3.5rem);
   }
   .hero-device-scene__watch,
   .hero-device-scene__watch-slot-mask {
-    right: clamp(-1.25rem, -3vw, -1rem);
+    /* Was negative right — watch clipped off-screen; inset keeps full watch visible */
+    right: clamp(0.625rem, 3.5vw, 1rem);
     bottom: clamp(1.5rem, 7vw, 2.75rem);
   }
 }
