@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "@/lib/use-reduced-motion";
+import { useReducedMotion } from "framer-motion";
 
 function formatLocalTime(): string {
   return new Intl.DateTimeFormat(undefined, {

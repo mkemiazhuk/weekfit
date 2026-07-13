@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
-import { useReducedMotion } from "@/lib/use-reduced-motion";
+import { useReducedMotion } from "framer-motion";
 import type { TocItem } from "@/components/DocLayout";
 import {
   publishTocReadOffset,
