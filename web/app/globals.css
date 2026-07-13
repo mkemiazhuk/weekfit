@@ -575,35 +575,18 @@ input:focus-visible,
   pointer-events: none;
   background: transparent;
 }
-.hero-device-scene__watch-lug-mask {
+/* Matches CASE_TRANSITION_SLOTS in export-hero-watch-overlay.py */
+.hero-device-scene__watch-slot-mask {
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  z-index: 1.5;
+  right: clamp(-1.75rem, -1.35vw, -1.625rem);
+  bottom: clamp(2rem, 7.75vw, 4.125rem);
+  width: var(--watch-w, 184px);
+  aspect-ratio: 434 / 716;
   pointer-events: none;
-}
-.hero-device-scene__watch-lug {
-  position: absolute;
-  background: #000;
-  pointer-events: none;
-  /* Match LUG_GAP_ZONES in export-hero-watch-overlay.py */
-  width: 9%;
-  height: 3.6%;
-}
-.hero-device-scene__watch-lug--tl {
-  top: 13.2%;
-  left: 15.5%;
-}
-.hero-device-scene__watch-lug--tr {
-  top: 13.2%;
-  left: 68.5%;
-}
-.hero-device-scene__watch-lug--bl {
-  top: 84.5%;
-  left: 15.5%;
-}
-.hero-device-scene__watch-lug--br {
-  top: 84.5%;
-  left: 68.5%;
+  background:
+    linear-gradient(#000, #000) 17% 14.6% / 60% 3.4% no-repeat,
+    linear-gradient(#000, #000) 17% 84.3% / 60% 3.4% no-repeat;
 }
 .hero-device-mockup--watch {
   position: relative;
@@ -663,7 +646,8 @@ input:focus-visible,
     min-height: clamp(19rem, 64vw, 24rem);
     padding-right: clamp(1.75rem, 14vw, 2.75rem);
   }
-  .hero-device-scene__watch {
+  .hero-device-scene__watch,
+  .hero-device-scene__watch-slot-mask {
     right: clamp(-1.25rem, -3vw, -1rem);
     bottom: clamp(1.5rem, 7vw, 2.75rem);
   }

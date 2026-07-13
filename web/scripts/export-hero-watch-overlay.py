@@ -22,12 +22,11 @@ CASE_BOTTOM_START = 0.76
 TOP_STRAP_MAX_SPAN = 260
 MIN_FABRIC_RUN = 8
 
-# Narrow vertical gaps at case↔strap lugs (fractions of overlay size 434×716).
-LUG_GAP_ZONES: tuple[tuple[float, float, float, float], ...] = (
-    (0.132, 0.168, 0.155, 0.245),  # top-left lug
-    (0.132, 0.168, 0.685, 0.775),  # top-right lug
-    (0.845, 0.872, 0.155, 0.245),  # bottom-left lug
-    (0.845, 0.872, 0.685, 0.775),  # bottom-right lug
+# Horizontal case↔strap slots (434×716 overlay) — main phone bleed source.
+# Measured transparent runs at y≈110 / y≈614: x 109–296 (~25.1%–68.2%).
+CASE_TRANSITION_SLOTS: tuple[tuple[float, float, float, float], ...] = (
+    (0.146, 0.176, 0.170, 0.770),
+    (0.843, 0.874, 0.170, 0.770),
 )
 
 
@@ -75,14 +74,16 @@ def build_fabric_envelope(alpha: np.ndarray) -> np.ndarray:
     return envelope
 
 
-def seal_lug_gaps(rgb: np.ndarray, alpha: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Opaque black only in narrow case↔strap lug gaps (not full strap width)."""
+def seal_case_transition_slots(
+    rgb: np.ndarray, alpha: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Opaque shadow fill in horizontal case↔strap gaps (center slot only)."""
     h, w = alpha.shape
     out_rgb = rgb.copy()
     out_alpha = alpha.copy()
     sealed = 0
 
-    for y0f, y1f, x0f, x1f in LUG_GAP_ZONES:
+    for y0f, y1f, x0f, x1f in CASE_TRANSITION_SLOTS:
         y0, y1 = int(h * y0f), max(int(h * y1f), int(h * y0f) + 1)
         x0, x1 = int(w * x0f), max(int(w * x1f), int(w * x0f) + 1)
         zone_alpha = out_alpha[y0:y1, x0:x1]
@@ -110,7 +111,7 @@ def main() -> None:
     out_alpha[holes] = 255
     out_alpha[sheer] = 255
 
-    out_rgb, out_alpha, lug_sealed = seal_lug_gaps(rgb, out_alpha)
+    out_rgb, out_alpha, slot_sealed = seal_case_transition_slots(rgb, out_alpha)
 
     rgba = np.dstack([out_rgb, out_alpha]).astype(np.uint8)
     rgba[out_alpha == 0] = 0
@@ -121,7 +122,7 @@ def main() -> None:
     Image.fromarray(rgba, mode="RGBA").save(OUT, optimize=False)
     print(
         f"saved {OUT.name} holes_sealed={int(holes.sum())} "
-        f"sheer_sealed={int(sheer.sum())} lug_sealed={lug_sealed} "
+        f"sheer_sealed={int(sheer.sum())} slot_sealed={slot_sealed} "
         f"alpha_changed={int(changed_alpha)}"
     )
 

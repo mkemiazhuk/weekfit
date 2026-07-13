@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
 
@@ -30,12 +30,16 @@ export default function HeroDeviceShowcase({
 }: HeroDeviceShowcaseProps) {
   const { phone, watch } = useDeviceWidths();
 
+  const sceneStyle = {
+    "--watch-w": `${watch}px`,
+  } as CSSProperties;
+
   return (
     <div className="hero-device-scene">
       <div aria-hidden className="hero-device-scene__fx">
         <div className="hero-device-scene__ambient" />
       </div>
-      <div className="hero-device-scene__inner">
+      <div className="hero-device-scene__inner" style={sceneStyle}>
         <div className="hero-device-scene__phone">
           <DeviceMockup
             device={iPhone16Pro}
@@ -57,15 +61,12 @@ export default function HeroDeviceShowcase({
           </DeviceMockup>
         </div>
 
+        {/* Between phone (z=1) and watch (z=2): mask case↔strap slots only */}
+        <div aria-hidden className="hero-device-scene__watch-slot-mask" />
+
         <div className="hero-device-scene__watch">
-          <div aria-hidden className="hero-device-scene__watch-lug-mask">
-            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--tl" />
-            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--tr" />
-            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--bl" />
-            <span className="hero-device-scene__watch-lug hero-device-scene__watch-lug--br" />
-          </div>
           <Image
-            src="/img/hero-watch-ultra-overlay.png?v=7"
+            src="/img/hero-watch-ultra-overlay.png?v=8"
             alt=""
             aria-hidden
             width={434}
