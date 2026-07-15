@@ -134,11 +134,15 @@ struct QuickItem: Codable, Identifiable, Equatable {
         let trimmed = storedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return storedTitle }
 
-        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else {
-            return trimmed
+        let isRussian = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+        let lowered = trimmed.lowercased()
+
+        if isRussian {
+            return russianTitlesByStoredTitle[lowered] ?? trimmed
         }
 
-        return russianTitlesByStoredTitle[trimmed.lowercased()] ?? trimmed
+        // Titles previously persisted while Russian was active (e.g. "Вода").
+        return englishTitlesByRussianTitle[lowered] ?? trimmed
     }
 
     static func localizedSubtitle(for item: QuickItem) -> String {
@@ -188,6 +192,10 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "toast": "Тост"
     ]
 
+    private static let englishTitlesByRussianTitle: [String: String] = {
+        Dictionary(uniqueKeysWithValues: russianTitlesByStoredTitle.map { ($0.value.lowercased(), $0.key.capitalizedSentence) })
+    }()
+
     private static let russianSubtitlesByID: [String: String] = [
         "drink_water": "Гидратация"
     ]
@@ -222,4 +230,16 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "buttery bakery snack": "Масляная выпечка",
         "soft sweet treat": "Мягкий сладкий перекус"
     ]
+}
+
+private extension String {
+    /// Title-case for reverse-mapped catalog names ("water" → "Water", "iced coffee" → "Iced Coffee").
+    var capitalizedSentence: String {
+        split(separator: " ")
+            .map { part in
+                guard let first = part.first else { return String(part) }
+                return String(first).uppercased() + part.dropFirst()
+            }
+            .joined(separator: " ")
+    }
 }

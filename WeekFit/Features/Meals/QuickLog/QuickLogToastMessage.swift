@@ -7,6 +7,7 @@ enum QuickLogToastMessage {
         selection: QuickLogSelection
     ) -> String {
         let nutrition = QuickLogServingMath.nutrition(for: profile, selection: selection)
+        let displayTitle = QuickItem.localizedTitle(forStoredTitle: profile.title)
 
         if profile.isWater {
             let ml = Int(
@@ -18,12 +19,12 @@ enum QuickLogToastMessage {
             if ml >= 1000 {
                 return String(
                     format: WeekFitLocalizedString("quickLog.toast.waterOneLiterFormat"),
-                    profile.title
+                    displayTitle
                 )
             }
             return String(
                 format: WeekFitLocalizedString("quickLog.toast.waterMillilitersFormat"),
-                profile.title,
+                displayTitle,
                 ml
             )
         }
@@ -31,7 +32,7 @@ enum QuickLogToastMessage {
         let portions = nutrition.portions
         if portions > 1 {
             return WeekFitCountPluralization.toastPortionsPhrase(
-                title: profile.title,
+                title: displayTitle,
                 quantity: portions,
                 formattedQuantity: QuickLogServingMath.formattedQuantity(portions)
             )
@@ -40,14 +41,14 @@ enum QuickLogToastMessage {
         if nutrition.calories > 0 {
             return String(
                 format: WeekFitLocalizedString("quickLog.toast.singleCaloriesFormat"),
-                profile.title,
+                displayTitle,
                 nutrition.calories
             )
         }
 
         return String(
             format: WeekFitLocalizedString("quickLog.toast.loggedFormat"),
-            profile.title
+            displayTitle
         )
     }
 }

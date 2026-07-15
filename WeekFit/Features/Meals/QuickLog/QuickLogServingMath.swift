@@ -100,10 +100,12 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
     }
 
     static func from(item: QuickItem) -> QuickLogNutritionProfile {
+        // Persist canonical English catalog titles. Localize only at display time —
+        // storing localized titles (e.g. "Вода") leaks into English UI later.
         QuickLogNutritionProfile(
             id: item.id,
-            title: item.localizedTitle,
-            subtitle: item.localizedSubtitle,
+            title: item.title,
+            subtitle: item.subtitle,
             imageName: item.imageName,
             icon: item.icon,
             kind: item.category == .drink ? .drink : .snack,

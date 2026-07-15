@@ -2845,14 +2845,14 @@ struct TodayView: View {
                 }
 
                 VStack(spacing: 1) {
-                    Text(label)
+                    Text(verbatim: label)
                         .font(.caption.weight(.semibold))
                         .fontDesign(.rounded)
                         .foregroundStyle(textPrimary.opacity(isEmphasized ? 0.94 : 0.88))
                         .lineLimit(quickActionCaptionLineLimit)
                         .minimumScaleFactor(0.85)
                         .multilineTextAlignment(.center)
-                    Text(subLabel)
+                    Text(verbatim: subLabel)
                         .font(.caption2.weight(.semibold))
                         .fontDesign(.rounded)
                         .foregroundStyle(textSecondary.opacity(subtitleOpacity))

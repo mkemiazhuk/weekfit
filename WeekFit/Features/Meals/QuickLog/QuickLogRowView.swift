@@ -32,21 +32,21 @@ struct QuickLogRowView<ImageContent: View>: View {
                 mealImage
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
+                    Text(verbatim: title)
                         .font(QuickActionSheetDesign.Typography.rowTitle)
                         .foregroundStyle(textPrimary)
                         .tracking(-0.2)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
 
-                    Text(subtitle)
+                    Text(verbatim: subtitle)
                         .font(QuickActionSheetDesign.Typography.rowSubtitle)
                         .foregroundStyle(textSecondary.opacity(0.58))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
 
                     if let metaText {
-                        Text(metaText)
+                        Text(verbatim: metaText)
                             .font(QuickActionSheetDesign.Typography.rowMeta)
                             .foregroundStyle(textSecondary.opacity(0.52))
                             .lineLimit(1)
