@@ -8,12 +8,16 @@ struct FoodPhotoNutritionEstimate: Sendable {
     }
 
     let source: Source
+    let dataSource: NutritionDataSource?
+    let barcode: String?
     let name: String?
     let calories: Int?
     let protein: Int?
     let carbs: Int?
     let fats: Int?
     let fiber: Int?
+    let servingGrams: Int
+    let packageGrams: Int?
     let productImageURL: URL?
 
     var hasAnyNutrient: Bool {
@@ -22,6 +26,27 @@ struct FoodPhotoNutritionEstimate: Sendable {
 
     var shouldReplacePhotoWithProductImage: Bool {
         source == .barcode && productImageURL != nil
+    }
+
+    static func fromBarcodeLookup(_ lookup: BarcodeFoodLookupResult) -> FoodPhotoNutritionEstimate? {
+        guard lookup.status == .found || lookup.status == .partial else { return nil }
+
+        let provider = lookup.provider == .openFoodFactsCache ? NutritionDataSource.openFoodFacts : lookup.provider
+
+        return FoodPhotoNutritionEstimate(
+            source: .barcode,
+            dataSource: provider,
+            barcode: lookup.barcode,
+            name: lookup.displayName ?? lookup.name,
+            calories: lookup.calories,
+            protein: lookup.protein,
+            carbs: lookup.carbs,
+            fats: lookup.fats,
+            fiber: lookup.fiber,
+            servingGrams: lookup.servingGrams,
+            packageGrams: lookup.packageGrams,
+            productImageURL: lookup.productImageURL
+        )
     }
 
     @MainActor
@@ -34,8 +59,6 @@ struct FoodPhotoNutritionEstimate: Sendable {
         fats: inout String,
         fiber: inout String
     ) -> Bool {
-        guard hasAnyNutrient else { return false }
-
         var didApply = false
 
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -45,6 +68,10 @@ struct FoodPhotoNutritionEstimate: Sendable {
             didApply = true
         }
 
+        guard hasAnyNutrient else {
+            return didApply
+        }
+
         didApply = fillField(self.calories, into: &calories) || didApply
         didApply = fillField(self.protein, into: &protein) || didApply
         didApply = fillField(self.carbs, into: &carbs) || didApply
@@ -52,7 +79,7 @@ struct FoodPhotoNutritionEstimate: Sendable {
         didApply = fillField(self.fiber, into: &fiber) || didApply
 
         if didApply {
-            servingGrams = "100"
+            servingGrams = "\(max(self.servingGrams, 1))"
         }
 
         return didApply
@@ -67,21 +94,39 @@ struct FoodPhotoNutritionEstimate: Sendable {
     }
 }
 
-enum FoodPhotoNutritionAnalyzer {
-    static func analyze(_ image: UIImage) async -> FoodPhotoNutritionEstimate? {
-        guard let cgImage = image.cgImage else { return nil }
+enum FoodPhotoAnalysisResult: Sendable {
+    case barcode(FoodPhotoNutritionEstimate, lookup: BarcodeFoodLookupResult)
+    case nutritionLabel(FoodPhotoNutritionEstimate)
+    case failure(FoodPhotoAnalysisFailure)
+}
 
-        if let barcode = await detectBarcode(in: cgImage),
-           let estimate = await fetchOpenFoodFacts(barcode: barcode) {
-            return estimate
+enum FoodPhotoAnalysisFailure: Sendable, Equatable {
+    case noContent
+    case barcode(BarcodeFoodLookupResult)
+}
+
+enum FoodPhotoNutritionAnalyzer {
+    private static let lookupService = BarcodeFoodLookupService()
+
+    static func analyze(_ image: UIImage) async -> FoodPhotoAnalysisResult {
+        guard let cgImage = image.cgImage else {
+            return .failure(.noContent)
+        }
+
+        if let barcode = await detectBarcode(in: cgImage) {
+            let lookup = await lookupService.lookup(barcode: barcode)
+            if let estimate = FoodPhotoNutritionEstimate.fromBarcodeLookup(lookup) {
+                return .barcode(estimate, lookup: lookup)
+            }
+            return .failure(.barcode(lookup))
         }
 
         if let text = await recognizeText(in: cgImage),
            let estimate = NutritionLabelTextParser.parse(text) {
-            return estimate
+            return .nutritionLabel(estimate)
         }
 
-        return nil
+        return .failure(.noContent)
     }
 
     static func downloadProductImage(from url: URL?) async -> UIImage? {
@@ -146,108 +191,6 @@ enum FoodPhotoNutritionAnalyzer {
             }
         }
     }
-
-    private static func fetchOpenFoodFacts(barcode: String) async -> FoodPhotoNutritionEstimate? {
-        let encodedBarcode = barcode.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barcode
-        guard let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(encodedBarcode).json?fields=product_name,nutriments,image_front_url,image_url") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-            return parseOpenFoodFactsResponse(data)
-        } catch {
-            return nil
-        }
-    }
-
-    private static func parseOpenFoodFactsResponse(_ data: Data) -> FoodPhotoNutritionEstimate? {
-        guard
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let status = json["status"] as? Int,
-            status == 1,
-            let product = json["product"] as? [String: Any],
-            let nutriments = product["nutriments"] as? [String: Any]
-        else {
-            return nil
-        }
-
-        let name = (product["product_name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let calories = intNutrient(
-            from: nutriments,
-            keys: ["energy-kcal_100g", "energy-kcal"]
-        ) ?? kcalFromKilojoules(intNutrient(from: nutriments, keys: ["energy_100g", "energy-kj_100g", "energy-kj"]))
-        let protein = intNutrient(from: nutriments, keys: ["proteins_100g", "proteins"])
-        let carbs = intNutrient(from: nutriments, keys: ["carbohydrates_100g", "carbohydrates"])
-        let fats = intNutrient(from: nutriments, keys: ["fat_100g", "fat"])
-        let fiber = intNutrient(from: nutriments, keys: ["fiber_100g", "fiber", "fibers_100g", "fibers"])
-
-        let estimate = FoodPhotoNutritionEstimate(
-            source: .barcode,
-            name: name?.isEmpty == false ? name : nil,
-            calories: calories,
-            protein: protein,
-            carbs: carbs,
-            fats: fats,
-            fiber: fiber,
-            productImageURL: productImageURL(from: product)
-        )
-        return estimate.hasAnyNutrient ? estimate : nil
-    }
-
-    private static func productImageURL(from product: [String: Any]) -> URL? {
-        let candidates = [
-            product["image_front_url"] as? String,
-            product["image_url"] as? String
-        ]
-
-        for candidate in candidates {
-            guard let candidate, !candidate.isEmpty else { continue }
-            let fullSizeURL = fullSizeImageURL(from: candidate)
-            if let url = URL(string: fullSizeURL) {
-                return url
-            }
-        }
-
-        return nil
-    }
-
-    private static func fullSizeImageURL(from urlString: String) -> String {
-        if urlString.contains(".full.jpg") {
-            return urlString
-        }
-
-        if urlString.hasSuffix(".400.jpg") {
-            return urlString.replacingOccurrences(of: ".400.jpg", with: ".full.jpg")
-        }
-
-        if urlString.hasSuffix(".200.jpg") {
-            return urlString.replacingOccurrences(of: ".200.jpg", with: ".full.jpg")
-        }
-
-        return urlString
-    }
-
-    private static func intNutrient(from nutriments: [String: Any], keys: [String]) -> Int? {
-        for key in keys {
-            if let value = nutriments[key] as? Double {
-                return Int(value.rounded())
-            }
-            if let value = nutriments[key] as? Int {
-                return value
-            }
-            if let value = nutriments[key] as? String, let doubleValue = Double(value) {
-                return Int(doubleValue.rounded())
-            }
-        }
-        return nil
-    }
-
-    private static func kcalFromKilojoules(_ value: Int?) -> Int? {
-        guard let value else { return nil }
-        return Int((Double(value) / 4.184).rounded())
-    }
 }
 
 private enum NutritionLabelTextParser {
@@ -285,12 +228,16 @@ private enum NutritionLabelTextParser {
 
         let estimate = FoodPhotoNutritionEstimate(
             source: .nutritionLabel,
+            dataSource: .nutritionLabelOCR,
+            barcode: nil,
             name: nil,
             calories: calories,
             protein: protein,
             carbs: carbs,
             fats: fats,
             fiber: fiber,
+            servingGrams: 100,
+            packageGrams: servingGrams,
             productImageURL: nil
         )
         return estimate.hasAnyNutrient ? estimate : nil

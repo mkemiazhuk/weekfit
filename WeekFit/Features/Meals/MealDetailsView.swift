@@ -443,6 +443,7 @@ struct MealDetailsView: View {
 
         activity.isCompleted = isQuickLogMode || mealTargetDate < now
 
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
         try? modelContext.save()
 

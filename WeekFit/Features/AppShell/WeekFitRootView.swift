@@ -57,6 +57,7 @@ struct WeekFitRootView: View {
 
     var body: some View {
         rootShellWithHealthHandlers
+            .environmentObject(authViewModel)
     }
 
     private var rootShellWithHealthHandlers: some View {
@@ -128,6 +129,12 @@ struct WeekFitRootView: View {
 
     private var rootShellWithNotificationHandlers: some View {
         rootShell
+            .fullScreenCover(isPresented: $appSession.isPresentingHealthAccess) {
+                NavigationStack {
+                    HealthAccessView()
+                }
+                .environmentObject(healthManager)
+            }
             .onAppear(perform: handleRootAppear)
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
@@ -193,10 +200,12 @@ struct WeekFitRootView: View {
         syncNotifications(source: "root.onAppear")
         reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
         Task {
-            await reconcileHealthWorkouts(
-                source: "root.onAppear",
-                bootstrapFromHealth: true
-            )
+            if AccountSessionController.shared.mode != .reviewDemo {
+                await reconcileHealthWorkouts(
+                    source: "root.onAppear",
+                    bootstrapFromHealth: true
+                )
+            }
         }
     }
 

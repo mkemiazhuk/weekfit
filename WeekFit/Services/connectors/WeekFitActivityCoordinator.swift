@@ -20,6 +20,8 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var reconciledWorkoutUUIDs = Set<String>()
+    private var hasStartedWatchBridge = false
+    private var hasActivatedHealthSync = false
 
     /// Called before deleting or merging SwiftData `PlannedActivity` rows during HealthKit reconciliation.
     var beforePlannedActivityMutation: (() -> Void)?
@@ -28,13 +30,36 @@ final class WeekFitActivityCoordinator: ObservableObject {
         bind()
     }
 
-    func start() {
+    /// Called at app launch. Starts non-HealthKit services only.
+    func prepareLaunchServices() {
+        guard !hasStartedWatchBridge else { return }
+        hasStartedWatchBridge = true
         watchBridge.start()
-        healthSync.start()
+    }
+
+    func start() {
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
+        prepareLaunchServices()
+    }
+
+    /// Called after the user grants HealthKit read access through the main connect flow.
+    func activateHealthKitSync() {
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
+        prepareLaunchServices()
+        guard !hasActivatedHealthSync else { return }
+        hasActivatedHealthSync = true
+        healthSync.activateIfAuthorized()
     }
     
     func refresh() {
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
+        guard hasActivatedHealthSync else { return }
         healthSync.forceRefresh()
+    }
+
+    func restartForRealUser() {
+        hasActivatedHealthSync = false
+        start()
     }
 
     private func bind() {
@@ -80,6 +105,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
         modelContext: ModelContext
     ) {
         guard !completedWorkoutsBatch.isEmpty else { return }
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
 
         for workout in completedWorkoutsBatch {
             reconcileCompletedAppleWorkout(

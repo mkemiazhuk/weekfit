@@ -19,7 +19,14 @@ final class RecoveryDetailsViewModel: ObservableObject {
         self.provider = provider
     }
 
-    func load(for date: Date) async {
+    func load(for date: Date, healthManager: HealthManager? = nil) async {
+        if let healthManager,
+           healthManager.isAppReviewDemoActive,
+           let provider = healthManager.appReviewDemoProvider {
+            await loadFromDemo(provider: provider, for: date)
+            return
+        }
+
         let token = UUID()
         loadToken = token
 
@@ -68,6 +75,69 @@ final class RecoveryDetailsViewModel: ObservableObject {
             input: input
         )
 
+        isLoading = false
+    }
+
+    private func loadFromDemo(
+        provider: AppReviewDemoHealthDataProvider,
+        for date: Date
+    ) async {
+        let token = UUID()
+        loadToken = token
+
+        isLoading = true
+        authorizationFailed = false
+
+        let sleep = provider.sleepSnapshot(for: date)
+        let metrics = provider.activityMetrics(for: date)
+        let context = provider.recoveryScoreContext(for: date)
+        let vitals = provider.overnightVitals(for: date)
+
+        guard loadToken == token else { return }
+
+        let input = RecoveryScoreInput(
+            sleepMinutes: sleep.sleepMinutes,
+            timeInBedMinutes: sleep.timeInBedMinutes,
+            awakeMinutes: sleep.awakeMinutes,
+            awakeningsCount: sleep.awakeningsCount,
+            deepSleepMinutes: sleep.deepSleepMinutes,
+            remSleepMinutes: sleep.remSleepMinutes,
+            hrvSDNN: vitals.hrv,
+            restingHeartRate: vitals.restingHeartRate,
+            bedtimeDeviationMinutes: context.bedtimeDeviationMinutes,
+            baseline: context.baseline,
+            priorDayLoad: context.priorDayLoad
+        )
+
+        let breakdown = RecoveryScoreEngine.calculate(input)
+        let baseSnapshot = RecoveryDaySnapshot(
+            date: date,
+            recoveryScore: 0,
+            recoveryBreakdown: .empty,
+            sleepScore: metrics.sleepScore,
+            timeInBedMinutes: sleep.timeInBedMinutes,
+            asleepMinutes: sleep.sleepMinutes,
+            awakeMinutes: sleep.awakeMinutes,
+            deepSleepMinutes: sleep.deepSleepMinutes,
+            remSleepMinutes: sleep.remSleepMinutes,
+            coreSleepMinutes: sleep.coreSleepMinutes,
+            bedStart: sleep.bedStart,
+            wakeTime: sleep.wakeTime,
+            awakeningsCount: sleep.awakeningsCount,
+            restingHeartRate: vitals.restingHeartRate,
+            hrv: vitals.hrv,
+            recoveryInput: nil,
+            insightTitle: "",
+            insightText: "",
+            actionTitle: "",
+            actionText: ""
+        )
+
+        snapshot = baseSnapshot.withRecovery(
+            score: breakdown.total,
+            breakdown: breakdown,
+            input: input
+        )
         isLoading = false
     }
 

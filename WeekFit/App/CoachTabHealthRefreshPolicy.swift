@@ -29,7 +29,7 @@ enum CoachTabHealthRefreshPolicy {
         var now: Date
     }
 
-    struct Decision: Equatable {
+    struct Decision: Equatable {    
         let shouldReloadHealth: Bool
         let reason: String
         let bypassesThrottle: Bool

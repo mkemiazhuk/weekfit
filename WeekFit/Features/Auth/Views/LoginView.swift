@@ -1,587 +1,438 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @ObservedObject var authViewModel: AuthViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
 
-    @State private var showHero = false
-    @State private var showPanel = false
+    @State private var showBrand = false
+    @State private var showHeadline = false
+    @State private var showSubtitle = false
     @State private var showCards = false
+    @State private var showPanel = false
+    @State private var backgroundSettled = false
+    @State private var animateRecoveryWaveform = false
     @State private var ambientMotion = false
+    @State private var showEmailSignIn = false
+
+    @ScaledMetric(relativeTo: .title3) private var brandFontSize: CGFloat = 22
+    @ScaledMetric(relativeTo: .largeTitle) private var headlineFontSize: CGFloat = 32
+    @ScaledMetric(relativeTo: .body) private var subtitleFontSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .body) private var authButtonHeight: CGFloat = 50
+    @ScaledMetric(relativeTo: .footnote) private var noteFontSize: CGFloat = 12
 
     private let brandGreen = Color(red: 0.33, green: 0.58, blue: 0.43)
-    private let sageGreen = Color(red: 0.54, green: 0.88, blue: 0.65)
-    private let champagneGold = Color(red: 0.96, green: 0.75, blue: 0.36)
 
-    private let mutedPurple = Color(red: 0.50, green: 0.36, blue: 0.88)
-    private let mutedOrange = Color(red: 0.96, green: 0.56, blue: 0.26)
+    private let insightCardsData = LoginOnboardingInsights.loginScreenCards
+
+    private var usesCompactLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var prefersIncreasedContrast: Bool {
+        colorSchemeContrast == .increased
+    }
+
+    /// Keep copy in the left content column so it never crosses the figure.
+    private var heroCopyMaxWidth: CGFloat {
+        if usesCompactLayout { return .infinity }
+        // Russian headlines wrap longer; widen softly without invading the person.
+        if locale.language.languageCode?.identifier == "ru" { return 340 }
+        return 320
+    }
 
     var body: some View {
+        GeometryReader { geometry in
+            let isShortScreen = geometry.size.height < 760
+            let topInset = geometry.safeAreaInsets.top + (isShortScreen ? 8 : 12)
+
+            ZStack {
+                cinematicBackground
+
+                VStack(spacing: 0) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            heroText
+                                .padding(.top, topInset)
+
+                            insightCards
+                                .padding(.top, isShortScreen ? LoginMetrics.subtitleToCards - 8 : LoginMetrics.subtitleToCards)
+                                .padding(.bottom, isShortScreen ? LoginMetrics.cardsToAuth - 6 : LoginMetrics.cardsToAuth)
+                        }
+                        .padding(.horizontal, LoginMetrics.horizontal)
+                        .frame(maxWidth: 520)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+
+                    bottomAuthPanel
+                        .padding(.horizontal, LoginMetrics.horizontal - 2)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, LoginMetrics.safeBottom))
+                        .opacity(showPanel ? 1 : 0)
+                        .offset(y: showPanel ? 0 : (reduceMotion ? 0 : 14))
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+            }
+        }
+        .ignoresSafeArea(edges: .bottom)
+        // Light status-bar content over the warm photo + soft top wash.
+        .preferredColorScheme(.dark)
+        .onAppear {
+            runEntranceAnimation()
+        }
+        .sheet(isPresented: $showEmailSignIn) {
+            EmailLoginSheet(authViewModel: authViewModel, brandGreen: brandGreen)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - Background
+
+    private var cinematicBackground: some View {
         ZStack {
             Image("weekfit-bg")
                 .resizable()
                 .scaledToFill()
                 .ignoresSafeArea()
-                .scaleEffect(showHero ? (ambientMotion ? 1.075 : 1.058) : 1.105)
-                .offset(x: ambientMotion ? -8 : 3, y: ambientMotion ? -18 : -10)
-                .brightness(-0.02)
-                .contrast(1.28)
-                .saturation(1.06)
-                .blur(radius: showHero ? 0 : 4)
-                .opacity(showHero ? 1 : 0.78)
-                .animation(.easeOut(duration: 1.35), value: showHero)
-                .animation(.easeInOut(duration: 8.0).repeatForever(autoreverses: true), value: ambientMotion)
+                .scaleEffect(backgroundSettled ? 1.035 : 1.06)
+                .offset(x: backgroundSettled ? -3 : 1, y: backgroundSettled ? -10 : -16)
+                .animation(reduceMotion ? nil : .easeOut(duration: 1.2), value: backgroundSettled)
 
-            cinematicOverlays
+            LoginReadabilityScrim(increasedContrast: prefersIncreasedContrast)
 
-            VStack(spacing: 0) {
-                heroText
-                    .padding(.top, 44)
-                    .padding(.horizontal, 34)
-                    .opacity(showHero ? 1 : 0)
-                    .offset(y: showHero ? 0 : 18)
-
-                insightCards
-                    .padding(.horizontal, 34)
-                    .padding(.top, 24)
-                    .opacity(showCards ? 1 : 0)
-                    .offset(y: showCards ? 0 : 16)
-
-                Spacer(minLength: 28)
-
-                bottomAuthPanel
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 10)
-                    .opacity(showPanel ? 1 : 0)
-                    .offset(y: showPanel ? 0 : 30)
-            }
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.9)) {
-                showHero = true
-            }
-
-            withAnimation(.spring(response: 0.78, dampingFraction: 0.88).delay(0.16)) {
-                showCards = true
-            }
-
-            withAnimation(.spring(response: 0.76, dampingFraction: 0.9).delay(0.30)) {
-                showPanel = true
-            }
-
-            ambientMotion = true
-        }
-    }
-
-    private var cinematicOverlays: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.24),
-                    .clear
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 120)
-            .frame(maxHeight: .infinity, alignment: .top)
-
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.66),
-                    .black.opacity(0.34),
-                    .clear
-                ],
-                startPoint: .top,
-                endPoint: .center
-            )
-
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.64),
-                    .black.opacity(0.27),
-                    .clear
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-
+            // Existing bottom auth lift — kept restrained so the photo stays warm above.
             LinearGradient(
                 colors: [
                     .clear,
-                    .black.opacity(0.16),
-                    .black.opacity(0.58),
-                    .black.opacity(0.88)
+                    .black.opacity(0.08),
+                    .black.opacity(0.28),
+                    .black.opacity(0.52)
                 ],
-                startPoint: .center,
+                startPoint: UnitPoint(x: 0.5, y: 0.58),
                 endPoint: .bottom
             )
-
-            LinearGradient(
-                colors: [
-                    .clear,
-                    .black.opacity(0.18),
-                    .black.opacity(0.42)
-                ],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-            .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea()
             .allowsHitTesting(false)
-
-            RadialGradient(
-                colors: [
-                    .black.opacity(0.26),
-                    .clear
-                ],
-                center: .init(x: 0.16, y: 0.43),
-                startRadius: 20,
-                endRadius: 290
-            )
-            
-            RadialGradient(
-                colors: [
-                    .black.opacity(0.34),
-                    .clear
-                ],
-                center: .init(x: 0.10, y: 0.86),
-                startRadius: 20,
-                endRadius: 180
-            )
-
-            RadialGradient(
-                colors: [
-                    champagneGold.opacity(0.095),
-                    .clear
-                ],
-                center: .init(x: 0.25, y: 0.32),
-                startRadius: 20,
-                endRadius: 290
-            )
-
-            RadialGradient(
-                colors: [
-                    brandGreen.opacity(ambientMotion ? 0.11 : 0.065),
-                    .clear
-                ],
-                center: .init(x: 0.78, y: 0.73),
-                startRadius: 20,
-                endRadius: 340
-            )
-
-            RadialGradient(
-                colors: [
-                    .white.opacity(0.032),
-                    .clear
-                ],
-                center: .init(x: 0.82, y: 0.54),
-                startRadius: 30,
-                endRadius: 230
-            )
-            .blendMode(.screen)
-
-            RadialGradient(
-                colors: [
-                    .clear,
-                    .black.opacity(0.18)
-                ],
-                center: .center,
-                startRadius: 120,
-                endRadius: 520
-            )
-
-            subtleGrainOverlay
-                .blendMode(.softLight)
-                .opacity(0.032)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-    }
-
-    private var subtleGrainOverlay: some View {
-        Canvas { context, size in
-            for index in 0..<120 {
-                let x = abs(sin(Double(index) * 12.9898)) * size.width
-                let y = abs(sin(Double(index) * 78.233)) * size.height
-
-                context.fill(
-                    Path(ellipseIn: CGRect(x: x, y: y, width: 1, height: 1)),
-                    with: .color(.white.opacity(0.50))
-                )
-            }
         }
     }
+
+    // MARK: - Hero
 
     private var heroText: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("Week\(Text("Fit").foregroundStyle(brandGreen))")
                 .foregroundStyle(.white)
-                .font(.system(size: 23.5, weight: .bold))
-                .tracking(-0.35)
-                .shadow(color: brandGreen.opacity(0.16), radius: 10)
+                .font(.system(size: brandFontSize, weight: .bold, design: .rounded))
+                .tracking(-0.3)
+                .opacity(showBrand ? 1 : 0)
+                .offset(y: showBrand ? 0 : (reduceMotion ? 0 : 8))
+                .accessibilityAddTraits(.isHeader)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: LoginMetrics.headlineLineGap) {
                 Text(WeekFitLocalizedString("login.hero.title.line1"))
                     .foregroundStyle(.white)
-                    .font(.system(size: 26.5, weight: .bold))
-                    .tracking(-0.45)
-                    .shadow(color: .black.opacity(0.30), radius: 10, x: 0, y: 3)
+                    .font(.system(size: headlineFontSize, weight: .bold))
+                    .tracking(-0.55)
+                    .lineLimit(usesCompactLayout ? 3 : 2)
+                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .shadow(color: .black.opacity(prefersIncreasedContrast ? 0.34 : 0.22), radius: 8, x: 0, y: 2)
 
                 Text(WeekFitLocalizedString("login.hero.title.line2"))
-                    .foregroundStyle(brandGreen.opacity(0.88))
-                    .font(.system(size: 26.5, weight: .bold))
-                    .tracking(-0.45)
-                    .shadow(color: .black.opacity(0.24), radius: 10, x: 0, y: 3)
-                .shadow(color: brandGreen.opacity(ambientMotion ? 0.09 : 0.05), radius: 8)
+                    .foregroundStyle(brandGreen.opacity(prefersIncreasedContrast ? 1.0 : 0.94))
+                    .font(.system(size: headlineFontSize, weight: .bold))
+                    .tracking(-0.55)
+                    .lineLimit(usesCompactLayout ? 3 : 2)
+                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .shadow(color: .black.opacity(0.16), radius: 6, x: 0, y: 2)
             }
+            .padding(.top, LoginMetrics.brandToHeadline)
+            .opacity(showHeadline ? 1 : 0)
+            .offset(y: showHeadline ? 0 : (reduceMotion ? 0 : 10))
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
             Text(WeekFitLocalizedString("login.hero.subtitle"))
-                .font(.system(size: 15.0, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.84))
-                .lineSpacing(5)
-                .padding(.top, 1)
-                .frame(maxWidth: 300, alignment: .leading)
+                .font(.system(size: subtitleFontSize, weight: .medium))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(prefersIncreasedContrast ? 0.96 : 0.90))
+                .lineSpacing(4)
+                .lineLimit(usesCompactLayout ? 5 : 3)
+                .fixedSize(horizontal: false, vertical: true)
+                .shadow(color: .black.opacity(prefersIncreasedContrast ? 0.40 : 0.28), radius: 6, x: 0, y: 1)
+                .padding(.top, LoginMetrics.headlineToSubtitle)
+                .frame(maxWidth: heroCopyMaxWidth, alignment: .leading)
+                .opacity(showSubtitle ? 1 : 0)
+                .offset(y: showSubtitle ? 0 : (reduceMotion ? 0 : 8))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    // MARK: - Insight Cards
 
     private var insightCards: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            insightCard(
-                icon: "heart.fill",
-                iconColor: sageGreen,
-                title: WeekFitLocalizedString("login.card.recovery.title"),
-                value: WeekFitLocalizedString("login.card.recovery.value"),
-                subtitle: WeekFitLocalizedString("login.card.recovery.subtitle"),
-                accessory: .ecg,
-                width: 185,
-                opacity: 0.88,
-                depth: 0.92
-            )
-            .offset(x: -4, y: ambientMotion ? -2 : 2)
-            .zIndex(3)
-
-            insightCard(
-                icon: "moon.fill",
-                iconColor: mutedPurple,
-                title: WeekFitLocalizedString("login.card.sleep.title"),
-                value: WeekFitLocalizedString("login.card.sleep.value"),
-                subtitle: WeekFitLocalizedString("login.card.sleep.subtitle"),
-                accessory: .bars,
-                width: 198,
-                opacity: 0.82,
-                depth: 0.76
-            )
-            .offset(x: 14, y: ambientMotion ? 2 : -1)
-            .zIndex(2)
-
-            insightCard(
-                icon: "figure.mind.and.body",
-                iconColor: mutedOrange,
-                title: WeekFitLocalizedString("login.card.workout.title"),
-                value: WeekFitLocalizedString("login.card.workout.value"),
-                subtitle: WeekFitLocalizedString("login.card.workout.subtitle"),
-                accessory: .spark,
-                width: 180,
-                opacity: 0.74,
-                depth: 0.58
-            )
-            .offset(x: 28, y: ambientMotion ? -1 : 2)
-            .zIndex(1)
-        }
+        LoginInsightCardsView(
+            cards: insightCardsData,
+            animateRecoveryWaveform: animateRecoveryWaveform,
+            ambientMotion: ambientMotion
+        )
+        .opacity(showCards ? 1 : 0)
+        .offset(y: showCards ? 0 : (reduceMotion ? 0 : 8))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(alignment: .leading) {
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.24),
-                    .black.opacity(0.09),
-                    .clear
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 292, height: 226)
-            .blur(radius: 28)
-            .offset(x: -56, y: 8)
-            .allowsHitTesting(false)
-        }
-        .animation(.easeInOut(duration: 4.8).repeatForever(autoreverses: true), value: ambientMotion)
     }
 
-    private func insightCard(
-        icon: String,
-        iconColor: Color,
-        title: String,
-        value: String,
-        subtitle: String,
-        accessory: InsightAccessory,
-        width: CGFloat,
-        opacity: Double,
-        depth: Double
-    ) -> some View {
-        HStack(spacing: 9) {
-            ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.15))
-                    .frame(width: 29, height: 29)
-
-                Image(systemName: icon)
-                    .font(.system(size: 11.3, weight: .semibold))
-                    .foregroundStyle(iconColor)
-            }
-
-            VStack(alignment: .leading, spacing: -1) {
-                Text(title)
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.74))
-
-                Text(value)
-                    .font(.system(size: 13.5, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.98))
-
-                Text(subtitle)
-                    .font(.system(size: 9.2, weight: .semibold))
-                    .foregroundStyle(iconColor.opacity(0.96))
-            }
-
-            Spacer(minLength: 2)
-
-            accessoryView(accessory, color: iconColor)
-                .scaleEffect(0.66)
-                .frame(width: 24)
-        }
-        .padding(.horizontal, 8)
-        .frame(width: width, height: 49)
-        .background {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.48))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(.black.opacity(0.40 + 0.05 * depth))
-                }
-                .overlay(alignment: .topLeading) {
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.095),
-                            .white.opacity(0.024),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .stroke(.white.opacity(0.085), lineWidth: 0.8)
-                }
-        }
-        .shadow(color: iconColor.opacity(0.055 * depth), radius: 11, x: 0, y: 5)
-        .shadow(color: .black.opacity(0.24), radius: 18, x: 0, y: 12)
-        .opacity(opacity)
-    }
-
-    private enum InsightAccessory {
-        case ecg
-        case bars
-        case spark
-    }
-
-    @ViewBuilder
-    private func accessoryView(_ accessory: InsightAccessory, color: Color) -> some View {
-        switch accessory {
-        case .ecg:
-            Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(color.opacity(0.78))
-                .frame(width: 34)
-
-        case .bars:
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(0..<4, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(color.opacity(0.76))
-                        .frame(
-                            width: 4.5,
-                            height: CGFloat(8 + index * 4)
-                        )
-                }
-            }
-
-        case .spark:
-            Image(systemName: "sparkles")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(color.opacity(0.88))
-                .frame(width: 34)
-        }
-    }
+    // MARK: - Authentication
 
     private var bottomAuthPanel: some View {
-        VStack(spacing: 10) {
-            Button {
-                authViewModel.continueIntoApp()
-            } label: {
-                HStack {
-                    Spacer()
-
-                    Text(WeekFitLocalizedString("login.action.openWeekFit"))
-                        .font(.system(size: 15.0, weight: .semibold))
-                        .foregroundStyle(.white)
-
-                    Spacer()
-
-                    ZStack {
-                        Circle()
-                            .fill(.white.opacity(0.15))
-                            .frame(width: 27, height: 27)
-
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 13.2, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
+        VStack(spacing: LoginMetrics.authStack) {
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.email, .fullName]
+            } onCompletion: { result in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                Task {
+                    await authViewModel.handleAppleSignIn(result)
                 }
-                .frame(height: 48)
-                .padding(.horizontal, 11)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: authButtonHeight)
+            .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
+            .accessibilityIdentifier("login.appleSignIn")
+
+            authDivider
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showEmailSignIn = true
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "envelope")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+
+                    Text(WeekFitLocalizedString("login.action.signIn"))
+                        .font(.system(size: subtitleFontSize, weight: .medium))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: max(authButtonHeight - 6, 44))
                 .background {
-                    RoundedRectangle(cornerRadius: 21, style: .continuous)
-                        .fill(
+                    let shape = RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous)
+                    Group {
+                        if reduceTransparency {
+                            shape.fill(Color.black.opacity(0.42))
+                        } else {
+                            shape.fill(.ultraThinMaterial.opacity(0.20))
+                        }
+                    }
+                    .overlay {
+                        shape.strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    Color(red: 0.41, green: 0.68, blue: 0.52),
-                                    Color(red: 0.29, green: 0.53, blue: 0.39),
-                                    Color(red: 0.21, green: 0.39, blue: 0.30)
+                                    .white.opacity(prefersIncreasedContrast ? 0.14 : 0.08),
+                                    .white.opacity(0.02)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
-                            )
+                            ),
+                            lineWidth: 0.5
                         )
-                        .overlay(alignment: .top) {
-                            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            .white.opacity(0.17),
-                                            champagneGold.opacity(0.04),
-                                            .clear
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .center
-                                    )
-                                )
-                                .frame(height: 22)
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                                .stroke(.white.opacity(0.19), lineWidth: 1)
-                        }
+                    }
                 }
-                .shadow(color: brandGreen.opacity(ambientMotion ? 0.12 : 0.08), radius: 12, x: 0, y: 5)
-                .shadow(color: .black.opacity(0.28), radius: 16, x: 0, y: 8)
             }
-            .padding(.horizontal, 14)
-            .scaleEffect(ambientMotion ? 1.003 : 1.0)
-            .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: ambientMotion)
-            .accessibilityIdentifier("login.openWeekFit")
+            .buttonStyle(LoginSecondaryButtonStyle())
+            .accessibilityIdentifier("login.signIn")
+            .accessibilityHint(WeekFitLocalizedString("login.action.signIn.hint"))
 
-            VStack(spacing: 4) {
-                HStack(spacing: 6) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10.2, weight: .semibold))
-
-                    Text(WeekFitLocalizedString("login.note.appleHealth"))
-                        .font(.system(size: 11.5, weight: .medium))
-                }
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
-
-                Text(WeekFitLocalizedString("login.note.connectWhenReady"))
-                    .font(.system(size: 11.1, weight: .regular))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-            }
-            .multilineTextAlignment(.center)
-            .padding(.top, 2)
-            .padding(.bottom, 16)
+            appleHealthFooter
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
     }
 
-    private var line: some View {
+    private var appleHealthFooter: some View {
+        VStack(spacing: LoginMetrics.footerLineSpacing) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                    .symbolRenderingMode(.hierarchical)
+                    .alignmentGuide(.firstTextBaseline) { dimensions in
+                        dimensions[.bottom] - 1
+                    }
+                    .accessibilityHidden(true)
+
+                Text(WeekFitLocalizedString("login.note.appleHealth.line1"))
+                    .font(.system(size: noteFontSize, weight: .medium))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.82))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            Text(WeekFitLocalizedString("login.note.appleHealth.line2"))
+                .font(.system(size: noteFontSize, weight: .regular))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .frame(maxWidth: 320)
+        .frame(maxWidth: .infinity)
+        .padding(.top, LoginMetrics.footerTop)
+        .padding(.bottom, LoginMetrics.footerBottom)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(WeekFitLocalizedString("login.note.appleHealth.line1")) \(WeekFitLocalizedString("login.note.appleHealth.line2"))"
+        )
+    }
+
+    private var authDivider: some View {
+        HStack(spacing: 10) {
+            dividerLine
+            Text(WeekFitLocalizedString("login.or"))
+                .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
+            dividerLine
+        }
+        .padding(.vertical, LoginMetrics.dividerSpacing)
+    }
+
+    private var dividerLine: some View {
         Rectangle()
-            .fill(.white.opacity(0.12))
-            .frame(height: 1)
+            .fill(.white.opacity(0.07))
+            .frame(height: 0.5)
     }
 
-    private func authButton(
-        title: String,
-        systemImage: String,
-        provider: AuthProvider
-    ) -> some View {
-        Button {
-            Task {
-                await authViewModel.signIn(with: provider)
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .medium))
-                    .offset(y: -0.5)
+    // MARK: - Motion
 
-                Text(title)
-                    .font(.system(size: 14.5, weight: .semibold))
+    private func runEntranceAnimation() {
+        backgroundSettled = true
+
+        if reduceMotion {
+            showBrand = true
+            showHeadline = true
+            showSubtitle = true
+            showCards = true
+            showPanel = true
+            return
+        }
+
+        withAnimation(.easeOut(duration: 0.55)) {
+            showBrand = true
+        }
+
+        withAnimation(.easeOut(duration: 0.58).delay(0.08)) {
+            showHeadline = true
+        }
+
+        withAnimation(.easeOut(duration: 0.52).delay(0.16)) {
+            showSubtitle = true
+        }
+
+        withAnimation(.easeOut(duration: 0.48).delay(0.26)) {
+            showCards = true
+        }
+
+        withAnimation(.easeOut(duration: 0.50).delay(0.40)) {
+            showPanel = true
+        }
+
+        withAnimation(.easeInOut(duration: 4.8).repeatForever(autoreverses: true).delay(0.9)) {
+            ambientMotion = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            guard !reduceMotion else { return }
+            animateRecoveryWaveform = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                animateRecoveryWaveform = false
             }
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
-            .frame(maxWidth: .infinity)
-            .frame(height: 43)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.ultraThinMaterial.opacity(0.42))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.black.opacity(0.30))
-                    }
-                    .overlay(alignment: .top) {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(0.10),
-                                        .white.opacity(0.025),
-                                        .clear
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(.white.opacity(0.13), lineWidth: 1)
-                    }
-            }
-            .shadow(color: .black.opacity(0.30), radius: 14, x: 0, y: 7)
         }
     }
+}
 
-    private var termsText: some View {
-        VStack(spacing: 2) {
-            Text(WeekFitLocalizedString("login.terms.intro"))
-                .font(.system(size: 9.8, weight: .regular))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
+#Preview("Login") {
+    LoginView(authViewModel: AuthViewModel())
+}
 
-            HStack(spacing: 4) {
-                Text(WeekFitLocalizedString("login.terms.service"))
-                    .font(.system(size: 10.2, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
+// MARK: - Readability Scrim
 
-                Text(WeekFitLocalizedString("login.terms.and"))
-                    .font(.system(size: 9.8))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+/// Soft upper-left content scrim. Sits above the photo, below text/cards/controls.
+/// Fades to transparent toward the figure and open landscape — never a global wash.
+private struct LoginReadabilityScrim: View {
+    let increasedContrast: Bool
 
-                Text(WeekFitLocalizedString("login.terms.privacy"))
-                    .font(.system(size: 10.2, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
+    var body: some View {
+        let peak = increasedContrast ? 0.46 : 0.40
+        let mid = increasedContrast ? 0.20 : 0.16
+
+        ZStack {
+            // Status-bar legibility only — thin wash, not a vignette.
+            LinearGradient(
+                colors: [.black.opacity(increasedContrast ? 0.22 : 0.16), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 108)
+            .frame(maxHeight: .infinity, alignment: .top)
+
+            // Soft content-column veil: strongest upper-left, transparent at person/scenery.
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(peak), location: 0),
+                    .init(color: .black.opacity(mid), location: 0.34),
+                    .init(color: .black.opacity(0.06), location: 0.62),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: UnitPoint(x: 0.08, y: 0.04),
+                endPoint: UnitPoint(x: 0.08, y: 0.68)
+            )
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white.opacity(0.85), location: 0.42),
+                        .init(color: .white.opacity(0.28), location: 0.68),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: UnitPoint(x: 0.72, y: 0.42)
+                )
             }
+
+            // Gentle elliptical center that dissolves into the bright mid-frame —
+            // softens headline/subtitle/cards without a hard dark rectangle.
+            RadialGradient(
+                stops: [
+                    .init(color: .black.opacity(mid), location: 0),
+                    .init(color: .black.opacity(0.05), location: 0.55),
+                    .init(color: .clear, location: 1)
+                ],
+                center: UnitPoint(x: 0.18, y: 0.22),
+                startRadius: 12,
+                endRadius: 380
+            )
+            .scaleEffect(x: 1.15, y: 1.0, anchor: .leading)
+            .opacity(0.85)
         }
-        .multilineTextAlignment(.center)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Button Styles
+
+private struct LoginSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.988 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

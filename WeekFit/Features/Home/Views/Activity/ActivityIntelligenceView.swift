@@ -1142,7 +1142,8 @@ struct ActivitySessionDetailView: View {
     @State private var isHeartRateLoading = false
     @State private var isRouteLoading = false
     @State private var isRouteMapPresented = false
-    @State private var isRoutePreviewEnabled = true
+    @State private var isRoutePreviewEnabled = false
+    @State private var expectsRouteData = false
     @State private var isClosing = false
     @State private var remainingSupplementalLoads = 0
     @State private var supplementalMetricsSettled = false
@@ -1158,14 +1159,6 @@ struct ActivitySessionDetailView: View {
 
     private var routePoints: [WorkoutRoutePoint] {
         detail?.routePoints ?? []
-    }
-
-    private var routeMapRenderIdentity: String {
-        guard let first = routePoints.first, let last = routePoints.last else {
-            return "route-empty"
-        }
-
-        return "route-\(routePoints.count)-\(first.latitude)-\(first.longitude)-\(last.latitude)-\(last.longitude)"
     }
 
     private var sessionDurationSeconds: TimeInterval {
@@ -1332,7 +1325,7 @@ struct ActivitySessionDetailView: View {
                         heartRateCard
                     }
 
-                    if isRouteLoading || routePoints.count > 1 {
+                    if expectsRouteData {
                         routeCard
                     }
 
@@ -1353,7 +1346,6 @@ struct ActivitySessionDetailView: View {
         }
         .onDisappear {
             isRouteMapPresented = false
-            isRoutePreviewEnabled = false
         }
         .task(id: session.id) {
             await loadSupplementalDetails()
@@ -1583,13 +1575,12 @@ struct ActivitySessionDetailView: View {
                         .frame(height: 132)
                         .frame(maxWidth: .infinity)
                         .innerActivityCard(cornerRadius: 15)
-                } else if isRoutePreviewEnabled {
+                } else if isRoutePreviewEnabled, routePoints.count > 1 {
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         isRouteMapPresented = true
                     } label: {
                         WorkoutRouteMapPreview(points: routePoints, color: session.color)
-                            .id(routeMapRenderIdentity)
                             .frame(height: 132)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -1613,6 +1604,8 @@ struct ActivitySessionDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(WeekFitLocalizedString("activity.route.viewMap")))
                     .accessibilityHint(Text(WeekFitLocalizedString("activity.route.expandHint")))
+                } else if routeLoadingSettled {
+                    routeUnavailablePlaceholder
                 } else {
                     SessionDetailSkeletonLine(color: session.color)
                         .frame(height: 132)
@@ -1646,6 +1639,28 @@ struct ActivitySessionDetailView: View {
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
         .activityCard(glow: session.color.opacity(0.035))
+    }
+
+    private var routeUnavailablePlaceholder: some View {
+        VStack(spacing: 8) {
+            Image(systemName: healthManager.hasWorkoutRouteReadAccess() ? "map" : "lock.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(session.color.opacity(0.72))
+
+            Text(
+                healthManager.hasWorkoutRouteReadAccess()
+                    ? WeekFitLocalizedString("activity.route.noGpsData")
+                    : WeekFitLocalizedString("activity.route.permissionRequired")
+            )
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .minimumScaleFactor(0.85)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 132)
+        .innerActivityCard(cornerRadius: 15)
     }
 
     private var timeInZonesCard: some View {
@@ -1934,7 +1949,24 @@ struct ActivitySessionDetailView: View {
         }
     }
 
+    private func applyPreloadedDemoDetailIfAvailable() {
+        guard let existing = session.detail else { return }
+
+        loadedDetail = existing
+        expectsRouteData = ActivityRouteExpectation.expectsRoute(for: existing.activityType)
+        isHeartRateLoading = false
+        isRouteLoading = false
+        routeLoadingSettled = true
+        supplementalMetricsSettled = true
+        isRoutePreviewEnabled = existing.routePoints.count > 1
+    }
+
     private func loadSupplementalDetails() async {
+        if healthManager.isAppReviewDemoActive {
+            applyPreloadedDemoDetailIfAvailable()
+            return
+        }
+
         guard let workoutID = session.workoutID else { return }
 
         let baseDetail = detail
@@ -1942,12 +1974,18 @@ struct ActivitySessionDetailView: View {
         let start = baseDetail?.startDate ?? session.startDate
         let end = baseDetail?.endDate ?? session.endDate
         let expectsRoute = ActivityRouteExpectation.expectsRoute(for: activityType)
+        expectsRouteData = expectsRoute
 
         if let cached = ActivitySessionDetailCache.detail(
             for: workoutID,
             activityType: activityType
         ) {
             loadedDetail = cached
+            supplementalMetricsSettled = true
+            routeLoadingSettled = true
+            isHeartRateLoading = false
+            isRouteLoading = false
+            isRoutePreviewEnabled = cached.routePoints.count > 1
             return
         }
 
@@ -2007,7 +2045,11 @@ struct ActivitySessionDetailView: View {
         start: Date,
         end: Date
     ) async {
-        let retryDelaysSeconds: [TimeInterval] = [0, 1.5, 3, 6, 10, 15]
+        // Always attempt a non-blocking route-auth check, then load.
+        // HealthKit does not reliably expose READ grant status via authorizationStatus.
+        _ = await healthManager.ensureWorkoutRouteAuthorization(presentationDelay: 0)
+
+        let retryDelaysSeconds: [TimeInterval] = [0, 0.25, 0.75, 1.5, 3.0]
         let retryStart = Date()
 
         for (attemptIndex, scheduledOffset) in retryDelaysSeconds.enumerated() {
@@ -2033,13 +2075,17 @@ struct ActivitySessionDetailView: View {
                 if let route, loadedRoute {
                     mergeSupplementalDetails(route)
                     isRoutePreviewEnabled = true
-                }
-
-                let isLastAttempt = attemptIndex == retryDelaysSeconds.count - 1
-                if loadedRoute || isLastAttempt {
                     isRouteLoading = false
                     routeLoadingSettled = true
                     cacheDetailIfReady(for: workoutID)
+                } else {
+                    let isLastAttempt = attemptIndex == retryDelaysSeconds.count - 1
+                    if isLastAttempt {
+                        isRouteLoading = false
+                        routeLoadingSettled = true
+                        isRoutePreviewEnabled = false
+                        cacheDetailIfReady(for: workoutID)
+                    }
                 }
             }
 
@@ -2506,35 +2552,12 @@ private enum WorkoutRouteGeometry {
     }
 }
 
-private struct RouteMapRenderGate<Content: View>: View {
-
-    @State private var canRender = false
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        GeometryReader { proxy in
-            if canRender, proxy.size.width > 2, proxy.size.height > 2 {
-                content()
-            } else {
-                ActivityStyle.cardBackground
-            }
-        }
-        .onAppear {
-            DispatchQueue.main.async {
-                canRender = true
-            }
-        }
-        .onDisappear {
-            canRender = false
-        }
-    }
-}
-
 private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
 
     @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var isMapVisible = false
 
     private var coordinates: [CLLocationCoordinate2D] {
         WorkoutRouteGeometry.downsampledCoordinates(from: points, maximumCount: 260)
@@ -2545,58 +2568,101 @@ private struct WorkoutRouteMapPreview: View {
     }
 
     var body: some View {
-        ZStack {
-            RouteMapRenderGate {
-                if let mapRegion {
+        GeometryReader { proxy in
+            let layoutReady = proxy.size.width > 2 && proxy.size.height > 2
+
+            ZStack {
+                ActivityStyle.cardBackground
+
+                if layoutReady, isMapVisible, let mapRegion {
                     Map(position: $cameraPosition, interactionModes: []) {
                         routeContent
                     }
                     .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
                     .colorScheme(.dark)
-                } else {
-                    ActivityStyle.cardBackground
+                    .transition(.opacity.animation(.easeOut(duration: 0.22)))
                 }
-            }
 
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.34),
-                    Color.clear,
-                    Color.black.opacity(0.28)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .allowsHitTesting(false)
+                LinearGradient(
+                    colors: [
+                        Color.black.opacity(0.34),
+                        Color.clear,
+                        Color.black.opacity(0.28)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
 
-            VStack {
-                Spacer()
-
-                HStack {
+                VStack {
                     Spacer()
 
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-                        .padding(7)
-                        .background {
-                            Circle()
-                                .fill(.black.opacity(0.52))
-                                .overlay {
-                                    Circle()
-                                        .stroke(WeekFitTheme.whiteOpacity(0.16), lineWidth: 1)
-                                }
-                        }
-                        .padding(8)
+                    HStack {
+                        Spacer()
+
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                            .padding(7)
+                            .background {
+                                Circle()
+                                    .fill(.black.opacity(0.52))
+                                    .overlay {
+                                        Circle()
+                                            .stroke(WeekFitTheme.whiteOpacity(0.16), lineWidth: 1)
+                                    }
+                            }
+                            .padding(8)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .onAppear {
+                // Defer until the next layout pass so MapKit never mounts at size 0.
+                DispatchQueue.main.async {
+                    scheduleMapReveal(layoutReady: proxy.size.width > 2 && proxy.size.height > 2)
                 }
             }
-            .allowsHitTesting(false)
+            .onChange(of: proxy.size) { _, newSize in
+                let ready = newSize.width > 2 && newSize.height > 2
+                if ready {
+                    DispatchQueue.main.async {
+                        scheduleMapReveal(layoutReady: true)
+                    }
+                } else {
+                    isMapVisible = false
+                }
+            }
+            .onDisappear {
+                isMapVisible = false
+            }
         }
         .onAppear {
             updateCameraPosition()
         }
         .onChange(of: points.count) { _, _ in
             updateCameraPosition()
+            if points.count > 1 {
+                DispatchQueue.main.async {
+                    scheduleMapReveal(layoutReady: true)
+                }
+            }
+        }
+    }
+
+    private func scheduleMapReveal(layoutReady: Bool) {
+        guard layoutReady, mapRegion != nil else {
+            return
+        }
+
+        updateCameraPosition()
+
+        // Keep placeholder visible briefly, then fade map in once Metal has a valid size.
+        if !isMapVisible {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                isMapVisible = true
+            }
         }
     }
 
@@ -2656,47 +2722,61 @@ private struct WorkoutRouteDetailMapView: View {
     }
 
     var body: some View {
-        ZStack {
-            ActivityStyle.screenBackground
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            let layoutReady = proxy.size.width > 2 && proxy.size.height > 2
 
-            if canRenderMap, !isDismissing {
-                Map(position: $cameraPosition) {
-                    routeContent
+            ZStack {
+                ActivityStyle.screenBackground
+                    .ignoresSafeArea()
+
+                if layoutReady, canRenderMap, !isDismissing {
+                    Map(position: $cameraPosition) {
+                        routeContent
+                    }
+                    .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
+                    .mapControls {
+                        MapCompass()
+                        MapScaleView()
+                        MapUserLocationButton()
+                    }
+                    .colorScheme(.dark)
+                    .ignoresSafeArea()
                 }
-                .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
-                .mapControls {
-                    MapCompass()
-                    MapScaleView()
-                    MapUserLocationButton()
+
+                VStack(spacing: 0) {
+                    header
+                    Spacer()
                 }
-                .colorScheme(.dark)
-                .ignoresSafeArea()
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .onAppear {
+                if let region = WorkoutRouteGeometry.mapRegion(for: points) {
+                    cameraPosition = .region(region)
+                }
 
-            VStack(spacing: 0) {
-                header
-                Spacer()
+                guard layoutReady else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    canRenderMap = true
+                }
+            }
+            .onChange(of: proxy.size) { _, newSize in
+                let ready = newSize.width > 2 && newSize.height > 2
+                if ready, !canRenderMap, !isDismissing {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                        canRenderMap = true
+                    }
+                }
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear {
-            if let region = WorkoutRouteGeometry.mapRegion(for: points) {
-                cameraPosition = .region(region)
-            }
-
-            DispatchQueue.main.async {
-                canRenderMap = true
-            }
-        }
         .onChange(of: points.count) { _, _ in
             if let region = WorkoutRouteGeometry.mapRegion(for: points) {
                 cameraPosition = .region(region)
             }
         }
         .onDisappear {
+            isDismissing = true
             canRenderMap = false
-            isDismissing = false
         }
     }
 
@@ -2751,7 +2831,7 @@ private struct WorkoutRouteDetailMapView: View {
         isDismissing = true
         canRenderMap = false
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             dismiss()
         }
     }

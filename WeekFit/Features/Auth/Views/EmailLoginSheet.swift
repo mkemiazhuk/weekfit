@@ -18,7 +18,7 @@ struct EmailLoginSheet: View {
 
         var title: String {
             switch self {
-            case .signIn: return "Welcome back"
+            case .signIn: return WeekFitLocalizedString("login.sheet.signIn.title")
             case .createAccount: return "Create account"
             case .resetPassword: return "Reset password"
             }
@@ -26,7 +26,7 @@ struct EmailLoginSheet: View {
 
         var subtitle: String {
             switch self {
-            case .signIn: return "Continue your WeekFit journey."
+            case .signIn: return WeekFitLocalizedString("login.sheet.signIn.subtitle")
             case .createAccount: return "Start building better routines."
             case .resetPassword: return "We’ll send you a reset link."
             }
@@ -34,7 +34,7 @@ struct EmailLoginSheet: View {
 
         var buttonTitle: String {
             switch self {
-            case .signIn: return "Sign In"
+            case .signIn: return WeekFitLocalizedString("login.action.signIn")
             case .createAccount: return "Create Account"
             case .resetPassword: return "Send Reset Link"
             }
@@ -53,14 +53,16 @@ struct EmailLoginSheet: View {
                         title: "Email",
                         text: $email,
                         icon: "envelope.fill",
-                        keyboard: .emailAddress
+                        keyboard: .emailAddress,
+                        accessibilityIdentifier: "login.signIn.email"
                     )
 
                     if mode != .resetPassword {
                         secureField(
                             title: "Password",
                             text: $password,
-                            icon: "lock.fill"
+                            icon: "lock.fill",
+                            accessibilityIdentifier: "login.signIn.password"
                         )
                     }
 
@@ -131,10 +133,12 @@ struct EmailLoginSheet: View {
         }
         .disabled(!canSubmit || authViewModel.isLoading)
         .padding(.top, 4)
+        .accessibilityIdentifier("login.signIn.submit")
     }
 
     private var bottomActions: some View {
         VStack(spacing: 12) {
+            #if DEBUG
             if mode == .signIn {
                 Button(WeekFitLocalizedString("Forgot password?")) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
@@ -147,7 +151,9 @@ struct EmailLoginSheet: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.66))
             }
+            #endif
 
+            #if DEBUG
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                     switch mode {
@@ -166,6 +172,7 @@ struct EmailLoginSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(brandGreen)
             }
+            #endif
         }
         .padding(.top, 2)
     }
@@ -225,7 +232,8 @@ struct EmailLoginSheet: View {
         title: String,
         text: Binding<String>,
         icon: String,
-        keyboard: UIKeyboardType = .default
+        keyboard: UIKeyboardType = .default,
+        accessibilityIdentifier: String? = nil
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -250,12 +258,14 @@ struct EmailLoginSheet: View {
                         .stroke(.white.opacity(0.10), lineWidth: 1)
                 }
         }
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
     }
 
     private func secureField(
         title: String,
         text: Binding<String>,
-        icon: String
+        icon: String,
+        accessibilityIdentifier: String? = nil
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -279,5 +289,6 @@ struct EmailLoginSheet: View {
                         .stroke(.white.opacity(0.10), lineWidth: 1)
                 }
         }
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
     }
 }

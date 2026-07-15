@@ -166,6 +166,7 @@ struct PremiumActivityStartSheet: View {
             source: "today"
         )
 
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(newActivity)
         modelContext.insert(newActivity)
         try? modelContext.save()
 

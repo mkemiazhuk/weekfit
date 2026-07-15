@@ -11,6 +11,7 @@ final class AppSessionState: ObservableObject {
     @Published private(set) var healthRefreshEvent = AppRefreshEvent(kind: .healthRefresh)
     @Published private(set) var coachRefreshEvent = AppRefreshEvent(kind: .coachRefresh)
     @Published private(set) var localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
+    @Published var isPresentingHealthAccess = false
 
     private var pendingHealthRefreshSources: [String] = []
     private var pendingCoachRefreshSources: [String] = []
@@ -29,6 +30,14 @@ final class AppSessionState: ObservableObject {
 
     func triggerLocalDataResetCompleted() {
         localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
+    }
+
+    func presentHealthAccess() {
+        isPresentingHealthAccess = true
+    }
+
+    func dismissHealthAccess() {
+        isPresentingHealthAccess = false
     }
 
     func triggerHealthRefresh(source: String = "unspecified") {

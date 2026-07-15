@@ -738,6 +738,7 @@ struct MealsView: View {
         )
         quickActivity.isCompleted = true
 
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(quickActivity)
         modelContext.insert(quickActivity)
         try? modelContext.save()
 
@@ -1225,6 +1226,7 @@ struct CustomFoodDetailsView: View {
         )
 
         activity.isCompleted = true
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
         try? modelContext.save()
         onFoodLogged?()

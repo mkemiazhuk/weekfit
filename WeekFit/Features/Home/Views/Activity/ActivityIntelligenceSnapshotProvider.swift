@@ -66,6 +66,16 @@ final class ActivityIntelligenceSnapshotProvider {
         let dayMetrics = await metrics
         let sleepSnapshot = await sleep
 
+        let sessions: [ActivitySessionSnapshot]
+        if healthManager.isAppReviewDemoActive {
+            sessions = demoPlannedActivitySessions(
+                for: date,
+                plannedActivities: plannedActivities
+            )
+        } else {
+            sessions = workoutSamples.map { makeSnapshot(from: $0) }
+        }
+
         let activeCalories = Int(dayMetrics.activeCalories.rounded())
         let goal = healthManager.automatedActivityGoal(for: dayMetrics)
 
@@ -97,7 +107,7 @@ final class ActivityIntelligenceSnapshotProvider {
             distanceKm: dayMetrics.distanceKm,
             vo2Max: dayMetrics.vo2Max,
             recoveryPercent: dayMetrics.recoveryPercent,
-            sessions: workoutSamples.map { makeSnapshot(from: $0) },
+            sessions: sessions,
             hourlyActivityPoints: hourlyCalories.enumerated().map {
                 ActivityTimelinePoint(hour: $0.offset, activeCalories: $0.element)
             },
@@ -146,6 +156,14 @@ final class ActivityIntelligenceSnapshotProvider {
     }
 
     func makePlannedActivitySnapshot(_ activity: PlannedActivity) -> ActivitySessionSnapshot {
+        if activity.type.lowercased() == "meal" {
+            return makeMealActivitySnapshot(activity)
+        }
+
+        return makeWorkoutPlannedActivitySnapshot(activity)
+    }
+
+    private func makeWorkoutPlannedActivitySnapshot(_ activity: PlannedActivity) -> ActivitySessionSnapshot {
         let durationMinutes = max(1, activity.effectiveDurationMinutes)
         let endDate = Calendar.current.date(
             byAdding: .minute,
@@ -154,6 +172,35 @@ final class ActivityIntelligenceSnapshotProvider {
         ) ?? activity.date
         let activityType = inferredWorkoutType(for: activity)
         let icon = activity.icon.isEmpty ? "figure.mixed.cardio" : activity.icon
+
+        let isDemoSession = activity.source == AppReviewDemoStore.sourceIdentifier
+        if isDemoSession, activity.isCompleted {
+            let workoutID = activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:))
+                ?? AppReviewDemoWorkoutDetailFactory.stableWorkoutID(
+                    title: activity.title,
+                    date: activity.date
+                )
+            let detail = AppReviewDemoWorkoutDetailFactory.makeDetail(
+                title: activity.title,
+                activityType: activityType,
+                startDate: activity.date,
+                durationMinutes: durationMinutes,
+                calories: activity.calories,
+                icon: icon,
+                color: activity.color
+            )
+
+            return ActivitySessionSnapshot(
+                workoutID: workoutID,
+                title: activity.title,
+                startDate: activity.date,
+                durationMinutes: durationMinutes,
+                icon: icon,
+                color: activity.color,
+                detail: detail
+            )
+        }
+
         let source: String
         if activity.isWatchSynced {
             source = WeekFitLocalizedString("activity.data.source.appleWatch")
@@ -187,7 +234,69 @@ final class ActivityIntelligenceSnapshotProvider {
                 source: source,
                 icon: icon,
                 color: activity.color,
-                activeCalories: nil,
+                activeCalories: activity.calories > 0 ? Double(activity.calories) : nil,
+                distanceKm: estimatedDistanceKm(for: activity, activityType: activityType),
+                averageHeartRate: nil,
+                maxHeartRate: nil,
+                heartRateSamples: [],
+                routePoints: [],
+                elevationGain: nil,
+                steps: nil,
+                cadence: nil
+            )
+        )
+    }
+
+    private func estimatedDistanceKm(
+        for activity: PlannedActivity,
+        activityType: HKWorkoutActivityType
+    ) -> Double? {
+        let minutes = Double(max(1, activity.effectiveDurationMinutes))
+        let kmPerHour: Double
+        switch activityType {
+        case .running:
+            kmPerHour = activity.title.lowercased().contains("interval") ? 11.5 : 9.4
+        case .walking, .hiking:
+            kmPerHour = 5.0
+        case .cycling:
+            kmPerHour = 22.0
+        default:
+            return nil
+        }
+
+        let distance = minutes / 60.0 * kmPerHour
+        return (distance * 10).rounded() / 10
+    }
+
+    private func makeMealActivitySnapshot(_ activity: PlannedActivity) -> ActivitySessionSnapshot {
+        let durationMinutes = max(1, activity.effectiveDurationMinutes)
+        let endDate = Calendar.current.date(
+            byAdding: .minute,
+            value: durationMinutes,
+            to: activity.date
+        ) ?? activity.date
+        let icon = activity.icon.isEmpty ? "fork.knife" : activity.icon
+        let mealColor = Color(red: 0.16, green: 0.80, blue: 0.43)
+
+        return ActivitySessionSnapshot(
+            workoutID: nil,
+            title: activity.title,
+            startDate: activity.date,
+            durationMinutes: durationMinutes,
+            icon: icon,
+            color: mealColor,
+            detail: ActivitySessionDetailSnapshot(
+                title: activity.title,
+                activityType: .other,
+                startDate: activity.date,
+                endDate: endDate,
+                durationMinutes: durationMinutes,
+                workoutDurationSeconds: TimeInterval(durationMinutes * 60),
+                elapsedDurationSeconds: endDate.timeIntervalSince(activity.date),
+                source: "nutritionlog",
+                icon: icon,
+                color: mealColor,
+                activeCalories: activity.calories > 0 ? Double(activity.calories) : nil,
                 distanceKm: nil,
                 averageHeartRate: nil,
                 maxHeartRate: nil,
@@ -198,6 +307,37 @@ final class ActivityIntelligenceSnapshotProvider {
                 cadence: nil
             )
         )
+    }
+
+    private func demoPlannedActivitySessions(
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) -> [ActivitySessionSnapshot] {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+            return []
+        }
+
+        return plannedActivities
+            .filter { activity in
+                activity.source == AppReviewDemoStore.sourceIdentifier
+                    && activity.isCompleted
+                    && activity.date >= dayStart
+                    && activity.date < dayEnd
+                    && isDemoActivityLogEligible(activity)
+            }
+            .sorted { $0.date < $1.date }
+            .map(makePlannedActivitySnapshot)
+    }
+
+    private func isDemoActivityLogEligible(_ activity: PlannedActivity) -> Bool {
+        switch activity.type.lowercased() {
+        case "workout", "recovery":
+            return true
+        default:
+            return false
+        }
     }
 
     private func inferredWorkoutType(for activity: PlannedActivity) -> HKWorkoutActivityType {

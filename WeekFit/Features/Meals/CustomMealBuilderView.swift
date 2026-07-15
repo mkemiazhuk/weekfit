@@ -66,6 +66,18 @@ struct CustomMealBuilderView: View {
     @State private var fiber: String
     @State private var validationMessage: String?
     @State private var didRequestExistingPreviewImage = false
+    @State private var isAnalyzingPhoto = false
+    @State private var barcodeLookupMessage: String?
+    @State private var barcodeLookupTone: BarcodeLookupBannerTone = .neutral
+    @State private var scannedBarcode: String?
+    @State private var scannedNutritionDataSource: NutritionDataSource?
+
+    private enum BarcodeLookupBannerTone {
+        case neutral
+        case success
+        case warning
+        case error
+    }
 
     private let background = WeekFitTheme.backgroundColor
     private let cardBackground = WeekFitTheme.cardBackground
@@ -188,6 +200,7 @@ struct CustomMealBuilderView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 12) {
                     heroPreviewCard
+                    barcodeLookupBanner
                     editableFields
 
                     if let validationMessage {
@@ -264,6 +277,56 @@ struct CustomMealBuilderView: View {
                 save()
             }
         }
+    }
+
+    private var barcodeLookupBanner: some View {
+        Group {
+            if isAnalyzingPhoto {
+                lookupBanner(
+                    text: WeekFitLocalizedString("meals.barcode.analyzing"),
+                    tone: .neutral
+                )
+            } else if let barcodeLookupMessage {
+                lookupBanner(text: barcodeLookupMessage, tone: barcodeLookupTone)
+            } else if previewImage == nil {
+                Text(WeekFitLocalizedString("meals.foodForm.photoBarcodeHint"))
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.68))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private func lookupBanner(text: String, tone: BarcodeLookupBannerTone) -> some View {
+        let foreground: Color
+        let backgroundTone: Color
+
+        switch tone {
+        case .neutral:
+            foreground = textSecondary.opacity(0.82)
+            backgroundTone = WeekFitTheme.whiteOpacity(0.040)
+        case .success:
+            foreground = WeekFitTheme.green.opacity(0.92)
+            backgroundTone = WeekFitTheme.green.opacity(0.10)
+        case .warning:
+            foreground = WeekFitTheme.orange.opacity(0.92)
+            backgroundTone = WeekFitTheme.orange.opacity(0.10)
+        case .error:
+            foreground = Color.red.opacity(0.84)
+            backgroundTone = Color.red.opacity(0.10)
+        }
+
+        return Text(text)
+            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+            .foregroundStyle(foreground)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(backgroundTone)
+            }
     }
 
     private var heroPreviewCard: some View {
@@ -363,6 +426,14 @@ struct CustomMealBuilderView: View {
                             .minimumScaleFactor(0.8)
                             .padding(.horizontal, 4)
                     }
+                }
+
+                if isAnalyzingPhoto {
+                    RoundedRectangle(cornerRadius: 21, style: .continuous)
+                        .fill(Color.black.opacity(0.42))
+
+                    ProgressView()
+                        .tint(accent)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
@@ -686,38 +757,162 @@ struct CustomMealBuilderView: View {
     }
 
     private func analyzePhotoForNutrition(_ image: UIImage) {
-        Task {
-            guard let estimate = await FoodPhotoNutritionAnalyzer.analyze(image) else { return }
+        guard !isAnalyzingPhoto else { return }
 
+        isAnalyzingPhoto = true
+        barcodeLookupMessage = nil
+
+        Task {
+            let result = await FoodPhotoNutritionAnalyzer.analyze(image)
+
+            await MainActor.run {
+                isAnalyzingPhoto = false
+                handlePhotoAnalysisResult(result)
+            }
+        }
+    }
+
+    @MainActor
+    private func handlePhotoAnalysisResult(_ result: FoodPhotoAnalysisResult) {
+        switch result {
+        case let .barcode(estimate, lookup):
+            applyBarcodeEstimate(estimate, lookup: lookup)
+
+        case let .nutritionLabel(estimate):
+            scannedBarcode = nil
+            scannedNutritionDataSource = estimate.dataSource
+            applyEstimate(estimate, successMessage: nil, tone: .success)
+
+        case let .failure(failure):
+            switch failure {
+            case .noContent:
+                setBarcodeLookupMessage(
+                    WeekFitLocalizedString("meals.barcode.notFound"),
+                    tone: .error
+                )
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+
+            case let .barcode(lookup):
+                scannedBarcode = lookup.barcode
+                scannedNutritionDataSource = nil
+                setBarcodeLookupMessage(
+                    barcodeFailureMessage(for: lookup),
+                    tone: lookup.status == .offline ? .warning : .error
+                )
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            }
+        }
+    }
+
+    @MainActor
+    private func applyBarcodeEstimate(
+        _ estimate: FoodPhotoNutritionEstimate,
+        lookup: BarcodeFoodLookupResult
+    ) {
+        scannedBarcode = estimate.barcode
+        scannedNutritionDataSource = estimate.dataSource
+
+        Task {
             let productImage = estimate.shouldReplacePhotoWithProductImage
                 ? await FoodPhotoNutritionAnalyzer.downloadProductImage(from: estimate.productImageURL)
                 : nil
 
             await MainActor.run {
-                var didApply = false
-
-                if estimate.applyIfPossible(
-                    name: &name,
-                    servingGrams: &servingGrams,
-                    calories: &calories,
-                    protein: &protein,
-                    carbs: &carbs,
-                    fats: &fats,
-                    fiber: &fiber
-                ) {
-                    didApply = true
-                }
+                let didApply = applyEstimate(
+                    estimate,
+                    successMessage: barcodeSuccessMessage(for: lookup, estimate: estimate),
+                    tone: lookup.status == .partial ? .warning : .success
+                )
 
                 if let productImage,
                    applyDownloadedProductPhoto(productImage) {
-                    didApply = true
-                }
-
-                if didApply {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } else if didApply {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
             }
         }
+    }
+
+    @MainActor
+    @discardableResult
+    private func applyEstimate(
+        _ estimate: FoodPhotoNutritionEstimate,
+        successMessage: String?,
+        tone: BarcodeLookupBannerTone
+    ) -> Bool {
+        let didApply = estimate.applyIfPossible(
+            name: &name,
+            servingGrams: &servingGrams,
+            calories: &calories,
+            protein: &protein,
+            carbs: &carbs,
+            fats: &fats,
+            fiber: &fiber
+        )
+
+        if let successMessage {
+            setBarcodeLookupMessage(successMessage, tone: tone)
+        }
+
+        return didApply
+    }
+
+    private func barcodeSuccessMessage(
+        for lookup: BarcodeFoodLookupResult,
+        estimate: FoodPhotoNutritionEstimate
+    ) -> String {
+        let providerName: String
+        switch lookup.provider {
+        case .openFoodFacts, .openFoodFactsCache:
+            providerName = WeekFitLocalizedString("meals.barcode.source.openFoodFacts")
+        case .usda:
+            providerName = WeekFitLocalizedString("meals.barcode.source.usda")
+        default:
+            providerName = WeekFitLocalizedString("meals.barcode.source.unknown")
+        }
+
+        if lookup.status == .partial {
+            return WeekFitLocalizedString("meals.barcode.partial")
+        }
+
+        if let calories = estimate.calories, lookup.basis == .per100g {
+            return String(
+                format: WeekFitLocalizedString("meals.barcode.foundPer100g"),
+                lookup.displayName ?? estimate.name ?? WeekFitLocalizedString("meals.foodForm.preview.newFood"),
+                calories,
+                providerName
+            )
+        }
+
+        if let calories = estimate.calories {
+            return String(
+                format: WeekFitLocalizedString("meals.barcode.found"),
+                lookup.displayName ?? estimate.name ?? WeekFitLocalizedString("meals.foodForm.preview.newFood"),
+                calories,
+                providerName
+            )
+        }
+
+        return String(
+            format: WeekFitLocalizedString("meals.barcode.foundNameOnly"),
+            lookup.displayName ?? estimate.name ?? WeekFitLocalizedString("meals.foodForm.preview.newFood"),
+            providerName
+        )
+    }
+
+    private func barcodeFailureMessage(for lookup: BarcodeFoodLookupResult) -> String {
+        switch lookup.status {
+        case .offline:
+            return WeekFitLocalizedString("meals.barcode.offline")
+        case .notFound, .partial, .found:
+            return WeekFitLocalizedString("meals.barcode.notFound")
+        }
+    }
+
+    private func setBarcodeLookupMessage(_ message: String, tone: BarcodeLookupBannerTone) {
+        barcodeLookupMessage = message
+        barcodeLookupTone = tone
     }
 
     private func applyDownloadedProductPhoto(_ image: UIImage) -> Bool {
@@ -875,7 +1070,9 @@ struct CustomMealBuilderView: View {
                     creationMode: .manual,
                     servingGrams: input.servingGrams,
                     localPhotoFilename: persistedPhotos.originalFilename,
-                    localPhotoThumbnailFilename: persistedPhotos.thumbnailFilename
+                    localPhotoThumbnailFilename: persistedPhotos.thumbnailFilename,
+                    barcode: scannedBarcode ?? editingMeal?.barcode,
+                    nutritionDataSource: scannedNutritionDataSource ?? editingMeal?.nutritionDataSource
                 )
 
                 validationMessage = nil

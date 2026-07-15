@@ -50,7 +50,7 @@ final class WeekFitUITests: XCTestCase {
     func testLoginBypassFromLaunchArgument() throws {
         let app = launchApp()
 
-        XCTAssertFalse(app.buttons["login.openWeekFit"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.buttons["login.signIn"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.otherElements["screen.today"].exists)
     }
 }

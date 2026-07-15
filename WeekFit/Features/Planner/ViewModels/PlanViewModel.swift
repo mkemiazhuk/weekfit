@@ -486,6 +486,7 @@ final class PlanViewModel: ObservableObject {
                 fiber: meal?.fiber ?? 0
             )
 
+            AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
             modelContext.insert(activity)
 
             do {

@@ -12,6 +12,7 @@ struct ProfileView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nightComfort: NightComfortController
+    @EnvironmentObject private var authViewModel: AuthViewModel
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
@@ -466,9 +467,56 @@ private extension ProfileView {
     var developerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(AppText.Settings.Profile.privacyDataSection)
-//            coachDebugToggle
-            resetLocalDataButton
+
+            VStack(spacing: 0) {
+                if AccountSessionController.shared.mode != .reviewDemo {
+                    resetLocalDataButton
+                    privacyActionDivider
+                }
+                signOutButton
+            }
+            .background {
+                premiumCardBackground(cornerRadius: 23)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
         }
+    }
+
+    private var privacyActionDivider: some View {
+        Rectangle()
+            .fill(WeekFitTheme.whiteOpacity(0.06))
+            .frame(height: 0.5)
+            .padding(.leading, 63)
+    }
+
+    private func profileActionRow(
+        icon: String,
+        iconColor: Color,
+        iconBackground: Color,
+        title: LocalizedStringResource,
+        titleColor: Color
+    ) -> some View {
+        HStack(spacing: 13) {
+            ZStack {
+                Circle()
+                    .fill(iconBackground)
+
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(iconColor)
+            }
+            .frame(width: 34, height: 34)
+
+            Text(title)
+                .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(titleColor)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 54)
     }
 
     @ViewBuilder
@@ -492,19 +540,19 @@ private extension ProfileView {
                 showResetConfirmation = true
             }
         } label: {
-            Text(isResettingLocalData ? AppText.Settings.Profile.resettingLocalData : AppText.Settings.Profile.resetLocalData)
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                .foregroundStyle(destructiveRed.opacity(0.62))
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .background {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(destructiveRed.opacity(0.024))
-                }
+            profileActionRow(
+                icon: "arrow.counterclockwise",
+                iconColor: destructiveRed.opacity(0.96),
+                iconBackground: destructiveRed.opacity(0.16),
+                title: isResettingLocalData
+                    ? AppText.Settings.Profile.resettingLocalData
+                    : AppText.Settings.Profile.resetLocalData,
+                titleColor: destructiveRed.opacity(0.94)
+            )
         }
         .buttonStyle(PressableScaleButtonStyle())
         .disabled(isResettingLocalData)
-        .opacity(isResettingLocalData ? 0.62 : 1)
+        .opacity(isResettingLocalData ? 0.72 : 1)
     }
 
     var coachDebugToggle: some View {
@@ -542,6 +590,24 @@ private extension ProfileView {
         .background {
             premiumCardBackground(cornerRadius: 23)
         }
+    }
+
+    var signOutButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            authViewModel.signOut()
+            dismiss()
+        } label: {
+            profileActionRow(
+                icon: "rectangle.portrait.and.arrow.right",
+                iconColor: WeekFitTheme.whiteOpacity(0.88),
+                iconBackground: WeekFitTheme.whiteOpacity(0.10),
+                title: AppText.Settings.Profile.signOut,
+                titleColor: WeekFitTheme.whiteOpacity(0.86)
+            )
+        }
+        .buttonStyle(PressableScaleButtonStyle())
+        .accessibilityIdentifier("profile.signOut")
     }
 
     var footerSection: some View {
