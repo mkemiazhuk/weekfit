@@ -667,7 +667,18 @@ struct ManualMealFormView: View {
 
     private func analyzePhotoForNutrition(_ image: UIImage) {
         Task {
-            guard let estimate = await FoodPhotoNutritionAnalyzer.analyze(image) else { return }
+            let result = await FoodPhotoNutritionAnalyzer.analyze(image)
+            let estimate: FoodPhotoNutritionEstimate?
+            switch result {
+            case let .barcode(value, _):
+                estimate = value
+            case let .nutritionLabel(value):
+                estimate = value
+            case .failure:
+                estimate = nil
+            }
+
+            guard let estimate else { return }
 
             let productImage = estimate.shouldReplacePhotoWithProductImage
                 ? await FoodPhotoNutritionAnalyzer.downloadProductImage(from: estimate.productImageURL)

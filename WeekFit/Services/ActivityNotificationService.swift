@@ -43,6 +43,25 @@ final class ActivityNotificationService {
         }
     }
 
+    func requestPermissionIfNotDetermined() async -> Bool {
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { settings in
+                switch settings.authorizationStatus {
+                case .notDetermined:
+                    self.requestPermission { granted in
+                        continuation.resume(returning: granted)
+                    }
+                case .authorized, .provisional, .ephemeral:
+                    continuation.resume(returning: true)
+                case .denied:
+                    continuation.resume(returning: false)
+                @unknown default:
+                    continuation.resume(returning: false)
+                }
+            }
+        }
+    }
+
     func checkPermission(
         completion: @escaping (Bool) -> Void
     ) {

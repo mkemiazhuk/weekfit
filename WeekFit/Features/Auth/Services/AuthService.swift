@@ -70,19 +70,23 @@ final class AuthService {
         email: String,
         password: String
     ) async throws {
-        #if DEBUG
         try await Task.sleep(nanoseconds: 700_000_000)
 
         guard email.contains("@") else {
             throw AuthError.invalidEmail
         }
 
+        if AppReviewDemoCredentials.matches(email: email, password: password) {
+            return
+        }
+
+        #if DEBUG
         guard email.lowercased() == savedEmail.lowercased(),
               password == savedPassword else {
             throw AuthError.invalidCredentials
         }
         #else
-        throw AuthError.appleSignInUnavailable
+        throw AuthError.invalidCredentials
         #endif
     }
 

@@ -19,14 +19,27 @@ final class NightComfortLocationService: NSObject {
         applyCachedCoordinate(logFreshCoordinate: false)
     }
 
+    /// Uses cached coordinates or refreshes GPS only when permission was already granted.
+    /// Never presents the system location prompt — use `requestWhenInUseAuthorizationIfNeeded()` after login.
     func refreshIfNeeded() {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
             manager.requestLocation()
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
         default:
             applyCachedCoordinate(logFreshCoordinate: false)
+        }
+    }
+
+    func requestWhenInUseAuthorizationIfNeeded() {
+        guard AccountSessionController.shared.mode == .realUser else { return }
+
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.requestLocation()
+        default:
+            break
         }
     }
 

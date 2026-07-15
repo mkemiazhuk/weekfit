@@ -284,9 +284,11 @@ struct TodayView: View {
 
     private var shouldShowHealthConnectPrompt: Bool {
         !hasTodayRecoverySignals &&
+        !healthManager.isHealthAccessGranted &&
         (
+            healthManager.isHealthAuthorizationInFlight ||
             !healthManager.isHealthAccessRequested ||
-            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
+            healthManager.hasCompletedHealthAccessCheck
         )
     }
 
@@ -515,6 +517,7 @@ struct TodayView: View {
             .environmentObject(nutritionViewModel)
             .environmentObject(appSession)
             .environmentObject(languageManager)
+            .environmentObject(authViewModel)
             .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
             .weekFitSheetChrome(cornerRadius: 36)
@@ -1723,17 +1726,10 @@ struct TodayView: View {
                         .padding(.top, 4)
 
                         Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-                            Task {
-                                await healthManager.requestAuthorization(
-                                    for: selectedDate,
-                                    plannedActivities: selectedDayActivities
-                                )
-                            }
+                            handleConnectAppleHealthTap()
                         } label: {
                             HStack {
-                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Image(systemName: healthManager.isHealthAuthorizationInFlight ? "hourglass" : "arrow.triangle.2.circlepath")
                                     .font(.system(size: 13, weight: .bold))
 
                                 Text(AppText.Today.connectAppleHealth)
@@ -1758,6 +1754,8 @@ struct TodayView: View {
                             .shadow(color: todayActivityColor.opacity(0.22), radius: 8, y: 3)
                         }
                         .buttonStyle(.plain)
+                        .disabled(healthManager.isHealthAuthorizationInFlight)
+                        .accessibilityIdentifier("today.connectAppleHealth")
                     }
                     .padding(16)
                 }
@@ -2506,6 +2504,20 @@ struct TodayView: View {
                 .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
     }
+
+    private func handleConnectAppleHealthTap() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HealthConnectDiagnostics.logButtonTapped(source: "today.connectAppleHealth")
+
+        _ = healthManager.requestNativeHealthAuthorizationFromConnectTap(
+            source: "today.connectAppleHealth",
+            for: selectedDate,
+            plannedActivities: selectedDayActivities
+        ) {
+            appSession.triggerHealthRefresh(source: "today.healthConnect")
+            refreshTodayLiveState(refreshHealth: true)
+        }
+    }
     
     private func refreshTodayLiveState(refreshHealth: Bool = false) {
         debugTodayDataState(source: "refreshTodayLiveState.before refreshHealth=\(refreshHealth)")
@@ -2562,6 +2574,7 @@ struct TodayView: View {
         showNutritionDetails = false
         showRecoveryDetails = false
         showProfile = false
+        appSession.dismissHealthAccess()
         showDirectWorkoutLogSheet = false
         showDirectMealLogSheet = false
         showDirectDrinkLogSheet = false

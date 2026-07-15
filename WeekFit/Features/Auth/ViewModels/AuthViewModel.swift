@@ -9,6 +9,7 @@ final class AuthViewModel: ObservableObject {
 
     nonisolated deinit {}
     @Published var isLoggedIn = false
+    @Published private(set) var hasResolvedInitialSession = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
@@ -23,10 +24,19 @@ final class AuthViewModel: ObservableObject {
     private static let accountAuthEnabled = false
 
     init() {
-        guard Self.accountAuthEnabled else { return }
-        Task {
-            await restorePersistedSessionIfNeeded()
+        if AppReviewDemoCredentials.hasActiveSession {
+            isLoggedIn = true
+            hasResolvedInitialSession = true
+        } else {
+            Task {
+                await restorePersistedSessionIfNeeded()
+                hasResolvedInitialSession = true
+            }
         }
+    }
+
+    var sessionCoordinationToken: String {
+        "\(hasResolvedInitialSession)-\(isLoggedIn)"
     }
 
     func signIn(with provider: AuthProvider) async {
@@ -56,6 +66,12 @@ final class AuthViewModel: ObservableObject {
                 email: email,
                 password: password
             )
+
+            if AppReviewDemoCredentials.matches(email: email, password: password) {
+                AppReviewDemoCredentials.markSessionActive()
+            } else {
+                clearAppReviewDemoSession()
+            }
 
             isLoggedIn = true
         } catch {
@@ -114,6 +130,7 @@ final class AuthViewModel: ObservableObject {
             }
 
             do {
+                clearAppReviewDemoSession()
                 _ = try await authService.handleAppleCredential(credential)
                 isLoggedIn = true
             } catch {
@@ -121,12 +138,16 @@ final class AuthViewModel: ObservableObject {
             }
 
         case .failure(let error):
+            if (error as NSError).code == ASAuthorizationError.canceled.rawValue {
+                return
+            }
             errorMessage = cleanError(error)
         }
     }
 
     func signOut() {
         Task {
+            AppReviewDemoCredentials.clearSession()
             try? await authService.signOut()
             isLoggedIn = false
             errorMessage = nil
@@ -137,19 +158,12 @@ final class AuthViewModel: ObservableObject {
     func applyUITestBypassIfNeeded() {
         guard WeekFitUITestSupport.isActive else { return }
         isLoggedIn = true
+        hasResolvedInitialSession = true
         isLoading = false
         errorMessage = nil
     }
 
-    /// Enters the app without account sign-in. Apple/email auth remains wired for a future sync release.
-    func continueIntoApp() {
-        isLoggedIn = true
-        errorMessage = nil
-        successMessage = nil
-    }
-
     func restorePersistedSessionIfNeeded() async {
-        guard Self.accountAuthEnabled else { return }
         guard !WeekFitUITestSupport.isActive else { return }
         guard !isLoggedIn else { return }
 
@@ -157,8 +171,13 @@ final class AuthViewModel: ObservableObject {
         defer { isLoading = false }
 
         if await authService.restoreAppleSessionIfValid() {
+            clearAppReviewDemoSession()
             isLoggedIn = true
         }
+    }
+
+    private func clearAppReviewDemoSession() {
+        AppReviewDemoCredentials.clearSession()
     }
 
     private func cleanError(_ error: Error) -> String {

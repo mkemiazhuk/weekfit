@@ -155,11 +155,15 @@ enum CoachObservationStore {
         }
     }
 
-    #if DEBUG
-    static func resetForTests() {
+    static func clearAll() {
         lock.lock()
         UserDefaults.standard.removeObject(forKey: storageKey)
         lock.unlock()
+    }
+
+    #if DEBUG
+    static func resetForTests() {
+        clearAll()
     }
 
     static func seedForTests(_ observations: [CoachDailyObservation]) {

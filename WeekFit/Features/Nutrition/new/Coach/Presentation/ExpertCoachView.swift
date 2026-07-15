@@ -135,9 +135,11 @@ struct ExpertCoachView: View {
 
     private var shouldShowHealthConnectPrompt: Bool {
         !hasTodayRecoverySignals &&
+        !healthManager.isHealthAccessGranted &&
         (
+            healthManager.isHealthAuthorizationInFlight ||
             !healthManager.isHealthAccessRequested ||
-            (!healthManager.isHealthAccessGranted && healthManager.hasCompletedHealthAccessCheck)
+            healthManager.hasCompletedHealthAccessCheck
         )
     }
 

@@ -65,6 +65,7 @@ enum QuickLogActivitySync {
             source: "today"
         )
 
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
         try? modelContext.save()
 

@@ -9,6 +9,7 @@ struct RecoveryDetailsView: View {
     @StateObject private var viewModel = RecoveryDetailsViewModel()
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var healthManager: HealthManager
     @State private var activeDate: Date
 
     // Kept for compatibility with existing navigation from Today.
@@ -84,7 +85,7 @@ struct RecoveryDetailsView: View {
     }
 
     private func load(date: Date) async {
-        await viewModel.load(for: date)
+        await viewModel.load(for: date, healthManager: healthManager)
     }
 
     private var header: some View {

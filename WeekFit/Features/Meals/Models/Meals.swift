@@ -52,6 +52,8 @@ struct Meals: Identifiable, Codable, Equatable {
     var servingGrams: Int?
     var localPhotoFilename: String?
     var localPhotoThumbnailFilename: String?
+    var barcode: String?
+    var nutritionDataSource: NutritionDataSource?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -73,6 +75,8 @@ struct Meals: Identifiable, Codable, Equatable {
         case servingGrams
         case localPhotoFilename
         case localPhotoThumbnailFilename
+        case barcode
+        case nutritionDataSource
     }
 
     init(
@@ -94,7 +98,9 @@ struct Meals: Identifiable, Codable, Equatable {
         creationMode: CustomMealCreationMode? = nil,
         servingGrams: Int? = nil,
         localPhotoFilename: String? = nil,
-        localPhotoThumbnailFilename: String? = nil
+        localPhotoThumbnailFilename: String? = nil,
+        barcode: String? = nil,
+        nutritionDataSource: NutritionDataSource? = nil
     ) {
         self.id = id
         self.title = title
@@ -115,6 +121,8 @@ struct Meals: Identifiable, Codable, Equatable {
         self.servingGrams = servingGrams
         self.localPhotoFilename = localPhotoFilename
         self.localPhotoThumbnailFilename = localPhotoThumbnailFilename
+        self.barcode = barcode
+        self.nutritionDataSource = nutritionDataSource
     }
 
     init(from decoder: Decoder) throws {
@@ -208,6 +216,16 @@ struct Meals: Identifiable, Codable, Equatable {
         localPhotoThumbnailFilename = try container.decodeIfPresent(
             String.self,
             forKey: .localPhotoThumbnailFilename
+        )
+
+        barcode = try container.decodeIfPresent(
+            String.self,
+            forKey: .barcode
+        )
+
+        nutritionDataSource = try container.decodeIfPresent(
+            NutritionDataSource.self,
+            forKey: .nutritionDataSource
         )
     }
 }

@@ -1012,6 +1012,7 @@ private extension HealthAccessView {
 private extension HealthAccessView {
 
     func handleHealthButtonTap() {
+        HealthConnectDiagnostics.logButtonTapped(source: "healthAccess.primaryButton")
         switch accessState {
         case .notRequested:
             requestHealthAccess()
@@ -1028,23 +1029,42 @@ private extension HealthAccessView {
             return
         }
 
-        accessState = .requesting
-        healthAccessRequested = true
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
 
-        Task {
-            await healthManager.requestAuthorization()
-
-            let isRealGranted = await healthManager.checkReadAuthorizationStatus()
-
-            await MainActor.run {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    healthManager.isHealthAccessGranted = isRealGranted
-                    accessState = isRealGranted ? .connected : .needsSettings
-                }
+        let action = healthManager.beginHealthAuthorizationFromUserAction(
+            source: "healthAccess.primaryButton",
+            includeSupplementaryPermissions: true
+        ) {
+            Task {
+                await refreshReadiness()
             }
-
-            await refreshReadiness()
         }
+
+        switch action {
+        case .startedAuthorizationPrompt:
+            accessState = .requesting
+            Task {
+                await finalizeHealthAccessRequestUI()
+            }
+        case .unavailable:
+            accessState = .unavailable
+        case .blockedByDemoMode:
+            break
+        }
+    }
+
+    func finalizeHealthAccessRequestUI() async {
+        let isRealGranted = await healthManager.checkReadAuthorizationStatus()
+
+        await MainActor.run {
+            healthAccessRequested = healthManager.isHealthAccessRequested
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                healthManager.isHealthAccessGranted = isRealGranted
+                accessState = isRealGranted ? .connected : .needsSettings
+            }
+        }
+
+        await refreshReadiness()
     }
 
     func refreshStateWithoutAnimation() {
@@ -1060,7 +1080,7 @@ private extension HealthAccessView {
 
                     if isRealGranted {
                         accessState = .connected
-                    } else if healthAccessRequested {
+                    } else if healthAccessRequested, healthManager.hasCompletedHealthAccessCheck {
                         accessState = .needsSettings
                     } else {
                         accessState = .notRequested
@@ -1079,7 +1099,7 @@ private extension HealthAccessView {
 
                 if isRealGranted {
                     accessState = .connected
-                } else if healthAccessRequested {
+                } else if healthAccessRequested, healthManager.hasCompletedHealthAccessCheck {
                     accessState = .needsSettings
                 } else {
                     accessState = .notRequested

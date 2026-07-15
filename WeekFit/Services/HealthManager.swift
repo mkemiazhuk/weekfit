@@ -202,6 +202,7 @@ final class HealthManager: ObservableObject {
 
     @Published var isHealthAccessGranted = false
     @Published private(set) var hasCompletedHealthAccessCheck = false
+    @Published private(set) var isHealthAuthorizationInFlight = false
 
     @Published var activeCalories: Double = 0
     @Published var steps: Int = 0
@@ -271,6 +272,7 @@ final class HealthManager: ObservableObject {
     private let healthStore = HKHealthStore()
     private let recoveryScoreProvider = RecoveryHealthKitProvider()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
+    private(set) var appReviewDemoProvider: AppReviewDemoHealthDataProvider?
     private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
     private var inFlightHealthLoad: Task<Void, Never>?
     /// Mirrors `inFlightHealthLoad` so `nonisolated deinit` can cancel in-flight work safely.
@@ -279,6 +281,43 @@ final class HealthManager: ObservableObject {
 
     nonisolated deinit {
         inFlightHealthLoadForDeinit?.cancel()
+    }
+
+    var isAppReviewDemoActive: Bool {
+        AccountSessionController.shared.mode == .reviewDemo
+            && appReviewDemoProvider != nil
+    }
+
+    func installAppReviewDemoProvider(
+        scenario: AppReviewDemoScenario,
+        referenceDate: Date = Date()
+    ) {
+        appReviewDemoProvider = AppReviewDemoHealthDataProvider(
+            scenario: scenario,
+            referenceDate: referenceDate
+        )
+        isHealthAccessGranted = true
+        hasCompletedHealthAccessCheck = true
+    }
+
+    func clearAppReviewDemoProvider() {
+        appReviewDemoProvider = nil
+        resetHealthDependentValues()
+    }
+
+    func prepareForRealUserSession() {
+        clearAppReviewDemoProvider()
+        // Leave `weekfit.healthAccessRequested` intact — it belongs to the real HealthKit flow.
+        // Demo must not erase a prior Apple Health connection across account switches.
+        isHealthAccessGranted = false
+        hasCompletedHealthAccessCheck = false
+    }
+
+    /// Clears only in-memory demo pollution. Never wipe the sticky HealthKit request flag —
+    /// that would break real Apple users after review-demo logout.
+    func clearReviewPollutedHealthAccessState() {
+        isHealthAccessGranted = false
+        hasCompletedHealthAccessCheck = false
     }
 
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
@@ -299,6 +338,10 @@ final class HealthManager: ObservableObject {
     }
     
     func readActivityMetrics(for date: Date) async -> ActivityMetricsSnapshot {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            return provider.activityMetrics(for: date)
+        }
+
         guard isHealthAccessRequested else {
             return .empty
         }
@@ -372,6 +415,26 @@ final class HealthManager: ObservableObject {
         for date: Date,
         plannedActivities: [PlannedActivity]
     ) async -> NutritionMetricsSnapshot? {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            let planned = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
+            let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
+            let plannedMealsLoggedCount = CoachNutritionObservationMapper.mealsLoggedCount(
+                for: date,
+                plannedActivities: plannedActivities
+            )
+            let demo = provider.nutritionSnapshot(for: date)
+
+            return NutritionMetricsSnapshot(
+                protein: max(demo?.protein ?? 0, planned.protein),
+                carbs: max(demo?.carbs ?? 0, planned.carbs),
+                fats: max(demo?.fats ?? 0, planned.fats),
+                calories: max(demo?.calories ?? 0, planned.calories),
+                waterLiters: max(demo?.waterLiters ?? 0, plannedWaterLiters),
+                mealsLoggedCount: max(demo?.mealsLoggedCount ?? 0, plannedMealsLoggedCount),
+                isResolved: true
+            )
+        }
+
         guard isHealthAccessRequested else { return nil }
 
         let planned = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
@@ -430,6 +493,10 @@ final class HealthManager: ObservableObject {
     }
 
     var healthDataConnectionState: HealthDataConnectionState {
+        if isAppReviewDemoActive {
+            return .connected
+        }
+
         guard isHealthAccessRequested else { return .notRequested }
         guard isHealthAccessGranted else { return .denied }
 
@@ -446,60 +513,432 @@ final class HealthManager: ObservableObject {
         return .connected
     }
 
+    enum HealthAuthorizationConnectionAction {
+        case startedAuthorizationPrompt
+        case unavailable
+        case blockedByDemoMode
+    }
+
+    private var authorizationCompletionHandlers: [() -> Void] = []
+    private var includesSupplementaryPermissionsInConnectFlow = false
+
+    /// Types requested in the system authorization sheet. Excludes route series, which can block the prompt on some OS versions.
+    func buildAuthorizationReadTypes() -> Set<HKObjectType> {
+        var types = buildReadTypes()
+        types.remove(HKSeriesType.workoutRoute())
+
+        if let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
+            types.remove(biologicalSex)
+        }
+        if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
+            types.remove(dateOfBirth)
+        }
+
+        return types
+    }
+
+    /// Starts the HealthKit permission sheet from a direct UI control tap.
+    @discardableResult
+    func beginHealthAuthorizationFromUserAction(
+        source: String = "unspecified",
+        for date: Date = Date(),
+        plannedActivities: [PlannedActivity] = [],
+        includeSupplementaryPermissions: Bool = false,
+        onCompleted: (() -> Void)? = nil
+    ) -> HealthAuthorizationConnectionAction {
+        includesSupplementaryPermissionsInConnectFlow = includeSupplementaryPermissions
+
+        guard let context = prepareHealthAuthorizationRequest(
+            source: source,
+            onCompleted: onCompleted
+        ) else {
+            return authorizationBlockedAction(for: source)
+        }
+
+        invokeNativeHealthKitAuthorizationRequest(
+            source: source,
+            typesToRead: context.readTypes,
+            for: date,
+            plannedActivities: plannedActivities
+        )
+
+        return .startedAuthorizationPrompt
+    }
+
+    /// Audit entry point for the Today connect button. Calls HealthKit's callback API directly.
+    @discardableResult
+    func requestNativeHealthAuthorizationFromConnectTap(
+        source: String = "today.connectAppleHealth",
+        for date: Date = Date(),
+        plannedActivities: [PlannedActivity] = [],
+        onCompleted: (() -> Void)? = nil
+    ) -> HealthAuthorizationConnectionAction {
+        includesSupplementaryPermissionsInConnectFlow = true
+
+        guard let context = prepareHealthAuthorizationRequest(
+            source: source,
+            onCompleted: onCompleted
+        ) else {
+            return authorizationBlockedAction(for: source)
+        }
+
+        invokeNativeHealthKitAuthorizationRequest(
+            source: source,
+            typesToRead: context.readTypes,
+            for: date,
+            plannedActivities: plannedActivities
+        )
+
+        return .startedAuthorizationPrompt
+    }
+
+    private struct HealthAuthorizationRequestContext {
+        let readTypes: Set<HKObjectType>
+    }
+
+    private func authorizationBlockedAction(for source: String) -> HealthAuthorizationConnectionAction {
+        let accountMode = AccountSessionController.shared.mode
+        if accountMode != .realUser {
+            return .blockedByDemoMode
+        }
+        if !HKHealthStore.isHealthDataAvailable() || buildAuthorizationReadTypes().isEmpty {
+            return .unavailable
+        }
+        if isHealthAuthorizationInFlight {
+            return .startedAuthorizationPrompt
+        }
+        return .unavailable
+    }
+
+    private func prepareHealthAuthorizationRequest(
+        source: String,
+        onCompleted: (() -> Void)?
+    ) -> HealthAuthorizationRequestContext? {
+        let accountMode = AccountSessionController.shared.mode
+
+        guard accountMode == .realUser else {
+            HealthConnectDiagnostics.logBlocked(
+                source: source,
+                reason: accountMode == .reviewDemo ? "reviewDemoMode" : "sessionNotReady(\(accountMode))"
+            )
+            return nil
+        }
+
+        let healthAvailable = HKHealthStore.isHealthDataAvailable()
+        let readTypes = buildAuthorizationReadTypes()
+
+        HealthConnectDiagnostics.logAuthorizationAttempt(
+            source: source,
+            accountMode: accountMode,
+            healthDataAvailable: healthAvailable,
+            readTypeCount: readTypes.count,
+            readTypeSummary: HealthConnectDiagnostics.summarizeReadTypes(readTypes),
+            accessRequestedFlag: isHealthAccessRequested,
+            accessGrantedFlag: isHealthAccessGranted,
+            hasCompletedAccessCheck: hasCompletedHealthAccessCheck
+        )
+
+        guard healthAvailable else {
+            isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
+            resetHealthDependentValues()
+            HealthConnectDiagnostics.logBlocked(source: source, reason: "healthDataUnavailable")
+            return nil
+        }
+
+        guard !readTypes.isEmpty else {
+            isHealthAccessGranted = false
+            hasCompletedHealthAccessCheck = true
+            resetHealthDependentValues()
+            HealthConnectDiagnostics.logBlocked(source: source, reason: "emptyReadTypeSet")
+            return nil
+        }
+
+        guard !isHealthAuthorizationInFlight else {
+            HealthConnectDiagnostics.logBlocked(source: source, reason: "authorizationAlreadyInFlight")
+            return nil
+        }
+
+        if !isHealthAccessGranted, isHealthAccessRequested {
+            UserDefaults.standard.removeObject(forKey: healthAccessRequestedKey)
+        }
+        hasCompletedHealthAccessCheck = false
+        isHealthAuthorizationInFlight = true
+
+        if let onCompleted {
+            authorizationCompletionHandlers.append(onCompleted)
+        }
+
+        HealthConnectDiagnostics.logAuthorizationStarted(source: source)
+        return HealthAuthorizationRequestContext(readTypes: readTypes)
+    }
+
+    /// Native HealthKit boundary — preflight status, then callback API (no async/await wrapper).
+    private func invokeNativeHealthKitAuthorizationRequest(
+        source: String,
+        typesToRead: Set<HKObjectType>,
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) {
+        let typesToShare = Set<HKSampleType>()
+
+        Self.logger.debug(
+            """
+            NATIVE boundary pre-call source=\(source, privacy: .public) \
+            mainThread=\(Thread.isMainThread, privacy: .public) \
+            shareCount=\(typesToShare.count, privacy: .public) \
+            readCount=\(typesToRead.count, privacy: .public)
+            """
+        )
+
+        Self.logger.info(
+            "NATIVE preflight started source=\(source, privacy: .public) mainThread=\(Thread.isMainThread, privacy: .public)"
+        )
+
+        healthStore.getRequestStatusForAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] status, error in
+            let statusName: String = {
+                switch status {
+                case .shouldRequest:
+                    return "shouldRequest"
+                case .unnecessary:
+                    return "unnecessary"
+                case .unknown:
+                    return "unknown"
+                @unknown default:
+                    return "future(\(status.rawValue))"
+                }
+            }()
+
+            Self.logger.info(
+                """
+                NATIVE preflight completed status=\(statusName, privacy: .public) \
+                rawValue=\(status.rawValue, privacy: .public) \
+                error=\(String(describing: error), privacy: .public)
+                """
+            )
+
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    Self.logger.error("HealthManager released before preflight completion")
+                    return
+                }
+
+                self.invokeNativeAuthorizationRequest(
+                    toShare: typesToShare,
+                    read: typesToRead,
+                    source: source,
+                    for: date,
+                    plannedActivities: plannedActivities
+                )
+            }
+        }
+    }
+
+    private func invokeNativeAuthorizationRequest(
+        toShare typesToShare: Set<HKSampleType>,
+        read typesToRead: Set<HKObjectType>,
+        source: String,
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) {
+        Self.logger.debug(
+            """
+            NATIVE requestAuthorization invoking source=\(source, privacy: .public) \
+            mainThread=\(Thread.isMainThread, privacy: .public) \
+            preflightStatus=completed
+            """
+        )
+
+        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { success, error in
+            Self.logger.info(
+                """
+                NATIVE HealthKit authorization completion success=\(success, privacy: .public) \
+                error=\(String(describing: error), privacy: .public)
+                """
+            )
+
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.completeHealthAuthorizationAfterSystemPrompt(
+                    source: source,
+                    error: error,
+                    for: date,
+                    plannedActivities: plannedActivities
+                )
+            }
+        }
+
+        Self.logger.debug(
+            "NATIVE requestAuthorization returned synchronously source=\(source, privacy: .public)"
+        )
+    }
+
+    private func completeHealthAuthorizationAfterSystemPrompt(
+        source: String,
+        error: Error?,
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) async {
+        defer {
+            isHealthAuthorizationInFlight = false
+        }
+
+        UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
+
+        let granted = await checkReadAuthorizationStatus()
+        isHealthAccessGranted = granted
+        hasCompletedHealthAccessCheck = true
+
+        HealthConnectDiagnostics.logAuthorizationReturned(
+            source: source,
+            errorDescription: error?.localizedDescription,
+            accessGrantedAfterProbe: granted
+        )
+
+        if granted {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await loadHealthData(for: date, plannedActivities: plannedActivities)
+            WeekFitActivityCoordinator.shared.activateHealthKitSync()
+            HealthConnectDiagnostics.logInitialSync(
+                source: source,
+                started: true,
+                reason: "authorizationGranted"
+            )
+            scheduleDeferredWorkoutRouteAuthorization()
+        } else {
+            resetHealthDependentValues()
+            HealthConnectDiagnostics.logInitialSync(
+                source: source,
+                started: false,
+                reason: error == nil ? "authorizationDeniedOrUnavailable" : "authorizationError"
+            )
+        }
+
+        NotificationCenter.default.post(name: .healthAccessDidChange, object: nil)
+
+        let handlers = authorizationCompletionHandlers
+        authorizationCompletionHandlers.removeAll()
+        handlers.forEach { $0() }
+    }
+
+    /// Workout routes, location, and notifications are requested after the main HealthKit sheet dismisses.
+    private func scheduleDeferredWorkoutRouteAuthorization() {
+        let includeSupplementary = includesSupplementaryPermissionsInConnectFlow
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            defer {
+                if includeSupplementary {
+                    self.includesSupplementaryPermissionsInConnectFlow = false
+                }
+            }
+
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            _ = await self.ensureWorkoutRouteAuthorization(presentationDelay: 0.35)
+
+            guard includeSupplementary else { return }
+
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            NotificationCenter.default.post(name: .weekfitRequestSupplementaryPermissions, object: nil)
+        }
+    }
+
+    func hasWorkoutRouteReadAccess() -> Bool {
+        guard HKHealthStore.isHealthDataAvailable() else { return false }
+        if isAppReviewDemoActive { return true }
+        // Read authorization is not reliably reported by HealthKit. Treat "already asked"
+        // as usable access and fall back to authorizationStatus when available.
+        let routeType = HKSeriesType.workoutRoute()
+        if healthStore.authorizationStatus(for: routeType) == .sharingAuthorized {
+            return true
+        }
+        return isHealthAccessGranted && isHealthAccessRequested
+    }
+
+    /// Requests read access for GPS workout routes (kept separate from the main HealthKit sheet).
+    @discardableResult
+    func ensureWorkoutRouteAuthorization(presentationDelay: TimeInterval = 0) async -> Bool {
+        guard HKHealthStore.isHealthDataAvailable() else { return false }
+        guard AccountSessionController.shared.mode == .realUser else { return false }
+        if isAppReviewDemoActive { return true }
+
+        let routeType = HKSeriesType.workoutRoute()
+        let readTypes: Set<HKObjectType> = [
+            HKObjectType.workoutType(),
+            routeType
+        ]
+
+        if presentationDelay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(presentationDelay * 1_000_000_000))
+        }
+
+        return await withCheckedContinuation { continuation in
+            var didResume = false
+            func resumeOnce(_ value: Bool) {
+                guard !didResume else { return }
+                didResume = true
+                continuation.resume(returning: value)
+            }
+
+            healthStore.getRequestStatusForAuthorization(toShare: [], read: readTypes) { status, error in
+                if let error {
+                    Self.logger.error(
+                        "Workout route preflight failed error=\(error.localizedDescription, privacy: .public)"
+                    )
+                }
+
+                // For READ types, "unnecessary" means the system already has a decision —
+                // proceed and let queries reveal whether samples are readable.
+                if status == .unnecessary {
+                    resumeOnce(true)
+                    return
+                }
+
+                Self.logger.info(
+                    "Requesting workout route authorization preflightStatus=\(status.rawValue, privacy: .public)"
+                )
+
+                self.healthStore.requestAuthorization(toShare: [], read: readTypes) { success, authError in
+                    Self.logger.info(
+                        """
+                        Workout route authorization completion success=\(success, privacy: .public) \
+                        error=\(String(describing: authError), privacy: .public)
+                        """
+                    )
+                    resumeOnce(success && authError == nil)
+                }
+
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    if !didResume {
+                        Self.logger.error("Workout route authorization timed out waiting for completion")
+                        resumeOnce(status != .shouldRequest)
+                    }
+                }
+            }
+        }
+    }
+
     func requestAuthorization(
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
-        hasCompletedHealthAccessCheck = false
-
-        guard HKHealthStore.isHealthDataAvailable() else {
-            isHealthAccessGranted = false
-            hasCompletedHealthAccessCheck = true
-            resetHealthDependentValues()
-//            print("❌ Health data is not available")
-            return
-        }
-
-        guard let readTypes = makeReadTypes() else {
-            isHealthAccessGranted = false
-            hasCompletedHealthAccessCheck = true
-            resetHealthDependentValues()
-//            print("❌ Failed to create HealthKit types")
-            return
-        }
-
-        do {
-//            print("🟡 Requesting HealthKit authorization...")
-
-            try await healthStore.requestAuthorization(
-                toShare: [],
-                read: readTypes
-            )
-
-            UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
-
-//            print("✅ HealthKit authorization request completed. Granted: \(isHealthAccessGranted)")
-
-            try? await Task.sleep(nanoseconds: 800_000_000)
-
-            await loadHealthData(
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let action = beginHealthAuthorizationFromUserAction(
+                source: "requestAuthorization",
                 for: date,
                 plannedActivities: plannedActivities
-            )
-            
-            NotificationCenter.default.post(
-                name: .healthAccessDidChange,
-                object: nil
-            )
+            ) {
+                continuation.resume()
+            }
 
-        } catch {
-            isHealthAccessGranted = false
-            hasCompletedHealthAccessCheck = true
-            resetHealthDependentValues()
-//            print("❌ HealthKit authorization failed:", error.localizedDescription)
+            if action != .startedAuthorizationPrompt {
+                continuation.resume()
+            }
         }
     }
-    
+
     var isAuthorized: Bool {
         guard let activeCaloriesType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else {
             return false
@@ -549,6 +988,11 @@ final class HealthManager: ObservableObject {
             Self.logger.debug("loadHealthData start currentDate=\(Date(), privacy: .public) requestedDate=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) accessRequested=\(self.isHealthAccessRequested, privacy: .public)")
         }
         #endif
+        if isAppReviewDemoActive {
+            await performLoadDemoHealthData(for: date, plannedActivities: plannedActivities)
+            return
+        }
+
         // 1. Базовая проверка: включен ли вообще HealthKit на девайсе и нажимал ли юзер кнопку ранее
         guard HKHealthStore.isHealthDataAvailable() && isHealthAccessRequested else {
             await MainActor.run {
@@ -605,6 +1049,13 @@ final class HealthManager: ObservableObject {
     }
 
     func updateAuthorizationStatus() {
+        if isAppReviewDemoActive {
+            isHealthAccessGranted = true
+            hasCompletedHealthAccessCheck = true
+            notifyHealthChanged()
+            return
+        }
+
         guard HKHealthStore.isHealthDataAvailable() else {
             isHealthAccessGranted = false
             hasCompletedHealthAccessCheck = true
@@ -644,50 +1095,146 @@ final class HealthManager: ObservableObject {
         )
     }
 
-    private func makeReadTypes() -> Set<HKObjectType>? {
-        guard
-            let activeCalories = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
-            let steps = HKObjectType.quantityType(forIdentifier: .stepCount),
-            let distance = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning),
-            let exercise = HKObjectType.quantityType(forIdentifier: .appleExerciseTime),
-            let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate),
-            let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis),
-            let protein = HKObjectType.quantityType(forIdentifier: .dietaryProtein),
-            let carbs = HKObjectType.quantityType(forIdentifier: .dietaryCarbohydrates),
-            let fats = HKObjectType.quantityType(forIdentifier: .dietaryFatTotal),
-            let dietaryFiber = HKObjectType.quantityType(forIdentifier: .dietaryFiber),
-            let foodCalories = HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed),
-            let water = HKObjectType.quantityType(forIdentifier: .dietaryWater),
-            let weight = HKObjectType.quantityType(forIdentifier: .bodyMass),
-            let height = HKObjectType.quantityType(forIdentifier: .height),
-            let hrv = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN),
-            let restingHR = HKObjectType.quantityType(forIdentifier: .restingHeartRate),
-            let stand = HKObjectType.categoryType(forIdentifier: .appleStandHour),
-            let vo2Max = HKObjectType.quantityType(forIdentifier: .vo2Max)
-        else {
-            return nil
+    private func performLoadDemoHealthData(
+        for date: Date,
+        plannedActivities: [PlannedActivity]
+    ) async {
+        guard let provider = appReviewDemoProvider else { return }
+
+        let requestedDayStart = Calendar.current.startOfDay(for: date)
+        if loadedMetricsDayStart != requestedDayStart {
+            prepareForDisplayDay(requestedDayStart)
         }
 
-        // Характеристики извлекаем безопасно, так как они могут возвращать nil на старых iOS
-        let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex)
-        let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth)
+        isLoadingDisplayDayMetrics = true
+        defer { isLoadingDisplayDayMetrics = false }
 
-        var types: Set<HKObjectType> = [
-            activeCalories, steps, distance, exercise, heartRate, sleep,
-            protein, carbs, fats, dietaryFiber, foodCalories, water, weight, height,
-            hrv, restingHR, stand, vo2Max,
-            HKObjectType.workoutType()
-        ]
+        isHealthAccessGranted = true
+        hasCompletedHealthAccessCheck = true
+
+        await loadUserProfile()
+        applyDemoHeaderMetrics(from: provider, for: date)
+        isRecoveryLoading = true
+        await loadPremiumRecoveryMetrics(for: date)
+        isRecoveryLoading = false
+        calculateHeaderMetrics()
+        await loadNutritionMetrics(for: date, plannedActivities: plannedActivities)
+        lastHealthKitSyncTime = Date()
+        markDisplayMetricsSettled(for: date)
+        notifyHealthChanged()
+    }
+
+    private func applyDemoHeaderMetrics(
+        from provider: AppReviewDemoHealthDataProvider,
+        for date: Date
+    ) {
+        let metrics = provider.activityMetrics(for: date)
+        let sleep = provider.sleepSnapshot(for: date)
+
+        activeCalories = metrics.activeCalories
+        steps = metrics.steps
+        distanceKm = metrics.distanceKm
+        exerciseMinutes = metrics.exerciseMinutes
+
+        sleepMinutes = sleep.sleepMinutes
+        timeInBedMinutes = sleep.timeInBedMinutes
+        awakeMinutes = sleep.awakeMinutes
+        awakeningsCount = sleep.awakeningsCount
+        deepSleepMinutes = sleep.deepSleepMinutes
+        remSleepMinutes = sleep.remSleepMinutes
+        coreSleepMinutes = sleep.coreSleepMinutes
+        bedStart = sleep.bedStart
+
+        standHours = metrics.standHours
+        sleepHours = Double(sleepMinutes) / 60.0
+        cardioFitnessVO2 = metrics.vo2Max
+        hrvSDNN = metrics.hrvSDNN
+        restingHeartRate = metrics.restingHeartRate
+        loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
+    }
+
+    func refreshHealthAccessStateAfterLogin() async {
+        guard AccountSessionController.shared.mode == .realUser else {
+            hasCompletedHealthAccessCheck = true
+            return
+        }
+
+        // Always re-probe HealthKit after login / account switch.
+        // Demo teardown must not prevent restoring a previously granted Health connection.
+        hasCompletedHealthAccessCheck = false
+        let granted = await checkReadAuthorizationStatus()
+        isHealthAccessGranted = granted
+        hasCompletedHealthAccessCheck = true
+
+        if granted {
+            UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
+            await loadHealthData(for: Date())
+        }
+    }
+
+    /// Builds the HealthKit read set safely. Optional types are skipped instead of failing the whole request.
+    func buildReadTypes() -> Set<HKObjectType> {
+        var types = Set<HKObjectType>()
+
+        func addQuantity(_ identifier: HKQuantityTypeIdentifier) {
+            if let type = HKObjectType.quantityType(forIdentifier: identifier) {
+                types.insert(type)
+            }
+        }
+
+        func addCategory(_ identifier: HKCategoryTypeIdentifier) {
+            if let type = HKObjectType.categoryType(forIdentifier: identifier) {
+                types.insert(type)
+            }
+        }
+
+        addQuantity(.activeEnergyBurned)
+        addQuantity(.stepCount)
+        addQuantity(.distanceWalkingRunning)
+        addQuantity(.appleExerciseTime)
+        addQuantity(.heartRate)
+        addCategory(.sleepAnalysis)
+        addQuantity(.dietaryProtein)
+        addQuantity(.dietaryCarbohydrates)
+        addQuantity(.dietaryFatTotal)
+        addQuantity(.dietaryFiber)
+        addQuantity(.dietaryEnergyConsumed)
+        addQuantity(.dietaryWater)
+        addQuantity(.bodyMass)
+        addQuantity(.height)
+        addQuantity(.heartRateVariabilitySDNN)
+        addQuantity(.restingHeartRate)
+        addCategory(.appleStandHour)
+        addQuantity(.vo2Max)
+
+        types.insert(HKObjectType.workoutType())
         types.insert(HKSeriesType.workoutRoute())
 
-        // Добавляем характеристики в коллекцию только если они успешно создались
-        if let bioSex = biologicalSex { types.insert(bioSex) }
-        if let dob = dateOfBirth { types.insert(dob) }
+        if let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
+            types.insert(biologicalSex)
+        }
+        if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
+            types.insert(dateOfBirth)
+        }
 
         return types
     }
 
+    private func makeReadTypes() -> Set<HKObjectType>? {
+        let types = buildReadTypes()
+        return types.isEmpty ? nil : types
+    }
+
     func loadUserProfile() async {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            let profile = provider.userProfile
+            heightCm = profile.heightCm
+            weight = profile.weightKg
+            age = profile.age
+            biologicalSex = profile.biologicalSex
+            return
+        }
+
         guard isHealthAccessGranted else {
             resetProfileValues()
             return
@@ -706,6 +1253,15 @@ final class HealthManager: ObservableObject {
     }
 
     func loadHeaderMetrics(for date: Date = Date()) async {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            applyDemoHeaderMetrics(from: provider, for: date)
+            isRecoveryLoading = true
+            defer { isRecoveryLoading = false }
+            await loadPremiumRecoveryMetrics(for: date)
+            calculateHeaderMetrics()
+            return
+        }
+
         guard isHealthAccessGranted else {
             resetHeaderValues()
             return
@@ -768,6 +1324,10 @@ final class HealthManager: ObservableObject {
     
     // Внутри HealthManager.swift — замени старое свойство на этот метод:
     func checkReadAuthorizationStatus() async -> Bool {
+        if isAppReviewDemoActive {
+            return true
+        }
+
         guard HKHealthStore.isHealthDataAvailable() else { return false }
         guard let activeCaloriesType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return false }
         
@@ -792,6 +1352,23 @@ final class HealthManager: ObservableObject {
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            let planned = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
+            let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
+            let demo = provider.nutritionSnapshot(for: date)
+
+            protein = max(demo?.protein ?? 0, planned.protein)
+            carbs = max(demo?.carbs ?? 0, planned.carbs)
+            fats = max(demo?.fats ?? 0, planned.fats)
+            fiber = planned.fiber
+            calories = max(demo?.calories ?? 0, planned.calories)
+            waterLiters = max(demo?.waterLiters ?? 0, plannedWaterLiters)
+            sleepHours = Double(sleepMinutes) / 60.0
+            loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
+            markDisplayMetricsSettled(for: date)
+            return
+        }
+
         guard isHealthAccessGranted else {
             let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
             protein = fallback.protein
@@ -849,6 +1426,34 @@ final class HealthManager: ObservableObject {
 
     // MARK: - Recovery HRV / RHR
     func loadPremiumRecoveryMetrics(for date: Date) async {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            let vitals = provider.overnightVitals(for: date)
+            let loadedContext = provider.recoveryScoreContext(for: date)
+
+            hrvSDNN = vitals.hrv ?? 0
+            restingHeartRate = vitals.restingHeartRate ?? 0
+
+            let input = RecoveryScoreInput(
+                sleepMinutes: sleepMinutes,
+                timeInBedMinutes: timeInBedMinutes,
+                awakeMinutes: awakeMinutes,
+                awakeningsCount: awakeningsCount,
+                deepSleepMinutes: deepSleepMinutes,
+                remSleepMinutes: remSleepMinutes,
+                hrvSDNN: vitals.hrv,
+                restingHeartRate: vitals.restingHeartRate,
+                bedtimeDeviationMinutes: loadedContext.bedtimeDeviationMinutes,
+                baseline: loadedContext.baseline,
+                priorDayLoad: loadedContext.priorDayLoad
+            )
+
+            recoveryBreakdown = RecoveryScoreEngine.calculate(input)
+            recoveryPhysiologyBaseline = loadedContext.baseline
+            recoveryPriorDayLoad = loadedContext.priorDayLoad
+            recoveryBedtimeDeviationMinutes = loadedContext.bedtimeDeviationMinutes
+            return
+        }
+
         guard isHealthAccessGranted else { return }
 
         async let overnightVitals = recoveryScoreProvider.loadOvernightVitals(for: date)
@@ -1200,6 +1805,10 @@ final class HealthManager: ObservableObject {
     }
 
     private func readRecoverySleepSnapshot(for date: Date) async -> RecoverySleepSnapshot {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            return provider.sleepSnapshot(for: date)
+        }
+
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
             return .empty
         }
@@ -1655,6 +2264,10 @@ final class HealthManager: ObservableObject {
     }
 
     func loadWorkoutSamples(for date: Date) async -> [HKWorkout] {
+        if isAppReviewDemoActive {
+            return []
+        }
+
         let workoutType = HKObjectType.workoutType()
 
         let calendar = Calendar.current
@@ -2145,6 +2758,10 @@ final class HealthManager: ObservableObject {
 
     
     func loadHourlyActiveCalories(for date: Date) async -> [Double] {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            return provider.hourlyActiveCalories(for: date)
+        }
+
         guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
             return Array(repeating: 0, count: 24)
         }
@@ -2207,4 +2824,5 @@ private extension String {
 
 extension Notification.Name {
     static let healthAccessDidChange = Notification.Name("healthAccessDidChange")
+    static let weekfitRequestSupplementaryPermissions = Notification.Name("weekfitRequestSupplementaryPermissions")
 }

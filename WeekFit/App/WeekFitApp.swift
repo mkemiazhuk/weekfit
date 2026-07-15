@@ -43,7 +43,7 @@ struct WeekFitApp: App {
                 .environment(\.weekFitPalette, WeekFitSemanticPalette.interpolated(blend: nightComfort.blendFactor))
                 .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)
                 .onAppear {
-                    activityCoordinator.start()
+                    activityCoordinator.prepareLaunchServices()
                     activityCoordinator.beforePlannedActivityMutation = {
                         CoachSnapshotInvalidator.invalidate(
                             coordinator: coachCoordinator,
@@ -67,8 +67,20 @@ struct WeekFitApp: App {
                 .onChange(of: scenePhase) {
                     handleScenePhaseChange()
                 }
+                .onReceive(
+                    NotificationCenter.default.publisher(for: .weekfitRequestSupplementaryPermissions)
+                ) { _ in
+                    guard AccountSessionController.shared.mode == .realUser else { return }
+
+                    if nightComfortLocationService == nil {
+                        nightComfortLocationService = NightComfortLocationService(nightComfort: nightComfort)
+                    }
+                    nightComfortLocationService?.requestWhenInUseAuthorizationIfNeeded()
+                    Task {
+                        _ = await ActivityNotificationService.shared.requestPermissionIfNotDetermined()
+                    }
+                }
         }
-        .modelContainer(for: PlannedActivity.self)
     }
 
     private func handleScenePhaseChange() {
