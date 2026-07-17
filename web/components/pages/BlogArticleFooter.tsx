@@ -20,7 +20,7 @@ export default function BlogArticleFooter({ post }: { post: BlogPost }) {
       ? {
           related: "Ещё по теме",
           experience: "Попробовать симулятор",
-          download: "Скачать WeekFit",
+          download: "Установить WeekFit",
           privacy: "Политика конфиденциальности",
         }
       : {

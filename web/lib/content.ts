@@ -645,7 +645,7 @@ export const download: Record<
     qr: "Scan to open on your iPhone",
   },
   ru: {
-    kicker: "Скачать",
+    kicker: "Установить",
     title: "Добавьте спокойствие в свой день.",
     lead: "WeekFit бесплатно в App Store. Работает на данных Apple Health, приватность — в основе.",
     reqTitle: "Требования",

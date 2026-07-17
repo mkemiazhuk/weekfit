@@ -89,10 +89,10 @@ export const PAGE_SEO = {
       socialTitle: "Download WeekFit for iPhone",
     },
     ru: {
-      title: "Скачать",
+      title: "Установить",
       description:
-        "Скачайте WeekFit для iPhone в App Store. AI-коуч, который читает Apple Health: восстановление, активность и питание.",
-      socialTitle: "Скачать WeekFit для iPhone",
+        "Установите WeekFit для iPhone из App Store. AI-коуч, который читает Apple Health: восстановление, активность и питание.",
+      socialTitle: "Установить WeekFit для iPhone",
     },
   },
   support: {

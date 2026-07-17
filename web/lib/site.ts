@@ -44,13 +44,11 @@ export const SITE = {
 
   /**
    * Single install URL for CTAs and SoftwareApplication.downloadUrl.
-   * At App Store release: set NEXT_PUBLIC_APP_INSTALL_URL to
-   * https://apps.apple.com/app/idXXXXXXXXX (and NEXT_PUBLIC_APPLE_APP_ID).
-   * TestFlight remains the fallback until that env is set.
+   * Override with NEXT_PUBLIC_APP_INSTALL_URL if needed.
    */
   appInstallUrl:
     process.env.NEXT_PUBLIC_APP_INSTALL_URL ||
-    "https://testflight.apple.com/join/t5TKwEff",
+    "https://apps.apple.com/app/id6776311371",
 
   /** Google Search “preferred source” deeplink (domain-level sites only). */
   googlePreferredSourceUrl: "https://google.com/preferences/source?q=weekfit.app",
@@ -59,11 +57,11 @@ export const SITE = {
   sameAs: [
     "https://x.com/weekfit",
     "https://www.instagram.com/weekfit.app/",
-    // Add apps.apple.com/app/id… here when the store page is live.
+    "https://apps.apple.com/app/id6776311371",
   ] as const,
 
-  /** Numeric App Store ID — enables Smart App Banner when set. */
-  appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",
+  /** Numeric App Store ID — enables Smart App Banner. */
+  appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "6776311371",
 
   verification: {
     /** Matches public/googlebe868e9843b46f53.html — not secret. */

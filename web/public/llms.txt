@@ -49,8 +49,8 @@
 
 ## Install
 
-- App Store: https://weekfit.app/download/
-- (Set apps.apple.com/app/id… in site config at release)
+- App Store: https://apps.apple.com/app/id6776311371
+- Download page: https://weekfit.app/download/
 
 ## Social
 
