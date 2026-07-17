@@ -42,8 +42,15 @@ export const SITE = {
   /** On-site short link for bio, QR codes, and footer. */
   instagramRedirectPath: "/instagram/",
 
-  /** Single install URL for CTAs and SoftwareApplication.downloadUrl. Swap at App Store launch. */
-  appInstallUrl: "https://testflight.apple.com/join/t5TKwEff",
+  /**
+   * Single install URL for CTAs and SoftwareApplication.downloadUrl.
+   * At App Store release: set NEXT_PUBLIC_APP_INSTALL_URL to
+   * https://apps.apple.com/app/idXXXXXXXXX (and NEXT_PUBLIC_APPLE_APP_ID).
+   * TestFlight remains the fallback until that env is set.
+   */
+  appInstallUrl:
+    process.env.NEXT_PUBLIC_APP_INSTALL_URL ||
+    "https://testflight.apple.com/join/t5TKwEff",
 
   /** Google Search “preferred source” deeplink (domain-level sites only). */
   googlePreferredSourceUrl: "https://google.com/preferences/source?q=weekfit.app",
@@ -52,8 +59,10 @@ export const SITE = {
   sameAs: [
     "https://x.com/weekfit",
     "https://www.instagram.com/weekfit.app/",
+    // Add apps.apple.com/app/id… here when the store page is live.
   ] as const,
 
+  /** Numeric App Store ID — enables Smart App Banner when set. */
   appleAppId: process.env.NEXT_PUBLIC_APPLE_APP_ID || "",
 
   verification: {

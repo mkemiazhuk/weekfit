@@ -326,7 +326,7 @@ export default function TuesdaySimulator() {
           <p className="body-lg max-w-[var(--measure-prose)]">{s.closing}</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button href={SITE.appInstallUrl} external>
-              {t.cta.testflight}
+              {t.cta.button}
             </Button>
             <Button href={localePath("/")} variant="ghost">
               {s.backHome}

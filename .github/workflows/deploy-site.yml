@@ -46,6 +46,11 @@ jobs:
           NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
           NEXT_PUBLIC_BING_SITE_VERIFICATION: ${{ secrets.BING_SITE_VERIFICATION }}
           NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ secrets.YANDEX_VERIFICATION }}
+          # App Store launch — set secrets when the listing is live:
+          # NEXT_PUBLIC_APP_INSTALL_URL=https://apps.apple.com/app/idXXXXXXXXX
+          # NEXT_PUBLIC_APPLE_APP_ID=XXXXXXXXX
+          NEXT_PUBLIC_APP_INSTALL_URL: ${{ secrets.APP_INSTALL_URL }}
+          NEXT_PUBLIC_APPLE_APP_ID: ${{ secrets.APPLE_APP_ID }}
         run: npm run build
       # GitHub Pages serves max-age=600 for all files; out/_headers is ignored.
       # For long cache TTL in Lighthouse, use Cloudflare Pages or Cloudflare CDN rules — docs/SiteCaching.md

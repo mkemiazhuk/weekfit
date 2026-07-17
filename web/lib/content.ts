@@ -629,13 +629,12 @@ export const contact: Record<
 // ============================================================
 export const download: Record<
   Lang,
-  { kicker: string; title: string; lead: string; soon: string; reqTitle: string; requirements: { label: string; value: string }[]; qr: string }
+  { kicker: string; title: string; lead: string; reqTitle: string; requirements: { label: string; value: string }[]; qr: string }
 > = {
   en: {
     kicker: "Download",
     title: "Bring calm to your day.",
-    lead: "WeekFit is coming to the App Store. Built around Apple Health, private by design.",
-    soon: "Coming soon",
+    lead: "WeekFit is free on the App Store. Built around Apple Health, private by design.",
     reqTitle: "Requirements",
     requirements: [
       { label: "Platform", value: "iPhone" },
@@ -643,13 +642,12 @@ export const download: Record<
       { label: "Apple Health", value: "Recommended" },
       { label: "Price", value: "Free" },
     ],
-    qr: "Scan to open on your iPhone (soon)",
+    qr: "Scan to open on your iPhone",
   },
   ru: {
     kicker: "Скачать",
     title: "Добавьте спокойствие в свой день.",
-    lead: "WeekFit скоро появится в App Store. Работает на данных Apple Health, приватность — в основе.",
-    soon: "Скоро",
+    lead: "WeekFit бесплатно в App Store. Работает на данных Apple Health, приватность — в основе.",
     reqTitle: "Требования",
     requirements: [
       { label: "Платформа", value: "iPhone" },
@@ -657,7 +655,7 @@ export const download: Record<
       { label: "Apple Health", value: "Рекомендуется" },
       { label: "Цена", value: "Бесплатно" },
     ],
-    qr: "Наведите камеру, чтобы открыть на iPhone (скоро)",
+    qr: "Наведите камеру, чтобы открыть на iPhone",
   },
 };
 

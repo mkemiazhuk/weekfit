@@ -85,13 +85,13 @@ export const PAGE_SEO = {
     en: {
       title: "Download",
       description:
-        "Install WeekFit on iPhone via TestFlight. An AI fitness coach that reads Apple Health data for recovery, activity and nutrition.",
+        "Download WeekFit for iPhone on the App Store. An AI fitness coach that reads Apple Health data for recovery, activity and nutrition.",
       socialTitle: "Download WeekFit for iPhone",
     },
     ru: {
       title: "Скачать",
       description:
-        "Установите WeekFit на iPhone через TestFlight. AI-коуч, который читает Apple Health: восстановление, активность и питание.",
+        "Скачайте WeekFit для iPhone в App Store. AI-коуч, который читает Apple Health: восстановление, активность и питание.",
       socialTitle: "Скачать WeekFit для iPhone",
     },
   },

@@ -5,9 +5,7 @@ import { download } from "@/lib/content";
 import PageHero from "../PageHero";
 import PhoneMockup from "../PhoneMockup";
 import AppStoreBadge from "../AppStoreBadge";
-import Button from "../Button";
 import Reveal from "../Reveal";
-import { SITE } from "@/lib/site";
 
 export default function DownloadView() {
   const { lang, t } = useI18n();
@@ -34,12 +32,9 @@ export default function DownloadView() {
           <Reveal delay={0.1}>
             <div>
               <div className="mb-8 flex flex-col gap-2">
-                <Button href={SITE.appInstallUrl} external>
-                  {t.cta.testflight}
-                </Button>
-                <span className="caption">{t.cta.testflightNote}</span>
+                <AppStoreBadge />
+                <span className="caption">{t.cta.installNote}</span>
               </div>
-              <AppStoreBadge soon={c.soon} footnote={t.cta.appStoreFootnote} />
 
               <div className="mt-10">
                 <h2 className="kicker text-white/40">{c.reqTitle}</h2>

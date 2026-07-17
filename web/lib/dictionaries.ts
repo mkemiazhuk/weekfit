@@ -25,7 +25,7 @@ export const en = {
   proof: {
     ariaLabel: "Product highlights",
     items: [
-      "Public beta",
+      "Free on the App Store",
       "iOS 17+",
       "Apple Health",
       "Never leaves your iPhone",
@@ -326,14 +326,11 @@ export const en = {
   cta: {
     title: "Tomorrow\u00a0at\u00a07:00",
     subtitle: "You'll know.",
-    body: "Free public beta · TestFlight · iPhone",
+    body: "Free on the App Store · iPhone",
     button: "Download on the App Store",
     appStoreLine1: "Download on the",
     appStoreLine2: "App Store",
-    testflight: "Get the beta",
-    testflightNote: "Free · TestFlight · iPhone",
-    soon: "App Store after beta",
-    appStoreFootnote: "App Store launch follows the public beta.",
+    installNote: "Free · App Store · iPhone",
   },
   footer: {
     ariaLabel: "Site footer",
@@ -423,7 +420,7 @@ export const ru: Dict = {
   proof: {
     ariaLabel: "О продукте",
     items: [
-      "Публичная бета",
+      "Бесплатно в App Store",
       "iOS 17+",
       "Apple Health",
       "Данные только на iPhone",
@@ -724,14 +721,11 @@ export const ru: Dict = {
   cta: {
     title: "Завтра\u00a0в\u00a07:00",
     subtitle: "Вы будете знать.",
-    body: "Бесплатная бета · TestFlight · iPhone",
+    body: "Бесплатно в App Store · iPhone",
     button: "Загрузить в App Store",
     appStoreLine1: "Загрузить в",
     appStoreLine2: "App Store",
-    testflight: "Установить",
-    testflightNote: "Бесплатно · TestFlight · iPhone",
-    soon: "App Store после беты",
-    appStoreFootnote: "App Store откроется после публичной беты.",
+    installNote: "Бесплатно · App Store · iPhone",
   },
   footer: {
     ariaLabel: "Подвал сайта",

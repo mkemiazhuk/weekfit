@@ -149,7 +149,7 @@ export default function Nav() {
 
           <div className="hidden md:block">
             <Button href={SITE.appInstallUrl} external size="nav" className="btn-nav-cta">
-              {t.cta.testflight}
+              {t.nav.download}
             </Button>
           </div>
 
@@ -271,7 +271,7 @@ export default function Nav() {
                   className="mobile-menu-cta btn-premium-glass w-full"
                   onClick={closeMenu}
                 >
-                  {t.cta.testflight}
+                  {t.nav.download}
                 </Button>
               </div>
             </nav>

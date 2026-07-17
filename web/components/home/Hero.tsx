@@ -44,7 +44,7 @@ export default function Hero() {
           className="mt-7 flex flex-wrap items-center justify-center gap-3 md:mt-8 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary min-h-[44px]">
-            {t.cta.testflight}
+            {t.cta.button}
           </Button>
           <Button href={localePath("/experience")} variant="ghost" className="btn-hero-glass min-h-[44px]">
             {t.hero.ctaSecondary}

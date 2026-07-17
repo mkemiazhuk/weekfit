@@ -63,9 +63,9 @@ export default function Download() {
                 className="mt-10 flex flex-col items-center gap-2 md:items-start"
               >
                 <Button href={SITE.appInstallUrl} external className="btn-premium-glass min-h-[44px] min-w-[220px]">
-                  {t.cta.testflight}
+                  {t.cta.button}
                 </Button>
-                <span className="caption">{t.cta.testflightNote}</span>
+                <span className="caption">{t.cta.installNote}</span>
               </motion.div>
             </div>
 

@@ -62,9 +62,9 @@ export default function SeoLandingView({ landing }: { landing: LandingKey }) {
 
             <div className="mt-8 flex flex-col gap-2">
               <Button href={SITE.appInstallUrl} external>
-                {t.cta.testflight}
+                {t.cta.button}
               </Button>
-              <span className="caption">{t.cta.testflightNote}</span>
+              <span className="caption">{t.cta.installNote}</span>
             </div>
           </section>
         </Reveal>
