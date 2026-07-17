@@ -320,6 +320,15 @@ final class HealthManager: ObservableObject {
         hasCompletedHealthAccessCheck = false
     }
 
+    /// Stops using Health data after account deletion. Does not revoke iOS / Apple Health
+    /// permissions — apps cannot do that; the user must change them in system Settings.
+    func prepareForAccountDeletion() {
+        clearAppReviewDemoProvider()
+        isHealthAccessGranted = false
+        hasCompletedHealthAccessCheck = false
+        resetHealthDependentValues()
+    }
+
     func automatedActivityGoal(for metrics: ActivityMetricsSnapshot) -> Double {
         let goal = ProfileService().resolvedNutritionGoal(weightKg: weight, heightCm: heightCm)
         return max(
@@ -2119,7 +2128,7 @@ final class HealthManager: ObservableObject {
             guard calendar.isDate(activity.date, inSameDayAs: date) else { return false }
             guard activity.isCompleted, !activity.isSkipped else { return false }
             let type = activity.type.normalized
-            return (type == "meal" || type == "drink") && !isHydrationActivityByText(activity)
+            return (type == "meal" || type == "drink" || type == "snack") && !isHydrationActivityByText(activity)
         }
 
         var totalProtein: Double = 0
@@ -2129,7 +2138,13 @@ final class HealthManager: ObservableObject {
         var totalCalories: Double = 0
 
         for activity in completedMealActivities {
-            if let matchedMeal = matchMeal(for: activity, in: meals) {
+            if MealCatalogMatcher.prefersStoredNutrition(activity: activity) {
+                totalProtein += Double(activity.protein)
+                totalCarbs += Double(activity.carbs)
+                totalFats += Double(activity.fats)
+                totalFiber += Double(activity.fiber)
+                totalCalories += Double(activity.calories)
+            } else if let matchedMeal = MealCatalogMatcher.match(activity: activity, in: meals) {
                 totalProtein += Double(matchedMeal.protein)
                 totalCarbs += Double(matchedMeal.carbs)
                 totalFats += Double(matchedMeal.fats)
@@ -2164,7 +2179,10 @@ final class HealthManager: ObservableObject {
 
         let hydrationActivities = completedActivities.filter { activity in
             if isHydrationActivityByText(activity) { return true }
-            if let matchedMeal = matchMeal(for: activity, in: meals) { return matchedMeal.type == .hydration }
+            if MealCatalogMatcher.prefersStoredNutrition(activity: activity) { return false }
+            if let matchedMeal = MealCatalogMatcher.match(activity: activity, in: meals) {
+                return matchedMeal.type == .hydration
+            }
             return false
         }
 
@@ -2172,21 +2190,6 @@ final class HealthManager: ObservableObject {
             total + QuickLogActivityPortions.hydrationVolumeMilliliters(for: activity)
         }
         return Double(totalMl) / 1000.0
-    }
-
-    private func matchMeal(for activity: PlannedActivity, in meals: [Meals]) -> Meals? {
-        let activityTitle = activity.title.normalized
-        let activityImage = activity.imageName.normalized
-
-        if let exactTitleMatch = meals.first(where: { $0.title.normalized == activityTitle }) { return exactTitleMatch }
-        if let imageMatch = meals.first(where: { $0.imageName.normalized == activityImage }) { return imageMatch }
-
-        if let containsMatch = meals.first(where: {
-            let mealTitle = $0.title.normalized
-            return mealTitle.contains(activityTitle) || activityTitle.contains(mealTitle)
-        }) { return containsMatch }
-
-        return nil
     }
 
     private func isHydrationActivityByText(_ activity: PlannedActivity) -> Bool {
@@ -2825,4 +2828,5 @@ private extension String {
 extension Notification.Name {
     static let healthAccessDidChange = Notification.Name("healthAccessDidChange")
     static let weekfitRequestSupplementaryPermissions = Notification.Name("weekfitRequestSupplementaryPermissions")
+    static let weekfitDidCompleteAccountDeletion = Notification.Name("weekfitDidCompleteAccountDeletion")
 }

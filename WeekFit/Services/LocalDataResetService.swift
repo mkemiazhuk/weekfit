@@ -58,13 +58,23 @@ final class LocalDataResetService {
     private func clearSwiftData() throws {
         beforeDeletingPlannedActivities?()
 
-        let activities = try modelContext.fetch(FetchDescriptor<PlannedActivity>())
+        // Always wipe both stores. Account deletion / fresh-account prep can run while
+        // the environment context points at review-demo, leaving production orphaned.
+        try wipeAllActivities(in: WeekFitModelContainer.productionContext())
+        try wipeAllActivities(in: WeekFitModelContainer.reviewDemoContext())
+
+        // Keep the caller's context coherent if it is a separate ModelContext instance.
+        try wipeAllActivities(in: modelContext)
+    }
+
+    private func wipeAllActivities(in context: ModelContext) throws {
+        let activities = try context.fetch(FetchDescriptor<PlannedActivity>())
+        guard !activities.isEmpty else { return }
 
         for activity in activities {
-            modelContext.delete(activity)
+            context.delete(activity)
         }
-
-        try modelContext.save()
+        try context.save()
         print("[LocalDataReset] Cleared SwiftData PlannedActivity rows: \(activities.count)")
     }
 
@@ -102,7 +112,9 @@ final class LocalDataResetService {
                 "notifications.hydrationReminders",
                 "notifications.sleepWindDown",
                 WellnessNotificationPreferenceKey.recoveryScheduledDay,
-                "healthkit.workout.syncStartDate"
+                "healthkit.workout.syncStartDate",
+                "weekfit.debug.auth.email",
+                "weekfit.debug.auth.password"
             ]
 
             knownKeys.forEach(defaults.removeObject(forKey:))

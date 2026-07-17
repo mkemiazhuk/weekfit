@@ -183,16 +183,7 @@ private struct WeekPlannerLiveQueryView: View {
             .spring(response: 0.42, dampingFraction: 0.90, blendDuration: 0.08),
             value: viewModel.showAddActivity
         )
-        .sheet(isPresented: $showProfile) {
-            NavigationStack {
-                ProfileView()
-            }
-            .environmentObject(healthManager)
-            .environmentObject(nutritionViewModel)
-            .environmentObject(appSession)
-            .environmentObject(languageManager)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
+        .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
                 .environmentObject(languageManager)
@@ -1221,7 +1212,7 @@ private extension WeekPlannerLiveQueryView {
         plannedActivities
             .filter {
                 calendar.isDate($0.date, inSameDayAs: date)
-                    && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink")
+                    && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink" || $0.type.lowercased() == "snack")
                     && $0.isCompleted
                     && !$0.isSkipped
                     && $0.imageName != "hydration"

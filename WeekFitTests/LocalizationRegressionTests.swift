@@ -28,6 +28,22 @@ final class LocalizationRegressionTests: XCTestCase {
             WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "ru")),
             "Ночной комфорт"
         )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.editName.title", locale: Locale(identifier: "en")),
+            "Edit Name"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.editName.title", locale: Locale(identifier: "ru")),
+            "Изменить имя"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nutritionGoal.title", locale: Locale(identifier: "en")),
+            "Nutrition Goal"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.nutritionGoal.title", locale: Locale(identifier: "ru")),
+            "Цель питания"
+        )
     }
 
     func testMissingLocalizationFallsBackToKey() {

@@ -87,7 +87,8 @@ enum QuickLogActivityPortions {
             )
         }
 
-        if activity.type.lowercased() == "meal", activity.calories > 0 {
+        if activity.type.lowercased() == "meal" || activity.type.lowercased() == "snack",
+           activity.calories > 0 {
             return String(
                 format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"),
                 activity.calories

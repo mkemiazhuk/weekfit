@@ -20,6 +20,25 @@ final class PlannedActivityTests: XCTestCase {
         XCTAssertFalse(activity.blocksPlannerTime)
     }
 
+    func testSnackActivityIsFoodKind() {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: "snack",
+            title: "Banana",
+            durationMinutes: 1,
+            icon: "carrot.fill",
+            imageName: "ingredient-banana",
+            colorRed: 0.4,
+            colorGreen: 0.7,
+            colorBlue: 0.9,
+            calories: 89,
+            source: "today"
+        )
+
+        XCTAssertEqual(activity.timelineEventKind, .food)
+        XCTAssertFalse(activity.blocksPlannerTime)
+    }
+
     func testWorkoutTerminalStateBecomesActiveDuringWindow() {
         let start = Date()
         let activity = PlannedActivity(

@@ -63,35 +63,52 @@ struct ProfileView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(item: $viewModel.destination) { destination in
             switch destination {
-            case .editProfile:
-                EditUserProfileView(viewModel: viewModel)
-                    .environmentObject(appSession)
-                    .environmentObject(healthManager)
+            case .editName:
+                EditNameView(viewModel: viewModel)
+                    .settingsNavigationPush()
 
             case .notifications:
                 NotificationSettingsView()
+                    .settingsNavigationPush()
 
             case .language:
                 LanguageSettingsView()
+                    .settingsNavigationPush()
 
             case .nightComfort:
                 NightComfortSettingsView()
                     .environmentObject(nightComfort)
+                    .settingsNavigationPush()
+
+            case .nutritionGoal:
+                NutritionGoalSettingsView(viewModel: viewModel)
+                    .environmentObject(appSession)
+                    .environmentObject(healthManager)
+                    .settingsNavigationPush()
 
             case .healthAccess:
                 HealthAccessView()
                     .environmentObject(healthManager)
                     .navigationBarBackButtonHidden(true)
                     .toolbar(.hidden, for: .navigationBar)
+                    .settingsNavigationPush()
 
-            case .privacy:
-                PrivacySettingsView()
+            case .account:
+                AccountSettingsView(profileViewModel: viewModel)
+                    .environmentObject(authViewModel)
+                    .environmentObject(nutritionViewModel)
+                    .environmentObject(coachCoordinator)
+                    .environmentObject(appSession)
+                    .environmentObject(healthManager)
+                    .settingsNavigationPush()
 
             case .helpSupport:
                 HelpSupportView()
+                    .settingsNavigationPush()
 
             case .termsPrivacy:
                 TermsPrivacyView()
+                    .settingsNavigationPush()
             }
         }
     }
@@ -103,26 +120,34 @@ private extension ProfileView {
 
     var profileContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 22) {
                 headerSection
 
-                healthSystemSection
+                settingsBlock(
+                    title: nil,
+                    items: viewModel.accountSettings,
+                    showHealthStatus: false
+                )
 
                 settingsBlock(
-                    title: AppText.Settings.Profile.settingsSection,
-                    items: viewModel.mainSettings + viewModel.connectedSystems,
+                    title: nil,
+                    items: viewModel.healthSettings,
                     showHealthStatus: true
                 )
+
+                settingsBlock(
+                    title: AppText.Settings.Root.preferencesSection,
+                    items: viewModel.preferenceSettings,
+                    showHealthStatus: false
+                )
+
+                privacyDataSection
 
                 settingsBlock(
                     title: AppText.Settings.Profile.supportSection,
                     items: viewModel.supportSettings,
                     showHealthStatus: false
                 )
-
-                developerSection
-
-                footerSection
             }
             .padding(.horizontal, 20)
             .padding(.top, 4)
@@ -204,194 +229,41 @@ private extension ProfileView {
 
     var headerSection: some View {
         ProfilePremiumHeader(
-            title: WeekFitLocalizedString("settings.profile.title"),
+            title: WeekFitLocalizedString("settings.root.title"),
+            titleSize: 24,
             accent: accentGreen
         ) {
             dismiss()
         }
         .padding(.top, 2)
-    }
-
-    var healthSystemSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle(AppText.Settings.Profile.systemSection, prominent: true)
-            healthSystemCard(viewModel.userProfile)
-        }
-    }
-
-    func healthSystemCard(_ profile: UserProfile) -> some View {
-        let cleanName = profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasName = !cleanName.isEmpty
-        let connectionState = healthManager.healthDataConnectionState
-        let isPermissionGranted = healthManager.isHealthAccessGranted
-        let needsBodyGoal = viewModel.bodyGoalNeedsSetup(
-            weightKg: healthManager.weight,
-            heightCm: healthManager.heightCm
-        )
-
-        return Button {
-            viewModel.openProfileEditor()
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 14) {
-                    simpleAvatar(initials: profile.initials)
-                        .padding(.top, 1)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(hasName ? cleanName : WeekFitLocalizedString("settings.profile.healthSystemFallback"))
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.92)
-
-                        Text(profileHealthConnectionHeadline(for: connectionState))
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(profileHealthConnectionHeadlineColor(for: connectionState))
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Text(
-                            needsBodyGoal
-                                ? WeekFitLocalizedString("settings.profile.healthSystem.bodyGoalPrompt")
-                                : profileHealthConnectionSubtitle(for: connectionState)
-                        )
-                            .font(.system(size: 11.8, weight: .medium))
-                            .foregroundStyle(textSecondary.opacity(0.68))
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(textTertiary)
-                        .padding(.top, 6)
-                }
-
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 96), spacing: 8)],
-                    alignment: .leading,
-                    spacing: 8
-                ) {
-                    compactSignal(
-                        icon: "heart.fill",
-                        text: AppText.Settings.Profile.healthSignal,
-                        tint: accentGreen,
-                        isHighlighted: false
-                    )
-
-                    compactSignal(
-                        icon: "sparkles",
-                        text: AppText.Settings.Profile.adaptiveSignal,
-                        tint: accentBlue,
-                        isHighlighted: true
-                    )
-
-                    compactSignal(
-                        icon: "lock.fill",
-                        text: AppText.Settings.Profile.privateSignal,
-                        tint: accentGreen,
-                        isHighlighted: false
-                    )
-                }
-            }
-            .padding(15)
-            .background {
-                heroCardBackground(isConnected: isPermissionGranted)
-            }
-        }
-        .buttonStyle(PressableScaleButtonStyle())
-    }
-
-    func compactSignal(
-        icon: String,
-        text: LocalizedStringResource,
-        tint: Color,
-        isHighlighted: Bool
-    ) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(tint.opacity(isHighlighted ? 0.95 : 0.85))
-
-            Text(text)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(isHighlighted ? 0.86 : 0.74))
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .minimumScaleFactor(0.9)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background {
-            Capsule()
-                .fill(isHighlighted ? tint.opacity(0.105) : WeekFitTheme.whiteOpacity(0.035))
-        }
-    }
-
-    func simpleAvatar(initials: String) -> some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 248/255, green: 229/255, blue: 188/255),
-                            Color(red: 217/255, green: 177/255, blue: 105/255)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            Text(initials.isEmpty ? "P" : initials)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
-        }
-        .frame(width: 52, height: 52)
-        .overlay {
-            Circle()
-                .stroke(.white.opacity(0.16), lineWidth: 1)
-        }
+        .accessibilityElement(children: .contain)
     }
 
     func settingsBlock(
-        title: LocalizedStringResource,
+        title: LocalizedStringResource?,
         items: [ProfileItem],
         showHealthStatus: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle(title)
+        SettingsGroupedSection(title: title) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                Button {
+                    viewModel.handleTap(item)
+                } label: {
+                    profileRow(
+                        item,
+                        showHealthStatus: showHealthStatus && isHealthSignalsItem(item)
+                    )
+                }
+                .buttonStyle(PressableScaleButtonStyle())
+                .accessibilityIdentifier(accessibilityID(for: item))
+                .accessibilityLabel(accessibilityLabel(for: item, showHealthStatus: showHealthStatus && isHealthSignalsItem(item)))
+                .accessibilityHint(WeekFitLocalizedString("settings.a11y.opensDetail"))
 
-            VStack(spacing: 10) {
-                ForEach(items) { item in
-                    Button {
-                        viewModel.handleTap(item)
-                    } label: {
-                        profileRow(
-                            item,
-                            showHealthStatus: showHealthStatus && isHealthSignalsItem(item)
-                        )
-                    }
-                    .buttonStyle(PressableScaleButtonStyle())
+                if index < items.count - 1 {
+                    SettingsGroupDivider()
                 }
             }
         }
-    }
-
-    func sectionTitle(_ title: LocalizedStringResource, prominent: Bool = false) -> some View {
-        Text(title)
-            .font(
-                .system(
-                    size: prominent ? 17 : 15,
-                    weight: prominent ? .bold : .semibold,
-                    design: .rounded
-                )
-            )
-            .foregroundStyle(prominent ? textPrimary : textPrimary.opacity(0.92))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     func profileRow(
@@ -403,15 +275,15 @@ private extension ProfileView {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(displayTitle(for: item))
-                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(textPrimary)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.94)
+                    .minimumScaleFactor(0.88)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let subtitle = displaySubtitle(for: item, showHealthStatus: showHealthStatus) {
                     Text(subtitle)
-                        .font(.system(size: 12.6, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(textSecondary)
                         .lineLimit(showHealthStatus ? 3 : 2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -425,17 +297,18 @@ private extension ProfileView {
                 healthStatusBadge
             }
 
+            if item.type == .nutritionGoal && nutritionGoalNeedsSetup {
+                nutritionGoalSetupBadge
+            }
+
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(textTertiary)
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(minHeight: showHealthStatus ? 76 : 68)
-        .background {
-            premiumCardBackground(cornerRadius: 23)
-        }
-        .contentShape(Rectangle())
+        .padding(.vertical, 12)
+        .settingsRowTouchTarget(minHeight: showHealthStatus || item.type == .nutritionGoal ? 64 : 52)
     }
 
     func rowIcon(for item: ProfileItem) -> some View {
@@ -444,49 +317,63 @@ private extension ProfileView {
                 .fill(rowTint(for: item).opacity(0.13))
 
             Image(systemName: normalizedIcon(for: item))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(rowTint(for: item).opacity(0.96))
         }
         .frame(width: 34, height: 34)
+        .accessibilityHidden(true)
     }
 
-    func heroCardBackground(isConnected: Bool) -> some View {
-        Color.clear
-            .profilePremiumCard(
-                cornerRadius: 28,
-                glow: isConnected ? accentGreen.opacity(0.055) : .clear
-            )
-    }
+    var privacyDataSection: some View {
+        let showReset = AccountSessionController.shared.mode != .reviewDemo
+        let legalItems = viewModel.privacyLegalSettings
 
-    func premiumCardBackground(cornerRadius: CGFloat) -> some View {
-        Color.clear
-            .profilePremiumCard(cornerRadius: cornerRadius)
-    }
-
-    var developerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle(AppText.Settings.Profile.privacyDataSection)
-
-            VStack(spacing: 0) {
-                if AccountSessionController.shared.mode != .reviewDemo {
-                    resetLocalDataButton
-                    privacyActionDivider
+        return SettingsGroupedSection(title: AppText.Settings.Profile.privacyDataSection) {
+            if showReset {
+                Button {
+                    withDialogAnimation {
+                        showResetConfirmation = true
+                    }
+                } label: {
+                    profileActionRow(
+                        icon: "arrow.counterclockwise",
+                        iconColor: destructiveRed.opacity(0.96),
+                        iconBackground: destructiveRed.opacity(0.16),
+                        title: isResettingLocalData
+                            ? AppText.Settings.Profile.resettingLocalData
+                            : AppText.Settings.Profile.resetLocalData,
+                        titleColor: destructiveRed.opacity(0.94)
+                    )
                 }
-                signOutButton
-            }
-            .background {
-                premiumCardBackground(cornerRadius: 23)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
-        }
-    }
+                .buttonStyle(PressableScaleButtonStyle())
+                .disabled(isResettingLocalData)
+                .opacity(isResettingLocalData ? 0.72 : 1)
+                .accessibilityIdentifier("settings.resetLocalData")
+                .accessibilityLabel(Text(AppText.Settings.Profile.resetLocalData))
+                .accessibilityHint(WeekFitLocalizedString("settings.a11y.resetLocalData.hint"))
 
-    private var privacyActionDivider: some View {
-        Rectangle()
-            .fill(WeekFitTheme.whiteOpacity(0.06))
-            .frame(height: 0.5)
-            .padding(.leading, 63)
+                if !legalItems.isEmpty {
+                    SettingsGroupDivider()
+                }
+            }
+
+            ForEach(Array(legalItems.enumerated()), id: \.element.id) { index, item in
+                Button {
+                    viewModel.handleTap(item)
+                } label: {
+                    profileRow(item, showHealthStatus: false)
+                }
+                .buttonStyle(PressableScaleButtonStyle())
+                .accessibilityIdentifier(accessibilityID(for: item))
+                .accessibilityLabel(accessibilityLabel(for: item, showHealthStatus: false))
+                .accessibilityHint(WeekFitLocalizedString("settings.a11y.opensDetail"))
+
+                if index < legalItems.count - 1 {
+                    SettingsGroupDivider()
+                }
+            }
+        }
     }
 
     private func profileActionRow(
@@ -502,21 +389,23 @@ private extension ProfileView {
                     .fill(iconBackground)
 
                 Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(iconColor)
             }
             .frame(width: 34, height: 34)
+            .accessibilityHidden(true)
 
             Text(title)
-                .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(titleColor)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)
-        .frame(minHeight: 54)
+        .padding(.vertical, 12)
+        .settingsRowTouchTarget(minHeight: 52)
     }
 
     @ViewBuilder
@@ -534,25 +423,23 @@ private extension ProfileView {
         }
     }
 
-    var resetLocalDataButton: some View {
-        Button {
-            withDialogAnimation {
-                showResetConfirmation = true
+    var nutritionGoalNeedsSetup: Bool {
+        viewModel.bodyGoalNeedsSetup(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+    }
+
+    var nutritionGoalSetupBadge: some View {
+        Text(AppText.Settings.Profile.setupBadge)
+            .font(.system(size: 11.1, weight: .bold, design: .rounded))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background {
+                Capsule()
+                    .fill(.white.opacity(0.05))
             }
-        } label: {
-            profileActionRow(
-                icon: "arrow.counterclockwise",
-                iconColor: destructiveRed.opacity(0.96),
-                iconBackground: destructiveRed.opacity(0.16),
-                title: isResettingLocalData
-                    ? AppText.Settings.Profile.resettingLocalData
-                    : AppText.Settings.Profile.resetLocalData,
-                titleColor: destructiveRed.opacity(0.94)
-            )
-        }
-        .buttonStyle(PressableScaleButtonStyle())
-        .disabled(isResettingLocalData)
-        .opacity(isResettingLocalData ? 0.72 : 1)
     }
 
     var coachDebugToggle: some View {
@@ -588,40 +475,9 @@ private extension ProfileView {
         .padding(.horizontal, 16)
         .frame(height: 72)
         .background {
-            premiumCardBackground(cornerRadius: 23)
+            Color.clear
+                .profilePremiumSectionCard(cornerRadius: 20)
         }
-    }
-
-    var signOutButton: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            authViewModel.signOut()
-            dismiss()
-        } label: {
-            profileActionRow(
-                icon: "rectangle.portrait.and.arrow.right",
-                iconColor: WeekFitTheme.whiteOpacity(0.88),
-                iconBackground: WeekFitTheme.whiteOpacity(0.10),
-                title: AppText.Settings.Profile.signOut,
-                titleColor: WeekFitTheme.whiteOpacity(0.86)
-            )
-        }
-        .buttonStyle(PressableScaleButtonStyle())
-        .accessibilityIdentifier("profile.signOut")
-    }
-
-    var footerSection: some View {
-        VStack(spacing: 4) {
-            Text("WeekFit")
-                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.64))
-
-            Text(AppText.Settings.Profile.footerPrivacy)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.44))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 2)
     }
 }
 
@@ -717,14 +573,16 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.language.title")
         case .nightComfort:
             return WeekFitLocalizedString("settings.nightComfort.title")
+        case .nutritionGoal:
+            return WeekFitLocalizedString("settings.nutritionGoal.title")
         case .healthAccess, .appleHealth:
-            return WeekFitLocalizedString("settings.profile.item.healthSignals")
+            return WeekFitLocalizedString("settings.root.appleHealth")
         case .help:
             return WeekFitLocalizedString("settings.profile.item.helpSupport")
         case .terms:
             return WeekFitLocalizedString("settings.profile.item.termsPrivacy")
-        case .privacy:
-            return WeekFitLocalizedString("settings.profile.item.privacy")
+        case .account:
+            return WeekFitLocalizedString("settings.account.title")
         case .units:
             return item.title
         }
@@ -745,17 +603,30 @@ private extension ProfileView {
             )
         case .nightComfort:
             return nightComfortPreferenceLabel
+        case .nutritionGoal:
+            return nutritionGoalRowSubtitle
         case .healthAccess, .appleHealth:
             return WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
         case .help:
             return WeekFitLocalizedString("settings.profile.item.helpSupport.subtitle")
         case .terms:
             return WeekFitLocalizedString("settings.profile.item.termsPrivacy.subtitle")
-        case .privacy:
-            return WeekFitLocalizedString("settings.profile.item.privacy.subtitle")
+        case .account:
+            return viewModel.accountRowSubtitle()
         default:
             return item.subtitle
         }
+    }
+
+    var nutritionGoalRowSubtitle: String {
+        if nutritionGoalNeedsSetup {
+            return WeekFitLocalizedString("settings.nutritionGoal.setupSubtitle")
+        }
+        let goal = viewModel.resolvedNutritionGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        )
+        return NutritionGoalDisplay.title(for: goal)
     }
 
     func rowTint(for item: ProfileItem) -> Color {
@@ -769,6 +640,9 @@ private extension ProfileView {
         case .nightComfort:
             return Color(red: 0.62, green: 0.54, blue: 0.92)
 
+        case .nutritionGoal:
+            return Color(red: 0.95, green: 0.62, blue: 0.38)
+
         case .healthAccess, .appleHealth:
             return Color(red: 255/255, green: 89/255, blue: 119/255)
 
@@ -778,8 +652,8 @@ private extension ProfileView {
         case .terms:
             return .orange
 
-        case .privacy:
-            return .indigo
+        case .account:
+            return accentBlue
 
         default:
             return accentGreen
@@ -811,45 +685,6 @@ private extension ProfileView {
         }
     }
 
-    func profileHealthConnectionSubtitle(for state: HealthDataConnectionState) -> String {
-        switch state {
-        case .notRequested:
-            return WeekFitLocalizedString("settings.profile.connectHealthPlanning")
-        case .denied:
-            return WeekFitLocalizedString("healthAccess.hero.needsSettings.subtitle")
-        case .connectedWaitingForData:
-            return WeekFitLocalizedString("healthAccess.hero.connected.needsMoreData")
-        case .connectedPartial:
-            return WeekFitLocalizedString("healthAccess.hero.connected.sleepSetup")
-        case .connected:
-            return WeekFitLocalizedString("settings.profile.appleHealthConnected")
-        }
-    }
-
-    func profileHealthConnectionHeadline(for state: HealthDataConnectionState) -> String {
-        switch state {
-        case .notRequested:
-            return WeekFitLocalizedString("settings.profile.healthSetupNeeded")
-        case .denied:
-            return WeekFitLocalizedString("healthAccess.hero.needsSettings.title")
-        case .connectedWaitingForData, .connectedPartial:
-            return WeekFitLocalizedString("healthAccess.hero.connected.title")
-        case .connected:
-            return WeekFitLocalizedString("settings.profile.recoverySystemActive")
-        }
-    }
-
-    func profileHealthConnectionHeadlineColor(for state: HealthDataConnectionState) -> Color {
-        switch state {
-        case .connected:
-            return accentGreen.opacity(0.92)
-        case .connectedWaitingForData, .connectedPartial:
-            return accentBlue.opacity(0.88)
-        case .notRequested, .denied:
-            return textSecondary
-        }
-    }
-
     func profileHealthSignalsRowSubtitle(for state: HealthDataConnectionState) -> String {
         switch state {
         case .notRequested:
@@ -863,6 +698,29 @@ private extension ProfileView {
         case .connected:
             return WeekFitLocalizedString("settings.profile.item.healthSignals.connectedSubtitle")
         }
+    }
+
+    func accessibilityID(for item: ProfileItem) -> String {
+        switch item.type {
+        case .account: return "settings.account"
+        case .appleHealth, .healthAccess: return "settings.appleHealth"
+        case .notifications: return "settings.notifications"
+        case .language: return "settings.language"
+        case .nightComfort: return "settings.nightComfort"
+        case .nutritionGoal: return "settings.nutritionGoal"
+        case .help: return "settings.help"
+        case .terms: return "settings.terms"
+        case .units: return "settings.units"
+        }
+    }
+
+    func accessibilityLabel(for item: ProfileItem, showHealthStatus: Bool) -> String {
+        let title = displayTitle(for: item)
+        guard let subtitle = displaySubtitle(for: item, showHealthStatus: showHealthStatus),
+              !subtitle.isEmpty else {
+            return title
+        }
+        return "\(title), \(subtitle)"
     }
 
     func refreshHealthPermissionState() async {

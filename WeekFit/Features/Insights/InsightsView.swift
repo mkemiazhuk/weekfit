@@ -4503,7 +4503,7 @@ struct InsightsDayRecord {
             activity.isCompleted &&
             !activity.isSkipped &&
             activity.imageName != "hydration" &&
-            (activity.type.lowercased() == "meal" || activity.type.lowercased() == "drink")
+            (activity.type.lowercased() == "meal" || activity.type.lowercased() == "drink" || activity.type.lowercased() == "snack")
         }
     }
 
@@ -4697,16 +4697,7 @@ struct InsightsView: View {
                 coachContext: currentCoachContext
             )
         }
-        .sheet(isPresented: $showProfile) {
-            NavigationStack {
-                ProfileView()
-            }
-            .environmentObject(healthManager)
-            .environmentObject(nutritionViewModel)
-            .environmentObject(appSession)
-            .environmentObject(languageManager)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
+        .weekFitSettingsSheet(isPresented: $showProfile)
         .fullScreenCover(item: $selectedDetail) { destination in
             detailView(for: destination)
         }
@@ -4943,7 +4934,7 @@ struct InsightsView: View {
         plannedActivities
             .filter {
                 Calendar.current.isDate($0.date, inSameDayAs: date)
-                && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink")
+                && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink" || $0.type.lowercased() == "snack")
                 && $0.isCompleted
                 && !$0.isSkipped
                 && $0.imageName != "hydration"

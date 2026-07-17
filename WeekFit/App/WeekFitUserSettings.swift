@@ -36,6 +36,8 @@ final class WeekFitUserSettings: ObservableObject {
 
         if customMealsStorage != nextCustomMealsStorage {
             customMealsStorage = nextCustomMealsStorage
+            customMealsCatalog = CustomMealStore.load(from: nextCustomMealsStorage)
+            customMealsCatalogRevision &+= 1
         }
     }
 

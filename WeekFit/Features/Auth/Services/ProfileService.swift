@@ -4,8 +4,14 @@
         func loadUserProfile() -> UserProfile
         func saveUserProfile(_ profile: UserProfile)
 
-        func loadMainSettings() -> [ProfileItem]
+        func loadAccountSettings() -> [ProfileItem]
+        func loadHealthSettings() -> [ProfileItem]
+        func loadPreferenceSettings() -> [ProfileItem]
+        func loadPrivacyLegalSettings() -> [ProfileItem]
         func loadSupportSettings() -> [ProfileItem]
+
+        /// Legacy alias used by older call sites / tests.
+        func loadMainSettings() -> [ProfileItem]
         func loadConnectedSystems() -> [ProfileItem]
 
         func loadManualNutritionGoal() -> NutritionGoal?
@@ -66,7 +72,29 @@
             UserDefaults.standard.set(initials, forKey: Keys.initials)
         }
 
-        func loadMainSettings() -> [ProfileItem] {
+        func loadAccountSettings() -> [ProfileItem] {
+            [
+                ProfileItem(
+                    icon: "person.crop.circle.fill",
+                    title: WeekFitLocalizedString("settings.account.title"),
+                    subtitle: WeekFitLocalizedString("settings.account.profileSubtitle"),
+                    type: .account
+                )
+            ]
+        }
+
+        func loadHealthSettings() -> [ProfileItem] {
+            [
+                ProfileItem(
+                    icon: "heart.fill",
+                    title: WeekFitLocalizedString("settings.root.appleHealth"),
+                    subtitle: WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle"),
+                    type: .appleHealth
+                )
+            ]
+        }
+
+        func loadPreferenceSettings() -> [ProfileItem] {
             [
                 ProfileItem(
                     icon: "bell.fill",
@@ -85,8 +113,29 @@
                     title: WeekFitLocalizedString("settings.nightComfort.title"),
                     subtitle: WeekFitLocalizedString("settings.nightComfort.profileSubtitle"),
                     type: .nightComfort
+                ),
+                ProfileItem(
+                    icon: "target",
+                    title: WeekFitLocalizedString("settings.nutritionGoal.title"),
+                    subtitle: WeekFitLocalizedString("settings.nutritionGoal.profileSubtitle"),
+                    type: .nutritionGoal
                 )
             ]
+        }
+
+        func loadPrivacyLegalSettings() -> [ProfileItem] {
+            [
+                ProfileItem(
+                    icon: "doc.text.fill",
+                    title: "Terms & Privacy",
+                    subtitle: nil,
+                    type: .terms
+                )
+            ]
+        }
+
+        func loadMainSettings() -> [ProfileItem] {
+            loadPreferenceSettings()
         }
 
         func loadManualNutritionGoal() -> NutritionGoal? {
@@ -138,14 +187,7 @@
         }
 
         func loadConnectedSystems() -> [ProfileItem] {
-            [
-                ProfileItem(
-                    icon: "heart.fill",
-                    title: "Health Signals",
-                    subtitle: "Powered by Apple Health & Apple Watch",
-                    type: .appleHealth
-                )
-            ]
+            loadHealthSettings()
         }
 
         func loadSupportSettings() -> [ProfileItem] {
@@ -155,18 +197,12 @@
                     title: "Help & Support",
                     subtitle: nil,
                     type: .help
-                ),
-                ProfileItem(
-                    icon: "doc.text.fill",
-                    title: "Terms & Privacy",
-                    subtitle: nil,
-                    type: .terms
                 )
             ]
         }
 
         func signOut() {
-            // No account login for now.
+            // Auth sign-out is owned by AuthViewModel.
         }
 
         static func resolvedFullName(defaults: UserDefaults = .standard) -> String {

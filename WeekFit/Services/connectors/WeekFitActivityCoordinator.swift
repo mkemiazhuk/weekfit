@@ -50,6 +50,14 @@ final class WeekFitActivityCoordinator: ObservableObject {
         hasActivatedHealthSync = true
         healthSync.activateIfAuthorized()
     }
+
+    /// Stops HealthKit workout sync after account deletion. System permissions remain until
+    /// the user revokes them in iOS Settings / Apple Health.
+    func deactivateHealthKitSync() {
+        hasActivatedHealthSync = false
+        healthSync.deactivate()
+        resetReconciliationState()
+    }
     
     func refresh() {
         guard AccountSessionController.shared.mode != .reviewDemo else { return }

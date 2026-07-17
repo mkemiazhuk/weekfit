@@ -73,7 +73,9 @@ enum CoachCanonicalDayState {
         let text = "\(activity.type) \(activity.title) \(activity.imageName) \(activity.source)".lowercased()
         let type = activity.type.lowercased()
 
-        return type == "drink" ||
+        return type == "meal" ||
+            type == "drink" ||
+            type == "snack" ||
             text.contains("meal") ||
             text.contains("food") ||
             text.contains("snack") ||

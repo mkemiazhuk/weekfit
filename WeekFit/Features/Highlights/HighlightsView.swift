@@ -69,18 +69,7 @@ struct HighlightsView: View {
         .onAppear {
             showContent = true
         }
-        .sheet(isPresented: $showProfile) {
-            NavigationStack {
-                ProfileView()
-            }
-            .environmentObject(healthManager)
-            .environmentObject(nutritionViewModel)
-            .environmentObject(appSession)
-            .environmentObject(languageManager)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
+        .weekFitSettingsSheet(isPresented: $showProfile)
         .task(id: refreshSignature) {
             await viewModel.refresh(
                 healthManager: healthManager,

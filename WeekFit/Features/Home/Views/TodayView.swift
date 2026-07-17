@@ -179,7 +179,7 @@ struct TodayView: View {
             }
 
             let type = activity.type.lowercased()
-            return type == "meal" || type == "drink"
+            return type == "meal" || type == "drink" || type == "snack"
         }
     }
 
@@ -225,7 +225,9 @@ struct TodayView: View {
         plannedActivities
             .filter {
                 Calendar.current.isDate($0.date, inSameDayAs: date)
-                && ($0.type.lowercased() == "meal" || $0.type.lowercased() == "drink")
+                && ($0.type.lowercased() == "meal"
+                    || $0.type.lowercased() == "drink"
+                    || $0.type.lowercased() == "snack")
                 && $0.isCompleted
                 && !$0.isSkipped
                 && $0.imageName != "hydration"
@@ -497,31 +499,7 @@ struct TodayView: View {
                 updateTodayCoachInsightIfNeeded(source: "CoachCoordinator.checkpoint")
             }
         }
-        .sheet(isPresented: $showProfile) {
-            NavigationStack {
-                ProfileView()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                showProfile = false // Плавное закрытие шторки
-                            } label: {
-                                Text(AppText.Common.Action.done)
-                            }
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(Color(red: 0.16, green: 0.80, blue: 0.43)) // Твой зеленый WeekFit акцент
-                        }
-                    }
-            }
-            .environmentObject(healthManager)
-            .environmentObject(nutritionViewModel)
-            .environmentObject(appSession)
-            .environmentObject(languageManager)
-            .environmentObject(authViewModel)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
+        .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(
             isPresented: $showDirectWorkoutLogSheet,
             onDismiss: {

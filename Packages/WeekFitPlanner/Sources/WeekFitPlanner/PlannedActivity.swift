@@ -117,6 +117,7 @@ public extension PlannedActivity {
 
         if normalizedType == "meal" ||
             normalizedType == "food" ||
+            normalizedType == "snack" ||
             normalizedType == "nutrition" ||
             normalizedSource == "nutritionlog" ||
             normalizedSource == "foodlog" {

@@ -158,6 +158,14 @@ enum AccountSessionCoordinator {
             appSession: appSession
         )
 
+        if accountSession.consumeLocalDataResetOnNextRealUserEntry() {
+            await resetLocalWorkspaceForNewAccount(
+                nutritionViewModel: nutritionViewModel,
+                coachCoordinator: coachCoordinator,
+                appSession: appSession
+            )
+        }
+
         try? DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded(
             in: WeekFitModelContainer.productionContext()
         )
@@ -182,6 +190,38 @@ enum AccountSessionCoordinator {
             "Entered real user mode",
             mode: .realUser,
             store: accountSession.containerIdentity,
+            demoProviderEnabled: false
+        )
+    }
+
+    private static func resetLocalWorkspaceForNewAccount(
+        nutritionViewModel: NutritionViewModel,
+        coachCoordinator: CoachCoordinator,
+        appSession: AppSessionState
+    ) async {
+        let resetService = LocalDataResetService(
+            modelContext: WeekFitModelContainer.productionContext()
+        )
+        resetService.beforeDeletingPlannedActivities = {
+            CoachSnapshotInvalidator.invalidate(
+                coordinator: coachCoordinator,
+                nutritionViewModel: nutritionViewModel,
+                reason: "newAccountWorkspace"
+            )
+        }
+        try? await resetService.resetAllLocalData()
+
+        nutritionViewModel.resetLocalState()
+        CoachObservationStore.clearAll()
+        ActivityConfirmationState.shared.pendingActivity = nil
+        WeekFitActivityCoordinator.shared.resetReconciliationState()
+        HealthKitWorkoutSyncService.shared.resetSyncState()
+        appSession.triggerLocalDataResetCompleted()
+
+        AccountSessionDiagnostics.log(
+            "Reset local workspace for new account",
+            mode: .unauthenticated,
+            store: "swiftdata-production",
             demoProviderEnabled: false
         )
     }

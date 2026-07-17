@@ -260,18 +260,7 @@ struct MealsView: View {
             .id("\(food.id)-\(food.title)")
             .weekFitSheetChrome(cornerRadius: 36)
         }
-        .sheet(isPresented: $showProfile) {
-            NavigationStack {
-                ProfileView()
-            }
-            .environmentObject(healthManager)
-            .environmentObject(nutritionViewModel)
-            .environmentObject(appSession)
-            .environmentObject(languageManager)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
+        .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(isPresented: $showCreationChooser) {
             MealCreationChooserSheet { route in
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

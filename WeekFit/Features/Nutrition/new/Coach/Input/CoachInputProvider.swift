@@ -297,7 +297,7 @@ final class CoachInputProvider: ObservableObject {
         let type = activity.type.lowercased()
         let title = activity.title.lowercased()
         let imageName = activity.imageName.lowercased()
-        if type == "meal" || type == "drink" || imageName == "hydration" {
+        if type == "meal" || type == "drink" || type == "snack" || imageName == "hydration" {
             return false
         }
         if type == "workout" || type == "recovery" {

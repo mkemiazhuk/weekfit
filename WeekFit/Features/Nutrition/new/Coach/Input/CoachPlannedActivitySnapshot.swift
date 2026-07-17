@@ -140,6 +140,7 @@ struct CoachPlannedActivitySnapshot: Equatable, Hashable, Sendable, Identifiable
 
         if normalizedType == "meal" ||
             normalizedType == "food" ||
+            normalizedType == "snack" ||
             normalizedType == "nutrition" ||
             normalizedSource == "nutritionlog" ||
             normalizedSource == "foodlog" {

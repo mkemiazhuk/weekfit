@@ -80,6 +80,12 @@ struct WeekFitApp: App {
                         _ = await ActivityNotificationService.shared.requestPermissionIfNotDetermined()
                     }
                 }
+                .onReceive(
+                    NotificationCenter.default.publisher(for: .weekfitDidCompleteAccountDeletion)
+                ) { _ in
+                    healthManager.prepareForAccountDeletion()
+                    nightComfortLocationService?.stopAndClearForAccountDeletion()
+                }
         }
     }
 

@@ -1,17 +1,52 @@
 import SwiftUI
 
+enum ProfilePremiumHeaderDismissStyle {
+    /// Close (X) on sheet root / full-screen covers; Back when pushed in Settings.
+    case automatic
+    case close
+    case back
+}
+
 struct ProfilePremiumHeader: View {
     let title: String
     var subtitle: String? = nil
     var titleSize: CGFloat = 27
     var accent: Color = WeekFitStyle.brandGreen
+    var dismissStyle: ProfilePremiumHeaderDismissStyle = .automatic
     let onClose: () -> Void
+
+    @Environment(\.isSettingsNavigationPush) private var isSettingsNavigationPush
+    @ScaledMetric(relativeTo: .largeTitle) private var scaledTitleSize: CGFloat = 27
+
+    private var resolvedTitleSize: CGFloat {
+        // Prefer caller size when explicitly reduced (e.g. Settings root), still scale with DT.
+        let base = titleSize
+        let scale = scaledTitleSize / 27
+        return max(20, base * scale)
+    }
+
+    private var resolvedStyle: ProfilePremiumHeaderDismissStyle {
+        switch dismissStyle {
+        case .automatic:
+            return isSettingsNavigationPush ? .back : .close
+        case .close, .back:
+            return dismissStyle
+        }
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
+            if resolvedStyle == .back {
+                ProfilePremiumDismissButton(
+                    style: .back,
+                    accent: accent,
+                    action: onClose
+                )
+            }
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: titleSize, weight: .bold, design: .rounded))
+                    .font(.system(size: resolvedTitleSize, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
@@ -19,15 +54,23 @@ struct ProfilePremiumHeader: View {
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
-            ProfilePremiumCloseButton(accent: accent, action: onClose)
+            if resolvedStyle != .back {
+                ProfilePremiumDismissButton(
+                    style: .close,
+                    accent: accent,
+                    action: onClose
+                )
+            }
         }
     }
 }
@@ -37,12 +80,30 @@ struct ProfilePremiumCloseButton: View {
     let action: () -> Void
 
     var body: some View {
+        ProfilePremiumDismissButton(style: .close, accent: accent, action: action)
+    }
+}
+
+struct ProfilePremiumDismissButton: View {
+    var style: ProfilePremiumHeaderDismissStyle = .close
+    var accent: Color = WeekFitStyle.brandGreen
+    let action: () -> Void
+
+    private var iconName: String {
+        style == .back ? "chevron.left" : "xmark"
+    }
+
+    private var accessibilityLabel: LocalizedStringResource {
+        style == .back ? AppText.Common.Action.back : AppText.Common.Action.close
+    }
+
+    var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 14, weight: .bold))
+            Image(systemName: iconName)
+                .font(.system(size: style == .back ? 16 : 14, weight: .bold))
                 .foregroundStyle(WeekFitTheme.primaryText)
                 .frame(width: 46, height: 46)
                 .background {
@@ -65,7 +126,7 @@ struct ProfilePremiumCloseButton: View {
                 .shadow(color: WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.055)), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(AppText.Common.Action.close))
+        .accessibilityLabel(Text(accessibilityLabel))
     }
 }
 

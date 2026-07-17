@@ -46,7 +46,7 @@ enum DayTrainingTypeClassifier {
 
     nonisolated static func activityStimulus(for activity: PlannedActivity) -> ActivityStimulus? {
         let type = activity.type.lowercased()
-        if type == "meal" || type == "habit" || type == "drink" {
+        if type == "meal" || type == "habit" || type == "drink" || type == "snack" {
             return nil
         }
 

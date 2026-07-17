@@ -13,6 +13,10 @@ final class AccountSessionController: ObservableObject {
     @Published private(set) var mode: AccountMode = .unauthenticated
     @Published private(set) var isTransitioning = false
 
+    /// When true, the next transition into `.realUser` wipes local WeekFit data first.
+    /// Used after Create Account so a new identity never inherits the previous user's store.
+    private(set) var shouldResetLocalDataOnNextRealUserEntry = false
+
     var activeContainer: ModelContainer {
         switch mode {
         case .reviewDemo:
@@ -52,8 +56,20 @@ final class AccountSessionController: ObservableObject {
         )
     }
 
+    func requestLocalDataResetOnNextRealUserEntry() {
+        shouldResetLocalDataOnNextRealUserEntry = true
+    }
+
+    @discardableResult
+    func consumeLocalDataResetOnNextRealUserEntry() -> Bool {
+        guard shouldResetLocalDataOnNextRealUserEntry else { return false }
+        shouldResetLocalDataOnNextRealUserEntry = false
+        return true
+    }
+
     func resetForTests() {
         mode = .unauthenticated
         isTransitioning = false
+        shouldResetLocalDataOnNextRealUserEntry = false
     }
 }

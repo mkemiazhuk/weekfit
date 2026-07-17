@@ -32,6 +32,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     }
 
     private var isActive = false
+    private var observerQuery: HKObserverQuery?
 
     private init() {}
 
@@ -49,9 +50,21 @@ final class HealthKitWorkoutSyncService: ObservableObject {
         activateIfAuthorized()
     }
 
-    private func startObserver() {
-//        print("👀 Starting HKObserverQuery")
+    /// Stops HealthKit observers and background delivery. Does not revoke system permissions
+    /// (iOS does not allow apps to do that) — it only stops WeekFit from using the access.
+    func deactivate() {
+        if let observerQuery {
+            healthStore.stop(observerQuery)
+            self.observerQuery = nil
+        }
 
+        healthStore.disableBackgroundDelivery(for: HKObjectType.workoutType()) { _, _ in }
+
+        isActive = false
+        resetSyncState()
+    }
+
+    private func startObserver() {
         let type = HKObjectType.workoutType()
 
         let query = HKObserverQuery(
@@ -59,13 +72,10 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             predicate: nil
         ) { [weak self] _, completionHandler, error in
 
-            if let error {
-//                print("❌ HKObserverQuery error:", error)
+            if error != nil {
                 completionHandler()
                 return
             }
-
-//            print("📡 HKObserverQuery fired")
 
             Task { @MainActor in
                 self?.fetchUpdates()
@@ -73,19 +83,13 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             }
         }
 
+        observerQuery = query
         healthStore.execute(query)
 
         healthStore.enableBackgroundDelivery(
             for: type,
             frequency: .immediate
-        ) { success, error in
-
-            if let error {
-//                print("❌ Background delivery error:", error)
-            }
-
-//            print("📬 Background delivery enabled:", success)
-        }
+        ) { _, _ in }
     }
 
     func forceRefresh() {

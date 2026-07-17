@@ -6,26 +6,42 @@ final class ProfileViewModel: ObservableObject {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
     nonisolated deinit {}
-    
+
     @Published var destination: ProfileDestination?
 
     @Published var userProfile: UserProfile
-    @Published private(set) var mainSettings: [ProfileItem]
-    @Published private(set) var connectedSystems: [ProfileItem]
+    @Published private(set) var accountSettings: [ProfileItem]
+    @Published private(set) var healthSettings: [ProfileItem]
+    @Published private(set) var preferenceSettings: [ProfileItem]
+    @Published private(set) var privacyLegalSettings: [ProfileItem]
     @Published private(set) var supportSettings: [ProfileItem]
+
+    /// Compatibility aliases for older call sites.
+    var mainSettings: [ProfileItem] { preferenceSettings }
+    var connectedSystems: [ProfileItem] { healthSettings }
 
     private let service: ProfileServicing
 
     init(service: ProfileServicing = ProfileService()) {
         self.service = service
         self.userProfile = service.loadUserProfile()
-        self.mainSettings = service.loadMainSettings()
-        self.connectedSystems = service.loadConnectedSystems()
+        self.accountSettings = service.loadAccountSettings()
+        self.healthSettings = service.loadHealthSettings()
+        self.preferenceSettings = service.loadPreferenceSettings()
+        self.privacyLegalSettings = service.loadPrivacyLegalSettings()
         self.supportSettings = service.loadSupportSettings()
     }
 
-    func openProfileEditor() {
-        destination = .editProfile
+    func openEditName() {
+        destination = .editName
+    }
+
+    func openAccount() {
+        destination = .account
+    }
+
+    func openAppleHealth() {
+        destination = .healthAccess
     }
 
     func handleTap(_ item: ProfileItem) {
@@ -39,11 +55,14 @@ final class ProfileViewModel: ObservableObject {
         case .nightComfort:
             destination = .nightComfort
 
+        case .nutritionGoal:
+            destination = .nutritionGoal
+
         case .healthAccess, .appleHealth:
             destination = .healthAccess
 
-        case .privacy:
-            destination = .privacy
+        case .account:
+            destination = .account
 
         case .help:
             destination = .helpSupport
@@ -99,5 +118,24 @@ final class ProfileViewModel: ObservableObject {
 
     func saveBodyGoal(_ goal: NutritionGoal) {
         service.saveManualNutritionGoal(goal)
+    }
+
+    func resolvedNutritionGoal(weightKg: Double, heightCm: Double) -> NutritionGoal {
+        service.resolvedNutritionGoal(weightKg: weightKg, heightCm: heightCm)
+    }
+
+    func accountRowSubtitle() -> String {
+        let name = userProfile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = userProfile.email.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if AppReviewDemoCredentials.hasActiveSession {
+            return AppReviewDemoCredentials.email
+        }
+        if !name.isEmpty { return name }
+        if !email.isEmpty { return email }
+        if AuthSessionStore.hasPersistedAppleSession {
+            return WeekFitLocalizedString("settings.account.summary.appleSignIn")
+        }
+        return WeekFitLocalizedString("settings.account.profileSubtitle")
     }
 }

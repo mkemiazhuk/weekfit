@@ -49,8 +49,33 @@ final class AuthService {
     nonisolated deinit {}
 
     #if DEBUG
-    private var savedEmail = "demo@weekfit.app"
-    private var savedPassword = "123456"
+    /// Device-local DEBUG email accounts. Cleared with account deletion / local data reset.
+    enum DebugEmailAuthStorage {
+        static let emailKey = "weekfit.debug.auth.email"
+        static let passwordKey = "weekfit.debug.auth.password"
+        static let builtinEmail = "demo@weekfit.app"
+        static let builtinPassword = "123456"
+
+        static func registeredEmail(in defaults: UserDefaults = .standard) -> String? {
+            defaults.string(forKey: emailKey)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .nilIfEmpty
+        }
+
+        static func registeredPassword(in defaults: UserDefaults = .standard) -> String? {
+            defaults.string(forKey: passwordKey)
+        }
+
+        static func register(email: String, password: String, in defaults: UserDefaults = .standard) {
+            defaults.set(email, forKey: emailKey)
+            defaults.set(password, forKey: passwordKey)
+        }
+
+        static func clear(in defaults: UserDefaults = .standard) {
+            defaults.removeObject(forKey: emailKey)
+            defaults.removeObject(forKey: passwordKey)
+        }
+    }
     #endif
 
     func signIn(with provider: AuthProvider) async throws {
@@ -81,10 +106,19 @@ final class AuthService {
         }
 
         #if DEBUG
-        guard email.lowercased() == savedEmail.lowercased(),
-              password == savedPassword else {
-            throw AuthError.invalidCredentials
+        let normalizedEmail = email.lowercased()
+        if let registered = DebugEmailAuthStorage.registeredEmail()?.lowercased(),
+           registered == normalizedEmail,
+           password == DebugEmailAuthStorage.registeredPassword() {
+            return
         }
+
+        if normalizedEmail == DebugEmailAuthStorage.builtinEmail.lowercased(),
+           password == DebugEmailAuthStorage.builtinPassword {
+            return
+        }
+
+        throw AuthError.invalidCredentials
         #else
         throw AuthError.invalidCredentials
         #endif
@@ -105,12 +139,13 @@ final class AuthService {
             throw AuthError.weakPassword
         }
 
-        if email.lowercased() == savedEmail.lowercased() {
+        let normalizedEmail = email.lowercased()
+        if let registered = DebugEmailAuthStorage.registeredEmail()?.lowercased(),
+           registered == normalizedEmail {
             throw AuthError.emailAlreadyExists
         }
 
-        savedEmail = email
-        savedPassword = password
+        DebugEmailAuthStorage.register(email: normalizedEmail, password: password)
         #else
         throw AuthError.appleSignInUnavailable
         #endif
@@ -126,7 +161,10 @@ final class AuthService {
             throw AuthError.invalidEmail
         }
 
-        guard email.lowercased() == savedEmail.lowercased() else {
+        let normalizedEmail = email.lowercased()
+        let isRegistered = DebugEmailAuthStorage.registeredEmail()?.lowercased() == normalizedEmail
+        let isBuiltin = normalizedEmail == DebugEmailAuthStorage.builtinEmail.lowercased()
+        guard isRegistered || isBuiltin else {
             throw AuthError.userNotFound
         }
         #else
@@ -172,8 +210,24 @@ final class AuthService {
         }
     }
 
+    func deleteAccount() async throws {
+        // Remote deletion + local wipe are orchestrated by AccountDeletionService.
+        AuthSessionStore.clear()
+        #if DEBUG
+        DebugEmailAuthStorage.clear()
+        #endif
+    }
+
     func signOut() async throws {
         try await Task.sleep(nanoseconds: 200_000_000)
         AuthSessionStore.clear()
     }
 }
+
+#if DEBUG
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
+    }
+}
+#endif

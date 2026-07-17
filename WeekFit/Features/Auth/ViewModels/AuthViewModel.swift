@@ -92,6 +92,9 @@ final class AuthViewModel: ObservableObject {
                 password: password
             )
 
+            clearAppReviewDemoSession()
+            // New identity must not inherit the previous account's on-device WeekFit data.
+            AccountSessionController.shared.requestLocalDataResetOnNextRealUserEntry()
             isLoggedIn = true
         } catch {
             errorMessage = cleanError(error)
@@ -153,6 +156,16 @@ final class AuthViewModel: ObservableObject {
             errorMessage = nil
             successMessage = nil
         }
+    }
+
+    /// Completes account deletion after local/cloud cleanup and the success confirmation.
+    /// Tokens and demo session flags are already cleared by `AccountDeletionService`.
+    func completeAccountDeletionSignOut() {
+        AppReviewDemoCredentials.clearSession()
+        AuthSessionStore.clear()
+        isLoggedIn = false
+        errorMessage = nil
+        successMessage = nil
     }
 
     func applyUITestBypassIfNeeded() {

@@ -30,6 +30,19 @@ final class NightComfortLocationService: NSObject {
         }
     }
 
+    /// Stops location updates and clears cached coordinates after account deletion.
+    /// Does not revoke the system Location permission (apps cannot revoke it).
+    func stopAndClearForAccountDeletion() {
+        manager.stopUpdatingLocation()
+        Self.clearCachedLocation()
+        lastAppliedCoordinate = nil
+    }
+
+    static func clearCachedLocation() {
+        UserDefaults.standard.removeObject(forKey: cachedLatitudeKey)
+        UserDefaults.standard.removeObject(forKey: cachedLongitudeKey)
+    }
+
     func requestWhenInUseAuthorizationIfNeeded() {
         guard AccountSessionController.shared.mode == .realUser else { return }
 

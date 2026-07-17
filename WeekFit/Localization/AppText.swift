@@ -424,8 +424,14 @@ enum AppText {
     }
 
     enum Settings {
+        enum Root {
+            static let title: LocalizedStringResource = "settings.root.title"
+            static let preferencesSection: LocalizedStringResource = "settings.root.section.preferences"
+            static let appleHealth: LocalizedStringResource = "settings.root.appleHealth"
+        }
+
         enum Profile {
-            static let title: LocalizedStringResource = "settings.profile.title"
+            static let title: LocalizedStringResource = "settings.root.title"
             static let settingsSection: LocalizedStringResource = "settings.profile.section.settings"
             static let supportSection: LocalizedStringResource = "settings.profile.section.support"
             static let systemSection: LocalizedStringResource = "settings.profile.section.system"
@@ -450,11 +456,31 @@ enum AppText {
             static let footerPrivacy: LocalizedStringResource = "settings.profile.footer.privacy"
             static let notificationsTitle: LocalizedStringResource = "settings.profile.item.notifications"
             static let notificationsSubtitle: LocalizedStringResource = "settings.profile.item.notifications.subtitle"
-            static let healthSignalsTitle: LocalizedStringResource = "settings.profile.item.healthSignals"
+            static let healthSignalsTitle: LocalizedStringResource = "settings.root.appleHealth"
             static let healthSignalsSubtitle: LocalizedStringResource = "settings.profile.item.healthSignals.subtitle"
             static let helpSupportTitle: LocalizedStringResource = "settings.profile.item.helpSupport"
             static let termsPrivacyTitle: LocalizedStringResource = "settings.profile.item.termsPrivacy"
             static let bodyGoalTitle: LocalizedStringResource = "settings.profile.bodyGoal.title"
+        }
+
+        enum Account {
+            static let title: LocalizedStringResource = "settings.account.title"
+            static let profileSubtitle: LocalizedStringResource = "settings.account.profileSubtitle"
+            static let deleteAccount: LocalizedStringResource = "settings.account.deleteAccount"
+            static let dangerZone: LocalizedStringResource = "settings.account.dangerZone"
+            static let deleting: LocalizedStringResource = "settings.account.deleting"
+            static let healthPrivacyNote: LocalizedStringResource = "settings.account.healthPrivacyNote"
+            static let summaryHeadline: LocalizedStringResource = "settings.account.summary.headline"
+            static let summaryBody: LocalizedStringResource = "settings.account.summary.body"
+            static let summaryAppleSignIn: LocalizedStringResource = "settings.account.summary.appleSignIn"
+            static let summarySignedIn: LocalizedStringResource = "settings.account.summary.signedIn"
+            static let deleteConfirmTitle: LocalizedStringResource = "settings.account.deleteConfirm.title"
+            static let deleteConfirmMessage: LocalizedStringResource = "settings.account.deleteConfirm.message"
+            static let deleteConfirmPrimary: LocalizedStringResource = "settings.account.deleteConfirm.primary"
+            static let deleteFailedTitle: LocalizedStringResource = "settings.account.deleteFailed.title"
+            static let deleteSuccessTitle: LocalizedStringResource = "settings.account.deleteSuccess.title"
+            static let deleteSuccessMessage: LocalizedStringResource = "settings.account.deleteSuccess.message"
+            static let deleteSuccessOpenSettings: LocalizedStringResource = "settings.account.deleteSuccess.openSettings"
         }
 
         enum BodyGoal {
@@ -491,6 +517,19 @@ enum AppText {
                 static let alwaysOnSubtitle: LocalizedStringResource = "settings.nightComfort.option.alwaysOnSubtitle"
                 static let offSubtitle: LocalizedStringResource = "settings.nightComfort.option.offSubtitle"
             }
+        }
+
+        enum EditName {
+            static let title: LocalizedStringResource = "settings.editName.title"
+            static let nameField: LocalizedStringResource = "settings.editName.nameField"
+            static let namePlaceholder: LocalizedStringResource = "settings.editName.namePlaceholder"
+        }
+
+        enum NutritionGoal {
+            static let title: LocalizedStringResource = "settings.nutritionGoal.title"
+            static let subtitle: LocalizedStringResource = "settings.nutritionGoal.subtitle"
+            static let profileSubtitle: LocalizedStringResource = "settings.nutritionGoal.profileSubtitle"
+            static let setupSubtitle: LocalizedStringResource = "settings.nutritionGoal.setupSubtitle"
         }
 
         enum ProfileEdit {

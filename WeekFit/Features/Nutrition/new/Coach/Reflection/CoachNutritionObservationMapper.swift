@@ -106,7 +106,16 @@ enum CoachNutritionObservationMapper {
         var calories = 0.0
 
         for activity in activities {
-            if let matchedMeal = matchMeal(for: activity, in: meals) {
+            if MealCatalogMatcher.prefersStoredNutrition(
+                source: activity.source,
+                type: activity.type,
+                imageName: activity.imageName
+            ) {
+                protein += Double(activity.protein)
+                carbs += Double(activity.carbs)
+                fats += Double(activity.fats)
+                calories += Double(activity.calories)
+            } else if let matchedMeal = matchMeal(for: activity, in: meals) {
                 protein += Double(matchedMeal.protein)
                 carbs += Double(matchedMeal.carbs)
                 fats += Double(matchedMeal.fats)
@@ -139,6 +148,13 @@ enum CoachNutritionObservationMapper {
             if isHydrationActivityByText(activity) {
                 return total + hydrationVolumeMilliliters(for: activity)
             }
+            if MealCatalogMatcher.prefersStoredNutrition(
+                source: activity.source,
+                type: activity.type,
+                imageName: activity.imageName
+            ) {
+                return total
+            }
             if let matchedMeal = matchMeal(for: activity, in: meals), matchedMeal.type == .hydration {
                 return total + hydrationVolumeMilliliters(for: activity)
             }
@@ -155,7 +171,7 @@ enum CoachNutritionObservationMapper {
             guard Calendar.current.isDate(activity.date, inSameDayAs: date) else { return false }
             guard activity.isCompleted, !activity.isSkipped else { return false }
             let type = normalized(activity.type)
-            return (type == "meal" || type == "drink") && !isHydrationActivityByText(activity)
+            return (type == "meal" || type == "drink" || type == "snack") && !isHydrationActivityByText(activity)
         }
     }
 
@@ -171,22 +187,11 @@ enum CoachNutritionObservationMapper {
     }
 
     private static func matchMeal(for activity: CoachPlannedActivitySnapshot, in meals: [Meals]) -> Meals? {
-        let activityTitle = normalized(activity.title)
-        let activityImage = normalized(activity.imageName)
-
-        if let exactTitleMatch = meals.first(where: { normalized($0.title) == activityTitle }) {
-            return exactTitleMatch
-        }
-        if let imageMatch = meals.first(where: { normalized($0.imageName) == activityImage }) {
-            return imageMatch
-        }
-        if let containsMatch = meals.first(where: {
-            let mealTitle = normalized($0.title)
-            return mealTitle.contains(activityTitle) || activityTitle.contains(mealTitle)
-        }) {
-            return containsMatch
-        }
-        return nil
+        MealCatalogMatcher.match(
+            title: activity.title,
+            imageName: activity.imageName,
+            in: meals
+        )
     }
 
     private static func isHydrationActivityByText(_ activity: CoachPlannedActivitySnapshot) -> Bool {

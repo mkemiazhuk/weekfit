@@ -24,7 +24,13 @@ enum QuickLogActivitySync {
         }
 
         let colors = accentColors(for: profile.kind)
-        let activityType = profile.kind == .drink ? "drink" : "meal"
+        let activityType: String = {
+            switch profile.kind {
+            case .drink: return "drink"
+            case .snack: return "snack"
+            case .meal: return "meal"
+            }
+        }()
         let durationMinutes = QuickLogActivityPortions.encodeDurationMinutes(
             profile: profile,
             nutrition: nutrition
