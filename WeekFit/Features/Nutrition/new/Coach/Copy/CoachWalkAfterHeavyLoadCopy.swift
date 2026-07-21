@@ -37,7 +37,7 @@ enum CoachWalkAfterHeavyLoadPresentation {
     ) -> String {
         switch phase {
         case .upcoming:
-            return russian ? "Легкая прогулка" : "Recovery walk"
+            return russian ? "Лёгкая прогулка" : "Recovery walk"
         case .live:
             return russian ? "На прогулке" : "On the walk"
         case .completed:
@@ -69,7 +69,7 @@ enum CoachWalkAfterHeavyLoadPresentation {
         switch phase {
         case .upcoming:
             return russian
-                ? "Спокойный темп поможет организму восстановиться."
+                ? "Лёгкая прогулка — мягкое завершение дня."
                 : "Easy walk to settle the day."
         case .live:
             return russian
@@ -83,16 +83,16 @@ enum CoachWalkAfterHeavyLoadPresentation {
                         : "Recovery is the job for the rest of today."
                 }
                 return russian
-                    ? "Сегодня без лишней интенсивности."
+                    ? "Без дополнительной интенсивности — сегодня она не нужна."
                     : "Keep optional intensity off the table today."
             }
             if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
-                    ? "Остаток дня спокойный."
+                    ? "Остаток дня — спокойно."
                     : "Keep the rest of the day calm."
             }
             return russian
-                ? "Сегодня без лишней интенсивности."
+                ? "Сегодня спокойно — ничего доказывать не нужно."
                 : "Keep today calm — nothing to prove."
         }
     }
@@ -135,7 +135,7 @@ private extension CoachWalkAfterHeavyLoadCopy {
             ),
             recommendation: .en(
                 "Let the walk release tension, not add another block.",
-                "Пусть прогулка снимет напряжение, а не добавит новый блок."
+                "Пусть прогулка снимет напряжение, а не добавит новую нагрузку."
             ),
             avoid: .en(
                 "Don't speed up if the legs feel heavy.",
@@ -167,11 +167,11 @@ private extension CoachWalkAfterHeavyLoadCopy {
                 ),
                 recommendation: .en(
                     "Keep the rest of the day calm — no new hard block.",
-                    "Остаток дня — восстановление, без нового интенсивного блока."
+                    "Остаток дня спокойный — без новой тяжёлой нагрузки, сейчас важнее отдых."
                 ),
                 avoid: .en(
                     "Do not force extra steps just to chase numbers.",
-                    "Не добавляйте нагрузку ради цифр."
+                    "Не добавляйте шаги через силу только ради цифр."
                 ),
                 nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
                     mealWindowOpen: input.mealWindowOpen
@@ -187,11 +187,11 @@ private extension CoachWalkAfterHeavyLoadCopy {
                 ),
                 recommendation: .en(
                     "Keep the rest of the day calm — no new hard block.",
-                    "Остаток дня спокойный — без нового тяжёлого блока, отдыха в приорitете."
+                    "Остаток дня спокойный — без новой тяжёлой нагрузки, сейчас важнее отдых."
                 ),
                 avoid: .en(
                     "Do not force extra steps just to chase numbers.",
-                    "Не добавляйте нагрузку ради цифр."
+                    "Не добавляйте шаги через силу только ради цифр."
                 ),
                 nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
                     mealWindowOpen: input.mealWindowOpen
@@ -206,11 +206,11 @@ private extension CoachWalkAfterHeavyLoadCopy {
             ),
             recommendation: .en(
                 "No new hard block today — recovery comes first.",
-                "Сегодня без нового тяжёлого блока — восстановление в приоритете."
+                "Сегодня без новой тяжёлой нагрузки — сейчас важнее восстановление."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
-                "Не добавляйте нагрузку ради цифр."
+                "Не добавляйте шаги через силу только ради цифр."
             ),
             nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
                 mealWindowOpen: input.mealWindowOpen

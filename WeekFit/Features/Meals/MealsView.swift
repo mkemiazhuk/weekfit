@@ -1,16 +1,15 @@
 import SwiftUI
 import SwiftData
 
-private enum MealCreationRoute: Identifiable {
+private enum MealCreationRoute {
     case builder
     case manualFood
+}
 
-    var id: String {
-        switch self {
-        case .builder: return "builder"
-        case .manualFood: return "manualFood"
-        }
-    }
+private enum MealCreationStep: Equatable {
+    case chooser
+    case builder
+    case manualFood
 }
 
 struct MealsView: View {
@@ -38,14 +37,16 @@ struct MealsView: View {
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
 
-    @State private var showCreationChooser = false
-    @State private var creationRoute: MealCreationRoute?
+    @State private var showCreationSheet = false
+    @State private var creationStep: MealCreationStep = .chooser
+    @State private var creationDetent: PresentationDetent = .height(270)
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
     @State private var showContent = false
     @State private var highlightedMealID: String?
 
     @State private var showProfile = false
+    @AppStorage(OnboardingStore.Keys.introMeals) private var mealsIntroDismissed = false
 
     private let background = WeekFitTheme.backgroundColor
     private let cardSecondary = WeekFitTheme.cardSecondary
@@ -261,40 +262,29 @@ struct MealsView: View {
             .weekFitSheetChrome(cornerRadius: 36)
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
-        .sheet(isPresented: $showCreationChooser) {
-            MealCreationChooserSheet { route in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                showCreationChooser = false
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                    creationRoute = route
-                }
-            }
-            .presentationDetents([.height(270)])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(cornerRadius: 36)
-        }
-        .sheet(item: $creationRoute) { route in
-            switch route {
-            case .builder:
-                MealBuilderView { newMeal in
-                    creationRoute = nil
+        .sheet(isPresented: $showCreationSheet) {
+            // One sheet only — SwiftUI cannot present a second sheet on top of this one.
+            MealCreationSheetHost(
+                step: $creationStep,
+                detent: $creationDetent,
+                existingMeals: mealsViewModel.customMeals,
+                onSaved: { newMeal in
+                    showCreationSheet = false
                     saveMealToLibrary(newMeal, scrollToNewItem: true)
                 }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .weekFitSheetChrome(cornerRadius: 36)
-
-            case .manualFood:
-                CustomMealBuilderView(existingMeals: mealsViewModel.customMeals) { newMeal in
-                    creationRoute = nil
-                    saveMealToLibrary(newMeal, scrollToNewItem: true)
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .weekFitSheetChrome(cornerRadius: 36)
-            }
+            )
         }
+        .onChange(of: showCreationSheet) { _, isPresented in
+            guard !isPresented else { return }
+            creationStep = .chooser
+            creationDetent = .height(270)
+        }
+    }
+
+    private func openCreationChooser() {
+        creationStep = .chooser
+        creationDetent = .height(270)
+        showCreationSheet = true
     }
     
     @MainActor
@@ -374,20 +364,35 @@ struct MealsView: View {
     }
 
     private var emptyLibraryList: some View {
-        List {
-            customEmptyState
-                .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+        VStack(alignment: .leading, spacing: 10) {
+            if !mealsIntroDismissed {
+                OnboardingContextualIntroCard(
+                    title: WeekFitLocalizedString("onboarding.intro.meals.title"),
+                    message: WeekFitLocalizedString("onboarding.intro.meals.body"),
+                    accent: WeekFitTheme.meal
+                ) {
+                    mealsIntroDismissed = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 2)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
-            bottomSpacerRow
+            List {
+                customEmptyState
+                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                bottomSpacerRow
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
+            .listRowSpacing(0)
+            .scrollIndicators(.hidden)
+            .frame(maxHeight: .infinity)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .listRowSpacing(0)
-        .scrollIndicators(.hidden)
-        .frame(maxHeight: .infinity)
     }
 
     private var catalogErrorList: some View {
@@ -443,53 +448,68 @@ struct MealsView: View {
     }
 
     private var populatedLibraryList: some View {
-        List {
-            if shouldShowRecommendation, let recommendation = visibleRecommendation {
-                coachRecommendationHero(recommendation)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 6, trailing: 16))
+        VStack(alignment: .leading, spacing: 10) {
+            if !mealsIntroDismissed {
+                OnboardingContextualIntroCard(
+                    title: WeekFitLocalizedString("onboarding.intro.meals.title"),
+                    message: WeekFitLocalizedString("onboarding.intro.meals.body"),
+                    accent: WeekFitTheme.meal
+                ) {
+                    mealsIntroDismissed = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 2)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            List {
+                if shouldShowRecommendation, let recommendation = visibleRecommendation {
+                    coachRecommendationHero(recommendation)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 6, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                if !displayedMealItems.isEmpty {
+                    sectionHeader(
+                        title: "meals.library.section.meals",
+                        count: displayedMealItems.count,
+                        icon: "fork.knife"
+                    )
+                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 9, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+
+                    libraryRows(displayedMealItems)
+                }
+
+                if !sortedFoodItems.isEmpty {
+                    sectionHeader(
+                        title: "meals.library.section.foods",
+                        count: sortedFoodItems.count,
+                        icon: "takeoutbag.and.cup.and.straw.fill"
+                    )
+                    .listRowInsets(EdgeInsets(top: displayedMealItems.isEmpty ? 2 : 10, leading: 16, bottom: 9, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    libraryRows(sortedFoodItems)
+                }
+
+                bottomSpacerRow
             }
-
-            if !displayedMealItems.isEmpty {
-                sectionHeader(
-                    title: "meals.library.section.meals",
-                    count: displayedMealItems.count,
-                    icon: "fork.knife"
-                )
-                .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 9, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-
-                libraryRows(displayedMealItems)
-            }
-
-            if !sortedFoodItems.isEmpty {
-                sectionHeader(
-                    title: "meals.library.section.foods",
-                    count: sortedFoodItems.count,
-                    icon: "takeoutbag.and.cup.and.straw.fill"
-                )
-                .listRowInsets(EdgeInsets(top: displayedMealItems.isEmpty ? 2 : 10, leading: 16, bottom: 9, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-
-                libraryRows(sortedFoodItems)
-            }
-
-            bottomSpacerRow
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
+            .listRowSpacing(0)
+            .scrollIndicators(.hidden)
+            .animation(
+                .spring(response: 0.38, dampingFraction: 0.86),
+                value: visibleRecommendation?.meal.id
+            )
+            .frame(maxHeight: .infinity)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .listRowSpacing(0)
-        .scrollIndicators(.hidden)
-        .animation(
-            .spring(response: 0.38, dampingFraction: 0.86),
-            value: visibleRecommendation?.meal.id
-        )
-        .frame(maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -620,7 +640,7 @@ struct MealsView: View {
     private var customEmptyState: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showCreationChooser = true
+            openCreationChooser()
         } label: {
             VStack(alignment: .leading, spacing: 12) {
 
@@ -698,9 +718,12 @@ struct MealsView: View {
             Text(WeekFitLocalizedString(title))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.78))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
         .background {
             Capsule()
                 .fill(WeekFitTheme.whiteOpacity(0.035))
@@ -799,7 +822,7 @@ struct MealsView: View {
             if !isQuickLogMode {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showCreationChooser = true
+                    openCreationChooser()
                 } label: {
                     HStack(spacing: 9) {
                         Spacer(minLength: 0)
@@ -872,10 +895,48 @@ struct MealsView: View {
 }
 
 
+private struct MealCreationSheetHost: View {
+    @Binding var step: MealCreationStep
+    @Binding var detent: PresentationDetent
+
+    let existingMeals: [Meals]
+    let onSaved: (Meals) -> Void
+
+    var body: some View {
+        Group {
+            switch step {
+            case .chooser:
+                MealCreationChooserSheet { route in
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    // Expand first while both detents are still allowed, then swap content.
+                    detent = .large
+                    switch route {
+                    case .builder:
+                        step = .builder
+                    case .manualFood:
+                        step = .manualFood
+                    }
+                }
+
+            case .builder:
+                MealBuilderView(onSave: onSaved)
+
+            case .manualFood:
+                CustomMealBuilderView(existingMeals: existingMeals, onSave: onSaved)
+            }
+        }
+        .presentationDetents(
+            step == .chooser ? [.height(270), .large] : [.large],
+            selection: $detent
+        )
+        .presentationDragIndicator(step == .chooser ? .hidden : .visible)
+        .weekFitSheetChrome(cornerRadius: 36)
+    }
+}
+
 private struct MealCreationChooserSheet: View {
     let onSelect: (MealCreationRoute) -> Void
 
-    private let background = WeekFitTheme.backgroundColor
     private let card = WeekFitTheme.elevatedCard
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
@@ -919,11 +980,8 @@ private struct MealCreationChooserSheet: View {
         .padding(.horizontal, 18)
         .padding(.top, 10)
         .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            background
-                .ignoresSafeArea()
-        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Color.clear)
     }
 
     private func optionRow(
@@ -951,13 +1009,15 @@ private struct MealCreationChooserSheet: View {
                         .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.15)
+                        .lineLimit(1)
 
                     Text(WeekFitLocalizedString(subtitle))
                         .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(textSecondary.opacity(0.68))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))

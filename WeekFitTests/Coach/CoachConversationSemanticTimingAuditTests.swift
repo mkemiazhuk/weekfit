@@ -35,7 +35,7 @@ final class CoachConversationSemanticTimingAuditTests: XCTestCase {
         let findings = CoachConversationSemanticTimingAudit.audit(
             pack: pack(
                 russian: "Спокойный день.",
-                supportingRussian: "Первый приём пищи ещё впереди"
+                supportingRussian: "Первая еда ещё впереди."
             ),
             context: context(timeOfDay: .midday, mealWindowOpen: false)
         )
@@ -55,7 +55,7 @@ final class CoachConversationSemanticTimingAuditTests: XCTestCase {
 
     func testGroundedCompletionPassesAudit() {
         let findings = CoachConversationSemanticTimingAudit.audit(
-            pack: pack(russian: "Прогулка уже есть — дальше держите обычный спокойный ритм."),
+            pack: pack(russian: "Прогулка уже была — дальше держите обычный спокойный ритм."),
             context: context(
                 timeOfDay: .midday,
                 completedRecoveryWalkToday: true,
@@ -126,7 +126,7 @@ final class CoachConversationSemanticTimingAuditTests: XCTestCase {
         )
         XCTAssertEqual(
             pack.recommendation.lines.first?.russian,
-            "Прогулка уже есть — дальше держите обычный спокойный ритм."
+            "Прогулка уже была — дальше держите обычный спокойный ритм."
         )
         XCTAssertEqual(
             pack.avoid.lines.first?.russian,
@@ -134,7 +134,7 @@ final class CoachConversationSemanticTimingAuditTests: XCTestCase {
         )
         XCTAssertEqual(
             pack.nextAction.lines.first?.russian,
-            "Вода по самочувствию, первый приём пищи — в привычное время."
+            "Вода по самочувствию, а еда — в привычное время."
         )
 
         let russian = joinedRussian(pack)
@@ -153,7 +153,7 @@ final class CoachConversationSemanticTimingAuditTests: XCTestCase {
         XCTAssertFalse(russian.contains("поешьте"))
         XCTAssertFalse(russian.contains("еды пока меньше"))
         XCTAssertFalse(pack.supportingSignals.lines.contains { $0.russian.contains("Еды пока меньше") })
-        XCTAssertTrue(pack.supportingSignals.lines.contains { $0.russian.contains("Первый приём пищи ещё впереди") })
+        XCTAssertTrue(pack.supportingSignals.lines.contains { $0.russian.contains("Первая еда ещё впереди") })
     }
 
     func test1500RecoveryDayLightActivityCompleted() throws {

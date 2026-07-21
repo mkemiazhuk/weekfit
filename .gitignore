@@ -33,3 +33,5 @@ Package.resolved
 # Web static export scratch / local asset tests
 web/public/reels/.tmp/
 .tmp-transparency-test/
+.venv-reels/
+.venv-scripts/

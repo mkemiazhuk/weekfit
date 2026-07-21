@@ -50,7 +50,7 @@ enum CoachCopyNutritionTiming {
     static func firstMealAheadSignal() -> CoachBilingualText {
         .en(
             "First meal is still ahead.",
-            "Первый приём пищи ещё впереди"
+            "Первая еда ещё впереди."
         )
     }
 
@@ -73,7 +73,7 @@ enum CoachCopyNutritionTiming {
         if isWindDown(input.timeOfDay) {
             return .en(
                 "Sip if thirsty, then wind down.",
-                "Если хочется пить — немного воды."
+                "Если хочется пить — немного воды, потом можно отдыхать."
             )
         }
         return .en(
@@ -91,14 +91,14 @@ enum CoachCopyNutritionTiming {
         }
         return .en(
             "Water by feel — first meal at your usual time.",
-            "Вода по самочувствию, первый приём пищи — в привычное время."
+            "Вода по самочувствию, а еда — в привычное время."
         )
     }
 
     static func windDownSleepNextAction() -> CoachBilingualText {
         .en(
             "Pick a bedtime and stick to it.",
-            "Решите, во сколько ложитесь — и придерживайтесь."
+            "Решите, во сколько ложитесь — и придерживайтесь этого."
         )
     }
 
@@ -124,18 +124,18 @@ enum CoachCopyNutritionTiming {
         if isActiveSession {
             return .en(
                 "Fluids are critically low — sip now, steadily.",
-                "Очень мало жидкости — пейте понемногу, но сейчас."
+                "Очень мало воды — начните пить прямо сейчас, но понемногу."
             )
         }
         if isWindDown(timeOfDay) {
             return .en(
                 "Fluids are very low — small sips if thirsty, then wind down.",
-                "Жидкости мало — немного воды, если хочется, и отдых."
+                "Воды мало — немного, если хочется, и отдых."
             )
         }
         return .en(
             "Fluids are critically low — sip now, steadily.",
-            "Очень мало жидкости — пейте понемногу, но сейчас."
+            "Очень мало воды — начните пить прямо сейчас, но понемногу."
         )
     }
 }

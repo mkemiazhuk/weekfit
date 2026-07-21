@@ -39,10 +39,12 @@ struct TodayView: View {
     
     @State private var showProfile = false
     @State private var livePulse = false
+    @AppStorage(OnboardingStore.Keys.introToday) private var todayIntroDismissed = false
     @State private var drinksQuickLogToast: String?
     @State private var foodQuickLogToast: String?
     
     @State private var activityToConfirm: PlannedActivity? = nil
+    @State private var queuedActivityToConfirm: PlannedActivity? = nil
 
     private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
     private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
@@ -295,17 +297,14 @@ struct TodayView: View {
     }
 
     private var timeOfDayGreeting: (text: String, icon: String, iconColor: Color) {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: Date())
-        
-        switch hour {
-        case 5..<12:
+        switch WeekFitLocalDayPeriod.from() {
+        case .morning:
             return ("Good morning", "sun.max.fill", .orange)
-        case 12..<17:
+        case .afternoon:
             return ("Good afternoon", "sun.max.fill", .orange)
-        case 17..<22:
+        case .evening:
             return ("Good evening", "moon.stars.fill", Color(red: 0.55, green: 0.40, blue: 0.85))
-        default:
+        case .night:
             return ("Good night", "moon.fill", .indigo)
         }
     }
@@ -464,7 +463,7 @@ struct TodayView: View {
         }
         .onReceive(confirmationState.$pendingActivity) { pending in
             guard let pending else { return }
-            activityToConfirm = pending
+            presentActivityConfirmation(pending)
             confirmationState.pendingActivity = nil
         }
         .onChange(of: tabIsActive) { _, isActive in
@@ -655,6 +654,7 @@ struct TodayView: View {
                 prepareQuickNutritionLogData()
             } else {
                 quickLogSession.reset()
+                flushQueuedActivityConfirmationIfNeeded()
             }
         }
         .onChange(of: userSettings.customMealsCatalogRevision) { _, _ in
@@ -732,7 +732,16 @@ struct TodayView: View {
                 prepareQuickDrinkLogData()
             } else {
                 quickLogSession.reset()
+                flushQueuedActivityConfirmationIfNeeded()
             }
+        }
+        .onChange(of: showDirectWorkoutLogSheet) { _, isPresented in
+            guard !isPresented else { return }
+            flushQueuedActivityConfirmationIfNeeded()
+        }
+        .onChange(of: showProfile) { _, isPresented in
+            guard !isPresented else { return }
+            flushQueuedActivityConfirmationIfNeeded()
         }
     }
     
@@ -1196,6 +1205,17 @@ struct TodayView: View {
 
     private func summaryContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            if !todayIntroDismissed {
+                OnboardingContextualIntroCard(
+                    title: WeekFitLocalizedString("onboarding.intro.today.title"),
+                    message: WeekFitLocalizedString("onboarding.intro.today.body"),
+                    accent: WeekFitTheme.workout
+                ) {
+                    todayIntroDismissed = true
+                }
+                .padding(.bottom, 16)
+            }
+
             dailyStatusSection
 
             upNextSection
@@ -2410,7 +2430,7 @@ struct TodayView: View {
 
                 Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    activityToConfirm = pending
+                    presentActivityConfirmation(pending)
                 } label: {
                     HStack(alignment: .top, spacing: 12) {
                         ZStack {
@@ -2558,6 +2578,7 @@ struct TodayView: View {
         showDirectDrinkLogSheet = false
         showDirectRecoveryLogSheet = false
         activityToConfirm = nil
+        queuedActivityToConfirm = nil
         setQuickLogMeals([])
         setQuickLogSnacks([])
         setQuickLogDrinks([])
@@ -2569,6 +2590,39 @@ struct TodayView: View {
         handleReturnToTodayRequest()
         todayViewModel.now = Date()
         todayViewModel.triggerHealthRefresh()
+    }
+
+    /// iOS 17 only allows one sheet at a time — keep Today action sheets mutually exclusive.
+    private var isTodayActionSheetPresented: Bool {
+        showProfile
+            || showDirectMealLogSheet
+            || showDirectDrinkLogSheet
+            || showDirectWorkoutLogSheet
+            || showDirectRecoveryLogSheet
+    }
+
+    private func presentExclusiveTodayActionSheet(_ present: () -> Void) {
+        showDirectMealLogSheet = false
+        showDirectDrinkLogSheet = false
+        showDirectWorkoutLogSheet = false
+        showDirectRecoveryLogSheet = false
+        activityToConfirm = nil
+        present()
+    }
+
+    private func presentActivityConfirmation(_ activity: PlannedActivity) {
+        if isTodayActionSheetPresented {
+            queuedActivityToConfirm = activity
+            return
+        }
+        activityToConfirm = activity
+    }
+
+    private func flushQueuedActivityConfirmationIfNeeded() {
+        guard !isTodayActionSheetPresented,
+              let queued = queuedActivityToConfirm else { return }
+        queuedActivityToConfirm = nil
+        activityToConfirm = queued
     }
     
     private struct QuickActionPressStyle: ButtonStyle {
@@ -2696,7 +2750,9 @@ struct TodayView: View {
             toastMessage: drinksQuickLogToast
         ) {
             preloadQuickDrinkLogDataIfNeeded()
-            showDirectDrinkLogSheet = true
+            presentExclusiveTodayActionSheet {
+                showDirectDrinkLogSheet = true
+            }
         }
 
         quickActionItem(
@@ -2709,7 +2765,9 @@ struct TodayView: View {
         ) {
             selectedLogTab = .meals
             preloadQuickFoodLogDataIfNeeded()
-            showDirectMealLogSheet = true
+            presentExclusiveTodayActionSheet {
+                showDirectMealLogSheet = true
+            }
         }
 
         quickActionItem(
@@ -2720,7 +2778,9 @@ struct TodayView: View {
             isEmphasized: priority == .activity,
             liveIndicatorColor: activeSession == nil ? nil : todayPremiumBronze
         ) {
-            showDirectWorkoutLogSheet = true
+            presentExclusiveTodayActionSheet {
+                showDirectWorkoutLogSheet = true
+            }
         }
     }
 
@@ -2987,7 +3047,7 @@ struct TodayView: View {
             return activityTime(activity.date)
         }
 
-        let prefix = WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "Завтра" : "Tomorrow"
+        let prefix = WeekFitUsesRussianLanguage() ? "Завтра" : "Tomorrow"
         return "\(prefix) \(activityTime(activity.date))"
     }
 

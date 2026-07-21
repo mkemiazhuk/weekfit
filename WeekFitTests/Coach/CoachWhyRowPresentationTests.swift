@@ -40,7 +40,7 @@ final class CoachWhyRowPresentationTests: XCTestCase {
 
     func testRecoveryLagUsesRecoveryIconNotFood() {
         let style = CoachWhyRowPresentation.resolve(
-            title: "Восстановление отстаёт — берегите тренировку.",
+            title: "Тело ещё не восстановилось — берегите тренировку.",
             semanticColor: semantic
         )
         XCTAssertEqual(style.icon, "heart.text.clipboard.fill")

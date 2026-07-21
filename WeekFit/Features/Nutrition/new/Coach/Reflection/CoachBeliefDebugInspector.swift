@@ -124,7 +124,7 @@ enum CoachBeliefDebugInspector {
             "protein=\(observation.proteinGrams ?? 0)g",
             "calories=\(observation.caloriesEaten ?? 0)",
             "meals=\(observation.mealsLoggedCount ?? 0)",
-            "water=\(String(format: "%.1f", observation.hydrationLiters ?? 0))L"
+            "water=\(String(format: "%.1f", observation.hydrationLiters ?? 0.0))L"
         ]
         if let deficit = observation.calorieDeficit {
             parts.append("deficit=\(deficit)")

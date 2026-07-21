@@ -20,7 +20,10 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         let russian = joinedRussian(pack)
 
         XCTAssertTrue(russian.contains("разогнать ноги"), russian)
-        XCTAssertTrue(russian.contains("используйте прогулку"), russian)
+        XCTAssertTrue(
+            russian.contains("эта прогулка") || russian.contains("для восстановления"),
+            russian
+        )
         XCTAssertFalse(russian.contains("прогулка уже"), russian)
         XCTAssertFalse(russian.contains("прогулка завершена"), russian)
         XCTAssertFalse(russian.contains("остаток дня"), russian)
@@ -49,7 +52,7 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
 
         XCTAssertTrue(russian.contains("прогулка уже"))
         XCTAssertTrue(russian.contains("остаток дня"))
-        XCTAssertTrue(russian.contains("отдыха"))
+        XCTAssertTrue(russian.contains("отдых"))
         XCTAssertFalse(russian.contains("10–20 минут спокойно"))
         XCTAssertFalse(russian.lowercased().contains("идите"))
     }
@@ -101,7 +104,7 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
 
         XCTAssertTrue(russian.contains("прогулка уже"))
         XCTAssertTrue(russian.contains("остаток дня"))
-        XCTAssertTrue(russian.contains("отдыха"))
+        XCTAssertTrue(russian.contains("отдых"))
         XCTAssertEqual(bridge.todayTitle, "Прогулка завершена")
         XCTAssertEqual(bridge.coachTitle, "Прогулка завершена")
     }

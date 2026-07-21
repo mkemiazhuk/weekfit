@@ -66,7 +66,7 @@ enum CoachMorningBriefCopyPolicy {
             let sleepRU = formatSleepHours(facts.sleepHours, russian: true)
             return .en(
                 "Morning — yesterday's load is still in the legs, sleep \(sleep), recovery \(facts.recoveryPercent)%.",
-                "Утро — вчера ещё в теле, сон \(sleepRU), готовность \(facts.recoveryPercent)%."
+                "Утро — вчера ещё в теле, сон \\(sleepRU), энергия \\(facts.recoveryPercent)%."
             )
         }
         return .en(
@@ -130,7 +130,7 @@ enum CoachMorningBriefCopyPolicy {
             opener,
             .en(
                 "\(facts.todayActivityCount) sessions planned today.",
-                "Сегодня \(facts.todayActivityCount) блоков в плане."
+                "Сегодня в плане \\(facts.todayActivityCount) блоков."
             )
         )
     }
@@ -141,7 +141,7 @@ enum CoachMorningBriefCopyPolicy {
             case .morning:
                 return .en(
                     "Morning — check legs and sleep before the day picks up speed.",
-                    "Утро — оцените ноги и сон, прежде чем день разгонится."
+                    "Утро — посмотрите, как ноги и как спалось, прежде чем день разгонится."
                 )
             case .plain:
                 return .en("", "")
@@ -170,7 +170,7 @@ enum CoachMorningBriefCopyPolicy {
         if facts.recoveryBand == .moderate {
             return .en(
                 "Morning — sleep \(sleepEN), recovery at \(recovery)% — not fully topped up.",
-                "Утро — сон \(sleepRU), \(recoveryLabelRU) \(recovery)% — ещё не на полном запасе."
+                "Утро — сон \\(sleepRU), \\(recoveryLabelRU) \\(recovery)% — запас сил ещё не полный."
             )
         }
 
@@ -189,7 +189,7 @@ enum CoachMorningBriefCopyPolicy {
             if facts.seriousActivityCount > 1 {
                 return .en(
                     "Lead with \(title) at \(activity.formattedStartTime) — \(duration) min, then hold the rest steady.",
-                    "Начните с \(title) в \(activity.formattedStartTime) — \(duration) мин, остальное ровно."
+                    "Начните с \\(title) в \\(activity.formattedStartTime) — \\(duration) мин, а дальше держите ровный темп."
                 )
             }
             return .en(
@@ -210,7 +210,7 @@ enum CoachMorningBriefCopyPolicy {
         if facts.sleepIsLow || facts.recoveryBand == .low {
             return .en(
                 "Keep the first block light — recovery is still building.",
-                "Первый блок легче — восстановление ещё набирается."
+                "Первый блок легче — тело ещё восстанавливается."
             )
         }
 
@@ -223,7 +223,7 @@ enum CoachMorningBriefCopyPolicy {
 
         return .en(
             "Anchor one priority block before noon.",
-            "Зафиксируйте один приоритетный блок до полудня."
+            "Выберите один главный блок и сделайте его до полудня."
         )
     }
 
@@ -231,13 +231,13 @@ enum CoachMorningBriefCopyPolicy {
         if facts.hadHeavyYesterday {
             return .en(
                 "Don't chase yesterday's numbers or stack hard blocks early.",
-                "Не гонитесь за вчерашними цифрами и не добавляйте тяжести с утра."
+                "Не гонитесь за вчерашними цифрами и не добавляйте нагрузку с утра."
             )
         }
         if facts.sleepIsLow || facts.recoveryBand == .low {
             return .en(
                 "Don't open with full intensity — the tank isn't full yet.",
-                "Не начинайте на полной — запас ещё не полный."
+                "Не начинайте на полной — бак ещё не полный."
             )
         }
         if facts.seriousActivityCount > 0 {
@@ -259,7 +259,7 @@ enum CoachMorningBriefCopyPolicy {
         if facts.hadHeavyYesterday || facts.recoveryBand == .low {
             return .en(
                 "Walk 15 minutes, then stretch before planning anything hard.",
-                "15 минут прогулки и растяжка — перед планированием нагрузки."
+                "15 минут прогулки и растяжка — прежде чем планировать что-то тяжёлое."
             )
         }
         return .en(
@@ -320,12 +320,12 @@ enum CoachMorningBriefCopyPolicy {
     ) -> CoachBilingualText {
         switch scenario {
         case .recoveryAfterHeavyYesterday:
-            return .en("Recovery day", "День восстановления")
+            return .en("Recovery day", "Спокойный день восстановления")
         case .protectTomorrowFresh:
             return .en("Save it for tomorrow", "Сохраните запас на завтра")
         default:
             if facts.recoveryBand == .low || facts.sleepIsLow {
-                return .en("Easy morning", "Спокойного утра")
+                return .en("Easy morning", "Лёгкое утро")
             }
             return .en("Good morning", "Доброе утро")
         }
@@ -354,7 +354,7 @@ enum CoachMorningBriefCopyPolicy {
         default:
             return .en(
                 "Pick one priority block before noon.",
-                "Выберите один приоритетный блок до полудня."
+                "Выберите один главный блок и сделайте его до полудня."
             )
         }
     }

@@ -112,7 +112,7 @@ final class USDABarcodeProviderTests: XCTestCase {
 final class BarcodeNormalizationTests: XCTestCase {
 
     func testGTIN13PadsEAN8() {
-        XCTAssertEqual(BarcodeNormalization.gtin13(from: "12345678"), "0000000123456")
+        XCTAssertEqual(BarcodeNormalization.gtin13(from: "12345678"), "0000012345678")
     }
 
     func testMatchesIgnoresLeadingZeros() {

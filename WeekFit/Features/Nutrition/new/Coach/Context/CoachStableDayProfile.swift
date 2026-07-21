@@ -66,7 +66,7 @@ enum CoachStableDayPresentation {
             if hadHeavyYesterday {
                 return russian ? "После вчерашней нагрузки" : "After yesterday's load"
             }
-            return russian ? "День восстановления" : "Calm recovery day"
+            return russian ? "Спокойный день восстановления" : "Calm recovery day"
         case .tomorrowReserve:
             return russian ? "Запас на завтра" : "Save for tomorrow"
         case .workBanked:
@@ -95,7 +95,7 @@ enum CoachStableDayPresentation {
             if completedRecoveryWalkToday,
                CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
-                    ? "Прогулка уже есть — вечер можно провести спокойно."
+                    ? "Прогулка уже была — вечер можно провести спокойно."
                     : "Walk is already in — keep the evening calm."
             }
             return russian
@@ -106,7 +106,7 @@ enum CoachStableDayPresentation {
                completedRecoveryWalkToday,
                !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
-                    ? "Прогулка уже есть — дальше спокойный ритм."
+                    ? "Прогулка уже была — дальше спокойный ритм."
                     : "Walk is already in — keep a calm rhythm from here."
             }
             if hadHeavyYesterday, !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
@@ -115,7 +115,7 @@ enum CoachStableDayPresentation {
                     : "Go easier today — no extra intensity."
             }
             return russian
-                ? "Сегодня лучше без лишней интенсивности."
+                ? "Без дополнительной интенсивности — сегодня она не нужна."
                 : "Keep optional intensity off the table today."
         case .tomorrowReserve:
             return CoachWorkoutTitleLocalization.tomorrowReserveTeaser(
@@ -129,7 +129,7 @@ enum CoachStableDayPresentation {
                     : "Recovery is the job for the rest of today."
             }
             return russian
-                ? "Сегодня без лишней интенсивности."
+                ? "Без дополнительной интенсивности — сегодня она не нужна."
                 : "Keep optional intensity off the table today."
         }
     }
@@ -194,7 +194,7 @@ enum CoachStableDayCopy {
             return BasePack(
                 assessment: .single(.en(
                     "The walk is already in — the day can settle calmly.",
-                    "Прогулка уже есть — день можно завершить спокойно."
+                    "Прогулка уже была — день можно завершить спокойно."
                 )),
                 recommendation: .single(.en(
                     "Keep the rest of the day unhurried — sleep matters more than extra steps.",
@@ -202,7 +202,7 @@ enum CoachStableDayCopy {
                 )),
                 avoid: .single(.en(
                     "Do not force another walk just to chase the activity ring.",
-                    "Не идите ещё раз только ради кольца активности."
+                    "Не выходите на ещё одну прогулку только ради кольца активности."
                 )),
                 nextAction: .single(CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
                     mealWindowOpen: input.mealWindowOpen
@@ -262,7 +262,7 @@ enum CoachStableDayCopy {
         if hasWalk {
             recommendation = .en(
                 "Walk is already in — keep a calm ordinary rhythm from here.",
-                "Прогулка уже есть — дальше держите обычный спокойный ритм."
+                "Прогулка уже была — дальше держите обычный спокойный ритм."
             )
         } else if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
             recommendation = .en(
@@ -295,11 +295,11 @@ enum CoachStableDayCopy {
         BasePack(
             assessment: .single(.en(
                 "Recovery hasn't caught up after recent strain.",
-                "Организм ещё не успел восстановиться после недавней нагрузки."
+                "Вы ещё не восстановились после недавней нагрузки."
             )),
             recommendation: .single(.en(
                 "A quieter day now will help you return stronger tomorrow.",
-                "Спокойный день сейчас поможет быстрее вернуться к нормальной нагрузке завтра."
+                "Спокойный день сейчас — и завтра вернётесь сильнее."
             )),
             avoid: .single(.en(
                 "A hard workout today is likely to add fatigue instead of fitness.",
@@ -307,7 +307,7 @@ enum CoachStableDayCopy {
             )),
             nextAction: .single(.en(
                 "Choose an easy walk, gentle stretching, or simply give yourself more time to recover.",
-                "Выберите спокойную прогулку, лёгкую растяжку или просто дайте организму больше времени на восстановление."
+                "Выберите спокойную прогулку, лёгкую растяжку или просто дайте себе больше времени на восстановление."
             ))
         )
     }
@@ -350,7 +350,7 @@ enum CoachStableDayCopy {
             )),
             nextAction: .single(.en(
                 "Eat well, hydrate, and finish the day early.",
-                "Нормально поешьте, восполните воду и завершите день пораньше."
+                "Поешьте как следует, выпейте воды и закончите день пораньше."
             ))
         )
     }
@@ -366,7 +366,7 @@ enum CoachStableDayCopy {
             recommendation: .single(windDown
                 ? .en(
                     "Switch to recovery mode now; sleep will do more than another effort.",
-                    "Сон сейчас даст больше, чем ещё одна нагрузка — перейдите в режим восстановления."
+                    "Сон сейчас даст больше, чем ещё одна нагрузка — сегодня время для восстановления."
                 )
                 : CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay)
                     ? .en(
@@ -379,7 +379,7 @@ enum CoachStableDayCopy {
                     )),
             avoid: .single(.en(
                 "Extra intensity tonight is more likely to steal from tomorrow than improve today.",
-                "Лишняя интенсивность сегодня скорее заберёт силы у завтра, чем улучшит сегодняшний день."
+                "Лишняя интенсивность сегодня скорее заберёт силы у завтрашнего дня, чем улучшит сегодняшний."
             )),
             nextAction: .single(tomorrowReserveNextAction(input: input, windDown: windDown))
         )
@@ -403,7 +403,7 @@ enum CoachStableDayCopy {
         }
         return .en(
             "Take twenty quiet minutes — walk, stretch, or lie down.",
-            "Двадцать минут тишины — прогулка или растяжка."
+            "Двадцать минут тишины — прогулка, растяжка или просто полежите."
         )
     }
 
@@ -422,8 +422,8 @@ enum CoachStableDayCopy {
         switch input.timeOfDay {
         case .morning, .midday:
             assessment = .en(
-                "Morning work is done — the afternoon can stay easy.",
-                "Утренняя работа сделана — день можно провести легко."
+                "Morning work is done — keep the afternoon easy.",
+                "Утренняя тренировка сделана — день дальше можно провести легко."
             )
         default:
             assessment = workBankedAssessment(for: input.modifiers.lastCompletedActivityType)
@@ -434,7 +434,7 @@ enum CoachStableDayCopy {
             recommendation: .single(daytimeWorkBankedRecommendation(for: input.timeOfDay)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
-                "Не добавляйте ещё один тяжёлый блок."
+                "Не добавляйте ещё одну интенсивную тренировку на уставшие ноги."
             )),
             nextAction: .single(workBankedNextAction(input: input))
         )
@@ -445,12 +445,12 @@ enum CoachStableDayCopy {
         case .morning, .midday:
             return .en(
                 "Leave hard blocks off the calendar until tomorrow.",
-                "Тяжёлые блоки — не сегодня."
+                "Интенсивные тренировки — не сегодня, а завтра."
             )
         default:
             return .en(
                 "Keep today easy — no extra hard blocks.",
-                "Сегодня без лишней интенсивности."
+                "Сегодня спокойно — ничего доказывать не нужно."
             )
         }
     }
@@ -471,7 +471,7 @@ enum CoachStableDayCopy {
             recommendation: .single(workBankedRecommendation(input: input)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
-                "Не добавляйте ещё один тяжёлый блок."
+                "Не добавляйте ещё одну интенсивную тренировку на уставшие ноги."
             )),
             nextAction: .single(workBankedNextAction(input: input))
         )
@@ -486,7 +486,7 @@ enum CoachStableDayCopy {
             recommendation: .single(workBankedRecommendation(input: input)),
             avoid: .single(.en(
                 "Don't stack another hard block on tired legs.",
-                "Не добавляйте ещё один тяжёлый блок."
+                "Не добавляйте ещё одну интенсивную тренировку на уставшие ноги."
             )),
             nextAction: .single(workBankedNextAction(input: input))
         )
@@ -507,7 +507,7 @@ enum CoachStableDayCopy {
         case .tennis, .squash:
             return .en(
                 "Match is over — recovery comes first.",
-                "Игра позади — восстановление в приоритете."
+                "Игра позади — сейчас важнее восстановление."
             )
         case .upperBody, .lowerBody, .core, .fullBody:
             return .en(

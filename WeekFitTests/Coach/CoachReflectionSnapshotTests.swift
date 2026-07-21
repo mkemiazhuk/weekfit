@@ -49,7 +49,7 @@ final class CoachReflectionPresentationTests: XCTestCase {
             pauseReason: "settledPostNoWorkRemaining"
         )
 
-        XCTAssertTrue(leadIn.contains("замечаю"))
+        XCTAssertTrue(leadIn.contains("замеча"))
     }
 
     func testContentPreservesReflectionMessage() {

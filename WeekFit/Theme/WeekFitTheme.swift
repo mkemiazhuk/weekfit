@@ -109,6 +109,18 @@ enum WeekFitTheme {
         )
     }
 
+    static var healthAmbient: RadialGradient {
+        RadialGradient(
+            colors: [
+                Color(red: 1.0, green: 0.25, blue: 0.35).opacity(0.07 * palette.ambientOpacity),
+                Color.clear
+            ],
+            center: .center,
+            startRadius: 20,
+            endRadius: 280
+        )
+    }
+
     // MARK: - Cards
 
     static var cardBackground: Color { palette.cardBackground }
@@ -149,6 +161,10 @@ enum WeekFitTheme {
     static let habitRGB = (red: 0.93, green: 0.62, blue: 0.34)
 
     static var primaryGreen: Color { palette.accent(primaryGreenBase) }
+
+    /// Brand metallic gold — onboarding splash / premium accents.
+    static let brandGold = Color(red: 0.90, green: 0.74, blue: 0.38)
+    static let brandGoldDeep = Color(red: 0.72, green: 0.52, blue: 0.22)
 
     // MARK: - Night Comfort helpers
 

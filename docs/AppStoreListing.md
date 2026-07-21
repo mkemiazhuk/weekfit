@@ -161,18 +161,26 @@ Support: support@weekfit.app
 
 ## Screenshot Scenes (recommended order)
 
-| # | Screen | Caption idea (EN) |
-|---|--------|-------------------|
-| 1 | Today + Coach insight | Your day, interpreted |
-| 2 | Coach tab — prep window | Know what to do next |
-| 3 | Plan timeline | See your whole day |
-| 4 | Meals + recommendation | Eat in context |
-| 5 | Health connect | Powered by Apple Health |
-| 6 | Recovery / Today header | Recovery at a glance |
-| 7 | Live / completed activity | Stays in sync |
-| 8 | Profile / settings | Your recovery system |
+Framed presentation (design system V1.0). Generate with:
 
-Use `COACH_SCREENSHOT_REVIEW_CHECKLIST.md` before capturing.
+```bash
+.venv-scripts/bin/python Scripts/generate_app_store_presentation.py --format all
+```
+
+| # | Emotion | Caption (EN) | UI still |
+|---|--------|--------------|----------|
+| 1 | Confusion | Too much data. Too little clarity. | Today |
+| 2 | Understanding | Your day, interpreted. | Recovery |
+| 3 | Confidence | Know what to do next. | Coach |
+| 4 | Control | Plan and nutrition, aligned. | Plan |
+| 5 | Trust | Powered by Apple Health. | Activity |
+| 6 | Habit | Confidence, every morning. | Coach |
+
+- Masters: `web/public/app-store/presentation-001/`
+- ASC uploads: `build/app-store-screenshots/presentation-001/` (see `UPLOAD.md`)
+- Spec: [AppStoreDesignSystem.md](AppStoreDesignSystem.md)
+
+Use `COACH_SCREENSHOT_REVIEW_CHECKLIST.md` when capturing fresh UI stills.
 
 ---
 

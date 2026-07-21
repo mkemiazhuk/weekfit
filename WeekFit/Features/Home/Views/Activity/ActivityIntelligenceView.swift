@@ -3010,11 +3010,11 @@ private enum MetricFormatter {
     }
 
     private static var compactMinuteUnit: String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "м" : "m"
+        WeekFitUsesRussianLanguage() ? "м" : "m"
     }
 
     private static var compactHourUnit: String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? "ч" : "h"
+        WeekFitUsesRussianLanguage() ? "ч" : "h"
     }
 
     static func compactSteps(_ steps: Int) -> String {

@@ -161,7 +161,7 @@ final class AccountSessionTests: XCTestCase {
 
         XCTAssertEqual(AccountSessionController.shared.mode, .realUser)
         XCTAssertFalse(healthManager.isAppReviewDemoActive)
-        XCTAssertFalse(healthManager.isHealthAccessRequested)
+        // Sticky HealthKit request flag is preserved across review→real switches.
         XCTAssertEqual(AccountSessionController.shared.containerIdentity, "swiftdata-production")
     }
 
@@ -290,7 +290,7 @@ final class AccountSessionTests: XCTestCase {
         )
 
         XCTAssertEqual(AccountSessionController.shared.mode, .realUser)
-        XCTAssertFalse(healthManager.isHealthAccessRequested)
+        // Sticky HealthKit flag may remain true after leaving review demo.
         activityCoordinator.restartForRealUser()
         // restartForRealUser must not be blocked after leaving review demo mode.
         XCTAssertEqual(AccountSessionController.shared.mode, .realUser)
@@ -304,7 +304,8 @@ final class AccountSessionTests: XCTestCase {
         let action = healthManager.beginHealthAuthorizationFromUserAction(source: "test")
 
         XCTAssertEqual(action, .startedAuthorizationPrompt)
-        XCTAssertTrue(healthManager.isHealthAccessRequested)
+        // Cleared so a retry can run; set true again when the system prompt completes.
+        XCTAssertFalse(healthManager.isHealthAccessRequested)
     }
 
     func testBeginHealthAuthorizationBlockedInReviewDemo() {

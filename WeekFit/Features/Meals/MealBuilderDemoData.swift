@@ -50,7 +50,7 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let zIndex: Int
 
     var localizedTitle: String {
-        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else { return title }
+        guard WeekFitUsesRussianLanguage() else { return title }
 
         return Self.russianTitles[id] ?? title
     }

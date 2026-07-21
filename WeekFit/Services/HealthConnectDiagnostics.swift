@@ -64,7 +64,7 @@ enum HealthConnectDiagnostics {
 
     private static func log(_ message: String) {
         #if DEBUG
-        logger.info("\(message, privacy: .public)")
+        logger.debug("\(message, privacy: .public)")
         #endif
     }
 }

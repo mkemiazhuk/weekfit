@@ -108,7 +108,11 @@ struct WeekFitRootView: View {
                     await reconcileHealthWorkouts(source: "root.onChange.plannedActivities")
                 }
             }
-            .onChange(of: languageManager.selectedLanguage) { _, _ in
+            .onChange(of: languageManager.selectedLanguage) { _, language in
+                coachInputProvider.invalidateCompletedRefreshCache()
+                coachCoordinator.forceRecomputeForLanguageChange(
+                    reason: "languageChange.root.\(language.rawValue)"
+                )
                 syncCoachRefreshInputs()
             }
             .onChange(of: appSession.healthRefreshTrigger) { _, _ in
@@ -129,6 +133,12 @@ struct WeekFitRootView: View {
 
     private var rootShellWithNotificationHandlers: some View {
         rootShell
+            .fullScreenCover(isPresented: $appSession.isPresentingOnboarding) {
+                FirstRunOnboardingView()
+                    .environmentObject(appSession)
+                    .environmentObject(healthManager)
+                    .environmentObject(languageManager)
+            }
             .fullScreenCover(isPresented: $appSession.isPresentingHealthAccess) {
                 NavigationStack {
                     HealthAccessView()
@@ -136,6 +146,10 @@ struct WeekFitRootView: View {
                 .environmentObject(healthManager)
             }
             .onAppear(perform: handleRootAppear)
+            .onChange(of: appSession.pendingRootTab) { _, tab in
+                guard tab != nil, let destination = appSession.consumePendingRootTab() else { return }
+                selectTab(destination)
+            }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)

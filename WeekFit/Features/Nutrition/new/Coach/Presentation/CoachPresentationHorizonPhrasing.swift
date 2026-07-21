@@ -8,12 +8,12 @@ enum CoachPresentationHorizonPhrasing {
         case .evening, .tomorrow:
             return .en(
                 "Don't borrow effort from tonight without a reason.",
-                "Не тратьте силы без необходимости."
+                "Не тратьте силы просто так."
             )
         case .now, .nextHours, .laterToday:
             return .en(
                 "Don't spend spare energy without a reason.",
-                "Не тратьте силы без необходимости."
+                "Не тратьте силы просто так."
             )
         }
     }
@@ -23,12 +23,12 @@ enum CoachPresentationHorizonPhrasing {
         case .evening, .tomorrow:
             return .en(
                 "Don't jump into another intense session tonight.",
-                "Не прыгайте сегодня в ещё одну интенсивную сессию."
+                "Не добавляйте сегодня ещё одну интенсивную тренировку."
             )
         case .now, .nextHours, .laterToday:
             return .en(
                 "Don't jump into another intense session later today.",
-                "Не добавляйте ещё одну интенсивную сессию сегодня."
+                "Не добавляйте сегодня ещё одну интенсивную тренировку."
             )
         }
     }
@@ -38,12 +38,12 @@ enum CoachPresentationHorizonPhrasing {
         case .evening, .tomorrow:
             return .en(
                 "Don't pile on another heavy session tonight.",
-                "Не накладывайте сегодня ещё одну тяжёлую сессию."
+                "Не добавляйте сегодня ещё одну тяжёлую тренировку."
             )
         case .now, .nextHours, .laterToday:
             return .en(
                 "Don't pile on another heavy session later today.",
-                "Не добавляйте сегодня ещё одну тяжёлую сессию."
+                "Не добавляйте сегодня ещё одну тяжёлую тренировку."
             )
         }
     }

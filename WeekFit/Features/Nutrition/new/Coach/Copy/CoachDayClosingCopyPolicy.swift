@@ -110,7 +110,7 @@ enum CoachDayClosingCopyPolicy {
             )),
             avoid: .single(.en(
                 "No late intensity or extra recovery tasks.",
-                "Без поздней интенсивности и лишних задач на восстановление."
+                "Никакой интенсивной нагрузки вечером и никаких лишних дел на восстановление."
             )),
             nextAction: windDownNextAction
         )
@@ -127,7 +127,7 @@ enum CoachDayClosingCopyPolicy {
             )),
             avoid: .single(.en(
                 "No late intensity or extra recovery tasks.",
-                "Без поздней интенсивности и лишних задач на восстановление."
+                "Никакой интенсивной нагрузки вечером и никаких лишних дел на восстановление."
             )),
             nextAction: windDownNextAction
         )
@@ -145,7 +145,7 @@ enum CoachDayClosingCopyPolicy {
             )),
             avoid: .single(.en(
                 "No late intensity or extra recovery tasks.",
-                "Без поздней интенсивности и лишних задач на восстановление."
+                "Никакой интенсивной нагрузки вечером и никаких лишних дел на восстановление."
             )),
             nextAction: windDownNextAction
         )
@@ -168,7 +168,7 @@ enum CoachDayClosingCopyPolicy {
         }
         return .en(
             "Recovery is lagging — rest matters more now.",
-            "Восстановление отстаёт — сейчас важнее отдых."
+            "Тело ещё не восстановилось — сейчас важнее отдых."
         )
     }
 
@@ -184,7 +184,7 @@ enum CoachDayClosingCopyPolicy {
             )),
             avoid: .single(.en(
                 "No late intensity or extra recovery tasks.",
-                "Без поздней интенсивности и лишних задач на восстановление."
+                "Никакой интенсивной нагрузки вечером и никаких лишних дел на восстановление."
             )),
             nextAction: windDownNextAction
         )
@@ -202,7 +202,7 @@ enum CoachDayClosingCopyPolicy {
             )),
             avoid: .single(.en(
                 "No late intensity or extra recovery tasks.",
-                "Без поздней интенсивности и лишних задач на восстановление."
+                "Никакой интенсивной нагрузки вечером и никаких лишних дел на восстановление."
             )),
             nextAction: windDownNextAction
         )
@@ -238,7 +238,7 @@ enum CoachDayClosingCopyPolicy {
             assessment: .single(sleepNowAssessment(for: input, profile: profile)),
             recommendation: .single(.en(
                 "Nothing left to optimize tonight — sleep is the move.",
-                "Сегодня уже нечего улучшать — следующий шаг только сон."
+                "Сегодня уже нечего улучшать — дальше только сон."
             )),
             avoid: .single(.en(
                 "No screens, no plans, no last-minute load.",
@@ -317,7 +317,7 @@ enum CoachDayClosingCopyPolicy {
             }
             return .en(
                 "Recovery is lagging — keep the evening quiet.",
-                "Восстановление отстаёт — вечер без лишней нагрузки."
+                "Тело ещё не восстановилось — вечер без лишней нагрузки."
             )
         }
         return .en(

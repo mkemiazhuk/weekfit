@@ -39,7 +39,7 @@ enum CoachTabPresentationBridge {
             safetyCritical: pack.warningLayer != nil
         )
 
-        let ru = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+        let ru = WeekFitUsesRussianLanguage()
 
         return CoachUIPresentation(
             scenario: pack.scenario,
@@ -172,7 +172,7 @@ enum CoachTabPresentationBridge {
     private static func mentionsFirstMealAhead(_ text: String) -> Bool {
         let lower = text.lowercased()
         return lower.contains("first meal is still ahead")
-            || text.contains("Первый приём пищи ещё впереди")
+            || text.contains("Первая еда ещё впереди.")
     }
 
     // MARK: - Formatting
@@ -207,7 +207,7 @@ enum CoachTabPresentationBridge {
     }
 
     private static func localizedText(_ line: CoachBilingualText) -> String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? line.russian : line.english
+        WeekFitUsesRussianLanguage() ? line.russian : line.english
     }
 
     private static func conciseLine(_ text: String, maxLength: Int) -> String {
@@ -250,6 +250,6 @@ enum CoachTabPresentationBridge {
     }
 
     private static func localized(english: String, russian: String) -> String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english
+        WeekFitUsesRussianLanguage() ? russian : english
     }
 }

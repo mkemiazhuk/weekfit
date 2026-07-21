@@ -180,7 +180,11 @@ enum AccountSessionCoordinator {
         appSession.triggerHealthRefresh(source: "accountSession.realUser")
         appSession.triggerCoachRefresh(source: "accountSession.realUser")
 
-        if !healthManager.isHealthAccessGranted && !healthManager.isHealthAccessRequested {
+        OnboardingStore.migrateExistingUsersIfNeeded()
+
+        if !OnboardingStore.hasCompletedOnboarding {
+            appSession.presentOnboarding()
+        } else if !healthManager.isHealthAccessGranted && !healthManager.isHealthAccessRequested {
             appSession.presentHealthAccess()
         } else {
             appSession.dismissHealthAccess()

@@ -126,6 +126,7 @@ final class CoachInputProvider: ObservableObject {
         return [
             source,
             refreshHealth ? "health" : "cached",
+            "lang=\(WeekFitCurrentLanguageCode())",
             "\(day)",
             PlannedActivityRefreshSignature.make(from: plannedActivities)
         ].joined(separator: "#")

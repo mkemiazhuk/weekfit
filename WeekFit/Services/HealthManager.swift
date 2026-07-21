@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import HealthKit
+import UIKit
 import WeekFitWorkoutMetrics
 internal import Combine
 import OSLog
@@ -530,6 +531,8 @@ final class HealthManager: ObservableObject {
 
     private var authorizationCompletionHandlers: [() -> Void] = []
     private var includesSupplementaryPermissionsInConnectFlow = false
+    /// Set when route auth couldn't present (e.g. onboarding cover still up); retried after root settles.
+    private var pendingWorkoutRouteAuthorization = false
 
     /// Types requested in the system authorization sheet. Excludes route series, which can block the prompt on some OS versions.
     func buildAuthorizationReadTypes() -> Set<HKObjectType> {
@@ -700,7 +703,7 @@ final class HealthManager: ObservableObject {
             """
         )
 
-        Self.logger.info(
+        Self.logger.debug(
             "NATIVE preflight started source=\(source, privacy: .public) mainThread=\(Thread.isMainThread, privacy: .public)"
         )
 
@@ -718,7 +721,7 @@ final class HealthManager: ObservableObject {
                 }
             }()
 
-            Self.logger.info(
+            Self.logger.debug(
                 """
                 NATIVE preflight completed status=\(statusName, privacy: .public) \
                 rawValue=\(status.rawValue, privacy: .public) \
@@ -759,7 +762,7 @@ final class HealthManager: ObservableObject {
         )
 
         healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { success, error in
-            Self.logger.info(
+            Self.logger.debug(
                 """
                 NATIVE HealthKit authorization completion success=\(success, privacy: .public) \
                 error=\(String(describing: error), privacy: .public)
@@ -843,14 +846,94 @@ final class HealthManager: ObservableObject {
                 }
             }
 
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            _ = await self.ensureWorkoutRouteAuthorization(presentationDelay: 0.35)
+            // Wait out the primary sheet, then for a stable root (no mid-dismiss
+            // fullScreenCover). Presenting from a detached onboarding host times out.
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            let canPresent = await self.waitUntilSystemAuthorizationSheetCanPresent()
+            if canPresent {
+                self.pendingWorkoutRouteAuthorization = false
+                _ = await self.ensureWorkoutRouteAuthorization(presentationDelay: 0.2)
+            } else {
+                // Expected while first-run onboarding (or another cover) is still up.
+                self.pendingWorkoutRouteAuthorization = true
+                Self.logger.debug(
+                    "Deferred workout route authorization until root is presentable"
+                )
+            }
 
             guard includeSupplementary else { return }
 
             try? await Task.sleep(nanoseconds: 600_000_000)
             NotificationCenter.default.post(name: .weekfitRequestSupplementaryPermissions, object: nil)
         }
+    }
+
+    /// Retries workout-route read auth after onboarding/covers dismiss.
+    @MainActor
+    func retryPendingWorkoutRouteAuthorizationIfNeeded() {
+        guard pendingWorkoutRouteAuthorization else { return }
+        guard AccountSessionController.shared.mode == .realUser else {
+            pendingWorkoutRouteAuthorization = false
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard self.pendingWorkoutRouteAuthorization else { return }
+
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            let canPresent = await self.waitUntilSystemAuthorizationSheetCanPresent(
+                timeoutNanoseconds: 8_000_000_000
+            )
+            guard canPresent else {
+                Self.logger.debug(
+                    "Workout route authorization still waiting for presentable window"
+                )
+                return
+            }
+
+            self.pendingWorkoutRouteAuthorization = false
+            _ = await self.ensureWorkoutRouteAuthorization(presentationDelay: 0.2)
+        }
+    }
+
+    /// True when the key window's root can host a Health privacy sheet (no detached presenters).
+    @MainActor
+    private func isSystemAuthorizationSheetPresentable() -> Bool {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+        else { return false }
+
+        let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first
+        guard let root = window?.rootViewController, root.view.window != nil else {
+            return false
+        }
+
+        // Mid-dismiss fullScreenCover still appears in the presented chain with a nil window.
+        // HealthKit then presents from that host and never completes.
+        if let presented = root.presentedViewController, presented.view.window == nil {
+            return false
+        }
+
+        // Prefer the settled root shell (onboarding / health-access covers fully gone).
+        return root.presentedViewController == nil
+    }
+
+    @MainActor
+    private func waitUntilSystemAuthorizationSheetCanPresent(
+        timeoutNanoseconds: UInt64 = 12_000_000_000
+    ) async -> Bool {
+        let started = DispatchTime.now().uptimeNanoseconds
+        while DispatchTime.now().uptimeNanoseconds - started < timeoutNanoseconds {
+            if isSystemAuthorizationSheetPresentable() {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if isSystemAuthorizationSheetPresentable() {
+                    return true
+                }
+            }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+        return false
     }
 
     func hasWorkoutRouteReadAccess() -> Bool {
@@ -904,12 +987,12 @@ final class HealthManager: ObservableObject {
                     return
                 }
 
-                Self.logger.info(
+                Self.logger.debug(
                     "Requesting workout route authorization preflightStatus=\(status.rawValue, privacy: .public)"
                 )
 
                 self.healthStore.requestAuthorization(toShare: [], read: readTypes) { success, authError in
-                    Self.logger.info(
+                    Self.logger.debug(
                         """
                         Workout route authorization completion success=\(success, privacy: .public) \
                         error=\(String(describing: authError), privacy: .public)

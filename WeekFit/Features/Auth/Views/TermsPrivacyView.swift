@@ -301,7 +301,7 @@ private extension TermsPrivacyView {
     }
 
     func localizedLegalCopy(_ value: String) -> String {
-        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else { return value }
+        guard WeekFitUsesRussianLanguage() else { return value }
 
         return russianLegalCopy[value] ?? value
     }

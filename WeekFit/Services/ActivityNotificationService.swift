@@ -31,11 +31,12 @@ final class ActivityNotificationService {
         completion: ((Bool) -> Void)? = nil
     ) {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            #if DEBUG
             if let error {
                 print("Notification permission error:", error)
             }
-
             print("Notification permission granted:", granted)
+            #endif
 
             DispatchQueue.main.async {
                 completion?(granted)

@@ -39,10 +39,17 @@ final class AppLanguageManager: ObservableObject {
     }
 
     init() {
-        let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
-            ?? AppLanguage.english.rawValue
-        let storedLanguage = AppLanguage(rawValue: storedLanguageCode) ?? .english
-        self.selectedLanguage = storedLanguage
-        WeekFitSetCurrentLanguage(storedLanguage)
+        if let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey),
+           let storedLanguage = AppLanguage(rawValue: storedLanguageCode) {
+            self.selectedLanguage = storedLanguage
+            WeekFitSetCurrentLanguage(storedLanguage)
+            return
+        }
+
+        let deviceCode = Locale.current.language.languageCode?.identifier ?? "en"
+        let detected: AppLanguage = deviceCode.hasPrefix("ru") ? .russian : .english
+        self.selectedLanguage = detected
+        WeekFitSetCurrentLanguage(detected)
+        UserDefaults.standard.set(detected.rawValue, forKey: AppLanguage.storageKey)
     }
 }

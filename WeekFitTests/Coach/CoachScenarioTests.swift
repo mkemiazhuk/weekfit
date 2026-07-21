@@ -276,6 +276,8 @@ final class CoachScenarioTests: XCTestCase {
         )
 
         let result = CoachEngine.evaluate(input: input)
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(.english) }
         let pack = try XCTUnwrap(result.copyPack)
         let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
         let russian = [

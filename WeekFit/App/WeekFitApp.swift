@@ -57,12 +57,19 @@ struct WeekFitApp: App {
                     nightComfortLocationService?.refreshIfNeeded()
                 }
                 .onChange(of: languageManager.selectedLanguage) { _, language in
-                    WeekFitSetCurrentLanguage(language)
+                    // Locale/cache already updated in AppLanguageManager.didSet.
                     ActivityNotificationService.shared.refreshLocalizedCategories()
-                    WellnessNotificationService.shared.cancelAll()
-                    coachCoordinator.forceRecomputeForLanguageChange(reason: "languageChange.\(language.rawValue)")
-                    appSession.triggerHealthRefresh(source: "languageChange")
-                    appSession.triggerCoachRefresh(source: "languageChange")
+                    // Rebuild Coach copy immediately so Today/Coach never keep EN after RU switch.
+                    coachCoordinator.forceRecomputeForLanguageChange(
+                        reason: "languageChange.\(language.rawValue)"
+                    )
+
+                    Task { @MainActor in
+                        WellnessNotificationService.shared.cancelAll()
+                        // Language is presentation-only — do not reload HealthKit.
+                        // Health refresh invalidates coach input and can re-freeze English copy.
+                        appSession.triggerCoachRefresh(source: "languageChange")
+                    }
                 }
                 .onChange(of: scenePhase) {
                     handleScenePhaseChange()
@@ -99,6 +106,7 @@ struct WeekFitApp: App {
             activityCoordinator.refresh()
             nightComfort.handleSceneBecameActive()
             nightComfortLocationService?.refreshIfNeeded()
+            healthManager.retryPendingWorkoutRouteAuthorizationIfNeeded()
 
             if backgroundEnteredAt != nil {
                 healthManager.updateAuthorizationStatus()

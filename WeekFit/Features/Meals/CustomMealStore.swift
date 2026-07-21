@@ -1,6 +1,7 @@
 import Foundation
 import CoreImage
 import ImageIO
+import OSLog
 import UIKit
 
 enum CustomMealStore {
@@ -515,12 +516,18 @@ enum MealPhotoStore {
 
         let directory = photosDirectory
         guard FileManager.default.fileExists(atPath: directory.path) else {
-            print("[LocalDataReset] Meal photo directory did not exist: \(directory.path)")
+            #if DEBUG
+            Logger(subsystem: "WeekFit", category: "LocalDataReset")
+                .debug("Meal photo directory did not exist: \(directory.path, privacy: .public)")
+            #endif
             return
         }
 
         try FileManager.default.removeItem(at: directory)
-        print("[LocalDataReset] Cleared meal photo directory: \(directory.path)")
+        #if DEBUG
+        Logger(subsystem: "WeekFit", category: "LocalDataReset")
+            .debug("Cleared meal photo directory: \(directory.path, privacy: .public)")
+        #endif
     }
 
     nonisolated static func url(for filename: String) -> URL {

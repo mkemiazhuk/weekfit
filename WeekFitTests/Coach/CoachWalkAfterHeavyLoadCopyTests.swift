@@ -45,7 +45,7 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
 
         XCTAssertTrue(russian.contains("основная работа"))
         XCTAssertTrue(russian.contains("остаток дня"))
-        XCTAssertTrue(russian.contains("отдыха"))
+        XCTAssertTrue(russian.contains("отдых"))
         XCTAssertFalse(russian.contains("15–20"))
         XCTAssertFalse(russian.lowercased().contains("идите"))
     }

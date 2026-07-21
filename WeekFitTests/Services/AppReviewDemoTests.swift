@@ -37,7 +37,7 @@ final class AppReviewDemoTests: XCTestCase {
             referenceDate: reference
         )
 
-        XCTAssertEqual(dataset.dayBundles.count, 30)
+        XCTAssertEqual(dataset.dayBundles.count, 37) // 30 history + today + 7 future
         XCTAssertNotNil(dataset.bundle(for: reference))
         XCTAssertNotNil(
             dataset.bundle(
@@ -47,6 +47,16 @@ final class AppReviewDemoTests: XCTestCase {
         XCTAssertNil(
             dataset.bundle(
                 for: Calendar.current.date(byAdding: .day, value: -31, to: reference)!
+            )
+        )
+        XCTAssertNotNil(
+            dataset.bundle(
+                for: Calendar.current.date(byAdding: .day, value: 7, to: reference)!
+            )
+        )
+        XCTAssertNil(
+            dataset.bundle(
+                for: Calendar.current.date(byAdding: .day, value: 8, to: reference)!
             )
         )
     }

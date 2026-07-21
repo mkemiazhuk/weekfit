@@ -146,13 +146,14 @@ struct CustomMealBuilderView: View {
             .onChange(of: fiber) { _, newValue in
                 Self.debugLog("onChange.fiber length=\(newValue.count)")
             }
-            .sheet(isPresented: $showCamera) {
+            .fullScreenCover(isPresented: $showCamera) {
+                // fullScreenCover works from inside a parent sheet; nested .sheet does not on iOS 17.
                 CustomMealCameraCaptureView { image in
                     Self.debugLog("camera.imageCaptured")
                     processCapturedPhoto(image)
                 }
                 .ignoresSafeArea()
-                .weekFitSheetChrome(cornerRadius: 36)
+                .preferredColorScheme(.dark)
             }
             .photosPicker(
                 isPresented: $showPhotoLibrary,
@@ -762,13 +763,11 @@ struct CustomMealBuilderView: View {
         isAnalyzingPhoto = true
         barcodeLookupMessage = nil
 
+        // Vision work runs off the main actor inside FoodPhotoNutritionAnalyzer.
         Task {
             let result = await FoodPhotoNutritionAnalyzer.analyze(image)
-
-            await MainActor.run {
-                isAnalyzingPhoto = false
-                handlePhotoAnalysisResult(result)
-            }
+            isAnalyzingPhoto = false
+            handlePhotoAnalysisResult(result)
         }
     }
 
@@ -817,6 +816,17 @@ struct CustomMealBuilderView: View {
                 ? await FoodPhotoNutritionAnalyzer.downloadProductImage(from: estimate.productImageURL)
                 : nil
 
+            let preparedPhoto: (thumbnail: UIImage, pendingFilename: String?)? = await withCheckedContinuation { continuation in
+                guard let productImage else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let prepared = FoodPhotoNutritionAnalyzer.preparedMealPhoto(from: productImage)
+                    continuation.resume(returning: (prepared.thumbnail, prepared.pendingFilename))
+                }
+            }
+
             await MainActor.run {
                 let didApply = applyEstimate(
                     estimate,
@@ -824,8 +834,14 @@ struct CustomMealBuilderView: View {
                     tone: lookup.status == .partial ? .warning : .success
                 )
 
-                if let productImage,
-                   applyDownloadedProductPhoto(productImage) {
+                if let preparedPhoto {
+                    if let pendingOriginalFilename {
+                        MealPhotoStore.delete(filename: pendingOriginalFilename)
+                    }
+                    selectedThumbnailImage = preparedPhoto.thumbnail
+                    pendingOriginalFilename = preparedPhoto.pendingFilename
+                    selectedImage = nil
+                    didRemovePhoto = false
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } else if didApply {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()

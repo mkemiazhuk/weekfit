@@ -184,20 +184,6 @@ enum DailyStateSnapshotBuilder {
             metricsAreCurrent ? value : 0
         }
 
-        if metricsAreCurrent {
-            return DailyNutritionMetrics(
-                protein: healthManager.protein,
-                carbs: healthManager.carbs,
-                fats: healthManager.fats,
-                fiber: healthManager.fiber,
-                calories: healthManager.calories,
-                waterLiters: healthManager.waterLiters,
-                activeCalories: healthManager.activeCalories,
-                sleepHours: healthManager.sleepHours,
-                weightKg: healthManager.weight
-            )
-        }
-
         if !metricsAreCurrent,
            current == nil,
            healthManager.calories > 0

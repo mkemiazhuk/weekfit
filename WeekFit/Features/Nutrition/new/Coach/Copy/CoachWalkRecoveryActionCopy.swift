@@ -107,7 +107,7 @@ enum CoachWalkRecoveryActionPresentation {
                     : "Keep the rest of the day calm."
             }
             return russian
-                ? "Сегодня без лишней интенсивности."
+                ? "Сегодня спокойно — ничего доказывать не нужно."
                 : "Keep today calm — nothing to prove."
         }
     }
@@ -129,7 +129,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Use the walk to recover — easy steps, not more load.",
-                "Используйте прогулку для восстановления — лёгкие шаги, не новая нагрузка."
+                "Эта прогулка — для восстановления: лёгкие шаги, не новая нагрузка."
             ),
             avoid: .en(
                 "Don't speed up or add hills for extra credit.",
@@ -150,7 +150,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Easy steps only — blood flow, not more load.",
-                "Только лёгкие шаги — кровоток, не новая нагрузка."
+                "Только лёгкие шаги — чтобы разогнать кровь, не для новой нагрузки."
             ),
             avoid: .en(
                 "Don't speed up or chase pace on tired legs.",
@@ -187,7 +187,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Keep the rest of the day calm — no new hard block.",
-                "Остаток дня спокойный — без нового блока, отдыха в приоритете."
+                "Остаток дня спокойный — без новой тяжёлой нагрузки, сейчас важнее отдых."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
@@ -207,7 +207,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Keep the rest of the day calm — no new hard block.",
-                "Остаток дня спокойный — без нового блока, отдыха в приоритете."
+                "Остаток дня спокойный — без новой тяжёлой нагрузки, сейчас важнее отдых."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",
@@ -227,7 +227,7 @@ private extension CoachWalkRecoveryActionCopy {
             ),
             recommendation: .en(
                 "Walk is already in — keep a calm ordinary rhythm from here.",
-                "Прогулка уже есть — дальше держите обычный спокойный ритм."
+                "Прогулка уже была — дальше держите обычный спокойный ритм."
             ),
             avoid: .en(
                 "Do not force extra steps just to chase numbers.",

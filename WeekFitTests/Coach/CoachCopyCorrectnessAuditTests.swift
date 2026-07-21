@@ -19,11 +19,14 @@ final class CoachCopyCorrectnessAuditTests: XCTestCase {
         let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
         XCTAssertEqual(presentation.todayTitle, "После вчерашней нагрузки")
-        XCTAssertEqual(presentation.todayMessage, "Прогулка уже есть — дальше спокойный ритм.")
+        XCTAssertEqual(presentation.todayMessage, "Прогулка уже была — дальше спокойный ритм.")
 
         XCTAssertTrue(presentation.assessment.contains("вчерашн"))
-        XCTAssertTrue(presentation.recommendation.contains("Прогулка уже есть"))
-        XCTAssertTrue(presentation.nextAction.contains("первый приём пищи"))
+        XCTAssertTrue(presentation.recommendation.contains("Прогулка уже была"))
+        XCTAssertTrue(
+            presentation.nextAction.contains("еда") || presentation.nextAction.contains("приём пищи"),
+            "Next action should mention meal timing; got: \(presentation.nextAction)"
+        )
 
         let heroBlob = [
             presentation.assessment,
@@ -81,10 +84,13 @@ final class CoachCopyCorrectnessAuditTests: XCTestCase {
         )
         let presentation = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
-        XCTAssertTrue(presentation.nextAction.contains("первый приём пищи"))
+        XCTAssertTrue(
+            presentation.nextAction.contains("еда") || presentation.nextAction.contains("приём пищи"),
+            "Next action should mention meal timing; got: \(presentation.nextAction)"
+        )
         XCTAssertFalse(
             presentation.whyRows.contains {
-                $0.title.contains("Еды пока меньше") || $0.title.contains("Первый приём пищи ещё впереди")
+                $0.title.contains("Еды пока меньше") || $0.title.contains("Первая еда ещё впереди")
             },
             "Meal timing belongs in nextAction only when already stated there"
         )
@@ -158,7 +164,7 @@ final class CoachCopyCorrectnessAuditTests: XCTestCase {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(input))
 
         XCTAssertFalse(pack.supportingSignals.lines.contains { $0.russian.contains("Еды пока меньше") })
-        XCTAssertTrue(pack.supportingSignals.lines.contains { $0.russian.contains("Первый приём пищи ещё впереди") })
+        XCTAssertTrue(pack.supportingSignals.lines.contains { $0.russian.contains("Первая еда ещё впереди") })
 
         let report = CoachConversationSemanticTimingAudit.audit(pack: pack, input: input)
         XCTAssertTrue(report.isClean, report.findings.map(\.reason).joined(separator: "; "))

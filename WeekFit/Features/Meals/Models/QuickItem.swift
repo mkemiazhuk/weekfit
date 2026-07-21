@@ -134,7 +134,7 @@ struct QuickItem: Codable, Identifiable, Equatable {
         let trimmed = storedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return storedTitle }
 
-        let isRussian = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+        let isRussian = WeekFitUsesRussianLanguage()
         let lowered = trimmed.lowercased()
 
         if isRussian {
@@ -149,7 +149,7 @@ struct QuickItem: Codable, Identifiable, Equatable {
         let trimmed = item.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return item.subtitle }
 
-        guard WeekFitCurrentLocale().identifier.hasPrefix("ru") else {
+        guard WeekFitUsesRussianLanguage() else {
             return trimmed
         }
 

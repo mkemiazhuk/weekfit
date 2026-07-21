@@ -48,7 +48,7 @@ enum CoachTeaserCopy {
     ) -> CoachBilingualText {
         switch scenario {
         case .tomorrowProtection:
-            return bi("Protect your energy", "Сегодня уже достаточно")
+            return bi("Protect your energy", "Берегите силы")
         case .protectTomorrowFresh:
             if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
                 return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayTitle
@@ -58,15 +58,15 @@ enum CoachTeaserCopy {
             if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
                 return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayTitle
             }
-            return bi("Recovery day", "День восстановления")
+            return bi("Recovery day", "Спокойный день восстановления")
         case .lowRecoveryPrep:
-            return bi("Check readiness first", "Проверьте готовность")
+            return bi("Check readiness first", "Сначала проверьте готовность.")
         case .morningReadiness:
             if let facts = result.morningBriefFacts {
                 let teaser = CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario)
                 return teaser.todayTitle
             }
-            return bi("Set your pace", "С чего начать")
+            return bi("Set your pace", "Выберите свой темп")
         case .stableDay:
             if let profile = stableDayProfile(from: result) {
                 let hadHeavyYesterday = result.context.dayReadiness.hadHeavyYesterday
@@ -123,7 +123,7 @@ enum CoachTeaserCopy {
         case .postRacketImmediate:
             return bi("Match done", "Игра позади")
         case .postStrengthImmediate:
-            return bi("Last set done", "Последний подход")
+            return bi("Last set done", "Последний подход завершён завершён")
         case .postRecoveryImmediate:
             return bi("Nice work", "Хорошая работа")
         case .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled:
@@ -145,13 +145,13 @@ enum CoachTeaserCopy {
         case .activeStrength:
             return bi("Strength next", "Силовая впереди")
         case .activeRecovery:
-            return bi("Recovery ahead", "Время восстановить")
+            return bi("Recovery ahead", "Впереди восстановление")
         case .saunaPreparation:
             return bi("Before sauna", "Перед баней")
         case .saunaActive:
             return bi("In sauna", "В бане")
         case .saunaRecovery:
-            return bi("After heat", "После сауны")
+            return bi("After heat", "После бани")
         default:
             return assessmentFallback
         }
@@ -182,7 +182,7 @@ enum CoachTeaserCopy {
                     "Сбавьте обороты — сейчас важнее сон."
                 )
             }
-            return bi("Keep the evening easy.", "Остаток дня спокойный.")
+            return bi("Keep the evening easy.", "Вечер — спокойно.")
         case .protectTomorrowFresh:
             if result.context.timeOfDay == .morning, let facts = result.morningBriefFacts {
                 return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).todayMessage
@@ -294,7 +294,7 @@ enum CoachTeaserCopy {
                 "Мягко с первой минуты — без давления."
             )
         case .duringRacket:
-            return bi("Reset between points.", "Между очками успевайте сброс.")
+            return bi("Reset between points.", "Между очками делайте сброс.")
         case .duringStrength:
             return bi(
                 "Form beats rushed reps.",
@@ -339,7 +339,7 @@ enum CoachTeaserCopy {
             }
             return bi(
                 "Keep the evening easy.",
-                "Вечер лёгкий — без лишней нагрузки."
+                "Вечер — спокойно."
             )
         case .walkLightDay:
             return walkLightDayMessage(result: result)
@@ -444,7 +444,7 @@ enum CoachTeaserCopy {
             if context.timeOfDay == .morning, let facts = result.morningBriefFacts {
                 return CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: scenario).coachHeadline
             }
-            return bi("Recovery day", "День восстановления")
+            return bi("Recovery day", "Спокойный день восстановления")
         case .lowRecoveryPrep:
             if let imminent = CoachImminentSessionCopyPolicy.teaser(
                 for: CoachCopyBuildInput.from(result: result),
@@ -452,7 +452,7 @@ enum CoachTeaserCopy {
             ) {
                 return imminent.coachHeadline
             }
-            return bi("Check readiness", "Проверьте готовность")
+            return bi("Check readiness", "Сначала проверьте готовность.")
         case .activeEndurance:
             if let imminent = CoachImminentSessionCopyPolicy.teaser(
                 for: CoachCopyBuildInput.from(result: result),
@@ -466,7 +466,7 @@ enum CoachTeaserCopy {
         case .duringStrength:
             return bi("Under load", "Под нагрузкой")
         case .duringRecovery:
-            return bi("Recovery session", "Сессия восстановления")
+            return bi("Recovery session", "Восстановительная тренировка")
         case .postEnduranceImmediate:
             return postEnduranceImmediateHeadline(activityType: activityType)
         case .postRacketImmediate:
@@ -474,7 +474,7 @@ enum CoachTeaserCopy {
         case .postStrengthImmediate:
             return bi("After lifting", "После силовой")
         case .postRecoveryImmediate:
-            return bi("Session complete", "Сессия завершена")
+            return bi("Session complete", "Тренировка завершена")
         case .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled:
             return bi("Recovering", "Восстанавливаемся")
         case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
@@ -500,9 +500,9 @@ enum CoachTeaserCopy {
         case .saunaActive:
             return bi("In the heat", "В жаре")
         case .saunaRecovery:
-            return bi("After sauna", "После сауны")
+            return bi("After sauna", "После бани")
         default:
-            return bi("Coach", "Коуч")
+            return bi("Coach", "Тренер")
         }
     }
 

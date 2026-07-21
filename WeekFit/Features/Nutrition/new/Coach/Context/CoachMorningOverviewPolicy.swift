@@ -114,7 +114,7 @@ enum CoachMorningOverviewPolicy {
         if input.dayReadiness.isLowRecovery {
             return .en(
                 "Recovery is lagging — keep the next block lighter.",
-                "Восстановление отстаёт — следующий блок легче."
+                "Тело ещё не восстановилось — следующую тренировку сделайте легче."
             )
         }
 

@@ -59,6 +59,27 @@ enum AppText {
         static let privacyPolicy: LocalizedStringResource = "login.terms.privacy"
     }
 
+    enum Onboarding {
+        static let promise: LocalizedStringResource = "onboarding.v10.promise.title"
+        static let continueAction: LocalizedStringResource = "onboarding.action.continue"
+        static let healthNotNow: LocalizedStringResource = "onboarding.health.notNow"
+        static let showMyDay: LocalizedStringResource = "onboarding.begin.showMyDay"
+        static let introTitle: LocalizedStringResource = "onboarding.v10.causality.title"
+        static let healthTitle: LocalizedStringResource = "onboarding.v10.health.title"
+        static let todayTitle: LocalizedStringResource = "onboarding.v10.today.title"
+
+        enum Intro {
+            static let todayTitle: LocalizedStringResource = "onboarding.intro.today.title"
+            static let todayBody: LocalizedStringResource = "onboarding.intro.today.body"
+            static let coachTitle: LocalizedStringResource = "onboarding.intro.coach.title"
+            static let coachBody: LocalizedStringResource = "onboarding.intro.coach.body"
+            static let planTitle: LocalizedStringResource = "onboarding.intro.plan.title"
+            static let planBody: LocalizedStringResource = "onboarding.intro.plan.body"
+            static let mealsTitle: LocalizedStringResource = "onboarding.intro.meals.title"
+            static let mealsBody: LocalizedStringResource = "onboarding.intro.meals.body"
+        }
+    }
+
     enum Today {
         static let title: LocalizedStringResource = "today.title"
         static let savedTab: LocalizedStringResource = "today.quickLog.tab.saved"
@@ -591,6 +612,15 @@ func WeekFitCurrentLocale() -> Locale {
     WeekFitLocalizationCache.current.locale
 }
 
+func WeekFitCurrentLanguageCode() -> String {
+    WeekFitLocalizationCache.current.languageCode
+}
+
+/// Prefer this over `locale.identifier.hasPrefix("ru")` — language code is explicit app state.
+func WeekFitUsesRussianLanguage() -> Bool {
+    WeekFitCurrentLanguageCode() == AppLanguage.russian.rawValue
+}
+
 func WeekFitWarmLocalizationCache() {
     WeekFitLocalizationCache.refreshFromStorage()
 }
@@ -618,7 +648,7 @@ func WeekFitCoachRuntimeLocalizedString(_ value: String) -> String {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return value }
 
-    let isRussian = WeekFitCurrentLocale().identifier.hasPrefix("ru")
+    let isRussian = WeekFitUsesRussianLanguage()
     if let pair = WeekFitCoachRuntimeCopy[trimmed] {
         return WeekFitCoachHumanizedText(isRussian ? WeekFitRussianCoachText(pair.ru) : pair.en)
     }
@@ -637,7 +667,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "My Recommendation",
-            "Что сделать",
+            "Что делать",
             []
         ),
         (
@@ -727,7 +757,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Protect the main effort",
-            "Почему это важно",
+            "Берегите главную работу дня.",
             ["Защитите главное усилие"]
         ),
         (
@@ -737,7 +767,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Fluids are lower than this point of the day usually needs. Rehydrating helps protect energy and readiness.",
-            "Сегодня жидкости меньше, чем обычно требуется к этому времени дня. Восполнение воды поможет сохранить энергию и готовность.",
+            "Сегодня воды меньше, чем обычно нужно к этому времени дня. Если восполнить ее сейчас, будет проще сохранить энергию и готовность.",
             []
         ),
         (
@@ -747,7 +777,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Sleep was not bad, but the body still needs recovery. Extra load now is likely to bring less benefit.",
-            "Сон был неплохим, но организму всё ещё нужно восстановление. Дополнительная нагрузка сейчас принесёт меньше пользы.",
+            "Сон был неплохим, но телу всё ещё нужно восстановление. Дополнительная нагрузка сейчас принесёт меньше пользы.",
             []
         ),
         (
@@ -757,7 +787,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Control the session",
-            "Контролируйте тренировку",
+            "Не гонитесь за цифрами",
             []
         ),
         (
@@ -812,12 +842,12 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Stay conversational",
-            "Оставайтесь в разговорном усилии",
+            "Держите разговорный темп.",
             []
         ),
         (
             "Shorten if needed",
-            "Сократите при необходимости",
+            "Сократите, если нужно.",
             []
         ),
         (
@@ -847,7 +877,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Restore fluids, eat normally, and close the evening calmly so you can start tomorrow with reserve.",
-            "Сейчас важнее восстановить жидкость, нормально поесть и завершить вечер спокойно, чтобы завтра стартовать с запасом.",
+            "Сейчас важнее восполнить воду, нормально поесть и спокойно завершить вечер, чтобы завтра стартовать с запасом.",
             []
         ),
         (
@@ -862,17 +892,17 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Restore fluids",
-            "Восстановите жидкость",
+            "Восполните воду",
             []
         ),
         (
             "Sip gradually instead of catching up at once",
-            "Пейте постепенно, без резкого догоняния",
+            "Пейте потихоньку, не наверстывайте все сразу.",
             []
         ),
         (
             "Eat normally",
-            "Закройте питание",
+            "Поешьте как обычно.",
             []
         ),
         (
@@ -997,7 +1027,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Your body will get more from recovery than from extra load right now.",
-            "Сейчас организму полезнее восстановление, чем дополнительная нагрузка.",
+            "Сейчас вам полезнее восстановление, чем дополнительная нагрузка.",
             []
         ),
         (
@@ -1012,7 +1042,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Fluids are lower than this point of the day usually needs.",
-            "Жидкости сейчас меньше, чем обычно нужно к этому времени дня.",
+            "Воды сейчас меньше, чем обычно нужно к этому времени дня.",
             []
         ),
         (
@@ -1042,7 +1072,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Tomorrow has enough demand that adding load today would make it harder.",
-            "Завтра будет достаточно нагрузки, и лишняя нагрузка сегодня сделает ее тяжелее.",
+            "Завтра и без того будет нагрузка — не добавляйте лишнего сегодня.",
             []
         ),
         (
@@ -1087,7 +1117,7 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
         ),
         (
             "Drinks are behind for this point of the day.",
-            "Жидкости сейчас меньше, чем обычно нужно к этому времени дня.",
+            "Воды сейчас меньше, чем обычно нужно к этому времени дня.",
             []
         )
     ]
@@ -1146,7 +1176,7 @@ private func WeekFitRussianCoachText(_ text: String) -> String {
     }
 
     result = result
-        .replacingOccurrences(of: "Защитите главное усилие", with: "Почему это важно")
+        .replacingOccurrences(of: "Защитите главное усилие", with: "Берегите главную работу дня.")
         .replacingOccurrences(of: "главного усилия", with: "качества движения")
         .replacingOccurrences(of: "главное усилие", with: "качество движения")
         .replacingOccurrences(of: "Активная фаза", with: "Тренировка")

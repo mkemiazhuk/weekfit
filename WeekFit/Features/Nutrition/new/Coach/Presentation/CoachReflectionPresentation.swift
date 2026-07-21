@@ -21,17 +21,17 @@ enum CoachReflectionPresentation {
             if pauseReason.contains("evening") {
                 return CoachState.localized(
                     english: "Before we finish…",
-                    russian: "Перед тем как закончить…"
+                    russian: "Прежде чем закончим…"
                 )
             }
             return CoachState.localized(
                 english: "One thing I've been noticing…",
-                russian: "Есть кое-что, что я замечаю…"
+                russian: "Кое-что я стал замечать…"
             )
         case .confirmation:
             return CoachState.localized(
                 english: "Looking back over the last few weeks…",
-                russian: "Если оглянуться на последние недели…"
+                russian: "Если оглянуться на последние несколько недель…"
             )
         case .revision:
             return CoachState.localized(
@@ -41,7 +41,7 @@ enum CoachReflectionPresentation {
         case .retired:
             return CoachState.localized(
                 english: "Before we finish…",
-                russian: "Перед тем как закончить…"
+                russian: "Прежде чем закончим…"
             )
         case .uncertainty:
             return CoachState.localized(

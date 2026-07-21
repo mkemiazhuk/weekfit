@@ -551,7 +551,9 @@ private extension ProfileView {
 
             dismiss()
         } catch {
+            #if DEBUG
             print("[LocalDataReset][Failure] UI reset flow: \(error)")
+            #endif
             resetFailureMessage = error.localizedDescription
             withDialogAnimation {
                 showResetFailure = true

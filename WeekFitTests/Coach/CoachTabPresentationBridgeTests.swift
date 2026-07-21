@@ -88,6 +88,54 @@ final class CoachTabPresentationBridgeTests: XCTestCase {
         }
     }
 
+    func testBridgeSelectsRussianCopyWhenAppLanguageIsRussian() throws {
+        WeekFitSetCurrentLanguage(.english)
+        defer {
+            WeekFitSetCurrentLanguage(.english)
+            WeekFitWarmLocalizationCache()
+        }
+
+        let now = CoachTestClock.reference
+        let result = CoachEngine.evaluate(
+            input: makeInput(now: now, activities: [], brainHour: 14)
+        )
+
+        let english = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+
+        WeekFitSetCurrentLanguage(.russian)
+        let russian = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
+
+        XCTAssertFalse(english.todayTitle.isEmpty)
+        XCTAssertFalse(russian.todayTitle.isEmpty)
+        XCTAssertNotEqual(english.todayTitle, russian.todayTitle)
+        XCTAssertTrue(
+            russian.todayTitle.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) },
+            "Expected Cyrillic today title, got: \(russian.todayTitle)"
+        )
+        XCTAssertTrue(
+            russian.statusLabel.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) },
+            "Expected Cyrillic status label, got: \(russian.statusLabel)"
+        )
+    }
+
+    func testCoachInputFingerprintIncludesAppLanguage() {
+        WeekFitSetCurrentLanguage(.english)
+        defer {
+            WeekFitSetCurrentLanguage(.english)
+            WeekFitWarmLocalizationCache()
+        }
+
+        let input = makeInput(now: CoachTestClock.reference, activities: [], brainHour: 14)
+        let englishFingerprint = CoachInputFingerprint(snapshot: input)
+
+        WeekFitSetCurrentLanguage(.russian)
+        let russianFingerprint = CoachInputFingerprint(snapshot: input)
+
+        XCTAssertTrue(englishFingerprint.rawValue.contains("lang=en"))
+        XCTAssertTrue(russianFingerprint.rawValue.contains("lang=ru"))
+        XCTAssertNotEqual(englishFingerprint, russianFingerprint)
+    }
+
     func testBridgeMapsStableDayCopyToUIPresentation() throws {
         let now = CoachTestClock.reference
         let result = CoachEngine.evaluate(

@@ -147,11 +147,10 @@ struct HealthAccessView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .transaction { $0.animation = nil }
-        .sheet(isPresented: $showSleepHelp) {
+        .fullScreenCover(isPresented: $showSleepHelp) {
+            // Avoid nested .sheet inside Settings sheet on iOS 17.
             SleepSetupHelpSheet()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .weekFitSheetChrome(cornerRadius: 30)
+                .preferredColorScheme(.dark)
         }
         .task {
             guard !didAppear else { return }

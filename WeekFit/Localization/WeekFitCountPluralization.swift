@@ -68,7 +68,11 @@ enum WeekFitCountPluralization {
     }
 
     static func isRussian(locale: Locale = WeekFitCurrentLocale()) -> Bool {
-        locale.identifier.hasPrefix("ru")
+        if locale.identifier == WeekFitCurrentLocale().identifier {
+            return WeekFitUsesRussianLanguage()
+        }
+        let code = locale.language.languageCode?.identifier ?? locale.identifier
+        return code.hasPrefix("ru")
     }
 
     static func noun(

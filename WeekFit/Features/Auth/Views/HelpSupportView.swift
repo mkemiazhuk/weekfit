@@ -30,9 +30,16 @@ struct HelpSupportView: View {
                 .padding(.bottom, 22)
             }
 
+            if showSupportSheet {
+                supportSheetOverlay
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(2)
+            }
+
             if showCopiedToast {
                 copiedToast
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(3)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -43,13 +50,7 @@ struct HelpSupportView: View {
         .navigationDestination(isPresented: $showGuidesView) {
             GuidesView()
         }
-        .sheet(isPresented: $showSupportSheet) {
-            supportSheet
-                .presentationDetents([.height(286)])
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled)
-                .weekFitSheetChrome(cornerRadius: 32)
-        }
+        // No nested .sheet — Help lives inside Settings sheet already.
     }
 }
 
@@ -100,7 +101,9 @@ private extension HelpSupportView {
                 title: WeekFitLocalizedString("support.contactSupport"),
                 subtitle: WeekFitLocalizedString("support.contactSupport.subtitle")
             ) {
-                showSupportSheet = true
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                    showSupportSheet = true
+                }
             }
 
             SupportRow(
@@ -195,9 +198,46 @@ private extension HelpSupportView {
 
 private extension HelpSupportView {
 
+    var supportSheetOverlay: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.52)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.90)) {
+                        showSupportSheet = false
+                    }
+                }
+
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(WeekFitTheme.whiteOpacity(0.18))
+                    .frame(width: 38, height: 4)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+
+                supportSheet
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 286)
+            }
+            .frame(maxWidth: .infinity)
+            .background {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 32,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 32,
+                    style: .continuous
+                )
+                .fill(WeekFitTheme.backgroundColor)
+                .ignoresSafeArea(edges: .bottom)
+            }
+            .preferredColorScheme(.dark)
+        }
+    }
+
     var supportSheet: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.clear
 
             VStack(spacing: 14) {
                 ZStack {
@@ -337,7 +377,9 @@ private extension HelpSupportView {
 
     func copySupportEmail() {
         UIPasteboard.general.string = supportEmail
-        showSupportSheet = false
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.90)) {
+            showSupportSheet = false
+        }
 
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             showCopiedToast = true

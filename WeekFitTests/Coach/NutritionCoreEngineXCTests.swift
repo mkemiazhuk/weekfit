@@ -76,11 +76,13 @@ final class NutritionCoreEngineXCTests: XCTestCase {
             sleepHours: 0,
             weightKg: 74
         )
+        let midday = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
 
         viewModel.updateNutrition(
             metrics: metrics,
             profile: CoachMetricsBuilder.standardProfile(),
             plannedActivities: [],
+            referenceDate: midday,
             debugSource: "test.healthKitCaloriesNoMeals"
         )
 
@@ -101,11 +103,13 @@ final class NutritionCoreEngineXCTests: XCTestCase {
             sleepHours: 0,
             weightKg: 74
         )
+        let midday = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
 
         viewModel.updateNutrition(
             metrics: metrics,
             profile: CoachMetricsBuilder.standardProfile(),
             plannedActivities: [],
+            referenceDate: midday,
             debugSource: "test.healthKitWaterNoHydrationLogs"
         )
 

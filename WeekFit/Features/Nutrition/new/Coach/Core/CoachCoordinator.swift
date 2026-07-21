@@ -67,42 +67,37 @@ final class CoachCoordinator: ObservableObject {
 
     @discardableResult
     func forceRecomputeForLanguageChange(reason: String) -> CoachState {
-        guard let latestInput else {
+        // Prefer live cache; fall back to the input baked into visible state when
+        // a health invalidate cleared `latestInput` but left English presentation on screen.
+        guard let input = latestInput ?? state.input else {
             return state
         }
+        latestInput = input
 
-        let fingerprint = CoachInputFingerprint(snapshot: latestInput)
-        let readiness = CoachInputReadiness.assessment(latestInput)
-        guard readiness.allowed else {
-            logInputReadiness(
-                input: latestInput,
-                reason: reason,
-                readiness: readiness,
-                outcome: state.hasValidGuidance ? "blockedPreservePrevious" : "blockedSettling"
-            )
-            state = state.hasValidGuidance
-                ? state.preservingPreviousDuringRefresh()
-                : .settling(reason: "Coach inputs are still syncing.")
-            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: latestInput)
-            return state
-        }
-
+        let fingerprint = CoachInputFingerprint(snapshot: input)
+        // Language changes must always rebuild presentation copy, even while inputs are
+        // still settling — otherwise EN strings stay frozen on screen after switching to RU.
+        // Bypass the readiness gate: CoachState.ready would otherwise return `.settling`
+        // with no presentation and leave English (or blank) on screen.
+        let readiness = CoachInputReadiness.assessment(input)
+        lastResolvedFingerprint = nil
         let rawState = CoachState.ready(
-            input: latestInput,
+            input: input,
             fingerprint: fingerprint,
-            reason: reason
+            reason: reason,
+            bypassReadinessGate: true
         )
         lastResolvedFingerprint = fingerprint
         recomputeCount += 1
         lastRecomputeReason = reason
         state = rawState
-        nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: latestInput)
+        nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
 
         logInputReadiness(
-            input: latestInput,
+            input: input,
             reason: reason,
             readiness: readiness,
-            outcome: "allowedLanguageRecompute"
+            outcome: readiness.allowed ? "allowedLanguageRecompute" : "languageRecomputeDespiteBlockedReadiness"
         )
         logVisibleState(state: rawState, reason: reason)
         persistTodayInsightIfNeeded(from: rawState)
@@ -117,13 +112,14 @@ final class CoachCoordinator: ObservableObject {
     ) -> CoachState {
         latestInput = input
         let fingerprint = CoachInputFingerprint(snapshot: input)
+        let isLanguageChange = reason.lowercased().contains("languagechange")
 
         guard fingerprint != lastResolvedFingerprint else {
             skippedUnchangedCount += 1
             return state
         }
 
-        if CoachStateStabilizer.isSettling(source: reason) {
+        if !isLanguageChange, CoachStateStabilizer.isSettling(source: reason) {
             logInputReadiness(
                 input: input,
                 reason: reason,
@@ -139,7 +135,7 @@ final class CoachCoordinator: ObservableObject {
         }
 
         let readiness = CoachInputReadiness.assessment(input)
-        guard readiness.allowed else {
+        guard readiness.allowed || isLanguageChange else {
             logInputReadiness(
                 input: input,
                 reason: reason,
@@ -156,7 +152,8 @@ final class CoachCoordinator: ObservableObject {
         let rawState = CoachState.ready(
             input: input,
             fingerprint: fingerprint,
-            reason: reason
+            reason: reason,
+            bypassReadinessGate: isLanguageChange
         )
         logContextDebug(input: input, state: rawState)
 

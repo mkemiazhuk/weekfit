@@ -12,6 +12,37 @@ private struct AddSheetTimeSlotState: Identifiable {
     let isRecommended: Bool
 }
 
+/// Single meal sheet avoids dismiss→present races when opening the builder from the library.
+private enum PlannerMealSheetStep: Equatable {
+    case library
+    case builder
+}
+
+private struct PlannerMealSheetHost<Library: View>: View {
+    @Binding var step: PlannerMealSheetStep
+    @Binding var detent: PresentationDetent
+    @ViewBuilder let library: () -> Library
+    let onBuilderSave: (Meals) -> Void
+
+    var body: some View {
+        Group {
+            switch step {
+            case .library:
+                library()
+
+            case .builder:
+                MealBuilderView(onSave: onBuilderSave)
+            }
+        }
+        .presentationDetents(
+            step == .library ? [.medium, .large] : [.large],
+            selection: $detent
+        )
+        .presentationDragIndicator(step == .library ? .visible : .hidden)
+        .weekFitSheetChrome(cornerRadius: step == .library ? 30 : 36)
+    }
+}
+
 struct PlanAddActivitySheet: View {
 
     @ObservedObject var viewModel: PlanViewModel
@@ -26,8 +57,9 @@ struct PlanAddActivitySheet: View {
     private var customMealsStorage: String = ""
     
     @State private var showDeleteConfirmation = false
-    @State private var showMealLibrarySheet = false
-    @State private var showMealBuilder = false
+    @State private var showMealSheet = false
+    @State private var mealSheetStep: PlannerMealSheetStep = .library
+    @State private var mealSheetDetent: PresentationDetent = .medium
 
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
@@ -79,18 +111,21 @@ struct PlanAddActivitySheet: View {
         let _ = languageManager.selectedLanguage
 
         addActivitySheet
-            .sheet(isPresented: $showMealLibrarySheet) {
-                mealLibrarySheet
-                    .weekFitSheetChrome(cornerRadius: 30)
+            .sheet(isPresented: $showMealSheet) {
+                PlannerMealSheetHost(
+                    step: $mealSheetStep,
+                    detent: $mealSheetDetent,
+                    library: { mealLibrarySheet },
+                    onBuilderSave: { newMeal in
+                        saveMealToLibrary(newMeal)
+                        showMealSheet = false
+                    }
+                )
             }
-            .sheet(isPresented: $showMealBuilder) {
-                MealBuilderView { newMeal in
-                    saveMealToLibrary(newMeal)
-                    showMealBuilder = false
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .weekFitSheetChrome(cornerRadius: 36)
+            .onChange(of: showMealSheet) { _, isPresented in
+                guard !isPresented else { return }
+                mealSheetStep = .library
+                mealSheetDetent = .medium
             }
             .sheet(isPresented: $viewModel.showCustomDuration) {
                 customDurationSheet
@@ -297,7 +332,11 @@ private extension PlanAddActivitySheet {
                     ? WeekFitLocalizedString("planner.sheet.viewAll")
                     : nil,
                 trailingAction: viewModel.selectedType == .meal && !availableMeals.isEmpty
-                    ? { showMealLibrarySheet = true }
+                    ? {
+                        mealSheetStep = .library
+                        mealSheetDetent = .medium
+                        showMealSheet = true
+                    }
                     : nil
             )
             .padding(.top, 1)
@@ -357,7 +396,9 @@ private extension PlanAddActivitySheet {
 
             Button {
                 lightHaptic.impactOccurred()
-                showMealBuilder = true
+                mealSheetStep = .builder
+                mealSheetDetent = .large
+                showMealSheet = true
             } label: {
                 Text(WeekFitLocalizedString("meals.createFoodOrMeal"))
                     .font(.system(size: 12.4, weight: .semibold))
@@ -1460,7 +1501,7 @@ private extension PlanAddActivitySheet {
                             lightHaptic.impactOccurred()
                             viewModel.selectedMealID = meal.id
                             viewModel.selectedItem = viewModel.plannerOption(for: meal)
-                            showMealLibrarySheet = false
+                            showMealSheet = false
                         } label: {
                             mealLibraryRow(meal)
                         }
@@ -1476,14 +1517,14 @@ private extension PlanAddActivitySheet {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(WeekFitLocalizedString("common.action.cancel")) {
-                        showMealLibrarySheet = false
+                        showMealSheet = false
                     }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        showMealLibrarySheet = false
-                        showMealBuilder = true
+                        mealSheetDetent = .large
+                        mealSheetStep = .builder
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -1491,8 +1532,6 @@ private extension PlanAddActivitySheet {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     func mealLibraryRow(_ meal: Meals) -> some View {

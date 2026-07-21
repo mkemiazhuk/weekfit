@@ -88,7 +88,7 @@ enum CoachImminentSessionCopyPolicy {
             if input.dayReadiness.isLowRecovery {
                 return .en(
                     "\(titleEN) \(minutesEN) (\(durationClauseEN)) — recovery is still lagging.",
-                    "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — восстановление пока отстаёт."
+                    "\\(titleRU.capitalized) \\(minutesRU) (\\(durationClauseRU)) — тело ещё не восстановилось."
                 )
             }
             return .en(
@@ -119,7 +119,7 @@ enum CoachImminentSessionCopyPolicy {
             }
             return .en(
                 "Start lighter than planned and leave room to finish strong.",
-                "Начните легче плана — важнее закончить без провала."
+                "Начните легче плана — так сил хватит на сильный финиш."
             )
         }
 
@@ -131,7 +131,7 @@ enum CoachImminentSessionCopyPolicy {
         }
         return .en(
             "Start easy — let breathing and rhythm find their place.",
-            "Начните легко — пусть дыхание и ритм сами найдутся."
+            "Начните легко — пусть дыхание и ритм настроятся сами."
         )
     }
 
@@ -161,7 +161,7 @@ enum CoachImminentSessionCopyPolicy {
         default:
             return .en(
                 "Don't race the clock from the first set.",
-                "Не гонитесь с первых подходов."
+                "Не гонитесь с первых же подходов."
             )
         }
     }

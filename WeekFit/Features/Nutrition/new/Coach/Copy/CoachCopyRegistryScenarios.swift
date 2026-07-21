@@ -90,12 +90,12 @@ enum CoachCopyRegistryScenarios {
         case .cycling:
             assessment = .en(
                 "Ride is coming — time to settle pace and legs.",
-                "Заезд впереди — пора настроить темп и ноги."
+                "Заезд впереди — пора поймать темп и настроиться."
             )
         case .running:
             assessment = .en(
                 "Run is ahead — dial in effort before the first mile.",
-                "Пробежка впереди — настройте усилие до первого километра."
+                "Пробежка впереди — найдите свой темп до первого километра."
             )
         default:
             assessment = .en(
@@ -108,7 +108,7 @@ enum CoachCopyRegistryScenarios {
             assessment: assessment,
             recommendation: .en(
                 "Start easy — let breathing and rhythm find their place.",
-                "Начните легко — пусть дыхание и ритм сами найдутся."
+                "Начните легко — пусть дыхание и ритм настроятся сами."
             ),
             avoid: .en(
                 "Don't open with a sprint or heavy gear.",
@@ -189,7 +189,7 @@ enum CoachCopyRegistryScenarios {
             ),
             avoid: .en(
                 "Don't stack another hard block on tired legs.",
-                "Не добавляйте ещё один тяжёлый блок на уставшие ноги."
+                "Не добавляйте ещё одну интенсивную тренировку на уставшие ноги."
             ),
             nextAction: catchUpNextAction(
                 input: input,
@@ -208,17 +208,17 @@ enum CoachCopyRegistryScenarios {
         case .cycling:
             assessment = .en(
                 "Big ride day — evening is for landing softly.",
-                "Большой день на ногах — вечер для спокойного финиша."
+                "Большой день в седле — вечер для спокойного финиша."
             )
         case .running:
             assessment = .en(
                 "Big run day — evening is for landing softly.",
-                "Большой день на ногах — вечер для спокойного финиша."
+                "Большой день нагрузки — вечер для спокойного финиша."
             )
         default:
             assessment = .en(
                 "Big endurance day — evening is for landing softly.",
-                "Большой день на ногах — вечер для спокойного финиша."
+                "Большой день нагрузки — вечер для спокойного финиша."
             )
         }
 
@@ -289,7 +289,7 @@ enum CoachCopyRegistryScenarios {
         case .squash:
             assessment = .en(
                 "You're on court — squash rewards patience point by point.",
-                "Вы на корте — сквош награждает терпение розыгрыш за розыгрышем."
+                "Вы на корте — в сквоше терпение вознаграждается, розыгрыш за розыгрышем."
             )
         default:
             assessment = .en(
@@ -302,12 +302,12 @@ enum CoachCopyRegistryScenarios {
         if input.dayLoad == .heavy || input.dayLoad == .extreme {
             recommendation = .en(
                 "Short points, quick resets — don't burn matches on a full day.",
-                "Короткие розыгрыши, быстрый сброс — не сжигайте матч на полном дне."
+                "Короткие розыгрыши, быстрый сброс — не выгорайте на матче в плотный день."
             )
         } else {
             recommendation = .en(
                 "Breathe out on the swing — reset between points.",
-                "Выдыхайте на ударе — между очками успевайте сброс."
+                "Выдыхайте на ударе — между очками успевайте сбрасывать напряжение."
             )
         }
 
@@ -388,7 +388,7 @@ enum CoachCopyRegistryScenarios {
                 ),
             avoid: .en(
                 "No late drills or heavy legs before bed.",
-                "Без поздних отработок и тяжёлых ног перед сном."
+                "Без поздних тренировок и тяжести в ногах перед сном."
             ),
             nextAction: windDown
                 ? CoachCopyNutritionTiming.windDownSleepNextAction()
@@ -502,7 +502,7 @@ enum CoachCopyRegistryScenarios {
         Draft(
             assessment: .en(
                 "Last set done — muscles are still loaded and warm.",
-                "Последний подход сделан — мышцы ещё горячие."
+                "Последний подход завершён сделан — мышцы ещё горячие."
             ),
             recommendation: .en(
                 "Walk five minutes — let blood flow settle.",
@@ -516,7 +516,7 @@ enum CoachCopyRegistryScenarios {
                 input: input,
                 defaultAction: .en(
                     "Protein and fluids within the next hour.",
-                    "Белок и вода в ближайший час — будет кстати."
+                    "Белок и вода — в ближайший час."
                 )
             )
         )
@@ -526,7 +526,7 @@ enum CoachCopyRegistryScenarios {
         Draft(
             assessment: .en(
                 "Strength work is banked — repair starts now.",
-                "Силовая сделана — ремонт начинается сейчас."
+                "Силовая сделана — теперь тело восстанавливается."
             ),
             recommendation: .en(
                 "Easy movement and food — muscles rebuild on rest.",
@@ -561,7 +561,7 @@ enum CoachCopyRegistryScenarios {
                 ),
             avoid: .en(
                 "No late sets or heavy stairs before bed.",
-                "Без поздних подходов и тяжёлых лестниц перед сном."
+                "Без поздних подходов и тяжёлых подъёмов по лестнице перед сном."
             ),
             nextAction: windDown
                 ? CoachCopyNutritionTiming.windDownSleepNextAction()
@@ -585,7 +585,7 @@ enum CoachCopyRegistryScenarios {
             ),
             recommendation: .en(
                 "Keep it pleasant — fresh air beats forced steps.",
-                "Приятный темп — свежий воздух лучше насильных шагов."
+                "Приятный темп — свежий воздух важнее, чем шаги через силу."
             ),
             avoid: .en(
                 "Don't turn it into a power walk or errands sprint.",
@@ -602,7 +602,7 @@ enum CoachCopyRegistryScenarios {
         Draft(
             assessment: .en(
                 "Evening walk — help the day settle before sleep.",
-                "Вечерняя прогулка — день пусть уложится перед сном."
+                "Вечерняя прогулка — пусть день уляжется перед сном."
             ),
             recommendation: .en(
                 "Slow pace, soft light — nothing to chase.",
@@ -610,7 +610,7 @@ enum CoachCopyRegistryScenarios {
             ),
             avoid: .en(
                 "Don't pick up pace or take calls that rev you up.",
-                "Не ускоряйтесь и не берите звонки, что будоражат."
+                "Не ускоряйтесь и не отвечайте на звонки, которые будоражат."
             ),
             nextAction: .en(
                 "Fifteen quiet minutes, then head toward bed.",
@@ -696,22 +696,22 @@ enum CoachCopyRegistryScenarios {
         case (.during, _):
             return .en(
                 "Recovery session is live — slow and present.",
-                "Сессия восстановления идёт — медленно и внимательно."
+                "Восстановительная тренировка идёт — медленно и внимательно."
             )
         case (.postImmediate, _):
             return .en(
                 "Recovery session wrapped — calm should linger.",
-                "Сессия восстановления закончилась — спокойствие пусть останется."
+                "Восстановительная тренировка закончилась — пусть спокойствие останется с вами."
             )
         case (.postSettled, _):
             return .en(
                 "Recovery work is done — carry the calm forward.",
-                "Восстановление сделано — сохраните это спокойствие."
+                "Восстановление позади — сохраните это спокойствие и дальше."
             )
         case (.evening, _):
             return .en(
                 "Recovery day is closing — protect the calm tonight.",
-                "День восстановления заканчивается — берегите спокойствие."
+                "Спокойный день восстановления заканчивается — берегите спокойствие вечером."
             )
         }
     }
@@ -737,7 +737,7 @@ enum CoachCopyRegistryScenarios {
         default:
             assessment = .en(
                 "Recovery block is next — gentle from the first minute.",
-                "Блок восстановления — мягко с первой минуты."
+                "Блок восстановления впереди — мягко с первой минуты."
             )
         }
 
@@ -745,15 +745,15 @@ enum CoachCopyRegistryScenarios {
             assessment: assessment,
             recommendation: .en(
                 "Keep effort low — this is repair, not training.",
-                "Держите усилие низким — это ремонт, не тренировка."
+                "Минимум усилий — сейчас не тренировка, а восстановление."
             ),
             avoid: .en(
                 "Don't push depth or hold through pain.",
-                "Не лезьте в глубину и не терпите боль."
+                "Не тянитесь через силу и не терпите боль."
             ),
             nextAction: .en(
                 "Find a quiet spot and start with five easy breaths.",
-                "Найдите тихое место — пять спокойных вдохов для старта."
+                "Найдите тихое место и сделайте пять спокойных вдохов."
             )
         )
     }
@@ -787,11 +787,11 @@ enum CoachCopyRegistryScenarios {
             ),
             recommendation: .en(
                 "Sit or lie still — let nervous system downshift.",
-                "Посидите или полежите — пусть нервная система успокоится."
+                "Посидите или полежите — дайте себе успокоиться."
             ),
             avoid: .en(
                 "Don't jump straight into noise or hard tasks.",
-                "Не пытайтесь быстро заняться тяжёлымы делами."
+                "Не бросайтесь в суету или тяжёлые дела."
             ),
             nextAction: catchUpNextAction(
                 input: input,
@@ -815,7 +815,7 @@ enum CoachCopyRegistryScenarios {
             ),
             avoid: .en(
                 "Don't rush back into stress or heavy training.",
-                "Не возвращайтесь резко к стрессовым и тяжёлым тренировкам."
+                "Не бросайтесь сразу в стресс и тяжёлые тренировки."
             ),
             nextAction: catchUpNextAction(
                 input: input,
@@ -837,7 +837,7 @@ enum CoachCopyRegistryScenarios {
             recommendation: windDown
                 ? .en(
                     "Ease into sleep — rest is the final rep.",
-                    "Плавно ко сну — отдых это последний подход."
+                    "Плавно ко сну — отдых и есть последний подход."
                 )
                 : .en(
                     "Keep the evening quiet — no extra load.",
@@ -890,7 +890,7 @@ enum CoachCopyRegistryScenarios {
         if input.modifiers.hydrationBehind || input.hydrationState.isBehind {
             recommendation = .en(
                 "Shorter rounds than usual — heat stacks fast on a depleted day.",
-                "Заходы короче обычного — жар быстро накапливается на опустошённый день."
+                "Заходы короче обычного — когда сил и так немного, жар копится быстрее."
             )
         } else {
             recommendation = .en(
@@ -927,7 +927,7 @@ enum CoachCopyRegistryScenarios {
             ),
             recommendation: .en(
                 "Rest and quiet — let pulse settle before what's next.",
-                "Посидите несколько минут, выпейте воды и дождитесь, пока дыхание станет спокойным."
+                "Посидите спокойно — дайте пульсу вернуться к обычному, прежде чем двигаться дальше."
             ),
             avoid: .en(
                 "Don't jump into cold shower or hard work right away.",
@@ -936,8 +936,8 @@ enum CoachCopyRegistryScenarios {
             nextAction: catchUpNextAction(
                 input: input,
                 defaultAction: .en(
-                    "Sit fifteen minutes quietly before you move on.",
-                    "Когда полностью остынете, спокойно поешьте и продолжайте день."
+                    "Fifteen quiet minutes, then move on.",
+                    "Пятнадцать минут тишины — потом дальше."
                 )
             )
         )

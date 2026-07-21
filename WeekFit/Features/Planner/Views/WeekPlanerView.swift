@@ -47,6 +47,7 @@ private struct WeekPlannerLiveQueryView: View {
 
     @State private var mode: PlanMode = .week
     @State private var showProfile = false
+    @AppStorage(OnboardingStore.Keys.introPlan) private var planIntroDismissed = false
     
     @Environment(\.modelContext) private var modelContext
 
@@ -820,8 +821,19 @@ private extension WeekPlannerLiveQueryView {
 
             if selectedDayActivities.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
+                    if !planIntroDismissed {
+                        OnboardingContextualIntroCard(
+                            title: WeekFitLocalizedString("onboarding.intro.plan.title"),
+                            message: WeekFitLocalizedString("onboarding.intro.plan.body"),
+                            accent: Color(hex: "#7E8CFF")
+                        ) {
+                            planIntroDismissed = true
+                        }
+                        .padding(.bottom, 12)
+                    }
+
                     emptySelectedDay
-                        .padding(.top, 8)
+                        .padding(.top, planIntroDismissed ? 8 : 0)
 
                     Spacer(minLength: 0)
                 }

@@ -98,10 +98,11 @@ struct CoachState: Identifiable {
         input: CoachInputSnapshot,
         fingerprint: CoachInputFingerprint,
         createdAt: Date = Date(),
-        reason: String = "unspecified"
+        reason: String = "unspecified",
+        bypassReadinessGate: Bool = false
     ) -> CoachState {
         let readiness = CoachInputReadiness.assessment(input)
-        guard readiness.allowed else {
+        guard readiness.allowed || bypassReadinessGate else {
             CoachLogger.trace(
                 "[CoachInputReadiness]",
                 [
@@ -201,7 +202,7 @@ struct CoachState: Identifiable {
     }
 
     static func localized(english: String, russian: String) -> String {
-        WeekFitCurrentLocale().identifier.hasPrefix("ru") ? russian : english
+        WeekFitUsesRussianLanguage() ? russian : english
     }
 }
 

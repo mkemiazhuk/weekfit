@@ -59,6 +59,7 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
             "v=1",
             "snapshot=\(snapshot.metricsSnapshotID?.uuidString ?? "nil")",
             "day=\(Int(day / 86_400))",
+            "lang=\(WeekFitCurrentLanguageCode())",
             "phase=\(timePhase)",
             "sleepHours=\(Self.rounded(metrics.sleepHours))",
             "sleep=\(brain.sleep)",

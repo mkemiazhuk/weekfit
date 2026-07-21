@@ -227,7 +227,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.tomorrowProtection",
                 scenario: .tomorrowProtection,
                 badge: "БЕРЕЖЁМ СИЛЫ",
-                todayTitle: "Сегодня уже достаточно",
+                todayTitle: "Берегите силы",
                 stackedDayActiveRisk: false,
                 conflictNote: "protection beats eveningAfter on completed focus"
             ),
@@ -658,7 +658,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "session.activity",
                 scenario: .lowRecoveryPrep,
                 badge: "БЕРЕЖЁМ СИЛЫ",
-                todayTitle: "Проверьте готовность",
+                todayTitle: "Сначала проверьте готовнос…",
                 stackedDayActiveRisk: false,
                 conflictNote: "low recovery pre-session shifts to protective prep, not default activeEndurance"
             ),
@@ -990,7 +990,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "day.idle",
                 scenario: .recoveryAfterHeavyYesterday,
                 badge: "БЕРЕЖЁМ СИЛЫ",
-                todayTitle: "День восстановления",
+                todayTitle: "Спокойный день восстановле…",
                 stackedDayActiveRisk: false,
                 conflictNote: "heavy yesterday + bad recovery — recovery day story"
             ),

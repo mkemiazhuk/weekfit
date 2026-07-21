@@ -7,12 +7,12 @@ enum ReflectionCopy {
         case (.sleepConsistencyRecovery, .emerged, .emerging):
             return CoachState.localized(
                 english: "I've started noticing something about your sleep. When your bedtime stays consistent, your recovery tends to be stronger the next day.",
-                russian: "Я начинаю замечать кое-что про ваш сон. Когда время отхода ко сну остаётся стабильным, восстановление на следующий день обычно выше."
+                russian: "Я начинаю замечать кое-что про ваш сон: когда вы ложитесь спать в одно и то же время, восстановление на следующий день обычно выше."
             )
         case (.sleepConsistencyRecovery, .emerged, .established), (.sleepConsistencyRecovery, .strengthened, .established):
             return CoachState.localized(
                 english: "I'm more confident about this now. Your recovery is consistently stronger when your sleep timing stays steady.",
-                russian: "Теперь я увереннее в этом. Ваше восстановление стабильно выше, когда режим сна остаётся ровным."
+                russian: "Теперь я в этом увереннее: восстановление стабильно выше, когда вы засыпаете примерно в одно и то же время."
             )
         case (.sleepDurationRecovery, .emerged, .emerging):
             return CoachState.localized(
@@ -32,7 +32,7 @@ enum ReflectionCopy {
         case (.lateBedtimeRecovery, .emerged, .established), (.lateBedtimeRecovery, .strengthened, .established):
             return CoachState.localized(
                 english: "I'm more confident about this now. Later bedtimes usually leave your recovery lower the next morning.",
-                russian: "Теперь я в этом увереннее: поздний отход ко сну обычно снижает восстановление на следующее утро."
+                russian: "Теперь я в этом увереннее: если вы ложитесь позже обычного, восстановление на следующее утро обычно ниже."
             )
         case (.heavyLoadRecoveryLag, .emerged, .emerging):
             return CoachState.localized(
@@ -47,7 +47,7 @@ enum ReflectionCopy {
         case (.recoveryAfterRestDay, .emerged, .emerging):
             return CoachState.localized(
                 english: "I'm starting to notice that when you give yourself a lighter day after heavier work, your recovery tends to come back better.",
-                russian: "Я начинаю замечать, что когда после более тяжёлой нагрузки ты даёшь себе лёгкий день, восстановление чаще возвращается лучше."
+                russian: "Я начинаю замечать, что когда после более тяжёлой нагрузки вы даёте себе лёгкий день, восстановление чаще возвращается лучше."
             )
         case (.recoveryAfterRestDay, .emerged, .established), (.recoveryAfterRestDay, .strengthened, .established):
             return CoachState.localized(
@@ -77,7 +77,7 @@ enum ReflectionCopy {
         default:
             return CoachState.localized(
                 english: "I've learned something new about how your body responds over time.",
-                russian: "Я узнал кое-что новое о том, как ваше тело реагирует со временем."
+                russian: "Я узнал кое-что новое о том, как ваше тело меняется со временем."
             )
         }
     }

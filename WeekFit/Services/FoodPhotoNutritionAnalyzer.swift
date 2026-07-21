@@ -153,41 +153,45 @@ enum FoodPhotoNutritionAnalyzer {
 
     private static func detectBarcode(in cgImage: CGImage) async -> String? {
         await withCheckedContinuation { continuation in
-            let request = VNDetectBarcodesRequest { request, _ in
-                let observations = request.results as? [VNBarcodeObservation] ?? []
-                let payload = observations
-                    .compactMap(\.payloadStringValue)
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .first { !$0.isEmpty }
-                continuation.resume(returning: payload)
-            }
-            request.symbologies = [.ean13, .ean8, .upce, .code128]
+            DispatchQueue.global(qos: .userInitiated).async {
+                let request = VNDetectBarcodesRequest { request, _ in
+                    let observations = request.results as? [VNBarcodeObservation] ?? []
+                    let payload = observations
+                        .compactMap(\.payloadStringValue)
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .first { !$0.isEmpty }
+                    continuation.resume(returning: payload)
+                }
+                request.symbologies = [.ean13, .ean8, .upce, .code128]
 
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(returning: nil)
+                let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                do {
+                    try handler.perform([request])
+                } catch {
+                    continuation.resume(returning: nil)
+                }
             }
         }
     }
 
     private static func recognizeText(in cgImage: CGImage) async -> String? {
         await withCheckedContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, _ in
-                let lines = (request.results as? [VNRecognizedTextObservation] ?? [])
-                    .compactMap { $0.topCandidates(1).first?.string }
-                let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                continuation.resume(returning: text.isEmpty ? nil : text)
-            }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
+            DispatchQueue.global(qos: .userInitiated).async {
+                let request = VNRecognizeTextRequest { request, _ in
+                    let lines = (request.results as? [VNRecognizedTextObservation] ?? [])
+                        .compactMap { $0.topCandidates(1).first?.string }
+                    let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                    continuation.resume(returning: text.isEmpty ? nil : text)
+                }
+                request.recognitionLevel = .accurate
+                request.usesLanguageCorrection = true
 
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(returning: nil)
+                let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                do {
+                    try handler.perform([request])
+                } catch {
+                    continuation.resume(returning: nil)
+                }
             }
         }
     }

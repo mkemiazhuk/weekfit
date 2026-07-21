@@ -171,7 +171,7 @@ enum CoachCopyRegistry {
         default:
             recommendation = .en(
                 "Hold effort flat — speed up only when breathing stays easy.",
-                "Держите темп ровным — ускоряйтесь только если дыхание легко."
+                "Держите темп ровным — ускоряйтесь, только если дышится легко."
             )
         }
 
@@ -208,11 +208,21 @@ enum CoachCopyRegistry {
         return BasePack(
             assessment: .single(assessment),
             recommendation: .single(recommendation),
-            avoid: .single(.en(
-                "No extra hard blocks tonight.",
-                "Не добавляйте ещё нагрузку."
-            )),
+            avoid: .single(tomorrowProtectionAvoid(for: input.timeOfDay)),
             nextAction: .single(nextAction)
+        )
+    }
+
+    private static func tomorrowProtectionAvoid(for timeOfDay: CoachTimeOfDay) -> CoachBilingualText {
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
+            return .en(
+                "No extra hard blocks tonight.",
+                "Не добавляйте нагрузку сегодня вечером."
+            )
+        }
+        return .en(
+            "Don't add another hard block today.",
+            "Не добавляйте нагрузку сегодня."
         )
     }
 
@@ -223,15 +233,15 @@ enum CoachCopyRegistry {
         ) {
             return .en(
                 "Heavy load is banked — hold the line tonight.",
-                "На сегодня нагрузки уже достаточно."
+                "Нагрузки на сегодня хватило — берегите силы на завтра."
             )
         }
 
         if input.sessionPhase == .tomorrowProtection,
            input.timeOfDay == .evening || input.timeOfDay == .lateEvening {
             return .en(
-                "Heavy load is banked — hold the line tonight.",
-                "Серьёзная работа уже сделана — берегите силы на завтра."
+                "Heavy load is banked — keep tonight easy.",
+                "Нагрузки на сегодня хватило — вечером помягче, берегите завтра."
             )
         }
 
@@ -255,13 +265,13 @@ enum CoachCopyRegistry {
         if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {
             return .en(
                 "Keep the rest of today easy, then protect sleep.",
-                "Остаток дня спокойный — сон потом важнее."
+                "Остаток дня — полегче, а сон сегодня важнее."
             )
         }
 
         return .en(
             "Keep today easy, then protect sleep tonight.",
-            "Держите сегодня легко — к ночи важнее сон."
+            "Проведите день полегче — к ночи важнее сон."
         )
     }
 
@@ -286,7 +296,7 @@ enum CoachCopyRegistry {
 
         return .en(
             "Take twenty quiet minutes — walk, stretch, or lie down.",
-            "Двадцать минут тишины — прогулка или растяжка."
+            "Двадцать минут тишины — прогулка, растяжка или просто полежите."
         )
     }
 
@@ -313,12 +323,12 @@ enum CoachCopyRegistry {
            !workout.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             nextAction = .en(
                 "Keep meals steady and leave hard blocks for tomorrow's session.",
-                "Ешьте ровно и оставьте тяжёлые блоки на завтрашнюю сессию."
+                "Ешьте ровно и оставьте тяжёлую нагрузку на завтрашнюю тренировку."
             )
         } else {
             nextAction = .en(
                 "Keep meals steady and leave hard blocks for tomorrow.",
-                "Ешьте ровно и оставьте тяжёлые блоки на завтра."
+                "Ешьте ровно и оставьте тяжёлую нагрузку на завтра."
             )
         }
 
@@ -330,7 +340,7 @@ enum CoachCopyRegistry {
             )),
             avoid: .single(.en(
                 "Don't burn the good recovery on optional intensity today.",
-                "Не тратьте хорошее восстановление на лишнюю интенсивность."
+                "Не тратьте накопленное восстановление на необязательную нагрузку."
             )),
             nextAction: .single(nextAction)
         )
@@ -356,7 +366,7 @@ enum CoachCopyRegistry {
             ? CoachMorningBriefCopyPolicy.recoveryAfterHeavyYesterdayNextAction(for: facts)
             : CoachBilingualText.en(
                 "Walk, stretch, or nap before anything demanding.",
-                "Прогулка, растяжка или короткий отдых — перед нагрузкой."
+                "Прогулка, растяжка или короткий сон — перед нагрузкой."
             )
 
         return BasePack(
@@ -367,7 +377,7 @@ enum CoachCopyRegistry {
             )),
             avoid: .single(.en(
                 "Don't chase yesterday's numbers or stack hard blocks early.",
-                "Не гонитесь за вчерашними цифрами и не добавляйте тяжести с утра."
+                "Не гонитесь за вчерашними цифрами и не добавляйте нагрузку с утра."
             )),
             nextAction: .single(nextAction)
         )
@@ -388,17 +398,17 @@ enum CoachCopyRegistry {
         case .cycling, .running:
             activityHint = .en(
                 "Hard endurance is coming — recovery is not fully there yet.",
-                "Впереди серьёзная выносливость — восстановление ещё не полное."
+                "Впереди серьёзная работа на выносливость — тело ещё не восстановилось."
             )
         case .tennis, .squash:
             activityHint = .en(
                 "Match demand is real — you are not fully topped up.",
-                "Игра потребует сил — восстановление пока не полное."
+                "Игра потребует сил — вы ещё не полностью восстановились."
             )
         default:
             activityHint = .en(
                 "Training is on the plan — recovery is lagging.",
-                "Тренировка впереди — восстановление отстаёт."
+                "Тренировка впереди — тело ещё не восстановилось."
             )
         }
 
@@ -406,11 +416,11 @@ enum CoachCopyRegistry {
             assessment: .single(activityHint),
             recommendation: .single(.en(
                 "Start lighter, shorten if needed, and leave room to feel better at the end.",
-                "Начните легче, при необходимости сократите — важнее закончить без провала."
+                "Начните легче, сократите, если нужно — важнее закончить без провала."
             )),
             avoid: .single(.en(
                 "Don't force the full plan or race the clock from the start.",
-                "Не форсируйте полный план и не гонитесь с первых минут."
+                "Не пытайтесь выполнить весь план через силу и не гонитесь с первых минут."
             )),
             nextAction: .single(.en(
                 "Check legs and sleep once more before you begin.",
@@ -505,7 +515,7 @@ enum CoachCopyRegistry {
         if shouldMentionLowRecoveryLiveSignal(input), lines.count < 3 {
             lines.append(.en(
                 "Recovery is low — keep effort honest, not heroic.",
-                "Восстановление низкое — держите усилие честным, не героическим."
+                "Восстановление низкое — работайте честно, без геройства."
             ))
         }
 
@@ -604,7 +614,7 @@ enum CoachCopyRegistry {
         }
         return .en(
             "Recovery is lagging — protect the session.",
-            "Восстановление отстаёт — берегите тренировку."
+            "Тело ещё не восстановилось — берегите тренировку."
         )
     }
 
@@ -633,7 +643,7 @@ enum CoachCopyRegistry {
         }
         return .en(
             "Recovery is lagging — rest is the plan.",
-            "Восстановление отстаёт — отдых сегодня в приоритете."
+            "Тело ещё не восстановилось — сегодня важнее отдых."
         )
     }
 
@@ -739,7 +749,7 @@ enum CoachCopyRegistry {
         if windDown {
             return .en(
                 "Stacked day — stopping now protects tomorrow.",
-                "День на пределе — остановка сейчас сохранит завтра."
+                "День и так плотный — если остановиться сейчас, завтра будет легче."
             )
         }
         if input.tomorrowDemand == .hard {
@@ -750,7 +760,7 @@ enum CoachCopyRegistry {
         }
         return .en(
             "Load is already high — ease this session.",
-            "Нагрузка уже высокая — смягчите эту тренировку."
+            "Нагрузка уже высокая — сделайте эту тренировку легче."
         )
     }
 

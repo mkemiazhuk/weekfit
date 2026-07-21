@@ -4618,7 +4618,7 @@ struct InsightsView: View {
             "\(Int(healthManager.activeCalories.rounded()))",
             "\(healthManager.sleepMinutes)",
             "\(healthManager.recoveryPercent)",
-            "\(String(format: "%.1f", nutritionViewModel.currentMetrics?.waterLiters ?? 0))",
+            "\(String(format: "%.1f", nutritionViewModel.currentMetrics?.waterLiters ?? 0.0))",
             nutritionViewModel.coachStateRefreshID.uuidString,
             coachCoordinator.state.id.uuidString,
             coachInputProvider.lastInput?.metricsSnapshotID?.uuidString ?? "noCoachInput",

@@ -238,7 +238,7 @@ final class CoachDayClosingCopyPolicyTests: XCTestCase {
         let bridge = try XCTUnwrap(CoachTabPresentationBridge.build(from: result))
 
         XCTAssertEqual(result.context.conversationPhase, .steady)
-        XCTAssertEqual(bridge.todayTitle, "День восстановления")
+        XCTAssertEqual(bridge.todayTitle, "Спокойный день восстановле…")
         XCTAssertTrue(pack.nextAction.lines.first?.russian.contains("прогул") == true
             || pack.nextAction.lines.first?.russian.contains("растяж") == true)
     }

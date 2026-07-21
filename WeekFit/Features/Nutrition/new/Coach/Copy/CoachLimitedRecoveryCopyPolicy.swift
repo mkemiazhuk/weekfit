@@ -18,14 +18,14 @@ enum CoachLimitedRecoveryCopyPolicy {
     private static func limitedAssessment() -> CoachCopySection {
         .single(.en(
             "Sleep wasn't recorded today, so I'm basing guidance on your plan and activity—not recovery metrics.",
-            "Сегодня сон не записан, поэтому рекомендации основаны на вашем плане и активности, а не на показателях восстановления."
+            "Сегодня сон не записан, поэтому я ориентируюсь на ваш план и активность, а не на показатели восстановления."
         ))
     }
 
     private static func limitedAvoid() -> CoachCopySection {
         .single(.en(
             "Don't treat missing sleep as proof you're either ready or not ready.",
-            "Не делайте вывод о готовности только из отсутствия данных о сне."
+            "Если сон не записан, это ещё не значит, что вы готовы или не готовы."
         ))
     }
 }

@@ -169,13 +169,13 @@ struct ManualMealFormView: View {
         .onChange(of: fiber) { _, newValue in
             Self.debugLog("onChange.fiber length=\(newValue.count)")
         }
-        .sheet(isPresented: $showCamera) {
+        .fullScreenCover(isPresented: $showCamera) {
             CameraCaptureView { image in
                 Self.debugLog("camera.imageCaptured")
                 processCapturedPhoto(image)
             }
             .ignoresSafeArea()
-            .weekFitSheetChrome(cornerRadius: 36)
+            .preferredColorScheme(.dark)
         }
         .photosPicker(
             isPresented: $showPhotoLibrary,

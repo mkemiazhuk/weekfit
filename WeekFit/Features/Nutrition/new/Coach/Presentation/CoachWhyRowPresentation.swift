@@ -69,8 +69,8 @@ enum CoachWhyRowPresentation {
         if lower.contains("recovery is lagging") || lower.contains("recovery is low") {
             return true
         }
-        return text.contains("Восстановление отстаёт")
-            || text.contains("восстановление отстаёт")
+        return text.contains("Тело ещё не восстановилось")
+            || text.contains("тело ещё не восстановилось")
             || text.contains("восстановление низкое")
     }
 
@@ -135,7 +135,7 @@ enum CoachWhyRowPresentation {
     private static func mentionsFirstMealAhead(_ text: String) -> Bool {
         let lower = text.lowercased()
         return lower.contains("first meal is still ahead")
-            || text.contains("Первый приём пищи ещё впереди")
+            || text.contains("Первая еда ещё впереди.")
     }
 
     private static func mentionsCalorieLag(_ text: String) -> Bool {

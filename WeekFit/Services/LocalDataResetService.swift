@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 @MainActor
@@ -12,6 +13,7 @@ final class LocalDataResetService {
 
     private let modelContext: ModelContext
     private let defaults: UserDefaults
+    private static let logger = Logger(subsystem: "WeekFit", category: "LocalDataReset")
 
     init(
         modelContext: ModelContext,
@@ -22,7 +24,7 @@ final class LocalDataResetService {
     }
 
     func resetAllLocalData() async throws {
-        print("[LocalDataReset] Starting local data reset")
+        debugLog("Starting local data reset")
 
         var failures: [String] = []
 
@@ -30,14 +32,14 @@ final class LocalDataResetService {
             try clearSwiftData()
         } catch {
             failures.append("SwiftData/CoreData/local model data: \(error.localizedDescription)")
-            print("[LocalDataReset][Failure] SwiftData/CoreData/local model data: \(error)")
+            Self.logger.error("SwiftData reset failed: \(error.localizedDescription, privacy: .public)")
         }
 
         do {
             try clearLocalImages()
         } catch {
             failures.append("Local meal/custom food images: \(error.localizedDescription)")
-            print("[LocalDataReset][Failure] Local meal/custom food images: \(error)")
+            Self.logger.error("Image reset failed: \(error.localizedDescription, privacy: .public)")
         }
 
         clearUserDefaults()
@@ -46,13 +48,13 @@ final class LocalDataResetService {
         HealthKitWorkoutSyncService.shared.resetSyncState()
 
         WeekFitUserSettings.shared.refreshFromStorage()
-        print("[LocalDataReset] Refreshed in-memory user settings")
+        debugLog("Refreshed in-memory user settings")
 
         guard failures.isEmpty else {
             throw LocalDataResetError.partialFailure(failures)
         }
 
-        print("[LocalDataReset] Finished local data reset")
+        debugLog("Finished local data reset")
     }
 
     private func clearSwiftData() throws {
@@ -75,18 +77,18 @@ final class LocalDataResetService {
             context.delete(activity)
         }
         try context.save()
-        print("[LocalDataReset] Cleared SwiftData PlannedActivity rows: \(activities.count)")
+        debugLog("Cleared SwiftData PlannedActivity rows: \(activities.count)")
     }
 
     private func clearLocalImages() throws {
         try MealPhotoStore.clearAllStoredPhotos()
-        print("[LocalDataReset] Cleared locally cached meal/custom food images")
+        debugLog("Cleared locally cached meal/custom food images")
     }
 
     private func clearUserDefaults() {
         if let bundleIdentifier = Bundle.main.bundleIdentifier {
             defaults.removePersistentDomain(forName: bundleIdentifier)
-            print("[LocalDataReset] Cleared UserDefaults persistent domain: \(bundleIdentifier)")
+            debugLog("Cleared UserDefaults persistent domain: \(bundleIdentifier)")
         } else {
             let knownKeys = [
                 ProfileService.Keys.fullName,
@@ -96,6 +98,13 @@ final class LocalDataResetService {
                 ProfileService.Keys.initials,
                 ProfileService.Keys.nutritionGoal,
                 ProfileService.Keys.nutritionGoalIsManual,
+                OnboardingStore.Keys.completed,
+                OnboardingStore.Keys.step,
+                OnboardingStore.Keys.flowVersion,
+                OnboardingStore.Keys.introToday,
+                OnboardingStore.Keys.introCoach,
+                OnboardingStore.Keys.introPlan,
+                OnboardingStore.Keys.introMeals,
                 CustomMealStore.storageKey,
                 CustomIngredientStore.storageKey,
                 AppLanguage.storageKey,
@@ -118,10 +127,16 @@ final class LocalDataResetService {
             ]
 
             knownKeys.forEach(defaults.removeObject(forKey:))
-            print("[LocalDataReset] Cleared known UserDefaults keys: \(knownKeys.count)")
+            debugLog("Cleared known UserDefaults keys: \(knownKeys.count)")
         }
 
         defaults.synchronize()
+    }
+
+    private func debugLog(_ message: String) {
+        #if DEBUG
+        Self.logger.debug("\(message, privacy: .public)")
+        #endif
     }
 }
 
@@ -131,7 +146,7 @@ enum LocalDataResetError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .partialFailure(let failures):
-            return "Reset completed with failures: \(failures.joined(separator: "; "))"
+            return failures.joined(separator: "\n")
         }
     }
 }

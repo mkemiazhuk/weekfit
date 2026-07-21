@@ -112,7 +112,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 recommendation: .single(.en(
                     "Start slower than the calendar suggests — feel first.",
-                    "Начните медленнее, чем подсказывает календарь — сначала ощущения."
+                    "Начните медленнее, чем подсказывает календарь — сначала прислушайтесь к себе."
                 )),
                 avoid: .single(.en(
                     "Don't match yesterday's pace from the first hour.",
@@ -128,7 +128,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 recommendation: .single(.en(
                     "Keep the first block gentle — no intensity before you feel ready.",
-                    "Первый блок мягко — без интенсивности, пока не почувствуете готовность."
+                    "Начните мягко — без интенсивности, пока не почувствуете, что готовы."
                 )),
                 avoid: .single(.en(
                     "Don't stack demands before the body wakes up.",
@@ -156,7 +156,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 recommendation: .single(.en(
                     "Keep optional intensity off the table for the rest of today.",
-                    "Оставьте необязательную интенсивность на остаток дня."
+                    "Без дополнительной интенсивности до конца дня — сегодня она не нужна."
                 )),
                 avoid: base.avoid,
                 nextAction: base.nextAction
@@ -217,7 +217,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 recommendation: .single(.en(
                     "Keep optional intensity off the table today.",
-                    "Оставьте необязательную интенсивность на сегодня."
+                    "Без дополнительной интенсивности — сегодня она не нужна."
                 )),
                 avoid: base.avoid,
                 nextAction: base.nextAction
@@ -272,7 +272,7 @@ enum CoachBodyStateCopyRenderer {
                 assessment: .single(activeEnduranceVeryFatiguedAssessment(activityType: activityType)),
                 recommendation: .single(.en(
                     "Start easier than planned and reassess after warming up.",
-                    "Начните легче плана и переоцените после разминки."
+                    "Начните легче плана — после разминки посмотрите по ощущениям."
                 )),
                 avoid: .single(.en(
                     "Don't commit to the full plan before you feel the legs.",
@@ -430,7 +430,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 recommendation: .single(.en(
                     "Let the walk release tension, not add another block.",
-                    "Пусть прогулка снимет напряжение, а не добавит новый блок."
+                    "Пусть прогулка снимет напряжение, а не добавит новую нагрузку."
                 )),
                 avoid: .single(.en(
                     "Don't speed up if the legs feel heavy.",
@@ -452,7 +452,7 @@ enum CoachBodyStateCopyRenderer {
             return BasePack(
                 assessment: .single(.en(
                     "Evening walk — a gentle way to let the day settle.",
-                    "Вечерняя прогулка — способ мягко опустить день."
+                    "Вечерняя прогулка — способ мягко завершить день."
                 )),
                 recommendation: .single(.en(
                     "Keep it calm: sleep matters more than steps right now.",
@@ -510,7 +510,7 @@ enum CoachBodyStateCopyRenderer {
                 assessment: base.assessment,
                 recommendation: .single(.en(
                     "Extend cooldown — fifteen easy minutes before you stop.",
-                    "Подлиннее заминка — пятнадцать лёгких минут, прежде чем остановиться."
+                    "Продлите заминку — ещё пятнадцать лёгких минут, прежде чем остановиться."
                 )),
                 avoid: base.avoid,
                 nextAction: base.nextAction
@@ -520,7 +520,7 @@ enum CoachBodyStateCopyRenderer {
                 assessment: base.assessment,
                 recommendation: .single(.en(
                     "Keep moving easy — let heart rate settle before you sit.",
-                    "Двигаетесь легко — пусть пульс успокоится, прежде чем сесть."
+                    "Двигайтесь легко — пусть пульс успокоится, прежде чем сесть."
                 )),
                 avoid: .single(.en(
                     "Don't skip cooldown to rush the next thing.",
@@ -627,7 +627,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 avoid: .single(.en(
                     "No grinding reps on tired stabilizers.",
-                    "Без гринда на уставших стабилизаторах."
+                    "Не дожимайте через силу — стабилизаторы устали."
                 )),
                 nextAction: base.nextAction
             )
@@ -640,7 +640,7 @@ enum CoachBodyStateCopyRenderer {
                 )),
                 avoid: .single(.en(
                     "Don't chase PRs on a depleted day.",
-                    "Не гонитесь за рекордами на опустошённый день."
+                    "Не гонитесь за рекордами, когда сил не осталось."
                 )),
                 nextAction: .single(.en(
                     "After this set — decide whether to trim the rest.",
@@ -665,7 +665,7 @@ enum CoachBodyStateCopyRenderer {
                 assessment: .single(activeRacketFatiguedAssessment(activityType: activityType)),
                 recommendation: .single(.en(
                     "Longer warm-up — first games at half speed.",
-                    "Длиннее разминка — первые геймы на половине скорости."
+                    "Разминка подольше — первые геймы на половине скорости."
                 )),
                 avoid: .single(.en(
                     "Don't open with explosive rallies.",
@@ -722,7 +722,7 @@ enum CoachBodyStateCopyRenderer {
                 assessment: base.assessment,
                 recommendation: .single(.en(
                     "Pick your battles — not every ball needs a sprint.",
-                    "Выбирайте бои — не за каждым мячом нужен рывок."
+                    "Не гонитесь за каждым мячом — выбирайте, когда стоит рвануть."
                 )),
                 avoid: .single(.en(
                     "No hero dives on tired legs.",

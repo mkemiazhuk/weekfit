@@ -13,6 +13,7 @@ struct ExpertCoachView: View {
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false
+    @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
     #endif
@@ -177,6 +178,18 @@ struct ExpertCoachView: View {
     private var coachContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .center, spacing: WeekFitScreenLayout.rootSpacing) {
+                if !coachIntroDismissed {
+                    OnboardingContextualIntroCard(
+                        title: WeekFitLocalizedString("onboarding.intro.coach.title"),
+                        message: WeekFitLocalizedString("onboarding.intro.coach.body"),
+                        accent: WeekFitTheme.coachAccent
+                    ) {
+                        coachIntroDismissed = true
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                }
+
                 if shouldSurfaceCoach {
                     coachCard
                     storySupportSection

@@ -12,6 +12,8 @@ final class AppSessionState: ObservableObject {
     @Published private(set) var coachRefreshEvent = AppRefreshEvent(kind: .coachRefresh)
     @Published private(set) var localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
     @Published var isPresentingHealthAccess = false
+    @Published var isPresentingOnboarding = false
+    @Published private(set) var pendingRootTab: WeekFitTab?
 
     private var pendingHealthRefreshSources: [String] = []
     private var pendingCoachRefreshSources: [String] = []
@@ -38,6 +40,28 @@ final class AppSessionState: ObservableObject {
 
     func dismissHealthAccess() {
         isPresentingHealthAccess = false
+    }
+
+    func presentOnboarding() {
+        isPresentingOnboarding = true
+        isPresentingHealthAccess = false
+    }
+
+    func dismissOnboarding() {
+        isPresentingOnboarding = false
+    }
+
+    /// Finishes first-run onboarding and optionally opens a destination tab.
+    func completeOnboarding(opening tab: WeekFitTab) {
+        pendingRootTab = tab
+        isPresentingOnboarding = false
+        isPresentingHealthAccess = false
+    }
+
+    func consumePendingRootTab() -> WeekFitTab? {
+        let tab = pendingRootTab
+        pendingRootTab = nil
+        return tab
     }
 
     func triggerHealthRefresh(source: String = "unspecified") {

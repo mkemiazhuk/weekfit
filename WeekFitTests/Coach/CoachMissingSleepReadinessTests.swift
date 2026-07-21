@@ -59,6 +59,37 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
         XCTAssertNil(state.coachUIPresentation)
     }
 
+    func testLanguageChangeBypassesReadinessGateAndSwitchesCopy() {
+        let input = makeMissingSleepInput(hour: 7, healthGranted: true)
+        XCTAssertFalse(CoachInputReadiness.assessment(input).allowed)
+
+        WeekFitSetCurrentLanguage(.english)
+        let englishState = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            reason: "seed.en",
+            bypassReadinessGate: true
+        )
+        XCTAssertNotNil(englishState.coachUIPresentation)
+        let englishTitle = englishState.coachUIPresentation?.todayTitle ?? ""
+
+        WeekFitSetCurrentLanguage(.russian)
+        let russianState = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            reason: "languageChange.ru",
+            bypassReadinessGate: true
+        )
+        XCTAssertNotNil(russianState.coachUIPresentation)
+        let russianTitle = russianState.coachUIPresentation?.todayTitle ?? ""
+        XCTAssertFalse(russianTitle.isEmpty)
+        XCTAssertNotEqual(englishTitle, russianTitle)
+        XCTAssertTrue(
+            russianTitle.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) },
+            "Expected Cyrillic coach title after RU language change, got: \(russianTitle)"
+        )
+    }
+
     func testNoSleepWithoutHealthAccessStaysSettling() {
         let input = makeMissingSleepInput(hour: 11, healthGranted: false)
         let assessment = CoachInputReadiness.assessment(input)

@@ -6,6 +6,10 @@ struct BodyGoalPickerSection: View {
 
     let hasHealthBiometrics: Bool
     let suggestedGoal: NutritionGoal?
+    /// When false, hides the apologetic missing-biometrics note (onboarding uses softer framing).
+    var showsMissingHealthNote: Bool = true
+    /// Optional footer override (e.g. onboarding confidence copy).
+    var footerOverride: String? = nil
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
@@ -18,7 +22,7 @@ struct BodyGoalPickerSection: View {
                 .foregroundStyle(textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if !hasHealthBiometrics {
+            if showsMissingHealthNote, !hasHealthBiometrics {
                 Text(WeekFitLocalizedString("settings.profile.bodyGoal.missingHealthNote"))
                     .font(.system(size: 13.5, weight: .medium, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(0.92))
@@ -48,15 +52,18 @@ struct BodyGoalPickerSection: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text(
-                hasHealthBiometrics
-                    ? WeekFitLocalizedString("settings.profile.bodyGoal.footerWithHealth")
-                    : WeekFitLocalizedString("settings.profile.bodyGoal.footerWithoutHealth")
-            )
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(textSecondary.opacity(0.82))
-            .fixedSize(horizontal: false, vertical: true)
+            Text(footerText)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(textSecondary.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var footerText: String {
+        if let footerOverride { return footerOverride }
+        return hasHealthBiometrics
+            ? WeekFitLocalizedString("settings.profile.bodyGoal.footerWithHealth")
+            : WeekFitLocalizedString("settings.profile.bodyGoal.footerWithoutHealth")
     }
 
     private func goalRow(_ goal: NutritionGoal) -> some View {
