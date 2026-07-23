@@ -12,6 +12,8 @@ struct BuiltMealPlateView: View {
     var customFoodImage: UIImage? = nil
     var customFoodInitial: String? = nil
     var layoutMode: PlateLayoutMode = .detail
+    /// Keep the plate visible with zero items so builder drop geometry stays stable.
+    var showsEmptyPlate: Bool = false
 
     var body: some View {
         let layoutItems = PlateLayoutEngine.layout(
@@ -23,11 +25,12 @@ struct BuiltMealPlateView: View {
         )
         let hasCustomFoodVisual = customFoodImage != nil || customFoodInitial != nil
         let hasFoodItems = items.contains { !$0.id.hasPrefix("drink_") } || hasCustomFoodVisual
+        let showPlate = hasFoodItems || showsEmptyPlate
 
         ZStack {
-            if hasFoodItems {
+            if showPlate {
                 Ellipse()
-                    .fill(Color.black.opacity(0.14))
+                    .fill(Color.black.opacity(hasFoodItems ? 0.14 : 0.10))
                     .frame(width: plateSize * 0.98, height: plateSize * 0.21)
                     .blur(radius: 9)
                     .offset(y: plateSize * 0.26)
@@ -37,7 +40,7 @@ struct BuiltMealPlateView: View {
                     .scaledToFit()
                     .frame(width: plateSize, height: plateSize)
                     .blendMode(.multiply)
-                    .opacity(plateOpacity)
+                    .opacity(hasFoodItems ? plateOpacity : min(plateOpacity, 0.72))
             }
 
             if hasCustomFoodVisual {

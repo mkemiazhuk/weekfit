@@ -90,7 +90,8 @@ enum CoachEngine {
             hour: hour,
             durationBand: .short,
             activityFamily: .none,
-            activityState: .none
+            activityState: .none,
+            completedSeriousActivities: completedSerious
         )
         let hydrationState = resolveHydrationState(
             input.nutritionContext,
@@ -102,6 +103,11 @@ enum CoachEngine {
         let dayReadiness = CoachDayReadinessResolver.resolve(from: input)
 
         let completedWalkToday = CoachActivityClassifier.hasCompletedWalkToday(
+            in: input.plannedActivities,
+            on: input.selectedDate,
+            calendar: calendar
+        )
+        let completedHeatToday = CoachActivityClassifier.hasCompletedHeatToday(
             in: input.plannedActivities,
             on: input.selectedDate,
             calendar: calendar
@@ -126,7 +132,8 @@ enum CoachEngine {
                     timeOfDay: timeOfDay,
                     tomorrowWorkout: tomorrowWorkout,
                     dayReadiness: dayReadiness,
-                    completedWalkToday: completedWalkToday
+                    completedWalkToday: completedWalkToday,
+                    completedHeatToday: completedHeatToday
                 ),
                 input: input
             )
@@ -159,7 +166,8 @@ enum CoachEngine {
                     minutesSinceEnd: nil,
                     dayReadiness: dayReadiness,
                     lastCompletedSeriousActivityType: lastCompletedSeriousType,
-                    completedWalkToday: completedWalkToday
+                    completedWalkToday: completedWalkToday,
+                    completedHeatToday: completedHeatToday
                 ),
                 input: input
             )
@@ -170,7 +178,8 @@ enum CoachEngine {
             hour: hour,
             durationBand: CoachDurationBand.from(minutes: activity.effectiveDurationMinutes),
             activityFamily: focus.family,
-            activityState: focus.state
+            activityState: focus.state,
+            completedSeriousActivities: completedSerious
         )
         let resolvedHydrationState = resolveHydrationState(
             input.nutritionContext,
@@ -200,7 +209,8 @@ enum CoachEngine {
                 minutesSinceEnd: focus.minutesSinceEnd,
                 dayReadiness: dayReadiness,
                 lastCompletedSeriousActivityType: lastCompletedSeriousType,
-                completedWalkToday: completedWalkToday
+                completedWalkToday: completedWalkToday,
+                completedHeatToday: completedHeatToday
             ),
             input: input
         )
@@ -282,7 +292,8 @@ enum CoachEngine {
         timeOfDay: CoachTimeOfDay,
         tomorrowWorkout: CoachTomorrowWorkout?,
         dayReadiness: CoachDayReadiness,
-        completedWalkToday: Bool
+        completedWalkToday: Bool,
+        completedHeatToday: Bool
     ) -> CoachContext {
         CoachContext(
             activityFamily: .none,
@@ -303,7 +314,8 @@ enum CoachEngine {
             minutesSinceEnd: nil,
             dayReadiness: dayReadiness,
             lastCompletedSeriousActivityType: lastCompletedSeriousType,
-            completedWalkToday: completedWalkToday
+            completedWalkToday: completedWalkToday,
+            completedHeatToday: completedHeatToday
         )
     }
 
@@ -473,14 +485,16 @@ enum CoachEngine {
         hour: Int,
         durationBand: CoachDurationBand,
         activityFamily: CoachActivityFamily,
-        activityState: CoachActivityState
+        activityState: CoachActivityState,
+        completedSeriousActivities: CoachCompletedSeriousActivities
     ) -> CoachFuelState {
         _ = activityState
         return CoachNutritionPace.fuelState(
             nutrition: nutrition,
             hour: hour,
             activityFamily: activityFamily,
-            durationBand: durationBand
+            durationBand: durationBand,
+            completedSeriousActivities: completedSeriousActivities
         )
     }
 

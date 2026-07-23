@@ -106,7 +106,31 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.0 launch)
+## What's New (1.0.1)
+
+**EN:**
+```
+WeekFit 1.0.1
+
+• Premium first-run onboarding that explains how Coach reads your day
+• Smarter meal builder: serving-size macros scale correctly; smoother plate animation
+• Clearer Coach timing after heavy load and around meal windows
+• Localization and stability polish
+```
+
+**RU:**
+```
+WeekFit 1.0.1
+
+• Премиальный онбординг: как Коуч читает ваш день
+• Умнее конструктор блюд: макросы масштабируются с порцией; плавнее анимация тарелки
+• Точнее тайминг Коуча после нагрузки и вокруг приёмов пищи
+• Улучшения локализации и стабильности
+```
+
+---
+
+## What's New (1.0 launch — archive)
 
 **EN:**
 ```
@@ -136,7 +160,7 @@ Welcome to WeekFit 1.0.
 WeekFit is a local-first fitness planner with a daily Coach powered by Apple Health.
 
 TEST PATH (no account required):
-1. Launch app → tap "Open WeekFit" on the login screen.
+1. Launch app → complete first-run onboarding (or skip where offered) → reach Today.
 2. When prompted, grant Apple Health read access (sleep, workouts, activity, heart rate, nutrition).
 3. Explore tabs: Today, Coach, Meals, Plan.
 4. Optional: add a planned workout in Plan, complete a workout in Apple Health or Fitness app, return to WeekFit to see sync.
@@ -146,7 +170,7 @@ PERMISSIONS:
 • Camera — optional; custom food photos only.
 • Location (When In Use) — optional; Night Comfort theme at local sunset.
 
-NOT INCLUDED IN 1.0:
+NOT INCLUDED IN 1.0.1:
 • No subscriptions or in-app purchases.
 • No cloud account (Sign in with Apple is not required).
 • No Apple Watch companion app (completed workouts sync via HealthKit).

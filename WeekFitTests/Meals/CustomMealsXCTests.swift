@@ -4,6 +4,70 @@ import UIKit
 
 final class CustomMealsXCTests: XCTestCase {
 
+    func testNutritionDensityScalesMacrosWithServingGrams() {
+        let density = CustomMealNutritionDensity.from(
+            grams: 100,
+            calories: 146,
+            protein: 10,
+            carbs: 3,
+            fats: 11,
+            fiber: 1
+        )
+        XCTAssertNotNil(density)
+
+        let scaled = density!.scaled(toGrams: 230)
+        XCTAssertEqual(scaled.calories, 336) // 146 × 2.3
+        XCTAssertEqual(scaled.protein, 23)
+        XCTAssertEqual(scaled.carbs, 7)
+        XCTAssertEqual(scaled.fats, 25)
+        XCTAssertEqual(scaled.fiber, 2)
+    }
+
+    func testNutritionDensitySurvivesIntermediateSmallGramRounding() {
+        let density = CustomMealNutritionDensity.from(
+            grams: 100,
+            calories: 146,
+            protein: 10,
+            carbs: 3,
+            fats: 11,
+            fiber: 1
+        )!
+        // Typing path 100 → 2 briefly rounds protein to 0 in the UI,
+        // but density must stay locked to the 100 g baseline.
+        let atTwoGrams = density.scaled(toGrams: 2)
+        XCTAssertEqual(atTwoGrams.protein, 0)
+
+        let atTwoThirty = density.scaled(toGrams: 230)
+        XCTAssertEqual(atTwoThirty.calories, 336)
+        XCTAssertEqual(atTwoThirty.protein, 23)
+        XCTAssertEqual(atTwoThirty.carbs, 7)
+        XCTAssertEqual(atTwoThirty.fats, 25)
+        XCTAssertEqual(atTwoThirty.fiber, 2)
+    }
+
+    func testNutritionDensityRejectsEmptyOrZeroGrams() {
+        XCTAssertNil(
+            CustomMealNutritionDensity.from(
+                grams: 0,
+                calories: 100,
+                protein: 10,
+                carbs: 0,
+                fats: 0,
+                fiber: 0
+            )
+        )
+        XCTAssertNil(
+            CustomMealNutritionDensity.from(
+                grams: 100,
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fats: 0,
+                fiber: 0
+            )
+        )
+    }
+
     func testManualMealValidation_acceptsValidInputAndPreservesValues() {
         let input = CustomMealFormInput(
             name: "Protein Bowl",

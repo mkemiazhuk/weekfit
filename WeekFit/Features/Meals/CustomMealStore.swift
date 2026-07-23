@@ -98,6 +98,52 @@ struct CustomMealFormInput {
     var fiber: Int
 }
 
+/// Per-gram nutrition density so changing serving size scales macros proportionally.
+struct CustomMealNutritionDensity: Equatable {
+    var caloriesPerGram: Double
+    var proteinPerGram: Double
+    var carbsPerGram: Double
+    var fatsPerGram: Double
+    var fiberPerGram: Double
+
+    static func from(
+        grams: Int,
+        calories: Int,
+        protein: Int,
+        carbs: Int,
+        fats: Int,
+        fiber: Int
+    ) -> CustomMealNutritionDensity? {
+        guard grams > 0 else { return nil }
+        guard calories > 0 || protein > 0 || carbs > 0 || fats > 0 || fiber > 0 else { return nil }
+        let g = Double(grams)
+        return CustomMealNutritionDensity(
+            caloriesPerGram: Double(calories) / g,
+            proteinPerGram: Double(protein) / g,
+            carbsPerGram: Double(carbs) / g,
+            fatsPerGram: Double(fats) / g,
+            fiberPerGram: Double(fiber) / g
+        )
+    }
+
+    func scaled(toGrams grams: Int) -> (
+        calories: Int,
+        protein: Int,
+        carbs: Int,
+        fats: Int,
+        fiber: Int
+    ) {
+        let g = Double(max(grams, 0))
+        return (
+            calories: Int((caloriesPerGram * g).rounded()),
+            protein: Int((proteinPerGram * g).rounded()),
+            carbs: Int((carbsPerGram * g).rounded()),
+            fats: Int((fatsPerGram * g).rounded()),
+            fiber: Int((fiberPerGram * g).rounded())
+        )
+    }
+}
+
 enum CustomMealValidation {
     static let maximumServingGrams = 5_000
     static let maximumNutritionValue = 20_000

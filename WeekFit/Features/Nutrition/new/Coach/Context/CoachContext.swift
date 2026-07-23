@@ -186,6 +186,8 @@ struct CoachContext: Equatable, Sendable {
     let lastCompletedSeriousActivityType: CoachActivityType
     /// Completed walk logged today — suppresses duplicate walk prompts when idle.
     let completedWalkToday: Bool
+    /// Completed sauna/heat today — keeps rehydrate urgency after the short heat focus window.
+    let completedHeatToday: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
     let conversationPhase: CoachConversationPhase
     /// Human-readable resolver reason for logs and tests.
@@ -211,6 +213,7 @@ struct CoachContext: Equatable, Sendable {
         dayReadiness: CoachDayReadiness,
         lastCompletedSeriousActivityType: CoachActivityType,
         completedWalkToday: Bool = false,
+        completedHeatToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason
     ) {
@@ -233,6 +236,7 @@ struct CoachContext: Equatable, Sendable {
         self.dayReadiness = dayReadiness
         self.lastCompletedSeriousActivityType = lastCompletedSeriousActivityType
         self.completedWalkToday = completedWalkToday
+        self.completedHeatToday = completedHeatToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
     }
@@ -511,6 +515,19 @@ enum CoachActivityClassifier {
             !activity.isSkipped &&
             activity.isCompleted &&
             type(for: activity) == .walk
+        }
+    }
+
+    static func hasCompletedHeatToday(
+        in activities: [CoachPlannedActivitySnapshot],
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        activities.contains { activity in
+            calendar.isDate(activity.date, inSameDayAs: date) &&
+            !activity.isSkipped &&
+            activity.isCompleted &&
+            type(for: activity) == .sauna
         }
     }
 }

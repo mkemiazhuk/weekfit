@@ -117,8 +117,31 @@ struct CoachCopyBuildInput: Equatable, Sendable {
             mealWindowOpen: CoachCopyMealWindowPolicy.isOpen(
                 context: context,
                 fuelState: context.fuelState
+            ),
+            dehydrationRisk: resolveDehydrationRisk(
+                context: context,
+                scenario: resolution.scenario,
+                safetyAlert: resolution.safetyAlert
             )
         )
+    }
+
+    /// True when drink language may own next-action / why-rows before evening.
+    /// Critical pace, live heat alert, sauna story, or any lag after heat today.
+    private static func resolveDehydrationRisk(
+        context: CoachContext,
+        scenario: CoachScenarioKey,
+        safetyAlert: CoachSafetyAlert?
+    ) -> Bool {
+        if context.hydrationState == .critical { return true }
+        if safetyAlert == .hydrationCritical { return true }
+        if context.completedHeatToday, context.hydrationState.isBehind { return true }
+        switch scenario {
+        case .saunaPreparation, .saunaActive, .saunaRecovery:
+            return context.hydrationState.isBehind
+        default:
+            return false
+        }
     }
 
     private static func resolvedFocusActivity(

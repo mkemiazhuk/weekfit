@@ -5,9 +5,9 @@
 > **Target:** iOS 17+ · v1.0  
 > **Owner:** Engineering + QA + Product
 
-**Release:** 1.0 (build 8)  
-**Build:** `build/WeekFit.xcarchive` — archived locally  
-**Sign-off:** Engineering [x] · QA [ ] · Product [ ]
+**Release:** 1.0.1 (build 14)  
+**Build:** archive with `Scripts/archive_for_app_store.sh`  
+**Sign-off:** Engineering [ ] · QA [ ] · Product [ ]
 
 ---
 
@@ -15,7 +15,7 @@
 
 | # | Check | How | Pass |
 |---|-------|-----|------|
-| 1.1 | Versioning | `MARKETING_VERSION` = `1.0`; `CURRENT_PROJECT_VERSION` is an **integer** (increment per submit) | [x] build **8** |
+| 1.1 | Versioning | `MARKETING_VERSION` = `1.0.1`; `CURRENT_PROJECT_VERSION` is an **integer** (increment per submit) | [x] build **14** |
 | 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` is in the WeekFit target (auto-synced via folder) | [x] |
 | 1.3 | Export compliance | `ITSAppUsesNonExemptEncryption = NO` in Release build settings | [x] |
 | 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [ ] |
@@ -74,10 +74,13 @@ xcodebuild test -scheme WeekFit \
 
 | Suite | Pass |
 |-------|------|
-| WeekFitUITests (tab navigation) | [ ] |
+| WeekFitUITests (tab navigation) | [ ] manual |
 | ActivityReconcilerXCTests | [x] |
 | HealthManagerIntegrationTests | [x] HealthDataConnectionStateTests |
 | Coach suites (above) | [x] |
+| Full `WeekFitTests` (943) | [x] 2026-07-23 · iPhone 16 / iOS 18.5 |
+| Localization parity + language-mix | [x] |
+| Release configuration build | [x] |
 
 ### 4.2 Localization
 

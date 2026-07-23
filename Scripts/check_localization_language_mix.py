@@ -11,6 +11,10 @@ from pathlib import Path
 CATALOG = Path(__file__).resolve().parents[1] / "WeekFit" / "Localizable.xcstrings"
 IGNORED_PREFIXES = ("common.unit.",)
 SKIP_KEYS = {"", ".", "|", "0", "Week%@"}
+# Native language names intentionally use the language's own script in both locales.
+SKIP_CYRILLIC_IN_EN_KEYS = {
+    "onboarding.v8.language.option.russian",
+}
 
 # Latin tokens allowed inside Russian copy (units, brands, acronyms, filenames).
 ALLOWED_LATIN = {
@@ -24,6 +28,10 @@ ALLOWED_LATIN = {
     "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
     "email", "sms", "push", "wifi", "bluetooth", "nfc", "beta", "alpha", "v1", "v2", "v3",
     "rem", "rhr", "bmr", "tdee", "faq", "nil", "fit", "app", "store",
+    # Product surface / brand nouns kept in Latin inside RU copy
+    "coach", "today", "meals", "plan", "english", "russian",
+    # Third-party source labels
+    "usda", "open", "food", "facts",
 }
 
 CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
@@ -64,7 +72,7 @@ def main() -> int:
             if latin:
                 ru_violations.append(f"  - {key}: {', '.join(latin)}")
 
-        if en and CYRILLIC_RE.search(en):
+        if en and CYRILLIC_RE.search(en) and key not in SKIP_CYRILLIC_IN_EN_KEYS:
             en_violations.append(f"  - {key}")
 
     if ru_violations or en_violations:

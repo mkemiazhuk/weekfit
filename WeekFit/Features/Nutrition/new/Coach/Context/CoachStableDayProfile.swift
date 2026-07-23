@@ -204,9 +204,7 @@ enum CoachStableDayCopy {
                     "Do not force another walk just to chase the activity ring.",
                     "Не выходите на ещё одну прогулку только ради кольца активности."
                 )),
-                nextAction: .single(CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
-                    mealWindowOpen: input.mealWindowOpen
-                ))
+                nextAction: .single(CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input))
             )
         }
 
@@ -284,9 +282,7 @@ enum CoachStableDayCopy {
                 "Не добирайте шаги или калории только ради цифр."
             )),
             nextAction: .single(
-                CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
-                    mealWindowOpen: input.mealWindowOpen
-                )
+                CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input)
             )
         )
     }
@@ -523,14 +519,14 @@ enum CoachStableDayCopy {
     }
 
     private static func workBankedNextAction(input: CoachCopyBuildInput) -> CoachBilingualText {
-        if !input.mealWindowOpen {
-            return CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(mealWindowOpen: false)
+        if CoachCopyNutritionTiming.needsHydrationCatchUp(input) {
+            return CoachCopyNutritionTiming.hydrationCatchUpNextAction(for: input)
         }
-        if input.modifiers.fuelBehind || input.fuelState.isBehind {
+        if CoachCopyNutritionTiming.needsFuelCatchUp(input) {
             return CoachCopyNutritionTiming.fuelCatchUpNextAction(for: input)
         }
-        if input.modifiers.hydrationBehind || input.hydrationState.isBehind {
-            return CoachCopyNutritionTiming.hydrationCatchUpNextAction(for: input)
+        if !input.mealWindowOpen {
+            return CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input)
         }
         return .en(
             "Stretch or walk briefly, then refuel if needed.",

@@ -94,6 +94,110 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         XCTAssertFalse(russian.contains("восстановительная прогулка"))
     }
 
+    func testCompletedWalkAfterHeavyLoadWithCriticalHydrationAsksForWaterNotByFeel() throws {
+        var input = makeInput(
+            sessionPhase: .settledPost,
+            focusSource: .recentCompleted,
+            activityState: .finished,
+            minutesSinceEnd: 88,
+            timeOfDay: .midday
+        )
+        input = CoachCopyBuildInput(
+            scenario: input.scenario,
+            modifiers: CoachScenarioModifiers(
+                dayLoad: input.modifiers.dayLoad,
+                fuelBehind: true,
+                hydrationBehind: true,
+                tomorrowDemand: input.modifiers.tomorrowDemand,
+                activityType: input.modifiers.activityType,
+                durationBand: input.modifiers.durationBand,
+                completedSeriousActivities: input.modifiers.completedSeriousActivities,
+                timeOfDay: input.modifiers.timeOfDay,
+                stackedDayActiveRisk: input.modifiers.stackedDayActiveRisk,
+                lastCompletedActivityType: input.modifiers.lastCompletedActivityType
+            ),
+            athleteState: input.athleteState,
+            fuelState: .behind,
+            hydrationState: .critical,
+            safetyAlert: nil,
+            semanticColor: input.semanticColor,
+            alertSeverity: .elevated,
+            tomorrowWorkout: input.tomorrowWorkout,
+            dayReadiness: input.dayReadiness,
+            focusSource: input.focusSource,
+            sessionPhase: input.sessionPhase,
+            activityState: input.activityState,
+            minutesSinceEnd: input.minutesSinceEnd,
+            mealWindowOpen: false,
+            dehydrationRisk: true
+        )
+
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(input))
+        let nextEN = pack.nextAction.lines.first?.english ?? ""
+        let nextRU = pack.nextAction.lines.first?.russian ?? ""
+
+        XCTAssertTrue(
+            nextEN.lowercased().contains("drink") || nextEN.lowercased().contains("water"),
+            "Expected explicit drink guidance; got: \(nextEN)"
+        )
+        XCTAssertFalse(nextEN.contains("Water by feel"))
+        XCTAssertTrue(nextRU.lowercased().contains("вод") || nextRU.lowercased().contains("стакан"))
+        XCTAssertFalse(nextRU.contains("по самочувствию"))
+
+        let report = CoachConversationSemanticTimingAudit.audit(pack: pack, input: input)
+        XCTAssertTrue(report.isClean, report.findings.map(\.reason).joined(separator: "; "))
+    }
+
+    func testCompletedWalkAfterHeavyLoadWithFuelBehindAsksForProteinMeal() throws {
+        var input = makeInput(
+            sessionPhase: .settledPost,
+            focusSource: .recentCompleted,
+            activityState: .finished,
+            minutesSinceEnd: 88,
+            timeOfDay: .midday
+        )
+        input = CoachCopyBuildInput(
+            scenario: input.scenario,
+            modifiers: CoachScenarioModifiers(
+                dayLoad: input.modifiers.dayLoad,
+                fuelBehind: true,
+                hydrationBehind: false,
+                tomorrowDemand: input.modifiers.tomorrowDemand,
+                activityType: input.modifiers.activityType,
+                durationBand: input.modifiers.durationBand,
+                completedSeriousActivities: .one,
+                timeOfDay: input.modifiers.timeOfDay,
+                stackedDayActiveRisk: input.modifiers.stackedDayActiveRisk,
+                lastCompletedActivityType: input.modifiers.lastCompletedActivityType
+            ),
+            athleteState: input.athleteState,
+            fuelState: .behind,
+            hydrationState: .adequate,
+            safetyAlert: nil,
+            semanticColor: input.semanticColor,
+            alertSeverity: .elevated,
+            tomorrowWorkout: input.tomorrowWorkout,
+            dayReadiness: input.dayReadiness,
+            focusSource: input.focusSource,
+            sessionPhase: input.sessionPhase,
+            activityState: input.activityState,
+            minutesSinceEnd: input.minutesSinceEnd,
+            mealWindowOpen: true
+        )
+
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(input))
+        let nextEN = pack.nextAction.lines.first?.english ?? ""
+        let nextRU = pack.nextAction.lines.first?.russian ?? ""
+
+        XCTAssertTrue(nextEN.lowercased().contains("protein") || nextEN.lowercased().contains("meal"))
+        XCTAssertTrue(nextRU.lowercased().contains("белк") || nextRU.lowercased().contains("приём"))
+        XCTAssertFalse(nextEN.contains("Water by feel"))
+        XCTAssertFalse(nextRU.contains("по самочувствию"))
+
+        let report = CoachConversationSemanticTimingAudit.audit(pack: pack, input: input)
+        XCTAssertTrue(report.isClean, report.findings.map(\.reason).joined(separator: "; "))
+    }
+
     // MARK: - Helpers
 
     private func makeInput(

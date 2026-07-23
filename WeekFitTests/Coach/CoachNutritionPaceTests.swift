@@ -114,6 +114,44 @@ final class CoachNutritionPaceTests: XCTestCase {
         )
     }
 
+    func testAfterSeriousTrainingProteinLagAloneFlagsFuelBehind() {
+        // Calories roughly on pace for 14:00 (~62% expected → 0.45/0.62 ≈ 0.73, above 0.75? wait)
+        // expected at 14: interpolate 12=0.38, 16=0.62 → ~0.50 at 14
+        // calories 1400/2800 = 0.5, relative = 0.5/0.5 = 1.0 (on pace)
+        // protein 20/140 ≈ 0.14, expected protein ~0.40 at 14 → relative 0.35 → behind
+        let nutrition = CoachNutritionContext(
+            caloriesCurrent: 1_400,
+            caloriesGoal: 2_800,
+            proteinCurrent: 20,
+            proteinGoal: 140,
+            waterCurrent: 1.8,
+            waterGoal: 2.5
+        )
+
+        XCTAssertEqual(
+            CoachNutritionPace.fuelState(
+                nutrition: nutrition,
+                hour: 14,
+                activityFamily: .strength,
+                durationBand: .medium,
+                completedSeriousActivities: .none
+            ),
+            .adequate,
+            "Without serious work, both macros must lag"
+        )
+        XCTAssertEqual(
+            CoachNutritionPace.fuelState(
+                nutrition: nutrition,
+                hour: 14,
+                activityFamily: .strength,
+                durationBand: .medium,
+                completedSeriousActivities: .one
+            ),
+            .behind,
+            "After serious training, protein lag alone is enough"
+        )
+    }
+
     private func date(hour: Int, minute: Int) -> Date {
         var components = Calendar.current.dateComponents([.year, .month, .day], from: CoachTestClock.reference)
         components.hour = hour

@@ -4,6 +4,8 @@
 # Xcode
 DerivedData/
 .derived-data/
+.derivedData-*/
+.local/
 .build/
 build/
 

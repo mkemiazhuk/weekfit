@@ -31,7 +31,20 @@ final class CoachCopyNutritionTimingTests: XCTestCase {
         let input = makeInput(timeOfDay: .afternoon, fuelBehind: true)
         let text = joined(CoachCopyNutritionTiming.fuelCatchUpNextAction(for: input))
 
-        XCTAssertTrue(text.lowercased().contains("meal") || text.contains("поеш") || text.contains("Пое"))
+        XCTAssertTrue(
+            text.lowercased().contains("meal")
+                || text.lowercased().contains("protein")
+                || text.contains("поеш")
+                || text.contains("белк")
+                || text.contains("приём")
+        )
+    }
+
+    func testPostSeriousFuelNextActionMentionsProtein() {
+        let input = makeInput(timeOfDay: .afternoon, fuelBehind: true)
+        let text = joined(CoachCopyNutritionTiming.fuelCatchUpNextAction(for: input))
+
+        XCTAssertTrue(text.lowercased().contains("protein") || text.contains("белк"))
     }
 
     func testWindDownHydrationCriticalWarningAvoidsChuggingBeforeBed() {

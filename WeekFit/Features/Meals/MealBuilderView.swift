@@ -18,6 +18,8 @@ struct MealBuilderView: View {
 
     @State private var flyingIngredient: MealBuilderIngredient?
     @State private var flyingStartFrame: CGRect = .zero
+    @State private var flyingEndPoint: CGPoint = .zero
+    @State private var flyingStartSize: CGFloat = 52
     @State private var flyingProgressValue: CGFloat = 0
     @State private var plateFrame: CGRect = .zero
     @State private var hiddenFlyingIngredientID: String?
@@ -190,53 +192,71 @@ struct MealBuilderView: View {
         ZStack {
             if let flyingIngredient {
                 let start = CGPoint(x: flyingStartFrame.midX, y: flyingStartFrame.midY)
-                let end = flyingLandingPoint(for: flyingIngredient)
-                let current = flyingPoint(from: start, to: end, progress: flyingProgressValue)
+                let end = flyingEndPoint
+                let t = min(max(flyingProgressValue, 0), 1)
+                let eased = flightEase(t)
+                let current = flyingPoint(from: start, to: end, progress: t)
+                let endSize = finalPlateItemSize(for: flyingIngredient)
+                let size = flyingStartSize + (endSize - flyingStartSize) * eased
+                let lift = 1.0 + (0.08 * sin(t * .pi))
 
                 if !flyingIngredient.imageName.isEmpty,
                    UIImage(named: flyingIngredient.imageName) != nil {
                     Image(flyingIngredient.imageName)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: finalPlateItemSize(for: flyingIngredient))
+                        .frame(width: size)
+                        .scaleEffect(lift)
                         .position(current)
-                        .rotationEffect(.degrees(Double(flyingIngredient.rotation) * flyingProgressValue))
-                        .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
+                        .rotationEffect(.degrees(Double(flyingIngredient.rotation) * eased))
+                        .shadow(
+                            color: .black.opacity(0.18 + 0.22 * Double(sin(t * .pi))),
+                            radius: 10 + 8 * sin(t * .pi),
+                            y: 4 + 6 * sin(t * .pi)
+                        )
+                        .opacity(0.92 + 0.08 * eased)
                         .allowsHitTesting(false)
                 }
             }
         }
     }
-    
+
+    private func flightEase(_ t: CGFloat) -> CGFloat {
+        // Smooth ease-in-out cubic — premium, no bounce at the end of the path.
+        let x = min(max(t, 0), 1)
+        return x < 0.5
+            ? 4 * x * x * x
+            : 1 - pow(-2 * x + 2, 3) / 2
+    }
+
     private func flyingPoint(
         from start: CGPoint,
         to end: CGPoint,
         progress: CGFloat
     ) -> CGPoint {
         let t = min(max(progress, 0), 1)
-
-        let eased = 1 - pow(1 - t, 2.2)
+        let eased = flightEase(t)
 
         let x = start.x + (end.x - start.x) * eased
         let y = start.y + (end.y - start.y) * eased
 
-        let arc = sin(t * .pi) * 34
+        // Gentle arc — enough lift to feel crafted, not cartoonish.
+        let arc = sin(t * .pi) * 28
 
         return CGPoint(
             x: x,
             y: y - arc
         )
     }
-    
-    
-    
-    private func flyingLandingPoint(for ingredient: MealBuilderIngredient) -> CGPoint {
+    private func flyingLandingPoint(
+        for ingredient: MealBuilderIngredient,
+        including pending: MealBuilderIngredient? = nil
+    ) -> CGPoint {
         let centerX = plateFrame.midX
         let centerY = plateFrame.midY - 6
 
-        let items = selectedIngredients.map { selected in
+        var items = selectedIngredients.map { selected -> MealBuilderImageItem in
             let ingredient = selected.ingredient
-
             return MealBuilderImageItem(
                 id: ingredient.id,
                 imageName: ingredient.imageName,
@@ -248,6 +268,24 @@ struct MealBuilderView: View {
                 rotation: ingredient.rotation,
                 zIndex: ingredient.zIndex,
                 grams: selected.grams
+            )
+        }
+
+        if let pending,
+           !items.contains(where: { $0.id == pending.id }) {
+            items.append(
+                MealBuilderImageItem(
+                    id: pending.id,
+                    imageName: pending.imageName,
+                    visualSize: pending.visualSize,
+                    visualDensity: pending.visualDensity,
+                    supportsStandalonePresentation: pending.supportsStandalonePresentation,
+                    offsetX: pending.offsetX,
+                    offsetY: pending.offsetY,
+                    rotation: pending.rotation,
+                    zIndex: pending.zIndex,
+                    grams: pending.defaultGrams
+                )
             )
         }
 
@@ -343,20 +381,24 @@ struct MealBuilderView: View {
 
     private var plateImageStack: some View {
         ZStack {
+            BuiltMealPlateView(
+                items: builderPreviewItems,
+                plateSize: 220,
+                itemScale: 1.00,
+                offsetScale: 0.82,
+                plateOpacity: 1.00,
+                shadowOpacity: builderPreviewItems.isEmpty ? 0.14 : 0.22,
+                showsEmptyPlate: true
+            )
+            .offset(y: -6)
+
             if builderPreviewItems.isEmpty {
                 emptyDrinkOrPlateState
-            } else {
-                BuiltMealPlateView(
-                    items: builderPreviewItems,
-                    plateSize: 220,
-                    itemScale: 1.00,
-                    offsetScale: 0.82,
-                    plateOpacity: 1.00,
-                    shadowOpacity: 0.22
-                )
-                .offset(y: -6)
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
+        .animation(.easeOut(duration: 0.28), value: builderPreviewItems.isEmpty)
         .background {
             GeometryReader { geo in
                 Color.clear
@@ -364,7 +406,11 @@ struct MealBuilderView: View {
                         plateFrame = geo.frame(in: .global)
                     }
                     .onChange(of: builderPreviewItems.count) { _, _ in
-                        plateFrame = geo.frame(in: .global)
+                        // Plate chrome is always present — only refresh if geometry moved.
+                        let next = geo.frame(in: .global)
+                        if next != plateFrame {
+                            plateFrame = next
+                        }
                     }
             }
         }
@@ -374,11 +420,17 @@ struct MealBuilderView: View {
         _ ingredient: MealBuilderIngredient,
         from frame: CGRect
     ) {
-        let duration: Double = 0.54
+        let duration: Double = 0.62
+
+        // Freeze landing against the current plate frame so the first drop
+        // doesn't retarget when the empty prompt fades and items appear.
+        let landing = flyingLandingPoint(for: ingredient, including: ingredient)
 
         hiddenFlyingIngredientID = ingredient.id
         flyingIngredient = ingredient
         flyingStartFrame = frame
+        flyingEndPoint = landing
+        flyingStartSize = max(36, min(frame.width, frame.height) * 0.92)
         flyingProgressValue = 0
 
         var transaction = Transaction()
@@ -388,19 +440,23 @@ struct MealBuilderView: View {
             addIngredientWithoutPulse(ingredient)
         }
 
-        withAnimation(.linear(duration: duration)) {
+        withAnimation(.easeInOut(duration: duration)) {
             flyingProgressValue = 1
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
+            var settle = Transaction()
+            settle.disablesAnimations = true
 
-            withTransaction(transaction) {
+            withTransaction(settle) {
                 hiddenFlyingIngredientID = nil
                 flyingIngredient = nil
                 flyingProgressValue = 0
             }
+
+            #if !targetEnvironment(simulator)
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            #endif
         }
     }
     
@@ -439,16 +495,15 @@ struct MealBuilderView: View {
     }
 
     private var emptyDrinkOrPlateState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: selectedDrinks.isEmpty ? "fork.knife.circle" : "cup.and.saucer.fill")
-                .font(.system(size: 30, weight: .light))
-                .foregroundStyle(textSecondary.opacity(0.72))
-
+        VStack(spacing: 6) {
             Text(WeekFitLocalizedString(selectedDrinks.isEmpty ? "meals.builder.empty.startWithBase" : "meals.builder.empty.drinksSelected"))
-                .font(.system(size: 12.2, weight: .semibold))
-                .foregroundStyle(textSecondary.opacity(0.80))
+                .font(.system(size: 12.4, weight: .semibold, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.78))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 28)
         }
-        .offset(y: 2)
+        .offset(y: 4)
+        .transition(.opacity.combined(with: .scale(scale: 0.98)))
     }
 
     private var selectedIngredientsRow: some View {

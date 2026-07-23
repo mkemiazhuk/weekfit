@@ -71,6 +71,9 @@ struct CustomMealBuilderView: View {
     @State private var barcodeLookupTone: BarcodeLookupBannerTone = .neutral
     @State private var scannedBarcode: String?
     @State private var scannedNutritionDataSource: NutritionDataSource?
+    /// Density used to rescale macros when serving grams change (photo/barcode baseline).
+    @State private var nutritionDensity: CustomMealNutritionDensity?
+    @State private var isScalingNutritionFromGrams = false
 
     private enum BarcodeLookupBannerTone {
         case neutral
@@ -102,6 +105,20 @@ struct CustomMealBuilderView: View {
         _fats = State(initialValue: Self.fieldText(editingMeal?.fats))
         _fiber = State(initialValue: Self.fieldText(editingMeal?.fiber))
         _existingPreviewImage = State(initialValue: nil)
+        if let editingMeal {
+            _nutritionDensity = State(
+                initialValue: CustomMealNutritionDensity.from(
+                    grams: max(editingMeal.servingGrams ?? 100, 1),
+                    calories: editingMeal.calories,
+                    protein: editingMeal.protein,
+                    carbs: editingMeal.carbs,
+                    fats: editingMeal.fats,
+                    fiber: editingMeal.fiber
+                )
+            )
+        } else {
+            _nutritionDensity = State(initialValue: nil)
+        }
     }
 
     private var labels: Labels {
@@ -130,21 +147,22 @@ struct CustomMealBuilderView: View {
             }
             .onChange(of: servingGrams) { _, newValue in
                 Self.debugLog("onChange.servingGrams length=\(newValue.count)")
+                rescaleNutritionForServingGramsChange(newValue)
             }
-            .onChange(of: calories) { _, newValue in
-                Self.debugLog("onChange.calories length=\(newValue.count)")
+            .onChange(of: calories) { _, _ in
+                captureDensityAfterManualNutrientEdit(focused: .calories)
             }
-            .onChange(of: protein) { _, newValue in
-                Self.debugLog("onChange.protein length=\(newValue.count)")
+            .onChange(of: protein) { _, _ in
+                captureDensityAfterManualNutrientEdit(focused: .protein)
             }
-            .onChange(of: carbs) { _, newValue in
-                Self.debugLog("onChange.carbs length=\(newValue.count)")
+            .onChange(of: carbs) { _, _ in
+                captureDensityAfterManualNutrientEdit(focused: .carbs)
             }
-            .onChange(of: fats) { _, newValue in
-                Self.debugLog("onChange.fats length=\(newValue.count)")
+            .onChange(of: fats) { _, _ in
+                captureDensityAfterManualNutrientEdit(focused: .fats)
             }
-            .onChange(of: fiber) { _, newValue in
-                Self.debugLog("onChange.fiber length=\(newValue.count)")
+            .onChange(of: fiber) { _, _ in
+                captureDensityAfterManualNutrientEdit(focused: .fiber)
             }
             .fullScreenCover(isPresented: $showCamera) {
                 // fullScreenCover works from inside a parent sheet; nested .sheet does not on iOS 17.
@@ -871,7 +889,62 @@ struct CustomMealBuilderView: View {
             setBarcodeLookupMessage(successMessage, tone: tone)
         }
 
+        if didApply {
+            // Lock density to the estimate baseline (usually per 100 g).
+            // Later gram edits scale from this — never from rounded intermediate fields.
+            captureNutritionDensityFromFields()
+        }
+
         return didApply
+    }
+
+    /// Scale all macros by the same factor as grams / baseline grams.
+    /// Density is immutable here so typing `2` → `23` → `230` cannot zero-out protein.
+    private func rescaleNutritionForServingGramsChange(_ rawGrams: String) {
+        guard !isScalingNutritionFromGrams else { return }
+        let grams = intValue(rawGrams)
+        guard grams > 0 else { return }
+
+        if nutritionDensity == nil {
+            captureNutritionDensityFromFields()
+        }
+        guard let density = nutritionDensity else { return }
+
+        let scaled = density.scaled(toGrams: grams)
+        isScalingNutritionFromGrams = true
+        calories = Self.fieldText(scaled.calories)
+        protein = Self.fieldText(scaled.protein)
+        carbs = Self.fieldText(scaled.carbs)
+        fats = Self.fieldText(scaled.fats)
+        fiber = Self.fieldText(scaled.fiber)
+        // onChange handlers for macros can run after this stack frame —
+        // keep the guard up until the next turn of the run loop.
+        DispatchQueue.main.async {
+            isScalingNutritionFromGrams = false
+        }
+    }
+
+    /// Only re-lock density when the user is actively editing a nutrient field
+    /// (not when grams-driven scaling writes the macro text fields).
+    private func captureDensityAfterManualNutrientEdit(focused expected: FocusedField) {
+        guard !isScalingNutritionFromGrams else { return }
+        guard focusedField == expected else { return }
+        captureNutritionDensityFromFields()
+    }
+
+    private func captureNutritionDensityFromFields() {
+        let grams = intValue(servingGrams)
+        guard grams > 0 else { return }
+        if let density = CustomMealNutritionDensity.from(
+            grams: grams,
+            calories: intValue(calories),
+            protein: intValue(protein),
+            carbs: intValue(carbs),
+            fats: intValue(fats),
+            fiber: intValue(fiber)
+        ) {
+            nutritionDensity = density
+        }
     }
 
     private func barcodeSuccessMessage(

@@ -58,6 +58,12 @@ enum CoachCopyNutritionTiming {
 
     static func fuelCatchUpNextAction(for input: CoachCopyBuildInput) -> CoachBilingualText {
         if isMealWindowOpen(input.timeOfDay) {
+            if input.modifiers.completedSeriousActivities != .none {
+                return .en(
+                    "Eat a solid meal with protein in the next couple of hours.",
+                    "Нормальный приём пищи с белком в ближайшие пару часов."
+                )
+            }
             return .en(
                 "Eat a proper meal before the day winds down.",
                 "Нормально поешьте, пока не поздно."
@@ -76,14 +82,28 @@ enum CoachCopyNutritionTiming {
                 "Если хочется пить — немного воды, потом можно отдыхать."
             )
         }
+        if input.dehydrationRisk {
+            return .en(
+                "Drink a glass of water in the next hour — fluids are low.",
+                "Стакан воды в ближайший час — жидкости сейчас мало."
+            )
+        }
         return .en(
             "Drink a glass of water in the next hour.",
             "Стакан воды в ближайший час — будет кстати."
         )
     }
 
-    static func fastingAwareRecoveryNextAction(mealWindowOpen: Bool) -> CoachBilingualText {
-        if mealWindowOpen {
+    /// Soft recovery next-action while fuel may still be in a fasting window.
+    /// Real hydration / post-training fuel lag always wins over soft timing copy.
+    static func fastingAwareRecoveryNextAction(for input: CoachCopyBuildInput) -> CoachBilingualText {
+        if needsHydrationCatchUp(input) {
+            return hydrationCatchUpNextAction(for: input)
+        }
+        if needsFuelCatchUp(input) {
+            return fuelCatchUpNextAction(for: input)
+        }
+        if input.mealWindowOpen {
             return .en(
                 "Stretch or walk briefly, then eat when hungry.",
                 "Растяжка или прогулка — еда, когда проголодаетесь."
@@ -93,6 +113,36 @@ enum CoachCopyNutritionTiming {
             "Water by feel — first meal at your usual time.",
             "Вода по самочувствию, а еда — в привычное время."
         )
+    }
+
+    static func needsHydrationCatchUp(_ input: CoachCopyBuildInput) -> Bool {
+        if input.dehydrationRisk || input.hydrationState == .critical {
+            return true
+        }
+        // Morning/midday soft fasting: escalate only on critical / explicit heat risk above.
+        // Later in the day, any hydration lag beats "water by feel".
+        switch input.timeOfDay {
+        case .morning, .midday:
+            return false
+        case .afternoon, .evening, .lateEvening, .night:
+            return input.modifiers.hydrationBehind || input.hydrationState.isBehind
+        }
+    }
+
+    /// After serious training (or later in the day), fuel/protein lag beats soft fasting copy.
+    static func needsFuelCatchUp(_ input: CoachCopyBuildInput) -> Bool {
+        if input.fuelState == .critical { return true }
+        let fuelBehind = input.modifiers.fuelBehind || input.fuelState.isBehind
+        guard fuelBehind else { return false }
+        if input.modifiers.completedSeriousActivities != .none {
+            return true
+        }
+        switch input.timeOfDay {
+        case .morning, .midday:
+            return false
+        case .afternoon, .evening, .lateEvening, .night:
+            return true
+        }
     }
 
     static func windDownSleepNextAction() -> CoachBilingualText {

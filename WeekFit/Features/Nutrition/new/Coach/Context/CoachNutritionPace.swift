@@ -7,7 +7,8 @@ enum CoachNutritionPace {
         nutrition: CoachNutritionContext?,
         hour: Int,
         activityFamily: CoachActivityFamily,
-        durationBand: CoachDurationBand
+        durationBand: CoachDurationBand,
+        completedSeriousActivities: CoachCompletedSeriousActivities = .none
     ) -> CoachFuelState {
         guard let nutrition else { return .unknown }
 
@@ -25,9 +26,18 @@ enum CoachNutritionPace {
         let expectedProtein = expectedProteinProgress(hour: hour)
         let calorieRelative = relativeProgress(actual: calorieProgress, expected: expectedCalories)
         let proteinRelative = relativeProgress(actual: proteinProgress, expected: expectedProtein)
+        let threshold = behindThreshold(for: hour)
 
-        if calorieRelative < behindThreshold(for: hour) &&
-            proteinRelative < behindThreshold(for: hour) {
+        // After serious training, either calories or protein lagging is enough —
+        // don't wait for both to slip before asking for a meal.
+        if completedSeriousActivities != .none {
+            if calorieRelative < threshold || proteinRelative < threshold {
+                return .behind
+            }
+            return .adequate
+        }
+
+        if calorieRelative < threshold && proteinRelative < threshold {
             return .behind
         }
 

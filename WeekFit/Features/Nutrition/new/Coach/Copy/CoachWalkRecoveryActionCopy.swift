@@ -193,9 +193,7 @@ private extension CoachWalkRecoveryActionCopy {
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте шаги через силу только ради цифр."
             ),
-            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
-                mealWindowOpen: input.mealWindowOpen
-            )
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input)
         )
     }
 
@@ -213,9 +211,7 @@ private extension CoachWalkRecoveryActionCopy {
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте шаги через силу только ради цифр."
             ),
-            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
-                mealWindowOpen: input.mealWindowOpen
-            )
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input)
         )
     }
 
@@ -233,9 +229,7 @@ private extension CoachWalkRecoveryActionCopy {
                 "Do not force extra steps just to chase numbers.",
                 "Не добавляйте шаги через силу только ради цифр."
             ),
-            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(
-                mealWindowOpen: input.mealWindowOpen
-            )
+            nextAction: CoachCopyNutritionTiming.fastingAwareRecoveryNextAction(for: input)
         )
     }
 }
