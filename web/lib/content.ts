@@ -471,6 +471,18 @@ export const changelog: Record<
     roadmap: "More on the way — cloud sync, deeper insights, and Apple Watch are on the roadmap.",
     releases: [
       {
+        version: "1.1",
+        date: "Jul 2026",
+        tag: "Update",
+        improved: [
+          "Completely redesigned onboarding experience",
+          "Better AI coaching from your very first day",
+          "Improved recovery insights and daily guidance",
+          "Faster performance and stability improvements",
+          "Multiple UX improvements throughout the app",
+        ],
+      },
+      {
         version: "1.0",
         date: "2026",
         tag: "Initial release",
@@ -491,6 +503,18 @@ export const changelog: Record<
     labels: { added: "Добавлено", improved: "Улучшено", fixed: "Исправлено" },
     roadmap: "Дальше — больше: облачная синхронизация, детальная аналитика и Apple Watch уже в планах.",
     releases: [
+      {
+        version: "1.1",
+        date: "Июль 2026",
+        tag: "Обновление",
+        improved: [
+          "Полностью обновлённый онбординг",
+          "Лучший AI-коучинг с самого первого дня",
+          "Улучшенные инсайты по восстановлению и ежедневные подсказки",
+          "Быстрее работа и улучшения стабильности",
+          "Множество UX-улучшений по всему приложению",
+        ],
+      },
       {
         version: "1.0",
         date: "2026",
