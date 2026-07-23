@@ -472,7 +472,7 @@ export const changelog: Record<
     releases: [
       {
         version: "1.1",
-        date: "23 Jul 2026, 23:45",
+        date: "Jul 23, 2026 at 11:45 PM",
         tag: "Update",
         improved: [
           "Completely redesigned onboarding experience",
@@ -505,7 +505,7 @@ export const changelog: Record<
     releases: [
       {
         version: "1.1",
-        date: "23 июля 2026, 23:45",
+        date: "23 июля 2026 в 23:45",
         tag: "Обновление",
         improved: [
           "Полностью обновлённый онбординг",
@@ -517,7 +517,7 @@ export const changelog: Record<
       },
       {
         version: "1.0",
-        date: "17 июля 2026, 21:21",
+        date: "17 июля 2026 в 21:21",
         tag: "Первый релиз",
         added: [
           "Сегодня, Коуч, Питание и План — четыре опоры вашего дня",
