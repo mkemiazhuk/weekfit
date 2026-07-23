@@ -472,7 +472,7 @@ export const changelog: Record<
     releases: [
       {
         version: "1.1",
-        date: "Jul 2026",
+        date: "23 Jul 2026, 23:45",
         tag: "Update",
         improved: [
           "Completely redesigned onboarding experience",
@@ -505,7 +505,7 @@ export const changelog: Record<
     releases: [
       {
         version: "1.1",
-        date: "Июль 2026",
+        date: "23 июля 2026, 23:45",
         tag: "Обновление",
         improved: [
           "Полностью обновлённый онбординг",
