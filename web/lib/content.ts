@@ -484,7 +484,7 @@ export const changelog: Record<
       },
       {
         version: "1.0",
-        date: "2026",
+        date: "Jul 17, 2026 at 9:21 PM",
         tag: "Initial release",
         added: [
           "Today, Coach, Meals and Plan — the four pillars of your day",
@@ -517,7 +517,7 @@ export const changelog: Record<
       },
       {
         version: "1.0",
-        date: "2026",
+        date: "17 июля 2026, 21:21",
         tag: "Первый релиз",
         added: [
           "Сегодня, Коуч, Питание и План — четыре опоры вашего дня",
