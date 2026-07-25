@@ -3,6 +3,7 @@ import type { DocSection } from "./content";
 import { vo2MaxArticleSections } from "./blog/vo2-max-article";
 import { preWorkoutNutritionArticleSections } from "./blog/pre-workout-nutrition-article";
 import { sleepBetterTonightArticleSections } from "./blog/sleep-better-tonight";
+import { bevelVsWeekFitArticleSections } from "./blog/bevel-vs-weekfit-article";
 import type { IconName } from "@/components/Icon";
 import { accents } from "./tokens";
 
@@ -164,6 +165,21 @@ export function blogSectionsToc(sections: DocSection[]): { id: string; label: st
 export const BLOG_TOC_MIN_SECTIONS = 3;
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "bevel-vs-weekfit",
+    category: "coach",
+    date: "2026-07-25",
+    readMinutes: 6,
+    title: {
+      en: "Bevel vs WeekFit: Which Health App Is Right for You?",
+      ru: "Bevel или WeekFit: какое приложение для здоровья выбрать?",
+    },
+    excerpt: {
+      en: "Bevel helps you understand your health data. WeekFit helps you decide what to do next. See which approach fits you best.",
+      ru: "Bevel помогает понять данные о здоровье, а WeekFit — решить, что делать дальше. Сравните подходы и выберите свой.",
+    },
+    sections: bevelVsWeekFitArticleSections,
+  },
   {
     slug: "eating-around-workouts",
     category: "nutrition",
