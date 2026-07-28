@@ -29,7 +29,7 @@ enum FirebaseBootstrap {
 
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
             logger.warning(
-                "GoogleService-Info.plist not found in bundle. Copy WeekFit/GoogleService-Info.plist.example to GoogleService-Info.plist and replace with Firebase Console values."
+                "GoogleService-Info.plist not found in bundle. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist and replace with Firebase Console values."
             )
             didConfigureFirebase = false
             return false
