@@ -15,6 +15,7 @@ enum CoachActivityFamily: String, CaseIterable, Equatable, Sendable {
 enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
     case cycling
     case running
+    case swimming
     case tennis
     case squash
     case upperBody
@@ -53,6 +54,14 @@ enum CoachDurationBand: String, Equatable, Sendable {
     case long
     case extended
 
+    /// Nutrition / scenario **pacing** band for the focused session.
+    ///
+    /// Cutovers: `<30` short · `30–59` medium · `60–89` long · `≥90` extended.
+    ///
+    /// - Important: Do **not** merge or retune this to match
+    ///   `CoachWalkDurationClass` in WeekFitCoachCore. That type is user-facing
+    ///   walk/hike activity classification (`<30` / `30–89` / `90–179` / `≥180`)
+    ///   and must evolve independently from pacing.
     static func from(minutes: Int) -> CoachDurationBand {
         switch minutes {
         case ..<30:
@@ -188,6 +197,8 @@ struct CoachContext: Equatable, Sendable {
     let completedWalkToday: Bool
     /// Completed sauna/heat today — keeps rehydrate urgency after the short heat focus window.
     let completedHeatToday: Bool
+    /// True when the focused `.walk` activity is hike-flavored — copy/icon use hike nouns instead of generic walk nouns.
+    let isFocusHikeLike: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
     let conversationPhase: CoachConversationPhase
     /// Human-readable resolver reason for logs and tests.
@@ -214,6 +225,7 @@ struct CoachContext: Equatable, Sendable {
         lastCompletedSeriousActivityType: CoachActivityType,
         completedWalkToday: Bool = false,
         completedHeatToday: Bool = false,
+        isFocusHikeLike: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason
     ) {
@@ -237,6 +249,7 @@ struct CoachContext: Equatable, Sendable {
         self.lastCompletedSeriousActivityType = lastCompletedSeriousActivityType
         self.completedWalkToday = completedWalkToday
         self.completedHeatToday = completedHeatToday
+        self.isFocusHikeLike = isFocusHikeLike
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
     }
@@ -248,7 +261,7 @@ enum CoachActivityClassifier {
 
     static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
         switch type(for: activity) {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             return .endurance
         case .tennis, .squash:
             return .racket
@@ -264,6 +277,11 @@ enum CoachActivityClassifier {
     }
 
     static func type(for activity: CoachPlannedActivitySnapshot) -> CoachActivityType {
+        let typeLabel = activity.type.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if typeLabel == "meal" || typeLabel == "drink" || typeLabel == "snack" {
+            return .none
+        }
+
         let primary = primaryTokenText(for: activity)
         if let match = classifyType(in: primary) {
             return match
@@ -290,8 +308,8 @@ enum CoachActivityClassifier {
         if text.contains("squash") {
             return .squash
         }
-        if containsAny(text, ["swim", "swimming"]) {
-            return nil
+        if containsAny(text, ["swim", "swimming", "плав"]) {
+            return .swimming
         }
         if containsAny(text, ["upper body", "upper-body", "upperbody", "push", "pull"]) {
             return .upperBody
@@ -305,7 +323,7 @@ enum CoachActivityClassifier {
         if containsAny(text, ["full body", "full-body", "fullbody"]) {
             return .fullBody
         }
-        if containsAny(text, ["walk", "walking", "hike", "hiking", "прогул"]) {
+        if containsAny(text, ["walk", "walking", "hike", "hiking", "прогул", "поход", "хайкинг"]) {
             return .walk
         }
         if containsAny(text, ["strength", "gym", "lifting", "weights", "dumbbell", "barbell", "workout"]) {
@@ -320,7 +338,8 @@ enum CoachActivityClassifier {
         if text.contains("yoga") {
             return .yoga
         }
-        if containsAny(text, ["sauna", "heat"]) {
+        // Token match for "heat" — bare contains() false-positives on food names like "buckwheat".
+        if text.contains("sauna") || containsToken(text, ["heat"]) {
             return .sauna
         }
 
@@ -334,7 +353,7 @@ enum CoachActivityClassifier {
         switch activityType {
         case .walk, .stretching, .yoga, .breathing, .sauna, .none:
             return false
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             let minutes = activity.effectiveDurationMinutes
             let load = inferredLoad(for: activity)
             let text = tokenText(for: activity)
@@ -390,6 +409,17 @@ enum CoachActivityClassifier {
         needles.contains { text.contains($0) }
     }
 
+    /// Whole-token match to avoid substring false positives (e.g. "heat" in "buckwheat").
+    private static func containsToken(_ text: String, _ needles: [String]) -> Bool {
+        let tokens = text
+            .lowercased()
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+        return needles.contains { needle in
+            tokens.contains(needle.lowercased())
+        }
+    }
+
     // MARK: - Legacy kind/load bridge (PR3 Phase B)
     //
     // `CoachActivityKind` / `CoachActivityLoad` remain for DayContext and DayPriorityModel.
@@ -400,6 +430,8 @@ enum CoachActivityClassifier {
         let typeLabel = activity.type.lowercased()
 
         if typeLabel == "meal" ||
+            typeLabel == "drink" ||
+            typeLabel == "snack" ||
             title.contains("meal") ||
             title.contains("lunch") ||
             title.contains("dinner") {
@@ -410,17 +442,17 @@ enum CoachActivityClassifier {
             typeLabel.contains("sauna") ||
             title.contains("hot yoga") ||
             typeLabel.contains("hot yoga") ||
-            title.contains("heat") ||
-            typeLabel.contains("heat") {
+            containsToken(title, ["heat"]) ||
+            containsToken(typeLabel, ["heat"]) {
             return .heat
         }
 
-        if containsAny(tokenText(for: activity), ["swim", "swimming"]) {
+        if containsAny(tokenText(for: activity), ["swim", "swimming", "плав"]) {
             return .endurance
         }
 
         switch type(for: activity) {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             return .endurance
         case .tennis, .squash, .upperBody, .lowerBody, .core, .fullBody:
             return .workout

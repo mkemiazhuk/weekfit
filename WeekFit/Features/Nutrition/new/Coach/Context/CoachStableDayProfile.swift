@@ -99,8 +99,8 @@ enum CoachStableDayPresentation {
                     : "Walk is already in — keep the evening calm."
             }
             return russian
-                ? "Маленькие шаги лучше, чем наверстывать позже."
-                : "Small steps beat a late catch-up."
+                ? "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
+                : "Small steps today beat stacking load later."
         case .lowRecoveryRest:
             if hadHeavyYesterday,
                completedRecoveryWalkToday,
@@ -214,8 +214,8 @@ enum CoachStableDayCopy {
                 "День идёт спокойно — ничего срочного."
             )),
             recommendation: .single(.en(
-                "Small, steady moves beat catching up later.",
-                "Лучше маленькие шаги, чем наверстывать позже."
+                "Small, steady moves beat stacking load later.",
+                "Небольшие спокойные шаги сегодня лучше, чем копить нагрузку позже."
             )),
             avoid: .single(CoachPresentationHorizonPhrasing.avoidBorrowingEveningEffort(input: input)),
             nextAction: .single(.en(
@@ -374,8 +374,8 @@ enum CoachStableDayCopy {
                         "Держите сегодня легко — завтрашняя тренировка должна пройти качественно."
                     )),
             avoid: .single(.en(
-                "Extra intensity tonight is more likely to steal from tomorrow than improve today.",
-                "Лишняя интенсивность сегодня скорее заберёт силы у завтрашнего дня, чем улучшит сегодняшний."
+                "Extra intensity tonight is more likely to weigh on tomorrow than help today.",
+                "Лишняя интенсивность сегодня скорее скажется на завтрашнем дне, чем улучшит сегодняшний."
             )),
             nextAction: .single(tomorrowReserveNextAction(input: input, windDown: windDown))
         )
@@ -499,6 +499,11 @@ enum CoachStableDayCopy {
             return .en(
                 "Run is banked — recovery is the job now.",
                 "Пробежка сделана — сейчас задача восстановиться."
+            )
+        case .swimming:
+            return .en(
+                "Swim is banked — recovery is the job now.",
+                "Заплыв сделан — сейчас задача восстановиться."
             )
         case .tennis, .squash:
             return .en(

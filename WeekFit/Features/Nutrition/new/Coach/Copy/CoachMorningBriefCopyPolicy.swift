@@ -278,7 +278,7 @@ enum CoachMorningBriefCopyPolicy {
         let minutesOut = facts.minutesUntilNextActivity
 
         switch activity.activityType {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             if let minutes = minutesOut, minutes > prepLeadMinutes {
                 return .en(
                     "Eat a light breakfast now if you haven't — \(title) at \(time).",
@@ -366,6 +366,8 @@ enum CoachMorningBriefCopyPolicy {
                 return .en("Before the ride", "Перед заездом")
             case .running:
                 return .en("Before the run", "Перед пробежкой")
+            case .swimming:
+                return .en("Before the swim", "Перед плаванием")
             case .tennis, .squash:
                 return .en("Before the match", "Перед игрой")
             case .upperBody, .lowerBody, .core, .fullBody:
@@ -408,6 +410,8 @@ enum CoachMorningBriefCopyPolicy {
             return russian ? "Заезд" : "Ride"
         case .running:
             return russian ? "Пробежка" : "Run"
+        case .swimming:
+            return russian ? "Заплыв" : "Swim"
         case .tennis:
             return russian ? "Теннис" : "Tennis"
         case .squash:

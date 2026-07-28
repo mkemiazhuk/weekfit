@@ -65,6 +65,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
     let morningBriefFacts: CoachMorningBriefFacts?
     let minutesUntilStart: Int?
     let focusActivity: CoachPlannedActivitySummary?
+    /// True when the focused `.walk` activity is hike-flavored — drives hike nouns in walk copy.
+    let isFocusHikeLike: Bool
     /// Presentation-only — false when user is still in a normal fasting / pre-first-meal window.
     let mealWindowOpen: Bool
     /// Presentation-only — heat, long activity, or critical dehydration risk.
@@ -114,6 +116,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
             morningBriefFacts: morningBriefFacts,
             minutesUntilStart: context.minutesUntilStart,
             focusActivity: focusActivity,
+            isFocusHikeLike: context.isFocusHikeLike,
             mealWindowOpen: CoachCopyMealWindowPolicy.isOpen(
                 context: context,
                 fuelState: context.fuelState
@@ -171,6 +174,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         morningBriefFacts: CoachMorningBriefFacts? = nil,
         minutesUntilStart: Int? = nil,
         focusActivity: CoachPlannedActivitySummary? = nil,
+        isFocusHikeLike: Bool = false,
         mealWindowOpen: Bool = true,
         dehydrationRisk: Bool = false
     ) {
@@ -192,6 +196,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         self.morningBriefFacts = morningBriefFacts
         self.minutesUntilStart = minutesUntilStart
         self.focusActivity = focusActivity
+        self.isFocusHikeLike = isFocusHikeLike
         self.mealWindowOpen = mealWindowOpen
         self.dehydrationRisk = dehydrationRisk
     }

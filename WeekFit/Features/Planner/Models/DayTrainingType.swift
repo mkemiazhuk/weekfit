@@ -100,7 +100,7 @@ enum DayTrainingTypeClassifier {
 
         let enduranceKeywords = [
             "cycling", "cycle", "running", "run", "tennis", "squash",
-            "swim", "swimming", "ride", "bike", "biking", "cardio"
+            "swim", "swimming", "hike", "hiking", "ride", "bike", "biking", "cardio"
         ]
 
         return enduranceKeywords.contains(where: { title.contains($0) })
@@ -134,6 +134,8 @@ enum DayTrainingTypeClassifier {
     private static let enduranceImageNames: Set<String> = [
         "workout-cycling",
         "workout-running",
+        "workout-swimming",
+        "workout-hiking",
         "workout-tennis",
         "workout-squash"
     ]

@@ -28,6 +28,7 @@ struct OnboardingPromiseMark: View {
     @ScaledMetric(relativeTo: .largeTitle) private var headlineSize: CGFloat = 40
     @ScaledMetric(relativeTo: .title3) private var subheadSize: CGFloat = 20
     @ScaledMetric(relativeTo: .callout) private var taglineSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .callout) private var phoneCoachSize: CGFloat = 13
 
     @State private var logoVisible = false
     @State private var copyVisible = false
@@ -51,13 +52,13 @@ struct OnboardingPromiseMark: View {
                 .offset(y: copyVisible ? 0 : 12)
 
             phoneHero
-                .padding(.top, 28)
+                .padding(.top, 14)
                 .opacity(phoneVisible ? 1 : 0)
                 .offset(y: phoneVisible ? 0 : 18)
                 .scaleEffect(phoneVisible ? 1 : 0.96)
 
             healthBadge
-                .padding(.top, 22)
+                .padding(.top, 20)
                 .opacity(badgeVisible ? 1 : 0)
                 .offset(y: badgeVisible ? 0 : 8)
 
@@ -160,20 +161,10 @@ struct OnboardingPromiseMark: View {
             .font(.system(size: subheadSize, weight: .medium, design: .rounded))
             .fixedSize(horizontal: false, vertical: true)
 
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [gold, WeekFitTheme.brandGoldDeep.opacity(0.4)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(width: 44, height: 2)
-                .padding(.top, 2)
-
             Text(WeekFitLocalizedString("onboarding.v11.splash.tagline"))
                 .font(.system(size: taglineSize, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
+                .padding(.top, 2)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -182,15 +173,15 @@ struct OnboardingPromiseMark: View {
         ZStack {
             // Gold bloom behind device
             Ellipse()
-                .fill(gold.opacity(glowPulse ? 0.22 : 0.10))
+                .fill(gold.opacity(glowPulse ? 0.17 : 0.08))
                 .frame(width: 260, height: 180)
-                .blur(radius: 42)
+                .blur(radius: 34)
                 .offset(y: 10)
 
             phoneBezel
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 210)
+        .frame(height: 222)
     }
 
     private var phoneBezel: some View {
@@ -219,7 +210,7 @@ struct OnboardingPromiseMark: View {
             }
             .padding(.horizontal, 16)
 
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 splashRing(
                     progress: OnboardingSampleData.activityProgress,
                     color: WeekFitProgressRingColor.activity,
@@ -249,7 +240,7 @@ struct OnboardingPromiseMark: View {
                     }
 
                 Text(WeekFitLocalizedString("onboarding.v11.splash.phone.coach"))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: phoneCoachSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.88))
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -263,7 +254,7 @@ struct OnboardingPromiseMark: View {
             .padding(.top, 14)
             .padding(.bottom, 16)
         }
-        .frame(maxWidth: 280)
+        .frame(maxWidth: 294)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Color.black)
@@ -290,7 +281,7 @@ struct OnboardingPromiseMark: View {
         WeekFitProgressRing(
             progress: ringProgress * min(progress, 1.0),
             color: color,
-            size: 58,
+            size: 61,
             strokeWidth: 3.6
         ) {
             Text(label)
@@ -298,6 +289,7 @@ struct OnboardingPromiseMark: View {
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .shadow(color: color.opacity(ringProgress > 0 ? 0.35 : 0), radius: 8, y: 1)
     }

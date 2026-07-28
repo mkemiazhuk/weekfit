@@ -150,6 +150,16 @@ enum CoachCopyRegistry {
                 "You're in the run — miles are ticking.",
                 "Вы в пробежке — километры набираются."
             )
+        case (.swimming, true):
+            assessment = .en(
+                "Still swimming after a full day — steady strokes count.",
+                "Плотный день — а вы всё ещё в бассейне, гребок за гребком."
+            )
+        case (.swimming, false):
+            assessment = .en(
+                "You're in the water — the swim is live.",
+                "Вы в бассейне — заплыв в разгаре."
+            )
         default:
             assessment = .en(
                 heavyDay
@@ -339,8 +349,8 @@ enum CoachCopyRegistry {
                 "Проведите сегодня спокойно — завтра должно хватить сил."
             )),
             avoid: .single(.en(
-                "Don't burn the good recovery on optional intensity today.",
-                "Не тратьте накопленное восстановление на необязательную нагрузку."
+                "Use today's recovery for calm movement or rest — intensity can wait.",
+                "Используйте восстановление для спокойного движения или отдыха — интенсивность подождёт."
             )),
             nextAction: .single(nextAction)
         )
@@ -395,7 +405,7 @@ enum CoachCopyRegistry {
 
         let activityHint: CoachBilingualText
         switch input.activityType {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             activityHint = .en(
                 "Hard endurance is coming — recovery is not fully there yet.",
                 "Впереди серьёзная работа на выносливость — тело ещё не восстановилось."

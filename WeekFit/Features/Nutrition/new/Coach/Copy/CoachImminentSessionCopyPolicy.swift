@@ -140,7 +140,7 @@ enum CoachImminentSessionCopyPolicy {
         protective: Bool
     ) -> CoachBilingualText {
         switch activity.activityType {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             if protective {
                 let durationEN = durationClause(minutes: activity.durationMinutes, russian: false)
                 let durationRU = durationClause(minutes: activity.durationMinutes, russian: true)
@@ -183,7 +183,7 @@ enum CoachImminentSessionCopyPolicy {
         }
 
         switch activity.activityType {
-        case .cycling, .running:
+        case .cycling, .running, .swimming:
             return .en(
                 "10-minute warmup — \(titleEN) at \(time).",
                 "10 минут разминки — \(titleRU) в \(time)."
@@ -217,6 +217,8 @@ enum CoachImminentSessionCopyPolicy {
             return russian ? "велосессия" : "ride"
         case .running:
             return russian ? "пробежка" : "run"
+        case .swimming:
+            return russian ? "заплыв" : "swim"
         case .tennis:
             return russian ? "теннис" : "tennis"
         case .squash:
@@ -234,6 +236,8 @@ enum CoachImminentSessionCopyPolicy {
             return .en("Before the ride", "Перед заездом")
         case .running:
             return .en("Before the run", "Перед пробежкой")
+        case .swimming:
+            return .en("Before the swim", "Перед плаванием")
         case .tennis, .squash:
             return .en("Before the match", "Перед игрой")
         default:

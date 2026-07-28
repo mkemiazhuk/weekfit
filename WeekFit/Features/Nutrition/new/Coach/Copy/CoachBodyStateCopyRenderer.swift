@@ -300,6 +300,11 @@ enum CoachBodyStateCopyRenderer {
                 "Run is ahead — recovery isn't fully back yet.",
                 "Пробежка впереди — восстановление ещё не полное."
             )
+        case .swimming:
+            return .en(
+                "Swim is ahead — recovery isn't fully back yet.",
+                "Заплыв впереди — восстановление ещё не полное."
+            )
         default:
             return .en(
                 "Session is ahead — recovery isn't fully back yet.",
@@ -321,6 +326,11 @@ enum CoachBodyStateCopyRenderer {
             return .en(
                 "Run is ahead — legs aren't topped up, so ease in.",
                 "Пробежка впереди — ноги не восстановились, заходите мягко."
+            )
+        case .swimming:
+            return .en(
+                "Swim is ahead — the body isn't topped up, so ease in.",
+                "Заплыв впереди — тело не восстановилось, заходите мягко."
             )
         default:
             return .en(

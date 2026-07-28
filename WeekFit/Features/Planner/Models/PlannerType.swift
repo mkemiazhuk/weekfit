@@ -86,6 +86,8 @@ enum PlannerType: CaseIterable {
             return [
                 PlannerOption(title: "Cycling", subtitle: "Endurance", icon: "figure.outdoor.cycle", imageName: "workout-cycling"),
                 PlannerOption(title: "Running", subtitle: "Cardio", icon: "figure.run", imageName: "workout-running"),
+                PlannerOption(title: "Swimming", subtitle: "Endurance", icon: "figure.pool.swim", imageName: "workout-swimming"),
+                PlannerOption(title: "Hiking", subtitle: "Endurance", icon: "figure.hiking", imageName: "workout-hiking"),
 
                 PlannerOption(title: "Upper Body", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-strength"),
                 PlannerOption(title: "Core", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-core"),

@@ -1,0 +1,6 @@
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_01.mp4'
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_02.mp4'
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_03.mp4'
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_04.mp4'
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_05.mp4'
+file '/Users/maxk/Dev/WeekFit/web/public/instagram/reels-001/work/clip_06.mp4'

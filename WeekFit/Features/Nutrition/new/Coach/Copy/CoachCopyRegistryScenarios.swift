@@ -44,12 +44,12 @@ enum CoachCopyRegistryScenarios {
             if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
                 return CoachWalkRecoveryActionCopy.draft(for: input)
             }
-            return walkLightDay()
+            return walkLightDay(isHike: input.isFocusHikeLike)
         case .walkEveningWindDown:
             if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
                 return CoachWalkRecoveryActionCopy.draft(for: input)
             }
-            return walkEveningWindDown()
+            return walkEveningWindDown(isHike: input.isFocusHikeLike)
         case .walkRecoveryAction:
             return CoachWalkRecoveryActionCopy.draft(for: input)
         case .activeRecovery:
@@ -97,6 +97,11 @@ enum CoachCopyRegistryScenarios {
                 "Run is ahead — dial in effort before the first mile.",
                 "Пробежка впереди — найдите свой темп до первого километра."
             )
+        case .swimming:
+            assessment = .en(
+                "Swim is coming — settle into a steady stroke early.",
+                "Заплыв впереди — с первых метров ищите ровный гребок."
+            )
         default:
             assessment = .en(
                 "Session is ahead — arrive calm, not already chasing.",
@@ -133,6 +138,11 @@ enum CoachCopyRegistryScenarios {
             assessment = .en(
                 "Run is done — heart rate is still catching up.",
                 "Пробежка позади — пульс ещё не успокоился."
+            )
+        case .swimming:
+            assessment = .en(
+                "Swim is done — shoulders are still warm from the water.",
+                "Заплыв позади — плечи ещё тёплые после воды."
             )
         default:
             assessment = .en(
@@ -174,6 +184,11 @@ enum CoachCopyRegistryScenarios {
                 "Run is banked — recovery is the job now.",
                 "Пробежка сделана — сейчас задача восстановиться."
             )
+        case .swimming:
+            assessment = .en(
+                "Swim is banked — recovery is the job now.",
+                "Заплыв сделан — сейчас задача восстановиться."
+            )
         default:
             assessment = .en(
                 "Endurance work is banked — recovery is the job now.",
@@ -214,6 +229,11 @@ enum CoachCopyRegistryScenarios {
             assessment = .en(
                 "Big run day — evening is for landing softly.",
                 "Большой день нагрузки — вечер для спокойного финиша."
+            )
+        case .swimming:
+            assessment = .en(
+                "Big swim day — evening is for landing softly.",
+                "Большой день в бассейне — вечер для спокойного финиша."
             )
         default:
             assessment = .en(
@@ -577,8 +597,28 @@ enum CoachCopyRegistryScenarios {
 
     // MARK: - Walk
 
-    private static func walkLightDay() -> Draft {
-        Draft(
+    private static func walkLightDay(isHike: Bool) -> Draft {
+        if isHike {
+            return Draft(
+                assessment: .en(
+                    "Easy hike day — movement without a scoreboard.",
+                    "Лёгкий хайкинг — движение без задачи."
+                ),
+                recommendation: .en(
+                    "Keep it pleasant — fresh air beats forced pace.",
+                    "Приятный темп — свежий воздух важнее, чем шаги через силу."
+                ),
+                avoid: .en(
+                    "Don't turn it into a forced march or a distance chase.",
+                    "Не превращайте в форсированный марш или гонку за дистанцией."
+                ),
+                nextAction: .en(
+                    "Twenty easy minutes — phone optional, pace low.",
+                    "Двадцать минут легко — телефон по желанию, темп низкий."
+                )
+            )
+        }
+        return Draft(
             assessment: .en(
                 "Easy walk day — movement without a scoreboard.",
                 "Лёгкая прогулка — движение без задачи."
@@ -598,8 +638,28 @@ enum CoachCopyRegistryScenarios {
         )
     }
 
-    private static func walkEveningWindDown() -> Draft {
-        Draft(
+    private static func walkEveningWindDown(isHike: Bool) -> Draft {
+        if isHike {
+            return Draft(
+                assessment: .en(
+                    "Evening hike — help the day settle before sleep.",
+                    "Вечерний хайкинг — пусть день уляжется перед сном."
+                ),
+                recommendation: .en(
+                    "Slow pace, soft light — nothing to chase.",
+                    "Медленный темп, мягкий свет — некуда спешить."
+                ),
+                avoid: .en(
+                    "Don't pick up pace or chase extra distance.",
+                    "Не ускоряйтесь и не гонитесь за лишним километражем."
+                ),
+                nextAction: .en(
+                    "Fifteen quiet minutes, then head toward bed.",
+                    "Пятнадцать тихих минут — потом к постели."
+                )
+            )
+        }
+        return Draft(
             assessment: .en(
                 "Evening walk — help the day settle before sleep.",
                 "Вечерняя прогулка — пусть день уляжется перед сном."

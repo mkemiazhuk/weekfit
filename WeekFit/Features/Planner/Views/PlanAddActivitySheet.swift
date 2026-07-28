@@ -53,9 +53,8 @@ struct PlanAddActivitySheet: View {
     let activityRemindersEnabled: Bool
     let completionCheckInsEnabled: Bool
 
-    @AppStorage("weekfit_custom_meals_v1")
-    private var customMealsStorage: String = ""
-    
+    @StateObject private var userSettings = WeekFitUserSettings.shared
+
     @State private var showDeleteConfirmation = false
     @State private var showMealSheet = false
     @State private var mealSheetStep: PlannerMealSheetStep = .library
@@ -83,6 +82,8 @@ struct PlanAddActivitySheet: View {
     private var calendar: Calendar { viewModel.calendar }
     private var availableMeals: [Meals] { viewModel.availableMeals }
     private var currentOptions: [PlannerOption] { viewModel.currentOptions }
+    private var showsMealEmptyState: Bool { viewModel.selectedType == .meal && availableMeals.isEmpty }
+    private var mealPickerSectionHeight: CGFloat { addSheetMealCardHeight + 8 }
 
     
 
@@ -104,7 +105,10 @@ struct PlanAddActivitySheet: View {
     }
 
     private var addSheetMaxHeight: CGFloat {
-        min(UIScreen.main.bounds.height * 0.78, 620)
+        if showsMealEmptyState {
+            return min(UIScreen.main.bounds.height * 0.62, 460)
+        }
+        return min(UIScreen.main.bounds.height * 0.78, 620)
     }
     
     var body: some View {
@@ -156,14 +160,20 @@ struct PlanAddActivitySheet: View {
 
             .onAppear {
                 lightHaptic.prepare()
-                viewModel.loadCustomMeals(from: customMealsStorage)
+                viewModel.syncCustomMeals(
+                    from: userSettings.customMealsCatalog,
+                    revision: userSettings.customMealsCatalogRevision
+                )
 
                 if viewModel.editingActivity == nil {
                     viewModel.syncDefaultSelectedMeal()
                 }
             }
-            .onChange(of: customMealsStorage) { _, _ in
-                viewModel.loadCustomMeals(from: customMealsStorage)
+            .onChange(of: userSettings.customMealsCatalogRevision) { _, revision in
+                viewModel.syncCustomMeals(
+                    from: userSettings.customMealsCatalog,
+                    revision: revision
+                )
 
                 if viewModel.editingActivity == nil {
                     viewModel.syncDefaultSelectedMeal()
@@ -183,18 +193,30 @@ private extension PlanAddActivitySheet {
             sheetHeader
                 .padding(.bottom, 8)
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 6) {
-                    activityTypePickerSection
-                    itemPickerSection
-                    timePickerSection
-                    durationPickerSection
+            Group {
+                if showsMealEmptyState {
+                    VStack(alignment: .leading, spacing: 6) {
+                        activityTypePickerSection
+                        itemPickerSection
+                    }
+                    .padding(.bottom, 4)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            activityTypePickerSection
+                            itemPickerSection
+                            timePickerSection
+                            durationPickerSection
+                        }
+                        .padding(.bottom, 4)
+                    }
                 }
-                .padding(.bottom, 4)
             }
 
-            saveButton
-                .padding(.top, 6)
+            if !showsMealEmptyState {
+                saveButton
+                    .padding(.top, 6)
+            }
         }
         .padding(.horizontal, WeekFitStyle.Size.horizontalPadding)
         .padding(.top, 7)
@@ -341,8 +363,12 @@ private extension PlanAddActivitySheet {
             )
             .padding(.top, 1)
 
-            itemPickerCarousel
-                .frame(height: addSheetMealCardHeight + 8)
+            if showsMealEmptyState {
+                emptyMealPickerState
+            } else {
+                itemPickerCarousel
+                    .frame(height: mealPickerSectionHeight)
+            }
         }
     }
 
@@ -351,14 +377,9 @@ private extension PlanAddActivitySheet {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     if viewModel.selectedType == .meal {
-                        if availableMeals.isEmpty {
-                            emptyMealPickerState
-                                .id(optionScrollID(.emptyMealPlaceholder))
-                        } else {
-                            ForEach(availableMeals) { meal in
-                                mealOptionCard(meal)
-                                    .id(meal.id)
-                            }
+                        ForEach(availableMeals) { meal in
+                            mealOptionCard(meal)
+                                .id(meal.id)
                         }
                     } else {
                         ForEach(currentOptions) { option in
@@ -377,49 +398,19 @@ private extension PlanAddActivitySheet {
     }
 
     var emptyMealPickerState: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "fork.knife.circle")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WeekFitLocalizedString("planner.emptyMeal.title"))
-                        .font(.system(size: 12.6, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.86))
-
-                    Text(WeekFitLocalizedString("planner.emptyMeal.message"))
-                        .font(.system(size: 10.8, weight: .medium))
-                        .foregroundStyle(textSecondary.opacity(0.62))
-                }
-            }
-
-            Button {
-                lightHaptic.impactOccurred()
-                mealSheetStep = .builder
-                mealSheetDetent = .large
-                showMealSheet = true
-            } label: {
-                Text(WeekFitLocalizedString("meals.createFoodOrMeal"))
-                    .font(.system(size: 12.4, weight: .semibold))
-                    .foregroundStyle(Color.black.opacity(0.84))
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(viewModel.selectedType.color.opacity(0.92))
-                    .clipShape(Capsule(style: .continuous))
-            }
-            .buttonStyle(.plain)
+        MealLibraryEmptyStateCard(
+            title: WeekFitLocalizedString("planner.emptyMeal.title"),
+            message: WeekFitLocalizedString("planner.emptyMeal.message"),
+            ctaTitle: WeekFitLocalizedString("meals.emptyLibrary.createMealCTA"),
+            benefits: [],
+            presentation: .compact
+        ) {
+            lightHaptic.impactOccurred()
+            mealSheetStep = .builder
+            mealSheetDetent = .large
+            showMealSheet = true
         }
-        .frame(width: addSheetMealCardWidth * 1.9, height: addSheetMealCardHeight, alignment: .leading)
-        .padding(.horizontal, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.022))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
-        }
+        .padding(.top, 2)
     }
 
     var timePickerSection: some View {
@@ -1615,10 +1606,13 @@ private extension PlanAddActivitySheet {
     func saveMealToLibrary(_ meal: Meals) {
         let updatedMeals = CustomMealStore.upsert(
             meal,
-            into: CustomMealStore.load(from: customMealsStorage)
+            into: userSettings.customMealsCatalog
         )
-        customMealsStorage = CustomMealStore.encode(updatedMeals)
-        viewModel.loadCustomMeals(from: customMealsStorage)
+        userSettings.replaceCustomMealsCatalog(updatedMeals)
+        viewModel.syncCustomMeals(
+            from: userSettings.customMealsCatalog,
+            revision: userSettings.customMealsCatalogRevision
+        )
         viewModel.selectedMealID = meal.id
         viewModel.selectedItem = viewModel.plannerOption(for: meal)
     }

@@ -50,6 +50,20 @@ final class CoachActivityClassifierParityTests: XCTestCase {
         XCTAssertEqual(CoachActivityClassifier.coachKind(for: hike), .recovery)
     }
 
+    func testHikingPresetMapsToWalkRecovery() {
+        let hiking = makeActivity(
+            title: "Hiking",
+            type: "workout",
+            icon: "figure.hiking",
+            imageName: "workout-hiking"
+        )
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: hiking), .walk)
+        XCTAssertEqual(CoachActivityClassifier.family(for: hiking), .recovery)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: hiking), .recovery)
+        XCTAssertFalse(CoachActivityClassifier.isSeriousTraining(hiking))
+    }
+
     func testSaunaMapsToHeatTypeAndKind() {
         var sauna = makeActivity(title: "Sauna", type: "recovery", icon: "flame.fill")
         sauna.type = "sauna"
@@ -57,6 +71,22 @@ final class CoachActivityClassifierParityTests: XCTestCase {
         XCTAssertEqual(CoachActivityClassifier.type(for: sauna), .sauna)
         XCTAssertEqual(CoachActivityClassifier.family(for: sauna), .heat)
         XCTAssertEqual(CoachActivityClassifier.coachKind(for: sauna), .heat)
+    }
+
+    func testMealWithBuckwheatIsNotClassifiedAsSauna() {
+        let meal = makeActivity(title: "Pork Buckwheat", type: "meal", icon: "fork.knife")
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: meal), .none)
+        XCTAssertEqual(CoachActivityClassifier.family(for: meal), .none)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: meal), .meal)
+    }
+
+    func testStandaloneHeatTokenStillMapsToSauna() {
+        let heat = makeActivity(title: "Heat Session", type: "recovery")
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: heat), .sauna)
+        XCTAssertEqual(CoachActivityClassifier.family(for: heat), .heat)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: heat), .heat)
     }
 
     func testHotYogaMapsToHeatKindDespiteYogaType() {
@@ -69,9 +99,18 @@ final class CoachActivityClassifierParityTests: XCTestCase {
     func testSwimMapsToEnduranceKindWithoutPollutingActivityType() {
         let swim = makeActivity(title: "Pool Swimming", type: "workout", icon: "figure.pool.swim")
 
-        XCTAssertEqual(CoachActivityClassifier.type(for: swim), .none)
+        XCTAssertEqual(CoachActivityClassifier.type(for: swim), .swimming)
+        XCTAssertEqual(CoachActivityClassifier.family(for: swim), .endurance)
         XCTAssertEqual(CoachActivityClassifier.coachKind(for: swim), .endurance)
         XCTAssertTrue(CoachTomorrowDemandResolver.isTraining(swim))
+    }
+
+    func testSwimmingPresetMapsToEndurance() {
+        let swimming = makeActivity(title: "Swimming", type: "workout", icon: "figure.pool.swim")
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: swimming), .swimming)
+        XCTAssertEqual(CoachActivityClassifier.family(for: swimming), .endurance)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: swimming), .endurance)
     }
 
     func testCyclingMapsConsistentlyAcrossTaxonomies() {
@@ -97,7 +136,8 @@ final class CoachActivityClassifierParityTests: XCTestCase {
         title: String,
         type: String,
         icon: String = "figure.run",
-        durationMinutes: Int = 60
+        durationMinutes: Int = 60,
+        imageName: String = ""
     ) -> PlannedActivity {
         PlannedActivity(
             date: CoachTestClock.reference,
@@ -105,6 +145,7 @@ final class CoachActivityClassifierParityTests: XCTestCase {
             title: title,
             durationMinutes: durationMinutes,
             icon: icon,
+            imageName: imageName,
             colorRed: 0.2,
             colorGreen: 0.6,
             colorBlue: 0.9

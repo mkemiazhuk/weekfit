@@ -64,24 +64,38 @@ enum CoachWalkRecoveryActionCopy {
 
 enum CoachWalkRecoveryActionPresentation {
 
-    static func todayTitle(for phase: CoachWalkRecoveryActionCopy.Phase, russian: Bool) -> String {
+    static func todayTitle(
+        for phase: CoachWalkRecoveryActionCopy.Phase,
+        isHike: Bool = false,
+        russian: Bool
+    ) -> String {
         switch phase {
         case .upcoming:
+            if isHike { return russian ? "Лёгкий хайкинг" : "Easy hike" }
             return russian ? "Прогулка для ног" : "Leg flush walk"
         case .live:
+            if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"
         case .completed:
+            if isHike { return russian ? "Хайкинг завершён" : "Hike done" }
             return russian ? "Прогулка завершена" : "Walk completed"
         }
     }
 
-    static func coachHeadline(for phase: CoachWalkRecoveryActionCopy.Phase, russian: Bool) -> String {
+    static func coachHeadline(
+        for phase: CoachWalkRecoveryActionCopy.Phase,
+        isHike: Bool = false,
+        russian: Bool
+    ) -> String {
         switch phase {
         case .upcoming:
+            if isHike { return russian ? "Хайкинг для восстановления" : "Recovery hike" }
             return russian ? "Прогулка для ног" : "Recovery walk"
         case .live:
+            if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"
         case .completed:
+            if isHike { return russian ? "Хайкинг завершён" : "Hike done" }
             return russian ? "Прогулка завершена" : "Walk completed"
         }
     }

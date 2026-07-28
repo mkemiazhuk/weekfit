@@ -415,11 +415,17 @@ struct CustomMealBuilderView: View {
                 RoundedRectangle(cornerRadius: 21, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.030),
-                                WeekFitTheme.cardSecondary.opacity(1.0),
-                                cardBackground.opacity(1.04)
-                            ],
+                            colors: previewImage == nil
+                                ? [
+                                    accent.opacity(0.22),
+                                    accent.opacity(0.10),
+                                    WeekFitTheme.cardSecondary.opacity(0.92)
+                                ]
+                                : [
+                                    WeekFitTheme.whiteOpacity(0.030),
+                                    WeekFitTheme.cardSecondary.opacity(1.0),
+                                    cardBackground.opacity(1.04)
+                                ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -432,18 +438,19 @@ struct CustomMealBuilderView: View {
                         .frame(width: 88, height: 88)
                         .clipped()
                 } else {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         Image(systemName: "barcode.viewfinder")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(accent.opacity(0.88))
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(WeekFitTheme.primaryText)
+                            .symbolRenderingMode(.monochrome)
 
                         Text(WeekFitLocalizedString("meals.foodForm.photoBarcodeShort"))
-                            .font(.system(size: 8.6, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textSecondary.opacity(0.72))
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.primaryText.opacity(0.82))
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .padding(.horizontal, 4)
+                            .minimumScaleFactor(0.85)
+                            .padding(.horizontal, 6)
                     }
                 }
 
@@ -462,7 +469,12 @@ struct CustomMealBuilderView: View {
         .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.075), lineWidth: 1)
+                .stroke(
+                    previewImage == nil
+                        ? WeekFitTheme.whiteOpacity(0.14)
+                        : WeekFitTheme.whiteOpacity(0.075),
+                    lineWidth: 1
+                )
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.35), radius: 8, y: 4)
         .contextMenu {

@@ -120,6 +120,8 @@ enum CoachCopySubjectGuard {
                 return ["ride", "cycling", "заезд", "велосипед", "велосесс"]
             case .running:
                 return ["run", "running", "пробеж", "бег"]
+            case .swimming:
+                return ["swim", "swimming", "pool", "заплыв", "плав", "бассейн"]
             default:
                 return ["session", "training", "тренировк"]
             }
@@ -129,6 +131,8 @@ enum CoachCopySubjectGuard {
                 return ["bike", "pedal", "ride", "велосипед", "заезд", "крут"]
             case .running:
                 return ["run", "miles", "legs", "пробеж", "бег", "ног"]
+            case .swimming:
+                return ["swim", "stroke", "water", "заплыв", "плав", "гребок", "бассейн"]
             default:
                 return ["session", "live", "тренировк", "процесс"]
             }
@@ -138,6 +142,8 @@ enum CoachCopySubjectGuard {
                 return ["ride", "legs", "заезд", "ног"]
             case .running:
                 return ["run", "heart", "пробеж", "пульс"]
+            case .swimming:
+                return ["swim", "shoulders", "заплыв", "плав", "плеч"]
             default:
                 return ["session", "ended", "тренировк", "законч"]
             }
@@ -175,13 +181,16 @@ enum CoachCopySubjectGuard {
         case .saunaPreparation, .saunaActive, .saunaRecovery:
             return ["sauna", "heat", "саун", "жар", "тепл"]
         case .walkLightDay:
-            return ["easy walk", "walk", "прогулк", "лёгк"]
+            return ["easy walk", "easy hike", "walk", "hike", "прогулк", "хайкинг", "поход", "лёгк"]
         case .walkAfterHeavyLoad:
-            return ["recovery walk", "walk", "прогулк", "восстановительн", "settling"]
+            return [
+                "recovery walk", "recovery hike", "walk", "hike", "прогулк", "хайкинг", "поход",
+                "восстановительн", "settling"
+            ]
         case .walkEveningWindDown:
-            return ["evening walk", "walk", "прогулк", "вечерн"]
+            return ["evening walk", "evening hike", "walk", "hike", "прогулк", "хайкинг", "поход", "вечерн"]
         case .walkRecoveryAction:
-            return ["recovery walk", "walk", "прогулк", "восстанов"]
+            return ["recovery walk", "recovery hike", "walk", "hike", "прогулк", "хайкинг", "поход", "восстанов"]
         case .tomorrowProtection:
             return ["banked", "tonight", "load", "нагрузк", "достаточно", "берег"]
         case .protectTomorrowFresh:
@@ -190,8 +199,8 @@ enum CoachCopySubjectGuard {
             return ["yesterday", "recovery", "legs", "вчера", "восстанов", "ног"]
         case .lowRecoveryPrep:
             return [
-                "training", "recovery", "endurance", "match", "cycling", "running",
-                "ride", "run", "тренировк", "восстанов", "игр", "велосесс", "пробеж", "заезд"
+                "training", "recovery", "endurance", "match", "cycling", "running", "swimming",
+                "ride", "run", "swim", "тренировк", "восстанов", "игр", "велосесс", "пробеж", "заезд", "плав"
             ]
         default:
             return []

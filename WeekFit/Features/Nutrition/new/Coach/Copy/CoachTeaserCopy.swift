@@ -90,6 +90,8 @@ enum CoachTeaserCopy {
                 return bi("On the run", "На пробежке")
             case .cycling:
                 return bi("On the ride", "На заезде")
+            case .swimming:
+                return bi("In the swim", "В плавании")
             default:
                 return bi("In session", "В тренировке")
             }
@@ -101,12 +103,14 @@ enum CoachTeaserCopy {
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
                     timeOfDay: result.context.timeOfDay,
+                    isHike: result.context.isFocusHikeLike,
                     russian: false
                 ),
                 CoachWalkAfterHeavyLoadPresentation.todayTitle(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
                     timeOfDay: result.context.timeOfDay,
+                    isHike: result.context.isFocusHikeLike,
                     russian: true
                 )
             )
@@ -133,12 +137,22 @@ enum CoachTeaserCopy {
         case .walkLightDay:
             return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
-            return bi("Evening walk", "Вечерняя прогулка")
+            return result.context.isFocusHikeLike
+                ? bi("Evening hike", "Вечерний хайкинг")
+                : bi("Evening walk", "Вечерняя прогулка")
         case .walkRecoveryAction:
             let walkPhase = CoachWalkRecoveryActionPresentation.phase(for: result.context)
             return bi(
-                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: false),
-                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: true)
+                CoachWalkRecoveryActionPresentation.todayTitle(
+                    for: walkPhase,
+                    isHike: result.context.isFocusHikeLike,
+                    russian: false
+                ),
+                CoachWalkRecoveryActionPresentation.todayTitle(
+                    for: walkPhase,
+                    isHike: result.context.isFocusHikeLike,
+                    russian: true
+                )
             )
         case .activeRacket:
             return bi("Match soon", "Игра скоро")
@@ -163,6 +177,8 @@ enum CoachTeaserCopy {
             return bi("Preparing to ride", "Готовимся к заезду")
         case .running:
             return bi("Preparing to run", "Готовимся к бегу")
+        case .swimming:
+            return bi("Preparing to swim", "Готовимся к плаванию")
         default:
             return bi("Before session", "Перед тренировкой")
         }
@@ -245,8 +261,8 @@ enum CoachTeaserCopy {
                 )
             }
             return bi(
-                "Small steps beat a late catch-up.",
-                "Маленькие шаги лучше, чем наверстывать позже."
+                "Small steps today beat stacking load later.",
+                "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
             )
         case .duringEndurance:
             return bi("Hold effort flat.", "Держите темп ровным.")
@@ -413,6 +429,8 @@ enum CoachTeaserCopy {
                 return bi("On the run", "На пробежке")
             case .cycling:
                 return bi("On the ride", "На заезде")
+            case .swimming:
+                return bi("In the swim", "В плавании")
             default:
                 return bi("In session", "В тренировке")
             }
@@ -424,12 +442,14 @@ enum CoachTeaserCopy {
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
                     timeOfDay: context.timeOfDay,
+                    isHike: context.isFocusHikeLike,
                     russian: false
                 ),
                 CoachWalkAfterHeavyLoadPresentation.coachHeadline(
                     for: walkPhase,
                     hasSeriousWork: hasSeriousWork,
                     timeOfDay: context.timeOfDay,
+                    isHike: context.isFocusHikeLike,
                     russian: true
                 )
             )
@@ -482,12 +502,22 @@ enum CoachTeaserCopy {
         case .walkLightDay:
             return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
-            return bi("Evening walk", "Вечерняя прогулка")
+            return context.isFocusHikeLike
+                ? bi("Evening hike", "Вечерний хайкинг")
+                : bi("Evening walk", "Вечерняя прогулка")
         case .walkRecoveryAction:
             let walkPhase = CoachWalkRecoveryActionPresentation.phase(for: context)
             return bi(
-                CoachWalkRecoveryActionPresentation.coachHeadline(for: walkPhase, russian: false),
-                CoachWalkRecoveryActionPresentation.coachHeadline(for: walkPhase, russian: true)
+                CoachWalkRecoveryActionPresentation.coachHeadline(
+                    for: walkPhase,
+                    isHike: context.isFocusHikeLike,
+                    russian: false
+                ),
+                CoachWalkRecoveryActionPresentation.coachHeadline(
+                    for: walkPhase,
+                    isHike: context.isFocusHikeLike,
+                    russian: true
+                )
             )
         case .activeRacket:
             return bi("Before the match", "Перед игрой")
@@ -512,6 +542,8 @@ enum CoachTeaserCopy {
             return bi("Before the ride", "Перед заездом")
         case .running:
             return bi("Before the run", "Перед пробежкой")
+        case .swimming:
+            return bi("Before the swim", "Перед плаванием")
         default:
             return bi("Before session", "Перед тренировкой")
         }
@@ -523,6 +555,8 @@ enum CoachTeaserCopy {
             return bi("Ride done", "Заезд завершён")
         case .running:
             return bi("Run done", "Пробежка завершена")
+        case .swimming:
+            return bi("Swim done", "Плавание завершено")
         default:
             return bi("Session done", "Тренировка завершена")
         }
@@ -534,6 +568,8 @@ enum CoachTeaserCopy {
             return bi("After the ride", "После заезда")
         case .running:
             return bi("After the run", "После пробежки")
+        case .swimming:
+            return bi("After the swim", "После плавания")
         default:
             return bi("After session", "После тренировки")
         }
@@ -547,13 +583,16 @@ enum CoachTeaserCopy {
 
     private static func walkLightDayTitle(result: CoachEngine.Result) -> CoachBilingualText {
         let walkPhase = walkLightDayPhase(from: result)
+        let isHike = result.context.isFocusHikeLike
         switch walkPhase {
         case .upcoming:
-            return bi("Easy walk", "Лёгкая прогулка")
+            return isHike
+                ? bi("Easy hike", "Лёгкий хайкинг")
+                : bi("Easy walk", "Лёгкая прогулка")
         case .live, .completed:
             return bi(
-                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: false),
-                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, russian: true)
+                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, isHike: isHike, russian: false),
+                CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, isHike: isHike, russian: true)
             )
         }
     }

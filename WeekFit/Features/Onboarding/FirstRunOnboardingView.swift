@@ -424,9 +424,9 @@ private extension FirstRunOnboardingView {
                 } label: {
                     Text(WeekFitLocalizedString("onboarding.v12.nav.skip"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.45))
-                        .padding(.horizontal, 4)
-                        .frame(height: 32)
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
+                        .padding(.horizontal, 10)
+                        .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

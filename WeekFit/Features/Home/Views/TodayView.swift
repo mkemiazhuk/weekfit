@@ -1144,6 +1144,7 @@ struct TodayView: View {
                 title: WeekFitLocalizedString("today.title"),
                 subtitle: selectedDateTitle,
                 initials: userSettings.profileInitials,
+                hasProfileName: userSettings.hasProfileName,
                 showAvatar: true
             ) {
                 showProfile = true

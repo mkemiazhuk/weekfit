@@ -5,6 +5,7 @@ struct WeekFitScreenHeader: View {
     let title: String
     let subtitle: String
     let initials: String
+    var hasProfileName: Bool = false
     let showAvatar: Bool
     let onAvatarTap: () -> Void
 
@@ -31,6 +32,7 @@ struct WeekFitScreenHeader: View {
             if showAvatar {
                 WeekFitAvatarButton(
                     initials: initials,
+                    hasProfileName: hasProfileName,
                     action: onAvatarTap
                 )
                 .accessibilityIdentifier("settings.open")
@@ -43,78 +45,128 @@ struct WeekFitScreenHeader: View {
 struct WeekFitAvatarButton: View {
 
     let initials: String
+    var hasProfileName: Bool = false
     let action: () -> Void
+
+    private let goldLight = Color(red: 255/255, green: 235/255, blue: 170/255)
+    private let goldMid = Color(red: 211/255, green: 163/255, blue: 62/255)
+    private let goldStrokeLight = Color(red: 255/255, green: 221/255, blue: 132/255)
+    private let goldStrokeDeep = Color(red: 142/255, green: 104/255, blue: 36/255)
 
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color(red: 214/255, green: 170/255, blue: 74/255).opacity(0.22),
-                                .clear
-                            ],
-                            center: .center,
-                            startRadius: 2,
-                            endRadius: 22
-                        )
-                    )
-                    .blur(radius: 6)
-                    .frame(width: 42, height: 42)
-
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 30/255, green: 24/255, blue: 18/255),
-                                Color(red: 10/255, green: 10/255, blue: 10/255)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 255/255, green: 221/255, blue: 132/255).opacity(0.95),
-                                        Color(red: 142/255, green: 104/255, blue: 36/255).opacity(0.72)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.1
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(red: 214/255, green: 170/255, blue: 74/255).opacity(0.22),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 2,
+                                endRadius: 22
                             )
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 0.8)
-                            .padding(4)
-                    }
-
-                Text(initials)
-                    .font(.system(size: 14.5, weight: .black, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 255/255, green: 235/255, blue: 170/255),
-                                Color(red: 211/255, green: 163/255, blue: 62/255)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
                         )
-                    )
+                        .blur(radius: 6)
+                        .frame(width: 42, height: 42)
+
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 30/255, green: 24/255, blue: 18/255),
+                                    Color(red: 10/255, green: 10/255, blue: 10/255)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            goldStrokeLight.opacity(0.95),
+                                            goldStrokeDeep.opacity(0.72)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.1
+                                )
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 0.8)
+                                .padding(4)
+                        }
+
+                    avatarContent
+                }
+                .frame(width: 44, height: 44)
+                .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
+
+                if !hasProfileName {
+                    profileSetupDot
+                        .offset(x: 1, y: -1)
+                        .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                }
             }
-            .frame(width: 44, height: 44)
-            .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
+            .animation(.easeInOut(duration: 0.28), value: hasProfileName)
+            .animation(.easeInOut(duration: 0.28), value: initials)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(WeekFitLocalizedString("common.openProfile")))
+    }
+
+    @ViewBuilder
+    private var avatarContent: some View {
+        if hasProfileName {
+            Text(initials)
+                .font(.system(size: 14.5, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [goldLight, goldMid],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+        } else {
+            Image(systemName: "person.crop.circle.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [goldLight, goldMid],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+        }
+    }
+
+    private var profileSetupDot: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [goldLight, goldMid],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 8, height: 8)
+            .overlay {
+                Circle()
+                    .stroke(Color.black.opacity(0.55), lineWidth: 1.2)
+            }
+            .shadow(color: goldMid.opacity(0.35), radius: 2, y: 0.5)
+            .accessibilityHidden(true)
     }
 }
 

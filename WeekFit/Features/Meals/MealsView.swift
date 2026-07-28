@@ -162,6 +162,7 @@ struct MealsView: View {
                     title: WeekFitLocalizedString("meals.library.title"),
                     subtitle: headerSubtitle,
                     initials: userSettings.profileInitials,
+                    hasProfileName: userSettings.hasProfileName,
                     showAvatar: true
                 ) {
                     showProfile = true
@@ -182,7 +183,12 @@ struct MealsView: View {
                 }
             }
 
+            // Pick up catalog writes from Plan / other surfaces that may have
+            // updated UserDefaults while Meals held a stale in-memory copy.
+            userSettings.refreshFromStorage()
+
             guard !mealsViewModel.hasLoadedCustomMeals else {
+                mealsViewModel.applyLoadedCustomMeals(userSettings.customMealsCatalog)
                 updateRecommendationIfNeeded(source: "MealsView.onAppear.refreshRecommendation")
                 return
             }
@@ -203,6 +209,11 @@ struct MealsView: View {
                     highlightedMealID = nil
                 }
             }
+        }
+        .onChange(of: userSettings.customMealsCatalogRevision) { _, _ in
+            mealsViewModel.applyLoadedCustomMeals(userSettings.customMealsCatalog)
+            guard tabIsActive else { return }
+            updateRecommendationIfNeeded(source: "MealsView.onChange.customMealsCatalogRevision")
         }
         .onChange(of: mealsViewModel.customMeals) { _, _ in
             guard tabIsActive else { return }
@@ -382,11 +393,11 @@ struct MealsView: View {
 
             List {
                 customEmptyState
-                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                bottomSpacerRow
+                emptyBottomSpacerRow
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -538,6 +549,14 @@ struct MealsView: View {
             .listRowSeparator(.hidden)
     }
 
+    private var emptyBottomSpacerRow: some View {
+        Color.clear
+            .frame(height: isQuickLogMode ? 44 : 60)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+
     private var ambientBackground: some View {
         WeekFitTheme.mealsAmbient
             .ignoresSafeArea()
@@ -640,95 +659,34 @@ struct MealsView: View {
     }
 
     private var customEmptyState: some View {
-        Button {
+        MealLibraryEmptyStateCard(
+            title: WeekFitLocalizedString("meals.emptyState.expanded.title"),
+            message: WeekFitLocalizedString("meals.emptyState.expanded.message"),
+            ctaTitle: WeekFitLocalizedString("meals.emptyState.expanded.cta"),
+            benefits: [
+                .init(
+                    id: "build",
+                    icon: "fork.knife",
+                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.build.title"),
+                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.build.subtitle")
+                ),
+                .init(
+                    id: "scan",
+                    icon: "barcode.viewfinder",
+                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.scan.title"),
+                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.scan.subtitle")
+                ),
+                .init(
+                    id: "reuse",
+                    icon: "arrow.triangle.2.circlepath",
+                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.reuse.title"),
+                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.reuse.subtitle")
+                )
+            ],
+            presentation: .expanded
+        ) {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             openCreationChooser()
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-
-                HStack(alignment: .top, spacing: 14) {
-
-                    ZStack {
-                        Circle()
-                            .fill(WeekFitTheme.whiteOpacity(0.045))
-                            .frame(width: 44, height: 44)
-
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(textPrimary.opacity(0.90))
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-
-                        Text(WeekFitLocalizedString("meals.createYourFirstFoodOrMeal"))
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(textPrimary)
-
-                        Text(WeekFitLocalizedString("meals.saveFoodsAndMealsYouEatOftenAndLog"))
-                            .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(textSecondary.opacity(0.72))
-
-                        Text(WeekFitLocalizedString("meals.coachRecommendationsWillUseYourSavedMeals"))
-                            .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(textSecondary.opacity(0.72))
-                    }
-
-                    Spacer()
-                }
-
-                HStack(spacing: 8) {
-                    benefitChip(
-                        icon: "clock.fill",
-                        title: "meals.library.benefit.fastLogging"
-                    )
-
-                    benefitChip(
-                        icon: "brain.head.profile",
-                        title: "meals.library.benefit.coach"
-                    )
-
-                    benefitChip(
-                        icon: "sparkles",
-                        title: "meals.library.benefit.reusable"
-                    )
-                }
-                .padding(.top, 2)
-            }
-            .padding(18)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(cardSecondary.opacity(0.42))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.04), lineWidth: 1)
-            }
-            .shadow(color: Color.black.opacity(0.16), radius: 12, y: 6)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func benefitChip(
-        icon: String,
-        title: String
-    ) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.meal.opacity(0.9))
-
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.78))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background {
-            Capsule()
-                .fill(WeekFitTheme.whiteOpacity(0.035))
         }
     }
 
@@ -827,7 +785,7 @@ struct MealsView: View {
 
     private var bottomFixedActionArea: some View {
         VStack(spacing: 0) {
-            if !isQuickLogMode {
+            if !isQuickLogMode && hasAnyItems {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     openCreationChooser()

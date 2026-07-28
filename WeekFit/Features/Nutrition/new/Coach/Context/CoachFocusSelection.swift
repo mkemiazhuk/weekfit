@@ -98,7 +98,9 @@ enum CoachFocusResolver {
         }
 
         if let next = upcoming.first(where: { activity in
-            !completedWalkToday || CoachActivityClassifier.type(for: activity) != .walk
+            guard !CoachCanonicalDayState.isNutritionLog(activity) else { return false }
+            guard !CoachCanonicalDayState.isHydrationLog(activity) else { return false }
+            return !completedWalkToday || CoachActivityClassifier.type(for: activity) != .walk
         }) {
             return selection(for: next, source: .upcoming, now: input.now, timeOfDay: timeOfDay)
         }

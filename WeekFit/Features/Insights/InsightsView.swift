@@ -4639,6 +4639,7 @@ struct InsightsView: View {
                     title: InsightsLocalization.View.screenTitle,
                     subtitle: InsightsLocalization.View.screenSubtitle,
                     initials: userSettings.profileInitials,
+                    hasProfileName: userSettings.hasProfileName,
                     showAvatar: true
                 ) {
                     showProfile = true

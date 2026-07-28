@@ -41,6 +41,7 @@ struct HighlightsView: View {
                     title: WeekFitLocalizedString("highlights.title"),
                     subtitle: WeekFitLocalizedString("highlights.range.last30Days"),
                     initials: userSettings.profileInitials,
+                    hasProfileName: userSettings.hasProfileName,
                     showAvatar: true
                 ) {
                     showProfile = true

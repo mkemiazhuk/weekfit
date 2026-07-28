@@ -309,16 +309,22 @@ struct ManualMealFormView: View {
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            elevatedCard.opacity(1.18),
-                            cardBackground.opacity(1.08)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                    .fill(
+                        LinearGradient(
+                            colors: previewImage == nil
+                                ? [
+                                    accent.opacity(0.22),
+                                    accent.opacity(0.10),
+                                    elevatedCard.opacity(1.05)
+                                ]
+                                : [
+                                    elevatedCard.opacity(1.18),
+                                    cardBackground.opacity(1.08)
+                                ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
 
                 if let previewImage {
                     Image(uiImage: previewImage)
@@ -326,18 +332,19 @@ struct ManualMealFormView: View {
                         .scaledToFill()
                         .frame(width: 94, height: 84)
                 } else {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         Image(systemName: "barcode.viewfinder")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(accent.opacity(0.88))
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(WeekFitTheme.primaryText)
+                            .symbolRenderingMode(.monochrome)
 
                         Text(WeekFitLocalizedString("meals.foodForm.photoBarcodeShort"))
-                            .font(.system(size: 8.2, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textSecondary.opacity(0.72))
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.primaryText.opacity(0.82))
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .padding(.horizontal, 2)
+                            .minimumScaleFactor(0.85)
+                            .padding(.horizontal, 4)
                     }
                 }
             }
@@ -347,7 +354,12 @@ struct ManualMealFormView: View {
         .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.085), lineWidth: 1)
+                .stroke(
+                    previewImage == nil
+                        ? WeekFitTheme.whiteOpacity(0.14)
+                        : WeekFitTheme.whiteOpacity(0.085),
+                    lineWidth: 1
+                )
         }
         .shadow(color: WeekFitTheme.cardShadow.opacity(0.35), radius: 8, y: 4)
         .contextMenu {

@@ -873,7 +873,9 @@ struct MealBuilderView: View {
             benefits: editingMeal?.benefits ?? makeBenefits(),
             ingredients: mealIngredients,
             suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
-            builderImageItems: builderImageItems
+            builderImageItems: builderImageItems,
+            libraryKind: editingMeal?.libraryKind ?? .meal,
+            creationMode: editingMeal?.creationMode ?? .ingredients
         )
 
         onSave(meal)

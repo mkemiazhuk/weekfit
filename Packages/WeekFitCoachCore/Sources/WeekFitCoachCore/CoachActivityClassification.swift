@@ -15,6 +15,11 @@ public struct CoachActivityDescriptor: Sendable, Equatable {
 }
 
 public enum CoachActivityClassification {
+    /// Token helpers for type/family routing (recovery-tier, walk-like, etc.).
+    ///
+    /// User-facing walk/hike **labels** (duration × intensity × volume) live in
+    /// `CoachActivityLabelBuilder` / `CoachWalkDurationClass` — not here.
+    /// Do not collapse those dimensions into `isRecoveryTier` alone.
     public static func tokenText(for activity: CoachActivityDescriptor) -> String {
         [
             activity.type,

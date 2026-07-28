@@ -9,6 +9,8 @@ final class WeekFitUserSettings: ObservableObject {
     static let shared = WeekFitUserSettings()
 
     @Published private(set) var profileInitials: String
+    /// True once the user has saved a non-empty profile name.
+    @Published private(set) var hasProfileName: Bool
     /// Legacy JSON blob kept for disk persistence and AppStorage compatibility.
     @Published private(set) var customMealsStorage: String
     /// Single in-memory catalog — observers must not JSON-decode on save.
@@ -20,6 +22,7 @@ final class WeekFitUserSettings: ObservableObject {
     private init() {
         ProfileService.migrateProfileStorageIfNeeded()
         profileInitials = ProfileService.resolvedInitials()
+        hasProfileName = !ProfileService.resolvedFullName().isEmpty
         let storage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
         customMealsStorage = storage
         customMealsCatalog = CustomMealStore.load(from: storage)
@@ -28,10 +31,15 @@ final class WeekFitUserSettings: ObservableObject {
     func refreshFromStorage() {
         ProfileService.migrateProfileStorageIfNeeded()
         let nextInitials = ProfileService.resolvedInitials()
+        let nextHasProfileName = !ProfileService.resolvedFullName().isEmpty
         let nextCustomMealsStorage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
 
         if profileInitials != nextInitials {
             profileInitials = nextInitials
+        }
+
+        if hasProfileName != nextHasProfileName {
+            hasProfileName = nextHasProfileName
         }
 
         if customMealsStorage != nextCustomMealsStorage {

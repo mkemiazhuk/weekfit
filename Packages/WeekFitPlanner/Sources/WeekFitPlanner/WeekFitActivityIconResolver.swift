@@ -50,7 +50,7 @@ public enum WeekFitActivityIconResolver {
             return "fork.knife"
         }
 
-        if containsAny(haystack, ["sauna", "heat", "саун"]) {
+        if containsAny(haystack, ["sauna", "саун"]) || containsToken(haystack, ["heat"]) {
             return "flame.fill"
         }
 
@@ -138,5 +138,15 @@ public enum WeekFitActivityIconResolver {
 
     private static func containsAny(_ text: String, _ tokens: [String]) -> Bool {
         tokens.contains { text.contains($0) }
+    }
+
+    private static func containsToken(_ text: String, _ tokens: [String]) -> Bool {
+        let parts = text
+            .lowercased()
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+        return tokens.contains { token in
+            parts.contains(token.lowercased())
+        }
     }
 }

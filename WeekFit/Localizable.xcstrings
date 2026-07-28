@@ -1457,13 +1457,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No meaningful movement has been recorded yet today."
+            "value": "No movement logged yet today."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Значимое движение сегодня пока не записано."
+            "value": "Движение сегодня пока не записано."
           }
         }
       }
@@ -1491,13 +1491,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Only %lld%% of your daily movement target has been completed so far."
+            "value": "You’re at %lld%% of today’s movement target so far."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пока выполнено только %lld%% дневной цели движения."
+            "value": "Пока выполнено %lld%% дневной цели движения."
           }
         }
       }
@@ -3193,13 +3193,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avoid rushing catch-up"
+            "value": "Avoid rushing to close the gap"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не догоняйте резко"
+            "value": "Не догоняйте цель рывком"
           }
         }
       }
@@ -4808,13 +4808,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No catch-up target is needed"
+            "value": "No extra target is needed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Догонять цель не нужно"
+            "value": "Дополнительная цель не нужна"
           }
         }
       }
@@ -10316,13 +10316,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Small adjustments beat late catch-up"
+            "value": "Small adjustments today beat stacking load later."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Маленькие шаги лучше, чем позднее догоняние"
+            "value": "Небольшие корректировки сегодня лучше, чем копить нагрузку позже."
           }
         }
       }
@@ -11302,13 +11302,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You closed the day without forcing a late catch-up."
+            "value": "You closed the day without forcing a late push."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вы закрыли день без поздней попытки наверстать."
+            "value": "Вы закрыли день без позднего рывка."
           }
         }
       }
@@ -15042,13 +15042,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep it easy so it helps recovery and does not steal energy from the next session."
+            "value": "Keep it easy so it supports recovery and leaves energy for the next session."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Держите легко, чтобы это помогло восстановиться и не забрало силы у следующей тренировки."
+            "value": "Держите легко, чтобы поддержать восстановление и сохранить силы на следующую тренировку."
           }
         }
       }
@@ -15671,13 +15671,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Letting today's session steal from tomorrow."
+            "value": "Protecting tomorrow by keeping today’s load in range."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Позволить сегодняшней тренировке забрать силы у завтра."
+            "value": "Беречь завтрашний день — держать сегодняшнюю нагрузку в разумных пределах."
           }
         }
       }
@@ -18119,13 +18119,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wasting a high-readiness day on random activity that creates fatigue without purpose."
+            "value": "Saving a high-readiness day for sessions that match your goal."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Потратить день высокой готовности на случайную активность, которая утомит без цели."
+            "value": "Сохранить день высокой готовности для тренировок, которые ведут к вашей цели."
           }
         }
       }
@@ -24528,13 +24528,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Late fluid catch-up can compete with sleep."
+            "value": "Late evening fluids can compete with sleep."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Позднее догоняние воды может мешать сну."
+            "value": "Поздний приём жидкости может мешать сну."
           }
         }
       }
@@ -26075,13 +26075,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recovery is asking for a lower ceiling today, and tomorrow gives you room to absorb it. Do not manufacture a make-up session; let the recovery day do its job."
+            "value": "Recovery asks for a lower ceiling today, and tomorrow gives room to absorb work. Keep the day restorative — you do not need a replacement session."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня телу нужен более спокойный темп, а завтра есть пространство, чтобы усвоить нагрузку. Не придумывайте тренировку «взамен» — дайте дню восстановления сделать свое дело."
+            "value": "Сегодня телу нужен более спокойный темп, а завтра есть пространство усвоить нагрузку. Пусть день восстановления сделает своё дело — отдельная «замена» не нужна."
           }
         }
       }
@@ -28081,13 +28081,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turning easy movement into work steals from recovery."
+            "value": "Turning easy movement into hard work undercuts recovery."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Если превратить легкое движение в работу, оно заберет восстановление."
+            "value": "Если превратить лёгкое движение в жёсткую работу, восстановление пострадает."
           }
         }
       }
@@ -38434,13 +38434,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You closed the day without forcing a late catch-up."
+            "value": "You closed the day without forcing a late push."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вы закрыли день без поздней попытки наверстать."
+            "value": "Вы закрыли день без позднего рывка."
           }
         }
       }
@@ -54166,13 +54166,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coach recommendations will use your saved meals."
+            "value": "Your coach learns from them over time."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Рекомендации тренера будут учитывать сохраненные блюда."
+            "value": "Тренер учится на них со временем."
           }
         }
       }
@@ -54234,13 +54234,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your first food or meal"
+            "value": "Create your first meal"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Создайте первый продукт или блюдо"
+            "value": "Создайте первое блюдо"
           }
         }
       }
@@ -55781,13 +55781,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coach"
+            "value": "Smarter coaching"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тренер"
+            "value": "Умный коуч"
           }
         }
       }
@@ -55798,13 +55798,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fast logging"
+            "value": "One tap logging"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Быстрое добавление"
+            "value": "Лог за один тап"
           }
         }
       }
@@ -55815,13 +55815,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reusable"
+            "value": "Reusable meals"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Для повторного использования"
+            "value": "Готовые блюда"
           }
         }
       }
@@ -57770,13 +57770,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Save foods and meals you eat often and log them in one tap."
+            "value": "Save meals you eat often. Log them in one tap."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сохраняйте продукты и блюда, которые часто едите, и записывайте их в одно касание."
+            "value": "Сохраняйте блюда, которые едите часто. Добавляйте их в один тап."
           }
         }
       }
@@ -62910,13 +62910,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Small steps beat a late catch-up."
+            "value": "Small steps today beat stacking load later."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Маленькие шаги лучше поздней гонки."
+            "value": "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
           }
         }
       }
@@ -66174,13 +66174,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "STOP GUESSING."
+            "value": "TRAIN WITH CONFIDENCE."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "ХВАТИТ ГАДАТЬ."
+            "value": "ТРЕНИРУЙТЕСЬ УВЕРЕННО."
           }
         }
       }
@@ -66208,13 +66208,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Today's workout looks good."
+            "value": "Ready for a moderate workout."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня тренировка выглядит хорошо."
+            "value": "Можно провести умеренную тренировку."
           }
         }
       }
@@ -66242,13 +66242,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop wasting workouts"
+            "value": "Make every workout count"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Хватит сливать тренировки"
+            "value": "Каждая тренировка приносит больше"
           }
         }
       }
@@ -66259,13 +66259,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": " on the wrong day."
+            "value": " when your body is ready."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": " в неправильный день."
+            "value": ", когда организм готов."
           }
         }
       }
@@ -66276,13 +66276,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Every decision adapts to your body."
+            "value": "Your coach adapts as your body changes."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Каждое решение подстраивается под ваше тело."
+            "value": "Ваш коуч адаптируется вместе с вашим организмом."
           }
         }
       }
@@ -68605,13 +68605,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create a meal in Meals Library first"
+            "value": "Create reusable meals once.\nLog them in one tap anytime."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сначала создайте блюдо в библиотеке"
+            "value": "Создайте блюдо один раз.\nДобавляйте его в дневник одним нажатием."
           }
         }
       }
@@ -68639,13 +68639,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No saved meals"
+            "value": "No saved meals yet"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Нет сохраненных блюд"
+            "value": "Сохраненных блюд пока нет"
           }
         }
       }
@@ -85971,6 +85971,210 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сон — приоритет. Ничто другое не конкурирует."
+          }
+        }
+      }
+    },
+    "meals.emptyLibrary.createMealCTA": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create meal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать блюдо"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build your meal library"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создайте свою коллекцию блюд"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create meals once, then log them in seconds whenever you eat them again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраняйте блюда один раз, чтобы затем добавлять их в дневник за несколько секунд."
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.build.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build meals in seconds"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создавайте блюда за секунды"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.build.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combine foods into reusable meals"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объединяйте продукты в готовые блюда"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.scan.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan and add quickly"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сканируйте и добавляйте"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.scan.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use barcode scanning for packaged foods"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Используйте штрихкод для упакованных продуктов"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.reuse.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuse anytime"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Используйте снова"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.benefit.reuse.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your saved meals stay ready to log"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраненные блюда всегда готовы к добавлению"
+          }
+        }
+      }
+    },
+    "meals.emptyState.expanded.cta": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create your first meal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать первое блюдо"
+          }
+        }
+      }
+    },
+    "planner.option.swimming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swimming"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плавание"
+          }
+        }
+      }
+    },
+    "planner.option.hiking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiking"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хайкинг"
           }
         }
       }

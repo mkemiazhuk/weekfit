@@ -62,6 +62,7 @@ struct ExpertCoachView: View {
                     title: WeekFitLocalizedString("common.tab.coach"),
                     subtitle: selectedDateTitle,
                     initials: userSettings.profileInitials,
+                    hasProfileName: userSettings.hasProfileName,
                     showAvatar: true
                 ) {
                     showProfile = true

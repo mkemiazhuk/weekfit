@@ -210,7 +210,8 @@ enum CoachEngine {
                 dayReadiness: dayReadiness,
                 lastCompletedSeriousActivityType: lastCompletedSeriousType,
                 completedWalkToday: completedWalkToday,
-                completedHeatToday: completedHeatToday
+                completedHeatToday: completedHeatToday,
+                isFocusHikeLike: focus.type == .walk && CoachActivityClassification.isHikeLike(activity)
             ),
             input: input
         )

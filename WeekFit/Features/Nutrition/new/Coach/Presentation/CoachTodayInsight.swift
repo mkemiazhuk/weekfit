@@ -97,7 +97,8 @@ enum CoachPresentationResolver {
                 ),
                 stackedDayActiveRisk: stackedRisk,
                 stableDayProfile: stableDayProfile,
-                lastCompletedActivityType: context.lastCompletedSeriousActivityType
+                lastCompletedActivityType: context.lastCompletedSeriousActivityType,
+                isHikeLike: context.isFocusHikeLike
             ),
             urgencyLevel: CoachConversationEnergyPolicy.urgencyLevel(
                 energy: conversationEnergy,
@@ -220,10 +221,11 @@ enum CoachPresentationResolver {
         activityType: CoachActivityType,
         stackedDayActiveRisk: Bool = false,
         stableDayProfile: CoachStableDayProfile? = nil,
-        lastCompletedActivityType: CoachActivityType = .none
+        lastCompletedActivityType: CoachActivityType = .none,
+        isHikeLike: Bool = false
     ) -> String {
         if stackedDayActiveRisk {
-            return activityTypeIcon(activityType) ?? scenarioIcon(scenario)
+            return resolvedActivityIcon(activityType, isHikeLike: isHikeLike) ?? scenarioIcon(scenario)
         }
         if scenario == .stableDay, let stableDayProfile {
             return CoachStableDayPresentation.icon(
@@ -231,10 +233,18 @@ enum CoachPresentationResolver {
                 lastCompletedActivityType: lastCompletedActivityType
             )
         }
-        if let activityIcon = activityTypeIcon(activityType), isActivityBound(scenario) {
+        if let activityIcon = resolvedActivityIcon(activityType, isHikeLike: isHikeLike), isActivityBound(scenario) {
             return activityIcon
         }
         return scenarioIcon(scenario)
+    }
+
+    /// Hike-aware override for `.walk` — falls back to `activityTypeIcon` for every other type.
+    private static func resolvedActivityIcon(_ type: CoachActivityType, isHikeLike: Bool) -> String? {
+        if type == .walk, isHikeLike {
+            return "figure.hiking"
+        }
+        return activityTypeIcon(type)
     }
 
     private static func presentationActivityType(
@@ -260,6 +270,8 @@ enum CoachPresentationResolver {
             return "figure.outdoor.cycle"
         case .running:
             return "figure.run"
+        case .swimming:
+            return "figure.pool.swim"
         case .tennis:
             return "figure.tennis"
         case .squash:
@@ -279,6 +291,13 @@ enum CoachPresentationResolver {
         case .none:
             return nil
         }
+    }
+
+    /// Hike-aware icon for callers that hold the raw activity snapshot (e.g. Today card, tests) —
+    /// `.walk` renders as `figure.hiking` when the activity is hike-flavored.
+    static func activityIcon(for activity: CoachPlannedActivitySnapshot) -> String? {
+        let type = CoachActivityClassifier.type(for: activity)
+        return resolvedActivityIcon(type, isHikeLike: CoachActivityClassification.isHikeLike(activity))
     }
 
     private static func scenarioIcon(_ scenario: CoachScenarioKey) -> String {

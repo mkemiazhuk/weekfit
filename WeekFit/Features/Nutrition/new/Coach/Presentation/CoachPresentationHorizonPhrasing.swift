@@ -7,13 +7,13 @@ enum CoachPresentationHorizonPhrasing {
         switch input.presentationHorizon {
         case .evening, .tomorrow:
             return .en(
-                "Don't borrow effort from tonight without a reason.",
-                "Не тратьте силы просто так."
+                "Keep spare energy for when it matters tonight.",
+                "Сохраните силы на то, что действительно важно вечером."
             )
         case .now, .nextHours, .laterToday:
             return .en(
-                "Don't spend spare energy without a reason.",
-                "Не тратьте силы просто так."
+                "Keep spare energy for when it matters.",
+                "Сохраните силы на то, что действительно важно."
             )
         }
     }

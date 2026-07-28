@@ -6,6 +6,8 @@ enum PlannerOptionLocalization {
         switch storedTitle.trimmingCharacters(in: .whitespacesAndNewlines) {
         case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
         case "Running": return WeekFitLocalizedString("planner.option.running")
+        case "Swimming": return WeekFitLocalizedString("planner.option.swimming")
+        case "Hiking": return WeekFitLocalizedString("planner.option.hiking")
         case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")
         case "Core": return WeekFitLocalizedString("planner.option.core")
         case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")

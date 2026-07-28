@@ -1,0 +1,9 @@
+Calories aren't fixed. They're calculated.
+
+WeekFit starts with your BMR — energy at rest from weight, height, age and sex.
+Then today's movement from Apple Health raises the budget.
+Meals spend that fuel. Left means room left. Over means you went past it.
+
+Training days and easy days get different numbers — so nutrition matches how you actually moved.
+
+#WeekFit #AppleHealth #calories #nutrition #trainingnutrition #TDEE

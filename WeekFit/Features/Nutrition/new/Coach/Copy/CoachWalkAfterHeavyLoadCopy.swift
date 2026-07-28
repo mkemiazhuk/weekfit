@@ -33,18 +33,22 @@ enum CoachWalkAfterHeavyLoadPresentation {
         for phase: CoachWalkAfterHeavyLoadCopy.Phase,
         hasSeriousWork: Bool,
         timeOfDay: CoachTimeOfDay,
+        isHike: Bool = false,
         russian: Bool
     ) -> String {
         switch phase {
         case .upcoming:
+            if isHike { return russian ? "Лёгкий хайкинг" : "Recovery hike" }
             return russian ? "Лёгкая прогулка" : "Recovery walk"
         case .live:
+            if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"
         case .completed:
             if hasSeriousWork {
                 return russian ? "Восстанавливаемся" : "Recovering now"
             }
             if CoachCopyClosureTiming.allowsDayClosurePhrasing(timeOfDay: timeOfDay) {
+                if isHike { return russian ? "Хайкинг завершён" : "Hike done" }
                 return russian ? "Плотный день позади" : "Heavy day done"
             }
             return russian ? "Восстанавливаемся" : "Recovering now"
@@ -55,9 +59,16 @@ enum CoachWalkAfterHeavyLoadPresentation {
         for phase: CoachWalkAfterHeavyLoadCopy.Phase,
         hasSeriousWork: Bool,
         timeOfDay: CoachTimeOfDay,
+        isHike: Bool = false,
         russian: Bool
     ) -> String {
-        todayTitle(for: phase, hasSeriousWork: hasSeriousWork, timeOfDay: timeOfDay, russian: russian)
+        todayTitle(
+            for: phase,
+            hasSeriousWork: hasSeriousWork,
+            timeOfDay: timeOfDay,
+            isHike: isHike,
+            russian: russian
+        )
     }
 
     static func teaserMessage(
