@@ -5,7 +5,7 @@
 > **Target:** iOS 18+ (deployment) · v1.1  
 > **Owner:** Engineering + QA + Product
 
-**Release:** 1.1 (build 16)  
+**Release:** 1.2 (build 17)  
 **Build:** archive with `Scripts/archive_for_app_store.sh`  
 **Sign-off:** Engineering [ ] · QA [ ] · Product [ ]
 
@@ -18,6 +18,9 @@
 | Firebase Analytics Core + Crashlytics | In tree — **ship** |
 | Review prompts + Help WeekFit / feedback (mailto) | In tree — **ship** |
 | Privacy policy updated for analytics/crash/feedback | Prepared — **deploy before submit** |
+| Meals empty states + library sync + barcode polish | In tree — **ship** |
+| Swimming / Hiking workouts + coach coverage | In tree — **ship** |
+| Profile avatar discoverability | In tree — **ship** |
 | App size / asset compression | Deferred — not in this release |
 | Insights / Highlights tabs | Still unshipped |
 
@@ -27,7 +30,7 @@
 
 | # | Check | How | Pass |
 |---|-------|-----|------|
-| 1.1 | Versioning | `MARKETING_VERSION` = `1.1`; `CURRENT_PROJECT_VERSION` = **16** | [x] |
+| 1.1 | Versioning | `MARKETING_VERSION` = `1.2`; `CURRENT_PROJECT_VERSION` = **17** | [x] 2026-07-28 |
 | 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` declares Product Interaction; Crashlytics via SDK | [x] |
 | 1.3 | Export compliance | `ITSAppUsesNonExemptEncryption = NO` in Release build settings | [x] |
 | 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [x] |
@@ -76,7 +79,7 @@ xcodebuild test -scheme WeekFit \
 
 | Gate | Pass |
 |------|------|
-| P0 automated suites | [ ] |
+| P0 automated suites | [x] 2026-07-28 · iPhone 16 · **TEST SUCCEEDED** (+ classifier parity) |
 | P1 / screenshots | [ ] if Coach copy changed |
 
 ---
@@ -94,9 +97,9 @@ xcodebuild test -scheme WeekFit \
 | Suite | Pass |
 |-------|------|
 | Analytics + Review focused | [x] 2026-07-28 |
-| Full `WeekFitTests` | [x] 2026-07-28 |
-| Localization parity + language-mix | [x] |
-| Release configuration archive | [x] `build/WeekFit.xcarchive` · 1.1 (16) |
+| Full `WeekFitTests` | [x] 2026-07-28 · re-run after 1.2 delta · **TEST SUCCEEDED** |
+| Localization parity + language-mix | [x] 2026-07-28 |
+| Release configuration archive | [x] `build/WeekFit.xcarchive` · **1.2 (17)** · 2026-07-28 |
 
 ### 4.2 Manual smoke (1.1-specific)
 
@@ -116,10 +119,10 @@ xcodebuild test -scheme WeekFit \
 
 | Step | Pass |
 |------|------|
-| `Scripts/archive_for_app_store.sh` | [x] 2026-07-28 |
+| `Scripts/archive_for_app_store.sh` | [x] 2026-07-28 · **1.2 (17)** |
 | Validate App (Organizer) | [ ] |
 | Distribute → App Store Connect | [ ] |
-| Select build on version **1.1** | [ ] |
+| Select build on version **1.2** | [ ] |
 | Privacy policy live + ASC Nutrition Label updated | [x] policy live · [ ] ASC label |
 | Submit for Review | [ ] |
 
