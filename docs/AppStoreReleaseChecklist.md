@@ -37,6 +37,7 @@
 | 1.8 | `GoogleService-Info.plist` | Present locally for archive (gitignored); bundle id `com.weekfit.app` | [ ] verify before archive |
 | 1.9 | Localization | `Scripts/check_localization_parity.py` + language-mix | [x] 2026-07-28 |
 | 1.10 | Focused unit tests | Analytics + Review + Settings IA | [x] 2026-07-28 · iPhone 16 / iOS 18.5 |
+| 1.11 | Full `WeekFitTests` | Unit suite only (UITests flaky / separate) | [x] 2026-07-28 · **TEST SUCCEEDED** |
 
 ---
 
@@ -44,7 +45,7 @@
 
 | # | Check | Notes | Pass |
 |---|-------|-------|------|
-| 2.1 | Privacy Policy URL | https://weekfit.app/privacy.html — **must show updated 28 Jul 2026 copy** | [ ] deploy |
+| 2.1 | Privacy Policy URL | https://weekfit.app/privacy.html — **must show updated 28 Jul 2026 copy** | [x] live 2026-07-28 |
 | 2.2 | Support URL | https://weekfit.app/support.html | [ ] |
 | 2.3 | App description | EN + RU — `docs/AppStoreListing.md` | [ ] |
 | 2.4 | Subtitle & keywords | EN (+ RU if localized listing) | [ ] |
@@ -93,9 +94,9 @@ xcodebuild test -scheme WeekFit \
 | Suite | Pass |
 |-------|------|
 | Analytics + Review focused | [x] 2026-07-28 |
-| Full `WeekFitTests` | [ ] |
+| Full `WeekFitTests` | [x] 2026-07-28 |
 | Localization parity + language-mix | [x] |
-| Release configuration archive | [ ] |
+| Release configuration archive | [x] `build/WeekFit.xcarchive` · 1.1 (16) |
 
 ### 4.2 Manual smoke (1.1-specific)
 
@@ -115,11 +116,11 @@ xcodebuild test -scheme WeekFit \
 
 | Step | Pass |
 |------|------|
-| `Scripts/archive_for_app_store.sh` | [ ] |
+| `Scripts/archive_for_app_store.sh` | [x] 2026-07-28 |
 | Validate App (Organizer) | [ ] |
 | Distribute → App Store Connect | [ ] |
 | Select build on version **1.1** | [ ] |
-| Privacy policy live + ASC Nutrition Label updated | [ ] |
+| Privacy policy live + ASC Nutrition Label updated | [x] policy live · [ ] ASC label |
 | Submit for Review | [ ] |
 
 ---
