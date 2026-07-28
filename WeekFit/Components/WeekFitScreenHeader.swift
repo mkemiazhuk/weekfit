@@ -58,7 +58,7 @@ struct WeekFitAvatarButton: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            ZStack(alignment: .topTrailing) {
+            ZStack {
                 ZStack {
                     Circle()
                         .fill(
@@ -110,12 +110,6 @@ struct WeekFitAvatarButton: View {
                 }
                 .frame(width: 44, height: 44)
                 .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
-
-                if !hasProfileName {
-                    profileSetupDot
-                        .offset(x: 1, y: -1)
-                        .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                }
             }
             .animation(.easeInOut(duration: 0.28), value: hasProfileName)
             .animation(.easeInOut(duration: 0.28), value: initials)
@@ -139,7 +133,7 @@ struct WeekFitAvatarButton: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
         } else {
             Image(systemName: "person.crop.circle.fill")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [goldLight, goldMid],
@@ -149,24 +143,6 @@ struct WeekFitAvatarButton: View {
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
         }
-    }
-
-    private var profileSetupDot: some View {
-        Circle()
-            .fill(
-                LinearGradient(
-                    colors: [goldLight, goldMid],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .frame(width: 8, height: 8)
-            .overlay {
-                Circle()
-                    .stroke(Color.black.opacity(0.55), lineWidth: 1.2)
-            }
-            .shadow(color: goldMid.opacity(0.35), radius: 2, y: 0.5)
-            .accessibilityHidden(true)
     }
 }
 

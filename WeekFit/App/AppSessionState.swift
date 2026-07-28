@@ -43,6 +43,7 @@ final class AppSessionState: ObservableObject {
     }
 
     func presentOnboarding() {
+        guard !WeekFitUITestSupport.isActive else { return }
         isPresentingOnboarding = true
         isPresentingHealthAccess = false
     }

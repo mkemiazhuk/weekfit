@@ -826,6 +826,7 @@ struct MealsView: View {
                     .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("meals.create")
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 78)
@@ -935,14 +936,16 @@ private struct MealCreationChooserSheet: View {
                     icon: "square.grid.2x2.fill",
                     title: "meals.creation.builder.title",
                     subtitle: "meals.creation.builder.subtitle",
-                    route: .builder
+                    route: .builder,
+                    accessibilityId: "meals.creation.builder"
                 )
 
                 optionRow(
                     icon: "camera.fill",
                     title: "meals.creation.customFood.title",
                     subtitle: "meals.creation.customFood.subtitle",
-                    route: .manualFood
+                    route: .manualFood,
+                    accessibilityId: "meals.creation.customFood"
                 )
             }
         }
@@ -957,7 +960,8 @@ private struct MealCreationChooserSheet: View {
         icon: String,
         title: String,
         subtitle: String,
-        route: MealCreationRoute
+        route: MealCreationRoute,
+        accessibilityId: String
     ) -> some View {
         Button {
             onSelect(route)
@@ -1004,6 +1008,7 @@ private struct MealCreationChooserSheet: View {
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityId)
     }
 }
 

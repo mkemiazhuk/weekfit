@@ -195,7 +195,7 @@
                 ProfileItem(
                     icon: "heart.text.square.fill",
                     title: WeekFitLocalizedString("review.helpWeekFit.title"),
-                    subtitle: WeekFitLocalizedString("review.helpWeekFit.subtitle"),
+                    subtitle: WeekFitLocalizedString("review.helpWeekFit.rowSubtitle"),
                     type: .helpWeekFit
                 ),
                 ProfileItem(

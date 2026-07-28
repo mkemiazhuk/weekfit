@@ -174,6 +174,7 @@ final class AuthViewModel: ObservableObject {
         hasResolvedInitialSession = true
         isLoading = false
         errorMessage = nil
+        OnboardingStore.markCompleted()
     }
 
     func restorePersistedSessionIfNeeded() async {

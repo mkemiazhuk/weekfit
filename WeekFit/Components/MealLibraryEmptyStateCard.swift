@@ -165,6 +165,7 @@ struct MealLibraryEmptyStateCard: View {
         .buttonStyle(.plain)
         .accessibilityLabel(ctaTitle)
         .accessibilityHint(Text(WeekFitLocalizedString("planner.add.meal")))
+        .accessibilityIdentifier("meals.create")
     }
 
     // MARK: - Chrome
