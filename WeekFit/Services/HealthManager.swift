@@ -203,6 +203,9 @@ final class HealthManager: ObservableObject {
 
     @Published var isHealthAccessGranted = false
     @Published private(set) var hasCompletedHealthAccessCheck = false
+    /// True when the last HealthKit `requestAuthorization` completion reported a non-nil error.
+    /// Used for analytics only — never expose error text.
+    private(set) var lastHealthAuthorizationHadError = false
     @Published private(set) var isHealthAuthorizationInFlight = false
 
     @Published var activeCalories: Double = 0
@@ -796,6 +799,8 @@ final class HealthManager: ObservableObject {
         }
 
         UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
+
+        lastHealthAuthorizationHadError = (error != nil)
 
         let granted = await checkReadAuthorizationStatus()
         isHealthAccessGranted = granted

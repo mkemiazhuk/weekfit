@@ -33,6 +33,7 @@ struct WeekFitScreenHeader: View {
                     initials: initials,
                     action: onAvatarTap
                 )
+                .accessibilityIdentifier("settings.open")
             }
         }
         .frame(minHeight: 48)

@@ -449,6 +449,8 @@ enum AppText {
             static let title: LocalizedStringResource = "settings.root.title"
             static let preferencesSection: LocalizedStringResource = "settings.root.section.preferences"
             static let appleHealth: LocalizedStringResource = "settings.root.appleHealth"
+            static let versionFormat: LocalizedStringResource = "settings.version.format"
+            static let versionCopied: LocalizedStringResource = "settings.version.copied"
         }
 
         enum Profile {

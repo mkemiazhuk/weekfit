@@ -106,7 +106,31 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.0.1)
+## What's New (1.1)
+
+**EN:**
+```
+WeekFit 1.1
+
+• Help WeekFit — rate the app or send feedback from Settings
+• Smarter review timing after meaningful actions in your day
+• Privacy-preserving product analytics and crash reporting
+• Stability and UX polish across Today, Coach, Meals, and Plan
+```
+
+**RU:**
+```
+WeekFit 1.1
+
+• «Помочь WeekFit» — оценка или отзыв из Настроек
+• Более уместный запрос отзыва после значимых действий
+• Бережная продуктовая аналитика и отчёты о сбоях
+• Стабильность и UX по Сегодня, Коучу, Питанию и Плану
+```
+
+---
+
+## What's New (1.0.1 — archive)
 
 **EN:**
 ```
@@ -239,21 +263,26 @@ Set up a mailbox or forwarding for `support@weekfit.app` (e.g. registrar email f
 
 Suggested Privacy Policy sections:
 1. Data collected (Health, optional camera/location)
-2. Local storage only — no cloud sync in 1.0
-3. No third-party analytics in 1.0
-4. Contact: support@weekfit.app
-5. Not medical advice disclaimer
+2. Local plan storage — no cloud sync of Health or plan
+3. Product analytics + Crashlytics (no HealthKit samples; no advertising / tracking)
+4. Optional feedback via mailto to support@weekfit.app
+5. Contact: support@weekfit.app
+6. Not medical advice disclaimer
 
 ---
 
 ## App Privacy (Connect questionnaire hints)
 
+Full detail: `docs/AppStorePrivacyDisclosures.md`
+
 | Data type | Collected? | Linked to user? | Tracking? |
 |-----------|------------|-----------------|-----------|
-| Health & Fitness | Yes (HealthKit) | No (local) | No |
+| Health & Fitness | Yes (HealthKit, on-device) | No | No |
 | Photos (camera) | Optional | No | No |
 | Precise/Coarse Location | Optional (approx) | No | No |
-| Contact Info | No | — | No |
-| Identifiers | No | — | No |
+| Product Interaction | Yes (Firebase Analytics) | No | No |
+| Crash Data | Yes (Crashlytics) | No | No |
+| Contact Info | No (unless user emails support) | — | No |
+| Advertising Identifiers | No | — | No |
 
 Tracking: **No** (`NSPrivacyTracking = false` in manifest)

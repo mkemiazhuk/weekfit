@@ -653,6 +653,7 @@ struct TodayView: View {
                 quickLogCommittedUsageIDs.removeAll()
                 prepareQuickNutritionLogData()
             } else {
+                ProductAnalytics.foodLoggingCancelIfNeeded()
                 quickLogSession.reset()
                 flushQueuedActivityConfirmationIfNeeded()
             }
@@ -731,12 +732,14 @@ struct TodayView: View {
                 quickLogCommittedUsageIDs.removeAll()
                 prepareQuickDrinkLogData()
             } else {
+                ProductAnalytics.hydrationLoggingCancelIfNeeded()
                 quickLogSession.reset()
                 flushQueuedActivityConfirmationIfNeeded()
             }
         }
         .onChange(of: showDirectWorkoutLogSheet) { _, isPresented in
             guard !isPresented else { return }
+            ProductAnalytics.activityLoggingCancelIfNeeded()
             flushQueuedActivityConfirmationIfNeeded()
         }
         .onChange(of: showProfile) { _, isPresented in
@@ -747,6 +750,8 @@ struct TodayView: View {
     
     private func openActivityIntelligence() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        ProductAnalytics.todaySectionOpened(.activity)
+        ProductAnalytics.trackScreen(.activityDetails)
         showActivityIntelligence = true
     }
 
@@ -1856,6 +1861,8 @@ struct TodayView: View {
     ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            ProductAnalytics.todaySectionOpened(.nutrition)
+            ProductAnalytics.trackScreen(.nutritionDetails)
             nutritionDetailsDate = Date()
             showNutritionDetails = true
         } label: {
@@ -1908,6 +1915,8 @@ struct TodayView: View {
     ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            ProductAnalytics.todaySectionOpened(.recovery)
+            ProductAnalytics.trackScreen(.recoveryDetails)
             showRecoveryDetails = true
         } label: {
             statusRingWidget(
@@ -2327,6 +2336,7 @@ struct TodayView: View {
 
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            ProductAnalytics.todayPrimaryActionTapped(.coach)
             onSelectTab(.coach)
         } label: {
             todayPremiumCard(accent: insightColor, featured: true) {
@@ -2750,7 +2760,10 @@ struct TodayView: View {
             toastMessage: drinksQuickLogToast
         ) {
             preloadQuickDrinkLogDataIfNeeded()
+            ProductAnalytics.todayPrimaryActionTapped(.hydration)
+            ProductAnalytics.quickLogOpened(category: .hydration)
             presentExclusiveTodayActionSheet {
+                ProductAnalytics.hydrationLoggingStarted(method: .quickLog, source: .today)
                 showDirectDrinkLogSheet = true
             }
         }
@@ -2765,7 +2778,10 @@ struct TodayView: View {
         ) {
             selectedLogTab = .meals
             preloadQuickFoodLogDataIfNeeded()
+            ProductAnalytics.todayPrimaryActionTapped(.food)
+            ProductAnalytics.quickLogOpened(category: .food)
             presentExclusiveTodayActionSheet {
+                ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today)
                 showDirectMealLogSheet = true
             }
         }
@@ -2778,7 +2794,9 @@ struct TodayView: View {
             isEmphasized: priority == .activity,
             liveIndicatorColor: activeSession == nil ? nil : todayPremiumBronze
         ) {
+            ProductAnalytics.todayPrimaryActionTapped(.activity)
             presentExclusiveTodayActionSheet {
+                ProductAnalytics.activityLoggingStarted(source: .today)
                 showDirectWorkoutLogSheet = true
             }
         }

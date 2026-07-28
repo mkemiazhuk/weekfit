@@ -276,6 +276,8 @@ struct MealsView: View {
         }
         .onChange(of: showCreationSheet) { _, isPresented in
             guard !isPresented else { return }
+            // Manual food path: cancel only if started and not already completed/failed.
+            ProductAnalytics.foodLoggingCancelIfNeeded()
             creationStep = .chooser
             creationDetent = .height(270)
         }
@@ -752,9 +754,15 @@ struct MealsView: View {
 
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(quickActivity)
         modelContext.insert(quickActivity)
-        try? modelContext.save()
-
-        onMealLogged?()
+        do {
+            try modelContext.save()
+            ReviewEngagement.record(.foodLogged)
+            ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .meals)
+            onMealLogged?()
+        } catch {
+            modelContext.delete(quickActivity)
+            ProductAnalytics.foodLoggingFailed(method: .quickLog, source: .meals, reason: .saveFailed)
+        }
     }
 
     private func deleteCustomMeal(_ meal: Meals) {
@@ -912,8 +920,11 @@ private struct MealCreationSheetHost: View {
                     detent = .large
                     switch route {
                     case .builder:
+                        ProductAnalytics.mealBuilderStarted(mode: .new, source: .meals)
+                        ProductAnalytics.trackScreen(.mealBuilder)
                         step = .builder
                     case .manualFood:
+                        ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
                         step = .manualFood
                     }
                 }
@@ -1277,8 +1288,15 @@ struct CustomFoodDetailsView: View {
         activity.isCompleted = true
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
-        try? modelContext.save()
-        onFoodLogged?()
+        do {
+            try modelContext.save()
+            ReviewEngagement.record(.foodLogged)
+            ProductAnalytics.foodLoggingCompleted(method: .recent, source: .meals)
+            onFoodLogged?()
+        } catch {
+            modelContext.delete(activity)
+            ProductAnalytics.foodLoggingFailed(method: .recent, source: .meals, reason: .saveFailed)
+        }
     }
 }
 

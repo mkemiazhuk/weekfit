@@ -25,7 +25,7 @@ enum OnboardingStore {
             Keys.introCoach,
             Keys.introPlan,
             Keys.introMeals
-        ]
+        ] + OnboardingFunnelAnalytics.allKnownKeys
     }
 
     static var hasCompletedOnboarding: Bool {
@@ -73,9 +73,14 @@ enum OnboardingStore {
     }
 
     static func markCompleted() {
+        let alreadyComplete = hasCompletedOnboarding
         hasCompletedOnboarding = true
         persistedStepRawValue = nil
         dismissAllTabIntros()
+        // Track only after successful persistence, once per onboarding lifecycle.
+        if !alreadyComplete {
+            OnboardingFunnelAnalytics.shared.trackCompletedIfNeeded()
+        }
     }
 
     static func dismissAllTabIntros() {
@@ -148,6 +153,12 @@ enum OnboardingAnalytics {
     static func finalCTATapped() {
         #if DEBUG
         logger.debug("final_cta_tapped")
+        #endif
+    }
+
+    static func skipped(from step: String) {
+        #if DEBUG
+        logger.debug("skipped from=\(step, privacy: .public)")
         #endif
     }
 }

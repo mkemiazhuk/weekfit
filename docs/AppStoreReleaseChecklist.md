@@ -2,12 +2,24 @@
 
 > **Purpose:** Gate for promoting a TestFlight build to App Store production.  
 > **App:** WeekFit · `com.weekfit.app` · Team `7R6347XPK2`  
-> **Target:** iOS 17+ · v1.0  
+> **Target:** iOS 18+ (deployment) · v1.1  
 > **Owner:** Engineering + QA + Product
 
-**Release:** 1.0.1 (build 14)  
+**Release:** 1.1 (build 16)  
 **Build:** archive with `Scripts/archive_for_app_store.sh`  
 **Sign-off:** Engineering [ ] · QA [ ] · Product [ ]
+
+---
+
+## 0. Scope of this release (WIP on main)
+
+| Area | Status |
+|------|--------|
+| Firebase Analytics Core + Crashlytics | In tree — **ship** |
+| Review prompts + Help WeekFit / feedback (mailto) | In tree — **ship** |
+| Privacy policy updated for analytics/crash/feedback | Prepared — **deploy before submit** |
+| App size / asset compression | Deferred — not in this release |
+| Insights / Highlights tabs | Still unshipped |
 
 ---
 
@@ -15,13 +27,16 @@
 
 | # | Check | How | Pass |
 |---|-------|-----|------|
-| 1.1 | Versioning | `MARKETING_VERSION` = `1.0.1`; `CURRENT_PROJECT_VERSION` is an **integer** (increment per submit) | [x] build **14** |
-| 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` is in the WeekFit target (auto-synced via folder) | [x] |
+| 1.1 | Versioning | `MARKETING_VERSION` = `1.1`; `CURRENT_PROJECT_VERSION` = **16** | [x] |
+| 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` declares Product Interaction; Crashlytics via SDK | [x] |
 | 1.3 | Export compliance | `ITSAppUsesNonExemptEncryption = NO` in Release build settings | [x] |
-| 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [ ] |
-| 1.5 | Debug paths | No test-only UI in Release (`-ui-testing` bypass is DEBUG/launch-arg only) | [ ] |
-| 1.6 | Unshipped modules | Insights / Highlights tabs remain disabled — see `docs/UnshippedFeatures.md` | [ ] |
-| 1.7 | Watch | No Watch companion promised in listing — see `docs/AppleWatchStrategy.md` | [ ] |
+| 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [x] |
+| 1.5 | Debug paths | UI-testing / debug diagnostics are `#if DEBUG` | [ ] spot-check |
+| 1.6 | Unshipped modules | Insights / Highlights remain disabled — `docs/UnshippedFeatures.md` | [x] |
+| 1.7 | Watch | No Watch companion promised in listing | [x] |
+| 1.8 | `GoogleService-Info.plist` | Present locally for archive (gitignored); bundle id `com.weekfit.app` | [ ] verify before archive |
+| 1.9 | Localization | `Scripts/check_localization_parity.py` + language-mix | [x] 2026-07-28 |
+| 1.10 | Focused unit tests | Analytics + Review + Settings IA | [x] 2026-07-28 · iPhone 16 / iOS 18.5 |
 
 ---
 
@@ -29,16 +44,17 @@
 
 | # | Check | Notes | Pass |
 |---|-------|-------|------|
-| 2.1 | Privacy Policy URL | **Required** — external URL (in-app `TermsPrivacyView` is not enough) | [x] ready — deploy Pages |
-| 2.2 | Support URL | Public page or mailto landing | [x] ready — deploy Pages |
-| 2.3 | App description | EN + RU — see `docs/AppStoreListing.md` | [ ] |
+| 2.1 | Privacy Policy URL | https://weekfit.app/privacy.html — **must show updated 28 Jul 2026 copy** | [ ] deploy |
+| 2.2 | Support URL | https://weekfit.app/support.html | [ ] |
+| 2.3 | App description | EN + RU — `docs/AppStoreListing.md` | [ ] |
 | 2.4 | Subtitle & keywords | EN (+ RU if localized listing) | [ ] |
-| 2.5 | Screenshots | iPhone 6.7" + 6.1" (iPad optional) — 5–8 scenes per size | [ ] |
-| 2.6 | App Privacy questionnaire | Health, Camera, Location declared honestly | [ ] |
+| 2.5 | Screenshots | iPhone 6.7" + 6.1" | [ ] |
+| 2.6 | App Privacy questionnaire | See `docs/AppStorePrivacyDisclosures.md` — Product Interaction + Crash Data; **Tracking = No** | [ ] update ASC |
 | 2.7 | Age rating | Health & Fitness, no medical diagnosis | [ ] |
-| 2.8 | Pricing | Free (no IAP in 1.0) | [ ] |
-| 2.9 | Review notes + demo video | Health app test path — see `docs/AppStoreListing.md` | [ ] |
-| 2.10 | Phased release | Enable 10% → 50% → 100% | [ ] |
+| 2.8 | Pricing | Free (no IAP) | [ ] |
+| 2.9 | Review notes + demo | Health path — `docs/AppStoreListing.md` | [ ] |
+| 2.10 | What's New | 1.1 EN + RU from `docs/AppStoreListing.md` | [ ] |
+| 2.11 | Phased release | Enable 10% → 50% → 100% | [ ] |
 
 ---
 
@@ -46,8 +62,11 @@
 
 Full checklist: `COACH_RELEASE_CHECKLIST.md`
 
+If this release does **not** change Coach narrative/copy engines, run the automated suites; screenshot batch optional.
+
 ```bash
 xcodebuild test -scheme WeekFit \
+  -destination 'platform=iOS Simulator,id=9AA9CED9-B49D-4CEA-83CD-289DEDD802E3' \
   -only-testing:WeekFitTests/CoachDayPriorityResolverXCTests \
   -only-testing:WeekFitTests/CoachStateNarrativeContractTests \
   -only-testing:WeekFitTests/HumanCoachDecisionEngineXCTests \
@@ -56,67 +75,39 @@ xcodebuild test -scheme WeekFit \
 
 | Gate | Pass |
 |------|------|
-| P0 guardrails (all rows) | [ ] |
-| P1 guardrails (all or documented exceptions) | [ ] |
-| Screenshot batch (8 scenarios) | [ ] |
-| Matrix audit (if Coach copy PRs in release) | [ ] |
+| P0 automated suites | [ ] |
+| P1 / screenshots | [ ] if Coach copy changed |
 
 ---
 
 ## 4. QA gate
 
-### 4.1 Automated smoke
+### 4.1 Automated
 
 ```bash
+# Full suite (release gate)
 xcodebuild test -scheme WeekFit \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'platform=iOS Simulator,id=9AA9CED9-B49D-4CEA-83CD-289DEDD802E3'
 ```
 
 | Suite | Pass |
 |-------|------|
-| WeekFitUITests (tab navigation) | [ ] manual |
-| ActivityReconcilerXCTests | [x] |
-| HealthManagerIntegrationTests | [x] HealthDataConnectionStateTests |
-| Coach suites (above) | [x] |
-| Full `WeekFitTests` (943) | [x] 2026-07-23 · iPhone 16 / iOS 18.5 |
+| Analytics + Review focused | [x] 2026-07-28 |
+| Full `WeekFitTests` | [ ] |
 | Localization parity + language-mix | [x] |
-| Release configuration build | [x] |
+| Release configuration archive | [ ] |
 
-### 4.2 Localization
-
-```bash
-python3 Scripts/check_localization_parity.py
-python3 Scripts/check_localization_language_mix.py
-```
-
-| Check | Pass |
-|-------|------|
-| EN/RU parity | [x] |
-| No language mix in production surfaces | [x] |
-
-### 4.3 Accessibility (`docs/AccessibilityPass.md`)
-
-Test on iPhone SE + iPhone 15 Pro Max, EN + RU, Dynamic Type AX3–AX5.
-
-| Area | Pass |
-|------|------|
-| Today | [ ] |
-| Coach | [ ] |
-| Plan | [ ] |
-| Meals | [ ] |
-| Global (tabs, sheets) | [ ] |
-
-### 4.4 Device matrix (manual, clean install)
+### 4.2 Manual smoke (1.1-specific)
 
 | Scenario | Pass |
 |----------|------|
-| Fresh install → Login → Open WeekFit → Health prompt | [ ] |
-| Health granted, no sleep yet → Coach shows calm readiness copy | [ ] |
-| Health denied → Profile shows setup needed, not "connected" | [ ] |
-| Planned workout + completion via HealthKit | [ ] |
-| App kill → reopen → no duplicate imported workouts | [ ] |
-| RU locale full pass on 4 tabs | [ ] |
-| Background 5+ min → foreground refresh | [ ] |
+| Fresh install → Open WeekFit → Health prompt | [ ] |
+| Settings → Help WeekFit → feedback mailto opens | [ ] |
+| Meaningful actions → review prompt eligibility (DEBUG tooling OK) | [ ] |
+| Firebase: events visible in DebugView / Crashlytics console after TestFlight | [ ] |
+| Health granted / denied paths | [ ] |
+| RU locale on 4 tabs | [ ] |
+| In-app Terms/Privacy mentions analytics accurately | [ ] |
 
 ---
 
@@ -124,13 +115,11 @@ Test on iPhone SE + iPhone 15 Pro Max, EN + RU, Dynamic Type AX3–AX5.
 
 | Step | Pass |
 |------|------|
-| Scheme: WeekFit → Any iOS Device | [ ] |
-| Configuration: Release | [ ] |
-| Product → Archive | [x] `build/WeekFit.xcarchive` |
-| Validate App (no errors) | [ ] in Xcode Organizer |
+| `Scripts/archive_for_app_store.sh` | [ ] |
+| Validate App (Organizer) | [ ] |
 | Distribute → App Store Connect | [ ] |
-| Select build in App Store version | [ ] |
-| What's New filled (EN + RU) — `docs/AppStoreListing.md` | [ ] |
+| Select build on version **1.1** | [ ] |
+| Privacy policy live + ASC Nutrition Label updated | [ ] |
 | Submit for Review | [ ] |
 
 ---
@@ -140,14 +129,13 @@ Test on iPhone SE + iPhone 15 Pro Max, EN + RU, Dynamic Type AX3–AX5.
 | Day | Action | Done |
 |-----|--------|------|
 | D0 | Phased release at 10% | [ ] |
-| D0–D1 | Monitor crashes & reviews in App Store Connect | [ ] |
+| D0–D1 | Monitor Crashlytics + reviews | [ ] |
 | D3 | Expand to 50% if stable | [ ] |
-| D7 | 100% rollout or hotfix 1.0.1 | [ ] |
-| D7 | Retro: Health state, reconciler, RU gaps → backlog | [ ] |
+| D7 | 100% or hotfix | [ ] |
 
 ---
 
-## 7. Known 1.0 limitations (document, do not hide from review)
+## 7. Known limitations (document, do not hide)
 
 | Item | Status |
 |------|--------|
@@ -155,7 +143,8 @@ Test on iPhone SE + iPhone 15 Pro Max, EN + RU, Dynamic Type AX3–AX5.
 | No subscriptions | Free app |
 | No Apple Watch app | Phone + HealthKit sync only |
 | Insights / Highlights | Not in navigation |
-| Sign in with Apple | Wired but not required (`accountAuthEnabled = false`) |
+| Sign in with Apple | Wired but not required |
+| App download size ~170 MB | Assets deferred; not a Review blocker |
 
 ---
 
@@ -169,6 +158,9 @@ Test on iPhone SE + iPhone 15 Pro Max, EN + RU, Dynamic Type AX3–AX5.
 
 **Exceptions / notes:**
 
+- Commit Analytics/Review WIP + privacy docs before archive.
+- Deploy privacy.html **before** App Review sees the build.
+
 ---
 
-*Listing copy: `docs/AppStoreListing.md` · Coach gate: `COACH_RELEASE_CHECKLIST.md` · Product risks: `ProductAudit.md`*
+*Listing: `docs/AppStoreListing.md` · Privacy ASC: `docs/AppStorePrivacyDisclosures.md` · Coach: `COACH_RELEASE_CHECKLIST.md`*

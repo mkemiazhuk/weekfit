@@ -17,6 +17,12 @@ enum PlannedActivityNotificationConfirmationService {
 
         try modelContext.save()
         ActivityNotificationService.shared.cancelNotifications(for: activity)
+        ReviewEngagement.record(.activityLoggedOrCompleted)
+        ProductAnalytics.activityCompleted(
+            category: ProductAnalytics.activityCategory(forType: activity.type),
+            source: .plan
+        )
+        ProductAnalytics.planItemCompleted(itemType: PlanItemAnalyticsType(plannedActivityType: activity.type))
     }
 
     static func markSkipped(

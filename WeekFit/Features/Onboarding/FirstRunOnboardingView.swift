@@ -94,8 +94,17 @@ struct FirstRunOnboardingView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .contentShape(Rectangle())
-                .simultaneousGesture(backSwipeGesture)
+                // Left-edge pan only — full-width simultaneousGesture loses to ScrollView.
+                .overlay(alignment: .leading) {
+                    if canGoBack {
+                        Color.clear
+                            .frame(width: Self.backEdgeSwipeWidth)
+                            .frame(maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .gesture(backEdgeSwipeGesture)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .accessibilityAction(.escape) {
                     goBack()
                 }
@@ -112,6 +121,10 @@ struct FirstRunOnboardingView: View {
         .task {
             OnboardingAnalytics.started()
             OnboardingAnalytics.stepViewed(step.analyticsName)
+            OnboardingFunnelAnalytics.shared.trackStartedIfNeeded()
+            if let analyticsStep = OnboardingAnalyticsStep(rawValue: step.analyticsName) {
+                OnboardingFunnelAnalytics.shared.trackStepViewedIfNeeded(analyticsStep)
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.4)) {
                     contentVisible = true
@@ -121,6 +134,9 @@ struct FirstRunOnboardingView: View {
         .onChange(of: step) { _, new in
             OnboardingStore.persistedStepRawValue = new.rawValue
             OnboardingAnalytics.stepViewed(new.analyticsName)
+            if let analyticsStep = OnboardingAnalyticsStep(rawValue: new.analyticsName) {
+                OnboardingFunnelAnalytics.shared.trackStepViewedIfNeeded(analyticsStep)
+            }
             if new == .goal {
                 applySuggestedGoalIfNeeded()
             }
@@ -147,18 +163,25 @@ struct FirstRunOnboardingView: View {
         }
     }
 
+    private static let backEdgeSwipeWidth: CGFloat = 44
+
     private var canGoBack: Bool {
         step != .promise && !isRequestingHealth && !advanceLocked
     }
 
-    private var backSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 28, coordinateSpace: .local)
+    /// Skip exits the whole flow (not just the Health step's "Not now").
+    private var canSkip: Bool {
+        step != .ready && !isRequestingHealth && !advanceLocked
+    }
+
+    private var backEdgeSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .local)
             .onEnded { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
-                // Back only: clearly horizontal, finger dragged right.
                 guard canGoBack else { return }
-                guard abs(dx) > abs(dy) * 1.6, dx > 72 else { return }
+                // Edge swipe: rightward and mostly horizontal.
+                guard dx > 56, abs(dx) > abs(dy) * 1.15 else { return }
                 goBack()
             }
     }
@@ -341,61 +364,78 @@ private extension FirstRunOnboardingView {
 private extension FirstRunOnboardingView {
 
     var progressHeader: some View {
-        Group {
-            if step == .promise {
-                Color.clear.frame(height: 14)
+        HStack(spacing: 12) {
+            if canGoBack {
+                Button {
+                    goBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(WeekFitLocalizedString("onboarding.v12.nav.back"))
             } else {
-                HStack(spacing: 12) {
-                    Button {
-                        goBack()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
-                            .frame(width: 32, height: 32)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canGoBack)
-                    .opacity(canGoBack ? 1 : 0.35)
-                    .accessibilityLabel(WeekFitLocalizedString("onboarding.v12.nav.back"))
+                Color.clear.frame(width: 32, height: 32)
+            }
 
-                    GeometryReader { geo in
-                        let functionalIndex = max(step.rawValue, 1)
-                        let progress = CGFloat(functionalIndex) / CGFloat(Step.allCases.count - 1)
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(WeekFitTheme.whiteOpacity(0.07))
-                                .frame(height: 3.5)
+            if step == .promise {
+                Spacer(minLength: 0)
+            } else {
+                GeometryReader { geo in
+                    let functionalIndex = max(step.rawValue, 1)
+                    let progress = CGFloat(functionalIndex) / CGFloat(Step.allCases.count - 1)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(WeekFitTheme.whiteOpacity(0.07))
+                            .frame(height: 3.5)
 
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [WeekFitTheme.brandGold, WeekFitTheme.brandGoldDeep],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [WeekFitTheme.brandGold, WeekFitTheme.brandGoldDeep],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
-                                .frame(width: max(16, geo.size.width * progress), height: 3.5)
-                                .animation(reduceMotion ? nil : .easeInOut(duration: 0.32), value: step)
-                        }
-                        .frame(maxHeight: .infinity, alignment: .center)
-                    }
-                    .frame(height: 14)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        Text(
-                            String(
-                                format: WeekFitLocalizedString("onboarding.progress.format"),
-                                step.rawValue,
-                                Step.allCases.count - 1
                             )
+                            .frame(width: max(16, geo.size.width * progress), height: 3.5)
+                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.32), value: step)
+                    }
+                    .frame(maxHeight: .infinity, alignment: .center)
+                }
+                .frame(height: 14)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                    Text(
+                        String(
+                            format: WeekFitLocalizedString("onboarding.progress.format"),
+                            step.rawValue,
+                            Step.allCases.count - 1
                         )
                     )
+                )
+            }
+
+            if canSkip {
+                Button {
+                    skipOnboarding()
+                } label: {
+                    Text(WeekFitLocalizedString("onboarding.v12.nav.skip"))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.45))
+                        .padding(.horizontal, 4)
+                        .frame(height: 32)
+                        .contentShape(Rectangle())
                 }
-                .frame(height: 32)
+                .buttonStyle(.plain)
+                .accessibilityLabel(WeekFitLocalizedString("onboarding.v12.nav.skip"))
+            } else {
+                Color.clear.frame(width: 32, height: 32)
             }
         }
+        .frame(height: 32)
     }
 
     var bottomBar: some View {
@@ -409,6 +449,7 @@ private extension FirstRunOnboardingView {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     #endif
                     OnboardingAnalytics.healthSkipped()
+                    OnboardingFunnelAnalytics.shared.trackHealthConnectionDeclined()
                     advance(to: .understanding)
                 } label: {
                     Text(WeekFitLocalizedString("onboarding.health.notNow"))
@@ -632,17 +673,20 @@ private extension FirstRunOnboardingView {
     func connectHealth() {
         guard HKHealthStore.isHealthDataAvailable() else {
             OnboardingAnalytics.healthAuthorization(result: "unavailable")
+            OnboardingFunnelAnalytics.shared.trackHealthConnectionFailed(reason: .unavailable)
             advance(to: .understanding)
             return
         }
         guard AccountSessionController.shared.mode != .reviewDemo else {
             OnboardingAnalytics.healthAuthorization(result: "demo_blocked")
+            OnboardingFunnelAnalytics.shared.trackHealthConnectionFailed(reason: .configurationError)
             advance(to: .understanding)
             return
         }
         guard !isRequestingHealth else { return }
 
         OnboardingAnalytics.healthConnectTapped()
+        OnboardingFunnelAnalytics.shared.trackHealthConnectionStarted()
         isRequestingHealth = true
 
         let action = healthManager.beginHealthAuthorizationFromUserAction(
@@ -655,10 +699,16 @@ private extension FirstRunOnboardingView {
                 healthManager.isHealthAccessGranted = granted
                 OnboardingAnalytics.healthAuthorization(result: granted ? "granted" : "denied")
                 if granted {
+                    OnboardingFunnelAnalytics.shared.trackHealthConnectionCompleted()
                     await healthManager.loadHealthData()
                     appSession.triggerHealthRefresh(source: "onboarding.health.connected")
                     appSession.triggerCoachRefresh(source: "onboarding.health.connected")
+                } else if healthManager.lastHealthAuthorizationHadError {
+                    OnboardingFunnelAnalytics.shared.trackHealthConnectionFailed(reason: .authorizationError)
                 }
+                // Probe false with no HK error: system sheet finished without usable
+                // read access. Not WeekFit UI decline, and not a known technical failure —
+                // intentionally no completed/declined/failed terminal event.
                 advance(to: .understanding)
             }
         }
@@ -666,11 +716,31 @@ private extension FirstRunOnboardingView {
         switch action {
         case .startedAuthorizationPrompt:
             break
-        case .unavailable, .blockedByDemoMode:
+        case .unavailable:
             isRequestingHealth = false
             OnboardingAnalytics.healthAuthorization(result: "unavailable")
+            OnboardingFunnelAnalytics.shared.trackHealthConnectionFailed(reason: .unavailable)
+            advance(to: .understanding)
+        case .blockedByDemoMode:
+            isRequestingHealth = false
+            OnboardingAnalytics.healthAuthorization(result: "unavailable")
+            OnboardingFunnelAnalytics.shared.trackHealthConnectionFailed(reason: .configurationError)
             advance(to: .understanding)
         }
+    }
+
+    func skipOnboarding() {
+        guard canSkip else { return }
+        advanceLocked = true
+        OnboardingAnalytics.skipped(from: step.analyticsName)
+        #if !targetEnvironment(simulator)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+        persistGoalIfNeeded()
+        OnboardingStore.markCompleted()
+        OnboardingAnalytics.completed()
+        appSession.completeOnboarding(opening: .today)
+        healthManager.retryPendingWorkoutRouteAuthorizationIfNeeded()
     }
 
     func finish() {

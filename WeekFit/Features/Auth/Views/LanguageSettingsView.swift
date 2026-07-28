@@ -79,6 +79,9 @@ private extension LanguageSettingsView {
     func languageRow(_ language: AppLanguage) -> some View {
         Button {
             languageManager.selectedLanguage = language
+            ProductAnalytics.languageChanged(
+                AppLanguageAnalyticsCode(languageCode: language.rawValue)
+            )
         } label: {
             HStack(spacing: 14) {
                 ZStack {

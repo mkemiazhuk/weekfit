@@ -11,6 +11,7 @@ struct RecoveryDetailsView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @State private var activeDate: Date
+    @State private var didRecordRecoveryDetailsView = false
 
     // Kept for compatibility with existing navigation from Today.
     // The details screen recalculates recovery for the selected date.
@@ -86,6 +87,10 @@ struct RecoveryDetailsView: View {
 
     private func load(date: Date) async {
         await viewModel.load(for: date, healthManager: healthManager)
+        // Engagement is based on opening Recovery after Health processing — never on score values.
+        guard !didRecordRecoveryDetailsView, !viewModel.authorizationFailed else { return }
+        didRecordRecoveryDetailsView = true
+        ReviewEngagement.record(.recoveryDetailsViewed)
     }
 
     private var header: some View {

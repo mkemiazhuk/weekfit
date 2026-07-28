@@ -245,12 +245,12 @@ export const privacy: Record<
     kicker: "Privacy",
     title: "Your health stays yours.",
     lead: "WeekFit is a local-first app. Here's exactly what it accesses, and what it never does.",
-    updated: "Last updated: July 8, 2026",
+    updated: "Last updated: July 28, 2026",
     flowTitle: "How your data flows",
     flow: {
       from: "Apple Health — sleep, heart rate, workouts, energy, nutrition",
       on: "Interpreted on your device to personalize Coach, Today and Plan",
-      never: "Never uploaded to a server · never sold · never used for ads",
+      never: "Health data never uploaded · never sold · never used for ads",
     },
     tocTitle: "On this page",
     sections: [
@@ -259,7 +259,7 @@ export const privacy: Record<
         h: "Summary",
         blocks: [
           { t: "p", v: "WeekFit (\u201cwe\u201d, \u201cthe app\u201d) is a local-first fitness planner for iOS. This policy explains what data the app accesses and how it is used." },
-          { t: "ul", v: ["WeekFit 1.0 stores your plan and preferences on your device.", "We do not operate cloud sync or user accounts in version 1.0.", "We do not sell your data or use cross-app tracking."] },
+          { t: "ul", v: ["Your plan and preferences stay on your device.", "We do not operate cloud sync or required user accounts.", "We do not sell your data or use cross-app tracking for advertising.", "Optional product analytics and crash diagnostics help us improve the app — without HealthKit sample values or personal identity."] },
         ],
       },
       {
@@ -275,20 +275,24 @@ export const privacy: Record<
           { t: "p", v: "Approximate location may be used to adjust the Night Comfort theme at local sunset. Location is not stored on a server." },
           { t: "h3", v: "On-device storage" },
           { t: "p", v: "The app stores planned activities, meal preferences, profile settings, and similar app data locally using iOS storage (including UserDefaults and SwiftData)." },
+          { t: "h3", v: "Product analytics and crash diagnostics" },
+          { t: "p", v: "WeekFit uses Firebase Analytics and Firebase Crashlytics to understand feature usage (for example screens opened and funnel steps) and to diagnose crashes. Events are not linked to your name or email. We do not send HealthKit sample values, calories, macros, meal titles, coach message text, or other personal health content in analytics events." },
+          { t: "h3", v: "Optional feedback" },
+          { t: "p", v: "If you choose Help WeekFit or send feedback, your message is prepared as an email to support@weekfit.app (mailto). You control whether to send it. Feedback is not used for advertising." },
         ],
       },
       {
         id: "not-collect",
-        h: "What we do not collect in 1.0",
+        h: "What we do not collect",
         blocks: [
-          { t: "ul", v: ["No advertising identifiers", "No third-party analytics SDKs", "No cloud upload of Health data", "No required sign-in or email collection"] },
+          { t: "ul", v: ["No advertising identifiers / IDFA", "No cross-app tracking for ads", "No cloud upload of HealthKit data", "No required sign-in or email collection to use the app"] },
         ],
       },
       {
         id: "retention",
         h: "Data retention and deletion",
         blocks: [
-          { t: "p", v: "Because WeekFit 1.0 stores data only on your device, we do not keep a copy on any server. To erase all app data, delete WeekFit from your device — this removes locally stored plans, meal preferences, and profile settings. Data you granted from Apple Health stays in the Health app and remains under your control there; you can delete it in the Health app at any time." },
+          { t: "p", v: "Plan, meal preferences, and profile settings live on your device. To erase that app data, delete WeekFit from your device. Data you granted from Apple Health stays in the Health app under your control. Analytics and crash reports retained by Firebase follow Google’s retention practices for those services; they do not include your HealthKit samples." },
         ],
       },
       {
@@ -302,7 +306,7 @@ export const privacy: Record<
         id: "future",
         h: "Future features",
         blocks: [
-          { t: "p", v: "If future versions add account services, cloud sync, analytics, or support diagnostics, we will update this policy and disclose those practices before they ship." },
+          { t: "p", v: "If future versions add account services or cloud sync of your plan, we will update this policy and disclose those practices before they ship." },
         ],
       },
       {
@@ -326,12 +330,12 @@ export const privacy: Record<
     kicker: "Приватность",
     title: "Ваше здоровье — ваше.",
     lead: "WeekFit — локальное приложение. Вот что именно оно использует и чего никогда не делает.",
-    updated: "Обновлено: 8 июля 2026",
+    updated: "Обновлено: 28 июля 2026",
     flowTitle: "Как движутся ваши данные",
     flow: {
       from: "Apple Health — сон, пульс, тренировки, энергия, питание",
       on: "Обрабатываются на устройстве для персонализации Коуча, Сегодня и Плана",
-      never: "Никогда не выгружаются на сервер · не продаются · не для рекламы",
+      never: "Health-данные не выгружаются · не продаются · не для рекламы",
     },
     tocTitle: "На этой странице",
     sections: [
@@ -340,7 +344,7 @@ export const privacy: Record<
         h: "Кратко",
         blocks: [
           { t: "p", v: "WeekFit («мы», «приложение») — локальный фитнес-планировщик для iOS. Эта политика описывает, какие данные использует приложение." },
-          { t: "ul", v: ["WeekFit 1.0 хранит план и настройки на вашем устройстве.", "В версии 1.0 нет облачной синхронизации и аккаунтов.", "Мы не продаём данные и не используем кросс-приложенческое отслеживание."] },
+          { t: "ul", v: ["План и настройки хранятся на вашем устройстве.", "Нет облачной синхронизации и обязательных аккаунтов.", "Мы не продаём данные и не используем кросс-приложенческое отслеживание для рекламы.", "Опциональная продуктовая аналитика и диагностика сбоев помогают улучшать приложение — без значений HealthKit и без привязки к личности."] },
         ],
       },
       {
@@ -356,20 +360,24 @@ export const privacy: Record<
           { t: "p", v: "Примерное местоположение может использоваться для темы Night Comfort по местному закату. На сервер не передаётся." },
           { t: "h3", v: "Локальное хранение" },
           { t: "p", v: "План, предпочтения питания, профиль и другие данные хранятся на устройстве (UserDefaults, SwiftData)." },
+          { t: "h3", v: "Продуктовая аналитика и диагностика сбоев" },
+          { t: "p", v: "WeekFit использует Firebase Analytics и Firebase Crashlytics, чтобы понимать использование функций (экраны, шаги воронок) и диагностировать сбои. События не связываются с вашим именем или email. Мы не отправляем значения HealthKit, калории, макросы, названия блюд, текст коуча или другой персональный health-контент в аналитике." },
+          { t: "h3", v: "Обратная связь (по желанию)" },
+          { t: "p", v: "Если вы выбираете «Помочь WeekFit» или отправляете отзыв, сообщение готовится как письмо на support@weekfit.app (mailto). Отправку контролируете вы. Обратная связь не используется для рекламы." },
         ],
       },
       {
         id: "not-collect",
-        h: "Чего нет в 1.0",
+        h: "Чего нет",
         blocks: [
-          { t: "ul", v: ["Рекламные идентификаторы", "Сторонняя аналитика", "Облачная выгрузка Health-данных", "Обязательный вход или сбор email"] },
+          { t: "ul", v: ["Рекламные идентификаторы / IDFA", "Кросс-приложенческое отслеживание для рекламы", "Облачная выгрузка данных HealthKit", "Обязательный вход или сбор email для использования приложения"] },
         ],
       },
       {
         id: "retention",
         h: "Хранение и удаление данных",
         blocks: [
-          { t: "p", v: "Поскольку WeekFit 1.0 хранит данные только на вашем устройстве, мы не держим их копию на сервере. Чтобы стереть все данные, удалите WeekFit с устройства. Данные из Apple Health остаются в приложении «Здоровье» под вашим контролем." },
+          { t: "p", v: "План, предпочтения питания и настройки профиля живут на устройстве. Чтобы стереть эти данные, удалите WeekFit. Данные из Apple Health остаются в приложении «Здоровье» под вашим контролем. Аналитика и отчёты о сбоях у Firebase хранятся по правилам этих сервисов; они не содержат ваших семплов HealthKit." },
         ],
       },
       {
@@ -382,7 +390,7 @@ export const privacy: Record<
       {
         id: "future",
         h: "Будущие функции",
-        blocks: [{ t: "p", v: "При появлении аккаунта, облака или аналитики мы обновим политику до релиза этих функций." }],
+        blocks: [{ t: "p", v: "При появлении аккаунта или облачной синхронизации плана мы обновим политику до релиза этих функций." }],
       },
       {
         id: "children",
@@ -481,6 +489,10 @@ export const changelog: Record<
           "Faster performance and stability improvements",
           "Multiple UX improvements throughout the app",
         ],
+        added: [
+          "Help WeekFit — rate the app or send feedback from Settings",
+          "Privacy-preserving product analytics and crash reporting to keep improving WeekFit",
+        ],
       },
       {
         version: "1.0",
@@ -513,6 +525,10 @@ export const changelog: Record<
           "Улучшенные инсайты по восстановлению и ежедневные подсказки",
           "Быстрее работа и улучшения стабильности",
           "Множество UX-улучшений по всему приложению",
+        ],
+        added: [
+          "«Помочь WeekFit» — оценка приложения или отзыв из Настроек",
+          "Бережная продуктовая аналитика и отчёты о сбоях для улучшения WeekFit",
         ],
       },
       {

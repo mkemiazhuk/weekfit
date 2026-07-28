@@ -31,6 +31,7 @@ struct WeekFitRootView: View {
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var reviewManager: ReviewPromptManager
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.weekFitPalette) private var palette
@@ -58,6 +59,7 @@ struct WeekFitRootView: View {
     var body: some View {
         rootShellWithHealthHandlers
             .environmentObject(authViewModel)
+            .weekFitReviewPromptHost(manager: reviewManager)
     }
 
     private var rootShellWithHealthHandlers: some View {
@@ -198,6 +200,7 @@ struct WeekFitRootView: View {
         withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
             showContent = true
         }
+        ProductAnalytics.trackTab(selectedTab)
         planViewModel.beforePlannedActivityDeleted = {
             CoachStateStabilizer.markRealityChange(source: "plannerActivityDelete")
             CoachSnapshotInvalidator.invalidate(
@@ -305,6 +308,8 @@ struct WeekFitRootView: View {
         #if DEBUG
         TabSwitchDiagnostics.markSwitchCommitted()
         #endif
+
+        ProductAnalytics.trackTab(newValue)
 
         if newValue == .calendar || oldValue == .meals {
             MealPhotoStore.releaseMemoryCache()

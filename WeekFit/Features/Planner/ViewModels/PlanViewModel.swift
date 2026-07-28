@@ -348,6 +348,7 @@ final class PlanViewModel: ObservableObject {
         customDuration = 15
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        ProductAnalytics.planItemCreationStarted(itemType: .meal)
 
         withAnimation(.spring(response: 0.46, dampingFraction: 0.84, blendDuration: 0.08)) {
             showAddActivity = true
@@ -363,6 +364,9 @@ final class PlanViewModel: ObservableObject {
         // 🎯 ФИКС 1: Сравниваем типы через lowercased(), чтобы сопоставить "workout" из SwiftData и "Workout" из Enum
         let type = PlannerType.allCases.first { $0.title.lowercased() == activity.type.lowercased() } ?? .meal
         selectedType = type
+        ProductAnalytics.planItemEditStarted(
+            itemType: PlanItemAnalyticsType(plannedActivityType: activity.type)
+        )
 
         // 🎯 ФИКС 2: Восстанавливаем точную структуру PlannerOption со всеми сабтитрами и калориями
         if type == .meal {
@@ -463,6 +467,10 @@ final class PlanViewModel: ObservableObject {
                     activityRemindersEnabled: activityRemindersEnabled,
                     completionCheckInsEnabled: completionCheckInsEnabled
                 )
+                ReviewEngagement.record(.planCreatedOrUpdated)
+                ProductAnalytics.planItemUpdated(
+                    itemType: PlanItemAnalyticsType(plannerTypeTitle: selectedType.title)
+                )
             } catch {
                 handleSaveFailure(error)
                 return
@@ -495,6 +503,10 @@ final class PlanViewModel: ObservableObject {
                     for: activity,
                     activityRemindersEnabled: activityRemindersEnabled,
                     completionCheckInsEnabled: completionCheckInsEnabled
+                )
+                ReviewEngagement.record(.planCreatedOrUpdated)
+                ProductAnalytics.planItemCreated(
+                    itemType: PlanItemAnalyticsType(plannerTypeTitle: selectedType.title)
                 )
             } catch {
                 modelContext.delete(activity)
@@ -548,13 +560,18 @@ final class PlanViewModel: ObservableObject {
         beforePlannedActivityDeleted?()
 
         do {
-            try PlannedActivityPersistenceService.deleteActivities(
+            let snapshots = try PlannedActivityPersistenceService.deleteActivities(
                 withIDs: ids,
                 modelContext: modelContext,
                 auditSource: "PlanViewModel.removePlannedActivities"
             )
             markPlannerDataChanged()
             afterPlannedActivityDeleted?()
+            for snapshot in snapshots {
+                ProductAnalytics.planItemDeleted(
+                    itemType: PlanItemAnalyticsType(plannedActivityType: snapshot.type)
+                )
+            }
         } catch {
             PlannedActivityPlannerAudit.deleteFailed(ids: ids, error: error, modelContext: modelContext)
         }

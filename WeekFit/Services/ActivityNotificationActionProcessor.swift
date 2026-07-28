@@ -28,6 +28,7 @@ enum ActivityNotificationActionProcessor {
 
         switch action {
         case .done:
+            ProductAnalytics.notificationOpened(category: .activity)
             try? PlannedActivityNotificationConfirmationService.markCompleted(
                 activity,
                 modelContext: modelContext
@@ -35,6 +36,7 @@ enum ActivityNotificationActionProcessor {
             onActivityStateChanged?()
 
         case .skipped:
+            ProductAnalytics.notificationOpened(category: .activity)
             try? PlannedActivityNotificationConfirmationService.markSkipped(
                 activity,
                 modelContext: modelContext
@@ -42,10 +44,12 @@ enum ActivityNotificationActionProcessor {
             onActivityStateChanged?()
 
         case .later:
+            ProductAnalytics.notificationOpened(category: .activity)
             ActivityNotificationService.shared.cancelCompletionCheck(for: activity)
             ActivityNotificationService.shared.scheduleCompletionCheckLater(for: activity)
 
         case .open:
+            ProductAnalytics.notificationOpened(category: .activity)
             ActivityConfirmationState.shared.pendingActivity = activity
             onActivityStateChanged?()
         }

@@ -134,6 +134,7 @@ struct MealBuilderView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             prefillIfNeeded()
+            ProductAnalytics.trackScreen(.mealBuilder)
         }
     }
     
@@ -178,6 +179,10 @@ struct MealBuilderView: View {
             titleDesign: .default
         ) {
             WeekFitDetailScreenBackButton {
+                ProductAnalytics.mealBuilderCancelled(
+                    mode: isEditMode ? .edit : .new,
+                    source: .meals
+                )
                 onCancel?()
                 dismiss()
             }
@@ -873,6 +878,10 @@ struct MealBuilderView: View {
 
         onSave(meal)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        ProductAnalytics.mealBuilderCompleted(
+            mode: isEditMode ? .edit : .new,
+            source: .meals
+        )
 
         if !isEditMode {
             dismiss()

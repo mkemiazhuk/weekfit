@@ -17,6 +17,7 @@ struct WeekFitApp: App {
     @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @StateObject private var languageManager = AppLanguageManager()
     @StateObject private var nightComfort = NightComfortController()
+    @StateObject private var reviewPromptManager = ReviewPromptManager()
     @State private var nightComfortLocationService: NightComfortLocationService?
 
     @State private var backgroundEnteredAt: Date?
@@ -24,6 +25,9 @@ struct WeekFitApp: App {
     private let refreshThreshold: TimeInterval = 4 * 60
 
     init() {
+        // Earliest SwiftUI App entry — once-guarded; AppDelegate still configures
+        // first in didFinishLaunching before AnalyticsBootstrap (no double configure).
+        FirebaseBootstrap.configureIfNeeded()
         WeekFitWarmLocalizationCache()
         UNUserNotificationCenter.current().delegate =
             NotificationActionHandler.shared
@@ -39,6 +43,7 @@ struct WeekFitApp: App {
                 .environmentObject(activityCoordinator)
                 .environmentObject(languageManager)
                 .environmentObject(nightComfort)
+                .environmentObject(reviewPromptManager)
                 .environment(\.locale, languageManager.locale)
                 .environment(\.weekFitPalette, WeekFitSemanticPalette.interpolated(blend: nightComfort.blendFactor))
                 .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)

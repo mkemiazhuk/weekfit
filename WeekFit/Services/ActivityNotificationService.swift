@@ -49,8 +49,24 @@ final class ActivityNotificationService {
             center.getNotificationSettings { settings in
                 switch settings.authorizationStatus {
                 case .notDetermined:
-                    self.requestPermission { granted in
-                        continuation.resume(returning: granted)
+                    self.requestPermission { _ in
+                        self.center.getNotificationSettings { updated in
+                            let analyticsStatus = NotificationPermissionAnalyticsStatus(updated.authorizationStatus)
+                            AppAnalytics.shared.track(
+                                .notificationPermissionResponded,
+                                parameters: [AnalyticsParameterKey.status: analyticsStatus.rawValue]
+                            )
+                            let granted: Bool
+                            switch updated.authorizationStatus {
+                            case .authorized, .provisional, .ephemeral:
+                                granted = true
+                            case .denied, .notDetermined:
+                                granted = false
+                            @unknown default:
+                                granted = false
+                            }
+                            continuation.resume(returning: granted)
+                        }
                     }
                 case .authorized, .provisional, .ephemeral:
                     continuation.resume(returning: true)

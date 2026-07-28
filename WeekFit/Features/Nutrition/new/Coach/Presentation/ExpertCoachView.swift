@@ -13,6 +13,7 @@ struct ExpertCoachView: View {
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false
+    @State private var didRecordCoachRecommendationOpen = false
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -251,6 +252,16 @@ struct ExpertCoachView: View {
                                 label: WeekFitLocalizedString("coach.hero.myRecommendation"),
                                 text: recommendation
                             )
+                            .onAppear {
+                                guard !didRecordCoachRecommendationOpen else { return }
+                                guard let ui else { return }
+                                didRecordCoachRecommendationOpen = true
+                                ReviewEngagement.record(.coachRecommendationOpened)
+                                ProductAnalytics.coachRecommendationViewed(
+                                    scenario: ui.scenario,
+                                    warningAlert: ui.warningAlert
+                                )
+                            }
                         }
 
                         if let risk = ui?.avoid.trimmingCharacters(in: .whitespacesAndNewlines), !risk.isEmpty {

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ProfileView: View {
 
@@ -13,12 +14,14 @@ struct ProfileView: View {
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nightComfort: NightComfortController
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var reviewManager: ReviewPromptManager
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
     @State private var showResetFailure = false
     @State private var resetFailureMessage = ""
     @State private var isResettingLocalData = false
+    @State private var showVersionCopiedToast = false
 
     @AppStorage(CoachDebugSettings.logLevelKey)
     private var coachLogLevelRaw = CoachLogLevel.off.rawValue
@@ -48,6 +51,12 @@ struct ProfileView: View {
                 .animation(.easeOut(duration: 0.18), value: isShowingDialog)
 
             resetDialogOverlay
+
+            if showVersionCopiedToast {
+                versionCopiedToast
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(3)
+            }
         }
         .weekFitTabSwitchModalOverlay()
         .task {
@@ -106,6 +115,10 @@ struct ProfileView: View {
                 HelpSupportView()
                     .settingsNavigationPush()
 
+            case .helpWeekFit:
+                HelpWeekFitView(reviewManager: reviewManager)
+                    .settingsNavigationPush()
+
             case .termsPrivacy:
                 TermsPrivacyView()
                     .settingsNavigationPush()
@@ -148,6 +161,8 @@ private extension ProfileView {
                     items: viewModel.supportSettings,
                     showHealthStatus: false
                 )
+
+                appVersionFooter
             }
             .padding(.horizontal, 20)
             .padding(.top, 4)
@@ -479,6 +494,78 @@ private extension ProfileView {
                 .profilePremiumSectionCard(cornerRadius: 20)
         }
     }
+
+    var appVersionFooter: some View {
+        let metadata = FeedbackMetadata.current()
+        let versionLine = String(
+            format: WeekFitLocalizedString("settings.version.format"),
+            metadata.appVersion,
+            metadata.buildNumber
+        )
+
+        return Button {
+            copyVersionDiagnostics(metadata)
+        } label: {
+            VStack(spacing: 4) {
+                Text("WeekFit")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+
+                Text(versionLine)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
+            }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 18)
+            .padding(.bottom, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.appVersion")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            String(
+                format: WeekFitLocalizedString("settings.a11y.version.label"),
+                metadata.appVersion,
+                metadata.buildNumber
+            )
+        )
+        .accessibilityHint(WeekFitLocalizedString("settings.a11y.version.hint"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    var versionCopiedToast: some View {
+        VStack {
+            Spacer()
+
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(WeekFitStyle.brandGreen)
+                    .accessibilityHidden(true)
+
+                Text(WeekFitLocalizedString("settings.version.copied"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 13)
+            .background {
+                Capsule()
+                    .fill(.black.opacity(0.88))
+                    .overlay {
+                        Capsule()
+                            .stroke(.white.opacity(0.11), lineWidth: 1)
+                    }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 34)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
+    }
 }
 
 // MARK: - Helpers
@@ -528,6 +615,7 @@ private extension ProfileView {
     func resetLocalData() async {
         guard !isResettingLocalData else { return }
         isResettingLocalData = true
+        ProductAnalytics.dataResetStarted()
 
         do {
             let resetService = LocalDataResetService(modelContext: modelContext)
@@ -543,6 +631,10 @@ private extension ProfileView {
             ActivityConfirmationState.shared.pendingActivity = nil
             nutritionViewModel.resetLocalState()
             viewModel.reloadUserProfile()
+
+            // Clear product screen dedupe so a fresh session starts after reset.
+            ProductScreenTracker.shared.reset()
+            ProductAnalytics.dataResetCompleted()
 
             appSession.triggerLocalDataResetCompleted()
             appSession.triggerReturnToToday()
@@ -581,6 +673,8 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.root.appleHealth")
         case .help:
             return WeekFitLocalizedString("settings.profile.item.helpSupport")
+        case .helpWeekFit:
+            return WeekFitLocalizedString("review.helpWeekFit.title")
         case .terms:
             return WeekFitLocalizedString("settings.profile.item.termsPrivacy")
         case .account:
@@ -611,6 +705,8 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
         case .help:
             return WeekFitLocalizedString("settings.profile.item.helpSupport.subtitle")
+        case .helpWeekFit:
+            return WeekFitLocalizedString("review.helpWeekFit.rowSubtitle")
         case .terms:
             return WeekFitLocalizedString("settings.profile.item.termsPrivacy.subtitle")
         case .account:
@@ -651,6 +747,9 @@ private extension ProfileView {
         case .help:
             return .cyan
 
+        case .helpWeekFit:
+            return WeekFitStyle.brandGreen
+
         case .terms:
             return .orange
 
@@ -669,6 +768,9 @@ private extension ProfileView {
 
         case .help:
             return "questionmark"
+
+        case .helpWeekFit:
+            return "heart.text.square.fill"
 
         case .terms:
             return "doc.text.fill"
@@ -711,6 +813,7 @@ private extension ProfileView {
         case .nightComfort: return "settings.nightComfort"
         case .nutritionGoal: return "settings.nutritionGoal"
         case .help: return "settings.help"
+        case .helpWeekFit: return "settings.helpWeekFit"
         case .terms: return "settings.terms"
         case .units: return "settings.units"
         }
@@ -732,6 +835,20 @@ private extension ProfileView {
         await MainActor.run {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                 healthManager.isHealthAccessGranted = actualAccess
+            }
+        }
+    }
+
+    func copyVersionDiagnostics(_ metadata: FeedbackMetadata) {
+        UIPasteboard.general.string = metadata.diagnosticClipboardText
+
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            showVersionCopiedToast = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeOut(duration: 0.22)) {
+                showVersionCopiedToast = false
             }
         }
     }

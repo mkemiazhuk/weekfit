@@ -34,6 +34,7 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var nightComfort: NightComfortController
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var reviewManager: ReviewPromptManager
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $isPresented) {
@@ -47,9 +48,13 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
             .environmentObject(languageManager)
             .environmentObject(nightComfort)
             .environmentObject(authViewModel)
+            .environmentObject(reviewManager)
             .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
             .weekFitSheetChrome(cornerRadius: 36)
+            .onAppear {
+                ProductAnalytics.trackScreen(.settings)
+            }
         }
     }
 }

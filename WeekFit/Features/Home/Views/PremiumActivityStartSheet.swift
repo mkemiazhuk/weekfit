@@ -168,7 +168,17 @@ struct PremiumActivityStartSheet: View {
 
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(newActivity)
         modelContext.insert(newActivity)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            ProductAnalytics.activityStarted(
+                category: ProductAnalytics.activityCategory(forType: newActivity.type),
+                source: .today
+            )
+        } catch {
+            modelContext.delete(newActivity)
+            ProductAnalytics.activityLoggingFailed(source: .today, reason: .saveFailed)
+            return
+        }
 
         isPresented = false
         refreshID = UUID()
@@ -373,6 +383,12 @@ struct PremiumActivityStartSheet: View {
             activity.isCompleted = true
 
             try? modelContext.save()
+
+            ReviewEngagement.record(.activityLoggedOrCompleted)
+            ProductAnalytics.activityCompleted(
+                category: ProductAnalytics.activityCategory(forType: activity.type),
+                source: .today
+            )
 
             refreshID = UUID()
             isPresented = false

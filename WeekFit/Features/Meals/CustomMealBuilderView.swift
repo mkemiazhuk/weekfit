@@ -793,6 +793,7 @@ struct CustomMealBuilderView: View {
     private func handlePhotoAnalysisResult(_ result: FoodPhotoAnalysisResult) {
         switch result {
         case let .barcode(estimate, lookup):
+            ProductAnalytics.barcodeScanSucceeded(source: .meals)
             applyBarcodeEstimate(estimate, lookup: lookup)
 
         case let .nutritionLabel(estimate):
@@ -803,6 +804,7 @@ struct CustomMealBuilderView: View {
         case let .failure(failure):
             switch failure {
             case .noContent:
+                ProductAnalytics.barcodeScanFailed(source: .meals, reason: .barcodeNotRecognized)
                 setBarcodeLookupMessage(
                     WeekFitLocalizedString("meals.barcode.notFound"),
                     tone: .error
@@ -812,6 +814,16 @@ struct CustomMealBuilderView: View {
             case let .barcode(lookup):
                 scannedBarcode = lookup.barcode
                 scannedNutritionDataSource = nil
+                let reason: BarcodeScanFailureReason
+                switch lookup.status {
+                case .notFound:
+                    reason = .productNotFound
+                case .offline:
+                    reason = .network
+                case .partial, .found:
+                    reason = .unknown
+                }
+                ProductAnalytics.barcodeScanFailed(source: .meals, reason: reason)
                 setBarcodeLookupMessage(
                     barcodeFailureMessage(for: lookup),
                     tone: lookup.status == .offline ? .warning : .error
@@ -1022,10 +1034,12 @@ struct CustomMealBuilderView: View {
         Self.debugLog("openCamera.request")
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
             Self.debugLog("openCamera.fallbackToLibrary")
+            ProductAnalytics.barcodeScanFailed(source: .meals, reason: .cameraUnavailable)
             showPhotoLibrary = true
             return
         }
 
+        ProductAnalytics.barcodeScanStarted(source: .meals)
         showCamera = true
     }
 
@@ -1069,6 +1083,7 @@ struct CustomMealBuilderView: View {
         guard isSaveEnabled else {
             validationMessage = labels.requiredFieldsValidation
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, reason: .invalidInput)
             Self.debugEnd("save.invalidDisabled", start: saveStart)
             return
         }
@@ -1121,6 +1136,7 @@ struct CustomMealBuilderView: View {
             } catch {
                 await MainActor.run {
                     validationMessage = labels.photoSaveFailedValidation
+                    ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, reason: .saveFailed)
                     Self.debugEnd("save.photoFailed", start: saveStart)
                 }
                 return
@@ -1168,6 +1184,10 @@ struct CustomMealBuilderView: View {
                 releaseCapturedPhotoMemory(deletePendingOriginal: false)
                 onSave(meal)
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                ProductAnalytics.foodLoggingCompleted(
+                    method: scannedBarcode == nil ? .manual : .barcode,
+                    source: .meals
+                )
                 Self.debugEnd("save.success", start: saveStart)
                 dismiss()
             }
@@ -1316,6 +1336,7 @@ private struct CustomMealCameraCaptureView: UIViewControllerRepresentable {
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            ProductAnalytics.barcodeScanCancelled(source: .meals)
             parent.dismiss()
         }
     }

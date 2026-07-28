@@ -23,6 +23,7 @@ enum ProfileItemType {
     case units
     case account
     case help
+    case helpWeekFit
     case terms
     case appleHealth
 }
@@ -35,6 +36,7 @@ enum ProfileDestination: Identifiable {
     case healthAccess
     case account
     case helpSupport
+    case helpWeekFit
     case termsPrivacy
     case editName
 
@@ -47,6 +49,7 @@ enum ProfileDestination: Identifiable {
         case .healthAccess: return "healthAccess"
         case .account: return "account"
         case .helpSupport: return "helpSupport"
+        case .helpWeekFit: return "helpWeekFit"
         case .termsPrivacy: return "termsPrivacy"
         case .editName: return "editName"
         }

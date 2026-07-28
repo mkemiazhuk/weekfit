@@ -193,6 +193,12 @@
         func loadSupportSettings() -> [ProfileItem] {
             [
                 ProfileItem(
+                    icon: "heart.text.square.fill",
+                    title: WeekFitLocalizedString("review.helpWeekFit.title"),
+                    subtitle: WeekFitLocalizedString("review.helpWeekFit.subtitle"),
+                    type: .helpWeekFit
+                ),
+                ProfileItem(
                     icon: "questionmark.circle.fill",
                     title: "Help & Support",
                     subtitle: nil,

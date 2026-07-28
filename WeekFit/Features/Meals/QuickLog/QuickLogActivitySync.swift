@@ -8,7 +8,9 @@ enum QuickLogActivitySync {
         profile: QuickLogNutritionProfile,
         selection: QuickLogSelection,
         plannedActivities: [PlannedActivity],
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        analyticsSource: AnalyticsSource = .today,
+        analyticsMethod: FoodLoggingMethod = .quickLog
     ) -> String? {
         let nutrition = QuickLogServingMath.nutrition(for: profile, selection: selection)
         let effectivePortions = nutrition.portions
@@ -46,7 +48,16 @@ enum QuickLogActivitySync {
             activity.durationMinutes = durationMinutes
             activity.isCompleted = true
             activity.isSkipped = false
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+                recordSuccessfulLog(
+                    kind: profile.kind,
+                    source: analyticsSource,
+                    method: analyticsMethod
+                )
+            } catch {
+                recordFailedLog(kind: profile.kind, source: analyticsSource, method: analyticsMethod)
+            }
             return activityID
         }
 
@@ -73,9 +84,57 @@ enum QuickLogActivitySync {
 
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            recordSuccessfulLog(
+                kind: profile.kind,
+                source: analyticsSource,
+                method: analyticsMethod
+            )
+        } catch {
+            modelContext.delete(activity)
+            recordFailedLog(kind: profile.kind, source: analyticsSource, method: analyticsMethod)
+            return nil
+        }
 
         return activity.id
+    }
+
+    @MainActor
+    private static func recordSuccessfulLog(
+        kind: QuickLogItemKind,
+        source: AnalyticsSource,
+        method: FoodLoggingMethod
+    ) {
+        switch kind {
+        case .drink:
+            ReviewEngagement.record(.drinkLogged)
+            ProductAnalytics.hydrationLoggingCompleted(
+                method: method == .quickLog ? .quickLog : .other,
+                source: source
+            )
+        case .meal, .snack:
+            ReviewEngagement.record(.foodLogged)
+            ProductAnalytics.foodLoggingCompleted(method: method, source: source)
+        }
+    }
+
+    @MainActor
+    private static func recordFailedLog(
+        kind: QuickLogItemKind,
+        source: AnalyticsSource,
+        method: FoodLoggingMethod
+    ) {
+        switch kind {
+        case .drink:
+            ProductAnalytics.hydrationLoggingFailed(
+                method: method == .quickLog ? .quickLog : .other,
+                source: source,
+                reason: .saveFailed
+            )
+        case .meal, .snack:
+            ProductAnalytics.foodLoggingFailed(method: method, source: source, reason: .saveFailed)
+        }
     }
 
     private static func accentColors(for kind: QuickLogItemKind) -> (red: Double, green: Double, blue: Double) {

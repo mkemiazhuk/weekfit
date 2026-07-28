@@ -40,13 +40,10 @@ final class ProfileViewModel: ObservableObject {
         destination = .account
     }
 
-    func openAppleHealth() {
-        destination = .healthAccess
-    }
-
     func handleTap(_ item: ProfileItem) {
         switch item.type {
         case .notifications:
+            ProductAnalytics.notificationSettingsOpened()
             destination = .notifications
 
         case .language:
@@ -59,6 +56,7 @@ final class ProfileViewModel: ObservableObject {
             destination = .nutritionGoal
 
         case .healthAccess, .appleHealth:
+            ProductAnalytics.healthSettingsOpened()
             destination = .healthAccess
 
         case .account:
@@ -67,12 +65,21 @@ final class ProfileViewModel: ObservableObject {
         case .help:
             destination = .helpSupport
 
+        case .helpWeekFit:
+            ProductAnalytics.trackScreen(.helpWeekFit)
+            destination = .helpWeekFit
+
         case .terms:
             destination = .termsPrivacy
 
         case .units:
             break
         }
+    }
+
+    func openAppleHealth() {
+        ProductAnalytics.healthSettingsOpened()
+        destination = .healthAccess
     }
 
     func updateUserProfile(_ profile: UserProfile) {
