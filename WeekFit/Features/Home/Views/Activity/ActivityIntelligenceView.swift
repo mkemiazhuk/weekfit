@@ -2402,7 +2402,7 @@ private struct SessionMetricGridCell: View {
     let item: SessionMetricItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 5) {
                 Image(systemName: item.icon)
                     .font(.system(size: 12, weight: .semibold))
@@ -2417,7 +2417,6 @@ private struct SessionMetricGridCell: View {
                     .minimumScaleFactor(0.78)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(minHeight: 26, alignment: .topLeading)
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(item.value)
