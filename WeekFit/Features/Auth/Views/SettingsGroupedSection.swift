@@ -33,11 +33,20 @@ struct SettingsGroupedSection<Content: View>: View {
             }
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(WeekFitTheme.cardTertiary)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                WeekFitTheme.cardSurfaceElevated.opacity(0.92),
+                                WeekFitTheme.cardSurface
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.borderSoft, lineWidth: 1)
+                    .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }

@@ -27,7 +27,7 @@ final class SettingsInformationArchitectureTests: XCTestCase {
         let preferences = service.loadPreferenceSettings()
         let types = preferences.map(\.type)
 
-        XCTAssertEqual(types, [.notifications, .language, .nightComfort, .nutritionGoal])
+        XCTAssertEqual(types, [.notifications, .language, .nightComfort, .nutritionGoal, .units])
         XCTAssertFalse(types.contains(.account))
         XCTAssertFalse(types.contains(.appleHealth))
     }

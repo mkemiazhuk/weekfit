@@ -199,6 +199,8 @@ struct CoachContext: Equatable, Sendable {
     let completedHeatToday: Bool
     /// True when the focused `.walk` activity is hike-flavored — copy/icon use hike nouns instead of generic walk nouns.
     let isFocusHikeLike: Bool
+    /// True when at least one meal has been logged today (calories or mealsCount).
+    let hasLoggedMealToday: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
     let conversationPhase: CoachConversationPhase
     /// Human-readable resolver reason for logs and tests.
@@ -226,6 +228,7 @@ struct CoachContext: Equatable, Sendable {
         completedWalkToday: Bool = false,
         completedHeatToday: Bool = false,
         isFocusHikeLike: Bool = false,
+        hasLoggedMealToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason
     ) {
@@ -250,6 +253,7 @@ struct CoachContext: Equatable, Sendable {
         self.completedWalkToday = completedWalkToday
         self.completedHeatToday = completedHeatToday
         self.isFocusHikeLike = isFocusHikeLike
+        self.hasLoggedMealToday = hasLoggedMealToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
     }

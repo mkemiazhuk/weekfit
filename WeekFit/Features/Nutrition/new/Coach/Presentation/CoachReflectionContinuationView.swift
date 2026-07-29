@@ -132,13 +132,10 @@ private struct CoachReflectionPreviewCard: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(WeekFitTheme.cardBackground.opacity(0.55))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(accent.opacity(0.2), lineWidth: 1)
-                )
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: accent,
+            cornerRadius: 28
         )
     }
 

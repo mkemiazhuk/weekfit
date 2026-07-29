@@ -5069,6 +5069,17 @@ private enum StoryCardProminence {
             return 3
         }
     }
+
+    var premiumEmphasis: WeekFitPremiumCardEmphasis {
+        switch self {
+        case .primary:
+            return .elevated
+        case .secondary:
+            return .accent
+        case .tertiary:
+            return .standard
+        }
+    }
 }
 
 private extension InsightsView {
@@ -5399,22 +5410,11 @@ private extension InsightsView {
         }
         .padding(prominence.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [
-                    accent.opacity(prominence.accentOpacity),
-                    cardBackground.opacity(0.98)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        .weekFitPremiumCard(
+            emphasis: prominence.premiumEmphasis,
+            accent: accent,
+            cornerRadius: 28
         )
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
-        }
-        .shadow(color: softShadow.opacity(prominence.shadowOpacity), radius: prominence.shadowRadius, y: prominence.shadowY)
     }
 
     func actionLine(label: String, text: String, accent: Color) -> some View {
@@ -5690,8 +5690,6 @@ private extension InsightsView {
 
     var heroInsightCard: some View {
         ZStack(alignment: .topLeading) {
-            cardBackground.opacity(0.98)
-
             VStack(alignment: .leading, spacing: 13) {
                 HStack(alignment: .center, spacing: 8) {
                     Image(systemName: snapshot.hero.icon)
@@ -5747,12 +5745,11 @@ private extension InsightsView {
             .padding(.vertical, 13)
         }
         .frame(minHeight: 218)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
-        }
-        .shadow(color: softShadow.opacity(0.45), radius: 12, y: 6)
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: snapshot.hero.accent,
+            cornerRadius: 28
+        )
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .onTapGesture {
             perform(action: snapshot.hero.actionDestination)
@@ -6256,14 +6253,7 @@ private extension InsightsView {
             }
         }
         .padding(13)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(cardBackground.opacity(0.92))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 22)
     }
 
     func evidenceRow(_ text: String, accent: Color) -> some View {

@@ -288,49 +288,11 @@ struct ExpertCoachView: View {
             .padding(16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.138),
-                            cardBackground.opacity(0.52),
-                            cardBackground.opacity(0.28)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.05),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: UnitPoint(x: 0.72, y: 0.58)
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.26),
-                                    WeekFitTheme.whiteOpacity(0.055)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.25
-                        )
-                )
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: ui?.accentColor ?? WeekFitTheme.coachAccent,
+            cornerRadius: 28
         )
-        .shadow(color: (ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.092), radius: 18, y: 8)
-        .shadow(color: Color.black.opacity(0.19), radius: 14, y: 7)
     }
 
     private var stateBadge: some View {
@@ -430,12 +392,7 @@ struct ExpertCoachView: View {
             Spacer()
         }
         .padding(16)
-        .background(cardBackground.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
-        )
+        .weekFitPremiumCard(emphasis: .elevated, accent: WeekFitTheme.coachAccent, cornerRadius: 18)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -460,12 +417,7 @@ struct ExpertCoachView: View {
             Spacer()
         }
         .padding(16)
-        .background(cardBackground.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
-        )
+        .weekFitPremiumCard(emphasis: .elevated, accent: CoachState.registryGapColor, cornerRadius: 18)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

@@ -15,6 +15,7 @@ struct ProfileView: View {
     @EnvironmentObject private var nightComfort: NightComfortController
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var reviewManager: ReviewPromptManager
+    @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
@@ -93,6 +94,10 @@ struct ProfileView: View {
                 NutritionGoalSettingsView(viewModel: viewModel)
                     .environmentObject(appSession)
                     .environmentObject(healthManager)
+                    .settingsNavigationPush()
+
+            case .units:
+                UnitsSettingsView()
                     .settingsNavigationPush()
 
             case .healthAccess:
@@ -680,7 +685,7 @@ private extension ProfileView {
         case .account:
             return WeekFitLocalizedString("settings.account.title")
         case .units:
-            return item.title
+            return WeekFitLocalizedString("settings.units.title")
         }
     }
 
@@ -701,6 +706,8 @@ private extension ProfileView {
             return nightComfortPreferenceLabel
         case .nutritionGoal:
             return nutritionGoalRowSubtitle
+        case .units:
+            return unitsSubtitle
         case .healthAccess, .appleHealth:
             return WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
         case .help:
@@ -725,6 +732,10 @@ private extension ProfileView {
             heightCm: healthManager.heightCm
         )
         return NutritionGoalDisplay.title(for: goal)
+    }
+
+    var unitsSubtitle: String {
+        unitsStore.selectedPreference.subtitle
     }
 
     func rowTint(for item: ProfileItem) -> Color {

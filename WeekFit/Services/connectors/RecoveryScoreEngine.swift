@@ -47,7 +47,7 @@ struct RecoveryPriorDayLoad: Equatable, Hashable {
     }
 }
 
-enum RecoveryStrainLevel: Equatable {
+enum RecoveryStrainLevel: Equatable, Hashable {
     case light
     case moderate
     case heavy

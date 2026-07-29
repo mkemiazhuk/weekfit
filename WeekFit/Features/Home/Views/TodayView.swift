@@ -46,8 +46,8 @@ struct TodayView: View {
     @State private var activityToConfirm: PlannedActivity? = nil
     @State private var queuedActivityToConfirm: PlannedActivity? = nil
 
-    private let cardBackground = Color(red: 0.10, green: 0.11, blue: 0.14)
-    private let cardSecondary = Color(red: 0.14, green: 0.15, blue: 0.19)
+    private let cardBackground = WeekFitTheme.cardSurface
+    private let cardSecondary = WeekFitTheme.cardSurfaceElevated
 
     private var textPrimary: Color { palette.textPrimary }
     private var textSecondary: Color { palette.textSecondary }
@@ -1140,15 +1140,15 @@ struct TodayView: View {
     private var todayScreen: some View {
         WeekFitScreenContainer {
 
-            WeekFitScreenHeader(
+            WeekFitTodayWeatherHeader(
                 title: WeekFitLocalizedString("today.title"),
                 subtitle: selectedDateTitle,
                 initials: userSettings.profileInitials,
                 hasProfileName: userSettings.hasProfileName,
-                showAvatar: true
-            ) {
-                showProfile = true
-            }
+                onAvatarTap: {
+                    showProfile = true
+                }
+            )
 
         } content: {
 
@@ -1251,46 +1251,11 @@ struct TodayView: View {
         featured: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        let softenedAccent = palette.accent(accent)
-
-        return content()
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                palette.cardBackground.opacity(featured ? 0.94 : 0.88),
-                                WeekFitTheme.whiteOpacity(featured ? 0.024 : 0.014)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                softenedAccent.opacity(palette.accentOpacity(featured ? 0.16 : 0.10)),
-                                palette.borderSoft,
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: softenedAccent.opacity(Double(palette.accentOpacity(featured ? 0.05 : 0.025))),
-                radius: featured ? 12 : 6,
-                y: featured ? 5 : 2
-            )
-            .shadow(
-                color: Color.black.opacity(Double(palette.cardShadowOpacity * (featured ? 0.36 : 0.21))),
-                radius: featured ? 8 : 4,
-                y: featured ? 3 : 2
+        content()
+            .weekFitPremiumCard(
+                emphasis: featured ? .elevated : .standard,
+                accent: accent,
+                cornerRadius: cornerRadius
             )
     }
 
@@ -1302,50 +1267,11 @@ struct TodayView: View {
         content()
             .padding(.horizontal, 16)
             .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
-            .background {
-                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                cardBackground.opacity(0.90),
-                                WeekFitTheme.whiteOpacity(0.018)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        accent.opacity(0.10),
-                                        accent.opacity(0.025),
-                                        Color.clear
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.14),
-                                WeekFitTheme.whiteOpacity(0.05),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(color: accent.opacity(0.04), radius: 8, y: 3)
-            .shadow(color: Color.black.opacity(0.09), radius: 6, y: 3)
+            .weekFitPremiumCard(
+                emphasis: .accent,
+                accent: accent,
+                cornerRadius: TodayLayout.cardRadius
+            )
     }
 
     private var todayQuickActionsAccent: Color {
@@ -1363,14 +1289,11 @@ struct TodayView: View {
             .padding(.top, TodayLayout.overviewContentTopPadding)
             .padding(.bottom, TodayLayout.overviewContentBottomPadding)
             .frame(maxWidth: .infinity)
-            .background {
-                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                    .fill(cardBackground.opacity(0.38))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.032), lineWidth: 1)
-            }
+            .weekFitPremiumCard(
+                emphasis: .elevated,
+                accent: nil,
+                cornerRadius: TodayLayout.cardRadius
+            )
     }
 
     private var todayCoachInsightPhase: TodayCoachInsightPhase {
@@ -3154,24 +3077,11 @@ private extension View {
         cardBackground: Color,
         cornerRadius: CGFloat
     ) -> some View {
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.clear,
-                            cardSecondary.opacity(0.97),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
-        }
+        weekFitPremiumCard(
+            emphasis: .compact,
+            accent: nil,
+            cornerRadius: cornerRadius
+        )
         .contentShape(Rectangle())
     }
 }

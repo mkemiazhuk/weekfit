@@ -42,23 +42,7 @@ struct OnboardingContextualIntroCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.075),
-                            WeekFitTheme.whiteOpacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(accent.opacity(0.18), lineWidth: 1)
-        }
+        .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: 20)
     }
 
     private func dismiss() {

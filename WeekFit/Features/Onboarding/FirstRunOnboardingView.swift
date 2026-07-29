@@ -2,12 +2,14 @@ import SwiftUI
 import HealthKit
 
 /// Guided product experience — promise → aim → trust → proof → coach.
-/// Flow v13: promise → goal → health → understanding → ready.
+/// Flow v14: promise → goal → units → health → understanding → ready.
 struct FirstRunOnboardingView: View {
 
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @State private var pendingUnitSystem: WeekFitResolvedUnitSystem = WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
+    @State private var didPersistUnitsSelection = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -32,6 +34,7 @@ struct FirstRunOnboardingView: View {
     enum Step: Int, CaseIterable, Hashable, Identifiable {
         case promise
         case goal
+        case units
         case health
         case understanding
         case ready
@@ -42,6 +45,7 @@ struct FirstRunOnboardingView: View {
             switch self {
             case .promise: return "promise"
             case .goal: return "goal"
+            case .units: return "units"
             case .health: return "health"
             case .understanding: return "understanding"
             case .ready: return "ready"
@@ -68,6 +72,11 @@ struct FirstRunOnboardingView: View {
         let profile = ProfileService()
         let restoredGoal = profile.loadManualNutritionGoal() ?? .maintenance
         _selectedGoal = State(initialValue: restoredGoal)
+
+        // Preselect the device-recommended choice, but only persist after the user confirms.
+        _pendingUnitSystem = State(
+            initialValue: WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
+        )
 
         if let raw = OnboardingStore.persistedStepRawValue,
            let restored = Step(rawValue: raw) {
@@ -191,6 +200,7 @@ struct FirstRunOnboardingView: View {
         switch step {
         case .promise: promiseStep
         case .goal: goalStep
+        case .units: unitsStep
         case .health: healthStep
         case .understanding: understandingStep
         case .ready: readyStep
@@ -217,7 +227,7 @@ struct FirstRunOnboardingView: View {
                 startRadius: 10,
                 endRadius: 320
             )
-        case .goal, .understanding:
+        case .goal, .units, .understanding:
             RadialGradient(
                 colors: [WeekFitTheme.brandGold.opacity(0.06), Color.clear],
                 center: UnitPoint(x: 0.5, y: 0.28),
@@ -234,6 +244,7 @@ struct FirstRunOnboardingView: View {
             || step == .promise
             || step == .understanding
             || step == .goal
+            || step == .units
             || step == .ready
             || step == .health
     }
@@ -281,6 +292,107 @@ private extension FirstRunOnboardingView {
 
                 Spacer(minLength: 12)
             }
+        }
+    }
+
+    var unitsStep: some View {
+        page {
+            VStack(alignment: .leading, spacing: 0) {
+                editorialTitle(WeekFitUsesRussianLanguage() ? "Выберите единицы" : "Choose your units")
+                editorialBody(
+                    WeekFitUsesRussianLanguage()
+                        ? "WeekFit выбрал рекомендуемый формат для вашего устройства. Вы можете изменить это в любое время в Настройках."
+                        : "WeekFit has selected the recommended format for your device. You can change it anytime in Settings."
+                )
+                .padding(.top, 8)
+
+                VStack(spacing: 0) {
+                    unitsOptionRow(system: .metric)
+                    unitsDivider
+                    unitsOptionRow(system: .uk)
+                    unitsDivider
+                    unitsOptionRow(system: .us)
+                }
+                .profilePremiumCard(cornerRadius: 20)
+                .padding(.top, 22)
+
+                Spacer(minLength: 8)
+            }
+        }
+    }
+
+    private func unitsOptionRow(system: WeekFitResolvedUnitSystem) -> some View {
+        Button {
+            pendingUnitSystem = system
+        } label: {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(optionTitle(for: system))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(optionSubtitle(for: system))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: pendingUnitSystem == system ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(
+                        pendingUnitSystem == system
+                            ? Color(red: 170/255, green: 255/255, blue: 70/255)
+                            : WeekFitTheme.whiteOpacity(0.35)
+                    )
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(optionA11yLabel(for: system)))
+        .accessibilityAddTraits(pendingUnitSystem == system ? .isSelected : [])
+    }
+
+    private var unitsDivider: some View {
+        Rectangle()
+            .fill(WeekFitTheme.whiteOpacity(0.06))
+            .frame(height: 1)
+            .padding(.leading, 16)
+            .padding(.trailing, 16)
+    }
+
+    private func optionTitle(for system: WeekFitResolvedUnitSystem) -> String {
+        switch system {
+        case .metric: return WeekFitLocalizedString("settings.units.option.metric")
+        case .uk: return WeekFitLocalizedString("settings.units.option.uk")
+        case .us: return WeekFitLocalizedString("settings.units.option.us")
+        }
+    }
+
+    private func optionSubtitle(for system: WeekFitResolvedUnitSystem) -> String {
+        switch system {
+        case .metric: return "10 km · 75 kg · 23°C"
+        case .uk: return "6 mi · 11 st 11 lb · 23°C"
+        case .us: return "6 mi · 165 lb · 73°F"
+        }
+    }
+
+    private func optionA11yLabel(for system: WeekFitResolvedUnitSystem) -> String {
+        if WeekFitUsesRussianLanguage() {
+            switch system {
+            case .metric: return "Метрическая. Пример: 10 км, 75 кг, 23 цельсия."
+            case .uk: return "Великобритания. Пример: 6 миль, 11 стоунов 11 фунтов, 23 цельсия."
+            case .us: return "США. Пример: 6 миль, 165 фунтов, 73 фаренгейта."
+            }
+        }
+        switch system {
+        case .metric: return "Metric. Example: 10 kilometers, 75 kilograms, 23 Celsius."
+        case .uk: return "United Kingdom. Example: 6 miles, 11 stone 11 pounds, 23 Celsius."
+        case .us: return "United States. Example: 6 miles, 165 pounds, 73 Fahrenheit."
         }
     }
 
@@ -602,6 +714,8 @@ private extension FirstRunOnboardingView {
             return WeekFitLocalizedString("onboarding.v10.promise.cta")
         case .goal:
             return WeekFitLocalizedString("onboarding.v12.cta.createPlan")
+        case .units:
+            return WeekFitUsesRussianLanguage() ? "Продолжить" : "Continue"
         case .health:
             return healthManager.isHealthAccessGranted
                 ? WeekFitLocalizedString("onboarding.v12.cta.seeItLive")
@@ -619,6 +733,9 @@ private extension FirstRunOnboardingView {
             advance(to: .goal)
         case .goal:
             persistGoalIfNeeded()
+            advance(to: .units)
+        case .units:
+            persistUnitsSelectionIfNeeded()
             advance(to: .health)
         case .health:
             if healthManager.isHealthAccessGranted {
@@ -668,6 +785,20 @@ private extension FirstRunOnboardingView {
         appSession.triggerCoachRefresh(source: "onboarding.goal")
         appSession.triggerHealthRefresh(source: "onboarding.goal")
         didPersistGoal = true
+    }
+
+    func persistUnitsSelectionIfNeeded() {
+        guard !didPersistUnitsSelection else { return }
+        didPersistUnitsSelection = true
+
+        switch pendingUnitSystem {
+        case .metric:
+            WeekFitUnitsStore.shared.setSelectedPreference(.metric)
+        case .uk:
+            WeekFitUnitsStore.shared.setSelectedPreference(.uk)
+        case .us:
+            WeekFitUnitsStore.shared.setSelectedPreference(.us)
+        }
     }
 
     func connectHealth() {
@@ -736,6 +867,12 @@ private extension FirstRunOnboardingView {
         #if !targetEnvironment(simulator)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         #endif
+
+        // If the user never confirmed units, a skip is treated as "Automatic".
+        if !didPersistUnitsSelection {
+            WeekFitUnitsStore.shared.setSelectedPreference(.automatic)
+        }
+
         persistGoalIfNeeded()
         OnboardingStore.markCompleted()
         OnboardingAnalytics.completed()

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import WeekFitPlanner
 
 enum QuickLogActivitySync {
 
@@ -67,7 +68,12 @@ enum QuickLogActivitySync {
             type: activityType,
             title: profile.title,
             durationMinutes: durationMinutes,
-            icon: profile.icon,
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: profile.icon,
+                title: profile.title,
+                type: activityType,
+                imageName: profile.isWater ? "hydration" : profile.imageName
+            ),
             imageName: profile.isWater ? "hydration" : profile.imageName,
             colorRed: colors.red,
             colorGreen: colors.green,

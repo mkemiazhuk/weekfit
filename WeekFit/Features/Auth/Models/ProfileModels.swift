@@ -33,6 +33,7 @@ enum ProfileDestination: Identifiable {
     case language
     case nightComfort
     case nutritionGoal
+    case units
     case healthAccess
     case account
     case helpSupport
@@ -46,6 +47,7 @@ enum ProfileDestination: Identifiable {
         case .language: return "language"
         case .nightComfort: return "nightComfort"
         case .nutritionGoal: return "nutritionGoal"
+        case .units: return "units"
         case .healthAccess: return "healthAccess"
         case .account: return "account"
         case .helpSupport: return "helpSupport"

@@ -85,4 +85,8 @@ enum AnalyticsEvent: String, Sendable {
     case feedbackSubmitted = "feedback_submitted"
     case feedbackDismissed = "feedback_dismissed"
     case rateWeekFitSelectedFromSettings = "rate_weekfit_selected_from_settings"
+
+    // Recovery Stress Index — UI interactions only (no score, category, or health values).
+    case stressIndexViewed = "stress_index_viewed"
+    case stressIndexDetailsOpened = "stress_index_details_opened"
 }

@@ -170,8 +170,7 @@ private extension NutritionDetailsSheet {
             }
         }
         .padding(24)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .weekFitPremiumCard(emphasis: .elevated, accent: WeekFitTheme.orange, cornerRadius: 26)
     }
 }
 
@@ -306,8 +305,7 @@ private extension NutritionDetailsSheet {
                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
         }
         .padding(24)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .weekFitPremiumCard(emphasis: .standard, accent: WeekFitTheme.meal, cornerRadius: 26)
     }
 }
 
@@ -338,17 +336,6 @@ private extension NutritionDetailsSheet {
         .padding(.vertical, 14)
         .background(WeekFitTheme.whiteOpacity(0.045))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    var cardBackground: some View {
-        LinearGradient(
-            colors: [
-                WeekFitTheme.whiteOpacity(0.09),
-                WeekFitTheme.whiteOpacity(0.045)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 
     var sheetDateTitle: String {

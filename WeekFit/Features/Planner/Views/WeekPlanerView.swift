@@ -534,6 +534,12 @@ private struct WeekPlannerLiveQueryView: View {
 
         withAnimation {
             if completed {
+                // If the session was started from Today with a placeholder duration (e.g. default 60m),
+                // stamping actualDurationMinutes here ensures Plan uses the true elapsed time.
+                if (liveActivity.actualDurationMinutes ?? 0) <= 0 {
+                    let passedMinutes = max(1, Int(Date().timeIntervalSince(liveActivity.date) / 60))
+                    liveActivity.actualDurationMinutes = passedMinutes
+                }
                 try? PlannedActivityNotificationConfirmationService.markCompleted(
                     liveActivity,
                     modelContext: modelContext
@@ -1868,43 +1874,15 @@ private enum PlanScreenSurface {
 private extension WeekPlannerLiveQueryView {
 
     var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(PlanScreenSurface.cardFill)
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(PlanScreenSurface.cardStroke, lineWidth: 1)
-            }
+        Color.clear
+            .weekFitPremiumCard(emphasis: .standard, cornerRadius: 24)
     }
 
     var selectedDayCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(PlanScreenSurface.cardFill)
-            .overlay(alignment: .bottom) {
-                timelineBottomFade
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(PlanScreenSurface.cardStroke, lineWidth: 1)
-            }
+        Color.clear
+            .weekFitPremiumCard(emphasis: .standard, cornerRadius: 24)
     }
 
-    var timelineBottomFade: some View {
-        LinearGradient(
-            colors: [
-                PlanScreenSurface.cardFill.opacity(0),
-                PlanScreenSurface.cardFill.opacity(0.62),
-                WeekFitTheme.backgroundColor.opacity(0.94),
-                WeekFitTheme.backgroundColor
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: 72)
-    }
-    
     private func timelineTitle(for item: PlanTimelineItem) -> String {
         switch item {
         case .single(let activity):

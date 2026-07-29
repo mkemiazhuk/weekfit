@@ -68,38 +68,10 @@ struct PremiumActivityStartCard: View {
             .padding(.horizontal, QuickActionSheetDesign.Row.horizontalPadding)
             .frame(maxWidth: .infinity)
             .frame(height: QuickActionSheetDesign.Row.height)
-            .background {
-                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                cardBackground.opacity(0.98),
-                                WeekFitTheme.whiteOpacity(0.024)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                accentColor.opacity(hasConflict ? 0.03 : 0.09),
-                                .white.opacity(0.04),
-                                .clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: accentColor.opacity(hasConflict ? 0.0 : 0.03),
-                radius: 8,
-                y: 3
+            .weekFitPremiumCard(
+                emphasis: .compact,
+                accent: hasConflict ? nil : accentColor,
+                cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius
             )
             .scaleEffect(pressed ? 0.985 : 1.0)
             .opacity(hasConflict ? 0.52 : 1.0)

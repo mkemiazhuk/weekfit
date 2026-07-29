@@ -114,33 +114,12 @@ struct MealCardRow: View {
         .padding(.horizontal, isQuickLogMode ? 12 : 12)
         .padding(.vertical, isQuickLogMode ? 10 : 8)
         .frame(height: isQuickLogMode ? 86 : nil)
-        .background {
-            RoundedRectangle(cornerRadius: isQuickLogMode ? 23 : 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.clear,
-                            cardSecondary.opacity(0.97),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: isQuickLogMode ? 23 : 20, style: .continuous)
-                .stroke(
-                    WeekFitTheme.whiteOpacity(0.035),
-                    lineWidth: 1
-                )
-        }
-        .contentShape(Rectangle())
-        .shadow(
-            color: isQuickLogMode ? weekFitGreen.opacity(0.035) : cardShadow.opacity(0.5),
-            radius: isQuickLogMode ? 12 : 10,
-            y: isQuickLogMode ? 5 : 5
+        .weekFitPremiumCard(
+            emphasis: .compact,
+            accent: isQuickLogMode ? weekFitGreen : nil,
+            cornerRadius: isQuickLogMode ? 23 : 20
         )
+        .contentShape(Rectangle())
     }
 
     private var mealImage: some View {

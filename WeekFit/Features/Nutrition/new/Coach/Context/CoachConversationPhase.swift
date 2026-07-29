@@ -44,8 +44,39 @@ extension CoachContext {
             lastCompletedSeriousActivityType: lastCompletedSeriousActivityType,
             completedWalkToday: completedWalkToday,
             completedHeatToday: completedHeatToday,
+            isFocusHikeLike: isFocusHikeLike,
+            hasLoggedMealToday: hasLoggedMealToday,
             conversationPhase: resolution.phase,
             conversationPhaseReason: resolution.reason
+        )
+    }
+
+    func withHasLoggedMealToday(_ hasLoggedMealToday: Bool) -> CoachContext {
+        CoachContext(
+            activityFamily: activityFamily,
+            activityType: activityType,
+            activityState: activityState,
+            sessionPhase: sessionPhase,
+            durationBand: durationBand,
+            dayLoadBand: dayLoadBand,
+            completedSeriousActivities: completedSeriousActivities,
+            fuelState: fuelState,
+            hydrationState: hydrationState,
+            tomorrowDemand: tomorrowDemand,
+            timeOfDay: timeOfDay,
+            tomorrowWorkout: tomorrowWorkout,
+            focusActivityID: focusActivityID,
+            focusSource: focusSource,
+            minutesUntilStart: minutesUntilStart,
+            minutesSinceEnd: minutesSinceEnd,
+            dayReadiness: dayReadiness,
+            lastCompletedSeriousActivityType: lastCompletedSeriousActivityType,
+            completedWalkToday: completedWalkToday,
+            completedHeatToday: completedHeatToday,
+            isFocusHikeLike: isFocusHikeLike,
+            hasLoggedMealToday: hasLoggedMealToday,
+            conversationPhase: conversationPhase,
+            conversationPhaseReason: conversationPhaseReason
         )
     }
 }

@@ -90,12 +90,12 @@ enum PlannerType: CaseIterable {
                 PlannerOption(title: "Hiking", subtitle: "Endurance", icon: "figure.hiking", imageName: "workout-hiking"),
 
                 PlannerOption(title: "Upper Body", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-strength"),
-                PlannerOption(title: "Core", subtitle: "Strength", icon: "dumbbell.fill", imageName: "workout-core"),
+                PlannerOption(title: "Core", subtitle: "Strength", icon: "figure.core.training", imageName: "workout-core"),
                 PlannerOption(title: "Lower Body", subtitle: "Strength", icon: "figure.strengthtraining.traditional", imageName: "workout-lowerbody"),
                 PlannerOption(title: "Full Body", subtitle: "Strength", icon: "figure.strengthtraining.functional", imageName: "workout-fullbody"),
 
                 PlannerOption(title: "Tennis", subtitle: "Endurance", icon: "figure.tennis", imageName: "workout-tennis"),
-                PlannerOption(title: "Squash", subtitle: "High Intensity", icon: "figure.tennis", imageName: "workout-squash")
+                PlannerOption(title: "Squash", subtitle: "High Intensity", icon: "figure.squash", imageName: "workout-squash")
             ]
 
         case .recovery:

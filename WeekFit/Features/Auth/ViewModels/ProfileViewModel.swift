@@ -73,7 +73,7 @@ final class ProfileViewModel: ObservableObject {
             destination = .termsPrivacy
 
         case .units:
-            break
+            destination = .units
         }
     }
 

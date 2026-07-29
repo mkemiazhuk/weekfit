@@ -4,8 +4,11 @@ import Foundation
 enum CoachCopyMealWindowPolicy {
 
     /// False when the user is likely still in a normal pre-first-meal / fasting window.
-    /// After serious training today, fuel lag is a real catch-up need — not fasting softness.
+    /// After a logged meal or serious training today, fuel lag is a real catch-up need — not fasting softness.
     static func isOpen(context: CoachContext, fuelState: CoachFuelState) -> Bool {
+        if context.hasLoggedMealToday {
+            return true
+        }
         guard fuelState.isBehind else { return true }
         if context.completedSeriousActivities != .none {
             return true

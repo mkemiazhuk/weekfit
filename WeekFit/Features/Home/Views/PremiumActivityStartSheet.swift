@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WeekFitPlanner
 
 struct PremiumActivityStartSheet: View {
 
@@ -152,7 +153,12 @@ struct PremiumActivityStartSheet: View {
             type: selectedPlannerType.title.lowercased(),
             title: option.title,
             durationMinutes: duration,
-            icon: selectedPlannerType.icon,
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: option.icon,
+                title: option.title,
+                type: selectedPlannerType.title.lowercased(),
+                imageName: option.imageName
+            ),
             imageName: option.imageName,
             colorRed: components.red,
             colorGreen: components.green,

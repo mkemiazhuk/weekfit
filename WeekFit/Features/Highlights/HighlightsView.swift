@@ -123,7 +123,11 @@ private extension HighlightsView {
             }
         }
         .padding(18)
-        .background(accentCardBackground(metricColor(viewModel.story.primaryMetric)))
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: metricColor(viewModel.story.primaryMetric),
+            cornerRadius: 28
+        )
     }
 
     var percentageBadge: some View {
@@ -170,7 +174,7 @@ private extension HighlightsView {
             whyStoryBlock
         }
         .padding(18)
-        .background(standardCardBackground)
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 24)
     }
 
     var driverGrid: some View {
@@ -210,7 +214,11 @@ private extension HighlightsView {
         .frame(height: 82, alignment: .topLeading)
         .padding(.vertical, 13)
         .padding(.horizontal, 13)
-        .background(standardCardBackground(cornerRadius: 20))
+        .weekFitPremiumCard(
+            emphasis: .compact,
+            accent: metricColor(snapshot.metric),
+            cornerRadius: 20
+        )
     }
 
     var chartValues: [Double] {
@@ -314,40 +322,6 @@ private extension HighlightsView {
         }
 
         return Array(signals.prefix(3))
-    }
-
-    var standardCardBackground: some View {
-        standardCardBackground()
-    }
-
-    func standardCardBackground(cornerRadius: CGFloat = 24) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(WeekFitTheme.cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.border, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: WeekFitTheme.cardShadow.opacity(0.55), radius: 18, y: 10)
-    }
-
-    func accentCardBackground(_ accent: Color) -> some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        accent.opacity(0.105),
-                        WeekFitTheme.cardBackground.opacity(0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
-            }
-            .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 22, y: 12)
     }
 
     var loadingState: some View {

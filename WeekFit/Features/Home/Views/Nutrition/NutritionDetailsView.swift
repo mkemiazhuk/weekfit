@@ -266,7 +266,7 @@ private struct NutritionHeroCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
-        .nutritionCard(glow: NutritionStyle.nutritionColor.opacity(0.07))
+        .nutritionCard(glow: NutritionStyle.nutritionColor)
     }
 
     private var nutritionRing: some View {
@@ -393,7 +393,7 @@ private struct NutritionBalanceCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .nutritionCard(glow: NutritionStyle.nutritionColor.opacity(0.04))
+        .nutritionCard(glow: NutritionStyle.nutritionColor)
     }
 
     private func intakePanel(
@@ -765,9 +765,9 @@ private enum NutritionTypography {
     static let helperText: CGFloat = 10.5
 }
 
-private enum NutritionStyle {
+enum NutritionStyle {
     static var screenBackground: Color { WeekFitTheme.backgroundColor }
-    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
     static var border: Color { WeekFitTheme.border }
 
@@ -784,51 +784,18 @@ private extension View {
         cornerRadius: CGFloat = 20,
         glow: Color = .clear
     ) -> some View {
-        background {
-            ZStack {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(NutritionStyle.cardBackground)
-
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.028),
-                                WeekFitTheme.whiteOpacity(0.003)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                if glow != .clear {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [glow, .clear],
-                                center: .topTrailing,
-                                startRadius: 8,
-                                endRadius: 140
-                            )
-                        )
-                }
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(NutritionStyle.border, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.22), radius: 14, x: 0, y: 8)
+        weekFitPremiumCard(
+            emphasis: glow == .clear ? .standard : .accent,
+            accent: glow == .clear ? nil : glow,
+            cornerRadius: cornerRadius
+        )
     }
 
     func innerNutritionCard(cornerRadius: CGFloat) -> some View {
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(NutritionStyle.innerCardBackground)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
+        weekFitPremiumCard(
+            emphasis: .compact,
+            accent: nil,
+            cornerRadius: cornerRadius
+        )
     }
 }

@@ -183,51 +183,31 @@ extension View {
         cornerRadius: CGFloat = 24,
         glow: Color = .clear
     ) -> some View {
-        background {
-            ZStack {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color(red: 0.045, green: 0.048, blue: 0.055))
-
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.040),
-                                WeekFitTheme.whiteOpacity(0.012)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                if glow != .clear {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [WeekFitTheme.accent(glow), .clear],
-                                center: .trailing,
-                                startRadius: 12,
-                                endRadius: 180
-                            )
-                        )
-                }
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.border, lineWidth: 1)
-        }
-        .shadow(color: WeekFitTheme.cardShadow, radius: 18, x: 0, y: 12)
+        weekFitPremiumCard(
+            emphasis: glow == .clear ? .standard : .accent,
+            accent: glow == .clear ? nil : glow,
+            cornerRadius: cornerRadius
+        )
     }
 
     func profilePremiumSectionCard(cornerRadius: CGFloat = 24) -> some View {
+        // Settings list chrome — shared surface tokens, not full premium elevation.
         background {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(WeekFitTheme.cardTertiary)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            WeekFitTheme.cardSurfaceElevated.opacity(0.92),
+                            WeekFitTheme.cardSurface
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.borderSoft, lineWidth: 1)
+                .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
         }
     }
 }

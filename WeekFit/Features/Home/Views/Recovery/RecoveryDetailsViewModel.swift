@@ -9,6 +9,7 @@ final class RecoveryDetailsViewModel: ObservableObject {
     nonisolated deinit {}
 
     @Published private(set) var snapshot: RecoveryDaySnapshot = .empty
+    @Published private(set) var stressIndex: StressIndexResult = .unavailable()
     @Published private(set) var isLoading = false
     @Published private(set) var authorizationFailed = false
 
@@ -40,6 +41,7 @@ final class RecoveryDetailsViewModel: ObservableObject {
         guard authorized else {
             authorizationFailed = true
             snapshot = RecoveryDaySnapshot.empty(for: date)
+            stressIndex = .unavailable()
             isLoading = false
             return
         }
@@ -68,12 +70,14 @@ final class RecoveryDetailsViewModel: ObservableObject {
         )
 
         let breakdown = RecoveryScoreEngine.calculate(input)
+        let stress = StressIndexEngine.calculate(input)
 
         snapshot = loadedSnapshot.withRecovery(
             score: breakdown.total,
             breakdown: breakdown,
             input: input
         )
+        stressIndex = stress
 
         isLoading = false
     }
@@ -110,6 +114,7 @@ final class RecoveryDetailsViewModel: ObservableObject {
         )
 
         let breakdown = RecoveryScoreEngine.calculate(input)
+        let stress = StressIndexEngine.calculate(input)
         let baseSnapshot = RecoveryDaySnapshot(
             date: date,
             recoveryScore: 0,
@@ -138,6 +143,7 @@ final class RecoveryDetailsViewModel: ObservableObject {
             breakdown: breakdown,
             input: input
         )
+        stressIndex = stress
         isLoading = false
     }
 

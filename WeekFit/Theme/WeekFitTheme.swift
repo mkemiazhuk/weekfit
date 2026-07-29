@@ -31,28 +31,29 @@ enum WeekFitTheme {
 
     // MARK: - Base UI
 
-    static var backgroundColor: Color { Color(red: 0.035, green: 0.043, blue: 0.047) }
+    static var backgroundColor: Color { Color(red: 0.018, green: 0.020, blue: 0.024) }
     static var coachAccent: Color { palette.accent(coachAccentBase) }
 
+    /// Deep OLED canvas — near-black with a quiet blue lift so matte cards separate cleanly.
     static var appBackground: LinearGradient {
         LinearGradient(
             colors: [
-                Color.black,
-                Color(red: 0.018, green: 0.026, blue: 0.075),
-                Color.black
+                Color(red: 0.014, green: 0.016, blue: 0.022),
+                Color(red: 0.022, green: 0.028, blue: 0.062),
+                Color(red: 0.012, green: 0.014, blue: 0.018)
             ],
             startPoint: .top,
             endPoint: .bottom
         )
     }
 
-    /// Slightly lifted OLED canvas for depth-first ambient screens (~3% above pure black).
+    /// Slightly lifted OLED canvas for depth-first ambient screens.
     static var ambientCanvasBackground: LinearGradient {
         LinearGradient(
             colors: [
-                Color(red: 0.058, green: 0.061, blue: 0.068),
-                Color(red: 0.048, green: 0.051, blue: 0.058),
-                Color(red: 0.040, green: 0.043, blue: 0.050)
+                Color(red: 0.042, green: 0.045, blue: 0.054),
+                Color(red: 0.032, green: 0.035, blue: 0.044),
+                Color(red: 0.024, green: 0.027, blue: 0.034)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -64,7 +65,7 @@ enum WeekFitTheme {
     static var planAmbient: RadialGradient {
         RadialGradient(
             colors: [
-                Color(red: 0.43, green: 0.51, blue: 1.0).opacity(0.035 * palette.ambientOpacity),
+                Color(red: 0.43, green: 0.51, blue: 1.0).opacity(0.048 * palette.ambientOpacity),
                 Color.clear
             ],
             center: UnitPoint(x: 0.92, y: 0.00),
@@ -76,7 +77,7 @@ enum WeekFitTheme {
     static var todayAmbient: RadialGradient {
         RadialGradient(
             colors: [
-                mealBase.opacity(0.032 * palette.ambientOpacity),
+                mealBase.opacity(0.045 * palette.ambientOpacity),
                 Color.clear
             ],
             center: UnitPoint(x: 0.90, y: 0.02),
@@ -88,7 +89,7 @@ enum WeekFitTheme {
     static var mealsAmbient: RadialGradient {
         RadialGradient(
             colors: [
-                Color(red: 0.93, green: 0.58, blue: 0.26).opacity(0.030 * palette.ambientOpacity),
+                Color(red: 0.93, green: 0.58, blue: 0.26).opacity(0.042 * palette.ambientOpacity),
                 Color.clear
             ],
             center: UnitPoint(x: 0.90, y: 0.02),
@@ -100,7 +101,7 @@ enum WeekFitTheme {
     static var coachAmbient: RadialGradient {
         RadialGradient(
             colors: [
-                recoveryBase.opacity(0.035 * palette.ambientOpacity),
+                recoveryBase.opacity(0.050 * palette.ambientOpacity),
                 Color.clear
             ],
             center: UnitPoint(x: 0.90, y: 0.02),
@@ -127,6 +128,13 @@ enum WeekFitTheme {
     static var cardSecondary: Color { palette.cardSecondary }
     static var cardTertiary: Color { palette.cardTertiary }
     static var elevatedCard: Color { palette.elevatedCard }
+
+    /// Semantic premium surfaces — prefer these over hard-coded blacks/grays.
+    static var cardSurface: Color { palette.cardSurface }
+    static var cardSurfaceElevated: Color { palette.cardSurfaceElevated }
+    static var cardBorder: Color { palette.cardBorder }
+    static var cardInnerHighlight: Color { palette.cardInnerHighlight }
+    static var cardAccentOverlayOpacity: CGFloat { palette.cardAccentOverlayOpacity }
 
     // MARK: - Text
 

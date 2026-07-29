@@ -465,7 +465,10 @@ private extension HealthAccessView {
         }
         .padding(.horizontal, 15)
         .padding(.vertical, 12)
-        .background(sectionCardBackground(cornerRadius: 24, opacity: 0.48))
+        .background {
+            Color.clear
+                .weekFitPremiumCard(emphasis: .standard, cornerRadius: 24)
+        }
     }
 
     var qualityBadge: some View {
@@ -638,28 +641,7 @@ private extension HealthAccessView {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(sectionCardBackground(cornerRadius: 22, opacity: 0.44))
-    }
-
-    func sectionCardBackground(
-        cornerRadius: CGFloat,
-        opacity: Double = 0.48
-    ) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        WeekFitTheme.cardBackground.opacity(opacity),
-                        WeekFitTheme.cardBackground.opacity(opacity * 0.74)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(.white.opacity(0.043), lineWidth: 1)
-            )
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 22)
     }
 
     var actionSection: some View {

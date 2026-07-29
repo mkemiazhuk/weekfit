@@ -28,6 +28,7 @@ enum WeekFitStyle {
     enum Size {
         static let horizontalPadding: CGFloat = 18
         static let cardRadius: CGFloat = 22
+        static let compactCardRadius: CGFloat = 18
         static let largeCardRadius: CGFloat = 28
         static let sheetRadius: CGFloat = 30
         static let compactButton: CGFloat = 38

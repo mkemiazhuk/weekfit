@@ -93,13 +93,13 @@ struct CustomMealBuilderView: View {
         var isPartial: Bool
     }
 
-    private let background = WeekFitTheme.backgroundColor
+    private let background = WeekFitTheme.appBackground
     private let cardBackground = WeekFitTheme.cardBackground
     private let elevatedCard = WeekFitTheme.elevatedCard
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
-    /// Create Food primary actions follow the coach purple accent (reference).
-    private let accent = WeekFitTheme.coachAccent
+    /// Create Food stays in the Meals visual family (meal green), not Coach purple.
+    private let accent = WeekFitTheme.meal
 
     init(
         editingMeal: Meals? = nil,
@@ -260,7 +260,7 @@ struct CustomMealBuilderView: View {
     private var formScrollContent: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
+                VStack(spacing: 14) {
                     barcodeImportSection {
                         focusFoodName(using: proxy)
                     }
@@ -274,7 +274,7 @@ struct CustomMealBuilderView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 32)
+                .padding(.bottom, 28)
                 .animation(barcodeCardAnimation, value: showsBarcodeResultCard)
                 .animation(barcodeCardAnimation, value: isAnalyzingPhoto)
             }
@@ -342,45 +342,21 @@ struct CustomMealBuilderView: View {
     }
 
     private var ambientBackground: some View {
-        ZStack {
-            RadialGradient(
-                colors: [accent.opacity(0.065), .clear],
-                center: .topTrailing,
-                startRadius: 40,
-                endRadius: 340
-            )
-
-            RadialGradient(
-                colors: [WeekFitTheme.orange.opacity(0.032), .clear],
-                center: .bottomLeading,
-                startRadius: 80,
-                endRadius: 380
-            )
-
-            LinearGradient(
-                colors: [
-                    WeekFitTheme.whiteOpacity(0.012),
-                    .clear,
-                    Color.black.opacity(0.13)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+        WeekFitTheme.mealsAmbient
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     private var header: some View {
         WeekFitDetailScreenHeader(
             title: labels.formTitle,
             subtitle: labels.formSubtitle,
-            titleSize: 28,
-            titleTracking: -0.6,
+            titleSize: 22,
+            titleTracking: -0.35,
             titleColor: textPrimary,
-            subtitleColor: textSecondary.opacity(0.78),
+            subtitleColor: textSecondary.opacity(0.72),
             titleDesign: .rounded,
-            spacing: 14
+            spacing: 12
         ) {
             CreateFoodCircleHeaderButton(
                 systemName: "chevron.left",
@@ -467,7 +443,7 @@ struct CustomMealBuilderView: View {
                 )
 
                 Text(result.productName)
-                    .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
@@ -510,9 +486,7 @@ struct CustomMealBuilderView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
-        .background {
-            createFoodCardBackground(cornerRadius: 24)
-        }
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 24)
         .accessibilityIdentifier("meals.foodForm.barcodeResult")
     }
 
@@ -573,19 +547,19 @@ struct CustomMealBuilderView: View {
     }
 
     private func barcodeActionCard(onEnterManually: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 barcodeHeroIcon
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(WeekFitLocalizedString("meals.foodForm.scanBarcode.title"))
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
-                        .tracking(-0.35)
+                        .tracking(-0.2)
 
                     Text(WeekFitLocalizedString("meals.foodForm.scanBarcode.subtitle"))
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.82))
+                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -595,27 +569,27 @@ struct CustomMealBuilderView: View {
             Button {
                 beginBarcodeRescan()
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     if isAnalyzingPhoto {
                         ProgressView()
                             .tint(.white)
                     } else {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                     }
                     Text(
                         isAnalyzingPhoto
                             ? WeekFitLocalizedString("meals.barcode.analyzing")
                             : WeekFitLocalizedString("meals.foodForm.scanBarcode.button")
                     )
-                    .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(Color.white.opacity(0.96))
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 54)
+                .frame(minHeight: 46)
                 .background {
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(accent.opacity(isAnalyzingPhoto ? 0.72 : 0.96))
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(accent.opacity(isAnalyzingPhoto ? 0.72 : 0.92))
                 }
             }
             .buttonStyle(CreateFoodPressableButtonStyle())
@@ -631,30 +605,28 @@ struct CustomMealBuilderView: View {
 
             Button(action: onEnterManually) {
                 Text(WeekFitLocalizedString("meals.foodForm.enterManually"))
-                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(accent.opacity(0.95))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(accent.opacity(0.92))
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 40)
             }
             .buttonStyle(CreateFoodPressableButtonStyle())
             .disabled(isAnalyzingPhoto)
             .accessibilityIdentifier("meals.foodForm.enterManually")
         }
-        .padding(22)
-        .background {
-            createFoodCardBackground(cornerRadius: 26)
-        }
+        .padding(16)
+        .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: 22)
         .accessibilityElement(children: .contain)
     }
 
     private var barcodeHeroIcon: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            accent.opacity(0.34),
-                            accent.opacity(0.16),
+                            accent.opacity(0.28),
+                            accent.opacity(0.12),
                             WeekFitTheme.whiteOpacity(0.05)
                         ],
                         startPoint: .topLeading,
@@ -663,21 +635,21 @@ struct CustomMealBuilderView: View {
                 )
 
             Image(systemName: "barcode.viewfinder")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.96))
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.94))
                 .symbolRenderingMode(.monochrome)
 
             if isAnalyzingPhoto {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.black.opacity(0.42))
                 ProgressView()
                     .tint(.white)
             }
         }
-        .frame(width: 82, height: 82)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .frame(width: 52, height: 52)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
         }
         .accessibilityHidden(true)
@@ -687,24 +659,24 @@ struct CustomMealBuilderView: View {
         let hasImport = barcodeImportResult != nil
         let showHint = !hasImport && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        return VStack(alignment: .leading, spacing: hasImport ? 10 : 12) {
+        return VStack(alignment: .leading, spacing: hasImport ? 8 : 10) {
             Text(labels.foodName)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.92))
+                .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary.opacity(0.90))
 
             TextField(labels.foodNamePlaceholder, text: $name)
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
                 .submitLabel(.done)
                 .tint(accent)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: 54)
+                .frame(minHeight: 46)
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(WeekFitTheme.whiteOpacity(0.045))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(WeekFitTheme.whiteOpacity(0.06), lineWidth: 1)
                         }
                 }
@@ -713,30 +685,28 @@ struct CustomMealBuilderView: View {
 
             if showHint {
                 Text(WeekFitLocalizedString("meals.foodForm.name.hint"))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.72))
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.70))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, hasImport ? 16 : 18)
-        .padding(.vertical, hasImport ? 14 : 18)
+        .padding(.horizontal, 16)
+        .padding(.vertical, hasImport ? 14 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            createFoodCardBackground(cornerRadius: 24)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: 22)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var nutritionSection: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(WeekFitLocalizedString("meals.nutrition"))
-                    .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 14.5, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .tracking(-0.2)
+                    .tracking(-0.15)
 
                 Image(systemName: "info.circle")
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(textSecondary.opacity(0.55))
                     .accessibilityLabel(WeekFitLocalizedString("meals.nutrition"))
                     .accessibilityHint(WeekFitLocalizedString("meals.nutrition.basis.infoHint"))
@@ -746,7 +716,7 @@ struct CustomMealBuilderView: View {
                 servingSelector
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
 
             compactDivider
                 .padding(.horizontal, 16)
@@ -801,9 +771,7 @@ struct CustomMealBuilderView: View {
                 showsDivider: false
             )
         }
-        .background {
-            createFoodCardBackground(cornerRadius: 26)
-        }
+        .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: 22)
     }
 
     private var nutritionBasisDisplayLabel: String {
@@ -814,38 +782,38 @@ struct CustomMealBuilderView: View {
     }
 
     private var servingSelector: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Text(WeekFitLocalizedString("meals.nutrition.basis.perPrefix"))
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.90))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary.opacity(0.88))
                 .accessibilityHidden(true)
 
             TextField("100", text: $servingGrams)
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary.opacity(0.92))
                 .keyboardType(.numberPad)
                 .submitLabel(.done)
                 .tint(accent)
                 .multilineTextAlignment(.trailing)
-                .frame(width: 44, height: 34)
+                .frame(width: 40, height: 30)
                 .focused($focusedField, equals: .servingGrams)
                 .accessibilityLabel(WeekFitLocalizedString("meals.nutrition.basis.a11yLabel"))
                 .accessibilityValue(nutritionBasisDisplayLabel)
                 .accessibilityHint(WeekFitLocalizedString("meals.foodForm.serving.a11yHint"))
 
             Text(labels.grams)
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.84))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary.opacity(0.82))
                 .accessibilityHidden(true)
 
             Image(systemName: "chevron.down")
-                .font(.system(size: 9.5, weight: .bold))
+                .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(textSecondary.opacity(0.62))
                 .accessibilityHidden(true)
         }
-        .padding(.leading, 12)
-        .padding(.trailing, 10)
-        .frame(height: 40)
+        .padding(.leading, 10)
+        .padding(.trailing, 8)
+        .frame(height: 34)
         .background {
             Capsule()
                 .fill(WeekFitTheme.whiteOpacity(0.055))
@@ -866,11 +834,11 @@ struct CustomMealBuilderView: View {
         showsDivider: Bool
     ) -> some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(color.opacity(0.92))
-                    .frame(width: 30, height: 30)
+                    .frame(width: 26, height: 26)
                     .background {
                         Circle()
                             .fill(color.opacity(0.14))
@@ -878,20 +846,20 @@ struct CustomMealBuilderView: View {
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(.system(size: 15.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textPrimary.opacity(0.94))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(0.92))
 
                 Spacer(minLength: 8)
 
-                HStack(alignment: .lastTextBaseline, spacing: 5) {
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
                     TextField("0", text: value)
-                        .font(.system(size: 16.2, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .tint(accent)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 72, alignment: .trailing)
+                        .frame(width: 64, alignment: .trailing)
                         .focused($focusedField, equals: field)
                         .accessibilityLabel(title)
                         .accessibilityValue("\(displayValue(value.wrappedValue)) \(unit)")
@@ -904,11 +872,11 @@ struct CustomMealBuilderView: View {
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 54)
+            .frame(minHeight: 46)
 
             if showsDivider {
                 compactDivider
-                    .padding(.leading, 58)
+                    .padding(.leading, 52)
                     .padding(.trailing, 16)
             }
         }
@@ -920,24 +888,6 @@ struct CustomMealBuilderView: View {
             .frame(height: 1)
     }
 
-    private func createFoodCardBackground(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        elevatedCard.opacity(0.94),
-                        cardBackground.opacity(0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
-            }
-            .shadow(color: WeekFitTheme.cardShadow.opacity(0.50), radius: 12, y: 6)
-    }
 
     private var previewImage: UIImage? {
         if let image = selectedThumbnailImage {

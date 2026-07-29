@@ -119,6 +119,12 @@
                     title: WeekFitLocalizedString("settings.nutritionGoal.title"),
                     subtitle: WeekFitLocalizedString("settings.nutritionGoal.profileSubtitle"),
                     type: .nutritionGoal
+                ),
+                ProfileItem(
+                    icon: "ruler",
+                    title: WeekFitLocalizedString("settings.units.title"),
+                    subtitle: nil,
+                    type: .units
                 )
             ]
         }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WeekFitPlanner
 
 private struct CoachRefreshInputs: Equatable {
     var languageCode: String
@@ -82,6 +83,23 @@ struct WeekFitRootView: View {
             .task(id: coachRefreshInputs) {
                 await refreshCoachInput(source: "rootTask")
             }
+            .task(id: plannedActivitiesIconRepairKey) {
+                repairPlannedActivityIconsIfNeeded()
+            }
+    }
+
+    private var plannedActivitiesIconRepairKey: String {
+        "\(plannedActivities.count)|\(cachedPlannedActivitiesSignature)"
+    }
+
+    private func repairPlannedActivityIconsIfNeeded() {
+        let repaired = WeekFitActivityIconRepair.repairIcons(in: Array(plannedActivities))
+        guard repaired > 0 else { return }
+        do {
+            try modelContext.save()
+        } catch {
+            // Non-fatal — display still uses preferred icons via the resolver.
+        }
     }
 
     private var rootShellWithCoreHandlers: some View {

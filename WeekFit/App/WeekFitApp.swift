@@ -18,6 +18,7 @@ struct WeekFitApp: App {
     @StateObject private var languageManager = AppLanguageManager()
     @StateObject private var nightComfort = NightComfortController()
     @StateObject private var reviewPromptManager = ReviewPromptManager()
+    @StateObject private var unitsStore = WeekFitUnitsStore.shared
     @State private var nightComfortLocationService: NightComfortLocationService?
 
     @State private var backgroundEnteredAt: Date?
@@ -44,6 +45,7 @@ struct WeekFitApp: App {
                 .environmentObject(languageManager)
                 .environmentObject(nightComfort)
                 .environmentObject(reviewPromptManager)
+                .environmentObject(unitsStore)
                 .environment(\.locale, languageManager.locale)
                 .environment(\.weekFitPalette, WeekFitSemanticPalette.interpolated(blend: nightComfort.blendFactor))
                 .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)

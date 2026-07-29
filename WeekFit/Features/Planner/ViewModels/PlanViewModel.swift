@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WeekFitPlanner
 internal import Combine
 
 @MainActor
@@ -449,7 +450,7 @@ final class PlanViewModel: ObservableObject {
             editingActivity.type = selectedType.title.lowercased()
             editingActivity.title = selectedItem.title
             editingActivity.durationMinutes = selectedDuration
-            editingActivity.icon = selectedType.icon
+            editingActivity.icon = resolvedIconForSelection(imageName: finalImageName)
             editingActivity.imageName = finalImageName
             editingActivity.colorRed = selectedType.colorComponents.red
             editingActivity.colorGreen = selectedType.colorComponents.green
@@ -482,7 +483,7 @@ final class PlanViewModel: ObservableObject {
                 type: selectedType.title.lowercased(),
                 title: selectedItem.title,
                 durationMinutes: finalDuration,
-                icon: selectedType.icon,
+                icon: resolvedIconForSelection(imageName: finalImageName),
                 imageName: finalImageName,
                 colorRed: selectedType.colorComponents.red,
                 colorGreen: selectedType.colorComponents.green,
@@ -522,6 +523,16 @@ final class PlanViewModel: ObservableObject {
         saveFailureMessage = WeekFitLocalizedString("planner.saveFailure.message")
         showSaveFailureAlert = true
         print("Failed to save planned activity:", error)
+    }
+
+    /// Prefer the selected option icon (e.g. cycling) over the generic type icon (dumbbell).
+    private func resolvedIconForSelection(imageName: String) -> String {
+        WeekFitActivityIconResolver.resolve(
+            storedIcon: selectedItem.icon,
+            title: selectedItem.title,
+            type: selectedType.title.lowercased(),
+            imageName: imageName
+        )
     }
 
     private func displayImageName(for meal: Meals?) -> String {

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WeekFitPlanner
 
 private enum MealCreationRoute {
     case builder
@@ -442,9 +443,10 @@ struct MealsView: View {
                 .padding(.top, 4)
             }
             .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(cardSecondary.opacity(0.72))
+            .weekFitPremiumCard(
+                emphasis: .accent,
+                accent: WeekFitTheme.orange,
+                cornerRadius: 20
             )
             .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
             .listRowBackground(Color.clear)
@@ -478,7 +480,7 @@ struct MealsView: View {
             List {
                 if shouldShowRecommendation, let recommendation = visibleRecommendation {
                     coachRecommendationHero(recommendation)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 6, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 12, trailing: 16))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -488,26 +490,28 @@ struct MealsView: View {
                     sectionHeader(
                         title: "meals.library.section.meals",
                         count: displayedMealItems.count,
-                        icon: "fork.knife"
+                        icon: "fork.knife",
+                        prominence: .primary
                     )
-                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 9, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    libraryRows(displayedMealItems)
+                    libraryRows(displayedMealItems, kind: .meal)
                 }
 
                 if !sortedFoodItems.isEmpty {
                     sectionHeader(
                         title: "meals.library.section.foods",
                         count: sortedFoodItems.count,
-                        icon: "takeoutbag.and.cup.and.straw.fill"
+                        icon: "takeoutbag.and.cup.and.straw.fill",
+                        prominence: .secondary
                     )
-                    .listRowInsets(EdgeInsets(top: displayedMealItems.isEmpty ? 2 : 10, leading: 16, bottom: 9, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: displayedMealItems.isEmpty ? 8 : 16, leading: 16, bottom: 4, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    libraryRows(sortedFoodItems)
+                    libraryRows(sortedFoodItems, kind: .food)
                 }
 
                 bottomSpacerRow
@@ -543,7 +547,7 @@ struct MealsView: View {
 
     private var bottomSpacerRow: some View {
         Color.clear
-            .frame(height: isQuickLogMode ? 70 : 96)
+            .frame(height: isQuickLogMode ? 52 : 56)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -551,7 +555,7 @@ struct MealsView: View {
 
     private var emptyBottomSpacerRow: some View {
         Color.clear
-            .frame(height: isQuickLogMode ? 44 : 60)
+            .frame(height: isQuickLogMode ? 36 : 44)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -565,10 +569,11 @@ struct MealsView: View {
 
 
     @ViewBuilder
-    private func libraryRows(_ items: [Meals]) -> some View {
+    private func libraryRows(_ items: [Meals], kind: MealLibraryRowKind) -> some View {
         ForEach(Array(items.enumerated()), id: \.element.id) { index, meal in
             HeroMealLibraryRow(
                 meal: meal,
+                kind: kind,
                 isQuickLogMode: isQuickLogMode,
                 isRecommended: rowShowsRecommendationBadge(for: meal, in: items, at: index),
                 recommendationBadge: rowRecommendationBadge(for: meal, in: items, at: index),
@@ -594,7 +599,7 @@ struct MealsView: View {
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 7, trailing: 16))
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: kind == .meal ? 8 : 7, trailing: 16))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
         }
@@ -621,41 +626,53 @@ struct MealsView: View {
         guard rowShowsRecommendationBadge(for: meal, in: items, at: index) else { return nil }
         return visibleRecommendation?.icon
     }
-    
+
+    private enum SectionHeaderProminence {
+        case primary
+        case secondary
+    }
+
     private func sectionHeader(
         title: String,
         count: Int,
         icon: String,
+        prominence: SectionHeaderProminence = .primary,
         showCount: Bool = true
     ) -> some View {
-        HStack(alignment: .center, spacing: 7) {
+        let titleOpacity: Double = prominence == .primary ? 0.76 : 0.62
+        let iconOpacity: Double = prominence == .primary ? 0.58 : 0.46
+        let badgeOpacity: Double = prominence == .primary ? 0.58 : 0.48
+        let titleWeight: Font.Weight = prominence == .primary ? .semibold : .medium
+
+        return HStack(alignment: .center, spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11.6, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.meal.opacity(0.88))
-                .frame(width: 16)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.meal.opacity(iconOpacity))
+                .frame(width: 14, alignment: .center)
+                .accessibilityHidden(true)
 
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(WeekFitLocalizedString(title))
-                    .font(.system(size: 15.6, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textPrimary.opacity(0.84))
-                    .tracking(-0.22)
+            Text(WeekFitLocalizedString(title))
+                .font(.system(size: 13, weight: titleWeight, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(titleOpacity))
+                .tracking(-0.06)
 
-                if showCount {
-                    Text("·")
-                        .font(.system(size: 15.0, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.30))
-
-                    Text("\(count)")
-                        .font(.system(size: 15.0, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.46))
-                        .tracking(-0.12)
-                        .monospacedDigit()
-                }
+            if showCount {
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(badgeOpacity))
+                    .monospacedDigit()
+                    .padding(.horizontal, 7)
+                    .frame(height: 18)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(WeekFitTheme.whiteOpacity(prominence == .primary ? 0.06 : 0.045))
+                    }
+                    .accessibilityLabel("\(count)")
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
     }
 
     private var customEmptyState: some View {
@@ -696,7 +713,12 @@ struct MealsView: View {
             type: PlannerType.meal.title,
             title: meal.title,
             durationMinutes: 20,
-            icon: PlannerType.meal.icon,
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: PlannerType.meal.icon,
+                title: meal.title,
+                type: "meal",
+                imageName: meal.imageName
+            ),
             imageName: meal.imageName,
             colorRed: PlannerType.meal.colorComponents.red,
             colorGreen: PlannerType.meal.colorComponents.green,
@@ -790,49 +812,69 @@ struct MealsView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     openCreationChooser()
                 } label: {
-                    HStack(spacing: 9) {
-                        Spacer(minLength: 0)
-
+                    HStack(spacing: 8) {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(WeekFitTheme.meal.opacity(0.92))
 
                         Text(WeekFitLocalizedString(createActionTitle))
-                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(textPrimary.opacity(0.92))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .tracking(-0.10)
-
-                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 16)
+                    .foregroundStyle(WeekFitTheme.meal.opacity(0.88))
+                    .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     .background {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        WeekFitTheme.meal.opacity(0.16),
-                                        WeekFitTheme.meal.opacity(0.09)
+                                        WeekFitTheme.meal.opacity(0.14),
+                                        WeekFitTheme.meal.opacity(0.07)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                WeekFitTheme.whiteOpacity(0.035),
+                                                WeekFitTheme.whiteOpacity(0.0)
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                            }
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(WeekFitTheme.meal.opacity(0.20), lineWidth: 1)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        WeekFitTheme.meal.opacity(0.26),
+                                        WeekFitTheme.meal.opacity(0.10)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
                     }
+                    .shadow(color: Color.black.opacity(0.22), radius: 10, y: 4)
                     .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MealsCreateCTAButtonStyle())
                 .accessibilityIdentifier("meals.create")
+                .accessibilityLabel(WeekFitLocalizedString(createActionTitle))
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 78)
+                .padding(.bottom, 72)
             } else {
                 bottomFadeOnly
-                    .frame(height: 66)
+                    .frame(height: 64)
             }
         }
         .background {
@@ -997,14 +1039,11 @@ private struct MealCreationChooserSheet: View {
                     .foregroundStyle(textSecondary.opacity(0.46))
             }
             .padding(14)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(card.opacity(0.70))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.06), lineWidth: 1)
-            }
+            .weekFitPremiumCard(
+                emphasis: .standard,
+                accent: accent,
+                cornerRadius: 20
+            )
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -1027,7 +1066,7 @@ struct CustomFoodDetailsView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @State private var showEditForm = false
 
-    private let background = WeekFitTheme.backgroundColor
+    private let background = WeekFitTheme.appBackground
     private let cardBackground = WeekFitTheme.cardBackground
     private let elevatedCard = WeekFitTheme.elevatedCard
     private let textPrimary = WeekFitTheme.primaryText
@@ -1135,24 +1174,7 @@ struct CustomFoodDetailsView: View {
         .padding(.horizontal, 13)
         .padding(.top, 12)
         .padding(.bottom, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            elevatedCard.opacity(0.96),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
-        .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 26)
     }
 
     private var servingCard: some View {
@@ -1175,14 +1197,7 @@ struct CustomFoodDetailsView: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 48)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(WeekFitTheme.whiteOpacity(0.038))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-            }
+            .weekFitPremiumCard(emphasis: .compact, cornerRadius: 18)
         }
     }
 
@@ -1217,10 +1232,10 @@ struct CustomFoodDetailsView: View {
         .background {
             LinearGradient(
                 colors: [
-                    background.opacity(0),
-                    background.opacity(0.62),
-                    background.opacity(0.96),
-                    background
+                    WeekFitTheme.backgroundColor.opacity(0),
+                    WeekFitTheme.backgroundColor.opacity(0.62),
+                    WeekFitTheme.backgroundColor.opacity(0.96),
+                    WeekFitTheme.backgroundColor
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -1235,7 +1250,12 @@ struct CustomFoodDetailsView: View {
             type: PlannerType.meal.title,
             title: food.title,
             durationMinutes: 10,
-            icon: PlannerType.meal.icon,
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: PlannerType.meal.icon,
+                title: food.title,
+                type: "meal",
+                imageName: food.imageName
+            ),
             imageName: food.imageName,
             colorRed: PlannerType.meal.colorComponents.red,
             colorGreen: PlannerType.meal.colorComponents.green,
@@ -1740,7 +1760,11 @@ private struct RecommendedTodayMealCard: View {
 
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
-    private let accent = WeekFitTheme.meal
+    /// Purple is reserved for Coach / AI recommendation surfaces.
+    private let accent = WeekFitTheme.coachAccent
+
+    private let thumbSize: CGFloat = 64
+    private let cornerRadius: CGFloat = 20
 
     private var shortReason: String {
         let summary = recommendation.factors.prefix(2).joined(separator: " • ")
@@ -1752,39 +1776,54 @@ private struct RecommendedTodayMealCard: View {
 
     var body: some View {
         Button(action: openDetails) {
-            VStack(alignment: .leading, spacing: 6) {
-                coachBadge
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    coachBadge
 
-                Text(recommendation.meal.localizedDisplayTitle)
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(recommendation.meal.localizedDisplayTitle)
+                        .font(.system(size: 16.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textPrimary)
+                        .tracking(-0.28)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(shortReason)
-                    .font(.footnote)
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textSecondary.opacity(0.68))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), recommendation.meal.calories))
+                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.66))
+                        .monospacedDigit()
+                        .lineLimit(1)
+
+                    Text(shortReason)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.48))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.86)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                MealLibraryThumbnail(
+                    meal: recommendation.meal,
+                    size: thumbSize,
+                    cornerRadius: 16
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+            .padding(.leading, 16)
+            .padding(.trailing, 14)
+            .padding(.vertical, 14)
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MealsCreateCTAButtonStyle(pressedScale: 0.985))
         .accessibilityLabel(
             String(
                 format: WeekFitLocalizedString("meals.coachRecommendation.accessibilityFormat"),
                 recommendation.meal.localizedDisplayTitle
             )
         )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .accessibilityHint(WeekFitLocalizedString("meals.library.openDetailsHint"))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .weekFitPremiumCard(accent: accent, cornerRadius: 20, featured: false)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: cornerRadius)
     }
 
     private func openDetails() {
@@ -1793,29 +1832,38 @@ private struct RecommendedTodayMealCard: View {
     }
 
     private var coachBadge: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 9.5, weight: .bold))
+        HStack(spacing: 5) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 9, weight: .semibold))
 
             Text(WeekFitLocalizedString("meals.library.hero.coachRecommendation"))
-                .font(.caption2.weight(.bold))
-                .fontDesign(.rounded)
-                .tracking(0.8)
+                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                .tracking(0.2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
-        .foregroundStyle(accent)
-        .padding(.horizontal, 10)
+        .foregroundStyle(accent.opacity(0.88))
+        .padding(.horizontal, 8)
         .frame(height: 22)
         .background {
             Capsule(style: .continuous)
-                .fill(accent.opacity(0.10))
+                .fill(accent.opacity(0.11))
                 .overlay {
                     Capsule(style: .continuous)
-                        .stroke(accent.opacity(0.22), lineWidth: 1)
+                        .strokeBorder(accent.opacity(0.16), lineWidth: 1)
                 }
         }
     }
 }
 
+private struct MealsCreateCTAButtonStyle: ButtonStyle {
+    var pressedScale: CGFloat = 0.982
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .scaleEffect(configuration.isPressed ? pressedScale : 1.0)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
 

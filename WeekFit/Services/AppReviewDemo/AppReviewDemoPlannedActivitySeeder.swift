@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import WeekFitPlanner
 
 enum AppReviewDemoPlannedActivitySeeder {
 
@@ -273,6 +274,12 @@ enum AppReviewDemoPlannedActivitySeeder {
         workoutUUID: UUID? = nil
     ) -> PlannedActivity {
         let colors = color(for: type)
+        let preferredIcon = WeekFitActivityIconResolver.preferredIcon(
+            storedIcon: icon,
+            title: title,
+            type: type,
+            imageName: imageName
+        )
         return PlannedActivity(
             id: workoutUUID?.uuidString ?? UUID().uuidString,
             healthKitWorkoutUUID: workoutUUID?.uuidString,
@@ -280,7 +287,7 @@ enum AppReviewDemoPlannedActivitySeeder {
             type: type,
             title: title,
             durationMinutes: durationMinutes,
-            icon: icon,
+            icon: preferredIcon,
             imageName: imageName,
             colorRed: colors.r,
             colorGreen: colors.g,

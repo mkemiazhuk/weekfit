@@ -326,7 +326,7 @@ private struct ActivityHeroCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 14)
-        .activityCard(glow: ActivityStyle.activityColor.opacity(0.08))
+        .activityCard(glow: ActivityStyle.activityColor)
     }
 
     private var activityRing: some View {
@@ -437,7 +437,7 @@ private struct ActivityDailyMetricsCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor.opacity(0.035))
+        .activityCard(glow: ActivityStyle.activityColor)
     }
 
     private var exerciseText: String {
@@ -601,7 +601,7 @@ private struct ActivityTimelineCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor.opacity(0.045))
+        .activityCard(glow: ActivityStyle.activityColor)
     }
 
     private func activityMetric(
@@ -836,7 +836,7 @@ private struct WeeklyContextCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor.opacity(0.035))
+        .activityCard(glow: ActivityStyle.activityColor)
     }
 
     private func comparisonRow(
@@ -1136,6 +1136,7 @@ private struct ActivitySessionSourcePresentation {
 struct ActivitySessionDetailView: View {
     let session: ActivitySessionSnapshot
     @ObservedObject var healthManager: HealthManager
+    @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var loadedDetail: ActivitySessionDetailSnapshot?
@@ -1474,7 +1475,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
-        .activityCard(glow: session.color.opacity(0.035))
+        .activityCard(glow: session.color)
     }
 
     private var heartRateCard: some View {
@@ -1562,7 +1563,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.red.opacity(0.035))
+        .activityCard(glow: ActivityStyle.red)
     }
 
     private var routeCard: some View {
@@ -1617,7 +1618,7 @@ struct ActivitySessionDetailView: View {
                     if let elevationGain = detail?.elevationGain {
                         routeMetric(
                             title: "activity.metric.elevation",
-                            value: MetricFormatter.elevation(elevationGain),
+                            value: MetricFormatter.elevation(elevationGain, system: unitsStore.resolvedSystem),
                             icon: "mountain.2.fill",
                             color: ActivityStyle.amber
                         )
@@ -1627,7 +1628,7 @@ struct ActivitySessionDetailView: View {
                        let distanceKm = detail.distanceKm {
                         routeMetric(
                             title: "activity.metric.distance",
-                            value: MetricFormatter.distance(distanceKm),
+                            value: MetricFormatter.distance(distanceKm, system: unitsStore.resolvedSystem),
                             icon: "mappin.and.ellipse",
                             color: ActivityStyle.blue
                         )
@@ -1638,7 +1639,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: session.color.opacity(0.035))
+        .activityCard(glow: session.color)
     }
 
     private var routeUnavailablePlaceholder: some View {
@@ -1719,7 +1720,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.red.opacity(0.025))
+        .activityCard(glow: ActivityStyle.red)
     }
 
     private var footer: some View {
@@ -1731,6 +1732,7 @@ struct ActivitySessionDetailView: View {
     }
 
     private var metricItems: [SessionMetricItem] {
+        let system = unitsStore.resolvedSystem
         var items: [SessionMetricItem] = [
             SessionMetricItem(
                 title: detail?.shouldShowElapsedTime == true
@@ -1759,8 +1761,8 @@ struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.distance",
-                    value: MetricFormatter.compactDistance(distanceKm),
-                    unit: WeekFitLocalizedString("common.unit.kilometer"),
+                    value: MetricFormatter.compactDistance(distanceKm, system: system),
+                    unit: WeekFitUnitPolicy.distanceUnitLabel(for: system),
                     icon: "mappin.circle.fill",
                     color: ActivityStyle.green
                 )
@@ -1795,8 +1797,8 @@ struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.avgSpeed",
-                    value: MetricFormatter.compactSpeed(speed),
-                    unit: WeekFitLocalizedString("common.unit.kilometerPerHour"),
+                    value: MetricFormatter.compactSpeed(speed, system: system),
+                    unit: WeekFitUnitPolicy.speedUnitLabel(for: system),
                     icon: "speedometer",
                     color: ActivityStyle.green
                 )
@@ -1807,8 +1809,8 @@ struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.maxSpeed",
-                    value: MetricFormatter.compactSpeed(maxSpeedKmh),
-                    unit: WeekFitLocalizedString("common.unit.kilometerPerHour"),
+                    value: MetricFormatter.compactSpeed(maxSpeedKmh, system: system),
+                    unit: WeekFitUnitPolicy.speedUnitLabel(for: system),
                     icon: "speedometer",
                     color: ActivityStyle.green
                 )
@@ -1819,8 +1821,8 @@ struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.elevationGain",
-                    value: "\(Int(elevationGain.rounded()))",
-                    unit: WeekFitLocalizedString("common.unit.meter"),
+                    value: MetricFormatter.compactElevation(elevationGain, system: system),
+                    unit: WeekFitUnitPolicy.elevationUnitLabel(for: system),
                     icon: "mountain.2.fill",
                     color: ActivityStyle.activityColor
                 )
@@ -2966,7 +2968,7 @@ private enum ActivityTypography {
 
 private enum ActivityStyle {
     static var screenBackground: Color { WeekFitTheme.backgroundColor }
-    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
     static var border: Color { WeekFitTheme.border }
 
@@ -3025,35 +3027,36 @@ private enum MetricFormatter {
         return "\(steps)"
     }
 
-    static func distance(_ kilometers: Double) -> String {
-        String(format: "%.2f km", kilometers)
+    static func distance(_ kilometers: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatDistance(kilometers: kilometers, system: system)
     }
 
-    static func compactDistance(_ kilometers: Double) -> String {
-        String(format: kilometers >= 10 ? "%.1f" : "%.2f", kilometers)
+    static func compactDistance(_ kilometers: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatCompactDistance(kilometers: kilometers, system: system)
     }
 
     static func heartRate(_ beatsPerMinute: Double) -> String {
         String(format: WeekFitLocalizedString("common.unit.bpmValueFormat"), Int(beatsPerMinute.rounded()))
     }
 
-    static func pace(_ minutesPerKilometer: Double) -> String {
-        let totalSeconds = Int((minutesPerKilometer * 60).rounded())
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        return String(format: "%d:%02d /km", minutes, seconds)
+    static func pace(_ minutesPerKilometer: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatPace(minutesPerKilometer: minutesPerKilometer, system: system)
     }
 
-    static func speed(_ kilometersPerHour: Double) -> String {
-        String(format: "%.1f km/h", kilometersPerHour)
+    static func speed(_ kilometersPerHour: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatSpeed(kilometersPerHour: kilometersPerHour, system: system)
     }
 
-    static func compactSpeed(_ kilometersPerHour: Double) -> String {
-        String(format: "%.1f", kilometersPerHour)
+    static func compactSpeed(_ kilometersPerHour: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatCompactSpeed(kilometersPerHour: kilometersPerHour, system: system)
     }
 
-    static func elevation(_ meters: Double) -> String {
-        "\(Int(meters.rounded())) m"
+    static func elevation(_ meters: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatElevation(meters: meters, system: system)
+    }
+
+    static func compactElevation(_ meters: Double, system: WeekFitResolvedUnitSystem) -> String {
+        WeekFitUnitPolicy.formatCompactElevation(meters: meters, system: system)
     }
 }
 
@@ -3074,51 +3077,18 @@ private extension View {
         cornerRadius: CGFloat = 22,
         glow: Color = .clear
     ) -> some View {
-        background {
-            ZStack {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(ActivityStyle.cardBackground)
-
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.030),
-                                WeekFitTheme.whiteOpacity(0.004)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                if glow != .clear {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [glow, .clear],
-                                center: .trailing,
-                                startRadius: 12,
-                                endRadius: 170
-                            )
-                        )
-                }
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(ActivityStyle.border, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 12)
+        weekFitPremiumCard(
+            emphasis: glow == .clear ? .standard : .accent,
+            accent: glow == .clear ? nil : glow,
+            cornerRadius: cornerRadius
+        )
     }
 
     func innerActivityCard(cornerRadius: CGFloat) -> some View {
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(ActivityStyle.innerCardBackground)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
+        weekFitPremiumCard(
+            emphasis: .compact,
+            accent: nil,
+            cornerRadius: cornerRadius
+        )
     }
 }

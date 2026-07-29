@@ -55,7 +55,7 @@ struct MealBuilderView: View {
         return current != original
     }
 
-    private let background = WeekFitTheme.backgroundColor
+    private let background = WeekFitTheme.appBackground
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let cardBackground = WeekFitTheme.cardBackground
@@ -141,39 +141,17 @@ struct MealBuilderView: View {
     
 
     private var ambientBackground: some View {
-        ZStack {
-            RadialGradient(
-                colors: [accent.opacity(0.065), .clear],
-                center: .topTrailing,
-                startRadius: 40,
-                endRadius: 340
-            )
-
-            RadialGradient(
-                colors: [WeekFitTheme.orange.opacity(0.032), .clear],
-                center: .bottomLeading,
-                startRadius: 80,
-                endRadius: 380
-            )
-
-            LinearGradient(
-                colors: [
-                    WeekFitTheme.whiteOpacity(0.012),
-                    .clear,
-                    Color.black.opacity(0.13)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+        WeekFitTheme.mealsAmbient
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     private var header: some View {
         WeekFitDetailScreenHeader(
             title: WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"),
             subtitle: WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"),
+            titleSize: 22,
+            titleTracking: -0.35,
             titleColor: textPrimary,
             subtitleColor: textSecondary.opacity(0.76),
             titleDesign: .default
@@ -352,36 +330,7 @@ struct MealBuilderView: View {
         .padding(.horizontal, 13)
         .padding(.top, 8)
         .padding(.bottom, 11)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            elevatedCard.opacity(0.96),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(alignment: .topLeading) {
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.065),
-                            WeekFitTheme.whiteOpacity(0.014),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
-        .shadow(color: WeekFitTheme.cardShadow.opacity(0.66), radius: 14, y: 7)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 26)
     }
 
     private var plateImageStack: some View {
@@ -621,14 +570,7 @@ struct MealBuilderView: View {
         .padding(.horizontal, 11)
         .padding(.top, 10)
         .padding(.bottom, 11)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.030))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.040), lineWidth: 1)
-        }
+        .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: 22)
         .id(category.title)
     }
 

@@ -92,27 +92,11 @@ private extension View {
         cornerRadius: CGFloat,
         isSelected: Bool
     ) -> some View {
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.clear,
-                            cardSecondary.opacity(0.97),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(
-                    WeekFitTheme.whiteOpacity(isSelected ? 0.06 : 0.035),
-                    lineWidth: 1
-                )
-        }
+        weekFitPremiumCard(
+            emphasis: .compact,
+            accent: isSelected ? WeekFitTheme.primaryGreen : nil,
+            cornerRadius: cornerRadius
+        )
     }
 }
 

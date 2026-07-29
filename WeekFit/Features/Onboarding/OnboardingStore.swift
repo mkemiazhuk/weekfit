@@ -14,7 +14,7 @@ enum OnboardingStore {
     }
 
     /// Bump when step enum / journey shape changes so mid-flow resume stays valid.
-    static let currentFlowVersion = 13
+    static let currentFlowVersion = 14
 
     static var allKnownKeys: [String] {
         [

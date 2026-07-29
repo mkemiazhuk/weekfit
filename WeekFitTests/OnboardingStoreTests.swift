@@ -23,6 +23,11 @@ final class OnboardingStoreTests: XCTestCase {
     }
 
     func testFreshInstallStillNeedsOnboarding() {
+        defaults.set(false, forKey: ProfileService.Keys.nutritionGoalIsManual)
+        defaults.set(false, forKey: "weekfit.healthAccessRequested")
+        OnboardingStore.hasCompletedOnboarding = false
+        defaults.set(false, forKey: OnboardingStore.Keys.introToday)
+
         OnboardingStore.migrateExistingUsersIfNeeded()
         XCTAssertFalse(OnboardingStore.hasCompletedOnboarding)
         XCTAssertTrue(OnboardingStore.shouldShowIntro(for: OnboardingStore.Keys.introToday))
@@ -49,13 +54,25 @@ final class OnboardingStoreTests: XCTestCase {
         XCTAssertEqual(defaults.integer(forKey: OnboardingStore.Keys.flowVersion), OnboardingStore.currentFlowVersion)
     }
 
-    func testCurrentFlowVersionIsThirteen() {
-        XCTAssertEqual(OnboardingStore.currentFlowVersion, 13)
+    func testCurrentFlowVersionIsFourteen() {
+        XCTAssertEqual(OnboardingStore.currentFlowVersion, 14)
     }
 
     private func clearOnboardingKeys() {
+        // Remove the whole persistent domain for this test runner to avoid cross-test leakage.
+        // (Some CI/simulator environments can keep stale values even after removeObject.)
+        if let domain = Bundle.main.bundleIdentifier {
+            defaults.removePersistentDomain(forName: domain)
+        }
+
         OnboardingStore.allKnownKeys.forEach(defaults.removeObject(forKey:))
         defaults.removeObject(forKey: ProfileService.Keys.nutritionGoalIsManual)
         defaults.removeObject(forKey: "weekfit.healthAccessRequested")
+
+        // Explicitly force the migration triggers off (more deterministic than relying on defaults).
+        defaults.set(false, forKey: ProfileService.Keys.nutritionGoalIsManual)
+        defaults.set(false, forKey: "weekfit.healthAccessRequested")
+        defaults.set(false, forKey: OnboardingStore.Keys.completed)
+        defaults.synchronize()
     }
 }

@@ -12,6 +12,8 @@ struct RecoveryDetailsView: View {
     @EnvironmentObject private var healthManager: HealthManager
     @State private var activeDate: Date
     @State private var didRecordRecoveryDetailsView = false
+    @State private var didRecordStressIndexView = false
+    @State private var showStressIndexSheet = false
 
     // Kept for compatibility with existing navigation from Today.
     // The details screen recalculates recovery for the selected date.
@@ -52,6 +54,11 @@ struct RecoveryDetailsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
                         RecoveryHeroCard(snapshot: viewModel.snapshot)
+                        StressIndexCompactCard(result: viewModel.stressIndex) {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showStressIndexSheet = true
+                            AppAnalytics.shared.track(.stressIndexDetailsOpened)
+                        }
                         RecoveryVitalsCard(snapshot: viewModel.snapshot)
                         RecoveryBreakdownCard(snapshot: viewModel.snapshot)
                         SleepDetailsCard(snapshot: viewModel.snapshot)
@@ -83,6 +90,14 @@ struct RecoveryDetailsView: View {
                 await load(date: activeDate)
             }
         }
+        .sheet(isPresented: $showStressIndexSheet) {
+            StressIndexDetailSheet(
+                result: viewModel.stressIndex,
+                recoveryScore: viewModel.snapshot.recoveryScore
+            )
+            .presentationDetents([.medium, .large])
+            .preferredColorScheme(.dark)
+        }
     }
 
     private func load(date: Date) async {
@@ -91,6 +106,11 @@ struct RecoveryDetailsView: View {
         guard !didRecordRecoveryDetailsView, !viewModel.authorizationFailed else { return }
         didRecordRecoveryDetailsView = true
         ReviewEngagement.record(.recoveryDetailsViewed)
+
+        if !didRecordStressIndexView {
+            didRecordStressIndexView = true
+            AppAnalytics.shared.track(.stressIndexViewed)
+        }
     }
 
     private var header: some View {
@@ -182,7 +202,7 @@ private struct RecoveryHeroCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 14)
-        .recoveryCard(glow: RecoveryStyle.recoveryColor.opacity(0.08))
+        .recoveryCard(glow: RecoveryStyle.recoveryColor)
     }
 
     private var recoveryRing: some View {
@@ -235,6 +255,502 @@ private struct RecoveryHeroCard: View {
     }
 }
 
+// MARK: - Stress Index
+
+private struct StressIndexCompactCard: View {
+    let result: StressIndexResult
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(WeekFitLocalizedString("recovery.stressIndex.title").uppercased())
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .tracking(1.4)
+                        .foregroundStyle(accentColor.opacity(0.92))
+
+                    valueRow
+
+                    Text(StressIndexCopy.compactSummary(for: result))
+                        .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+                    .padding(.top, 4)
+            }
+            .padding(.horizontal, 17)
+            .padding(.vertical, 13)
+            .recoveryCard(glow: accentColor.opacity(0.55))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(StressIndexCopy.accessibilityLabel(for: result)))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    @ViewBuilder
+    private var valueRow: some View {
+        switch result.confidence {
+        case .unavailable:
+            Text(WeekFitLocalizedString("recovery.stressIndex.empty.title"))
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+        case .low:
+            if let level = result.level {
+                Text(StressIndexCopy.levelTitle(level))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(accentColor)
+                    .lineLimit(1)
+            }
+        case .medium, .high:
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if let score = result.score {
+                    Text("\(score)")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+                }
+
+                if let level = result.level {
+                    Text("· \(StressIndexCopy.levelTitle(level))")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(accentColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+            }
+        }
+    }
+
+    private var accentColor: Color {
+        StressIndexStyle.color(for: result.level, confidence: result.confidence)
+    }
+}
+
+private struct StressIndexDetailSheet: View {
+    let result: StressIndexResult
+    let recoveryScore: Int
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showCalculationSheet = false
+
+    private var accent: Color {
+        StressIndexStyle.color(for: result.level, confidence: result.confidence)
+    }
+
+    private var topDrivers: [StressIndexContributor] {
+        Array(result.contributors.prefix(2))
+    }
+
+    private var canShowDrivers: Bool {
+        !topDrivers.isEmpty && result.confidence != .unavailable
+    }
+
+    var body: some View {
+        ZStack {
+            RecoveryStyle.screenBackground.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    sheetHeader
+                    heroCard
+
+                    if result.confidence != .unavailable {
+                        meaningCard
+                    } else {
+                        unavailableMeaningCard
+                    }
+
+                    if canShowDrivers {
+                        driversCard
+                    }
+
+                    confidenceCard
+
+                    calculationRow
+
+                    Text(WeekFitLocalizedString("recovery.stressIndex.disclaimer"))
+                        .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                        .accessibilitySortPriority(-1)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 40)
+            }
+        }
+        .sheet(isPresented: $showCalculationSheet) {
+            StressIndexCalculationSheet(
+                usedKinds: result.usedSignalKinds.isEmpty
+                    ? [.hrv, .restingHeartRate, .sleep, .trainingLoad]
+                    : result.usedSignalKinds
+            )
+            .presentationDetents([.medium])
+            .preferredColorScheme(.dark)
+        }
+    }
+
+    private var sheetHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.title"))
+                .font(.system(size: RecoveryTypography.stressSheetTitle, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.90))
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
+                    .overlay {
+                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(WeekFitLocalizedString("recovery.stressIndex.close.a11y")))
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            switch result.confidence {
+            case .unavailable:
+                Text(WeekFitLocalizedString("recovery.stressIndex.empty.title"))
+                    .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(WeekFitLocalizedString("recovery.stressIndex.empty.supporting"))
+                    .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+            case .low:
+                if let level = result.level {
+                    Text(StressIndexCopy.levelTitle(level))
+                        .font(.system(size: RecoveryTypography.stressScore, weight: .bold, design: .rounded))
+                        .foregroundStyle(accent)
+                        .accessibilityLabel(
+                            Text("\(WeekFitLocalizedString("recovery.stressIndex.title")), \(StressIndexCopy.levelTitle(level).lowercased()).")
+                        )
+                }
+
+                Text(WeekFitLocalizedString("recovery.stressIndex.confidence.low.summary"))
+                    .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+            case .medium, .high:
+                scoreAndLevelRow
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(StressIndexCopy.accessibilityLabel(for: result)))
+
+                Text(StressIndexCopy.summarySentence(for: result))
+                    .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryCard(glow: accent.opacity(0.40))
+    }
+
+    @ViewBuilder
+    private var scoreAndLevelRow: some View {
+        let scoreText = result.score.map(String.init) ?? ""
+        let levelText = result.level.map(StressIndexCopy.levelTitle) ?? ""
+
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(scoreText)
+                    .font(.system(size: RecoveryTypography.stressScore, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+
+                Text(levelText)
+                    .font(.system(size: RecoveryTypography.stressLevel, weight: .semibold, design: .rounded))
+                    .foregroundStyle(accent)
+            }
+        } else {
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                Text(scoreText)
+                    .font(.system(size: RecoveryTypography.stressScore, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+
+                Text(levelText)
+                    .font(.system(size: RecoveryTypography.stressLevel, weight: .semibold, design: .rounded))
+                    .foregroundStyle(accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+        }
+    }
+
+    private var meaningCard: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.sheet.meaningTitle"))
+                .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text(StressIndexCopy.meaningBody(for: result, recoveryScore: recoveryScore))
+                .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryCard()
+    }
+
+    private var unavailableMeaningCard: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.sheet.meaningTitle"))
+                .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text(WeekFitLocalizedString("recovery.stressIndex.meaning.unavailable"))
+                .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryCard()
+    }
+
+    private var driversCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.sheet.driversTitle"))
+                .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(topDrivers, id: \.kind) { contributor in
+                    contributorRow(contributor)
+                }
+            }
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryCard()
+    }
+
+    private func contributorRow(_ contributor: StressIndexContributor) -> some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: driverSymbol(for: contributor.tone))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(toneColor(contributor.tone))
+                .frame(width: 22, height: 22)
+                .background {
+                    Circle().fill(toneColor(contributor.tone).opacity(0.16))
+                }
+                .accessibilityLabel(Text(StressIndexCopy.iconAccessibilityLabel(for: contributor.tone)))
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(StressIndexCopy.contributorHeadline(for: contributor))
+                        .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 4)
+
+                    Text(StressIndexCopy.impactTitle(contributor.impact))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(toneColor(contributor.tone).opacity(0.95))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+
+                Text(StressIndexCopy.contributorDetail(for: contributor))
+                    .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(StressIndexCopy.contributorAccessibilityLabel(for: contributor)))
+    }
+
+    private var confidenceCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.sheet.confidenceTitle"))
+                .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text(StressIndexCopy.confidenceTitle(result.confidence))
+                .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(0.88))
+
+            Text(
+                StressIndexCopy.confidenceExplanation(
+                    result.confidence,
+                    baselineSampleDays: result.baselineSampleDays
+                )
+            )
+            .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+            .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryCard()
+    }
+
+    private var calculationRow: some View {
+        Button {
+            showCalculationSheet = true
+        } label: {
+            HStack(spacing: 10) {
+                Text(WeekFitLocalizedString("recovery.stressIndex.sheet.calculationTitle"))
+                    .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.88))
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.32))
+            }
+            .padding(.horizontal, 17)
+            .padding(.vertical, 15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .recoveryCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text(WeekFitLocalizedString("recovery.stressIndex.calculation.a11yHint")))
+    }
+
+    private func driverSymbol(for tone: StressIndexContributorTone) -> String {
+        switch tone {
+        case .elevating:
+            return "arrow.up"
+        case .neutral:
+            return "minus"
+        case .stabilizing:
+            return "arrow.down"
+        }
+    }
+
+    private func toneColor(_ tone: StressIndexContributorTone) -> Color {
+        switch tone {
+        case .elevating:
+            return StressIndexStyle.elevated
+        case .neutral:
+            return StressIndexStyle.moderate
+        case .stabilizing:
+            return StressIndexStyle.low
+        }
+    }
+}
+
+private struct StressIndexCalculationSheet: View {
+    let usedKinds: [StressIndexContributorKind]
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            RecoveryStyle.screenBackground.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text(WeekFitLocalizedString("recovery.stressIndex.sheet.calculationTitle"))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.90))
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
+                            .overlay {
+                                Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(WeekFitLocalizedString("recovery.stressIndex.close.a11y")))
+                }
+
+                Text(StressIndexCopy.calculationBody(usedKinds: usedKinds))
+                    .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(WeekFitLocalizedString("recovery.stressIndex.calculation.vsRecovery"))
+                    .font(.system(size: RecoveryTypography.stressSecondary, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 28)
+        }
+    }
+}
+
+private enum StressIndexStyle {
+    static let low = WeekFitTheme.accent(Color(red: 0.55, green: 0.68, blue: 0.72))
+    static let moderate = WeekFitTheme.accent(Color(red: 0.90, green: 0.72, blue: 0.38))
+    static let elevated = WeekFitTheme.accent(Color(red: 0.92, green: 0.58, blue: 0.32))
+    static let high = WeekFitTheme.accent(Color(red: 0.90, green: 0.48, blue: 0.42))
+    static let unavailable = WeekFitTheme.whiteOpacity(0.42)
+
+    static func color(for level: StressIndexLevel?, confidence: StressIndexConfidence) -> Color {
+        guard confidence != .unavailable, let level else { return unavailable }
+        switch level {
+        case .low: return low
+        case .moderate: return moderate
+        case .elevated: return elevated
+        case .high: return high
+        }
+    }
+}
+
 private struct RecoveryVitalsCard: View {
     let snapshot: RecoveryDaySnapshot
 
@@ -267,7 +783,7 @@ private struct RecoveryVitalsCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .recoveryCard(glow: RecoveryStyle.recoveryColor.opacity(0.035))
+        .recoveryCard(glow: RecoveryStyle.recoveryColor)
     }
 
     private var hrvText: String {
@@ -363,7 +879,7 @@ private struct RecoveryBreakdownCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .recoveryCard(glow: RecoveryStyle.purple.opacity(0.045))
+        .recoveryCard(glow: RecoveryStyle.purple)
     }
 
     private var header: some View {
@@ -710,11 +1226,18 @@ private enum RecoveryTypography {
     static let metricValue: CGFloat = 14
     static let metricSecondary: CGFloat = 12
     static let helperText: CGFloat = 11.5
+
+    static let stressSheetTitle: CGFloat = 24
+    static let stressScore: CGFloat = 40
+    static let stressLevel: CGFloat = 17
+    static let stressSectionTitle: CGFloat = 15.5
+    static let stressBody: CGFloat = 14.5
+    static let stressSecondary: CGFloat = 13.5
 }
 
 private enum RecoveryStyle {
     static var screenBackground: Color { WeekFitTheme.backgroundColor }
-    static var cardBackground: Color { Color(red: 0.045, green: 0.048, blue: 0.055) }
+    static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var border: Color { WeekFitTheme.border }
 
     static var recoveryColor: Color { WeekFitTheme.accent(Color(red: 0.18, green: 0.74, blue: 0.89)) }
@@ -759,41 +1282,11 @@ private extension View {
         cornerRadius: CGFloat = 22,
         glow: Color = .clear
     ) -> some View {
-        background {
-            ZStack {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(RecoveryStyle.cardBackground)
-
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.030),
-                                WeekFitTheme.whiteOpacity(0.004)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                if glow != .clear {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [glow, .clear],
-                                center: .trailing,
-                                startRadius: 12,
-                                endRadius: 170
-                            )
-                        )
-                }
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(RecoveryStyle.border, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 12)
+        weekFitPremiumCard(
+            emphasis: glow == .clear ? .standard : .accent,
+            accent: glow == .clear ? nil : glow,
+            cornerRadius: cornerRadius
+        )
     }
 }
 

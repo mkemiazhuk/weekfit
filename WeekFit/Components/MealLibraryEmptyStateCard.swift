@@ -43,13 +43,11 @@ struct MealLibraryEmptyStateCard: View {
         }
         .padding(.horizontal, isExpanded ? 18 : 18)
         .padding(.vertical, isExpanded ? 16 : 18)
-        .background { cardBackground }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(cardBorder, lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(isExpanded ? 0.18 : 0.14), radius: isExpanded ? 8 : 6, y: 3)
-        .shadow(color: gold.opacity(isExpanded ? 0.04 : 0.025), radius: isExpanded ? 12 : 8, y: 4)
+        .weekFitPremiumCard(
+            emphasis: isExpanded ? .elevated : .standard,
+            accent: gold,
+            cornerRadius: cornerRadius
+        )
         .accessibilityElement(children: .contain)
     }
 
@@ -168,75 +166,6 @@ struct MealLibraryEmptyStateCard: View {
         .accessibilityIdentifier("meals.create")
     }
 
-    // MARK: - Chrome
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        WeekFitTheme.cardBackground.opacity(isExpanded ? 0.90 : 0.86),
-                        WeekFitTheme.cardSecondary.opacity(isExpanded ? 0.55 : 0.48)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .overlay(alignment: .topTrailing) {
-                decorativeLight
-                    .frame(width: isExpanded ? 132 : 110, height: isExpanded ? 68 : 56)
-                    .padding(.top, 2)
-                    .padding(.trailing, 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-    }
-
-    private var decorativeLight: some View {
-        ZStack {
-            Ellipse()
-                .fill(gold.opacity(isExpanded ? 0.028 : 0.022))
-                .blur(radius: 14)
-
-            Path { path in
-                path.move(to: CGPoint(x: 4, y: 52))
-                path.addCurve(
-                    to: CGPoint(x: 128, y: 10),
-                    control1: CGPoint(x: 42, y: 24),
-                    control2: CGPoint(x: 88, y: 14)
-                )
-                path.move(to: CGPoint(x: 18, y: 58))
-                path.addCurve(
-                    to: CGPoint(x: 122, y: 22),
-                    control1: CGPoint(x: 52, y: 34),
-                    control2: CGPoint(x: 94, y: 28)
-                )
-            }
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        gold.opacity(isExpanded ? 0.14 : 0.10),
-                        goldDeep.opacity(0.04)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                lineWidth: 0.8
-            )
-        }
-    }
-
-    private var cardBorder: LinearGradient {
-        LinearGradient(
-            colors: [
-                gold.opacity(isExpanded ? 0.28 : 0.22),
-                goldDeep.opacity(isExpanded ? 0.12 : 0.10),
-                WeekFitTheme.borderSoft
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
 
     private var cornerRadius: CGFloat {
         isExpanded ? 24 : 22

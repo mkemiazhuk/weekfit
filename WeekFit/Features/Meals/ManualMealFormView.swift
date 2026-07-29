@@ -49,7 +49,7 @@ struct ManualMealFormView: View {
     @State private var validationMessage: String?
     @State private var didRequestExistingPreviewImage = false
 
-    private let background = WeekFitTheme.backgroundColor
+    private let background = WeekFitTheme.appBackground
     private let cardBackground = WeekFitTheme.cardBackground
     private let elevatedCard = WeekFitTheme.elevatedCard
     private let textPrimary = WeekFitTheme.primaryText
@@ -228,37 +228,11 @@ struct ManualMealFormView: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 112)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.030),
-                            WeekFitTheme.cardSecondary.opacity(1.0),
-                            cardBackground.opacity(1.04)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.075), lineWidth: 1)
-        }
-        .shadow(color: WeekFitTheme.cardShadow.opacity(0.62), radius: 13, y: 6)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 24)
     }
 
     private var ambientBackground: some View {
-        RadialGradient(
-            colors: [
-                WeekFitTheme.whiteOpacity(0.018),
-                Color.clear
-            ],
-            center: UnitPoint(x: 0.88, y: 0.02),
-            startRadius: 24,
-            endRadius: 300
-        )
+        WeekFitTheme.mealsAmbient
             .ignoresSafeArea()
             .allowsHitTesting(false)
     }
@@ -543,27 +517,17 @@ struct ManualMealFormView: View {
         cornerRadius: CGFloat = 20,
         @ViewBuilder content: () -> Content
     ) -> some View {
+        // Form field surfaces stay compact — not full content-card chrome.
         content()
             .padding(.horizontal, horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: height)
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.052 * surfaceOpacity),
-                                WeekFitTheme.whiteOpacity(0.038 * surfaceOpacity)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(borderOpacity), lineWidth: 1)
-            }
+            .weekFitPremiumCard(
+                emphasis: .compact,
+                accent: nil,
+                cornerRadius: cornerRadius
+            )
+            .opacity(surfaceOpacity > 1 ? 1 : max(0.82, surfaceOpacity))
     }
 
     private func formSection<Content: View>(

@@ -309,35 +309,17 @@ struct PlanTimelineRow: View {
             .padding(.trailing, PlanTimelineLayout.cardHorizontalPadding)
             .padding(.vertical, cardVerticalPadding)
         }
-        .background {
-            Group {
-                if isPending {
-                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    pendingAttentionColor.opacity(0.08),
-                                    Color(red: 0.036, green: 0.040, blue: 0.046).opacity(0.94)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                } else {
-                    RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                        .fill(cardFill)
-                }
+        .weekFitPremiumCard(
+            emphasis: timelinePremiumEmphasis,
+            accent: timelinePremiumAccent,
+            cornerRadius: PlanTimelineLayout.cardCornerRadius
+        )
+        .overlay {
+            if isLive {
+                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                    .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
             }
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .stroke(cardStroke, lineWidth: cardStrokeWidth)
-        }
-        .shadow(
-            color: cardShadowColor,
-            radius: cardShadowRadius,
-            y: cardShadowY
-        )
         .shadow(
             color: nextGlowColor,
             radius: emphasis == .next ? 10 : 0,
@@ -353,16 +335,25 @@ struct PlanTimelineRow: View {
             radius: isPending ? 10 : 0,
             y: isPending ? 2 : 0
         )
-        .overlay {
-            if isLive {
-                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                    .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
-            }
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
         .accessibilityAddTraits(.isButton)
+    }
+
+    private var timelinePremiumEmphasis: WeekFitPremiumCardEmphasis {
+        if isLive || isPending || emphasis == .next {
+            return .accent
+        }
+        return .compact
+    }
+
+    private var timelinePremiumAccent: Color? {
+        if isPending { return pendingAttentionColor }
+        if isLive || emphasis == .next || emphasis == .active || emphasis == .upcoming {
+            return accent
+        }
+        return nil
     }
 
     private var accentBarOpacity: Double {
@@ -519,107 +510,6 @@ struct PlanTimelineRow: View {
         }
     }
 
-    private var cardFill: Color {
-        if isPending {
-            return pendingAttentionColor.opacity(0.08)
-        }
-
-        if isLive {
-            return accent.opacity(livePulse ? 0.14 : 0.10)
-        }
-
-        switch emphasis {
-        case .next:
-            return accent.opacity(0.08)
-        case .active:
-            return accent.opacity(0.065)
-        case .upcoming:
-            return accent.opacity(0.048)
-        case .past:
-            return Color(red: 0.036, green: 0.040, blue: 0.046)
-        case .skipped:
-            return Color(red: 0.030, green: 0.033, blue: 0.038)
-        }
-    }
-
-    private var cardStroke: Color {
-        if isPending {
-            return pendingAttentionColor.opacity(0.24)
-        }
-
-        if isLive {
-            return accent.opacity(livePulse ? 0.42 : 0.28)
-        }
-
-        switch emphasis {
-        case .next:
-            return accent.opacity(0.24)
-        case .active:
-            return isPending
-                ? Color(red: 1.0, green: 0.706, blue: 0.341).opacity(0.22)
-                : accent.opacity(0.18)
-        case .upcoming:
-            return accent.opacity(0.12)
-        case .past:
-            return WeekFitTheme.whiteOpacity(0.034)
-        case .skipped:
-            return Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.16)
-        }
-    }
-
-    private var cardStrokeWidth: CGFloat {
-        if isPending {
-            return 1.0
-        }
-
-        if isLive {
-            return livePulse ? 1.0 : 0.85
-        }
-
-        switch emphasis {
-        case .next:
-            return 0.75
-        case .active:
-            return isLive ? 0.85 : 0.65
-        default:
-            return 0.55
-        }
-    }
-
-    private var cardShadowColor: Color {
-        switch emphasis {
-        case .next:
-            return Color.black.opacity(0.20)
-        case .active, .upcoming:
-            return Color.black.opacity(0.16)
-        case .past:
-            return Color.black.opacity(0.12)
-        case .skipped:
-            return Color.black.opacity(0.08)
-        }
-    }
-
-    private var cardShadowRadius: CGFloat {
-        switch emphasis {
-        case .next:
-            return 8
-        case .active, .upcoming:
-            return 6
-        case .past:
-            return 5
-        case .skipped:
-            return 3
-        }
-    }
-
-    private var cardShadowY: CGFloat {
-        switch emphasis {
-        case .past, .skipped:
-            return 2
-        default:
-            return 3
-        }
-    }
 
     private var nextGlowColor: Color {
         emphasis == .next ? accent.opacity(0.10) : .clear

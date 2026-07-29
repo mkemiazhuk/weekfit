@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import WeekFitPlanner
 
 struct MealDetailsView: View {
 
@@ -18,7 +19,7 @@ struct MealDetailsView: View {
 
     @State private var showMealBuilder = false
 
-    private let background = WeekFitTheme.backgroundColor
+    private let background = WeekFitTheme.appBackground
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let cardBackground = WeekFitTheme.cardBackground
@@ -96,39 +97,17 @@ struct MealDetailsView: View {
     }
 
     private var ambientBackground: some View {
-        ZStack {
-            RadialGradient(
-                colors: [accent.opacity(0.045), .clear],
-                center: .topTrailing,
-                startRadius: 40,
-                endRadius: 340
-            )
-
-            RadialGradient(
-                colors: [WeekFitTheme.orange.opacity(0.025), .clear],
-                center: .bottomLeading,
-                startRadius: 80,
-                endRadius: 380
-            )
-
-            LinearGradient(
-                colors: [
-                    WeekFitTheme.whiteOpacity(0.010),
-                    .clear,
-                    Color.black.opacity(0.15)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+        WeekFitTheme.mealsAmbient
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     private var header: some View {
         WeekFitDetailScreenHeader(
             title: WeekFitLocalizedString("meals.mealDetails"),
             subtitle: WeekFitLocalizedString("meals.reviewIngredientsNutritionAndPreparation"),
+            titleSize: 22,
+            titleTracking: -0.35,
             titleColor: textPrimary,
             subtitleColor: textSecondary.opacity(0.76)
         ) {
@@ -182,36 +161,7 @@ struct MealDetailsView: View {
         .padding(.horizontal, 13)
         .padding(.top, 8)
         .padding(.bottom, 13)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            elevatedCard.opacity(0.96),
-                            cardBackground.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(alignment: .topLeading) {
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.060),
-                            WeekFitTheme.whiteOpacity(0.014),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-        }
-        .shadow(color: softShadow.opacity(0.66), radius: 14, y: 7)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 26)
     }
 
     private var plateImageStack: some View {
@@ -280,14 +230,7 @@ struct MealDetailsView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(WeekFitTheme.whiteOpacity(0.038))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
-            }
+            .weekFitPremiumCard(emphasis: .standard, cornerRadius: 20)
         }
     }
 
@@ -402,10 +345,10 @@ struct MealDetailsView: View {
     private var bottomFadeGradient: some View {
         LinearGradient(
             colors: [
-                background.opacity(0),
-                background.opacity(0.62),
-                background.opacity(0.96),
-                background
+                WeekFitTheme.backgroundColor.opacity(0),
+                WeekFitTheme.backgroundColor.opacity(0.62),
+                WeekFitTheme.backgroundColor.opacity(0.96),
+                WeekFitTheme.backgroundColor
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -428,7 +371,12 @@ struct MealDetailsView: View {
             type: PlannerType.meal.title,
             title: meal.title,
             durationMinutes: 30,
-            icon: PlannerType.meal.icon,
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: PlannerType.meal.icon,
+                title: meal.title,
+                type: "meal",
+                imageName: meal.imageName
+            ),
             imageName: meal.imageName,
             colorRed: PlannerType.meal.colorComponents.red,
             colorGreen: PlannerType.meal.colorComponents.green,

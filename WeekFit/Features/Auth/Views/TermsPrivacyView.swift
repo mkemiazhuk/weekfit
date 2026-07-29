@@ -201,7 +201,7 @@ private extension TermsPrivacyView {
             footerLink
         }
         .padding(20)
-        .profilePremiumCard(cornerRadius: 22, glow: accentGreen.opacity(0.025))
+        .profilePremiumCard(cornerRadius: 22, glow: accentGreen)
     }
 
     var topIcon: some View {

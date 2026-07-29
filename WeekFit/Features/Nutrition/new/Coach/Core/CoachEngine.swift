@@ -232,7 +232,9 @@ enum CoachEngine {
             "phase=\(resolution.phase.rawValue) reason=\(resolution.reason)"
         )
         CoachSessionTracker.markCoachInteraction(now: input.now)
-        return context.withConversationPhase(resolution)
+        return context
+            .withConversationPhase(resolution)
+            .withHasLoggedMealToday(CoachMorningOverviewPolicy.hasLoggedMeal(input: input))
     }
 
     // MARK: - Idle session phase

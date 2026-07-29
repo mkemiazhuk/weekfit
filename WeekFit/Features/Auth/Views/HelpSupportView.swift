@@ -445,7 +445,7 @@ private struct SupportRow: View {
             .padding(.horizontal, 17)
             .padding(.vertical, 12)
             .frame(minHeight: 78)
-            .profilePremiumCard(cornerRadius: 26, glow: iconColor.opacity(0.020))
+            .profilePremiumCard(cornerRadius: 26, glow: iconColor)
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -639,7 +639,7 @@ private extension SupportDetailView {
         .padding(14)
         .background {
             Color.clear
-                .profilePremiumCard(cornerRadius: 22, glow: iconColor.opacity(0.020))
+                .profilePremiumCard(cornerRadius: 22, glow: iconColor)
         }
     }
 }

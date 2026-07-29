@@ -165,19 +165,20 @@ enum PlanTimelineMetadataBuilder {
             return nil
         }
 
-        if activity.durationMinutes > 0,
-           !isLowValueDuration(activity) {
-            return formattedDuration(activity.durationMinutes)
+        let minutes = activity.effectiveDurationMinutes
+        if minutes > 0,
+           !isLowValueDuration(activity, minutes: minutes) {
+            return formattedDuration(minutes)
         }
 
         return nil
     }
 
-    private static func isLowValueDuration(_ activity: PlannedActivity) -> Bool {
+    private static func isLowValueDuration(_ activity: PlannedActivity, minutes: Int) -> Bool {
         let type = activity.type.lowercased()
         guard type == "habit" || type == "drink" else { return false }
 
-        return activity.durationMinutes <= 5
+        return minutes <= 5
     }
 
     private static func compactLogCount(_ count: Int) -> String {

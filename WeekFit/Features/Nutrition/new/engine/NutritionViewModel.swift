@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import WeekFitPlanner
 internal import Combine
 
 @MainActor
@@ -582,7 +583,11 @@ final class NutritionViewModel: ObservableObject {
             type: "meal",
             title: mealName,
             durationMinutes: 15,
-            icon: "fork.knife",
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: "fork.knife",
+                title: mealName,
+                type: "meal"
+            ),
             imageName: "fork.knife",
             colorRed: 0.16,
             colorGreen: 0.80,
@@ -619,7 +624,11 @@ final class NutritionViewModel: ObservableObject {
             type: "meal",
             title: "nutrition.quickSnack.cleanEnergy.title",
             durationMinutes: 10,
-            icon: "fork.knife",
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: "fork.knife",
+                title: "nutrition.quickSnack.cleanEnergy.title",
+                type: "meal"
+            ),
             imageName: "fork.knife",
             colorRed: 0.92,
             colorGreen: 0.78,
@@ -666,7 +675,12 @@ extension NutritionViewModel {
             type: "meal",
             title: item.title,
             durationMinutes: 15,
-            icon: "",
+            icon: WeekFitActivityIconResolver.preferredIcon(
+                storedIcon: nil,
+                title: item.title,
+                type: "meal",
+                imageName: item.imageName
+            ),
             imageName: item.imageName,
             colorRed: 0.58,
             colorGreen: 0.47,
