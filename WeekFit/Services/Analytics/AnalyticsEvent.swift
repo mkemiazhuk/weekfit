@@ -29,6 +29,26 @@ enum AnalyticsEvent: String, Sendable {
     // Coach (view only — no reliable tap/complete/dismiss handlers in product UI).
     case coachRecommendationViewed = "coach_recommendation_viewed"
 
+    // Morning Coach proposed day (Phase 1) — coarse enums only; no HealthKit / titles / copy.
+    case morningProposalGenerated = "morning_proposal_generated"
+    case morningProposalUnavailable = "morning_proposal_unavailable"
+    case morningProposalNoChanges = "morning_proposal_no_changes"
+    case morningProposalViewed = "morning_proposal_viewed"
+    case morningProposalReviewOpened = "morning_proposal_review_opened"
+    case morningProposalRecommendationSelected = "morning_proposal_recommendation_selected"
+    case morningProposalRecommendationDeselected = "morning_proposal_recommendation_deselected"
+    case morningProposalReasonExpanded = "morning_proposal_reason_expanded"
+    case morningProposalApplyStarted = "morning_proposal_apply_started"
+    case morningProposalApplySucceeded = "morning_proposal_apply_succeeded"
+    case morningProposalApplyPartial = "morning_proposal_apply_partial"
+    case morningProposalApplyFailed = "morning_proposal_apply_failed"
+    case morningProposalDismissed = "morning_proposal_dismissed"
+    case morningProposalStale = "morning_proposal_stale"
+    case morningProposalAdjustedItemViewed = "morning_proposal_adjusted_item_viewed"
+    case morningProposalAdjustedItemManuallyEdited = "morning_proposal_adjusted_item_manually_edited"
+    case morningProposalAdjustedItemCompleted = "morning_proposal_adjusted_item_completed"
+    case morningProposalCoachAcknowledgmentViewed = "morning_proposal_coach_acknowledgment_viewed"
+
     // Food logging.
     case foodLoggingStarted = "food_logging_started"
     case foodLoggingCompleted = "food_logging_completed"

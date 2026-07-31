@@ -143,7 +143,13 @@ struct TodayView: View {
     @State private var showActivityIntelligence = false
     @State private var showNutritionDetails = false
     @State private var nutritionDetailsDate = Date()
-    
+    @State private var showProposalReview = false
+    @State private var morningProposal: MorningPlanProposal?
+    @State private var morningProposalTimeoutTask: Task<Void, Never>?
+    @State private var morningProposalDebounceTask: Task<Void, Never>?
+    @State private var morningProposalChromeHidden = false
+    @State private var morningWeatherSummary: WeekFitWeatherSummary?
+
     @State private var showRecoveryDetails = false
     
     private let quickItemUsageKey = "weekfit_quick_item_usage_v1"
@@ -439,6 +445,8 @@ struct TodayView: View {
                     nutritionViewModel: nutritionViewModel
                 )
             }
+
+            scheduleMorningProposalRefresh()
         }
         .onChange(of: selectedDate) { oldValue, newValue in
             debugTodayDataState(source: "TodayView.onChange.selectedDate old=\(oldValue) new=\(newValue)")
@@ -660,6 +668,7 @@ struct TodayView: View {
         }
         .onChange(of: userSettings.customMealsCatalogRevision) { _, _ in
             refreshQuickLogMealsFromCatalog()
+            scheduleMorningProposalRefresh()
         }
         .onChange(of: languageManager.selectedLanguage) { _, _ in
             refreshQuickLogLocalizedRows()
@@ -2050,6 +2059,11 @@ struct TodayView: View {
                                             .foregroundStyle(textTertiary)
                                             .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
                                             .fixedSize(horizontal: false, vertical: true)
+
+                                        if let kind = coachProvenanceKind(for: activity) {
+                                            CoachProvenanceBadge(kind: kind, showsLabel: true, compact: true)
+                                                .padding(.top, 2)
+                                        }
                                     }
                                     .layoutPriority(1)
 
@@ -2417,16 +2431,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
 
             } else {
-                switch todayCoachInsightPhase {
-                case .insight(let presentation, _):
-                    coachInsightCard(presentation: presentation)
-                case .awaitingHealthConnect:
-                    coachSettlingCard(needsHealthConnect: true)
-                case .awaitingMorningSync:
-                    coachSettlingCard(needsHealthConnect: false)
-                case .preparing:
-                    coachPreparingCard()
-                }
+                coachInsightWithOptionalProposalOverlay
             }
         }
         .sheet(item: $activityToConfirm) { activity in
@@ -2434,6 +2439,760 @@ struct TodayView: View {
                 .presentationDetents([.fraction(0.40)])
                 .presentationDragIndicator(.visible)
                 .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+        }
+        .sheet(isPresented: $showProposalReview) {
+            ProposalReviewView(
+                dayKey: ProposalInputFingerprintBuilder.dayKey(for: Date()),
+                onApplied: { _ in
+                    morningProposalChromeHidden = true
+                    refreshMorningProposal()
+                    appSession.triggerCoachRefresh(source: "morningProposal.applied")
+                },
+                onDismissPlan: {
+                    morningProposalChromeHidden = true
+                    refreshMorningProposal()
+                }
+            )
+        }
+        .onAppear {
+            refreshMorningProposal()
+        }
+        .onChange(of: coachCoordinator.state.id) { _, _ in
+            refreshMorningProposal()
+        }
+        .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
+            refreshMorningProposal()
+        }
+        .onChange(of: hasTodayRecoverySignals) { _, hasSignals in
+            guard hasSignals else { return }
+            refreshMorningProposal()
+        }
+        .onChange(of: morningProposal?.id) { _, _ in
+            morningProposalChromeHidden = false
+        }
+    }
+
+    @ViewBuilder
+    private var coachInsightWithOptionalProposalOverlay: some View {
+        // Stack proposal on top of the regular coach card (same footprint, WeekFit chrome —
+        // no grey material overlay). Full copy lives in Review.
+        let showProposal = !morningProposalChromeHidden && morningProposalCard() != nil
+
+        Group {
+            if showProposal, let proposalCard = morningProposalCard() {
+                morningProposalStackedOverCoach(front: proposalCard)
+            } else {
+                coachInsightPhaseContent
+            }
+        }
+        .animation(.easeOut(duration: 0.22), value: showProposal)
+    }
+
+    @ViewBuilder
+    private var coachInsightPhaseContent: some View {
+        switch todayCoachInsightPhase {
+        case .insight(let presentation, _):
+            coachInsightCard(presentation: presentation)
+        case .awaitingHealthConnect:
+            coachSettlingCard(needsHealthConnect: true)
+        case .awaitingMorningSync:
+            coachSettlingCard(needsHealthConnect: false)
+        case .preparing:
+            coachPreparingCard()
+        }
+    }
+
+    /// Bevel-style stack: front proposal card + underlays (coach silhouette) peeking below.
+    private func morningProposalStackedOverCoach<Front: View>(front: Front) -> some View {
+        let radius = TodayLayout.cardRadius
+        let peek: CGFloat = 9
+
+        return front
+            .background(alignment: .top) {
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    let h = geo.size.height
+                    ZStack {
+                        // Deepest sheet — same family as WeekFit cards, slightly inset.
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .fill(WeekFitTheme.cardSurface.opacity(0.78))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                    .strokeBorder(WeekFitTheme.whiteOpacity(0.07), lineWidth: 1)
+                            }
+                            .frame(width: w * 0.94, height: h)
+                            .shadow(color: Color.black.opacity(0.30), radius: 12, y: 8)
+                            .offset(y: peek * 2)
+
+                        // Mid sheet — faded coach face so the stack reads as “over coach”.
+                        morningProposalCoachUnderlayFace
+                            .frame(width: w * 0.97, height: h, alignment: .topLeading)
+                            .background {
+                                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                    .fill(WeekFitTheme.cardSurfaceElevated)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                            .fill(coachUnderlayAccent.opacity(0.08))
+                                    }
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                            .strokeBorder(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
+                                    }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.24), radius: 8, y: 5)
+                            .offset(y: peek)
+                    }
+                    .frame(width: w, height: h, alignment: .top)
+                    .allowsHitTesting(false)
+                }
+            }
+            .padding(.bottom, peek * 2 + 2)
+    }
+
+    private var coachUnderlayAccent: Color {
+        if case .insight(let presentation, _) = todayCoachInsightPhase {
+            return presentation.accentColor
+        }
+        return WeekFitTheme.coachAccent
+    }
+
+    @ViewBuilder
+    private var morningProposalCoachUnderlayFace: some View {
+        let accent = coachUnderlayAccent
+        let title: String = {
+            if case .insight(let presentation, _) = todayCoachInsightPhase {
+                return presentation.todayTitle
+            }
+            return WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
+        }()
+
+        HStack(alignment: .top, spacing: 14) {
+            Circle()
+                .fill(accent.opacity(0.11))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(accent.opacity(0.55))
+                }
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppText.Today.coachInsightLabel)
+                    .font(.caption2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .tracking(1.45)
+                    .foregroundStyle(accent.opacity(0.45))
+                Text(title)
+                    .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary.opacity(0.42))
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+        .opacity(0.9)
+    }
+
+    private func morningProposalCard() -> AnyView? {
+        let chrome = MorningProposalPresenter.chromeState(for: morningProposal)
+        switch chrome {
+        case .gathering:
+            return AnyView(morningProposalGatheringCard())
+        case .proposalReady(let changeCount, let guidanceCount):
+            return AnyView(morningProposalReadyCard(changeCount: changeCount, guidanceCount: guidanceCount))
+        case .noChangesNeeded:
+            return AnyView(morningProposalNoChangesCard())
+        case .applied:
+            guard let dayKey = morningProposal?.dayKey,
+                  MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey),
+                  CoachAppliedAcknowledgmentCopy.planAdjustmentMode(forDayKey: dayKey) == .appliedExecuting else {
+                return nil
+            }
+            return AnyView(morningProposalAppliedCard(dayKey: dayKey))
+        case .stale:
+            return AnyView(morningProposalStaleCard())
+        case .failed:
+            return AnyView(morningProposalFailedCard())
+        case .hidden, .unavailable:
+            return nil
+        }
+    }
+
+    private func morningProposalGatheringCard() -> some View {
+        morningProposalDismissibleChrome(accent: WeekFitTheme.coachAccent) {
+            dismissMorningProposalChrome(permanent: false)
+        } content: {
+            HStack(alignment: .top, spacing: 14) {
+                ProgressView()
+                    .tint(WeekFitTheme.coachAccent)
+                    .padding(.top, 4)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.45)
+                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.gathering"))
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 28)
+            }
+        }
+    }
+
+    private func morningProposalReadyCard(changeCount: Int, guidanceCount: Int) -> some View {
+        let givenName = ProfileService.resolvedGivenName()
+        let weatherLine = MorningProposalBriefComposer.weatherMetaLine(
+            from: morningWeatherSummary
+        )
+        let brief = morningProposal.map {
+            MorningProposalBriefComposer.compose(
+                proposal: $0,
+                givenName: givenName.isEmpty ? nil : givenName,
+                weatherLine: weatherLine
+            )
+        }
+
+        let title = brief?.headline
+            ?? MorningProposalStrategyCopy.localizedSummary(for: morningProposal?.strategy)
+            ?? WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
+        let actionLines = brief?.actionLines ?? []
+        let metaLine = brief?.metaLine
+
+        return morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            morningProposalChromeHidden = true
+            showProposalReview = true
+        } onClose: {
+            dismissMorningProposalChrome(permanent: true)
+        } content: {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(WeekFitTheme.recovery.opacity(0.14))
+                        .frame(width: 40, height: 40)
+                        .overlay {
+                            Circle()
+                                .stroke(WeekFitTheme.recovery.opacity(0.22), lineWidth: 1)
+                        }
+                    Image(systemName: "sunrise.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.95))
+                }
+                .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(brief?.eyebrow ?? WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.45)
+                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+
+                    Text(title)
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.88)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(title)
+
+                    if !actionLines.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(actionLines.prefix(3).enumerated()), id: \.offset) { _, line in
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text("•")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                                    Text(line)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(textSecondary.opacity(0.88))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        .padding(.top, 1)
+                    } else if changeCount > 0 || guidanceCount > 0 {
+                        // Fallback if brief empty but counts exist.
+                        Text(
+                            [
+                                changeCount > 0
+                                    ? String(
+                                        format: WeekFitLocalizedString(
+                                            changeCount == 1
+                                                ? "coach.proposal.chrome.adjustmentCount.one"
+                                                : "coach.proposal.chrome.adjustmentCount.other"
+                                        ),
+                                        changeCount
+                                    )
+                                    : nil,
+                                guidanceCount > 0
+                                    ? String(
+                                        format: WeekFitLocalizedString(
+                                            guidanceCount == 1
+                                                ? "coach.proposal.chrome.guidanceCount.one"
+                                                : "coach.proposal.chrome.guidanceCount.other"
+                                        ),
+                                        guidanceCount
+                                    )
+                                    : nil,
+                            ]
+                            .compactMap { $0 }
+                            .joined(separator: " · ")
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.88))
+                        .lineLimit(1)
+                    }
+
+                    if let metaLine, !metaLine.isEmpty {
+                        Text(metaLine)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(textSecondary.opacity(0.62))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    HStack {
+                        Spacer(minLength: 0)
+                        Text(brief?.ctaTitle ?? WeekFitLocalizedString("coach.proposal.chrome.reviewCTA.short"))
+                            .font(.caption.weight(.bold))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background {
+                                Capsule(style: .continuous)
+                                    .fill(WeekFitTheme.recovery.opacity(0.92))
+                            }
+                    }
+                    .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .onAppear {
+            if let proposal = morningProposal {
+                MorningProposalAnalytics.proposalViewed(
+                    proposalId: proposal.id,
+                    changeCount: proposal.changes.count
+                )
+            }
+        }
+    }
+
+    private func morningProposalNoChangesCard() -> some View {
+        morningProposalDismissibleChrome(accent: WeekFitTheme.coachAccent) {
+            dismissMorningProposalChrome(permanent: true)
+        } content: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                    .font(.caption2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .tracking(1.45)
+                    .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+                Text(WeekFitLocalizedString("coach.proposal.chrome.noChangesTitle"))
+                    .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+                Text(WeekFitLocalizedString("coach.proposal.chrome.noChangesBody"))
+                    .font(.footnote)
+                    .foregroundStyle(textSecondary.opacity(0.72))
+                    .lineLimit(2)
+            }
+            .padding(.trailing, 18)
+        }
+    }
+
+    private func morningProposalAppliedCard(dayKey: String) -> some View {
+        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+            morningProposalChromeHidden = true
+        } content: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                    .font(.caption2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .tracking(1.45)
+                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                Text(WeekFitLocalizedString("coach.proposal.chrome.appliedTitle"))
+                    .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+                Text(WeekFitLocalizedString("coach.proposal.chrome.appliedBody"))
+                    .font(.footnote)
+                    .foregroundStyle(textSecondary.opacity(0.72))
+                    .lineLimit(2)
+            }
+            .padding(.trailing, 18)
+        }
+        .onAppear {
+            MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
+            MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
+        }
+    }
+
+    private func morningProposalStaleCard() -> some View {
+        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            morningProposalChromeHidden = true
+            refreshMorningProposal(forceRegenerate: true)
+            morningProposalChromeHidden = false
+        } onClose: {
+            dismissMorningProposalChrome(permanent: true)
+        } content: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                    .font(.caption2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .tracking(1.45)
+                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                Text(WeekFitLocalizedString("coach.proposal.chrome.staleTitle"))
+                    .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+                Text(WeekFitLocalizedString("coach.proposal.chrome.staleBody"))
+                    .font(.footnote)
+                    .foregroundStyle(textSecondary.opacity(0.72))
+                    .lineLimit(2)
+            }
+            .padding(.trailing, 18)
+        }
+    }
+
+    private func morningProposalFailedCard() -> some View {
+        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            morningProposalChromeHidden = true
+            refreshMorningProposal(forceRegenerate: true)
+            morningProposalChromeHidden = false
+        } onClose: {
+            dismissMorningProposalChrome(permanent: true)
+        } content: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                    .font(.caption2.weight(.bold))
+                    .fontDesign(.rounded)
+                    .tracking(1.45)
+                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                Text(WeekFitLocalizedString("coach.proposal.chrome.failedTitle"))
+                    .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+                Text(WeekFitLocalizedString("coach.proposal.chrome.failedBody"))
+                    .font(.footnote)
+                    .foregroundStyle(textSecondary.opacity(0.72))
+                    .lineLimit(2)
+            }
+            .padding(.trailing, 18)
+        }
+    }
+
+    private func morningProposalDismissibleChrome<Content: View>(
+        accent: Color,
+        onTap: @escaping () -> Void,
+        onClose: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onTap) {
+                content()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+                    .padding(.trailing, 12)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                (onClose ?? { dismissMorningProposalChrome(permanent: true) })()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(textSecondary.opacity(0.70))
+                    .frame(width: 30, height: 30)
+                    .background {
+                        Circle()
+                            .fill(WeekFitTheme.whiteOpacity(0.08))
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(WeekFitLocalizedString("coach.proposal.chrome.dismiss"))
+            .padding(.top, 10)
+            .padding(.trailing, 10)
+        }
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: accent,
+            cornerRadius: TodayLayout.cardRadius
+        )
+    }
+
+    private func dismissMorningProposalChrome(permanent: Bool) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        morningProposalChromeHidden = true
+        guard permanent, let dayKey = morningProposal?.dayKey else { return }
+        MorningProposalService.dismiss(dayKey: dayKey)
+        refreshMorningProposal()
+    }
+
+    private func scheduleMorningProposalRefresh() {
+        morningProposalDebounceTask?.cancel()
+        morningProposalDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            refreshMorningProposal()
+        }
+    }
+
+    private func refreshMorningProposal(forceRegenerate: Bool = false) {
+        let now = Date()
+        let calendar = Calendar.current
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: now, calendar: calendar)
+
+        Task { @MainActor in
+            let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
+            if morningWeatherSummary != cached {
+                morningWeatherSummary = cached
+            }
+        }
+
+        if forceRegenerate {
+            MorningProposalStore.remove(dayKey: dayKey)
+        }
+
+        let todayStart = calendar.startOfDay(for: now)
+        let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
+        let todayActivities = plannedActivities
+            .filter { calendar.isDate($0.date, inSameDayAs: todayStart) }
+            .map(CoachPlannedActivitySnapshot.init(from:))
+        let tomorrowActivities = plannedActivities
+            .filter { calendar.isDate($0.date, inSameDayAs: tomorrowStart) }
+            .map(CoachPlannedActivitySnapshot.init(from:))
+
+        let coachState = coachCoordinator.state
+        let readiness: CoachDayReadiness = {
+            if let input = coachState.input {
+                return CoachDayReadinessResolver.resolve(from: input)
+            }
+            let percent = Int(healthManager.readyScore.rounded())
+            let sleepHours = Double(healthManager.sleepMinutes) / 60.0
+            return CoachDayReadiness(
+                recoveryPercent: percent,
+                sleepHours: sleepHours,
+                recoveryBand: percent >= 70 ? .good : (percent >= 55 ? .moderate : .low),
+                hadHeavyYesterday: false,
+                sleepIsLow: sleepHours > 0 && sleepHours < 6,
+                recoveryDataAvailable: percent > 0 || sleepHours > 0
+            )
+        }()
+
+        let scenarioKey = coachState.coachIntegrationDebug?.scenario
+        let tomorrowDemand = CoachTomorrowDemandResolver.resolve(activities: tomorrowActivities).level
+
+        let completedWalkToday = todayActivities.contains {
+            $0.isCompleted && CoachActivityClassifier.type(for: $0) == .walk
+        }
+
+        let hasCompletedPlannedItemToday = todayActivities.contains {
+            ($0.isCompleted || $0.isPartialCompletion || ($0.actualDurationMinutes ?? 0) > 0) && !$0.isSkipped
+        }
+
+        let isMorningWindow = CoachMorningOverviewPolicy.isBeforeLocalNoon(now: now, calendar: calendar)
+        let healthSettled = healthManager.hasSettledMetrics(for: selectedDate)
+        // Recovery rings can populate before the settled flag flips; don't block the proposal on that race.
+        let healthRefreshCompleted = healthSettled || hasTodayRecoverySignals
+        let existingProposal = MorningProposalStore.proposal(for: dayKey)
+        let healthRefreshTimedOut = !healthRefreshCompleted
+            && existingProposal?.status == .gatheringData
+            && now.timeIntervalSince(existingProposal?.generatedAt ?? now)
+                >= MorningProposalGate.healthTimeoutSeconds
+
+        let recentDayTemplates = buildRecentDayTemplates(
+            from: plannedActivities,
+            excludingDayStart: todayStart,
+            calendar: calendar,
+            lookbackDays: 90
+        )
+        let observationContextRevision = ProposalObservationContextRevision.make(from: recentDayTemplates)
+        let mealLibraryRevision = "\(userSettings.customMealsCatalogRevision)"
+        let behavioralSnapshot = ProposalBehavioralPreferences.load()
+        let mealLibrary = userSettings.customMealsCatalog.map {
+            ProposalMealCandidate(
+                id: $0.id,
+                title: $0.title,
+                imageName: $0.imageName,
+                calories: $0.calories,
+                protein: $0.protein,
+                carbs: $0.carbs,
+                fats: $0.fats,
+                fiber: $0.fiber,
+                mealsTypeRaw: $0.type.rawValue,
+                suggestedTime: $0.suggestedTime
+            )
+        }
+
+        let recoveryBand = ProposalInputFingerprintBuilder.recoveryBand(from: readiness)
+        let sleepPresenceForFP = MorningProposalGate.sleepPresence(
+            from: MorningProposalGateInput(
+                now: now,
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: healthRefreshCompleted,
+                healthRefreshTimedOut: healthRefreshTimedOut,
+                isHealthAccessGranted: healthManager.isHealthAccessGranted,
+                sleepHours: Double(healthManager.sleepMinutes) / 60.0,
+                recoveryDataAvailable: readiness.recoveryDataAvailable,
+                todayPlanLoaded: true,
+                tomorrowPlanLoaded: true,
+                yesterdayContextLoaded: true,
+                isMorningWindow: isMorningWindow,
+                hasCompletedPlannedItemToday: hasCompletedPlannedItemToday,
+                existingStatus: existingProposal?.status
+            )
+        )
+        let seriousOpen = todayActivities.filter {
+            !$0.isCompleted && !$0.isSkipped && CoachActivityClassifier.isSeriousTraining($0)
+        }.count
+        let stackedLoad = ProposalStackedLoadResolver.resolve(
+            yesterdayHeavy: readiness.hadHeavyYesterday,
+            tomorrowDemand: tomorrowDemand,
+            recoveryBand: recoveryBand,
+            todaySeriousOpenCount: seriousOpen
+        )
+        let generationMode = MorningProposalGenerationModeResolver.resolve(
+            openCount: todayActivities.filter {
+                !$0.isCompleted && !$0.isSkipped && CoachActivityClassifier.type(for: $0) != .none
+            }.count,
+            hasCompletedOrPartialToday: hasCompletedPlannedItemToday,
+            isMorningWindow: isMorningWindow
+        )
+        let physiologyRevision = ProposalInputFingerprintBuilder.physiologyRevision(
+            recoveryBand: recoveryBand,
+            sleepPresence: sleepPresenceForFP,
+            yesterdayHeavy: readiness.hadHeavyYesterday,
+            stackedLoad: stackedLoad
+        )
+
+        let weatherRiskToken = ProposalWeatherRisk.resolve(from: morningWeatherSummary)
+
+        // Mark ready/reviewing drafts stale when live fingerprint diverges before regenerate.
+        let liveFingerprint = ProposalInputFingerprintBuilder.make(
+            dayKey: dayKey,
+            todaySnapshots: todayActivities,
+            tomorrowSnapshots: tomorrowActivities,
+            recoveryBand: recoveryBand,
+            sleepPresence: sleepPresenceForFP,
+            scenarioKey: scenarioKey?.rawValue ?? "none",
+            yesterdayHeavy: readiness.hadHeavyYesterday,
+            observationContextRevision: observationContextRevision,
+            behavioralGeneration: ProposalBehavioralPreferences.generation,
+            stackedLoad: stackedLoad,
+            generationMode: generationMode,
+            mealLibraryRevision: mealLibraryRevision,
+            physiologyContextRevision: physiologyRevision,
+            weatherRiskToken: weatherRiskToken
+        )
+        MorningProposalService.markStaleIfNeeded(dayKey: dayKey, liveFingerprint: liveFingerprint)
+
+        morningProposal = MorningProposalService.evaluateAndPersist(
+            context: .init(
+                now: now,
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: healthRefreshCompleted,
+                healthRefreshTimedOut: healthRefreshTimedOut,
+                isHealthAccessGranted: healthManager.isHealthAccessGranted,
+                sleepHours: Double(healthManager.sleepMinutes) / 60.0,
+                readiness: readiness,
+                scenarioKey: scenarioKey,
+                tomorrowDemand: tomorrowDemand,
+                stackedLoad: stackedLoad,
+                yesterdayHeavy: readiness.hadHeavyYesterday,
+                completedWalkToday: completedWalkToday,
+                todayActivities: todayActivities,
+                tomorrowActivities: tomorrowActivities,
+                isMorningWindow: isMorningWindow,
+                hasCompletedPlannedItemToday: hasCompletedPlannedItemToday,
+                recentDayTemplates: recentDayTemplates,
+                mealLibrary: mealLibrary,
+                observationContextRevision: observationContextRevision,
+                mealLibraryRevision: mealLibraryRevision,
+                behavioralGeneration: ProposalBehavioralPreferences.generation,
+                walkRejectPenalty: ProposalBehavioralPreferences.walkRejectPenalty(from: behavioralSnapshot),
+                stronglyRejectsWalk: ProposalBehavioralPreferences.stronglyRejectsWalk(from: behavioralSnapshot),
+                weatherRiskToken: weatherRiskToken
+            )
+        )
+
+        if morningProposal?.status == .gatheringData {
+            scheduleMorningProposalHealthTimeout()
+        } else {
+            morningProposalTimeoutTask?.cancel()
+            morningProposalTimeoutTask = nil
+        }
+    }
+
+    private func buildRecentDayTemplates(
+        from activities: [PlannedActivity],
+        excludingDayStart: Date,
+        calendar: Calendar,
+        lookbackDays: Int
+    ) -> [SimilarDayTemplate] {
+        let oldest = calendar.date(byAdding: .day, value: -lookbackDays, to: excludingDayStart) ?? excludingDayStart
+        let grouped = Dictionary(grouping: activities) { calendar.startOfDay(for: $0.date) }
+        return grouped.compactMap { dayStart, dayActivities -> SimilarDayTemplate? in
+            guard dayStart < excludingDayStart, dayStart >= oldest else { return nil }
+            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: dayStart, calendar: calendar)
+            let snapshots = dayActivities.map(CoachPlannedActivitySnapshot.init(from:))
+            // Keep skipped items for quality scoring; miner filters for cloning.
+            guard snapshots.contains(where: { !$0.isSkipped }) else { return nil }
+
+            let observation = CoachObservationStore.observation(for: dayKey)
+            let observationAvailable = observation?.hasRecoverySignal == true
+            let band: ProposalRecoveryBandToken
+            let sleepPresence: ProposalSleepPresenceToken
+            if let observation, observation.hasRecoverySignal {
+                band = SimilarDayPlanMiner.recoveryBand(fromPercent: observation.recoveryPercent)
+                sleepPresence = observation.hasSleepSignal ? .present : .missing
+            } else {
+                // Neutral fallback — do not pretend physiological similarity.
+                band = .unavailable
+                sleepPresence = .unavailable
+            }
+
+            return SimilarDayTemplate(
+                dayKey: dayKey,
+                recoveryBand: band,
+                observationAvailable: observationAvailable,
+                sleepPresence: sleepPresence,
+                activities: snapshots
+            )
+        }
+    }
+
+    private func scheduleMorningProposalHealthTimeout() {
+        morningProposalTimeoutTask?.cancel()
+        let timeout = MorningProposalGate.healthTimeoutSeconds
+        morningProposalTimeoutTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            guard morningProposal?.status == .gatheringData else { return }
+            refreshMorningProposal()
         }
     }
 
@@ -2928,6 +3687,14 @@ struct TodayView: View {
         return "\(subtitle) · \(context)"
     }
 
+    private func coachProvenanceKind(for activity: PlannedActivity) -> CoachChangeKind? {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: activity.date)
+        return CoachProvenanceLookupCache.adjustment(
+            forActivityId: activity.id,
+            dayKey: dayKey
+        )?.kind
+    }
+
     private func upNextIcon(for activity: PlannedActivity, isLive: Bool = false) -> String {
         let resolved = WeekFitActivityIconResolver.resolve(for: activity)
 
@@ -3015,6 +3782,7 @@ struct TodayView: View {
                 source: "TodayView.healthLoad"
             )
             healthManager.markDisplayMetricsSettled(for: selectedDate)
+            refreshMorningProposal()
             if !healthManager.isHealthAccessRequested {
                 debugTodayDataState(source: "refreshHealthAndNutritionAsync.noHealthAccess")
             }

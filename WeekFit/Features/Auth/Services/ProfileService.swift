@@ -29,6 +29,8 @@
             static let fullName = "weekfit.profile.fullName"
             static let name = "weekfit.profile.name"
             static let displayName = "weekfit.profile.displayName"
+            static let givenName = "weekfit.profile.givenName"
+            static let familyName = "weekfit.profile.familyName"
             static let email = "weekfit.profile.email"
             static let initials = "weekfit.profile.initials"
             static let nutritionGoal = "weekfit.profile.nutritionGoal"
@@ -45,15 +47,15 @@
         nonisolated deinit {}
 
         func loadUserProfile() -> UserProfile {
-            Self.migrateProfileStorageIfNeeded()
+            Self.migrateProfileStorageIfNeeded(defaults: defaults)
 
-            let fullName = Self.resolvedFullName()
+            let fullName = Self.resolvedFullName(defaults: defaults)
 
-            let email = UserDefaults.standard
+            let email = defaults
                 .string(forKey: Keys.email)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-            let initials = Self.resolvedInitials()
+            let initials = Self.resolvedInitials(defaults: defaults)
 
             return UserProfile(
                 initials: initials,
@@ -67,9 +69,53 @@
             let cleanEmail = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
             let initials = Self.makeInitials(from: cleanName)
 
-            UserDefaults.standard.set(cleanName, forKey: Keys.fullName)
-            UserDefaults.standard.set(cleanEmail, forKey: Keys.email)
-            UserDefaults.standard.set(initials, forKey: Keys.initials)
+            defaults.set(cleanName, forKey: Keys.fullName)
+            defaults.set(cleanEmail, forKey: Keys.email)
+            defaults.set(initials, forKey: Keys.initials)
+
+            // Keep greeting first-name in sync for manual edits.
+            if cleanName.isEmpty {
+                defaults.removeObject(forKey: Keys.givenName)
+                defaults.removeObject(forKey: Keys.familyName)
+            } else {
+                let first = cleanName.split(whereSeparator: \.isWhitespace).first.map(String.init)
+                defaults.set(first, forKey: Keys.givenName)
+                defaults.removeObject(forKey: Keys.familyName)
+            }
+        }
+
+        /// Applies Apple-provided name only when the profile display name is empty.
+        /// Never overwrites a manually edited (or previously persisted) non-empty name.
+        @discardableResult
+        func applyAppleNameIfEmpty(_ parsed: ApplePersonNameParser.ParsedName) -> Bool {
+            Self.migrateProfileStorageIfNeeded(defaults: defaults)
+            guard Self.resolvedFullName(defaults: defaults).isEmpty else { return false }
+
+            let display = parsed.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !display.isEmpty else { return false }
+
+            defaults.set(display, forKey: Keys.fullName)
+            defaults.set(Self.makeInitials(from: display), forKey: Keys.initials)
+            if let given = parsed.givenName {
+                defaults.set(given, forKey: Keys.givenName)
+            } else {
+                defaults.removeObject(forKey: Keys.givenName)
+            }
+            if let family = parsed.familyName {
+                defaults.set(family, forKey: Keys.familyName)
+            } else {
+                defaults.removeObject(forKey: Keys.familyName)
+            }
+            return true
+        }
+
+        func applyAppleEmailIfEmpty(_ email: String?) {
+            let clean = email?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !clean.isEmpty else { return }
+            let existing = defaults.string(forKey: Keys.email)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard existing.isEmpty else { return }
+            defaults.set(clean, forKey: Keys.email)
         }
 
         func loadAccountSettings() -> [ProfileItem] {
@@ -224,6 +270,16 @@
             ""
         }
 
+        /// First name for greetings — prefers stored givenName, else first token of display name.
+        static func resolvedGivenName(defaults: UserDefaults = .standard) -> String {
+            if let given = cleanString(defaults.string(forKey: Keys.givenName)) {
+                return given
+            }
+            let display = resolvedFullName(defaults: defaults)
+            guard !display.isEmpty else { return "" }
+            return display.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? display
+        }
+
         static func resolvedInitials(defaults: UserDefaults = .standard) -> String {
             let fullName = resolvedFullName(defaults: defaults)
 
@@ -252,7 +308,7 @@
             _ = resolvedInitials(defaults: defaults)
         }
 
-        private static func cleanString(_ value: String?) -> String? {
+        static func cleanString(_ value: String?) -> String? {
             let cleaned = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return cleaned.isEmpty ? nil : cleaned
         }

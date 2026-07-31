@@ -61,6 +61,15 @@ enum CoachScenarioKey: String, CaseIterable, Hashable, Sendable {
 
 // MARK: - Modifiers
 
+/// Whether morning plan adjustments were applied — shapes copy, never scenario selection.
+enum CoachPlanAdjustmentMode: String, Equatable, Sendable {
+    case none
+    /// Morning proposal status is `.applied` for today — execution-assistant tone.
+    case appliedExecuting
+    /// User removed the coach-placed adjustments; acknowledge gently, then use regular conditions copy.
+    case clearedAfterApply
+}
+
 /// Copy-shaping factors layered on top of the primary scenario.
 struct CoachScenarioModifiers: Equatable, Sendable {
     let dayLoad: CoachDayLoadBand
@@ -77,6 +86,8 @@ struct CoachScenarioModifiers: Equatable, Sendable {
     let lastCompletedActivityType: CoachActivityType
     /// Completed walk logged today — avoids duplicate evening walk prompts.
     let completedWalkToday: Bool
+    /// Post-Apply morning adjustments — suppresses unresolved dial-back advice.
+    let planAdjustmentMode: CoachPlanAdjustmentMode
 
     init(
         dayLoad: CoachDayLoadBand,
@@ -89,7 +100,8 @@ struct CoachScenarioModifiers: Equatable, Sendable {
         timeOfDay: CoachTimeOfDay,
         stackedDayActiveRisk: Bool,
         lastCompletedActivityType: CoachActivityType,
-        completedWalkToday: Bool = false
+        completedWalkToday: Bool = false,
+        planAdjustmentMode: CoachPlanAdjustmentMode = .none
     ) {
         self.dayLoad = dayLoad
         self.fuelBehind = fuelBehind
@@ -102,6 +114,7 @@ struct CoachScenarioModifiers: Equatable, Sendable {
         self.stackedDayActiveRisk = stackedDayActiveRisk
         self.lastCompletedActivityType = lastCompletedActivityType
         self.completedWalkToday = completedWalkToday
+        self.planAdjustmentMode = planAdjustmentMode
     }
 
     static func from(context: CoachContext, scenario: CoachScenarioKey) -> CoachScenarioModifiers {
@@ -117,8 +130,17 @@ struct CoachScenarioModifiers: Equatable, Sendable {
             timeOfDay: context.timeOfDay,
             stackedDayActiveRisk: CoachStackedDayRisk.isActive(context: context, scenario: scenario),
             lastCompletedActivityType: context.lastCompletedSeriousActivityType,
-            completedWalkToday: context.completedWalkToday
+            completedWalkToday: context.completedWalkToday,
+            planAdjustmentMode: resolvePlanAdjustmentMode()
         )
+    }
+
+    private static func resolvePlanAdjustmentMode(now: Date = Date()) -> CoachPlanAdjustmentMode {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: now)
+        guard MorningProposalStore.proposal(for: dayKey)?.status == .applied else {
+            return .none
+        }
+        return CoachAppliedAcknowledgmentCopy.planAdjustmentMode(forDayKey: dayKey)
     }
 }
 

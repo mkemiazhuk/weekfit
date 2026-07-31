@@ -378,6 +378,9 @@ extension Meals {
     }
 
     var generatedSteps: [String] {
+        if let starterSteps = StarterMealPreparation.steps(forMealID: id) {
+            return starterSteps
+        }
 
         let ingredientNames = localizedDisplayIngredients
             .prefix(4)

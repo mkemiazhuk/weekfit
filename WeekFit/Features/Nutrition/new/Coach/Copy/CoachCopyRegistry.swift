@@ -3,6 +3,27 @@ import Foundation
 enum CoachCopyRegistry {
 
     static func resolve(_ input: CoachCopyBuildInput) -> CoachCopyPack? {
+        if input.modifiers.planAdjustmentMode == .appliedExecuting,
+           CoachAppliedAcknowledgmentCopy.shouldOverrideProtectiveCopy(scenario: input.scenario) {
+            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+            let proposal = MorningProposalStore.proposal(for: dayKey)
+            let summary = CoachAppliedAcknowledgmentCopy.summary(proposal: proposal, dayKey: dayKey)
+            var pack = CoachAppliedAcknowledgmentCopy.pack(for: summary, scenario: input.scenario)
+            // Keep live safety overlays (critical fuel/hydration) even after Apply.
+            if let warning = warningLayer(for: input) {
+                pack = CoachCopyPack(
+                    scenario: pack.scenario,
+                    assessment: pack.assessment,
+                    recommendation: pack.recommendation,
+                    avoid: pack.avoid,
+                    nextAction: pack.nextAction,
+                    supportingSignals: pack.supportingSignals,
+                    warningLayer: warning
+                )
+            }
+            return pack
+        }
+
         guard let base = basePack(for: input.scenario, input: input) else {
             return nil
         }
@@ -15,13 +36,20 @@ enum CoachCopyRegistry {
             profile: profile
         )
 
+        let signals: CoachCopySection
+        if input.modifiers.planAdjustmentMode == .clearedAfterApply {
+            signals = .single(CoachAppliedAcknowledgmentCopy.clearedPlanSupportingSignal())
+        } else {
+            signals = supportingSignals(for: input)
+        }
+
         return CoachCopyPack(
             scenario: input.scenario,
             assessment: final.assessment,
             recommendation: final.recommendation,
             avoid: final.avoid,
             nextAction: final.nextAction,
-            supportingSignals: supportingSignals(for: input),
+            supportingSignals: signals,
             warningLayer: warningLayer(for: input)
         )
     }

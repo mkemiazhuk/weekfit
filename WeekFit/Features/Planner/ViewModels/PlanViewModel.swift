@@ -472,6 +472,14 @@ final class PlanViewModel: ObservableObject {
                 ProductAnalytics.planItemUpdated(
                     itemType: PlanItemAnalyticsType(plannerTypeTitle: selectedType.title)
                 )
+                if CoachAdjustmentProvenanceStore.adjustment(forActivityId: editingActivity.id) != nil {
+                    CoachAdjustmentProvenanceStore.markManualEdit(activityId: editingActivity.id)
+                    let kind = CoachProvenanceLookupCache.adjustment(
+                        forActivityId: editingActivity.id,
+                        dayKey: ProposalInputFingerprintBuilder.dayKey(for: editingActivity.date)
+                    )?.kind
+                    ProductAnalytics.morningProposalAdjustedItemManuallyEdited(changeKind: kind)
+                }
             } catch {
                 handleSaveFailure(error)
                 return

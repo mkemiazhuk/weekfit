@@ -26,6 +26,7 @@ final class WeekFitUserSettings: ObservableObject {
         let storage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
         customMealsStorage = storage
         customMealsCatalog = CustomMealStore.load(from: storage)
+        DefaultMealLibrarySeeder.seedIfNeeded(settings: self)
     }
 
     func refreshFromStorage() {
@@ -47,6 +48,8 @@ final class WeekFitUserSettings: ObservableObject {
             customMealsCatalog = CustomMealStore.load(from: nextCustomMealsStorage)
             customMealsCatalogRevision &+= 1
         }
+
+        DefaultMealLibrarySeeder.seedIfNeeded(settings: self)
     }
 
     func setProfileInitials(_ value: String) {

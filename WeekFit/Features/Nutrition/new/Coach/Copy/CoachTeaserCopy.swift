@@ -13,6 +13,19 @@ enum CoachTeaserCopy {
         from result: CoachEngine.Result,
         localizedAssessment: String
     ) -> Content {
+        if result.modifiers.planAdjustmentMode == .appliedExecuting,
+           CoachAppliedAcknowledgmentCopy.shouldOverrideProtectiveCopy(scenario: result.scenario) {
+            return Content(
+                todayTitle: .en("Today’s plan is ready", "План на сегодня готов"),
+                todayMessage: .en(
+                    "I’ll help you stay on track with the adjustments you chose.",
+                    "Я помогу оставаться в ритме с выбранными правками."
+                ),
+                coachHeadline: .en("Today’s plan is ready", "План на сегодня готов")
+            )
+        }
+
+        // Cleared coach adjustment → fall through to regular conditions teasers.
         if let overlay = CoachDayClosingCopyPolicy.teaserOverlay(for: result) {
             return Content(
                 todayTitle: overlay.todayTitle,

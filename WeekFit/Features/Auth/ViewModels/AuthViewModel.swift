@@ -134,7 +134,9 @@ final class AuthViewModel: ObservableObject {
 
             do {
                 clearAppReviewDemoSession()
+                // Profile name is persisted inside handleAppleCredential before return.
                 _ = try await authService.handleAppleCredential(credential)
+                WeekFitUserSettings.shared.refreshFromStorage()
                 isLoggedIn = true
             } catch {
                 errorMessage = cleanError(error)
@@ -186,6 +188,7 @@ final class AuthViewModel: ObservableObject {
 
         if await authService.restoreAppleSessionIfValid() {
             clearAppReviewDemoSession()
+            AppleIdentityStore.restoreProfileIfNeeded(appleUserID: AuthSessionStore.appleUserID)
             isLoggedIn = true
         }
     }

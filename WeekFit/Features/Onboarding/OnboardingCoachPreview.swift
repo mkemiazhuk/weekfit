@@ -61,6 +61,8 @@ enum OnboardingCoachPreview {
         var activeCalories: Double?
         var steps: Int?
         var health: HealthAvailability
+        /// Given name from Apple Sign In / profile when already known.
+        var firstName: String?
 
         init(
             now: Date = Date(),
@@ -70,7 +72,8 @@ enum OnboardingCoachPreview {
             sleepHours: Double? = nil,
             activeCalories: Double? = nil,
             steps: Int? = nil,
-            health: HealthAvailability
+            health: HealthAvailability,
+            firstName: String? = nil
         ) {
             self.now = now
             self.calendar = calendar
@@ -80,6 +83,14 @@ enum OnboardingCoachPreview {
             self.activeCalories = activeCalories
             self.steps = steps
             self.health = health
+            self.firstName = Self.normalizedFirstName(firstName)
+        }
+
+        private static func normalizedFirstName(_ raw: String?) -> String? {
+            guard let raw else { return nil }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            return trimmed.split(whereSeparator: \.isWhitespace).first.map(String.init)
         }
     }
 
@@ -100,7 +111,7 @@ enum OnboardingCoachPreview {
         let movedToday = hasMeaningfulLoad(activeCalories: input.activeCalories, steps: input.steps)
 
         return Output(
-            greetingTitle: greetingTitle(for: period),
+            greetingTitle: greetingTitle(for: period, firstName: input.firstName),
             supportingMessage: supportingMessage(
                 period: period,
                 recovery: recovery,
@@ -141,17 +152,15 @@ enum OnboardingCoachPreview {
 
     // MARK: - Greeting
 
-    private static func greetingTitle(for period: WeekFitLocalDayPeriod) -> String {
-        switch period {
-        case .morning:
-            return WeekFitLocalizedString("onboarding.v12.ready.title.morning")
-        case .afternoon:
-            return WeekFitLocalizedString("onboarding.v12.ready.title.afternoon")
-        case .evening:
-            return WeekFitLocalizedString("onboarding.v12.ready.title.evening")
-        case .night:
-            return WeekFitLocalizedString("onboarding.v12.ready.title.night")
+    private static func greetingTitle(for period: WeekFitLocalDayPeriod, firstName: String?) -> String {
+        _ = period // Ready climax uses a stable "You're ready" line; period still drives other copy.
+        guard let firstName, !firstName.isEmpty else {
+            return WeekFitLocalizedString("onboarding.v12.ready.title.youreReady")
         }
+        return String(
+            format: WeekFitLocalizedString("onboarding.v12.ready.title.youreReady.named"),
+            firstName
+        )
     }
 
     // MARK: - Supporting message (time × recovery × goal × sleep)

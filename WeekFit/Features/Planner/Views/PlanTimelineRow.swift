@@ -124,6 +124,14 @@ struct PlanTimelineRow: View {
         status == .pending
     }
 
+    private var coachProvenanceKind: CoachChangeKind? {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: activity.date)
+        return CoachProvenanceLookupCache.adjustment(
+            forActivityId: activity.id,
+            dayKey: dayKey
+        )?.kind
+    }
+
     private var rowOpacity: Double {
         switch emphasis {
         case .past:
@@ -289,6 +297,10 @@ struct PlanTimelineRow: View {
                         if isLive {
                             liveStatusBadge
                         }
+
+                        if let coachKind = coachProvenanceKind {
+                            CoachProvenanceBadge(kind: coachKind, showsLabel: true, compact: true)
+                        }
                     }
 
                     if isPending {
@@ -415,6 +427,17 @@ struct PlanTimelineRow: View {
                     .layoutPriority(1)
             }
 
+            if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+                if metadata.primary != nil {
+                    Text("·")
+                        .foregroundStyle(metadataColor.opacity(0.55))
+                }
+                Text(sourceLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.82))
+            }
+
             if metadata.showsWatchIcon {
                 watchSourceBadge
             }
@@ -464,6 +487,9 @@ struct PlanTimelineRow: View {
         }
         if let primary = metadata.primary, !primary.isEmpty {
             parts.append(primary)
+        }
+        if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+            parts.append(sourceLabel)
         }
         if metadata.showsWatchIcon {
             parts.append(

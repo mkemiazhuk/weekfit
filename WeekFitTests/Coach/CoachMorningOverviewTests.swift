@@ -123,15 +123,29 @@ final class CoachMorningOverviewTests: XCTestCase {
     }
 
     func testMorningOverviewEndsAfterMorningWindow() {
-        let lateMorning = date(hour: 10, minute: 15)
+        // Shared product morning window is before local noon (same as Morning Plan Proposal).
+        let afterNoon = date(hour: 12, minute: 15)
         let nutrition = behindNutrition()
+
+        let result = CoachEngine.evaluate(
+            input: makeInput(now: afterNoon, activities: [], nutrition: nutrition, brainHour: 12)
+        )
+
+        XCTAssertEqual(result.context.conversationPhase, .steady)
+        XCTAssertTrue(result.modifiers.fuelBehind || result.modifiers.hydrationBehind)
+    }
+
+    func testMorningOverviewStillActiveLateMorningBeforeNoon() throws {
+        let lateMorning = date(hour: 10, minute: 15)
+        let nutrition = emptyNutrition()
 
         let result = CoachEngine.evaluate(
             input: makeInput(now: lateMorning, activities: [], nutrition: nutrition, brainHour: 10)
         )
 
-        XCTAssertEqual(result.context.conversationPhase, .steady)
-        XCTAssertTrue(result.modifiers.fuelBehind || result.modifiers.hydrationBehind)
+        XCTAssertEqual(result.context.conversationPhase, .morningOverview)
+        XCTAssertTrue(CoachMorningOverviewPolicy.isBeforeLocalNoon(now: lateMorning))
+        XCTAssertFalse(CoachMorningOverviewPolicy.isBeforeLocalNoon(now: date(hour: 12, minute: 0)))
     }
 
     func testLiveMorningWorkoutDoesNotSuppressSessionSafety() {

@@ -333,7 +333,9 @@ struct FoodMediaView: View {
                 itemScale: isHero ? 0.84 : 0.34,
                 offsetScale: isHero ? 0.66 : 0.32,
                 plateOpacity: isHero ? 0.80 : 0.42,
-                shadowOpacity: isHero ? 0.18 : 0.12
+                shadowOpacity: isHero ? 0.18 : 0.12,
+                layoutMode: isHero ? .detail : .compactPreview,
+                animatesAppearance: false
             )
             .frame(width: size, height: size)
             .offset(x: isHero ? -size * 0.04 : 0)

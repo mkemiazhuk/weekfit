@@ -78,6 +78,28 @@ struct ActivitySessionSnapshot: Identifiable, Hashable {
     let icon: String
     let color: Color
     let detail: ActivitySessionDetailSnapshot?
+    /// Stable PlannedActivity.id when this session was opened from Plan / Up Next.
+    let plannedActivityId: String?
+
+    init(
+        workoutID: UUID?,
+        title: String,
+        startDate: Date,
+        durationMinutes: Int,
+        icon: String,
+        color: Color,
+        detail: ActivitySessionDetailSnapshot?,
+        plannedActivityId: String? = nil
+    ) {
+        self.workoutID = workoutID
+        self.title = title
+        self.startDate = startDate
+        self.durationMinutes = durationMinutes
+        self.icon = icon
+        self.color = color
+        self.detail = detail
+        self.plannedActivityId = plannedActivityId
+    }
 }
 
 struct ActivityDaySnapshot: Identifiable, Hashable {
@@ -1054,6 +1076,7 @@ private struct ActivitySessionSourcePresentation {
         case appleWatch
         case healthKit
         case planner
+        case planned
         case other(String)
     }
 
@@ -1066,6 +1089,8 @@ private struct ActivitySessionSourcePresentation {
         switch normalized {
         case "apple watch", "applewatch":
             kind = .appleWatch
+        case "planned":
+            kind = .planned
         case "planner", "today":
             kind = .planner
         case "apple health", "applehealth", "healthkit", "appleworkout":
@@ -1089,6 +1114,8 @@ private struct ActivitySessionSourcePresentation {
             return "heart.text.square.fill"
         case .planner:
             return "calendar.badge.checkmark"
+        case .planned:
+            return "calendar"
         case .other:
             return "arrow.triangle.2.circlepath"
         }
@@ -1108,6 +1135,8 @@ private struct ActivitySessionSourcePresentation {
             )
         case .planner:
             return WeekFitLocalizedString("activity.loggedFromPlan")
+        case .planned:
+            return WeekFitLocalizedString("activity.plannedInPlan")
         case .other(let name):
             return String(format: WeekFitLocalizedString("activity.syncedFrom"), name)
         }
@@ -1117,6 +1146,8 @@ private struct ActivitySessionSourcePresentation {
         switch kind {
         case .planner:
             return WeekFitLocalizedString("activity.dataFromPlan")
+        case .planned:
+            return WeekFitLocalizedString("activity.dataFromPlanned")
         case .appleWatch:
             return String(
                 format: WeekFitLocalizedString("activity.dataFrom"),
@@ -1163,7 +1194,20 @@ struct ActivitySessionDetailView: View {
     }
 
     private var sessionDurationSeconds: TimeInterval {
-        detail?.workoutDurationSeconds ?? Double(session.durationMinutes * 60)
+        if let seconds = detail?.workoutDurationSeconds, seconds > 0 {
+            return seconds
+        }
+        return Double(max(session.durationMinutes, 1) * 60)
+    }
+
+    /// Upcoming plan item opened before completion — no finished-session metrics yet.
+    private var isUnfinishedPlannedSession: Bool {
+        if session.workoutID != nil { return false }
+        if case .planned = sourcePresentation.kind { return true }
+        if let detail, detail.elapsedDurationSeconds <= 0, detail.activeCalories == nil {
+            return detail.source?.lowercased() == "planned"
+        }
+        return false
     }
 
     private var sessionDurationMinutes: Double {
@@ -1320,13 +1364,28 @@ struct ActivitySessionDetailView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 9) {
                     sessionHeroCard
-                    metricsCard
 
-                    if isHeartRateLoading || !heartRateSamples.isEmpty {
+                    // Planned-but-not-started sessions should not show workout metrics
+                    // (avoids confusing "1m" from zeroed finished-session fields).
+                    if !isUnfinishedPlannedSession {
+                        metricsCard
+                    }
+
+                    if let coachAdjustment {
+                        CoachAdjustmentDetailSection(adjustment: coachAdjustment)
+                            .onAppear {
+                                ProductAnalytics.morningProposalAdjustedItemViewed(
+                                    changeKind: coachAdjustment.kind,
+                                    source: .activityDetail
+                                )
+                            }
+                    }
+
+                    if !isUnfinishedPlannedSession, isHeartRateLoading || !heartRateSamples.isEmpty {
                         heartRateCard
                     }
 
-                    if expectsRouteData {
+                    if !isUnfinishedPlannedSession, expectsRouteData {
                         routeCard
                     }
 
@@ -1447,6 +1506,12 @@ struct ActivitySessionDetailView: View {
 
     private var sourcePresentation: ActivitySessionSourcePresentation {
         ActivitySessionSourcePresentation(source: detail?.source)
+    }
+
+    private var coachAdjustment: AppliedCoachAdjustment? {
+        guard let plannedId = session.plannedActivityId else { return nil }
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: session.startDate)
+        return CoachProvenanceLookupCache.adjustment(forActivityId: plannedId, dayKey: dayKey)
     }
 
     private var activityDateText: String {

@@ -197,14 +197,15 @@ final class ActivityIntelligenceSnapshotProvider {
                 durationMinutes: durationMinutes,
                 icon: icon,
                 color: activity.color,
-                detail: detail
+                detail: detail,
+                plannedActivityId: activity.id
             )
         }
 
         let source: String
         if activity.isWatchSynced {
             source = WeekFitLocalizedString("activity.data.source.appleWatch")
-        } else {
+        } else if activity.isCompleted {
             let normalized = activity.source
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .lowercased()
@@ -214,7 +215,17 @@ final class ActivityIntelligenceSnapshotProvider {
             } else {
                 source = activity.source
             }
+        } else {
+            // Upcoming / not-yet-done plan items must not look like finished sessions.
+            source = "planned"
         }
+
+        let isFinishedSession = activity.isCompleted || activity.healthKitWorkoutUUID != nil
+        let plannedEndDate = Calendar.current.date(
+            byAdding: .minute,
+            value: max(durationMinutes, 1),
+            to: activity.date
+        ) ?? activity.date
 
         return ActivitySessionSnapshot(
             workoutID: activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
@@ -227,15 +238,21 @@ final class ActivityIntelligenceSnapshotProvider {
                 title: activity.title,
                 activityType: activityType,
                 startDate: activity.date,
-                endDate: endDate,
+                endDate: isFinishedSession ? endDate : plannedEndDate,
                 durationMinutes: durationMinutes,
-                workoutDurationSeconds: TimeInterval(durationMinutes * 60),
-                elapsedDurationSeconds: endDate.timeIntervalSince(activity.date),
+                // Unfinished plan items keep planned seconds so UI can show schedule,
+                // but detail view hides workout metrics until the session is finished.
+                workoutDurationSeconds: isFinishedSession
+                    ? TimeInterval(durationMinutes * 60)
+                    : TimeInterval(max(durationMinutes, 0) * 60),
+                elapsedDurationSeconds: isFinishedSession ? endDate.timeIntervalSince(activity.date) : 0,
                 source: source,
                 icon: icon,
                 color: activity.color,
-                activeCalories: activity.calories > 0 ? Double(activity.calories) : nil,
-                distanceKm: estimatedDistanceKm(for: activity, activityType: activityType),
+                activeCalories: isFinishedSession && activity.calories > 0 ? Double(activity.calories) : nil,
+                distanceKm: isFinishedSession
+                    ? estimatedDistanceKm(for: activity, activityType: activityType)
+                    : nil,
                 averageHeartRate: nil,
                 maxHeartRate: nil,
                 heartRateSamples: [],
@@ -243,7 +260,8 @@ final class ActivityIntelligenceSnapshotProvider {
                 elevationGain: nil,
                 steps: nil,
                 cadence: nil
-            )
+            ),
+            plannedActivityId: activity.id
         )
     }
 

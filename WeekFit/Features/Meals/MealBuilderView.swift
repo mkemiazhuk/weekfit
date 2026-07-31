@@ -181,7 +181,8 @@ struct MealBuilderView: View {
                 let current = flyingPoint(from: start, to: end, progress: t)
                 let endSize = finalPlateItemSize(for: flyingIngredient)
                 let size = flyingStartSize + (endSize - flyingStartSize) * eased
-                let lift = 1.0 + (0.08 * sin(t * .pi))
+                // Subtle mid-flight presence — no scale overshoot at landing.
+                let lift = 1.0 + (0.05 * sin(t * .pi) * (1 - t))
 
                 if !flyingIngredient.imageName.isEmpty,
                    UIImage(named: flyingIngredient.imageName) != nil {
@@ -193,11 +194,11 @@ struct MealBuilderView: View {
                         .position(current)
                         .rotationEffect(.degrees(Double(flyingIngredient.rotation) * eased))
                         .shadow(
-                            color: .black.opacity(0.18 + 0.22 * Double(sin(t * .pi))),
-                            radius: 10 + 8 * sin(t * .pi),
-                            y: 4 + 6 * sin(t * .pi)
+                            color: .black.opacity(0.16 + 0.18 * Double(sin(t * .pi))),
+                            radius: 8 + 6 * sin(t * .pi),
+                            y: 3 + 4 * sin(t * .pi)
                         )
-                        .opacity(0.92 + 0.08 * eased)
+                        .opacity(0.94 + 0.06 * eased)
                         .allowsHitTesting(false)
                 }
             }
@@ -205,11 +206,9 @@ struct MealBuilderView: View {
     }
 
     private func flightEase(_ t: CGFloat) -> CGFloat {
-        // Smooth ease-in-out cubic — premium, no bounce at the end of the path.
+        // Quintic ease-out — fast takeoff, soft settle, no end bounce.
         let x = min(max(t, 0), 1)
-        return x < 0.5
-            ? 4 * x * x * x
-            : 1 - pow(-2 * x + 2, 3) / 2
+        return 1 - pow(1 - x, 5)
     }
 
     private func flyingPoint(
@@ -223,8 +222,8 @@ struct MealBuilderView: View {
         let x = start.x + (end.x - start.x) * eased
         let y = start.y + (end.y - start.y) * eased
 
-        // Gentle arc — enough lift to feel crafted, not cartoonish.
-        let arc = sin(t * .pi) * 28
+        // Short lift arc that peaks early and lands flat (no rebound).
+        let arc = sin(min(t, 1) * .pi) * 18 * (1 - 0.35 * t)
 
         return CGPoint(
             x: x,
@@ -277,7 +276,8 @@ struct MealBuilderView: View {
             in: items,
             plateSize: 220,
             itemScale: 1.00,
-            offsetScale: 0.82
+            offsetScale: 0.82,
+            mode: .builder
         )?.offset ?? CGSize(
             width: CGFloat(ingredient.offsetX) * 0.82,
             height: CGFloat(ingredient.offsetY) * 0.82 - 2
@@ -342,6 +342,7 @@ struct MealBuilderView: View {
                 offsetScale: 0.82,
                 plateOpacity: 1.00,
                 shadowOpacity: builderPreviewItems.isEmpty ? 0.14 : 0.22,
+                layoutMode: .builder,
                 showsEmptyPlate: true
             )
             .offset(y: -6)
@@ -374,7 +375,7 @@ struct MealBuilderView: View {
         _ ingredient: MealBuilderIngredient,
         from frame: CGRect
     ) {
-        let duration: Double = 0.62
+        let duration: Double = 0.72
 
         // Freeze landing against the current plate frame so the first drop
         // doesn't retarget when the empty prompt fades and items appear.
@@ -394,7 +395,7 @@ struct MealBuilderView: View {
             addIngredientWithoutPulse(ingredient)
         }
 
-        withAnimation(.easeInOut(duration: duration)) {
+        withAnimation(.timingCurve(0.22, 0.85, 0.28, 1.0, duration: duration)) {
             flyingProgressValue = 1
         }
 

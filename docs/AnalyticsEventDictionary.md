@@ -74,6 +74,35 @@ Same-tab re-taps are ignored by bottom bar / `selectTab`.
 
 ---
 
+
+## Morning Proposal (Phase 1)
+
+Privacy: coarse `change_kind`, `reason_category`, count buckets, `result_type`, `surface` only.
+Never log Recovery/HRV/sleep values, titles, HealthKit samples, or localized Coach copy.
+
+| Event | When | Params |
+|-------|------|--------|
+| `morning_proposal_generated` | Engine produces ready proposal | `selected_count_bucket`, `source` |
+| `morning_proposal_unavailable` | Gate/engine unavailable | `reason`, `source` |
+| `morning_proposal_no_changes` | No mutating/guidance changes | `source` |
+| `morning_proposal_viewed` | Today ready card shown (once/proposal id) | `selected_count_bucket`, `surface` |
+| `morning_proposal_review_opened` | Review sheet appear | `selected_count_bucket`, `surface` |
+| `morning_proposal_recommendation_selected` | Toggle on | `change_kind`, `reason_category` |
+| `morning_proposal_recommendation_deselected` | Toggle off | `change_kind`, `reason_category` |
+| `morning_proposal_reason_expanded` | Why expanded | `change_kind`, `reason_category` |
+| `morning_proposal_apply_started` | Apply tapped | `selected_count_bucket` |
+| `morning_proposal_apply_succeeded` | All selected applied | `applied_count_bucket`, `result_type` |
+| `morning_proposal_apply_partial` | Some applied, some failed | `applied_count_bucket`, `selected_count_bucket`, `result_type` |
+| `morning_proposal_apply_failed` | Apply failed / stale / none valid | `result_type` |
+| `morning_proposal_dismissed` | Keep original plan | `surface` |
+| `morning_proposal_stale` | Fingerprint drift | `source` |
+| `morning_proposal_adjusted_item_viewed` | Provenance detail opened | `change_kind?`, `surface` |
+| `morning_proposal_adjusted_item_manually_edited` | User edits after Apply | `change_kind?`, `surface` |
+| `morning_proposal_adjusted_item_completed` | Adjusted activity completed | `change_kind?` |
+| `morning_proposal_coach_acknowledgment_viewed` | Coach/Today ack shown (once/day) | `surface` |
+
+Helper: `MorningProposalAnalytics` / `ProductAnalytics` wrappers.
+
 ## Coach
 
 | Event | Trigger | Parameters |

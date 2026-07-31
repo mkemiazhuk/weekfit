@@ -7,15 +7,20 @@ enum CoachMorningOverviewPolicy {
 
     // MARK: - Window
 
-    static func isMorningWindow(now: Date, timeOfDay: CoachTimeOfDay) -> Bool {
-        if timeOfDay == .morning {
-            return true
-        }
+    /// Shared product morning window: local clock before noon.
+    /// Used by Morning Overview conversation phase and Morning Plan Proposal gate.
+    static let morningEndHourExclusive = 12
 
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: now)
-        let minute = calendar.component(.minute, from: now)
-        return hour == 9 && minute <= 30
+    /// True when local hour is before ``morningEndHourExclusive``.
+    static func isBeforeLocalNoon(now: Date, calendar: Calendar = .current) -> Bool {
+        calendar.component(.hour, from: now) < morningEndHourExclusive
+    }
+
+    /// Morning clock window shared across Coach surfaces.
+    /// `timeOfDay` is retained for call-site compatibility; the local noon cutoff is authoritative.
+    static func isMorningWindow(now: Date, timeOfDay: CoachTimeOfDay) -> Bool {
+        _ = timeOfDay
+        return isBeforeLocalNoon(now: now)
     }
 
     // MARK: - Phase eligibility

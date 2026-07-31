@@ -23,6 +23,11 @@ enum PlannedActivityNotificationConfirmationService {
             source: .plan
         )
         ProductAnalytics.planItemCompleted(itemType: PlanItemAnalyticsType(plannedActivityType: activity.type))
+        
+        if let adjustment = CoachAdjustmentProvenanceStore.adjustment(forActivityId: activity.id) {
+            CoachAdjustmentProvenanceStore.markTerminalOutcome(activityId: activity.id, outcome: "completed")
+            ProductAnalytics.morningProposalAdjustedItemCompleted(changeKind: adjustment.kind)
+        }
     }
 
     static func markSkipped(

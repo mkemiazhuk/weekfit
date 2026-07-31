@@ -434,7 +434,7 @@ private extension FirstRunOnboardingView {
                 recoveryPercent: readyRecoveryPercent,
                 activityPercent: readyActivityPercent,
                 nutritionPercent: readyNutritionPercent,
-                greetingTitle: readyCoachPreview.greetingTitle,
+                greetingTitle: readyGreetingTitle,
                 greetingSubtitle: readyCoachPreview.supportingMessage,
                 mirrorLine: readyCoachPreview.mirrorLine,
                 trainLine: readyCoachPreview.primaryAction,
@@ -444,6 +444,27 @@ private extension FirstRunOnboardingView {
             )
             .padding(.top, 4)
         }
+    }
+
+    /// Same source of truth as Settings → Profile → Name (`ProfileService`).
+    private var readyPersistedFirstName: String {
+        let given = ProfileService.resolvedGivenName()
+        if !given.isEmpty { return given }
+        return ProfileService.resolvedFullName()
+            .split(whereSeparator: \.isWhitespace)
+            .first
+            .map(String.init) ?? ""
+    }
+
+    private var readyGreetingTitle: String {
+        let first = readyPersistedFirstName
+        if first.isEmpty {
+            return WeekFitLocalizedString("onboarding.v12.ready.title.youreReady")
+        }
+        return String(
+            format: WeekFitLocalizedString("onboarding.v12.ready.title.youreReady.named"),
+            first
+        )
     }
 
     var understandingBody: String {
@@ -703,7 +724,8 @@ private extension FirstRunOnboardingView {
                 sleepHours: sleepHours,
                 activeCalories: activeCalories,
                 steps: steps,
-                health: health
+                health: health,
+                firstName: ProfileService.resolvedGivenName()
             )
         )
     }

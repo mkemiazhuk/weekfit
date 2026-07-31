@@ -333,13 +333,13 @@ enum CoachActivityClassifier {
         if containsAny(text, ["strength", "gym", "lifting", "weights", "dumbbell", "barbell", "workout"]) {
             return .fullBody
         }
-        if containsAny(text, ["breathing", "breathwork", "breath", "meditation", "mindfulness"]) {
+        if containsAny(text, ["breathing", "breathwork", "breath", "meditation", "mindfulness", "дыхател", "медитац"]) {
             return .breathing
         }
-        if containsAny(text, ["stretch", "mobility"]) {
+        if containsAny(text, ["stretch", "mobility", "растяж", "мобильн"]) {
             return .stretching
         }
-        if text.contains("yoga") {
+        if containsAny(text, ["yoga", "йог"]) {
             return .yoga
         }
         // Token match for "heat" — bare contains() false-positives on food names like "buckwheat".
@@ -350,7 +350,7 @@ enum CoachActivityClassifier {
         return nil
     }
 
-    static func isSeriousTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+    nonisolated static func isSeriousTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let activityType = type(for: activity)
         guard activityType != .none else { return false }
 

@@ -71,7 +71,8 @@ enum CoachTabPresentationBridge {
                 recommendation: compactHero.recommendation
             ),
             whyRows: whyRows,
-            showsLimitedConfidenceBadge: showsLimitedConfidenceBadge
+            showsLimitedConfidenceBadge: showsLimitedConfidenceBadge,
+            planAdjustmentMode: engineResult.modifiers.planAdjustmentMode
         )
     }
 

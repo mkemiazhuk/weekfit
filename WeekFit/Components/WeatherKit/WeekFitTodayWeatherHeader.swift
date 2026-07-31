@@ -66,16 +66,6 @@ struct WeekFitTodayWeatherHeader: View {
                 }
             }
             .frame(minHeight: 48)
-
-            if showEnableLocalWeather {
-                Text(WeekFitUsesRussianLanguage()
-                    ? "Используем ваше местоположение, чтобы показать погоду рядом и настроить Night Comfort по местному закату."
-                    : "Use your approximate location to show local weather and adjust Night Comfort to local sunset.")
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.60))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
         .onAppear {
             guard !didStart else { return }

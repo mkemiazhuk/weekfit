@@ -4,7 +4,10 @@ import AuthenticationServices
 struct AppleUserData {
     let id: String
     let email: String?
-    let firstName: String?
+    let givenName: String?
+    let familyName: String?
+    /// Locale-aware display name for Settings → Profile.
+    let displayName: String?
 }
 
 enum AuthProvider {
@@ -175,15 +178,60 @@ final class AuthService {
     func handleAppleCredential(
         _ credential: ASAuthorizationAppleIDCredential
     ) async throws -> AppleUserData {
+        // Capture identity fields BEFORE any await — Apple only sends name/email
+        // on the first authorization; later logins return nil even though the sheet shows them.
+        let appleUserID = credential.user
+        let existingProfileDisplay = ProfileService.resolvedFullName()
+        let parsed = ApplePersonNameParser.parse(credential.fullName)
+        let liveEmail = credential.email?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        AppleIdentityStore.merge(
+            appleUserID: appleUserID,
+            displayName: parsed?.displayName,
+            givenName: parsed?.givenName,
+            familyName: parsed?.familyName,
+            email: (liveEmail?.isEmpty == false) ? liveEmail : nil
+        )
+
+        let cached = AppleIdentityStore.load(appleUserID: appleUserID)
+        let resolvedDisplay = parsed?.displayName ?? cached?.displayName
+        let resolvedGiven = parsed?.givenName ?? cached?.givenName
+        let resolvedFamily = parsed?.familyName ?? cached?.familyName
+        let resolvedEmail = ((liveEmail?.isEmpty == false) ? liveEmail : nil) ?? cached?.email
+
+        AuthSessionStore.appleUserID = appleUserID
+
+        // Persist into profile BEFORE any navigation / session transition.
+        // Never overwrite a manually edited / already-persisted non-empty name.
+        let profileService = ProfileService()
+        if existingProfileDisplay.isEmpty {
+            if let parsed {
+                _ = profileService.applyAppleNameIfEmpty(parsed)
+            } else if let display = resolvedDisplay {
+                _ = profileService.applyAppleNameIfEmpty(
+                    ApplePersonNameParser.ParsedName(
+                        givenName: resolvedGiven,
+                        familyName: resolvedFamily,
+                        displayName: display
+                    )
+                )
+            }
+        }
+        profileService.applyAppleEmailIfEmpty(resolvedEmail)
+
+        await MainActor.run {
+            WeekFitUserSettings.shared.refreshFromStorage()
+        }
+
         try await Task.sleep(nanoseconds: 400_000_000)
 
-        let user = AppleUserData(
-            id: credential.user,
-            email: credential.email,
-            firstName: credential.fullName?.givenName
+        return AppleUserData(
+            id: appleUserID,
+            email: resolvedEmail,
+            givenName: resolvedGiven,
+            familyName: resolvedFamily,
+            displayName: resolvedDisplay
         )
-        AuthSessionStore.appleUserID = user.id
-        return user
     }
 
     func restoreAppleSessionIfValid() async -> Bool {

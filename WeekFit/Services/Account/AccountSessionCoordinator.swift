@@ -182,6 +182,9 @@ enum AccountSessionCoordinator {
 
         OnboardingStore.migrateExistingUsersIfNeeded()
 
+        // UserDefaults may have been wiped during account transition — re-apply Apple name.
+        AppleIdentityStore.restoreProfileIfNeeded(appleUserID: AuthSessionStore.appleUserID)
+
         if !OnboardingStore.hasCompletedOnboarding {
             appSession.presentOnboarding()
         } else if !healthManager.isHealthAccessGranted && !healthManager.isHealthAccessRequested {
@@ -213,7 +216,14 @@ enum AccountSessionCoordinator {
                 reason: "newAccountWorkspace"
             )
         }
+        let preservedAppleUserID = AuthSessionStore.appleUserID
         try? await resetService.resetAllLocalData()
+
+        // `resetAllLocalData` clears the UserDefaults domain (including appleUserID + profile).
+        if let appleUserID = preservedAppleUserID {
+            AuthSessionStore.appleUserID = appleUserID
+            AppleIdentityStore.restoreProfileIfNeeded(appleUserID: appleUserID)
+        }
 
         nutritionViewModel.resetLocalState()
         CoachObservationStore.clearAll()

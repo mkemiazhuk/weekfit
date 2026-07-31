@@ -37,7 +37,7 @@ final class OnboardingCoachPreviewTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.night"))
+        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.youreReady"))
         XCTAssertFalse(preview.primaryAction.lowercased().contains("train before"))
         XCTAssertFalse(preview.primaryAction.lowercased().contains("run"))
         XCTAssertFalse(preview.secondaryAction.lowercased().contains("breakfast"))
@@ -56,7 +56,7 @@ final class OnboardingCoachPreviewTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.morning"))
+        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.youreReady"))
         XCTAssertEqual(
             preview.supportingMessage,
             WeekFitLocalizedString("onboarding.coachPreview.support.morning.good")
@@ -64,6 +64,22 @@ final class OnboardingCoachPreviewTests: XCTestCase {
         XCTAssertEqual(
             preview.primaryAction,
             WeekFitLocalizedString("onboarding.coachPreview.action.train.day.good")
+        )
+    }
+
+    func testMorningGreetingIncludesAppleFirstNameWhenKnown() {
+        let preview = OnboardingCoachPreview.build(
+            .init(
+                now: date(hour: 8),
+                goal: .maintenance,
+                recoveryPercent: 70,
+                health: .connected,
+                firstName: "Max"
+            )
+        )
+        XCTAssertEqual(
+            preview.greetingTitle,
+            String(format: WeekFitLocalizedString("onboarding.v12.ready.title.youreReady.named"), "Max")
         )
     }
 
@@ -77,7 +93,7 @@ final class OnboardingCoachPreviewTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.evening"))
+        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.youreReady"))
         XCTAssertEqual(
             preview.supportingMessage,
             WeekFitLocalizedString("onboarding.coachPreview.support.evening.recoveredWell")
@@ -133,6 +149,6 @@ final class OnboardingCoachPreviewTests: XCTestCase {
                 health: .unavailable
             )
         )
-        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.night"))
+        XCTAssertEqual(preview.greetingTitle, WeekFitLocalizedString("onboarding.v12.ready.title.youreReady"))
     }
 }

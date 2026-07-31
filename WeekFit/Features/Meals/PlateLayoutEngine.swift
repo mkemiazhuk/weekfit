@@ -63,10 +63,33 @@ enum PlateLayoutEngine {
         if id.hasPrefix("veg_") || id.hasPrefix("vegetable_") { return .vegetables }
         if id.hasPrefix("fat_") { return .fat }
         if id.hasPrefix("sauce_") { return .sauce }
-        if id.hasPrefix("extra_") { return .extras }
         if id.hasPrefix("garnish_") { return .garnish }
+        if id.hasPrefix("extra_") {
+            if isPourableExtra(id) { return .sauce }
+            if isCrownGarnish(id) { return .garnish }
+            return .extras
+        }
 
         return .other
+    }
+
+    /// Oils, sauces, syrups — sit on the rim, not as a top garnish pile.
+    private static func isPourableExtra(_ id: String) -> Bool {
+        let tokens = [
+            "oil", "sauce", "butter", "honey", "maple", "miso",
+            "tahini", "soy", "sour_cream", "coconut_milk"
+        ]
+        return tokens.contains { id.contains($0) }
+    }
+
+    /// Fruit / seed toppings that crown the plate.
+    private static func isCrownGarnish(_ id: String) -> Bool {
+        let tokens = [
+            "blueberr", "strawberr", "raspberr", "pomegranate", "chia",
+            "sesame_seed", "almond", "walnut", "cashew", "pistachio",
+            "mango", "pineapple", "date", "apple", "banana"
+        ]
+        return tokens.contains { id.contains($0) }
     }
 
     static func layout(
@@ -99,6 +122,11 @@ enum PlateLayoutEngine {
 
         let categoryCounts = Dictionary(grouping: sortedCandidates, by: \.category)
             .mapValues(\.count)
+        let composition = CompositionSignature(categories: Set(sortedCandidates.map(\.category)))
+        let compositionSlots = compositionSlots(
+            for: composition,
+            totalCount: sortedCandidates.count
+        )
         var categorySeen: [PlateIngredientCategory: Int] = [:]
         var placed: [PlacedCandidate] = []
 
@@ -117,6 +145,7 @@ enum PlateLayoutEngine {
                     categoryCount: categoryCount,
                     totalCount: sortedCandidates.count,
                     offsetScale: offsetScale,
+                    compositionSlots: compositionSlots,
                     metrics: metrics
                 ),
                 width: itemWidth(
@@ -269,6 +298,7 @@ enum PlateLayoutEngine {
         categoryCount: Int,
         totalCount: Int,
         offsetScale: CGFloat,
+        compositionSlots: [PlateIngredientCategory: [CGSize]],
         metrics: LayoutMetrics
     ) -> CGSize {
         guard totalCount > 1 || !candidate.item.supportsStandalonePresentation else {
@@ -281,6 +311,7 @@ enum PlateLayoutEngine {
                 index: categoryIndex,
                 count: categoryCount,
                 totalCount: totalCount,
+                compositionSlots: compositionSlots,
                 metrics: metrics
             )
             let spreadScale = compactSpreadScale(totalCount: totalCount)
@@ -295,6 +326,7 @@ enum PlateLayoutEngine {
             index: categoryIndex,
             count: categoryCount,
             totalCount: totalCount,
+            compositionSlots: compositionSlots,
             metrics: metrics
         )
 
@@ -342,9 +374,10 @@ enum PlateLayoutEngine {
         index: Int,
         count: Int,
         totalCount: Int,
+        compositionSlots: [PlateIngredientCategory: [CGSize]],
         metrics: LayoutMetrics
     ) -> CGSize {
-        let slots = slots(for: category, totalCount: totalCount)
+        let slots = compositionSlots[category] ?? slots(for: category, totalCount: totalCount)
         let base = slots[index % slots.count]
         let ring = index / slots.count
         let spread = min(CGFloat(max(count - 1, 0)) * metrics.spreadMultiplier, metrics.maxSpread)
@@ -356,6 +389,74 @@ enum PlateLayoutEngine {
         )
     }
 
+    /// Combination-aware anchors — denser, more “plated” than independent category fans.
+    private static func compositionSlots(
+        for signature: CompositionSignature,
+        totalCount: Int
+    ) -> [PlateIngredientCategory: [CGSize]] {
+        switch signature.kind {
+        case .breakfastBowl:
+            // Base anchors the well; protein rests against it; crown garnish nests on top.
+            return [
+                .base: [CGSize(width: -8, height: 18)],
+                .protein: [CGSize(width: 24, height: 4)],
+                .garnish: [CGSize(width: 2, height: -34)],
+                .extras: [CGSize(width: 18, height: -28)],
+                .sauce: [CGSize(width: 40, height: 22)],
+            ]
+
+        case .proteinBowl:
+            // Classic lunch bowl — base rear-left, protein front-right, veg crown-left.
+            return [
+                .base: [CGSize(width: -10, height: 16)],
+                .protein: [CGSize(width: 26, height: 2)],
+                .vegetables: [
+                    CGSize(width: -26, height: -30),
+                    CGSize(width: 8, height: -38),
+                    CGSize(width: 34, height: -22),
+                ],
+                .sauce: [CGSize(width: 42, height: 20)],
+                .extras: [CGSize(width: 14, height: -42)],
+                .garnish: [CGSize(width: 6, height: -44)],
+                .fat: [CGSize(width: -40, height: 18)],
+            ]
+
+        case .duo:
+            return [
+                .base: [CGSize(width: -16, height: 12)],
+                .protein: [CGSize(width: 18, height: 2)],
+                .vegetables: [CGSize(width: -12, height: -18)],
+                .extras: [CGSize(width: 16, height: -22)],
+                .garnish: [CGSize(width: 10, height: -26)],
+                .sauce: [CGSize(width: 36, height: 16)],
+            ]
+
+        case .loaded:
+            return [
+                .base: [CGSize(width: -6, height: 18)],
+                .protein: [CGSize(width: 28, height: 0)],
+                .vegetables: [
+                    CGSize(width: -30, height: -26),
+                    CGSize(width: 4, height: -40),
+                    CGSize(width: 36, height: -18),
+                ],
+                .extras: [
+                    CGSize(width: 16, height: -36),
+                    CGSize(width: -38, height: 6),
+                ],
+                .garnish: [CGSize(width: 0, height: -46)],
+                .sauce: [
+                    CGSize(width: 44, height: 18),
+                    CGSize(width: -42, height: 22),
+                ],
+                .fat: [CGSize(width: 40, height: -6)],
+            ]
+
+        case .generic:
+            return [:]
+        }
+    }
+
     private static func slots(
         for category: PlateIngredientCategory,
         totalCount: Int
@@ -365,46 +466,53 @@ enum PlateLayoutEngine {
         switch category {
         case .base:
             return [
-                CGSize(width: -22, height: 22),
-                CGSize(width: 4, height: 28),
-                CGSize(width: -36, height: 8)
+                CGSize(width: -10, height: 18),
+                CGSize(width: 6, height: 24),
+                CGSize(width: -28, height: 8)
             ]
         case .protein:
             return [
-                CGSize(width: 34, height: 8),
-                CGSize(width: 22, height: 30),
-                CGSize(width: 48, height: -10),
-                CGSize(width: 4, height: 20)
+                CGSize(width: 26, height: 4),
+                CGSize(width: 18, height: 24),
+                CGSize(width: 40, height: -8),
+                CGSize(width: 2, height: 16)
             ]
         case .vegetables:
             return wide
                 ? [
-                    CGSize(width: -34, height: -38),
-                    CGSize(width: 0, height: -48),
-                    CGSize(width: 32, height: -36),
-                    CGSize(width: -48, height: -10),
-                    CGSize(width: 18, height: -18)
+                    CGSize(width: -28, height: -32),
+                    CGSize(width: 2, height: -42),
+                    CGSize(width: 30, height: -28),
+                    CGSize(width: -42, height: -6),
+                    CGSize(width: 16, height: -14)
                 ]
                 : [
-                    CGSize(width: -28, height: -38),
-                    CGSize(width: 10, height: -48),
-                    CGSize(width: 36, height: -30),
-                    CGSize(width: -42, height: -14)
+                    CGSize(width: -24, height: -32),
+                    CGSize(width: 8, height: -40),
+                    CGSize(width: 32, height: -24),
+                    CGSize(width: -36, height: -10)
                 ]
-        case .fat, .sauce, .extras, .garnish:
+        case .sauce, .fat:
             return [
-                CGSize(width: 42, height: -24),
-                CGSize(width: 12, height: -52),
-                CGSize(width: -18, height: -44),
-                CGSize(width: 52, height: 4),
-                CGSize(width: -40, height: 8)
+                CGSize(width: 44, height: 20),
+                CGSize(width: -44, height: 18),
+                CGSize(width: 38, height: -4),
+                CGSize(width: -36, height: 28)
+            ]
+        case .extras, .garnish:
+            return [
+                CGSize(width: 8, height: -38),
+                CGSize(width: 30, height: -26),
+                CGSize(width: -16, height: -36),
+                CGSize(width: 42, height: 2),
+                CGSize(width: -34, height: 4)
             ]
         case .other:
             return [
                 CGSize(width: 0, height: -8),
-                CGSize(width: 26, height: 18),
-                CGSize(width: -26, height: 12),
-                CGSize(width: 12, height: -34)
+                CGSize(width: 22, height: 14),
+                CGSize(width: -22, height: 10),
+                CGSize(width: 10, height: -28)
             ]
         }
     }
@@ -837,9 +945,10 @@ private struct LayoutMetrics {
         case .compactPreview:
             return 0.10
         case .preview:
-            return 0.30
+            return 0.26
         case .detail, .builder:
-            return 0.36
+            // Allow gentle nesting so bowls read as one composition.
+            return 0.28
         }
     }
 
@@ -890,11 +999,12 @@ private struct LayoutMetrics {
     func legacyWeight(totalCount: Int) -> CGFloat {
         switch mode {
         case .compactPreview:
-            return totalCount <= 4 ? 0.14 : 0.08
+            return totalCount <= 4 ? 0.10 : 0.06
         case .preview:
-            return totalCount <= 4 ? 0.28 : 0.18
+            return totalCount <= 4 ? 0.16 : 0.10
         case .detail, .builder:
-            return totalCount <= 4 ? 0.34 : 0.20
+            // Prefer composition templates over per-ingredient demo offsets.
+            return totalCount <= 4 ? 0.10 : 0.06
         }
     }
 
@@ -910,11 +1020,23 @@ private struct LayoutMetrics {
     }
 
     var shouldCenterGroup: Bool {
-        mode == .compactPreview
+        switch mode {
+        case .compactPreview, .detail, .builder:
+            return true
+        case .preview:
+            return true
+        }
     }
 
     var groupCenteringStrength: CGFloat {
-        mode == .compactPreview ? 0.48 : 0
+        switch mode {
+        case .compactPreview:
+            return 0.48
+        case .preview:
+            return 0.28
+        case .detail, .builder:
+            return 0.32
+        }
     }
 
     var maxGroupCorrection: CGFloat {
@@ -922,9 +1044,45 @@ private struct LayoutMetrics {
         case .compactPreview:
             return max(2, plateSize * 0.18)
         case .preview:
-            return max(4, plateSize * 0.04)
+            return max(4, plateSize * 0.05)
         case .detail, .builder:
-            return 0
+            return max(6, plateSize * 0.06)
+        }
+    }
+}
+
+/// Detects plated combination patterns so slots nest like a real composed meal.
+private struct CompositionSignature {
+    enum Kind {
+        case breakfastBowl
+        case proteinBowl
+        case duo
+        case loaded
+        case generic
+    }
+
+    let kind: Kind
+
+    init(categories: Set<PlateIngredientCategory>) {
+        let hasBase = categories.contains(.base)
+        let hasProtein = categories.contains(.protein)
+        let hasVeg = categories.contains(.vegetables)
+        let hasCrown = categories.contains(.garnish) || categories.contains(.extras)
+        let hasSauce = categories.contains(.sauce) || categories.contains(.fat)
+        let count = categories.count
+
+        if hasBase && hasProtein && hasCrown && !hasVeg && count <= 4 {
+            kind = .breakfastBowl
+        } else if hasBase && hasProtein && hasVeg {
+            kind = count >= 4 || hasSauce || hasCrown ? .loaded : .proteinBowl
+        } else if count == 2 {
+            kind = .duo
+        } else if count >= 4 {
+            kind = .loaded
+        } else if hasBase && hasProtein {
+            kind = .proteinBowl
+        } else {
+            kind = .generic
         }
     }
 }

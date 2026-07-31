@@ -190,10 +190,26 @@ struct LoginView: View {
 
     private var bottomAuthPanel: some View {
         VStack(spacing: LoginMetrics.authStack) {
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.email, .fullName]
+            SignInWithAppleButton(
+                ProfileService.resolvedFullName().isEmpty ? .signUp : .signIn
+            ) { request in
+                request.requestedScopes = [.fullName, .email]
+                #if DEBUG
+                AppleNameDiagnostics.logRequestedScopes(request.requestedScopes ?? [])
+                #endif
             } onCompletion: { result in
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                #if DEBUG
+                if case .failure(let error) = result {
+                    let ns = error as NSError
+                    if ns.code != ASAuthorizationError.canceled.rawValue {
+                        AppleNameDiagnostics.logError(
+                            error.localizedDescription,
+                            checkpoint: "1_login_onCompletion_failure"
+                        )
+                    }
+                }
+                #endif
                 Task {
                     await authViewModel.handleAppleSignIn(result)
                 }

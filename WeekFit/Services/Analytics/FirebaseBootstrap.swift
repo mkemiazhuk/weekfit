@@ -35,6 +35,13 @@ enum FirebaseBootstrap {
             return false
         }
 
+        // Quiet Firebase internal chatter before configure (does not disable collection).
+        #if DEBUG
+        FirebaseConfiguration.shared.setLoggerLevel(.warning)
+        #else
+        FirebaseConfiguration.shared.setLoggerLevel(.error)
+        #endif
+
         // Do not probe FirebaseApp.app() here — that emits the pre-configure warning.
         FirebaseApp.configure()
         didConfigureFirebase = true

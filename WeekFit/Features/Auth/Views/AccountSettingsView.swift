@@ -71,6 +71,10 @@ struct AccountSettingsView: View {
                 profileViewModel.reloadUserProfile()
             }
         }
+        .onAppear {
+            // Same ProfileService / UserDefaults keys as Ready name capture.
+            profileViewModel.reloadUserProfile()
+        }
     }
 }
 
@@ -163,14 +167,24 @@ private extension AccountSettingsView {
                 iconTint: WeekFitStyle.brandGreen,
                 title: WeekFitLocalizedString("settings.editName.title"),
                 titleColor: textPrimary,
+                subtitle: profileNameRowSubtitle,
                 showsChevron: true
             )
         }
         .buttonStyle(AccountPressableButtonStyle())
         .accessibilityIdentifier("settings.editName")
         .accessibilityLabel(WeekFitLocalizedString("settings.editName.title"))
+        .accessibilityValue(profileNameRowSubtitle)
         .accessibilityHint(WeekFitLocalizedString("settings.a11y.opensDetail"))
         .disabled(isDeletingAccount)
+    }
+
+    private var profileNameRowSubtitle: String {
+        let display = profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if display.isEmpty {
+            return WeekFitLocalizedString("settings.editName.addYourName")
+        }
+        return display
     }
 
     var signOutButton: some View {
@@ -235,6 +249,7 @@ private extension AccountSettingsView {
         iconBackground: Color? = nil,
         title: String,
         titleColor: Color,
+        subtitle: String? = nil,
         showsChevron: Bool
     ) -> some View {
         HStack(spacing: 13) {
@@ -249,10 +264,18 @@ private extension AccountSettingsView {
             .frame(width: 34, height: 34)
             .accessibilityHidden(true)
 
-            Text(title)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(titleColor)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(titleColor)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(textSecondary.opacity(0.88))
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if showsChevron {
                 Image(systemName: "chevron.right")

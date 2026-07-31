@@ -187,7 +187,9 @@ struct MealDetailsView: View {
             itemScale: 1.00,
             offsetScale: 0.82,
             plateOpacity: 1.00,
-            shadowOpacity: 0.22
+            shadowOpacity: 0.22,
+            layoutMode: .detail,
+            animatesAppearance: true
         )
         .scaleEffect(1.04)
         .offset(y: -6)

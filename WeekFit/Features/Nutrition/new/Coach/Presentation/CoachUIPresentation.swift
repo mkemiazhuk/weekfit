@@ -67,6 +67,7 @@ struct CoachUIPresentation: Equatable, Sendable {
     let todayMessage: String
     let whyRows: [CoachPresentationWhyRow]
     let showsLimitedConfidenceBadge: Bool
+    let planAdjustmentMode: CoachPlanAdjustmentMode
 
     init(
         scenario: CoachScenarioKey,
@@ -86,7 +87,8 @@ struct CoachUIPresentation: Equatable, Sendable {
         todayTitle: String,
         todayMessage: String,
         whyRows: [CoachPresentationWhyRow],
-        showsLimitedConfidenceBadge: Bool = false
+        showsLimitedConfidenceBadge: Bool = false,
+        planAdjustmentMode: CoachPlanAdjustmentMode = .none
     ) {
         self.scenario = scenario
         self.assessment = assessment
@@ -106,6 +108,7 @@ struct CoachUIPresentation: Equatable, Sendable {
         self.todayMessage = todayMessage
         self.whyRows = whyRows
         self.showsLimitedConfidenceBadge = showsLimitedConfidenceBadge
+        self.planAdjustmentMode = planAdjustmentMode
     }
 
     var accentColor: Color { semanticColor.uiColor }

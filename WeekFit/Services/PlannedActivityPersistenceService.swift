@@ -156,6 +156,12 @@ enum PlannedActivityPersistenceService {
         }
 
         scheduleNotificationCleanup(for: snapshots)
+
+        // If these were coach-placed morning adjustments, stop post-Apply "plan is ready" tone.
+        for snapshot in snapshots {
+            CoachAdjustmentProvenanceStore.markTerminalOutcome(activityId: snapshot.id, outcome: "deleted")
+        }
+
         return snapshots
     }
 

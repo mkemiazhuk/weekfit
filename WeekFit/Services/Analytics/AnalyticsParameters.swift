@@ -15,6 +15,12 @@ enum AnalyticsParameterKey {
     static let mode = "mode"
     static let itemType = "item_type"
     static let language = "language"
+    static let changeKind = "change_kind"
+    static let reasonCategory = "reason_category"
+    static let selectedCountBucket = "selected_count_bucket"
+    static let appliedCountBucket = "applied_count_bucket"
+    static let resultType = "result_type"
+    static let surface = "surface"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.
@@ -197,4 +203,79 @@ enum AppLanguageAnalyticsCode: String, Sendable {
         default: self = .other
         }
     }
+}
+
+enum MorningProposalAnalyticsSurface: String, Sendable {
+    case today
+    case review
+    case coach
+    case plan
+    case activityDetail = "activity_detail"
+    case other
+}
+
+enum MorningProposalReasonCategory: String, Sendable {
+    case recoveryProtection = "recovery_protection"
+    case loadProtection = "load_protection"
+    case tomorrowProtection = "tomorrow_protection"
+    case recoverySupport = "recovery_support"
+    case confidence
+    case planAppropriate = "plan_appropriate"
+    case other
+
+    init(_ code: CoachProposalReasonCode) {
+        switch code {
+        case .lowRecoveryLoadProtection:
+            self = .recoveryProtection
+        case .heavyYesterdayProtection, .stackedDayRisk:
+            self = .loadProtection
+        case .tomorrowDemandProtection:
+            self = .tomorrowProtection
+        case .recoveryWalkSupport:
+            self = .recoverySupport
+        case .insufficientConfidence:
+            self = .confidence
+        case .planAlreadyAppropriate:
+            self = .planAppropriate
+        case .openDayMovementSupport:
+            self = .recoverySupport
+        case .similarDaySupport:
+            self = .planAppropriate
+        case .libraryMealSupport:
+            self = .planAppropriate
+        case .weatherOutdoorConflict, .weatherHeatLoad:
+            self = .loadProtection
+        }
+    }
+}
+
+enum MorningProposalApplyResultType: String, Sendable {
+    case succeeded
+    case partial
+    case failed
+    case stale
+    case noValidMutations = "no_valid_mutations"
+}
+
+enum MorningProposalCountBucket: String, Sendable {
+    case zero = "0"
+    case one = "1"
+    case two = "2"
+    case threeToFour = "3_4"
+    case fivePlus = "5_plus"
+
+    init(count: Int) {
+        switch count {
+        case ..<0: self = .zero
+        case 0: self = .zero
+        case 1: self = .one
+        case 2: self = .two
+        case 3...4: self = .threeToFour
+        default: self = .fivePlus
+        }
+    }
+}
+
+extension CoachChangeKind {
+    var analyticsRawValue: String { rawValue }
 }
