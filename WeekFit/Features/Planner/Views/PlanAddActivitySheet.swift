@@ -60,14 +60,16 @@ struct PlanAddActivitySheet: View {
     @State private var mealSheetStep: PlannerMealSheetStep = .library
     @State private var mealSheetDetent: PresentationDetent = .medium
 
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
-    private let borderSoft = WeekFitTheme.borderSoft
+    @Environment(\.weekFitPalette) private var palette
+
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var borderSoft: Color { WeekFitTheme.borderSoft }
 
     private let addSheetCarouselInset: CGFloat = 10
     private let addSheetHorizontalInset: CGFloat = 8
-    private let busySlotColor = Color(red: 0.93, green: 0.62, blue: 0.22)
-    private let addSheetCornerRadius: CGFloat = 34
+    private let busySlotColor = WeekFitTheme.orange
+    private let addSheetCornerRadius: CGFloat = 30
     private let addSheetMealCardWidth: CGFloat = 118
     private let addSheetMealCardHeight: CGFloat = 104
     private let addSheetMealImageWidth: CGFloat = 104
@@ -224,18 +226,32 @@ private extension PlanAddActivitySheet {
         .frame(maxHeight: addSheetMaxHeight, alignment: .top)
         .background { addSheetBackground }
         .overlay { addSheetBorder }
-        .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: -5)
-        .shadow(color: viewModel.selectedType.color.opacity(0.012), radius: 12, x: 0, y: -2)
+        .shadow(
+            color: Color.black.opacity(palette.isLight ? 0.10 : 0.28),
+            radius: palette.isLight ? 18 : 22,
+            x: 0,
+            y: palette.isLight ? -4 : -6
+        )
+        .shadow(
+            color: viewModel.selectedType.color.opacity(palette.isLight ? 0.06 : 0.08),
+            radius: 16,
+            x: 0,
+            y: -2
+        )
         .padding(.horizontal, addSheetHorizontalInset)
         .padding(.bottom, 8)
     }
 
     var addSheetGrabber: some View {
         Capsule()
-            .fill(WeekFitTheme.whiteOpacity(0.12))
-            .frame(width: 36, height: 4)
+            .fill(
+                palette.isLight
+                    ? WeekFitLightTokens.shadowContact.opacity(0.18)
+                    : WeekFitTheme.whiteOpacity(0.16)
+            )
+            .frame(width: 40, height: 5)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 2)
+            .padding(.bottom, 4)
     }
 
     var sheetHeader: some View {
@@ -243,7 +259,7 @@ private extension PlanAddActivitySheet {
             VStack(alignment: .leading, spacing: 6) {
                 Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addTitle") : WeekFitLocalizedString("planner.sheet.editTitle"))
                     .font(.system(size: 21.5, weight: .semibold))
-                    .foregroundStyle(textPrimary.opacity(0.96))
+                    .foregroundStyle(textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.88)
                     .allowsTightening(true)
@@ -251,11 +267,11 @@ private extension PlanAddActivitySheet {
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(viewModel.selectedType.color.opacity(0.88))
+                        .foregroundStyle(viewModel.selectedType.color)
 
                     Text(addSheetDayChipTitle)
                         .font(.system(size: 13.8, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textPrimary.opacity(0.92))
+                        .foregroundStyle(textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                         .allowsTightening(true)
@@ -297,24 +313,11 @@ private extension PlanAddActivitySheet {
                     .frame(width: 6)
             }
 
-            Button {
+            WeekFitCloseButton(size: .compact) {
                 closeAddSheet()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12.5, weight: .bold))
-                    .foregroundStyle(textPrimary.opacity(0.88))
-                    .frame(width: 30, height: 30)
-                    .background(WeekFitTheme.whiteOpacity(0.045))
-                    .clipShape(Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(WeekFitTheme.whiteOpacity(0.040), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
             .fixedSize()
             .padding(.top, 1)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
     }
 
@@ -419,11 +422,11 @@ private extension PlanAddActivitySheet {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(AppText.Planner.whenTitle)
                         .font(.system(size: 15.6, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(0.93))
+                        .foregroundStyle(textPrimary)
 
                     Text(timeSectionSubtitle)
                         .font(.system(size: 12.2, weight: .regular))
-                        .foregroundStyle(textSecondary.opacity(0.66))
+                        .foregroundStyle(textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                 }
@@ -472,12 +475,12 @@ private extension PlanAddActivitySheet {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 15.6, weight: .semibold))
-                    .foregroundStyle(textPrimary.opacity(0.93))
+                    .foregroundStyle(textPrimary)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(.system(size: 12.2, weight: .regular))
-                        .foregroundStyle(textSecondary.opacity(0.66))
+                        .foregroundStyle(textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                 }
@@ -533,18 +536,25 @@ private extension PlanAddActivitySheet {
                     .minimumScaleFactor(0.72)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(active ? typeButtonActiveForeground(for: type) : textPrimary.opacity(0.58))
+            .foregroundStyle(active ? typeButtonActiveForeground(for: type) : (palette.isLight ? textSecondary : textPrimary.opacity(0.58)))
             .frame(maxWidth: .infinity)
             .frame(minHeight: 38)
             .padding(.horizontal, 2)
             .padding(.vertical, 5)
             .background {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(active ? type.color.opacity(activeFillOpacity) : WeekFitTheme.whiteOpacity(0.026))
+                    .fill(active
+                          ? (palette.isLight ? type.color.opacity(0.18) : type.color.opacity(activeFillOpacity))
+                          : (palette.isLight ? WeekFitLightTokens.surfaceTertiary : WeekFitTheme.whiteOpacity(0.026)))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(active ? WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070) : WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
+                    .stroke(
+                        active
+                            ? (palette.isLight ? type.color.opacity(0.45) : WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070))
+                            : (palette.isLight ? WeekFitLightTokens.divider.opacity(0.50) : WeekFitTheme.whiteOpacity(0.035)),
+                        lineWidth: 1
+                    )
             }
             .shadow(
                 color: active ? type.color.opacity(type == .workout ? 0.014 : 0.022) : Color.black.opacity(0.032),
@@ -580,14 +590,14 @@ private extension PlanAddActivitySheet {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(localizedTitle(for: option))
                         .font(.system(size: 11.8, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(active ? 0.96 : 0.80))
+                        .foregroundStyle(textPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .minimumScaleFactor(0.88)
 
                     Text(localizedSubtitle(for: option))
                         .font(.system(size: 10.2, weight: .medium))
-                        .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.42))
+                        .foregroundStyle(palette.isLight ? textSecondary : viewModel.selectedType.color.opacity(active ? 0.60 : 0.42))
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                 }
@@ -601,14 +611,23 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : WeekFitTheme.whiteOpacity(0.022))
+                    .fill(active
+                          ? (palette.isLight ? viewModel.selectedType.color.opacity(0.12) : viewModel.selectedType.color.opacity(0.05))
+                          : (palette.isLight ? WeekFitLightTokens.surfacePrimary : WeekFitTheme.whiteOpacity(0.022)))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
+                    .stroke(
+                        active
+                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.42 : 0.16)
+                            : (palette.isLight ? WeekFitLightTokens.cardBorder.opacity(0.45) : WeekFitTheme.whiteOpacity(0.05)),
+                        lineWidth: 1
+                    )
             }
             .shadow(
-                color: active ? viewModel.selectedType.color.opacity(0.012) : Color.black.opacity(0.018),
+                color: active
+                    ? viewModel.selectedType.color.opacity(palette.isLight ? 0.10 : 0.012)
+                    : Color.black.opacity(palette.isLight ? 0.06 : 0.018),
                 radius: active ? 6 : 3,
                 x: 0,
                 y: active ? 3 : 2
@@ -643,7 +662,7 @@ private extension PlanAddActivitySheet {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(meal.title)
                         .font(.system(size: 13.2, weight: .semibold))
-                        .foregroundStyle(textPrimary.opacity(active ? 0.96 : 0.88))
+                        .foregroundStyle(textPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .minimumScaleFactor(0.88)
@@ -658,7 +677,11 @@ private extension PlanAddActivitySheet {
                         )
                     )
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(viewModel.selectedType.color.opacity(active ? 0.60 : 0.50))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? (active ? viewModel.selectedType.color : textSecondary)
+                                : viewModel.selectedType.color.opacity(active ? 0.60 : 0.50)
+                        )
                         .lineLimit(2)
                         .minimumScaleFactor(0.78)
                 }
@@ -672,14 +695,23 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active ? viewModel.selectedType.color.opacity(0.05) : WeekFitTheme.whiteOpacity(0.022))
+                    .fill(active
+                          ? (palette.isLight ? viewModel.selectedType.color.opacity(0.12) : viewModel.selectedType.color.opacity(0.05))
+                          : (palette.isLight ? WeekFitLightTokens.surfacePrimary : WeekFitTheme.whiteOpacity(0.022)))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(active ? viewModel.selectedType.color.opacity(0.16) : WeekFitTheme.whiteOpacity(0.05), lineWidth: 1)
+                    .stroke(
+                        active
+                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.42 : 0.16)
+                            : (palette.isLight ? WeekFitLightTokens.cardBorder.opacity(0.45) : WeekFitTheme.whiteOpacity(0.05)),
+                        lineWidth: 1
+                    )
             }
             .shadow(
-                color: active ? viewModel.selectedType.color.opacity(0.012) : Color.black.opacity(0.014),
+                color: active
+                    ? viewModel.selectedType.color.opacity(palette.isLight ? 0.10 : 0.012)
+                    : Color.black.opacity(palette.isLight ? 0.06 : 0.014),
                 radius: active ? 6 : 3,
                 x: 0,
                 y: active ? 3 : 2
@@ -789,6 +821,7 @@ private extension PlanAddActivitySheet {
     func timeSelectionSection(_ proxy: ScrollViewProxy) -> some View {
         let slotStates = buildTimeSlotStates()
         let showsBusyLegend = slotStates.contains { !$0.isPast && $0.isOccupied }
+        let showsPastLegend = slotStates.contains { $0.isPast }
 
         return VStack(alignment: .leading, spacing: 7) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -814,7 +847,7 @@ private extension PlanAddActivitySheet {
                 ensureSelectedAvailableSlot(proxy)
             }
 
-            timeSlotLegendRow(showsBusyLegend: showsBusyLegend)
+            timeSlotLegendRow(showsPastLegend: showsPastLegend, showsBusyLegend: showsBusyLegend)
 
             HStack(spacing: 6) {
                 Circle()
@@ -823,7 +856,7 @@ private extension PlanAddActivitySheet {
 
                 Text(selectedTimeStatusText)
                     .font(.system(size: 11.6, weight: .medium))
-                    .foregroundStyle(hasSelectedTimeConflict ? Color.red.opacity(0.76) : textSecondary.opacity(0.58))
+                    .foregroundStyle(hasSelectedTimeConflict ? WeekFitLightTokens.critical : textSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
             }
@@ -832,14 +865,14 @@ private extension PlanAddActivitySheet {
     }
 
     @ViewBuilder
-    func timeSlotLegendRow(showsBusyLegend: Bool) -> some View {
-        let showsPastLegend = calendar.isDateInToday(viewModel.selectedDate)
-
+    func timeSlotLegendRow(showsPastLegend: Bool, showsBusyLegend: Bool) -> some View {
         if showsPastLegend || showsBusyLegend {
             HStack(spacing: 14) {
                 if showsPastLegend {
                     timeLegendItem(
-                        color: textPrimary.opacity(0.22),
+                        color: palette.isLight
+                            ? WeekFitTheme.disabledText
+                            : textPrimary.opacity(0.22),
                         label: WeekFitLocalizedString("planner.time.pastLegend")
                     )
                 }
@@ -857,17 +890,13 @@ private extension PlanAddActivitySheet {
 
     func timeLegendItem(color: Color, label: String) -> some View {
         HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
+            Circle()
                 .fill(color)
-                .frame(width: 14, height: 8)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 0.5)
-                }
+                .frame(width: 6, height: 6)
 
             Text(label)
                 .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.52))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
         }
     }
 
@@ -1015,6 +1044,7 @@ private extension PlanAddActivitySheet {
     var saveButton: some View {
         let topOpacity: Double = viewModel.selectedType == .workout ? 0.38 : 0.42
         let bottomOpacity: Double = viewModel.selectedType == .workout ? 0.32 : 0.36
+        let accent = viewModel.selectedType.color
 
         return Button {
             saveSelectedItem()
@@ -1031,28 +1061,40 @@ private extension PlanAddActivitySheet {
             .foregroundStyle(saveButtonForeground)
             .frame(maxWidth: .infinity)
             .frame(height: 40)
-            .background(
-                LinearGradient(
-                    colors: [
-                        viewModel.selectedType.color.opacity(topOpacity),
-                        viewModel.selectedType.color.opacity(bottomOpacity)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background {
+                if palette.isLight {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(accent)
+                } else {
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(topOpacity),
+                            accent.opacity(bottomOpacity)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(WeekFitTheme.whiteOpacity(0.055), lineWidth: 1)
+                    .stroke(
+                        palette.isLight
+                            ? Color.white.opacity(0.22)
+                            : WeekFitTheme.whiteOpacity(0.055),
+                        lineWidth: 1
+                    )
             }
-            .shadow(color: viewModel.selectedType.color.opacity(0.020), radius: 4, y: 2)
-            .shadow(color: Color.black.opacity(0.12), radius: 6, y: 3)
-            .shadow(color: viewModel.selectedType.color.opacity(0.08), radius: 18, y: 8)
+            .shadow(color: accent.opacity(palette.isLight ? 0.22 : 0.020), radius: 4, y: 2)
+            .shadow(color: Color.black.opacity(palette.isLight ? 0.08 : 0.12), radius: 6, y: 3)
+            .shadow(color: accent.opacity(palette.isLight ? 0.16 : 0.08), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
         .disabled(!canSaveSelectedItem)
         .opacity(canSaveSelectedItem ? 1 : 0.46)
+        .animation(.easeInOut(duration: 0.22), value: viewModel.selectedType)
         .accessibilityLabel(viewModel.editingActivity == nil ? addButtonTitle : WeekFitLocalizedString("planner.saveChanges"))
     }
 }
@@ -1075,7 +1117,7 @@ private extension PlanAddActivitySheet {
 
                 Text(AppText.Planner.customDurationSubtitle)
                     .font(.system(size: 13.2, weight: .medium))
-                    .foregroundStyle(textSecondary.opacity(0.62))
+                    .foregroundStyle(textSecondary)
             }
 
             Picker(WeekFitLocalizedString("planner.duration.pickerLabel"), selection: $viewModel.customDuration) {
@@ -1093,10 +1135,12 @@ private extension PlanAddActivitySheet {
             } label: {
                 Text(String(format: WeekFitLocalizedString("planner.duration.setMinutesFormat"), viewModel.customDuration))
                     .font(WeekFitStyle.Font.button)
-                    .foregroundStyle(.black.opacity(0.84))
+                    .foregroundStyle(palette.isLight ? Color.white : Color.black.opacity(0.84))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(viewModel.selectedType.color.opacity(0.95))
+                    .background(
+                        viewModel.selectedType.color.opacity(palette.isLight ? 1.0 : 0.95)
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .padding(.horizontal, 20)
@@ -1106,7 +1150,7 @@ private extension PlanAddActivitySheet {
             } label: {
                 Text(AppText.Common.Action.cancel)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.78))
+                    .foregroundStyle(textSecondary)
             }
             .buttonStyle(.plain)
             .padding(.bottom, 10)
@@ -1123,14 +1167,14 @@ private extension PlanAddActivitySheet {
 
     var selectionCheckmark: some View {
         Circle()
-            .fill(viewModel.selectedType.color.opacity(0.56))
+            .fill(viewModel.selectedType.color)
             .frame(width: 18, height: 18)
             .overlay {
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.black.opacity(0.82))
+                    .foregroundStyle(palette.isLight ? Color.white : Color.black.opacity(0.82))
             }
-            .shadow(color: viewModel.selectedType.color.opacity(0.045), radius: 5, y: 2)
+            .shadow(color: viewModel.selectedType.color.opacity(0.18), radius: 5, y: 2)
             .padding(5)
     }
 
@@ -1215,7 +1259,7 @@ private extension PlanAddActivitySheet {
         Image(imageName)
             .resizable()
             .scaledToFill()
-            .background(Color(red: 0.04, green: 0.045, blue: 0.05))
+            .background(WeekFitTheme.cardSurface)
     }
 
 }
@@ -1231,30 +1275,23 @@ private extension PlanAddActivitySheet {
     var addSheetBackground: some View {
         ZStack {
             RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.046, green: 0.050, blue: 0.054),
-                            Color(red: 0.032, green: 0.036, blue: 0.039)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(palette.isLight ? WeekFitLightTokens.backgroundElevated : WeekFitTheme.backgroundColor)
 
-            RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.010),
-                            WeekFitTheme.whiteOpacity(0.004),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+            if !palette.isLight {
+                RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                WeekFitTheme.whiteOpacity(0.045),
+                                WeekFitTheme.whiteOpacity(0.012),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .allowsHitTesting(false)
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -1262,11 +1299,17 @@ private extension PlanAddActivitySheet {
         RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
             .stroke(
                 LinearGradient(
-                    colors: [
-                        WeekFitTheme.whiteOpacity(0.056),
-                        WeekFitTheme.whiteOpacity(0.018),
-                        borderSoft.opacity(0.22)
-                    ],
+                    colors: palette.isLight
+                        ? [
+                            WeekFitLightTokens.cardBorder.opacity(0.55),
+                            WeekFitLightTokens.divider.opacity(0.40),
+                            borderSoft.opacity(0.35)
+                        ]
+                        : [
+                            WeekFitTheme.whiteOpacity(0.10),
+                            WeekFitTheme.whiteOpacity(0.04),
+                            borderSoft.opacity(0.28)
+                        ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
@@ -1295,6 +1338,10 @@ private extension PlanAddActivitySheet {
     }
 
     var saveButtonForeground: Color {
+        if palette.isLight {
+            // Solid type fills are saturated enough for white label on all four types.
+            return Color.white
+        }
         switch viewModel.selectedType {
         case .workout, .recovery:
             return WeekFitTheme.whiteOpacity(0.90)
@@ -1422,6 +1469,9 @@ private extension PlanAddActivitySheet {
     }
 
     func typeButtonActiveForeground(for type: PlannerType) -> Color {
+        if palette.isLight {
+            return WeekFitTheme.primaryText
+        }
         switch type {
         case .workout, .recovery, .habit:
             return WeekFitTheme.whiteOpacity(0.90)
@@ -1431,6 +1481,13 @@ private extension PlanAddActivitySheet {
     }
 
     func selectionChipForeground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if palette.isLight {
+            if isPast { return WeekFitTheme.disabledText }
+            if active && occupied { return WeekFitLightTokens.critical }
+            if active { return WeekFitTheme.primaryText }
+            if occupied { return busySlotColor }
+            return WeekFitTheme.secondaryText
+        }
         if isPast { return textPrimary.opacity(0.18) }
         if active && occupied { return Color.red.opacity(0.84) }
         if active { return textPrimary.opacity(0.96) }
@@ -1439,6 +1496,13 @@ private extension PlanAddActivitySheet {
     }
 
     func selectionChipBackground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if palette.isLight {
+            if isPast { return WeekFitLightTokens.surfaceTertiary.opacity(0.70) }
+            if active && occupied { return WeekFitLightTokens.critical.opacity(0.12) }
+            if occupied { return busySlotColor.opacity(0.12) }
+            if active { return viewModel.selectedType.color.opacity(0.16) }
+            return WeekFitLightTokens.internalTile
+        }
         if isPast { return WeekFitTheme.whiteOpacity(0.012) }
         if active && occupied { return Color.red.opacity(0.075) }
         if occupied { return busySlotColor.opacity(0.07) }
@@ -1447,6 +1511,13 @@ private extension PlanAddActivitySheet {
     }
 
     func selectionChipBorder(active: Bool, occupied: Bool, isPast: Bool) -> Color {
+        if palette.isLight {
+            if isPast { return WeekFitLightTokens.divider.opacity(0.40) }
+            if active && occupied { return WeekFitLightTokens.critical.opacity(0.45) }
+            if occupied { return busySlotColor.opacity(0.40) }
+            if active { return viewModel.selectedType.color.opacity(0.50) }
+            return WeekFitLightTokens.divider.opacity(0.50)
+        }
         if isPast { return WeekFitTheme.whiteOpacity(0.04) }
         if active && occupied { return Color.red.opacity(0.22) }
         if occupied { return busySlotColor.opacity(0.20) }
@@ -1534,7 +1605,7 @@ private extension PlanAddActivitySheet {
             VStack(alignment: .leading, spacing: 4) {
                 Text(meal.title)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(textPrimary.opacity(0.92))
+                    .foregroundStyle(textPrimary)
                     .lineLimit(1)
 
                 Text(
@@ -1547,7 +1618,7 @@ private extension PlanAddActivitySheet {
                     )
                 )
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.66))
+                .foregroundStyle(textSecondary)
                 .lineLimit(1)
             }
 

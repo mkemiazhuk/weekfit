@@ -14,7 +14,7 @@ struct WeekFitWeatherDetailSheet: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
@@ -44,23 +44,13 @@ private extension WeekFitWeatherDetailSheet {
             HStack(spacing: 13) {
                 Text(WeekFitUsesRussianLanguage() ? "Погода" : "Weather")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
+                WeekFitCloseButton(size: .large) {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                        .frame(width: 42, height: 42)
-                        .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                        .overlay {
-                            Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                        }
                 }
-                .buttonStyle(.plain)
                 .fixedSize()
             }
 
@@ -73,24 +63,24 @@ private extension WeekFitWeatherDetailSheet {
         let tempValue = WeekFitUnitPolicy.temperatureValueForBadge(summary.temperature, system: system)
 
         return HStack(alignment: .center, spacing: 14) {
-            Image(systemName: summary.condition.premiumBadgeSymbolName)
+            Image(systemName: summary.badgeSymbolName)
                 .font(.system(size: 40, weight: .medium))
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(
-                    summary.condition.badgeIconPrimary,
-                    summary.condition.badgeIconSecondary
+                    summary.badgeIconPrimary,
+                    summary.badgeIconSecondary
                 )
-                .shadow(color: summary.condition.naturalColor.opacity(0.45), radius: 10, y: 0)
+                .shadow(color: summary.badgeNaturalColor.opacity(0.45), radius: 10, y: 0)
                 .frame(width: 56, height: 56)
                 .contentTransition(.symbolEffect(.replace))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(tempValue)°")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .tracking(-1.5)
 
-                Text(summary.condition.shortLabel)
+                Text(summary.badgeShortLabel)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
             }
@@ -193,7 +183,7 @@ private extension WeekFitWeatherDetailSheet {
 
             Text(value)
                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             Text(label)
                 .font(.system(size: 12, weight: .medium))

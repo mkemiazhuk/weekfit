@@ -2,11 +2,13 @@ import SwiftUI
 
 // MARK: - Row kind (hierarchy via styling, shared meal green)
 
-enum MealLibraryRowKind: Equatable, Sendable {
+enum MealLibraryRowKind: String, Identifiable, Equatable, Sendable {
     /// Complete reusable meal — stronger presence.
     case meal
     /// Ingredient / library food — calmer presence.
     case food
+
+    var id: String { rawValue }
 
     var premiumEmphasis: WeekFitPremiumCardEmphasis {
         switch self {
@@ -15,110 +17,38 @@ enum MealLibraryRowKind: Equatable, Sendable {
         }
     }
 
-    var accentBarWidth: CGFloat {
+    var sectionTitleKey: String {
         switch self {
-        case .meal: return 3
-        case .food: return 1.5
+        case .meal: return "meals.library.section.meals"
+        case .food: return "meals.library.section.foods"
         }
     }
 
-    var accentBarOpacity: Double {
+    var sectionIcon: String {
         switch self {
-        case .meal: return 0.46
-        case .food: return 0.24
-        }
-    }
-
-    var accentBarVerticalInset: CGFloat {
-        switch self {
-        case .meal: return 7
-        case .food: return 10
-        }
-    }
-
-    var titleSize: CGFloat {
-        switch self {
-        case .meal: return 15.5
-        case .food: return 14.5
-        }
-    }
-
-    var titleWeight: Font.Weight {
-        switch self {
-        case .meal: return .semibold
-        case .food: return .medium
-        }
-    }
-
-    var titleOpacity: Double {
-        switch self {
-        case .meal: return 1.0
-        case .food: return 0.90
-        }
-    }
-
-    var kcalOpacity: Double {
-        switch self {
-        case .meal: return 0.68
-        case .food: return 0.58
-        }
-    }
-
-    var macroLabelOpacity: Double {
-        switch self {
-        case .meal: return 0.58
-        case .food: return 0.42
-        }
-    }
-
-    var macroValueOpacity: Double {
-        switch self {
-        case .meal: return 0.50
-        case .food: return 0.42
-        }
-    }
-
-    var thumbSize: CGFloat {
-        switch self {
-        case .meal: return 54
-        case .food: return 50
-        }
-    }
-
-    var thumbOpacity: Double {
-        switch self {
-        case .meal: return 1.0
-        case .food: return 0.88
-        }
-    }
-
-    var minCardHeight: CGFloat {
-        switch self {
-        case .meal: return 64
-        case .food: return 60
-        }
-    }
-
-    var chevronOpacity: Double {
-        switch self {
-        case .meal: return 0.28
-        case .food: return 0.20
+        case .meal: return "fork.knife"
+        case .food: return "takeoutbag.and.cup.and.straw.fill"
         }
     }
 }
 
-// MARK: - Metrics (8pt rhythm)
+// MARK: - Metrics
 
 enum MealLibraryCardMetrics {
-    static let cornerRadius: CGFloat = 18
-    static let thumbCornerRadius: CGFloat = 14
-    static let horizontalPadding: CGFloat = 12
-    static let verticalPadding: CGFloat = 8
-    static let contentSpacing: CGFloat = 12
-    static let thumbToChevronSpacing: CGFloat = 6
-    static let kcalSize: CGFloat = 12
-    static let macroSize: CGFloat = 10
-    static let textStackSpacing: CGFloat = 4
+    static let cornerRadius: CGFloat = WeekFitSurface.primaryRadius
+    static let gridSpacing: CGFloat = 12
+    /// Dish thumb — plate fills the tile; ingredients scale up on top.
+    static let thumbSize: CGFloat = 104
+    /// Uniform grid tile height so every card matches.
+    static let cardHeight: CGFloat = 236
+    static let titleBlockHeight: CGFloat = 38
+    static let horizontalPadding: CGFloat = 14
+    static let verticalPadding: CGFloat = 14
+    static let menuSize: CGFloat = 28
+    static let kcalSize: CGFloat = 13
+    static let macroSize: CGFloat = 11
+    static let titleSize: CGFloat = 15
+    static let previewLimit: Int = 4
 }
 
 // MARK: - Shared thumbnail
@@ -126,47 +56,81 @@ enum MealLibraryCardMetrics {
 struct MealLibraryThumbnail: View {
     let meal: Meals
     var size: CGFloat = 54
-    var cornerRadius: CGFloat = MealLibraryCardMetrics.thumbCornerRadius
+    var cornerRadius: CGFloat = WeekFitSurface.iconWellRadius
+    var isCircle: Bool = false
 
-    private let textSecondary = WeekFitTheme.secondaryText
+    @Environment(\.weekFitPalette) private var palette
+
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+
+    private var wellFill: Color {
+        palette.isLight
+            ? WeekFitLightTokens.thumbnailWell
+            : WeekFitTheme.whiteOpacity(0.07)
+    }
+
+    private var resolvedRadius: CGFloat {
+        isCircle ? size / 2 : cornerRadius
+    }
 
     var body: some View {
+        let showsPlatedMeal = !meal.isFoodProduct && !(meal.builderImageItems ?? []).isEmpty
+
         ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.055),
-                            WeekFitTheme.whiteOpacity(0.022)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            // Soft well only for custom food / placeholders — not behind plated meals
+            // (avoids the double light-grey ring under the ceramic plate).
+            if !showsPlatedMeal {
+                RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                    .fill(wellFill)
+            }
 
             Group {
                 if meal.isFoodProduct {
-                    AsyncCustomFoodPlateView(
+                    // Custom food: product photo only — no ceramic plate.
+                    AsyncCustomFoodVisualView(
                         filename: meal.displayPhotoFilename,
-                        initial: meal.placeholderInitial,
-                        plateSize: size,
-                        itemScale: 0.36,
-                        offsetScale: 0.28,
-                        plateOpacity: 0.16,
-                        shadowOpacity: 0.08,
-                        layoutMode: .compactPreview,
-                        photoTargetPixelSize: MealPhotoStore.libraryRowPixelSize
+                        placeholderInitial: meal.placeholderInitial,
+                        size: size * 0.78,
+                        imageScale: 0.74,
+                        fallbackSystemImage: "takeoutbag.and.cup.and.straw.fill"
                     )
                 } else if let items = meal.builderImageItems, !items.isEmpty {
-                    BuiltMealPlateView(
-                        items: items,
-                        plateSize: size,
-                        itemScale: 0.36,
-                        offsetScale: 0.28,
-                        plateOpacity: 0.16,
-                        shadowOpacity: 0.08,
-                        layoutMode: .compactPreview
-                    )
+                    ZStack {
+                        if palette.isLight {
+                            // Light: ceramic white dish (no stone plate-dark).
+                            libraryCeramicPlate(size: size * 0.92)
+
+                            BuiltMealPlateView(
+                                items: items,
+                                plateSize: size * 0.92,
+                                itemScale: 0.64,
+                                offsetScale: 0.34,
+                                plateOpacity: 0,
+                                shadowOpacity: 0.10,
+                                layoutMode: .preview,
+                                showsPlateChrome: false
+                            )
+                        } else {
+                            // Dark: previous soft grey dish — no pearl ceramic.
+                            Circle()
+                                .fill(WeekFitTheme.whiteOpacity(0.10))
+                                .frame(width: size * 0.92, height: size * 0.92)
+                            Circle()
+                                .strokeBorder(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
+                                .frame(width: size * 0.92, height: size * 0.92)
+
+                            BuiltMealPlateView(
+                                items: items,
+                                plateSize: size * 0.92,
+                                itemScale: 0.64,
+                                offsetScale: 0.34,
+                                plateOpacity: 0,
+                                shadowOpacity: 0.16,
+                                layoutMode: .preview,
+                                showsPlateChrome: false
+                            )
+                        }
+                    }
                 } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
                     Image(meal.imageName)
                         .resizable()
@@ -175,50 +139,287 @@ struct MealLibraryThumbnail: View {
                 } else {
                     Image(systemName: meal.isFoodProduct ? "carrot.fill" : "fork.knife")
                         .font(.system(size: size * 0.34, weight: .semibold))
-                        .foregroundStyle(textSecondary.opacity(0.30))
+                        .foregroundStyle(textSecondary)
                 }
             }
             .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous))
         }
         .frame(width: size, height: size)
         .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
+            if !showsPlatedMeal {
+                RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                    .strokeBorder(
+                        palette.isLight
+                            ? WeekFitLightTokens.cardBorder.opacity(0.04)
+                            : WeekFitTheme.whiteOpacity(0.10),
+                        lineWidth: 1
+                    )
+            }
         }
         .accessibilityHidden(true)
     }
+
+    /// Soft ceramic dish for library tiles (not the stone `plate-dark` asset).
+    @ViewBuilder
+    private func libraryCeramicPlate(size: CGFloat) -> some View {
+        let fill: Color = palette.isLight
+            ? Color.white
+            : Color(red: 0.90, green: 0.89, blue: 0.87) // warm pearl on OLED cards
+        let rim: Color = palette.isLight
+            ? Color.black.opacity(0.07)
+            : Color.black.opacity(0.22)
+        let innerRim: Color = palette.isLight
+            ? Color.black.opacity(0.04)
+            : Color.black.opacity(0.12)
+
+        ZStack {
+            // Soft contact shadow under the dish
+            Ellipse()
+                .fill(Color.black.opacity(palette.isLight ? 0.08 : 0.35))
+                .frame(width: size * 0.86, height: size * 0.16)
+                .blur(radius: 6)
+                .offset(y: size * 0.34)
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            fill,
+                            fill.opacity(0.96),
+                            palette.isLight
+                                ? Color(red: 0.96, green: 0.95, blue: 0.93)
+                                : Color(red: 0.84, green: 0.83, blue: 0.80)
+                        ],
+                        center: .center,
+                        startRadius: size * 0.08,
+                        endRadius: size * 0.52
+                    )
+                )
+                .frame(width: size, height: size)
+                .overlay {
+                    Circle()
+                        .strokeBorder(rim, lineWidth: 1)
+                }
+                .overlay {
+                    // Subtle bowl lip
+                    Circle()
+                        .strokeBorder(innerRim, lineWidth: max(4, size * 0.045))
+                        .padding(size * 0.055)
+                }
+                .shadow(
+                    color: Color.black.opacity(palette.isLight ? 0.06 : 0.28),
+                    radius: palette.isLight ? 5 : 8,
+                    y: palette.isLight ? 2 : 3
+                )
+        }
+        .frame(width: size, height: size)
+        .allowsHitTesting(false)
+    }
 }
 
-// MARK: - Badge (Coach purple — recommendation chrome only)
+// MARK: - Grid card (library)
 
-private struct MealLibraryRecommendationBadge: View {
-    let title: String
-    let icon: String
+struct MealLibraryGridCard: View {
+    let meal: Meals
+    var kind: MealLibraryRowKind = .meal
+    var isHighlighted: Bool = false
+    var onDelete: (() -> Void)? = nil
+
+    @Environment(\.weekFitPalette) private var palette
+    @State private var isPressed = false
+    @State private var highlightStrokeOpacity: Double = 0
+
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+
+    private var kcalColor: Color {
+        palette.isLight ? WeekFitTheme.coachAccent : WeekFitTheme.meal
+    }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 7.5, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .topTrailing) {
+                MealLibraryThumbnail(
+                    meal: meal,
+                    size: MealLibraryCardMetrics.thumbSize,
+                    isCircle: true
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
 
-            Text(title)
-                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                .tracking(0.15)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                if let onDelete {
+                    Menu {
+                        Button(role: .destructive, action: onDelete) {
+                            Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(textSecondary)
+                            .frame(
+                                width: MealLibraryCardMetrics.menuSize,
+                                height: MealLibraryCardMetrics.menuSize
+                            )
+                            .background {
+                                Circle()
+                                    .fill(
+                                        palette.isLight
+                                            ? WeekFitLightTokens.surfaceTertiary
+                                            : WeekFitTheme.whiteOpacity(0.08)
+                                    )
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(WeekFitUsesRussianLanguage() ? "Ещё" : "More")
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(meal.localizedDisplayTitle)
+                    .font(.system(size: MealLibraryCardMetrics.titleSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.22)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: MealLibraryCardMetrics.titleBlockHeight,
+                        maxHeight: MealLibraryCardMetrics.titleBlockHeight,
+                        alignment: .topLeading
+                    )
+
+                Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
+                    .font(.system(size: MealLibraryCardMetrics.kcalSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(kcalColor)
+                    .monospacedDigit()
+                    .lineLimit(1)
+
+                macroGrid
+                    .padding(.top, 2)
+            }
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 18)
-        .background {
-            Capsule()
-                .fill(WeekFitTheme.coachAccent.opacity(0.10))
+        .padding(.horizontal, MealLibraryCardMetrics.horizontalPadding)
+        .padding(.vertical, MealLibraryCardMetrics.verticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: MealLibraryCardMetrics.cardHeight, alignment: .top)
+        .weekFitPremiumCard(
+            emphasis: kind.premiumEmphasis,
+            accent: WeekFitTheme.meal,
+            cornerRadius: MealLibraryCardMetrics.cornerRadius
+        )
+        .overlay(highlightPulseOverlay)
+        .scaleEffect(isPressed ? 0.985 : 1.0)
+        .animation(.easeOut(duration: 0.14), value: isPressed)
+        .contentShape(RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous))
+        .onLongPressGesture(
+            minimumDuration: .infinity,
+            maximumDistance: 14,
+            pressing: { pressing in
+                isPressed = pressing
+            },
+            perform: {}
+        )
+        .onChange(of: isHighlighted) { _, highlighted in
+            guard highlighted else {
+                highlightStrokeOpacity = 0
+                return
+            }
+            runHighlightPulse()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+        .accessibilityHint(WeekFitLocalizedString("meals.library.openDetailsHint"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var rowAccessibilityLabel: String {
+        String(
+            format: WeekFitLocalizedString("meals.library.rowAccessibilityFormat"),
+            meal.localizedDisplayTitle,
+            meal.calories
+        )
+    }
+
+    /// Fixed 2×2 macro block — matches the Saved Meals reference layout.
+    private var macroGrid: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                macroCell(
+                    label: WeekFitLocalizedString("meals.library.macroProtein"),
+                    value: meal.protein,
+                    tint: NutritionStyle.proteinColor
+                )
+                macroCell(
+                    label: WeekFitLocalizedString("meals.library.macroCarbs"),
+                    value: meal.carbs,
+                    tint: NutritionStyle.carbsColor
+                )
+            }
+            HStack(spacing: 8) {
+                macroCell(
+                    label: WeekFitLocalizedString("meals.library.macroFats"),
+                    value: meal.fats,
+                    tint: NutritionStyle.fatColor
+                )
+                macroCell(
+                    label: WeekFitLocalizedString("meals.library.macroFiber"),
+                    value: meal.fiber,
+                    tint: NutritionStyle.fiberColor
+                )
+            }
+        }
+        .frame(height: 32, alignment: .topLeading)
+    }
+
+    private func macroCell(label: String, value: Int, tint: Color) -> some View {
+        HStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: MealLibraryCardMetrics.macroSize, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+
+            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
+                .font(.system(size: MealLibraryCardMetrics.macroSize, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .lineLimit(1)
+        .minimumScaleFactor(0.78)
+    }
+
+    private var highlightPulseOverlay: some View {
+        RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
+            .stroke(WeekFitTheme.meal.opacity(highlightStrokeOpacity), lineWidth: 1.25)
+            .allowsHitTesting(false)
+    }
+
+    private func runHighlightPulse() {
+        highlightStrokeOpacity = 0
+        withAnimation(.easeInOut(duration: 0.28)) {
+            highlightStrokeOpacity = 0.55
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(320))
+            withAnimation(.easeInOut(duration: 0.28)) {
+                highlightStrokeOpacity = 0.14
+            }
+            try? await Task.sleep(for: .milliseconds(280))
+            withAnimation(.easeInOut(duration: 0.28)) {
+                highlightStrokeOpacity = 0.48
+            }
+            try? await Task.sleep(for: .milliseconds(320))
+            withAnimation(.easeOut(duration: 0.35)) {
+                highlightStrokeOpacity = 0
+            }
         }
     }
 }
 
-// MARK: - Card row
+// MARK: - Legacy list row (quick-log / compact flows)
 
 struct HeroMealLibraryRow: View {
     let meal: Meals
@@ -233,45 +434,33 @@ struct HeroMealLibraryRow: View {
     @State private var isPressed = false
     @State private var highlightStrokeOpacity: Double = 0
 
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
-    /// Nutrition domain accent — shared by Meals and Foods.
-    private let accent = WeekFitTheme.meal
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var accent: Color { WeekFitTheme.meal }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                .fill(accent.opacity(kind.accentBarOpacity))
-                .frame(width: kind.accentBarWidth)
-                .padding(.vertical, kind.accentBarVerticalInset)
+        HStack(alignment: .center, spacing: MealLibraryCardMetrics.horizontalPadding) {
+            textBlock
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(alignment: .center, spacing: MealLibraryCardMetrics.contentSpacing) {
-                textBlock
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .center, spacing: 8) {
+                MealLibraryThumbnail(meal: meal, size: 54, isCircle: true)
+                    .opacity(isPressed ? 0.92 : 1.0)
+                    .scaleEffect(isPressed ? 0.98 : 1.0)
 
-                HStack(alignment: .center, spacing: MealLibraryCardMetrics.thumbToChevronSpacing) {
-                    MealLibraryThumbnail(meal: meal, size: kind.thumbSize)
-                        .opacity((isPressed ? 0.92 : 1.0) * kind.thumbOpacity)
-                        .scaleEffect(isPressed ? 0.98 : 1.0)
-
-                    trailingAction
-                }
+                trailingAction
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 10)
-            .padding(.vertical, MealLibraryCardMetrics.verticalPadding)
         }
-        .frame(minHeight: kind.minCardHeight)
-        .weekFitPremiumCard(
-            emphasis: kind.premiumEmphasis,
-            accent: accent,
-            cornerRadius: MealLibraryCardMetrics.cornerRadius
-        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 64)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .weekFitCompactRowCard(accent: accent)
         .overlay(pressHighlight)
         .overlay(highlightPulseOverlay)
         .scaleEffect(isPressed ? 0.988 : 1.0)
         .animation(.easeOut(duration: 0.14), value: isPressed)
-        .contentShape(RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: WeekFitSurface.compactRadius, style: .continuous))
         .onLongPressGesture(
             minimumDuration: .infinity,
             maximumDistance: 14,
@@ -301,10 +490,8 @@ struct HeroMealLibraryRow: View {
         )
     }
 
-    // MARK: Content
-
     private var textBlock: some View {
-        VStack(alignment: .leading, spacing: MealLibraryCardMetrics.textStackSpacing) {
+        VStack(alignment: .leading, spacing: 4) {
             if isRecommended,
                let recommendationBadge,
                !recommendationBadge.isEmpty {
@@ -315,80 +502,47 @@ struct HeroMealLibraryRow: View {
             }
 
             Text(meal.localizedDisplayTitle)
-                .font(.system(size: kind.titleSize, weight: kind.titleWeight, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(kind.titleOpacity))
-                .tracking(kind == .meal ? -0.26 : -0.18)
+                .font(.system(size: 15.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.82)
-                .fixedSize(horizontal: false, vertical: true)
 
             Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
-                .font(.system(size: MealLibraryCardMetrics.kcalSize, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(kind.kcalOpacity))
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary)
                 .monospacedDigit()
                 .lineLimit(1)
 
-            macroLine
+            HStack(spacing: 0) {
+                macroSegment(meal.protein, WeekFitLocalizedString("meals.library.macroProtein"), NutritionStyle.proteinColor)
+                Text("·").foregroundStyle(WeekFitTheme.quaternaryText).padding(.horizontal, 4)
+                macroSegment(meal.carbs, WeekFitLocalizedString("meals.library.macroCarbs"), NutritionStyle.carbsColor)
+                Text("·").foregroundStyle(WeekFitTheme.quaternaryText).padding(.horizontal, 4)
+                macroSegment(meal.fats, WeekFitLocalizedString("meals.library.macroFats"), NutritionStyle.fatColor)
+            }
+            .font(.system(size: 10, weight: .medium, design: .rounded))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
         }
     }
 
-    private var macroLine: some View {
-        let labelOpacity = kind == .meal ? 0.78 : 0.68
-
-        return HStack(spacing: 0) {
-            macroSegment(
-                value: meal.protein,
-                label: WeekFitLocalizedString("meals.library.macroProtein"),
-                labelTint: NutritionStyle.proteinColor.opacity(labelOpacity)
-            )
-            macroSeparator
-            macroSegment(
-                value: meal.carbs,
-                label: WeekFitLocalizedString("meals.library.macroCarbs"),
-                labelTint: NutritionStyle.carbsColor.opacity(labelOpacity)
-            )
-            macroSeparator
-            macroSegment(
-                value: meal.fats,
-                label: WeekFitLocalizedString("meals.library.macroFats"),
-                labelTint: NutritionStyle.fatColor.opacity(labelOpacity)
-            )
-            macroSeparator
-            macroSegment(
-                value: meal.fiber,
-                label: WeekFitLocalizedString("meals.library.macroFiber"),
-                labelTint: NutritionStyle.fiberColor.opacity(labelOpacity)
-            )
-        }
-        .font(.system(size: MealLibraryCardMetrics.macroSize, weight: .medium, design: .rounded))
-        .monospacedDigit()
-        .lineLimit(1)
-        .minimumScaleFactor(0.78)
-    }
-
-    private func macroSegment(value: Int, label: String, labelTint: Color) -> some View {
+    private func macroSegment(_ value: Int, _ label: String, _ tint: Color) -> some View {
         HStack(spacing: 2) {
-            Text(label)
-                .fontWeight(.semibold)
-                .foregroundStyle(labelTint)
-
+            Text(label).fontWeight(.semibold).foregroundStyle(tint)
             Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
-                .foregroundStyle(textSecondary.opacity(kind.macroValueOpacity))
+                .foregroundStyle(textSecondary)
         }
-    }
-
-    private var macroSeparator: some View {
-        Text("·")
-            .foregroundStyle(WeekFitTheme.whiteOpacity(kind == .meal ? 0.16 : 0.12))
-            .padding(.horizontal, 4)
     }
 
     private var pressHighlight: some View {
-        RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
-            .fill(WeekFitTheme.whiteOpacity(isPressed ? 0.032 : 0))
+        Group {
+            if isPressed {
+                RoundedRectangle(cornerRadius: WeekFitSurface.compactRadius, style: .continuous)
+                    .fill(WeekFitTheme.internalTile.opacity(0.55))
+            }
+        }
     }
-
-    // MARK: Trailing
 
     @ViewBuilder
     private var trailingAction: some View {
@@ -416,14 +570,14 @@ struct HeroMealLibraryRow: View {
         } else {
             Image(systemName: "chevron.right")
                 .font(.system(size: 9.5, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(kind.chevronOpacity))
+                .foregroundStyle(WeekFitTheme.iconSecondary)
                 .frame(width: 6, alignment: .trailing)
                 .accessibilityHidden(true)
         }
     }
 
     private var highlightPulseOverlay: some View {
-        RoundedRectangle(cornerRadius: MealLibraryCardMetrics.cornerRadius, style: .continuous)
+        RoundedRectangle(cornerRadius: WeekFitSurface.compactRadius, style: .continuous)
             .stroke(accent.opacity(highlightStrokeOpacity), lineWidth: 1.25)
             .allowsHitTesting(false)
     }
@@ -451,12 +605,38 @@ struct HeroMealLibraryRow: View {
     }
 }
 
+private struct MealLibraryRecommendationBadge: View {
+    let title: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 7.5, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+
+            Text(title)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                .tracking(0.15)
+                .foregroundStyle(WeekFitTheme.coachAccent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 18)
+        .background {
+            Capsule()
+                .fill(WeekFitTheme.coachAccent.opacity(0.10))
+        }
+    }
+}
+
 struct MealsLibrarySkeletonRow: View {
     @State private var pulse = false
 
     var body: some View {
         Color.clear
-            .frame(height: MealLibraryRowKind.meal.minCardHeight)
+            .frame(height: MealLibraryCardMetrics.cardHeight)
             .weekFitPremiumCard(
                 emphasis: .compact,
                 accent: nil,

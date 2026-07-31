@@ -3,8 +3,15 @@ import SwiftUI
 import UIKit
 #endif
 
+/// Canvas appearance for WeekFit semantic tokens.
+enum WeekFitAppearance: Equatable, Sendable {
+    case light
+    case dark
+}
+
 /// Adaptive semantic design tokens. Components should read these instead of hard-coded opacities.
 struct WeekFitSemanticPalette: Equatable, Sendable {
+    let appearance: WeekFitAppearance
     let blendFactor: CGFloat
 
     let textPrimaryOpacity: CGFloat
@@ -33,94 +40,335 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
     let cardShadowOpacity: CGFloat
     let accentCardGlowOpacity: CGFloat
 
-    static let daytime = WeekFitSemanticPalette(blendFactor: 0)
+    var isLight: Bool { appearance == .light }
 
-    init(blendFactor: CGFloat) {
+    static let daytime = WeekFitSemanticPalette(appearance: .dark, blendFactor: 0)
+    static let light = WeekFitSemanticPalette(appearance: .light, blendFactor: 0)
+
+    init(appearance: WeekFitAppearance = .dark, blendFactor: CGFloat) {
         let blend = min(1, max(0, blendFactor))
-        self.blendFactor = blend
+        self.appearance = appearance
+        self.blendFactor = appearance == .light ? 0 : blend
 
-        textPrimaryOpacity = Self.lerp(0.96, 0.86, blend)
-        textSecondaryOpacity = Self.lerp(0.70, 0.56, blend)
-        textTertiaryOpacity = Self.lerp(0.50, 0.40, blend)
+        switch appearance {
+        case .light:
+            textPrimaryOpacity = 1.00
+            textSecondaryOpacity = 1.00
+            textTertiaryOpacity = 1.00
 
-        cardBackgroundOpacity = Self.lerp(0.090, 0.065, blend)
-        cardSecondaryOpacity = Self.lerp(0.065, 0.048, blend)
-        cardTertiaryOpacity = Self.lerp(0.048, 0.036, blend)
-        elevatedCardOpacity = Self.lerp(0.110, 0.080, blend)
-        glassOverlayOpacity = Self.lerp(0.055, 0.040, blend)
-        activePillOpacity = Self.lerp(0.13, 0.095, blend)
+            cardBackgroundOpacity = 1.00
+            cardSecondaryOpacity = 1.00
+            cardTertiaryOpacity = 1.00
+            elevatedCardOpacity = 1.00
+            glassOverlayOpacity = 0.92
+            activePillOpacity = 1.00
 
-        borderOpacity = Self.lerp(0.085, 0.055, blend)
-        borderSoftOpacity = Self.lerp(0.055, 0.036, blend)
+            borderOpacity = 0.42
+            borderSoftOpacity = 0.32
 
-        accentSaturation = Self.lerp(1.00, 0.72, blend)
-        accentBrightness = Self.lerp(1.00, 0.88, blend)
-        accentGlowOpacity = Self.lerp(1.00, 0.55, blend)
+            accentSaturation = 1.00
+            accentBrightness = 1.00
+            accentGlowOpacity = 0.90
 
-        ringTrackOpacity = Self.lerp(0.11, 0.075, blend)
-        ringGlowOpacity = Self.lerp(0.18, 0.08, blend)
-        ringGradientPeakOpacity = Self.lerp(1.00, 0.86, blend)
+            ringTrackOpacity = 1.00
+            ringGlowOpacity = 0.10
+            ringGradientPeakOpacity = 1.00
 
-        ambientOpacity = Self.lerp(1.00, 0.62, blend)
-        cardShadowOpacity = Self.lerp(0.42, 0.30, blend)
-        accentCardGlowOpacity = Self.lerp(1.00, 0.55, blend)
+            ambientOpacity = 1.00
+            cardShadowOpacity = 0.08
+            accentCardGlowOpacity = 0.40
+
+        case .dark:
+            textPrimaryOpacity = Self.lerp(0.96, 0.86, blend)
+            textSecondaryOpacity = Self.lerp(0.70, 0.56, blend)
+            textTertiaryOpacity = Self.lerp(0.50, 0.40, blend)
+
+            cardBackgroundOpacity = Self.lerp(0.090, 0.065, blend)
+            cardSecondaryOpacity = Self.lerp(0.065, 0.048, blend)
+            cardTertiaryOpacity = Self.lerp(0.048, 0.036, blend)
+            elevatedCardOpacity = Self.lerp(0.110, 0.080, blend)
+            glassOverlayOpacity = Self.lerp(0.055, 0.040, blend)
+            activePillOpacity = Self.lerp(0.13, 0.095, blend)
+
+            borderOpacity = Self.lerp(0.085, 0.055, blend)
+            borderSoftOpacity = Self.lerp(0.055, 0.036, blend)
+
+            accentSaturation = Self.lerp(1.00, 0.72, blend)
+            accentBrightness = Self.lerp(1.00, 0.88, blend)
+            accentGlowOpacity = Self.lerp(1.00, 0.55, blend)
+
+            ringTrackOpacity = Self.lerp(0.11, 0.075, blend)
+            ringGlowOpacity = Self.lerp(0.18, 0.08, blend)
+            ringGradientPeakOpacity = Self.lerp(1.00, 0.86, blend)
+
+            ambientOpacity = Self.lerp(1.00, 0.62, blend)
+            cardShadowOpacity = Self.lerp(0.42, 0.30, blend)
+            accentCardGlowOpacity = Self.lerp(1.00, 0.55, blend)
+        }
     }
 
-    static func interpolated(blend: CGFloat) -> WeekFitSemanticPalette {
-        WeekFitSemanticPalette(blendFactor: blend)
+    static func interpolated(blend: CGFloat, appearance: WeekFitAppearance = .dark) -> WeekFitSemanticPalette {
+        WeekFitSemanticPalette(appearance: appearance, blendFactor: blend)
     }
 
-    /// Scales arbitrary white opacities for ad-hoc legacy call sites.
+    /// Scales arbitrary frost opacities for ad-hoc legacy call sites (Dark Mode).
     func scaledOpacity(_ dayOpacity: CGFloat) -> CGFloat {
-        Self.lerp(dayOpacity, dayOpacity * 0.78, blendFactor)
+        switch appearance {
+        case .light:
+            // Prefer `whiteOpacity` / role tokens; keep a usable fallback.
+            return min(1.0, max(0.12, dayOpacity * 2.6))
+        case .dark:
+            return Self.lerp(dayOpacity, dayOpacity * 0.78, blendFactor)
+        }
     }
 
+    /// Bridges dark-era white frost into Light Mode ceramic / text roles.
+    /// Prefer explicit semantic tokens for new code.
     func whiteOpacity(_ dayOpacity: CGFloat) -> Color {
-        Color.white.opacity(scaledOpacity(dayOpacity))
+        switch appearance {
+        case .light:
+            // Critical: zero / near-zero must stay clear so "no fill" overlays
+            // do not paint opaque ceramic over content (meal library cards).
+            if dayOpacity <= 0.001 {
+                return .clear
+            }
+            switch dayOpacity {
+            case ...0.035:
+                return WeekFitLightTokens.surfaceTertiary
+            case ...0.055:
+                return WeekFitLightTokens.internalTile
+            case ...0.090:
+                return WeekFitLightTokens.cardBorder.opacity(0.45)
+            case ...0.160:
+                return WeekFitLightTokens.textQuaternary
+            case ...0.320:
+                return WeekFitLightTokens.iconInactive
+            case ...0.500:
+                return WeekFitLightTokens.textTertiary
+            case ...0.720:
+                return WeekFitLightTokens.textSecondary
+            case ...0.880:
+                return WeekFitLightTokens.iconPrimary
+            default:
+                // Near-white frost on dark → primary ink on light (soft tint CTAs).
+                return WeekFitLightTokens.textPrimary
+            }
+        case .dark:
+            return Color.white.opacity(Double(scaledOpacity(dayOpacity)))
+        }
     }
 
-    var textPrimary: Color { Color.white.opacity(textPrimaryOpacity) }
-    var textSecondary: Color { Color.white.opacity(textSecondaryOpacity) }
-    var textTertiary: Color { Color.white.opacity(textTertiaryOpacity) }
+    /// True specular highlight — always white. Use for ceramic card sheen.
+    func specularHighlight(_ opacity: CGFloat) -> Color {
+        switch appearance {
+        case .light:
+            return Color.white.opacity(Double(min(0.55, max(0.20, opacity * 0.85))))
+        case .dark:
+            return Color.white.opacity(Double(scaledOpacity(opacity)))
+        }
+    }
 
-    var cardBackground: Color { Color.white.opacity(cardBackgroundOpacity) }
-    var cardSecondary: Color { Color.white.opacity(cardSecondaryOpacity) }
-    var cardTertiary: Color { Color.white.opacity(cardTertiaryOpacity) }
-    var elevatedCard: Color { Color.white.opacity(elevatedCardOpacity) }
-    var glassOverlay: Color { Color.white.opacity(glassOverlayOpacity) }
-    var activePill: Color { Color.white.opacity(activePillOpacity) }
+    var textPrimary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.textPrimary
+        case .dark: return Color.white.opacity(textPrimaryOpacity)
+        }
+    }
 
-    var border: Color { Color.white.opacity(borderOpacity) }
-    var borderSoft: Color { Color.white.opacity(borderSoftOpacity) }
+    var textSecondary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.textSecondary
+        case .dark: return Color.white.opacity(textSecondaryOpacity)
+        }
+    }
+
+    var textTertiary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.textTertiary
+        case .dark: return Color.white.opacity(textTertiaryOpacity)
+        }
+    }
+
+    var textQuaternary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.textQuaternary
+        case .dark: return Color.white.opacity(textTertiaryOpacity * 0.78)
+        }
+    }
+
+    var textDisabled: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.textDisabled
+        case .dark: return Color.white.opacity(textTertiaryOpacity * 0.72)
+        }
+    }
+
+    var iconPrimary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.iconPrimary
+        case .dark: return Color.white.opacity(textPrimaryOpacity)
+        }
+    }
+
+    var iconSecondary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.iconSecondary
+        case .dark: return Color.white.opacity(textSecondaryOpacity)
+        }
+    }
+
+    var iconInactive: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.iconInactive
+        case .dark: return Color.white.opacity(textTertiaryOpacity)
+        }
+    }
+
+    var cardBackground: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.surfaceCard
+        case .dark: return Color.white.opacity(cardBackgroundOpacity)
+        }
+    }
+
+    var cardSecondary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.surfaceSecondary
+        case .dark: return Color.white.opacity(cardSecondaryOpacity)
+        }
+    }
+
+    var cardTertiary: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.surfaceTertiary
+        case .dark: return Color.white.opacity(cardTertiaryOpacity)
+        }
+    }
+
+    var elevatedCard: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.surfacePrimary
+        case .dark: return Color.white.opacity(elevatedCardOpacity)
+        }
+    }
+
+    var glassOverlay: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.surfacePrimary.opacity(glassOverlayOpacity)
+        case .dark: return Color.white.opacity(glassOverlayOpacity)
+        }
+    }
+
+    var activePill: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.tabActiveCapsule
+        case .dark: return Color.white.opacity(activePillOpacity)
+        }
+    }
+
+    var border: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.cardBorder.opacity(borderOpacity)
+        case .dark: return Color.white.opacity(borderOpacity)
+        }
+    }
+
+    var borderSoft: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.divider.opacity(borderSoftOpacity)
+        case .dark: return Color.white.opacity(borderSoftOpacity)
+        }
+    }
 
     // MARK: - Premium card surfaces
 
-    /// Near-black matte fill — rich, not gray-slab.
     var cardSurface: Color {
-        Color(
-            red: Self.lerp(0.050, 0.038, blendFactor),
-            green: Self.lerp(0.053, 0.041, blendFactor),
-            blue: Self.lerp(0.062, 0.050, blendFactor)
-        )
+        switch appearance {
+        case .light:
+            return WeekFitLightTokens.surfaceCard
+        case .dark:
+            return Color(
+                red: Self.lerp(0.050, 0.038, blendFactor),
+                green: Self.lerp(0.053, 0.041, blendFactor),
+                blue: Self.lerp(0.062, 0.050, blendFactor)
+            )
+        }
     }
 
-    /// Raised near-black fill for elevated surfaces.
     var cardSurfaceElevated: Color {
-        Color(
-            red: Self.lerp(0.068, 0.050, blendFactor),
-            green: Self.lerp(0.072, 0.054, blendFactor),
-            blue: Self.lerp(0.084, 0.064, blendFactor)
-        )
+        switch appearance {
+        case .light:
+            return WeekFitLightTokens.surfacePrimary
+        case .dark:
+            return Color(
+                red: Self.lerp(0.068, 0.050, blendFactor),
+                green: Self.lerp(0.072, 0.054, blendFactor),
+                blue: Self.lerp(0.084, 0.064, blendFactor)
+            )
+        }
     }
 
-    /// Hairline edge token (stroke gradient adds the bright leading edge).
-    var cardBorder: Color { Color.white.opacity(Self.lerp(0.12, 0.075, blendFactor)) }
+    var cardSurfaceWarm: Color {
+        switch appearance {
+        case .light:
+            return WeekFitLightTokens.surfaceSecondary
+        case .dark:
+            return Color(
+                red: Self.lerp(0.058, 0.044, blendFactor),
+                green: Self.lerp(0.054, 0.042, blendFactor),
+                blue: Self.lerp(0.048, 0.038, blendFactor)
+            )
+        }
+    }
 
-    /// Soft internal highlight used in premium card gradients.
-    var cardInnerHighlight: Color { Color.white.opacity(Self.lerp(0.050, 0.030, blendFactor)) }
+    var internalTile: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.internalTile
+        case .dark: return Color.white.opacity(cardTertiaryOpacity)
+        }
+    }
 
-    /// Restrained accent overlay peak for corner washes.
-    var cardAccentOverlayOpacity: CGFloat { Self.lerp(0.12, 0.070, blendFactor) }
+    var cardBorder: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.cardBorder.opacity(WeekFitLightTokens.cardBorderStrokeOpacity)
+        case .dark: return Color.white.opacity(Self.lerp(0.12, 0.075, blendFactor))
+        }
+    }
+
+    var cardInnerHighlight: Color {
+        switch appearance {
+        case .light: return Color.white.opacity(0.35)
+        case .dark: return Color.white.opacity(Self.lerp(0.050, 0.030, blendFactor))
+        }
+    }
+
+    var cardAccentOverlayOpacity: CGFloat {
+        switch appearance {
+        case .light: return 0.045
+        case .dark: return Self.lerp(0.12, 0.070, blendFactor)
+        }
+    }
+
+    var ringTrack: Color {
+        switch appearance {
+        case .light: return WeekFitLightTokens.inactiveTrack
+        case .dark: return Color.white.opacity(ringTrackOpacity)
+        }
+    }
+
+    var shadowAmbient: Color {
+        switch appearance {
+        case .light: return Color.black.opacity(cardShadowOpacity)
+        case .dark: return Color.black.opacity(cardShadowOpacity)
+        }
+    }
+
+    var shadowContact: Color {
+        switch appearance {
+        case .light: return Color.black.opacity(0.05)
+        case .dark: return Color.clear
+        }
+    }
 
     func accent(_ color: Color) -> Color {
         adjustAccent(color, saturation: accentSaturation, brightness: accentBrightness)
@@ -135,7 +383,7 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
     }
 
     private func adjustAccent(_ color: Color, saturation: CGFloat, brightness: CGFloat) -> Color {
-        guard blendFactor > 0.001 else { return color }
+        guard appearance == .dark, blendFactor > 0.001 else { return color }
 
         #if canImport(UIKit)
         let uiColor = UIColor(color)
@@ -173,6 +421,10 @@ extension EnvironmentValues {
 
 extension View {
     func weekFitNightComfortPreview(blend: CGFloat) -> some View {
-        environment(\.weekFitPalette, .interpolated(blend: blend))
+        environment(\.weekFitPalette, .interpolated(blend: blend, appearance: .dark))
+    }
+
+    func weekFitAppearancePreview(_ appearance: WeekFitAppearance) -> some View {
+        environment(\.weekFitPalette, .interpolated(blend: 0, appearance: appearance))
     }
 }

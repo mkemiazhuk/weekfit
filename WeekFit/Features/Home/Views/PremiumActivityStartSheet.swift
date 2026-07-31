@@ -256,25 +256,25 @@ struct PremiumActivityStartSheet: View {
     }
 
     private func liveSessionCard(_ liveItem: PlannedActivity) -> some View {
-        let accentColor = Color(red: 0.60, green: 0.52, blue: 0.39)
-        let badgeColor = Color(red: 0.72, green: 0.63, blue: 0.45)
+        let accentColor = WeekFitTheme.brandGold
+        let badgeColor = WeekFitTheme.brandGoldDeep
 
         return HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(accentColor.opacity(0.075))
+                    .fill(accentColor.opacity(0.14))
                     .frame(width: 42, height: 42)
-                    .overlay(Circle().stroke(accentColor.opacity(0.20), lineWidth: 1))
+                    .overlay(Circle().stroke(accentColor.opacity(0.28), lineWidth: 1))
 
                 Image(systemName: liveItem.icon.isEmpty ? "figure.run" : liveItem.icon)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(badgeColor.opacity(0.86))
+                    .foregroundStyle(badgeColor)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(badgeColor.opacity(0.92))
+                        .fill(badgeColor)
                         .frame(width: 5, height: 5)
                         .phaseAnimator([0.35, 1.0]) { content, phase in
                             content.opacity(phase)
@@ -285,12 +285,12 @@ struct PremiumActivityStartSheet: View {
                     Text(WeekFitLocalizedString("home.liveNow"))
                         .font(.system(size: 9.4, weight: .bold))
                         .tracking(0.5)
-                        .foregroundStyle(badgeColor.opacity(0.92))
+                        .foregroundStyle(badgeColor)
                 }
 
                 Text(localizedOptionTitle(liveItem.title))
                     .font(.system(size: 15.2, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
 
                 liveProgressText(startedAt: liveItem.date, maxMinutes: liveItem.durationMinutes)
@@ -306,49 +306,22 @@ struct PremiumActivityStartSheet: View {
                 } label: {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                        .foregroundStyle(Color.white)
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
-                                .fill(Color.red.opacity(0.68))
+                                .fill(WeekFitLightTokens.critical)
                         )
-                        .shadow(color: Color.red.opacity(0.16), radius: 8, y: 3)
+                        .shadow(color: WeekFitLightTokens.critical.opacity(0.22), radius: 8, y: 3)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(WeekFitLocalizedString("common.action.close")))
             }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accentColor.opacity(0.030),
-                            .white.opacity(0.026),
-                            .white.opacity(0.012)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            accentColor.opacity(0.18),
-                            .white.opacity(0.055),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .shadow(color: accentColor.opacity(0.025), radius: 10, y: 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .weekFitPrimaryCard(accent: accentColor, featured: true)
     }
 
     private func liveTimer(startedAt: Date) -> some View {
@@ -361,7 +334,7 @@ struct PremiumActivityStartSheet: View {
             Text(timeText)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .frame(width: 82, alignment: .trailing)
         }
     }
@@ -374,7 +347,7 @@ struct PremiumActivityStartSheet: View {
             Text(String(format: WeekFitLocalizedString("home.activityStart.progressFormat"), elapsedMinutes, maxMinutes))
                 .font(.system(size: 10.6, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
+                .foregroundStyle(WeekFitTheme.secondaryText)
                 .lineLimit(1)
         }
     }

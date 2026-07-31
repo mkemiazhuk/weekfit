@@ -4,48 +4,102 @@ struct TodayAtmosphereBackground: View {
     let snapshot: TodayAtmosphereSnapshot
     let ambientOpacity: CGFloat
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
         ZStack {
-            baseGradient
-            primaryGlow
-            secondaryGlow
+            if palette.isLight {
+                lightCanvas
+            } else {
+                WeekFitTheme.appScreenBackground
+                primaryGlow
+                secondaryGlow
+            }
         }
         .animation(.easeInOut(duration: 1.4), value: snapshot)
+        .animation(.easeInOut(duration: 0.45), value: palette.appearance)
     }
 
-    private var palette: AtmospherePalette {
+    // MARK: - Light: warm ivory + subtle top glow only
+
+    private var lightCanvas: some View {
+        ZStack {
+            WeekFitTheme.appScreenBackground
+
+            // Top champagne glow — restrained, header-only.
+            RadialGradient(
+                colors: [
+                    WeekFitLightTokens.backgroundTopGlow.opacity(0.55 * ambientOpacity),
+                    WeekFitLightTokens.backgroundTopGlow.opacity(0.18 * ambientOpacity),
+                    Color.clear
+                ],
+                center: UnitPoint(x: 0.50, y: 0.0),
+                startRadius: 4,
+                endRadius: 260
+            )
+
+            // Quiet semantic wash (mode-aware, barely perceptible).
+            RadialGradient(
+                colors: [
+                    lightModeAccent.opacity(0.028 * ambientOpacity),
+                    Color.clear
+                ],
+                center: UnitPoint(x: 0.88, y: 0.16),
+                startRadius: 20,
+                endRadius: 240
+            )
+
+            // Soft edge vignette — neutral, not gold-washed.
+            RadialGradient(
+                colors: [
+                    Color.clear,
+                    WeekFitLightTokens.shadowAmbient.opacity(0.045 * ambientOpacity)
+                ],
+                center: .center,
+                startRadius: 200,
+                endRadius: 540
+            )
+        }
+    }
+
+    private var lightModeAccent: Color {
+        switch snapshot.mode {
+        case .ready:
+            return WeekFitLightTokens.activity
+        case .protect:
+            return WeekFitLightTokens.recovery
+        case .load:
+            return WeekFitLightTokens.nutrition
+        }
+    }
+
+    // MARK: - Dark OLED atmosphere (glows only — base is shared appScreenBackground)
+
+    private var darkPalette: AtmospherePalette {
         AtmospherePalette.make(snapshot: snapshot)
-    }
-
-    private var baseGradient: some View {
-        LinearGradient(
-            colors: palette.base,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 
     private var primaryGlow: some View {
         RadialGradient(
             colors: [
-                palette.primaryGlow.opacity(palette.primaryGlowOpacity * ambientOpacity),
+                darkPalette.primaryGlow.opacity(darkPalette.primaryGlowOpacity * ambientOpacity),
                 Color.clear
             ],
-            center: palette.primaryCenter,
+            center: darkPalette.primaryCenter,
             startRadius: 20,
-            endRadius: palette.primaryRadius
+            endRadius: darkPalette.primaryRadius
         )
     }
 
     private var secondaryGlow: some View {
         RadialGradient(
             colors: [
-                palette.secondaryGlow.opacity(palette.secondaryGlowOpacity * ambientOpacity),
+                darkPalette.secondaryGlow.opacity(darkPalette.secondaryGlowOpacity * ambientOpacity),
                 Color.clear
             ],
-            center: palette.secondaryCenter,
+            center: darkPalette.secondaryCenter,
             startRadius: 16,
-            endRadius: palette.secondaryRadius
+            endRadius: darkPalette.secondaryRadius
         )
     }
 }

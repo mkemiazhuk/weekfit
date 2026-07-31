@@ -131,7 +131,6 @@ struct MealBuilderView: View {
 
             flyingIngredientOverlay
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             prefillIfNeeded()
             ProductAnalytics.trackScreen(.mealBuilder)

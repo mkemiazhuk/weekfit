@@ -6,6 +6,7 @@ struct HealthDetailsWeekPicker: View {
     let accentColor: Color
     var onDateSelected: ((Date) -> Void)?
 
+    @Environment(\.weekFitPalette) private var palette
     @State private var visibleWeekOffset = 0
 
     private let calendar = Calendar.current
@@ -94,16 +95,16 @@ struct HealthDetailsWeekPicker: View {
 
                     if isToday {
                         Circle()
-                            .fill(isSelected ? .white.opacity(0.92) : accentColor.opacity(0.90))
+                            .fill(todayDotColor(isSelected: isSelected))
                             .frame(width: 3.5, height: 3.5)
                     }
                 }
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.44))
+                .foregroundStyle(weekdayLabelColor(isSelected: isSelected))
 
                 Text(date.formatted(.dateTime.day()))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(isSelected ? .black : .white.opacity(isToday ? 0.86 : 0.68))
+                    .foregroundStyle(dayNumberForeground(isSelected: isSelected, isToday: isToday))
                     .frame(width: 28, height: 28)
                     .background {
                         Circle()
@@ -112,7 +113,7 @@ struct HealthDetailsWeekPicker: View {
                     .overlay {
                         if isToday && !isSelected {
                             Circle()
-                                .stroke(accentColor.opacity(0.50), lineWidth: 1)
+                                .stroke(accentColor.opacity(palette.isLight ? 0.55 : 0.50), lineWidth: 1)
                         }
                     }
             }
@@ -120,12 +121,12 @@ struct HealthDetailsWeekPicker: View {
             .padding(.vertical, 7)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? accentColor.opacity(0.12) : WeekFitTheme.whiteOpacity(isToday ? 0.038 : 0.020))
+                    .fill(dayCellBackground(isSelected: isSelected, isToday: isToday))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(
-                        isSelected ? accentColor.opacity(0.28) : WeekFitTheme.whiteOpacity(isToday ? 0.07 : 0.035),
+                        dayCellBorder(isSelected: isSelected, isToday: isToday),
                         lineWidth: 1
                     )
             }
@@ -144,16 +145,72 @@ struct HealthDetailsWeekPicker: View {
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(isEnabled ? .white.opacity(0.70) : .white.opacity(0.16))
+                .foregroundStyle(navForeground(isEnabled: isEnabled))
                 .frame(width: 28, height: 48)
                 .background {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(WeekFitTheme.whiteOpacity(isEnabled ? 0.035 : 0.014))
+                        .fill(navBackground(isEnabled: isEnabled))
                 }
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    // MARK: - Light / Dark colors
+
+    private func weekdayLabelColor(isSelected: Bool) -> Color {
+        if palette.isLight {
+            return isSelected ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText
+        }
+        return isSelected ? .white : .white.opacity(0.44)
+    }
+
+    private func dayNumberForeground(isSelected: Bool, isToday: Bool) -> Color {
+        if palette.isLight {
+            if isSelected { return WeekFitTheme.primaryText }
+            return isToday ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText
+        }
+        return isSelected ? .black : .white.opacity(isToday ? 0.86 : 0.68)
+    }
+
+    private func todayDotColor(isSelected: Bool) -> Color {
+        if palette.isLight {
+            return isSelected ? WeekFitTheme.primaryText : accentColor
+        }
+        return isSelected ? .white.opacity(0.92) : accentColor.opacity(0.90)
+    }
+
+    private func dayCellBackground(isSelected: Bool, isToday: Bool) -> Color {
+        if palette.isLight {
+            if isSelected { return accentColor.opacity(0.14) }
+            if isToday { return WeekFitLightTokens.internalTile }
+            return WeekFitLightTokens.surfaceSecondary
+        }
+        return isSelected ? accentColor.opacity(0.12) : WeekFitTheme.whiteOpacity(isToday ? 0.038 : 0.020)
+    }
+
+    private func dayCellBorder(isSelected: Bool, isToday: Bool) -> Color {
+        if palette.isLight {
+            if isSelected { return accentColor.opacity(0.42) }
+            if isToday { return WeekFitLightTokens.divider.opacity(0.70) }
+            return WeekFitLightTokens.divider.opacity(0.45)
+        }
+        return isSelected ? accentColor.opacity(0.28) : WeekFitTheme.whiteOpacity(isToday ? 0.07 : 0.035)
+    }
+
+    private func navForeground(isEnabled: Bool) -> Color {
+        if palette.isLight {
+            return isEnabled ? WeekFitTheme.iconPrimary : WeekFitTheme.disabledText
+        }
+        return isEnabled ? .white.opacity(0.70) : .white.opacity(0.16)
+    }
+
+    private func navBackground(isEnabled: Bool) -> Color {
+        if palette.isLight {
+            return isEnabled ? WeekFitLightTokens.internalTile : WeekFitLightTokens.surfaceTertiary.opacity(0.70)
+        }
+        return WeekFitTheme.whiteOpacity(isEnabled ? 0.035 : 0.014)
     }
 
     private func select(_ date: Date) {
@@ -200,9 +257,12 @@ struct HealthDetailsWeekPicker: View {
         }
 
         if isToday {
-            return accentColor.opacity(0.13)
+            return accentColor.opacity(palette.isLight ? 0.18 : 0.13)
         }
 
+        if palette.isLight {
+            return WeekFitLightTokens.surfaceTertiary
+        }
         return WeekFitTheme.whiteOpacity(0.050)
     }
 }

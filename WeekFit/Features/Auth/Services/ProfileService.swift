@@ -155,6 +155,12 @@
                     type: .language
                 ),
                 ProfileItem(
+                    icon: "circle.lefthalf.filled",
+                    title: WeekFitLocalizedString("settings.appearance.title"),
+                    subtitle: WeekFitLocalizedString("settings.appearance.profileSubtitle"),
+                    type: .appearance
+                ),
+                ProfileItem(
                     icon: "moon.stars.fill",
                     title: WeekFitLocalizedString("settings.nightComfort.title"),
                     subtitle: WeekFitLocalizedString("settings.nightComfort.profileSubtitle"),

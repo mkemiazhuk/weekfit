@@ -34,13 +34,6 @@ final class PlanViewModel: ObservableObject {
     @Published var showSaveFailureAlert = false
     @Published var saveFailureMessage = ""
 
-    // MARK: - Drag State
-    @Published var draggedActivityID: String?
-    @Published var dragPreviewDate: Date?
-    @Published var dragTranslationY: CGFloat = 0
-    @Published var focusedDragSlot: Date?
-    @Published var invalidDropSlot: Date?
-
     // MARK: - Meals
     @Published var customMeals: [Meals] = []
     @Published var selectedMealID: String?
@@ -562,7 +555,6 @@ final class PlanViewModel: ObservableObject {
         }
 
         selectedSlot = nil
-        resetDragState()
     }
 
     var beforePlannedActivityDeleted: (() -> Void)?
@@ -630,7 +622,6 @@ final class PlanViewModel: ObservableObject {
             newEventBlocksPlannerTime: activity.blocksPlannerTime
         ) {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            invalidDropSlot = newDate
             timeConflictMessage = WeekFitLocalizedString("planner.timeConflict.message")
             showTimeConflictAlert = true
             return
@@ -653,24 +644,6 @@ final class PlanViewModel: ObservableObject {
             activity.date = previousDate
             handleSaveFailure(error)
         }
-    }
-
-    // MARK: - Drag
-
-    func resetDragState() {
-        draggedActivityID = nil
-        dragPreviewDate = nil
-        dragTranslationY = 0
-        focusedDragSlot = nil
-        invalidDropSlot = nil
-    }
-
-    func dragCandidateDate(from date: Date, translationY: CGFloat) -> Date {
-        let startY = yPosition(for: date)
-        let proposedStartY = startY + translationY
-        let proposedStart = dateForTimelinePosition(proposedStartY)
-
-        return clampedTimelineDate(proposedStart)
     }
 
     // MARK: - Notifications

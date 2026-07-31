@@ -143,14 +143,12 @@ struct HealthAccessView: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
         }
-        .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .transaction { $0.animation = nil }
         .fullScreenCover(isPresented: $showSleepHelp) {
             // Avoid nested .sheet inside Settings sheet on iOS 17.
             SleepSetupHelpSheet()
-                .preferredColorScheme(.dark)
         }
         .task {
             guard !didAppear else { return }
@@ -1327,7 +1325,6 @@ private struct SleepSetupHelpSheet: View {
                 .padding(.bottom, 24)
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
@@ -1362,24 +1359,9 @@ private struct SleepSetupHelpSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
 
-            Button {
+            WeekFitCloseButton(size: .compact, playsHaptic: false) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
-                    .frame(width: 30, height: 30)
-                    .background(
-                        Circle()
-                            .fill(.white.opacity(0.06))
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(.white.opacity(0.06), lineWidth: 1)
-                    )
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
             .fixedSize()
         }
     }

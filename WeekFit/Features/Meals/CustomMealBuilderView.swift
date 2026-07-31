@@ -224,7 +224,6 @@ struct CustomMealBuilderView: View {
                     Text(labels.cancel)
                 }
             }
-            .preferredColorScheme(.dark)
     }
 
     private var formRoot: some View {

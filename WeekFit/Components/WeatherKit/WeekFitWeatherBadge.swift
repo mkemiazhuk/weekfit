@@ -12,6 +12,7 @@ struct WeekFitWeatherBadge: View {
     var onTap: (() -> Void)?
 
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     private let pillHeight: CGFloat = 34
@@ -40,10 +41,11 @@ struct WeekFitWeatherBadge: View {
             let tempValue = WeekFitUnitPolicy.temperatureValueForBadge(summary.temperature, system: system)
             badgeContent(
                 temperatureText: "\(tempValue)°",
-                symbolName: summary.condition.premiumBadgeSymbolName,
+                symbolName: summary.badgeSymbolName,
                 condition: summary.condition,
-                conditionWord: showConditionWord ? summary.condition.shortLabel : nil,
-                accessibilitySentence: "Current weather, \(tempValue) degrees \(WeekFitUnitPolicy.accessibilityTemperatureUnitName(for: system)), \(summary.condition.shortLabel.lowercased())"
+                isDaylight: summary.isDaylight,
+                conditionWord: showConditionWord ? summary.badgeShortLabel : nil,
+                accessibilitySentence: "Current weather, \(tempValue) degrees \(WeekFitUnitPolicy.accessibilityTemperatureUnitName(for: system)), \(summary.badgeShortLabel.lowercased())"
             )
             .frame(width: reservedWidth)
         }
@@ -53,6 +55,7 @@ struct WeekFitWeatherBadge: View {
         temperatureText: String,
         symbolName: String?,
         condition: WeekFitWeatherCondition?,
+        isDaylight: Bool = true,
         conditionWord: String?,
         accessibilitySentence: String?
     ) -> some View {
@@ -61,8 +64,11 @@ struct WeekFitWeatherBadge: View {
                 Image(systemName: symbolName)
                     .font(.system(size: 15, weight: .semibold))
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(condition.badgeIconPrimary, condition.badgeIconSecondary)
-                    .shadow(color: condition.naturalColor.opacity(0.28), radius: 4, y: 0)
+                    .foregroundStyle(
+                        condition.badgeIconPrimary(isDaylight: isDaylight),
+                        condition.badgeIconSecondary(isDaylight: isDaylight)
+                    )
+                    .shadow(color: condition.naturalColor(isDaylight: isDaylight).opacity(0.28), radius: 4, y: 0)
                     .contentTransition(.symbolEffect(.replace))
                     .accessibilityHidden(true)
             }
@@ -74,7 +80,7 @@ struct WeekFitWeatherBadge: View {
             if let conditionWord {
                 Text(conditionWord)
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.60))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.72))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .accessibilityHidden(true)
@@ -83,13 +89,7 @@ struct WeekFitWeatherBadge: View {
         .padding(.horizontal, 10)
         .frame(height: pillHeight, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                .fill(WeekFitTheme.cardTertiary.opacity(0.35))
-                .overlay {
-                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                        .stroke(WeekFitTheme.borderSoft.opacity(0.9), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+            weatherBadgeChrome
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(accessibilitySentence ?? "Current weather unavailable"))
@@ -109,4 +109,41 @@ struct WeekFitWeatherBadge: View {
     }
 
     private var reservedWidth: CGFloat { 132 }
+
+    @ViewBuilder
+    private var weatherBadgeChrome: some View {
+        if palette.isLight {
+            RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
+                .fill(Color.white.opacity(0.92))
+                .overlay {
+                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    Color.white.opacity(0.55)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .blendMode(.softLight)
+                        .opacity(0.55)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.75)
+                }
+                .shadow(color: WeekFitLightTokens.shadowAmbient.opacity(0.06), radius: 1.5, y: 0.5)
+                .shadow(color: WeekFitLightTokens.shadowAmbient.opacity(0.10), radius: 12, y: 4)
+        } else {
+            RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
+                .fill(WeekFitTheme.cardTertiary.opacity(0.35))
+                .overlay {
+                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
+                        .stroke(WeekFitTheme.borderSoft.opacity(0.9), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+        }
+    }
 }

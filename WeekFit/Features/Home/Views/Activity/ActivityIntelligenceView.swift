@@ -225,7 +225,6 @@ struct ActivityIntelligenceView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .preferredColorScheme(.dark)
         .fullScreenCover(item: $selectedSession) { session in
             ActivitySessionDetailView(
                 session: session,
@@ -255,7 +254,7 @@ struct ActivityIntelligenceView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(WeekFitLocalizedString("activity.activityDetails"))
                     .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
 
@@ -265,21 +264,9 @@ struct ActivityIntelligenceView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            WeekFitCloseButton(size: .large) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                    .overlay {
-                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -332,7 +319,7 @@ private struct ActivityHeroCard: View {
 
                 Text(WeekFitLocalizedString(statusText))
                     .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
@@ -367,7 +354,7 @@ private struct ActivityHeroCard: View {
             VStack(spacing: -2) {
                 Text("\(snapshot.activityPercent)")
                     .font(.system(size: ActivityTypography.heroScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(WeekFitLocalizedString("activity.score"))
@@ -806,7 +793,7 @@ private struct WeeklyContextCard: View {
             return ActivityStyle.activityColor
         }
 
-        guard weekAverage > 0 else { return .white.opacity(0.46) }
+        guard weekAverage > 0 else { return WeekFitTheme.tertiaryText }
 
         return selectedSnapshot.activeCalories >= weekAverage
             ? ActivityStyle.activityColor
@@ -845,7 +832,7 @@ private struct WeeklyContextCard: View {
                     comparisonRow(
                         text: typicalDeltaText,
                         icon: "calendar",
-                        color: .white.opacity(0.44),
+                        color: WeekFitTheme.secondaryText,
                         prominence: .secondary
                     )
                 }
@@ -898,7 +885,7 @@ private struct WeeklyContextCard: View {
                     VStack(spacing: 4) {
                         Text(shortCalories(item.calories))
                             .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : .white.opacity(0.42))
+                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : WeekFitTheme.tertiaryText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
 
@@ -915,7 +902,7 @@ private struct WeeklyContextCard: View {
 
                         Text(item.label)
                             .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : .white.opacity(0.42))
+                            .foregroundStyle(item.isSelected ? ActivityStyle.activityColor.opacity(0.95) : WeekFitTheme.tertiaryText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.70)
                             .frame(maxWidth: .infinity)
@@ -934,9 +921,17 @@ private struct WeeklyContextCard: View {
     }
 
     private func barFill(for item: WeeklyContextItem) -> LinearGradient {
-        let colors: [Color] = item.isSelected
-        ? [ActivityStyle.activityColor, ActivityStyle.teal.opacity(0.75)]
-        : [WeekFitTheme.whiteOpacity(0.38), WeekFitTheme.whiteOpacity(0.18)]
+        let colors: [Color]
+        if item.isSelected {
+            colors = [ActivityStyle.activityColor, ActivityStyle.teal.opacity(0.75)]
+        } else if WeekFitPaletteStore.current.isLight {
+            colors = [
+                WeekFitLightTokens.iconSecondary,
+                WeekFitLightTokens.iconInactive
+            ]
+        } else {
+            colors = [WeekFitTheme.whiteOpacity(0.38), WeekFitTheme.whiteOpacity(0.18)]
+        }
 
         return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
     }
@@ -1396,7 +1391,6 @@ struct ActivitySessionDetailView: View {
                 .padding(.bottom, 36)
             }
         }
-        .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $isRouteMapPresented) {
             WorkoutRouteDetailMapView(
                 points: routePoints,
@@ -1413,21 +1407,9 @@ struct ActivitySessionDetailView: View {
     }
 
     private var closeButton: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        WeekFitCloseButton(size: .regular) {
             closeDetail()
-        } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                .overlay {
-                    Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(AppText.Common.Action.close))
     }
 
     private func closeDetail() {
@@ -1462,7 +1444,7 @@ struct ActivitySessionDetailView: View {
                 HStack(alignment: .center, spacing: 8) {
                     Text(session.title)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 
@@ -2527,7 +2509,7 @@ private struct ZoneDonutView: View {
             VStack(spacing: -1) {
                 Text("\(totalMinutes)")
                     .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(WeekFitLocalizedString("activity.min"))
@@ -2622,6 +2604,7 @@ private struct WorkoutRouteMapPreview: View {
     let points: [WorkoutRoutePoint]
     let color: Color
 
+    @Environment(\.weekFitPalette) private var palette
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var isMapVisible = false
 
@@ -2645,16 +2628,22 @@ private struct WorkoutRouteMapPreview: View {
                         routeContent
                     }
                     .mapStyle(.standard(elevation: .realistic, emphasis: .muted))
-                    .colorScheme(.dark)
+                    .colorScheme(palette.isLight ? .light : .dark)
                     .transition(.opacity.animation(.easeOut(duration: 0.22)))
                 }
 
                 LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.34),
-                        Color.clear,
-                        Color.black.opacity(0.28)
-                    ],
+                    colors: palette.isLight
+                        ? [
+                            Color.black.opacity(0.10),
+                            Color.clear,
+                            Color.black.opacity(0.08)
+                        ]
+                        : [
+                            Color.black.opacity(0.34),
+                            Color.clear,
+                            Color.black.opacity(0.28)
+                        ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -2668,14 +2657,27 @@ private struct WorkoutRouteMapPreview: View {
 
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                            .foregroundStyle(
+                                palette.isLight
+                                    ? WeekFitTheme.primaryText.opacity(0.86)
+                                    : WeekFitTheme.whiteOpacity(0.92)
+                            )
                             .padding(7)
                             .background {
                                 Circle()
-                                    .fill(.black.opacity(0.52))
+                                    .fill(
+                                        palette.isLight
+                                            ? Color.white.opacity(0.88)
+                                            : Color.black.opacity(0.52)
+                                    )
                                     .overlay {
                                         Circle()
-                                            .stroke(WeekFitTheme.whiteOpacity(0.16), lineWidth: 1)
+                                            .stroke(
+                                                palette.isLight
+                                                    ? WeekFitLightTokens.divider.opacity(0.55)
+                                                    : WeekFitTheme.whiteOpacity(0.16),
+                                                lineWidth: 1
+                                            )
                                     }
                             }
                             .padding(8)
@@ -2779,6 +2781,7 @@ private struct WorkoutRouteDetailMapView: View {
     let title: String
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var canRenderMap = false
     @State private var isDismissing = false
@@ -2805,7 +2808,7 @@ private struct WorkoutRouteDetailMapView: View {
                         MapScaleView()
                         MapUserLocationButton()
                     }
-                    .colorScheme(.dark)
+                    .colorScheme(palette.isLight ? .light : .dark)
                     .ignoresSafeArea()
                 }
 
@@ -2834,7 +2837,6 @@ private struct WorkoutRouteDetailMapView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onChange(of: points.count) { _, _ in
             if let region = WorkoutRouteGeometry.mapRegion(for: points) {
                 cameraPosition = .region(region)
@@ -2851,7 +2853,7 @@ private struct WorkoutRouteDetailMapView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(WeekFitLocalizedString("activity.details.route.title"))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
 
                 Text(title)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -2860,21 +2862,9 @@ private struct WorkoutRouteDetailMapView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            WeekFitCloseButton(size: .large) {
                 closeRouteMap()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                    .overlay {
-                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -3031,7 +3021,7 @@ private enum ActivityTypography {
 }
 
 private enum ActivityStyle {
-    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var screenBackground: Color { WeekFitTheme.appScreenBackground }
     static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
     static var border: Color { WeekFitTheme.border }

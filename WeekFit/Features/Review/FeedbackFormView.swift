@@ -28,7 +28,7 @@ struct FeedbackFormView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
             ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
 
             VStack(spacing: 0) {

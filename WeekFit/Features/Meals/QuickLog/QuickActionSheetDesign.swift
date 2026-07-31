@@ -2,7 +2,8 @@ import SwiftUI
 
 enum QuickActionSheetDesign {
     enum Color {
-        static let sheetBackground = SwiftUI.Color(red: 0.035, green: 0.043, blue: 0.047)
+        @MainActor
+        static var sheetBackground: SwiftUI.Color { WeekFitTheme.backgroundColor }
     }
 
     enum Layout {
@@ -69,6 +70,8 @@ struct QuickActionSheetSegmentedControl: View {
     let segments: [QuickActionSheetSegment]
     @Binding var selection: String
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(segments) { segment in
@@ -89,16 +92,28 @@ struct QuickActionSheetSegmentedControl: View {
                         if segment.badgeCount > 0 {
                             Text("\(segment.badgeCount)")
                                 .font(QuickActionSheetDesign.Typography.segmentBadge)
-                                .foregroundStyle(isSelected ? .black.opacity(0.68) : .white.opacity(0.40))
+                                .foregroundStyle(
+                                    isSelected
+                                        ? (palette.isLight ? WeekFitTheme.primaryText.opacity(0.70) : .black.opacity(0.68))
+                                        : WeekFitTheme.secondaryText.opacity(0.55)
+                                )
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background {
                                     Capsule()
-                                        .fill(isSelected ? .white.opacity(0.68) : .white.opacity(0.06))
+                                        .fill(
+                                            isSelected
+                                                ? (palette.isLight
+                                                   ? WeekFitLightTokens.shadowContact.opacity(0.08)
+                                                   : .white.opacity(0.68))
+                                                : (palette.isLight
+                                                   ? WeekFitLightTokens.shadowContact.opacity(0.05)
+                                                   : .white.opacity(0.06))
+                                        )
                                 }
                         }
                     }
-                    .foregroundStyle(isSelected ? .white.opacity(0.94) : .white.opacity(0.42))
+                    .foregroundStyle(isSelected ? (palette.isLight ? WeekFitTheme.primaryText : .white.opacity(0.94)) : WeekFitTheme.secondaryText.opacity(0.72))
                     .frame(maxWidth: .infinity)
                     .frame(height: QuickActionSheetDesign.SegmentedControl.height)
                     .background {
@@ -106,18 +121,35 @@ struct QuickActionSheetSegmentedControl: View {
                             Capsule()
                                 .fill(
                                     LinearGradient(
-                                        colors: [
-                                            WeekFitTheme.whiteOpacity(0.13),
-                                            WeekFitTheme.whiteOpacity(0.07)
-                                        ],
+                                        colors: palette.isLight
+                                            ? [
+                                                Color.white.opacity(0.98),
+                                                Color.white.opacity(0.88)
+                                            ]
+                                            : [
+                                                WeekFitTheme.whiteOpacity(0.13),
+                                                WeekFitTheme.whiteOpacity(0.07)
+                                            ],
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
                                 )
                                 .overlay {
                                     Capsule()
-                                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
+                                        .stroke(
+                                            palette.isLight
+                                                ? WeekFitLightTokens.shadowContact.opacity(0.08)
+                                                : WeekFitTheme.whiteOpacity(0.10),
+                                            lineWidth: 1
+                                        )
                                 }
+                                .shadow(
+                                    color: palette.isLight
+                                        ? WeekFitLightTokens.shadowAmbient.opacity(0.08)
+                                        : .clear,
+                                    radius: 6,
+                                    y: 2
+                                )
                         }
                     }
                 }
@@ -127,11 +159,18 @@ struct QuickActionSheetSegmentedControl: View {
         .padding(QuickActionSheetDesign.SegmentedControl.containerPadding)
         .background {
             Capsule()
-                .fill(WeekFitTheme.whiteOpacity(0.034))
+                .fill(palette.isLight
+                      ? WeekFitLightTokens.shadowContact.opacity(0.05)
+                      : WeekFitTheme.whiteOpacity(0.034))
         }
         .overlay {
             Capsule()
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
+                .stroke(
+                    palette.isLight
+                        ? WeekFitLightTokens.shadowContact.opacity(0.06)
+                        : WeekFitTheme.whiteOpacity(0.045),
+                    lineWidth: 1
+                )
         }
     }
 }

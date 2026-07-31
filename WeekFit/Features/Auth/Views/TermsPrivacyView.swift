@@ -4,7 +4,7 @@ struct TermsPrivacyView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
 
     private var textPrimary: Color { WeekFitTheme.primaryText }

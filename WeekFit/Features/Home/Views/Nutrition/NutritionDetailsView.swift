@@ -129,7 +129,6 @@ struct NutritionDetailsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
@@ -137,7 +136,7 @@ struct NutritionDetailsView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(AppText.Nutrition.Details.title)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
 
@@ -147,21 +146,9 @@ struct NutritionDetailsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            WeekFitCloseButton(size: .regular) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                    .overlay {
-                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
@@ -255,7 +242,7 @@ private struct NutritionHeroCard: View {
 
                 Text(primaryInsightText)
                     .font(.system(size: NutritionTypography.heroTitle, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineSpacing(1.5)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -285,7 +272,7 @@ private struct NutritionHeroCard: View {
             VStack(spacing: -2) {
                 Text("\(qualityScore)")
                     .font(.system(size: NutritionTypography.heroScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text("/100")
@@ -435,7 +422,7 @@ private struct NutritionBalanceCard: View {
 
             Text(value)
                 .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
@@ -766,7 +753,7 @@ private enum NutritionTypography {
 }
 
 enum NutritionStyle {
-    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var screenBackground: Color { WeekFitTheme.appScreenBackground }
     static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
     static var border: Color { WeekFitTheme.border }

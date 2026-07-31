@@ -34,6 +34,7 @@ struct MealsView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
 
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
@@ -47,6 +48,7 @@ struct MealsView: View {
     @State private var highlightedMealID: String?
 
     @State private var showProfile = false
+    @State private var expandedLibraryKind: MealLibraryRowKind?
     @AppStorage(OnboardingStore.Keys.introMeals) private var mealsIntroDismissed = false
 
     private let background = WeekFitTheme.backgroundColor
@@ -152,11 +154,8 @@ struct MealsView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack(alignment: .top) {
-            WeekFitTheme.appBackground
-                .ignoresSafeArea()
-
-            ambientBackground
-
+            // Root already paints `appScreenBackground` + meals ambient.
+            // Keep ScrollView transparent so cards sit on the same continuous canvas.
             WeekFitScreenContainer {
 
                 WeekFitScreenHeader(
@@ -171,6 +170,8 @@ struct MealsView: View {
 
             } content: {
                 mealsContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background(WeekFitTheme.appScreenBackground)
             }
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 8)
@@ -274,6 +275,25 @@ struct MealsView: View {
             .weekFitSheetChrome(cornerRadius: 36)
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
+        .sheet(item: $expandedLibraryKind) { kind in
+            MealLibraryExpandSheet(
+                kind: kind,
+                items: kind == .meal ? displayedMealItems : sortedFoodItems,
+                highlightedMealID: highlightedMealID,
+                onSelect: { meal in
+                    expandedLibraryKind = nil
+                    if meal.isFoodProduct {
+                        selectedFood = meal
+                    } else {
+                        selectedMeal = meal
+                    }
+                },
+                onDelete: { meal in
+                    deleteCustomMeal(meal)
+                }
+            )
+            .weekFitSheetChrome(cornerRadius: 36)
+        }
         .sheet(isPresented: $showCreationSheet) {
             // One sheet only — SwiftUI cannot present a second sheet on top of this one.
             MealCreationSheetHost(
@@ -359,58 +379,50 @@ struct MealsView: View {
     }
 
     private var loadingLibraryList: some View {
-        List {
-            ForEach(0..<3, id: \.self) { _ in
-                MealsLibrarySkeletonRow()
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 7, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 7) {
+                ForEach(0..<3, id: \.self) { _ in
+                    MealsLibrarySkeletonRow()
+                }
 
-            bottomSpacerRow
+                Color.clear
+                    .frame(height: isQuickLogMode ? 52 : 56)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .listRowSpacing(0)
         .scrollIndicators(.hidden)
-        .frame(maxHeight: .infinity)
+        .weekFitTransparentScrollBackground()
     }
 
     private var emptyLibraryList: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !mealsIntroDismissed {
-                OnboardingContextualIntroCard(
-                    title: WeekFitLocalizedString("onboarding.intro.meals.title"),
-                    message: WeekFitLocalizedString("onboarding.intro.meals.body"),
-                    accent: WeekFitTheme.meal
-                ) {
-                    mealsIntroDismissed = true
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                if !mealsIntroDismissed {
+                    OnboardingContextualIntroCard(
+                        title: WeekFitLocalizedString("onboarding.intro.meals.title"),
+                        message: WeekFitLocalizedString("onboarding.intro.meals.body"),
+                        accent: WeekFitTheme.meal
+                    ) {
+                        mealsIntroDismissed = true
+                    }
+                    .padding(.top, 2)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 2)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
 
-            List {
                 customEmptyState
-                    .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .padding(.top, 4)
 
-                emptyBottomSpacerRow
+                Color.clear
+                    .frame(height: isQuickLogMode ? 36 : 44)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .listRowSpacing(0)
-            .scrollIndicators(.hidden)
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollIndicators(.hidden)
+        .weekFitTransparentScrollBackground()
     }
 
     private var catalogErrorList: some View {
-        List {
+        ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 28, weight: .semibold))
@@ -448,41 +460,33 @@ struct MealsView: View {
                 accent: WeekFitTheme.orange,
                 cornerRadius: 20
             )
-            .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 10, trailing: 16))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .padding(.top, 2)
 
-            bottomSpacerRow
+            Color.clear
+                .frame(height: isQuickLogMode ? 52 : 56)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .listRowSpacing(0)
         .scrollIndicators(.hidden)
-        .frame(maxHeight: .infinity)
+        .weekFitTransparentScrollBackground()
     }
 
     private var populatedLibraryList: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !mealsIntroDismissed {
-                OnboardingContextualIntroCard(
-                    title: WeekFitLocalizedString("onboarding.intro.meals.title"),
-                    message: WeekFitLocalizedString("onboarding.intro.meals.body"),
-                    accent: WeekFitTheme.meal
-                ) {
-                    mealsIntroDismissed = true
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                if !mealsIntroDismissed {
+                    OnboardingContextualIntroCard(
+                        title: WeekFitLocalizedString("onboarding.intro.meals.title"),
+                        message: WeekFitLocalizedString("onboarding.intro.meals.body"),
+                        accent: WeekFitTheme.meal
+                    ) {
+                        mealsIntroDismissed = true
+                    }
+                    .padding(.top, 2)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 2)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
 
-            List {
                 if shouldShowRecommendation, let recommendation = visibleRecommendation {
                     coachRecommendationHero(recommendation)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 12, trailing: 16))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        .padding(.bottom, 4)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
@@ -491,13 +495,17 @@ struct MealsView: View {
                         title: "meals.library.section.meals",
                         count: displayedMealItems.count,
                         icon: "fork.knife",
-                        prominence: .primary
+                        prominence: .primary,
+                        showsViewAll: displayedMealItems.count > MealLibraryCardMetrics.previewLimit,
+                        onViewAll: { expandedLibraryKind = .meal }
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .padding(.top, 4)
+                    .padding(.bottom, 2)
 
-                    libraryRows(displayedMealItems, kind: .meal)
+                    libraryGrid(
+                        Array(displayedMealItems.prefix(MealLibraryCardMetrics.previewLimit)),
+                        kind: .meal
+                    )
                 }
 
                 if !sortedFoodItems.isEmpty {
@@ -505,28 +513,30 @@ struct MealsView: View {
                         title: "meals.library.section.foods",
                         count: sortedFoodItems.count,
                         icon: "takeoutbag.and.cup.and.straw.fill",
-                        prominence: .secondary
+                        prominence: .secondary,
+                        showsViewAll: sortedFoodItems.count > MealLibraryCardMetrics.previewLimit,
+                        onViewAll: { expandedLibraryKind = .food }
                     )
-                    .listRowInsets(EdgeInsets(top: displayedMealItems.isEmpty ? 8 : 16, leading: 16, bottom: 4, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .padding(.top, displayedMealItems.isEmpty ? 4 : 12)
+                    .padding(.bottom, 2)
 
-                    libraryRows(sortedFoodItems, kind: .food)
+                    libraryGrid(
+                        Array(sortedFoodItems.prefix(MealLibraryCardMetrics.previewLimit)),
+                        kind: .food
+                    )
                 }
 
-                bottomSpacerRow
+                Color.clear
+                    .frame(height: isQuickLogMode ? 52 : 56)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .listRowSpacing(0)
-            .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .animation(
                 .spring(response: 0.38, dampingFraction: 0.86),
                 value: visibleRecommendation?.meal.id
             )
-            .frame(maxHeight: .infinity)
         }
+        .scrollIndicators(.hidden)
+        .weekFitTransparentScrollBackground()
     }
 
     @ViewBuilder
@@ -545,64 +555,149 @@ struct MealsView: View {
         .id("coachRecommendationHero")
     }
 
-    private var bottomSpacerRow: some View {
-        Color.clear
-            .frame(height: isQuickLogMode ? 52 : 56)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-    }
-
-    private var emptyBottomSpacerRow: some View {
-        Color.clear
-            .frame(height: isQuickLogMode ? 36 : 44)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-    }
-
-    private var ambientBackground: some View {
-        WeekFitTheme.mealsAmbient
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-    }
-
-
     @ViewBuilder
-    private func libraryRows(_ items: [Meals], kind: MealLibraryRowKind) -> some View {
-        ForEach(Array(items.enumerated()), id: \.element.id) { index, meal in
-            HeroMealLibraryRow(
-                meal: meal,
-                kind: kind,
-                isQuickLogMode: isQuickLogMode,
-                isRecommended: rowShowsRecommendationBadge(for: meal, in: items, at: index),
-                recommendationBadge: rowRecommendationBadge(for: meal, in: items, at: index),
-                recommendationIcon: rowRecommendationIcon(for: meal, in: items, at: index),
-                isHighlighted: highlightedMealID == meal.id,
-                onPlusTap: isQuickLogMode ? { executeDirectQuickLog(meal) } : nil
-            )
-            .id(meal.id)
-            .onTapGesture {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if meal.isFoodProduct {
-                    selectedFood = meal
-                } else {
-                    selectedMeal = meal
-                }
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if !isQuickLogMode {
-                    Button(role: .destructive) {
-                        deleteCustomMeal(meal)
-                    } label: {
-                        Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
+    private func libraryGrid(_ items: [Meals], kind: MealLibraryRowKind) -> some View {
+        let columns = [
+            GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing),
+            GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing)
+        ]
+
+        if isQuickLogMode {
+            libraryRows(items, kind: kind)
+        } else {
+            LazyVGrid(columns: columns, spacing: MealLibraryCardMetrics.gridSpacing) {
+                ForEach(items) { meal in
+                    MealLibraryGridCard(
+                        meal: meal,
+                        kind: kind,
+                        isHighlighted: highlightedMealID == meal.id,
+                        onDelete: { deleteCustomMeal(meal) }
+                    )
+                    .id(meal.id)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if meal.isFoodProduct {
+                            selectedFood = meal
+                        } else {
+                            selectedMeal = meal
+                        }
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: kind == .meal ? 8 : 7, trailing: 16))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    @ViewBuilder
+    private func libraryRows(_ items: [Meals], kind: MealLibraryRowKind) -> some View {
+        LazyVStack(alignment: .leading, spacing: kind == .meal ? 8 : 7) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, meal in
+                HeroMealLibraryRow(
+                    meal: meal,
+                    kind: kind,
+                    isQuickLogMode: isQuickLogMode,
+                    isRecommended: rowShowsRecommendationBadge(for: meal, in: items, at: index),
+                    recommendationBadge: rowRecommendationBadge(for: meal, in: items, at: index),
+                    recommendationIcon: rowRecommendationIcon(for: meal, in: items, at: index),
+                    isHighlighted: highlightedMealID == meal.id,
+                    onPlusTap: isQuickLogMode ? { executeDirectQuickLog(meal) } : nil
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .id(meal.id)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if meal.isFoodProduct {
+                        selectedFood = meal
+                    } else {
+                        selectedMeal = meal
+                    }
+                }
+                .contextMenu {
+                    if !isQuickLogMode {
+                        Button(role: .destructive) {
+                            deleteCustomMeal(meal)
+                        } label: {
+                            Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sectionHeader(
+        title: String,
+        count: Int,
+        icon: String,
+        prominence: SectionHeaderProminence = .primary,
+        showCount: Bool = true,
+        showsViewAll: Bool = false,
+        onViewAll: (() -> Void)? = nil
+    ) -> some View {
+        let titleWeight: Font.Weight = prominence == .primary ? .semibold : .medium
+        let linkColor = palette.isLight ? WeekFitLightTokens.brandGold : WeekFitTheme.meal
+
+        return HStack(alignment: .center, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(
+                    palette.isLight
+                        ? linkColor.opacity(prominence == .primary ? 0.92 : 0.72)
+                        : WeekFitTheme.meal.opacity(prominence == .primary ? 0.72 : 0.55)
+                )
+                .frame(width: 14, alignment: .center)
+                .accessibilityHidden(true)
+
+            Text(WeekFitLocalizedString(title))
+                .font(.system(size: 15, weight: titleWeight, design: .rounded))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitTheme.primaryText
+                        : textSecondary.opacity(prominence == .primary ? 0.88 : 0.72)
+                )
+                .tracking(-0.12)
+
+            if showCount {
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitTheme.tertiaryText
+                            : textSecondary.opacity(prominence == .primary ? 0.58 : 0.48)
+                    )
+                    .monospacedDigit()
+                    .padding(.horizontal, 7)
+                    .frame(height: 18)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(
+                                palette.isLight
+                                    ? WeekFitLightTokens.surfaceTertiary
+                                    : WeekFitTheme.whiteOpacity(prominence == .primary ? 0.06 : 0.045)
+                            )
+                    }
+                    .accessibilityLabel("\(count)")
+            }
+
+            Spacer(minLength: 0)
+
+            if showsViewAll, let onViewAll {
+                Button(action: onViewAll) {
+                    HStack(spacing: 2) {
+                        Text(WeekFitLocalizedString("planner.sheet.viewAll"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(linkColor)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func rowShowsRecommendationBadge(for meal: Meals, in items: [Meals], at index: Int) -> Bool {
@@ -630,49 +725,6 @@ struct MealsView: View {
     private enum SectionHeaderProminence {
         case primary
         case secondary
-    }
-
-    private func sectionHeader(
-        title: String,
-        count: Int,
-        icon: String,
-        prominence: SectionHeaderProminence = .primary,
-        showCount: Bool = true
-    ) -> some View {
-        let titleOpacity: Double = prominence == .primary ? 0.76 : 0.62
-        let iconOpacity: Double = prominence == .primary ? 0.58 : 0.46
-        let badgeOpacity: Double = prominence == .primary ? 0.58 : 0.48
-        let titleWeight: Font.Weight = prominence == .primary ? .semibold : .medium
-
-        return HStack(alignment: .center, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.meal.opacity(iconOpacity))
-                .frame(width: 14, alignment: .center)
-                .accessibilityHidden(true)
-
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 13, weight: titleWeight, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(titleOpacity))
-                .tracking(-0.06)
-
-            if showCount {
-                Text("\(count)")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(badgeOpacity))
-                    .monospacedDigit()
-                    .padding(.horizontal, 7)
-                    .frame(height: 18)
-                    .background {
-                        Capsule(style: .continuous)
-                            .fill(WeekFitTheme.whiteOpacity(prominence == .primary ? 0.06 : 0.045))
-                    }
-                    .accessibilityLabel("\(count)")
-            }
-
-            Spacer(minLength: 0)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private var customEmptyState: some View {
@@ -820,58 +872,26 @@ struct MealsView: View {
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .tracking(-0.10)
                     }
-                    .foregroundStyle(WeekFitTheme.meal.opacity(0.88))
+                    .foregroundStyle(createCTAForeground)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .frame(height: 48)
                     .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        WeekFitTheme.meal.opacity(0.14),
-                                        WeekFitTheme.meal.opacity(0.07)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                WeekFitTheme.whiteOpacity(0.035),
-                                                WeekFitTheme.whiteOpacity(0.0)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                            }
+                        Capsule(style: .continuous)
+                            .fill(createCTABackground)
                     }
                     .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        WeekFitTheme.meal.opacity(0.26),
-                                        WeekFitTheme.meal.opacity(0.10)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
+                        Capsule(style: .continuous)
+                            .strokeBorder(WeekFitTheme.meal.opacity(palette.isLight ? 0.36 : 0.40), lineWidth: 1)
                     }
-                    .shadow(color: Color.black.opacity(0.22), radius: 10, y: 4)
-                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(palette.isLight ? 0.08 : 0.40), radius: 10, y: 4)
+                    .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(MealsCreateCTAButtonStyle())
                 .accessibilityIdentifier("meals.create")
                 .accessibilityLabel(WeekFitLocalizedString(createActionTitle))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
                 .padding(.top, 8)
-                .padding(.bottom, 72)
+                .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
             } else {
                 bottomFadeOnly
                     .frame(height: 64)
@@ -880,6 +900,21 @@ struct MealsView: View {
         .background {
             bottomFadeGradient
         }
+    }
+
+    private var createCTABackground: Color {
+        if palette.isLight {
+            // Solid soft green — no translucent wash over scrolling content.
+            return WeekFitLightTokens.activitySoft
+        }
+        // Opaque dark green chip (was meal @ 16% and see-through).
+        return Color(red: 0.16, green: 0.30, blue: 0.22)
+    }
+
+    private var createCTAForeground: Color {
+        palette.isLight
+            ? WeekFitTheme.meal
+            : WeekFitTheme.primaryText
     }
 
     private var bottomFadeOnly: some View {
@@ -1758,13 +1793,19 @@ private struct RecommendedTodayMealCard: View {
     let recommendation: MealRecommendation
     let onDetails: () -> Void
 
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
+    @Environment(\.weekFitPalette) private var palette
+
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
     /// Purple is reserved for Coach / AI recommendation surfaces.
     private let accent = WeekFitTheme.coachAccent
 
-    private let thumbSize: CGFloat = 64
-    private let cornerRadius: CGFloat = 20
+    private let thumbSize: CGFloat = 72
+    private let cornerRadius: CGFloat = WeekFitSurface.primaryRadius
+
+    private var kcalColor: Color {
+        palette.isLight ? accent : WeekFitTheme.meal
+    }
 
     private var shortReason: String {
         let summary = recommendation.factors.prefix(2).joined(separator: " • ")
@@ -1776,12 +1817,12 @@ private struct RecommendedTodayMealCard: View {
 
     var body: some View {
         Button(action: openDetails) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
                     coachBadge
 
                     Text(recommendation.meal.localizedDisplayTitle)
-                        .font(.system(size: 16.5, weight: .semibold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .tracking(-0.28)
                         .lineLimit(2)
@@ -1789,14 +1830,14 @@ private struct RecommendedTodayMealCard: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), recommendation.meal.calories))
-                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.66))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(kcalColor)
                         .monospacedDigit()
                         .lineLimit(1)
 
                     Text(shortReason)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.48))
+                        .foregroundStyle(textSecondary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.86)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1806,15 +1847,17 @@ private struct RecommendedTodayMealCard: View {
                 MealLibraryThumbnail(
                     meal: recommendation.meal,
                     size: thumbSize,
-                    cornerRadius: 16
+                    isCircle: true
                 )
             }
             .padding(.leading, 16)
             .padding(.trailing, 14)
             .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .weekFitPremiumCard(emphasis: .standard, accent: accent, cornerRadius: cornerRadius)
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
-        .buttonStyle(MealsCreateCTAButtonStyle(pressedScale: 0.985))
+        .buttonStyle(.plain)
         .accessibilityLabel(
             String(
                 format: WeekFitLocalizedString("meals.coachRecommendation.accessibilityFormat"),
@@ -1822,8 +1865,6 @@ private struct RecommendedTodayMealCard: View {
             )
         )
         .accessibilityHint(WeekFitLocalizedString("meals.library.openDetailsHint"))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: cornerRadius)
     }
 
     private func openDetails() {
@@ -1842,16 +1883,79 @@ private struct RecommendedTodayMealCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
-        .foregroundStyle(accent.opacity(0.88))
+        .foregroundStyle(accent.opacity(0.92))
         .padding(.horizontal, 8)
         .frame(height: 22)
         .background {
             Capsule(style: .continuous)
-                .fill(accent.opacity(0.11))
+                .fill(accent.opacity(0.12))
                 .overlay {
                     Capsule(style: .continuous)
                         .strokeBorder(accent.opacity(0.16), lineWidth: 1)
                 }
+        }
+    }
+}
+
+private struct MealLibraryExpandSheet: View {
+    let kind: MealLibraryRowKind
+    let items: [Meals]
+    var highlightedMealID: String?
+    let onSelect: (Meals) -> Void
+    let onDelete: (Meals) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [
+        GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing),
+        GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing)
+    ]
+
+    var body: some View {
+        ZStack {
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text(WeekFitLocalizedString(kind.sectionTitleKey))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+
+                    // Same close control as Weather / Details — not toolbar chrome.
+                    WeekFitCloseButton(size: .large) {
+                        dismiss()
+                    }
+                    .fixedSize()
+                }
+                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                .padding(.top, 18)
+                .padding(.bottom, 10)
+
+                ScrollView(showsIndicators: false) {
+                    LazyVGrid(columns: columns, spacing: MealLibraryCardMetrics.gridSpacing) {
+                        ForEach(items) { meal in
+                            MealLibraryGridCard(
+                                meal: meal,
+                                kind: kind,
+                                isHighlighted: highlightedMealID == meal.id,
+                                onDelete: { onDelete(meal) }
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                onSelect(meal)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                    .padding(.top, 4)
+                    .padding(.bottom, 28)
+                }
+            }
         }
     }
 }

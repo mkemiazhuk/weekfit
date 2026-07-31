@@ -5,9 +5,9 @@ extension View {
         self
             // Opaque background avoids iOS 16–17 presentation hangs with
             // NavigationStack-in-sheet and nested sheets (clear chrome was a known trigger).
-            .presentationBackground(WeekFitTheme.backgroundColor)
+            .presentationBackground(WeekFitTheme.appScreenBackground)
             .presentationCornerRadius(cornerRadius)
-            .preferredColorScheme(.dark)
-            .environment(\.weekFitPalette, WeekFitPaletteStore.current)
+            // Inherit preferredColorScheme + weekFitPalette from the window so theme
+            // switches stay atomic (no store/env desync inside sheets).
     }
 }

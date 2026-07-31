@@ -12,6 +12,7 @@ struct FirstRunOnboardingView: View {
     @State private var didPersistUnitsSelection = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.weekFitPalette) private var palette
 
     @ScaledMetric(relativeTo: .title2) private var editorialTitleSize: CGFloat = 28
     @ScaledMetric(relativeTo: .body) private var editorialBodySize: CGFloat = 15
@@ -125,7 +126,6 @@ struct FirstRunOnboardingView: View {
             }
             .opacity(contentVisible ? 1 : 0)
         }
-        .preferredColorScheme(.dark)
         .interactiveDismissDisabled()
         .task {
             OnboardingAnalytics.started()
@@ -209,7 +209,7 @@ struct FirstRunOnboardingView: View {
 
     private var background: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
             ambientForStep
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -222,14 +222,20 @@ struct FirstRunOnboardingView: View {
         switch step {
         case .promise, .ready:
             RadialGradient(
-                colors: [WeekFitTheme.brandGold.opacity(0.14), Color.clear],
+                colors: [
+                    WeekFitTheme.brandGold.opacity(palette.isLight ? 0.09 : 0.14),
+                    Color.clear
+                ],
                 center: UnitPoint(x: 0.78, y: 0.18),
                 startRadius: 10,
                 endRadius: 320
             )
         case .goal, .units, .understanding:
             RadialGradient(
-                colors: [WeekFitTheme.brandGold.opacity(0.06), Color.clear],
+                colors: [
+                    WeekFitTheme.brandGold.opacity(palette.isLight ? 0.04 : 0.06),
+                    Color.clear
+                ],
                 center: UnitPoint(x: 0.5, y: 0.28),
                 startRadius: 16,
                 endRadius: 280

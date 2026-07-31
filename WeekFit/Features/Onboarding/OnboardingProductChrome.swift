@@ -25,6 +25,7 @@ enum OnboardingSampleData {
 
 struct OnboardingPromiseMark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
     @ScaledMetric(relativeTo: .largeTitle) private var headlineSize: CGFloat = 40
     @ScaledMetric(relativeTo: .title3) private var subheadSize: CGFloat = 20
     @ScaledMetric(relativeTo: .callout) private var taglineSize: CGFloat = 15
@@ -39,6 +40,39 @@ struct OnboardingPromiseMark: View {
     @State private var ringProgress: CGFloat = 0
 
     private let gold = WeekFitTheme.brandGold
+
+    private var headlineInk: Color {
+        palette.isLight ? WeekFitTheme.primaryText : Color.white
+    }
+
+    private var subheadEmphasisInk: Color {
+        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold
+    }
+
+    private var subheadSuffixInk: Color {
+        palette.isLight ? WeekFitLightTokens.textSecondary : WeekFitTheme.whiteOpacity(0.82)
+    }
+
+    private var taglineInk: Color {
+        palette.isLight ? WeekFitLightTokens.textTertiary : WeekFitTheme.whiteOpacity(0.64)
+    }
+
+    /// Preview chrome: Light = ceramic Today card; Dark = black product mock.
+    private var mockPrimaryInk: Color {
+        palette.isLight ? WeekFitLightTokens.textPrimary : Color.white
+    }
+
+    private var mockSecondaryInk: Color {
+        palette.isLight ? WeekFitLightTokens.textSecondary : Color.white.opacity(0.88)
+    }
+
+    private var mockFill: Color {
+        palette.isLight ? WeekFitLightTokens.surfacePrimary : Color.black
+    }
+
+    private var mockCoachWell: Color {
+        palette.isLight ? WeekFitLightTokens.coachPurpleSoft : Color.white.opacity(0.05)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -83,7 +117,7 @@ struct OnboardingPromiseMark: View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack {
                 Ellipse()
-                    .fill(gold.opacity(logoVisible ? 0.28 : 0))
+                    .fill(gold.opacity(logoVisible ? (palette.isLight ? 0.14 : 0.28) : 0))
                     .frame(width: 96, height: 36)
                     .blur(radius: 16)
                     .offset(y: 8)
@@ -93,13 +127,17 @@ struct OnboardingPromiseMark: View {
                     .renderingMode(.original)
                     .scaledToFit()
                     .frame(height: 36)
-                    .shadow(color: gold.opacity(0.5), radius: logoVisible ? 14 : 0, y: 3)
+                    .shadow(
+                        color: gold.opacity(palette.isLight ? 0.22 : 0.5),
+                        radius: logoVisible ? (palette.isLight ? 8 : 14) : 0,
+                        y: 3
+                    )
                     .overlay {
                         GeometryReader { geo in
                             LinearGradient(
                                 colors: [
                                     .clear,
-                                    Color.white.opacity(0.55),
+                                    Color.white.opacity(palette.isLight ? 0.35 : 0.55),
                                     .clear
                                 ],
                                 startPoint: .top,
@@ -122,7 +160,11 @@ struct OnboardingPromiseMark: View {
             Text("WEEKFIT")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .tracking(3.2)
-                .foregroundStyle(gold.opacity(0.88))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitLightTokens.brandGoldDark
+                        : gold.opacity(0.88)
+                )
         }
         .accessibilityHidden(true)
     }
@@ -132,7 +174,7 @@ struct OnboardingPromiseMark: View {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text(WeekFitLocalizedString("onboarding.v11.splash.headline"))
                     .font(.system(size: headlineSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(headlineInk)
                     .tracking(-0.8)
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
@@ -141,7 +183,10 @@ struct OnboardingPromiseMark: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [gold, WeekFitTheme.brandGoldDeep],
+                            colors: [
+                                palette.isLight ? WeekFitLightTokens.brandGold : gold,
+                                WeekFitTheme.brandGoldDeep
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -154,16 +199,16 @@ struct OnboardingPromiseMark: View {
 
             (
                 Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis"))
-                    .foregroundStyle(gold)
+                    .foregroundStyle(subheadEmphasisInk)
                 + Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.suffix"))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.82))
+                    .foregroundStyle(subheadSuffixInk)
             )
             .font(.system(size: subheadSize, weight: .medium, design: .rounded))
             .fixedSize(horizontal: false, vertical: true)
 
             Text(WeekFitLocalizedString("onboarding.v11.splash.tagline"))
                 .font(.system(size: taglineSize, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
+                .foregroundStyle(taglineInk)
                 .padding(.top, 2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -171,12 +216,20 @@ struct OnboardingPromiseMark: View {
 
     private var phoneHero: some View {
         ZStack {
-            // Gold bloom behind device
-            Ellipse()
-                .fill(gold.opacity(glowPulse ? 0.17 : 0.08))
-                .frame(width: 260, height: 180)
-                .blur(radius: 34)
-                .offset(y: 10)
+            if palette.isLight {
+                // Quiet contact shadow — no gold disc under the ceramic preview.
+                Ellipse()
+                    .fill(Color.black.opacity(glowPulse ? 0.06 : 0.035))
+                    .frame(width: 240, height: 56)
+                    .blur(radius: 22)
+                    .offset(y: 88)
+            } else {
+                Ellipse()
+                    .fill(gold.opacity(glowPulse ? 0.17 : 0.08))
+                    .frame(width: 260, height: 180)
+                    .blur(radius: 34)
+                    .offset(y: 10)
+            }
 
             phoneBezel
         }
@@ -187,7 +240,7 @@ struct OnboardingPromiseMark: View {
     private var phoneBezel: some View {
         VStack(spacing: 0) {
             Capsule()
-                .fill(Color.black)
+                .fill(palette.isLight ? WeekFitLightTokens.textQuaternary.opacity(0.55) : Color.black)
                 .frame(width: 58, height: 7)
                 .padding(.top, 10)
                 .padding(.bottom, 10)
@@ -195,16 +248,29 @@ struct OnboardingPromiseMark: View {
             HStack {
                 Text(WeekFitLocalizedString("onboarding.v11.splash.phone.today"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(mockPrimaryInk)
                 Spacer()
                 Image(systemName: "person.fill")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(gold.opacity(0.9))
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.brandGoldDark
+                            : gold.opacity(0.9)
+                    )
                     .frame(width: 24, height: 24)
                     .background {
                         Circle()
-                            .stroke(gold.opacity(0.7), lineWidth: 1)
-                            .background(Circle().fill(Color.white.opacity(0.06)))
+                            .stroke(
+                                (palette.isLight ? WeekFitLightTokens.brandGold : gold).opacity(0.7),
+                                lineWidth: 1
+                            )
+                            .background {
+                                Circle().fill(
+                                    palette.isLight
+                                        ? WeekFitLightTokens.surfaceSecondary
+                                        : Color.white.opacity(0.06)
+                                )
+                            }
                     }
                     .accessibilityHidden(true)
             }
@@ -236,19 +302,23 @@ struct OnboardingPromiseMark: View {
                     .foregroundStyle(WeekFitTheme.coachAccent)
                     .frame(width: 28, height: 28)
                     .background {
-                        Circle().fill(WeekFitTheme.coachAccent.opacity(0.16))
+                        Circle().fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.coachPurpleSoft
+                                : WeekFitTheme.coachAccent.opacity(0.16)
+                        )
                     }
 
                 Text(WeekFitLocalizedString("onboarding.v11.splash.phone.coach"))
                     .font(.system(size: phoneCoachSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.88))
+                    .foregroundStyle(mockSecondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(mockCoachWell)
             }
             .padding(.horizontal, 14)
             .padding(.top, 14)
@@ -257,23 +327,42 @@ struct OnboardingPromiseMark: View {
         .frame(maxWidth: 294)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.black)
+                .fill(mockFill)
                 .overlay {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(
                             LinearGradient(
-                                colors: [
-                                    gold.opacity(0.85),
-                                    WeekFitTheme.brandGoldDeep.opacity(0.35),
-                                    gold.opacity(0.55)
-                                ],
+                                colors: palette.isLight
+                                    ? [
+                                        Color.white.opacity(0.95),
+                                        WeekFitLightTokens.cardBorder.opacity(0.08),
+                                        WeekFitLightTokens.brandGold.opacity(0.28)
+                                    ]
+                                    : [
+                                        gold.opacity(0.85),
+                                        WeekFitTheme.brandGoldDeep.opacity(0.35),
+                                        gold.opacity(0.55)
+                                    ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: 1.4
+                            lineWidth: palette.isLight ? 1.0 : 1.4
                         )
                 }
-                .shadow(color: gold.opacity(0.28), radius: 24, y: 10)
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.06)
+                        : gold.opacity(0.28),
+                    radius: palette.isLight ? 8 : 24,
+                    y: palette.isLight ? 4 : 10
+                )
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.04)
+                        : Color.clear,
+                    radius: palette.isLight ? 22 : 0,
+                    y: palette.isLight ? 12 : 0
+                )
         }
     }
 
@@ -286,12 +375,16 @@ struct OnboardingPromiseMark: View {
         ) {
             Text(label)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(mockPrimaryInk)
                 .monospacedDigit()
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .shadow(color: color.opacity(ringProgress > 0 ? 0.35 : 0), radius: 8, y: 1)
+        .shadow(
+            color: color.opacity(ringProgress > 0 ? (palette.isLight ? 0.18 : 0.35) : 0),
+            radius: palette.isLight ? 4 : 8,
+            y: 1
+        )
     }
 
     private var healthBadge: some View {
@@ -301,21 +394,34 @@ struct OnboardingPromiseMark: View {
             Text(WeekFitLocalizedString("onboarding.v11.splash.healthBadge"))
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
         }
-        .foregroundStyle(WeekFitTheme.whiteOpacity(0.82))
+        .foregroundStyle(
+            palette.isLight
+                ? WeekFitLightTokens.textSecondary
+                : WeekFitTheme.whiteOpacity(0.82)
+        )
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background {
             Capsule()
                 .stroke(
                     LinearGradient(
-                        colors: [gold.opacity(0.8), WeekFitTheme.brandGoldDeep.opacity(0.45)],
+                        colors: palette.isLight
+                            ? [
+                                WeekFitLightTokens.brandGold.opacity(0.55),
+                                WeekFitLightTokens.brandGoldDark.opacity(0.4)
+                            ]
+                            : [gold.opacity(0.8), WeekFitTheme.brandGoldDeep.opacity(0.45)],
                         startPoint: .leading,
                         endPoint: .trailing
                     ),
                     lineWidth: 1
                 )
                 .background {
-                    Capsule().fill(Color.white.opacity(0.03))
+                    Capsule().fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.surfacePrimary
+                            : Color.white.opacity(0.03)
+                    )
                 }
         }
     }
@@ -1205,6 +1311,7 @@ struct OnboardingAheadComposition: View {
 
 struct OnboardingReadyClimax: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
 
     let recoveryPercent: Int?
     let activityPercent: Int?
@@ -1222,6 +1329,22 @@ struct OnboardingReadyClimax: View {
     @ScaledMetric(relativeTo: .callout) private var bodySize: CGFloat = 16
 
     private let gold = WeekFitTheme.brandGold
+
+    private var cardPrimaryInk: Color {
+        palette.isLight ? WeekFitLightTokens.textPrimary : Color.white
+    }
+
+    private var cardFill: Color {
+        palette.isLight ? WeekFitLightTokens.surfacePrimary : Color.black
+    }
+
+    private var mirrorInk: Color {
+        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold.opacity(0.92)
+    }
+
+    private var planLabelInk: Color {
+        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold.opacity(0.85)
+    }
 
     private var recovery: Int {
         recoveryPercent ?? OnboardingSampleData.morningRecoveryPercent
@@ -1248,14 +1371,18 @@ struct OnboardingReadyClimax: View {
 
             Text(greetingSubtitle)
                 .font(.system(size: bodySize, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitLightTokens.textSecondary
+                        : WeekFitTheme.whiteOpacity(0.72)
+                )
                 .padding(.top, 10)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(visible ? 1 : 0)
 
             Text(mirrorLine)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(gold.opacity(0.92))
+                .foregroundStyle(mirrorInk)
                 .padding(.top, 14)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(visible ? 1 : 0)
@@ -1267,7 +1394,11 @@ struct OnboardingReadyClimax: View {
 
             Text(bodyLine)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitLightTokens.textTertiary
+                        : WeekFitTheme.whiteOpacity(0.46)
+                )
                 .padding(.top, 16)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(visible ? 1 : 0)
@@ -1290,7 +1421,7 @@ struct OnboardingReadyClimax: View {
             Text(WeekFitLocalizedString("onboarding.v12.ready.planLabel").uppercased())
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(1.3)
-                .foregroundStyle(gold.opacity(0.85))
+                .foregroundStyle(planLabelInk)
 
             VStack(alignment: .leading, spacing: 12) {
                 coachRow(icon: "figure.run", color: WeekFitProgressRingColor.activity, text: trainLine)
@@ -1321,23 +1452,42 @@ struct OnboardingReadyClimax: View {
         .padding(18)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.black)
+                .fill(cardFill)
                 .overlay {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .stroke(
                             LinearGradient(
-                                colors: [
-                                    gold.opacity(0.85),
-                                    WeekFitTheme.brandGoldDeep.opacity(0.35),
-                                    gold.opacity(0.55)
-                                ],
+                                colors: palette.isLight
+                                    ? [
+                                        Color.white.opacity(0.95),
+                                        WeekFitLightTokens.cardBorder.opacity(0.08),
+                                        WeekFitLightTokens.brandGold.opacity(0.28)
+                                    ]
+                                    : [
+                                        gold.opacity(0.85),
+                                        WeekFitTheme.brandGoldDeep.opacity(0.35),
+                                        gold.opacity(0.55)
+                                    ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: 1.4
+                            lineWidth: palette.isLight ? 1.0 : 1.4
                         )
                 }
-                .shadow(color: gold.opacity(0.28), radius: 26, y: 10)
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.06)
+                        : gold.opacity(0.28),
+                    radius: palette.isLight ? 8 : 26,
+                    y: palette.isLight ? 4 : 10
+                )
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.04)
+                        : Color.clear,
+                    radius: palette.isLight ? 20 : 0,
+                    y: palette.isLight ? 12 : 0
+                )
         }
     }
 
@@ -1347,11 +1497,17 @@ struct OnboardingReadyClimax: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(color)
                 .frame(width: 30, height: 30)
-                .background { Circle().fill(color.opacity(0.14)) }
+                .background {
+                    Circle().fill(
+                        palette.isLight
+                            ? color.opacity(0.12)
+                            : color.opacity(0.14)
+                    )
+                }
 
             Text(text)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText)
+                .foregroundStyle(cardPrimaryInk)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1366,11 +1522,15 @@ struct OnboardingReadyClimax: View {
         ) {
             Text(label)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(cardPrimaryInk)
                 .monospacedDigit()
                 .minimumScaleFactor(0.7)
         }
-        .shadow(color: color.opacity(0.3), radius: 8, y: 1)
+        .shadow(
+            color: color.opacity(palette.isLight ? 0.16 : 0.3),
+            radius: palette.isLight ? 4 : 8,
+            y: 1
+        )
     }
 }
 

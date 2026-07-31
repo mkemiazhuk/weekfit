@@ -11,19 +11,12 @@ struct WeekFitScreenHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .tracking(-0.65)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
+                    .weekFitScreenTitle()
 
                 Text(subtitle)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
+                    .weekFitScreenSubtitle()
             }
             .layoutPriority(1)
 
@@ -38,7 +31,7 @@ struct WeekFitScreenHeader: View {
                 .accessibilityIdentifier("settings.open")
             }
         }
-        .frame(minHeight: 48)
+        .frame(minHeight: 52)
     }
 }
 
@@ -47,6 +40,8 @@ struct WeekFitAvatarButton: View {
     let initials: String
     var hasProfileName: Bool = false
     let action: () -> Void
+
+    @Environment(\.weekFitPalette) private var palette
 
     private let goldLight = Color(red: 255/255, green: 235/255, blue: 170/255)
     private let goldMid = Color(red: 211/255, green: 163/255, blue: 62/255)
@@ -60,56 +55,64 @@ struct WeekFitAvatarButton: View {
         } label: {
             ZStack {
                 ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color(red: 214/255, green: 170/255, blue: 74/255).opacity(0.22),
-                                    .clear
-                                ],
-                                center: .center,
-                                startRadius: 2,
-                                endRadius: 22
+                    if !palette.isLight {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color(red: 214/255, green: 170/255, blue: 74/255).opacity(0.22),
+                                        .clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 2,
+                                    endRadius: 22
+                                )
                             )
-                        )
-                        .blur(radius: 6)
-                        .frame(width: 42, height: 42)
+                            .blur(radius: 6)
+                            .frame(width: 42, height: 42)
+                    }
 
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 30/255, green: 24/255, blue: 18/255),
-                                    Color(red: 10/255, green: 10/255, blue: 10/255)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(avatarFill)
                         .overlay {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         colors: [
-                                            goldStrokeLight.opacity(0.95),
-                                            goldStrokeDeep.opacity(0.72)
+                                            goldStrokeLight.opacity(palette.isLight ? 0.98 : 0.95),
+                                            goldStrokeDeep.opacity(palette.isLight ? 0.78 : 0.72)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ),
-                                    lineWidth: 1.1
+                                    lineWidth: palette.isLight ? 1.35 : 1.1
                                 )
                         }
                         .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 0.8)
-                                .padding(4)
+                            if !palette.isLight {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(WeekFitTheme.whiteOpacity(0.05), lineWidth: 0.8)
+                                    .padding(4)
+                            }
                         }
 
                     avatarContent
                 }
                 .frame(width: 44, height: 44)
-                .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.04)
+                        : Color.black.opacity(0.30),
+                    radius: palette.isLight ? 2 : 8,
+                    y: palette.isLight ? 1 : 5
+                )
+                .shadow(
+                    color: palette.isLight
+                        ? Color.black.opacity(0.08)
+                        : Color.clear,
+                    radius: palette.isLight ? 10 : 0,
+                    y: palette.isLight ? 4 : 0
+                )
             }
             .animation(.easeInOut(duration: 0.28), value: hasProfileName)
             .animation(.easeInOut(duration: 0.28), value: initials)
@@ -118,44 +121,60 @@ struct WeekFitAvatarButton: View {
         .accessibilityLabel(Text(WeekFitLocalizedString("common.openProfile")))
     }
 
+    private var avatarFill: LinearGradient {
+        if palette.isLight {
+            return LinearGradient(
+                colors: [
+                    Color(red: 1.0, green: 0.998, blue: 0.992),
+                    Color(red: 0.985, green: 0.978, blue: 0.965)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                Color(red: 30/255, green: 24/255, blue: 18/255),
+                Color(red: 10/255, green: 10/255, blue: 10/255)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var avatarGlyphStyle: some ShapeStyle {
+        if palette.isLight {
+            // Deep brand gold on ceramic — pale champagne reads soft/unfocused in Light.
+            return LinearGradient(
+                colors: [
+                    WeekFitLightTokens.brandGold,
+                    WeekFitLightTokens.brandGoldDark
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        return LinearGradient(
+            colors: [goldLight, goldMid],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     @ViewBuilder
     private var avatarContent: some View {
         if hasProfileName {
             Text(initials)
-                .font(.system(size: 14.5, weight: .black, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [goldLight, goldMid],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .font(.system(size: palette.isLight ? 15 : 14.5, weight: .black, design: .rounded))
+                .tracking(palette.isLight ? 0.4 : 0)
+                .foregroundStyle(avatarGlyphStyle)
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
         } else {
             Image(systemName: "person.crop.circle.fill")
                 .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [goldLight, goldMid],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .foregroundStyle(avatarGlyphStyle)
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
         }
-    }
-}
-
-enum WeekFitScreenLayout {
-    static let horizontalPadding: CGFloat = 16
-    static let topPaddingLarge: CGFloat = 14
-    static let topPaddingSmall: CGFloat = 5
-    static let rootSpacing: CGFloat = 12
-    /// Floating tab bar height plus breathing room for scroll content.
-    static let tabBarClearance: CGFloat = 95
-
-    static var topPadding: CGFloat {
-        UIScreen.main.bounds.height > 800 ? topPaddingLarge : topPaddingSmall
     }
 }
 
@@ -166,11 +185,9 @@ extension View {
                 Color.clear
                     .onAppear {
                         let frame = geo.frame(in: .global)
-//                        print("📐 \(name): x=\(frame.minX), maxX=\(frame.maxX), width=\(frame.width), y=\(frame.minY)")
                     }
                     .onChange(of: geo.size) { _, _ in
                         let frame = geo.frame(in: .global)
-//                        print("📐 \(name): x=\(frame.minX), maxX=\(frame.maxX), width=\(frame.width), y=\(frame.minY)")
                     }
             }
         )

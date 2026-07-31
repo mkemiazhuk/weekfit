@@ -11,7 +11,7 @@ struct NutritionGoalSettingsView: View {
     @State private var selectedGoal: NutritionGoal = .maintenance
     @State private var hasLoaded = false
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private let accentGreen = Color(red: 0.58, green: 0.79, blue: 0.62)
 
     private var hasHealthBiometrics: Bool {

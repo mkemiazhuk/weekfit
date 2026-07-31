@@ -74,7 +74,7 @@ struct MealCardRow: View {
                                 size: isQuickLogMode ? 12.4 : 11.5,
                                 weight: .medium
                             ))
-                            .foregroundStyle(textSecondary.opacity(isQuickLogMode ? 0.56 : 0.65))
+                            .foregroundStyle(textSecondary)
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -192,14 +192,13 @@ struct MealCardRow: View {
         HStack(spacing: 0) {
             Text(String(format: WeekFitLocalizedString("meals.detail.caloriesFormat"), meal.calories))
                 .font(.system(size: isQuickLogMode ? 11.2 : 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.9))
-                .frame(maxWidth: .infinity)
+                .foregroundStyle(textPrimary)
 
-            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
-            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
-            Rectangle().fill(WeekFitTheme.whiteOpacity(0.04)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
             macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
@@ -207,14 +206,14 @@ struct MealCardRow: View {
         .frame(height: isQuickLogMode ? 20 : 18)
         .background {
             Capsule()
-                .fill(WeekFitTheme.whiteOpacity(isQuickLogMode ? 0.030 : 0.025))
+                .fill(WeekFitTheme.internalTile)
         }
     }
 
     private func macroText(_ text: String) -> some View {
         Text(text)
             .font(.system(size: isQuickLogMode ? 10.4 : 10, weight: .semibold, design: .monospaced))
-            .foregroundStyle(textSecondary.opacity(0.6))
+            .foregroundStyle(textSecondary)
             .frame(maxWidth: .infinity)
     }
 }

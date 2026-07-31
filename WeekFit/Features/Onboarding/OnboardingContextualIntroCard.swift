@@ -23,20 +23,7 @@ struct OnboardingContextualIntroCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button(action: dismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                        .background {
-                            Circle()
-                                .fill(WeekFitTheme.whiteOpacity(0.08))
-                        }
-                }
-                // Required so the close control receives taps inside SwiftUI List rows.
-                .buttonStyle(.borderless)
-                .accessibilityLabel(Text(AppText.Common.Action.close))
+                WeekFitCloseButton(size: .compact, usesBorderlessStyle: true, action: dismiss)
             }
         }
         .padding(16)

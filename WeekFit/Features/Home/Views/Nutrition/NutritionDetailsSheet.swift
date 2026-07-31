@@ -16,7 +16,7 @@ struct NutritionDetailsSheet: View {
         let _ = languageManager.selectedLanguage
 
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 26) {
@@ -47,25 +47,15 @@ private extension NutritionDetailsSheet {
             HStack(spacing: 13) {
                 Text(AppText.Nutrition.Details.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
                     .allowsTightening(true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
+                WeekFitCloseButton(size: .large, playsHaptic: false) {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                        .frame(width: 42, height: 42)
-                        .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                        .overlay {
-                            Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                        }
                 }
-                .buttonStyle(.plain)
                 .fixedSize()
                 .accessibilityLabel(Text(AppText.Common.Action.close))
             }
@@ -109,7 +99,7 @@ private extension NutritionDetailsSheet {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .stroke(.white.opacity(0.07), lineWidth: 8)
+                    .stroke(WeekFitTheme.whiteOpacity(0.07), lineWidth: 8)
 
                 Circle()
                     .trim(from: 0, to: macro.progress)
@@ -121,7 +111,7 @@ private extension NutritionDetailsSheet {
 
                 Text("\(Int(macro.progress * 100))%")
                     .font(.system(size: 25, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
             }
             .frame(width: 78, height: 78)
 
@@ -148,7 +138,7 @@ private extension NutritionDetailsSheet {
             VStack(alignment: .leading, spacing: 14) {
                 Text(WeekFitLocalizedString("nutrition.details.insight.title"))
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
 
                 Text(WeekFitLocalizedString("nutrition.details.insight.legacySummary"))
                     .font(.system(size: 19, weight: .regular, design: .rounded))
@@ -182,7 +172,7 @@ private extension NutritionDetailsSheet {
         VStack(alignment: .leading, spacing: 20) {
             Text(WeekFitLocalizedString("nutrition.details.section.mealTimeline"))
                 .font(.system(size: 27, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             VStack(spacing: 0) {
                 ForEach(Array(meals.enumerated()), id: \.element.id) { index, meal in
@@ -196,7 +186,7 @@ private extension NutritionDetailsSheet {
         HStack(alignment: .top, spacing: 16) {
             Text(meal.time)
                 .font(.system(size: 22, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .frame(width: 72, alignment: .leading)
                 .padding(.top, 7)
 
@@ -222,7 +212,7 @@ private extension NutritionDetailsSheet {
                 HStack(alignment: .firstTextBaseline) {
                     Text(meal.title)
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
 
                     Spacer()
 
@@ -279,7 +269,7 @@ private extension NutritionDetailsSheet {
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.balancedDinner"))
                     .font(.system(size: 25, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
 
                 Text(WeekFitLocalizedString("nutrition.details.nextMeal.target"))
                     .font(.system(size: 18, weight: .medium, design: .rounded))

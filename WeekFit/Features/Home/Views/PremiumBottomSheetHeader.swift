@@ -6,10 +6,14 @@ struct PremiumBottomSheetHeader: View {
     let subtitle: String
     let onClose: () -> Void
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
         VStack(spacing: 0) {
             Capsule()
-                .fill(.white.opacity(0.14))
+                .fill(palette.isLight
+                      ? WeekFitLightTokens.shadowContact.opacity(0.18)
+                      : Color.white.opacity(0.14))
                 .frame(width: 42, height: 4)
                 .padding(.top, 8)
                 .padding(.bottom, 8)
@@ -18,7 +22,7 @@ struct PremiumBottomSheetHeader: View {
                 VStack(spacing: 3) {
                     Text(title)
                         .font(QuickActionSheetDesign.Typography.headerTitle)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
@@ -26,7 +30,7 @@ struct PremiumBottomSheetHeader: View {
 
                     Text(subtitle)
                         .font(QuickActionSheetDesign.Typography.headerSubtitle)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
+                        .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
@@ -38,24 +42,8 @@ struct PremiumBottomSheetHeader: View {
                 HStack {
                     Spacer()
 
-                    Button {
-                        onClose()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle()
-                                    .fill(.white.opacity(0.05))
-                            )
-                            .overlay {
-                                Circle()
-                                    .stroke(.white.opacity(0.05), lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .fixedSize()
+                    WeekFitCloseButton(size: .regular, playsHaptic: false, action: onClose)
+                        .fixedSize()
                 }
             }
             .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)

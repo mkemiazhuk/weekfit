@@ -49,6 +49,9 @@ final class ProfileViewModel: ObservableObject {
         case .language:
             destination = .language
 
+        case .appearance:
+            destination = .appearance
+
         case .nightComfort:
             destination = .nightComfort
 

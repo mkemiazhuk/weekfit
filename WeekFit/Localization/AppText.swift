@@ -526,6 +526,22 @@ enum AppText {
             }
         }
 
+        enum Appearance {
+            static let title: LocalizedStringResource = "settings.appearance.title"
+            static let subtitle: LocalizedStringResource = "settings.appearance.subtitle"
+            static let footer: LocalizedStringResource = "settings.appearance.footer"
+            static let profileSubtitle: LocalizedStringResource = "settings.appearance.profileSubtitle"
+
+            enum Option {
+                static let system: LocalizedStringResource = "settings.appearance.option.system"
+                static let light: LocalizedStringResource = "settings.appearance.option.light"
+                static let dark: LocalizedStringResource = "settings.appearance.option.dark"
+                static let systemSubtitle: LocalizedStringResource = "settings.appearance.option.systemSubtitle"
+                static let lightSubtitle: LocalizedStringResource = "settings.appearance.option.lightSubtitle"
+                static let darkSubtitle: LocalizedStringResource = "settings.appearance.option.darkSubtitle"
+            }
+        }
+
         enum NightComfort {
             static let title: LocalizedStringResource = "settings.nightComfort.title"
             static let subtitle: LocalizedStringResource = "settings.nightComfort.subtitle"

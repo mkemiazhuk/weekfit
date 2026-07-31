@@ -33,6 +33,7 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var nightComfort: NightComfortController
+    @EnvironmentObject private var appearance: WeekFitAppearanceController
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var reviewManager: ReviewPromptManager
 
@@ -47,6 +48,7 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
             .environmentObject(coachCoordinator)
             .environmentObject(languageManager)
             .environmentObject(nightComfort)
+            .environmentObject(appearance)
             .environmentObject(authViewModel)
             .environmentObject(reviewManager)
             .presentationDetents([.large])

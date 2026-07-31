@@ -829,7 +829,6 @@ private struct InsightsGalleryPreview: View {
             .padding(24)
         }
         .background(WeekFitTheme.appBackground)
-        .preferredColorScheme(.dark)
     }
 }
 
@@ -4664,7 +4663,6 @@ struct InsightsView: View {
         .ignoresSafeArea(.keyboard)
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(.dark)
         .onAppear {
             showContent = true
             selectedStoryID = visibleDomainPages.first?.id

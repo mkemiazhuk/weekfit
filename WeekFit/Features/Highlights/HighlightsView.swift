@@ -66,7 +66,6 @@ struct HighlightsView: View {
         }
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(.dark)
         .onAppear {
             showContent = true
         }

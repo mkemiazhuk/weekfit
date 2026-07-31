@@ -19,19 +19,12 @@ struct WeekFitTodayWeatherHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 0) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(title)
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.primaryText)
-                        .tracking(-0.65)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.9)
+                        .weekFitScreenTitle()
 
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.86)
+                        .weekFitScreenSubtitle()
                 }
                 .layoutPriority(1)
 

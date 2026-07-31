@@ -5,7 +5,7 @@ struct NightComfortSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var nightComfort: NightComfortController
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
     private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)

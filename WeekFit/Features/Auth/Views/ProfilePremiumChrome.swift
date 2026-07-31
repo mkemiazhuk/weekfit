@@ -55,7 +55,7 @@ struct ProfilePremiumHeader: View {
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
+                        .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.82))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -80,7 +80,7 @@ struct ProfilePremiumCloseButton: View {
     let action: () -> Void
 
     var body: some View {
-        ProfilePremiumDismissButton(style: .close, accent: accent, action: action)
+        WeekFitCloseButton(size: .large, action: action)
     }
 }
 
@@ -89,89 +89,146 @@ struct ProfilePremiumDismissButton: View {
     var accent: Color = WeekFitStyle.brandGreen
     let action: () -> Void
 
-    private var iconName: String {
-        style == .back ? "chevron.left" : "xmark"
-    }
+    @Environment(\.weekFitPalette) private var palette
 
     private var accessibilityLabel: LocalizedStringResource {
         style == .back ? AppText.Common.Action.back : AppText.Common.Action.close
     }
 
     var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            action()
-        } label: {
-            Image(systemName: iconName)
-                .font(.system(size: style == .back ? 16 : 14, weight: .bold))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .frame(width: 46, height: 46)
-                .background {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.090),
-                                    WeekFitTheme.whiteOpacity(0.045)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+        if style == .close {
+            WeekFitCloseButton(size: .large, action: action)
+        } else {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                action()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .frame(width: 46, height: 46)
+                    .background {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: palette.isLight
+                                        ? [
+                                            Color.white.opacity(0.96),
+                                            Color.white.opacity(0.82)
+                                        ]
+                                        : [
+                                            WeekFitTheme.whiteOpacity(0.090),
+                                            WeekFitTheme.whiteOpacity(0.045)
+                                        ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                }
-                .overlay {
-                    Circle()
-                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                }
-                .shadow(color: WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.055)), radius: 12, y: 5)
+                    }
+                    .overlay {
+                        Circle()
+                            .stroke(
+                                palette.isLight
+                                    ? WeekFitLightTokens.shadowContact.opacity(0.08)
+                                    : WeekFitTheme.whiteOpacity(0.10),
+                                lineWidth: 1
+                            )
+                    }
+                    .shadow(
+                        color: palette.isLight
+                            ? WeekFitLightTokens.shadowAmbient.opacity(0.09)
+                            : WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.055)),
+                        radius: palette.isLight ? 10 : 12,
+                        y: 5
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(accessibilityLabel))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(accessibilityLabel))
     }
 }
 
 struct ProfilePremiumBackground: View {
     var accent: Color = WeekFitStyle.brandGreen
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
         ZStack {
-            Color.black
+            if palette.isLight {
+                WeekFitTheme.appScreenBackground
 
-            RadialGradient(
-                colors: [
-                    WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.070)),
-                    WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.018)),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 10,
-                endRadius: 360
-            )
-            .opacity(WeekFitTheme.ambientOpacity)
-            .offset(x: 110, y: -130)
+                RadialGradient(
+                    colors: [
+                        WeekFitLightTokens.backgroundTopGlow.opacity(0.50 * WeekFitTheme.ambientOpacity),
+                        WeekFitLightTokens.backgroundTopGlow.opacity(0.14 * WeekFitTheme.ambientOpacity),
+                        .clear
+                    ],
+                    center: UnitPoint(x: 0.50, y: 0.0),
+                    startRadius: 8,
+                    endRadius: 280
+                )
 
-            RadialGradient(
-                colors: [
-                    WeekFitTheme.whiteOpacity(0.024),
-                    WeekFitTheme.whiteOpacity(0.006),
-                    .clear
-                ],
-                center: .topLeading,
-                startRadius: 10,
-                endRadius: 340
-            )
-            .opacity(WeekFitTheme.ambientOpacity)
-            .offset(x: -120, y: -100)
+                RadialGradient(
+                    colors: [
+                        WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.055)),
+                        .clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 10,
+                    endRadius: 360
+                )
+                .opacity(WeekFitTheme.ambientOpacity)
+                .offset(x: 110, y: -130)
 
-            LinearGradient(
-                colors: [
-                    WeekFitTheme.whiteOpacity(0.010),
-                    .clear,
-                    Color.black.opacity(WeekFitTheme.scaledOpacity(0.32))
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                RadialGradient(
+                    colors: [
+                        Color.clear,
+                        Color(red: 0.78, green: 0.74, blue: 0.66).opacity(0.08 * WeekFitTheme.ambientOpacity)
+                    ],
+                    center: .center,
+                    startRadius: 160,
+                    endRadius: 520
+                )
+            } else {
+                Color.black
+
+                RadialGradient(
+                    colors: [
+                        WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.070)),
+                        WeekFitTheme.accent(accent).opacity(WeekFitTheme.accentOpacity(0.018)),
+                        .clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 10,
+                    endRadius: 360
+                )
+                .opacity(WeekFitTheme.ambientOpacity)
+                .offset(x: 110, y: -130)
+
+                RadialGradient(
+                    colors: [
+                        WeekFitTheme.whiteOpacity(0.024),
+                        WeekFitTheme.whiteOpacity(0.006),
+                        .clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 10,
+                    endRadius: 340
+                )
+                .opacity(WeekFitTheme.ambientOpacity)
+                .offset(x: -120, y: -100)
+
+                LinearGradient(
+                    colors: [
+                        WeekFitTheme.whiteOpacity(0.010),
+                        .clear,
+                        Color.black.opacity(WeekFitTheme.scaledOpacity(0.32))
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -204,10 +261,15 @@ extension View {
                         endPoint: .bottomTrailing
                     )
                 )
+                .shadow(
+                    color: WeekFitTheme.softShadow,
+                    radius: 14,
+                    y: 6
+                )
         }
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
+                .stroke(WeekFitTheme.cardBorder.opacity(0.85), lineWidth: 1)
         }
     }
 }

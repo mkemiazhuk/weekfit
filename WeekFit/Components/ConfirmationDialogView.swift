@@ -45,7 +45,7 @@ struct ConfirmationDialogView: View {
                 guard dismissOnBackgroundTap else { return }
                 onSecondary?()
             } label: {
-                Color.black.opacity(0.58)
+                Color.black.opacity(WeekFitPaletteStore.current.isLight ? 0.22 : 0.58)
                     .ignoresSafeArea()
             }
             .buttonStyle(.plain)
@@ -85,16 +85,22 @@ struct ConfirmationDialogView: View {
         .padding(.bottom, 18)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.62))
+                .fill(.ultraThinMaterial.opacity(WeekFitPaletteStore.current.isLight ? 0.88 : 0.62))
                 .background {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.092),
-                                    WeekFitTheme.backgroundColor.opacity(0.96),
-                                    Color.black.opacity(0.78)
-                                ],
+                                colors: WeekFitPaletteStore.current.isLight
+                                    ? [
+                                        Color.white.opacity(0.96),
+                                        WeekFitTheme.cardSurfaceElevated,
+                                        WeekFitTheme.cardSurface
+                                    ]
+                                    : [
+                                        WeekFitTheme.whiteOpacity(0.092),
+                                        WeekFitTheme.backgroundColor.opacity(0.96),
+                                        Color.black.opacity(0.78)
+                                    ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -117,7 +123,7 @@ struct ConfirmationDialogView: View {
                 }
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: Color.black.opacity(0.42), radius: 30, y: 18)
+        .shadow(color: WeekFitTheme.cardShadow, radius: 30, y: 18)
         .shadow(color: iconTint.opacity(0.06), radius: 18, y: 8)
     }
 

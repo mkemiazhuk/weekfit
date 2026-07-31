@@ -32,7 +32,7 @@ struct NotificationSettingsView: View {
     @AppStorage(NotificationPreferenceKey.sleepWindDown)
     private var sleepWindDownEnabled = false
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
     private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
 

@@ -87,11 +87,59 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
 
     let symbolName: String
     let condition: WeekFitWeatherCondition
+    /// WeatherKit daylight flag — drives sun vs moon presentation for clear skies.
+    let isDaylight: Bool
 
     let humidityPercent: Int
     let windSpeed: Measurement<UnitSpeed>
     let uvIndex: Int
     let precipitationChance: Int?
+
+    var badgeSymbolName: String {
+        condition.premiumBadgeSymbolName(isDaylight: isDaylight)
+    }
+
+    var badgeShortLabel: String {
+        condition.shortLabel(isDaylight: isDaylight)
+    }
+
+    var badgeIconPrimary: Color {
+        condition.badgeIconPrimary(isDaylight: isDaylight)
+    }
+
+    var badgeIconSecondary: Color {
+        condition.badgeIconSecondary(isDaylight: isDaylight)
+    }
+
+    var badgeNaturalColor: Color {
+        condition.naturalColor(isDaylight: isDaylight)
+    }
+
+    init(
+        temperature: Measurement<UnitTemperature>,
+        feelsLike: Measurement<UnitTemperature>,
+        highTemperature: Measurement<UnitTemperature>?,
+        lowTemperature: Measurement<UnitTemperature>?,
+        symbolName: String,
+        condition: WeekFitWeatherCondition,
+        isDaylight: Bool = true,
+        humidityPercent: Int,
+        windSpeed: Measurement<UnitSpeed>,
+        uvIndex: Int,
+        precipitationChance: Int?
+    ) {
+        self.temperature = temperature
+        self.feelsLike = feelsLike
+        self.highTemperature = highTemperature
+        self.lowTemperature = lowTemperature
+        self.symbolName = symbolName
+        self.condition = condition
+        self.isDaylight = isDaylight
+        self.humidityPercent = humidityPercent
+        self.windSpeed = windSpeed
+        self.uvIndex = uvIndex
+        self.precipitationChance = precipitationChance
+    }
 
     static func from(
         currentWeather: CurrentWeather,
@@ -127,6 +175,10 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
             precipChance = nil
         }
 
+        // Prefer WeatherKit daylight; moon glyphs are a hard night signal.
+        let symbol = currentWeather.symbolName.lowercased()
+        let isDaylight = symbol.contains("moon") ? false : currentWeather.isDaylight
+
         return WeekFitWeatherSummary(
             temperature: temperature,
             feelsLike: feelsLike,
@@ -134,6 +186,7 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
             lowTemperature: lowTemperature,
             symbolName: currentWeather.symbolName,
             condition: condition,
+            isDaylight: isDaylight,
             humidityPercent: humidityPercent,
             windSpeed: windSpeed,
             uvIndex: currentWeather.uvIndex.value,
@@ -152,10 +205,10 @@ enum WeekFitWeatherCondition: String, Sendable {
     case fog
     case other
 
-    var shortLabel: String {
+    func shortLabel(isDaylight: Bool = true) -> String {
         if WeekFitUsesRussianLanguage() {
             switch self {
-            case .clear: return "Солнечно"
+            case .clear: return isDaylight ? "Солнечно" : "Ясно"
             case .cloudy: return "Облачно"
             case .rain: return "Дождь"
             case .snow: return "Снег"
@@ -167,7 +220,7 @@ enum WeekFitWeatherCondition: String, Sendable {
         }
 
         switch self {
-        case .clear: return "Sunny"
+        case .clear: return isDaylight ? "Sunny" : "Clear"
         case .cloudy: return "Cloudy"
         case .rain: return "Rain"
         case .snow: return "Snow"
@@ -178,9 +231,12 @@ enum WeekFitWeatherCondition: String, Sendable {
         }
     }
 
-    var naturalColor: Color {
+    func naturalColor(isDaylight: Bool = true) -> Color {
         switch self {
-        case .clear:  return Color(red: 1.00, green: 0.78, blue: 0.28)
+        case .clear:
+            return isDaylight
+                ? Color(red: 1.00, green: 0.78, blue: 0.28)
+                : Color(red: 0.72, green: 0.80, blue: 0.98)
         case .cloudy: return Color(red: 0.68, green: 0.78, blue: 0.94)
         case .rain:   return Color(red: 0.42, green: 0.68, blue: 0.98)
         case .snow:   return Color(red: 0.82, green: 0.90, blue: 1.00)
@@ -192,10 +248,10 @@ enum WeekFitWeatherCondition: String, Sendable {
     }
 
     /// Filled SF Symbol for compact premium badges (avoids hollow outline glyphs).
-    var premiumBadgeSymbolName: String {
+    func premiumBadgeSymbolName(isDaylight: Bool = true) -> String {
         switch self {
-        case .clear:  return "sun.max.fill"
-        case .cloudy: return "cloud.fill"
+        case .clear:  return isDaylight ? "sun.max.fill" : "moon.stars.fill"
+        case .cloudy: return isDaylight ? "cloud.fill" : "cloud.moon.fill"
         case .rain:   return "cloud.rain.fill"
         case .snow:   return "cloud.snow.fill"
         case .storm:  return "cloud.bolt.fill"
@@ -205,9 +261,12 @@ enum WeekFitWeatherCondition: String, Sendable {
         }
     }
 
-    var badgeIconPrimary: Color {
+    func badgeIconPrimary(isDaylight: Bool = true) -> Color {
         switch self {
-        case .clear:  return Color(red: 1.00, green: 0.86, blue: 0.42)
+        case .clear:
+            return isDaylight
+                ? Color(red: 1.00, green: 0.86, blue: 0.42)
+                : Color(red: 0.86, green: 0.90, blue: 1.00)
         case .cloudy: return Color(red: 0.62, green: 0.70, blue: 0.84)
         case .rain:   return Color(red: 0.62, green: 0.82, blue: 1.00)
         case .snow:   return Color(red: 0.78, green: 0.86, blue: 0.96)
@@ -218,9 +277,12 @@ enum WeekFitWeatherCondition: String, Sendable {
         }
     }
 
-    var badgeIconSecondary: Color {
+    func badgeIconSecondary(isDaylight: Bool = true) -> Color {
         switch self {
-        case .clear:  return Color(red: 1.00, green: 0.58, blue: 0.18)
+        case .clear:
+            return isDaylight
+                ? Color(red: 1.00, green: 0.58, blue: 0.18)
+                : Color(red: 0.42, green: 0.52, blue: 0.88)
         case .cloudy: return Color(red: 0.42, green: 0.56, blue: 0.82)
         case .rain:   return Color(red: 0.22, green: 0.46, blue: 0.92)
         case .snow:   return Color(red: 0.55, green: 0.72, blue: 0.95)

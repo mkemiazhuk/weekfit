@@ -16,9 +16,18 @@ struct PremiumActivityStartCard: View {
     let hasConflict: Bool
     let action: () -> Void
 
+    @Environment(\.weekFitPalette) private var palette
     @State private var pressed = false
 
     private var actionButtonSize: CGFloat { QuickActionSheetDesign.Row.actionButtonSize }
+
+    private var titleColor: Color {
+        hasConflict ? WeekFitTheme.secondaryText : WeekFitTheme.primaryText
+    }
+
+    private var metaColor: Color {
+        hasConflict ? WeekFitTheme.tertiaryText : WeekFitTheme.secondaryText
+    }
 
     var body: some View {
         Button {
@@ -30,7 +39,7 @@ struct PremiumActivityStartCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(QuickActionSheetDesign.Typography.rowTitle)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(hasConflict ? 0.46 : 0.96))
+                        .foregroundStyle(titleColor)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
 
@@ -39,7 +48,7 @@ struct PremiumActivityStartCard: View {
                             Text(badge.uppercased())
                                 .font(QuickActionSheetDesign.Typography.rowBadge)
                                 .tracking(0.35)
-                                .foregroundStyle(accentColor.opacity(0.82))
+                                .foregroundStyle(accentColor)
                                 .lineLimit(1)
                         }
 
@@ -48,7 +57,7 @@ struct PremiumActivityStartCard: View {
 
                         if badge != nil {
                             Circle()
-                                .fill(textSecondary.opacity(0.24))
+                                .fill(WeekFitTheme.quaternaryText)
                                 .frame(width: 3, height: 3)
                         }
 
@@ -56,7 +65,7 @@ struct PremiumActivityStartCard: View {
                             .monospacedDigit()
                     }
                     .font(QuickActionSheetDesign.Typography.rowSubtitle)
-                    .foregroundStyle(textSecondary.opacity(hasConflict ? 0.34 : 0.58))
+                    .foregroundStyle(metaColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                 }
@@ -66,18 +75,23 @@ struct PremiumActivityStartCard: View {
                 startControl
             }
             .padding(.horizontal, QuickActionSheetDesign.Row.horizontalPadding)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: QuickActionSheetDesign.Row.height)
-            .weekFitPremiumCard(
-                emphasis: .compact,
+            .weekFitCompactRowCard(
                 accent: hasConflict ? nil : accentColor,
                 cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius
             )
+            .opacity(hasConflict ? 0.78 : 1.0)
             .scaleEffect(pressed ? 0.985 : 1.0)
-            .opacity(hasConflict ? 0.52 : 1.0)
         }
         .buttonStyle(.plain)
         .disabled(hasConflict)
+        .accessibilityLabel(title)
+        .accessibilityHint(
+            hasConflict
+                ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle")
+                : WeekFitLocalizedString("home.activityStart.subtitle")
+        )
     }
 
     private var imageBlock: some View {
@@ -92,11 +106,11 @@ struct PremiumActivityStartCard: View {
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .fill(accentColor.opacity(0.10))
+                        .fill(accentColor.opacity(palette.isLight ? 0.14 : 0.10))
 
                     Image(systemName: systemIcon)
                         .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(accentColor.opacity(0.76))
+                        .foregroundStyle(accentColor)
                         .offset(y: -0.5)
                 }
                 .frame(
@@ -111,24 +125,43 @@ struct PremiumActivityStartCard: View {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .stroke(.white.opacity(0.05), lineWidth: 1)
+                        .stroke(
+                            palette.isLight
+                                ? WeekFitLightTokens.divider.opacity(0.45)
+                                : WeekFitTheme.whiteOpacity(0.05),
+                            lineWidth: 1
+                        )
                 }
             }
         }
+        .opacity(hasConflict ? 0.72 : 1.0)
     }
 
     private var startControl: some View {
         ZStack {
             Circle()
-                .fill(accentColor.opacity(hasConflict ? 0.07 : 0.18))
+                .fill(
+                    hasConflict
+                        ? WeekFitTheme.internalTile
+                        : (palette.isLight ? accentColor.opacity(0.16) : accentColor.opacity(0.22))
+                )
                 .frame(width: actionButtonSize, height: actionButtonSize)
 
             Circle()
-                .stroke(accentColor.opacity(hasConflict ? 0.07 : 0.15), lineWidth: 1)
+                .stroke(
+                    hasConflict
+                        ? WeekFitLightTokens.divider.opacity(0.50)
+                        : accentColor.opacity(palette.isLight ? 0.35 : 0.22),
+                    lineWidth: 1
+                )
 
             Image(systemName: hasConflict ? "lock.fill" : "play.fill")
                 .font(.system(size: hasConflict ? 10.5 : 11, weight: .semibold))
-                .foregroundStyle(hasConflict ? .white.opacity(0.26) : .white.opacity(0.92))
+                .foregroundStyle(
+                    hasConflict
+                        ? WeekFitTheme.iconInactive
+                        : (palette.isLight ? accentColor : Color.white.opacity(0.94))
+                )
                 .offset(x: hasConflict ? 0 : 0.5)
         }
         .frame(width: actionButtonSize, height: actionButtonSize)

@@ -5,7 +5,11 @@ import SwiftUI
 enum WeekFitPaletteStore {
     static var current: WeekFitSemanticPalette = .daytime
 
-    static func update(blend: CGFloat) {
-        current = WeekFitSemanticPalette.interpolated(blend: blend)
+    static func update(blend: CGFloat, appearance: WeekFitAppearance = .dark) {
+        current = WeekFitSemanticPalette.interpolated(blend: blend, appearance: appearance)
+    }
+
+    static func update(appearance: WeekFitAppearance, blend: CGFloat) {
+        update(blend: blend, appearance: appearance)
     }
 }

@@ -15,7 +15,7 @@ struct HelpSupportView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
             ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
 
             ScrollView(showsIndicators: false) {
@@ -164,7 +164,7 @@ private extension HelpSupportView {
         VStack(alignment: .leading, spacing: 13) {
             Text(title)
                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             VStack(spacing: 11) {
                 content()
@@ -231,7 +231,6 @@ private extension HelpSupportView {
                 .fill(WeekFitTheme.backgroundColor)
                 .ignoresSafeArea(edges: .bottom)
             }
-            .preferredColorScheme(.dark)
         }
     }
 
@@ -253,7 +252,7 @@ private extension HelpSupportView {
                 VStack(spacing: 5) {
                     Text(WeekFitLocalizedString("support.contactSupport"))
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
 
                     Text(WeekFitLocalizedString("support.sheet.subtitle"))
                         .font(.system(size: 13.2, weight: .medium))
@@ -329,7 +328,7 @@ private extension HelpSupportView {
 
                 Text(WeekFitLocalizedString("support.emailCopied"))
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 13)
@@ -424,7 +423,7 @@ private struct SupportRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -533,7 +532,7 @@ struct SupportDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
             ProfilePremiumBackground(accent: iconColor)
 
             VStack(spacing: 0) {
@@ -626,7 +625,7 @@ private extension SupportDetailView {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 15.5, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(text)

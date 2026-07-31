@@ -5,7 +5,7 @@ struct UnitsSettingsView: View {
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
     @EnvironmentObject private var languageManager: AppLanguageManager
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private let textPrimary: Color = WeekFitTheme.primaryText
     private let textSecondary: Color = WeekFitTheme.whiteOpacity(0.54)
     private let accent = Color(red: 170/255, green: 255/255, blue: 70/255)

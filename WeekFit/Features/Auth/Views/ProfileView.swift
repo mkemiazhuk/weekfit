@@ -13,6 +13,7 @@ struct ProfileView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var nightComfort: NightComfortController
+    @EnvironmentObject private var appearance: WeekFitAppearanceController
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var reviewManager: ReviewPromptManager
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
@@ -24,11 +25,11 @@ struct ProfileView: View {
     @State private var isResettingLocalData = false
     @State private var showVersionCopiedToast = false
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private let textTertiary = WeekFitTheme.whiteOpacity(0.28)
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var textTertiary: Color { WeekFitTheme.tertiaryText }
 
     private let accentGreen = Color(red: 0.55, green: 0.80, blue: 0.58)
     private let accentBlue = Color(red: 0.56, green: 0.68, blue: 0.90)
@@ -80,6 +81,11 @@ struct ProfileView: View {
 
             case .language:
                 LanguageSettingsView()
+                    .settingsNavigationPush()
+
+            case .appearance:
+                AppearanceSettingsView()
+                    .environmentObject(appearance)
                     .settingsNavigationPush()
 
             case .nightComfort:
@@ -547,6 +553,17 @@ private extension ProfileView {
         }
     }
 
+    var appearancePreferenceLabel: String {
+        switch appearance.preference {
+        case .system:
+            return WeekFitLocalizedString("settings.appearance.option.system")
+        case .light:
+            return WeekFitLocalizedString("settings.appearance.option.light")
+        case .dark:
+            return WeekFitLocalizedString("settings.appearance.option.dark")
+        }
+    }
+
     func withDialogAnimation(_ updates: @escaping () -> Void) {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             updates()
@@ -606,6 +623,8 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.profile.item.notifications")
         case .language:
             return WeekFitLocalizedString("settings.language.title")
+        case .appearance:
+            return WeekFitLocalizedString("settings.appearance.title")
         case .nightComfort:
             return WeekFitLocalizedString("settings.nightComfort.title")
         case .nutritionGoal:
@@ -638,6 +657,8 @@ private extension ProfileView {
                 format: WeekFitLocalizedString("settings.language.currentFormat"),
                 localizedTitle(for: languageManager.selectedLanguage)
             )
+        case .appearance:
+            return appearancePreferenceLabel
         case .nightComfort:
             return nightComfortPreferenceLabel
         case .nutritionGoal:
@@ -681,6 +702,9 @@ private extension ProfileView {
 
         case .language:
             return accentBlue
+
+        case .appearance:
+            return Color(red: 0.90, green: 0.74, blue: 0.38)
 
         case .nightComfort:
             return Color(red: 0.62, green: 0.54, blue: 0.92)
@@ -757,6 +781,7 @@ private extension ProfileView {
         case .appleHealth, .healthAccess: return "settings.appleHealth"
         case .notifications: return "settings.notifications"
         case .language: return "settings.language"
+        case .appearance: return "settings.appearance"
         case .nightComfort: return "settings.nightComfort"
         case .nutritionGoal: return "settings.nutritionGoal"
         case .help: return "settings.help"

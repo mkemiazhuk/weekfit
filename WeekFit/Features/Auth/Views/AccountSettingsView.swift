@@ -23,7 +23,7 @@ struct AccountSettingsView: View {
     /// Optional injection for tests; production creates `AccountDeletionService` on demand.
     private let deletionServiceOverride: AccountDeletionServicing?
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)

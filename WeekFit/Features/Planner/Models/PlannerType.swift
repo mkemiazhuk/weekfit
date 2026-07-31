@@ -45,7 +45,9 @@ enum PlannerType: CaseIterable {
         switch self {
         case .meal: WeekFitTheme.meal
         case .workout: WeekFitTheme.workout
-        case .recovery: WeekFitTheme.recovery
+        case .recovery:
+            // Light: purple so Recovery stays distinct from Workout (shared cyan theme token).
+            WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.coachPurple : WeekFitTheme.recovery
         case .habit: WeekFitTheme.habit
         }
     }

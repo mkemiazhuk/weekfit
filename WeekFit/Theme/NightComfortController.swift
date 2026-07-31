@@ -9,7 +9,10 @@ final class NightComfortController: ObservableObject {
     @Published private(set) var preference: NightComfortPreference
 
     var resolvedPalette: WeekFitSemanticPalette {
-        WeekFitSemanticPalette.interpolated(blend: blendFactor)
+        WeekFitSemanticPalette.interpolated(
+            blend: blendFactor,
+            appearance: WeekFitPaletteStore.current.appearance
+        )
     }
 
     private nonisolated(unsafe) var refreshTimer: Timer?
@@ -82,7 +85,10 @@ final class NightComfortController: ObservableObject {
         #endif
 
         blendFactor = newBlend
-        WeekFitPaletteStore.update(blend: newBlend)
+        WeekFitPaletteStore.update(
+            blend: newBlend,
+            appearance: WeekFitPaletteStore.current.appearance
+        )
     }
 
     private enum RefreshReason {

@@ -5,7 +5,7 @@ struct LanguageSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var languageManager: AppLanguageManager
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
     private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
     private var textPrimary: Color { WeekFitTheme.primaryText }

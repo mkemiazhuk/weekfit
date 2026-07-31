@@ -9,7 +9,7 @@ struct EditNameView: View {
     @State private var name: String = ""
     @FocusState private var isNameFocused: Bool
 
-    private let background = Color.black
+    private var background: Color { WeekFitTheme.backgroundColor }
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
     private let accentGreen = Color(red: 0.58, green: 0.79, blue: 0.62)

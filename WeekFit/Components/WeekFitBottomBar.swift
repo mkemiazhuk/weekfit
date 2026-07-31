@@ -55,11 +55,13 @@ struct WeekFitBottomBar: View {
     }
 
     private var activeColor: Color {
-        palette.textPrimary.opacity(0.94)
+        palette.isLight ? WeekFitLightTokens.tabActiveForeground : palette.textPrimary.opacity(0.94)
     }
 
     private var inactiveColor: Color {
-        palette.textSecondary.opacity(0.52)
+        palette.isLight
+            ? WeekFitLightTokens.tabInactive
+            : palette.textSecondary.opacity(0.52)
     }
 
     var body: some View {
@@ -71,6 +73,44 @@ struct WeekFitBottomBar: View {
         .frame(width: barWidth, height: barHeight)
         .padding(.horizontal, 5)
         .background {
+            barChrome
+        }
+        .padding(.bottom, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("tabBar.main")
+    }
+
+    @ViewBuilder
+    private var barChrome: some View {
+        if palette.isLight {
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.78))
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.92),
+                                    Color.white.opacity(0.45)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .blendMode(.softLight)
+                        .opacity(0.65)
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.65), lineWidth: 0.75)
+                }
+                .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
+                .shadow(color: Color.black.opacity(0.10), radius: 22, y: 10)
+        } else {
             Capsule(style: .continuous)
                 .fill(
                     LinearGradient(
@@ -104,9 +144,6 @@ struct WeekFitBottomBar: View {
                     y: 10
                 )
         }
-        .padding(.bottom, 10)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tabBar.main")
     }
 
     private func tabItem(_ tab: WeekFitTab) -> some View {
@@ -118,35 +155,27 @@ struct WeekFitBottomBar: View {
             ZStack {
                 if active {
                     Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.100),
-                                    WeekFitTheme.whiteOpacity(0.045)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(activePillFill)
                         .matchedGeometryEffect(
                             id: "selectedTabBackground",
                             in: selectionNamespace
                         )
                         .overlay {
                             Capsule(style: .continuous)
-                                .stroke(
-                                    WeekFitTheme.whiteOpacity(0.065),
-                                    lineWidth: 1
-                                )
+                                .stroke(activePillStroke, lineWidth: 1)
                         }
                         .shadow(
-                            color: WeekFitTheme.whiteOpacity(0.030),
+                            color: palette.isLight
+                                ? WeekFitLightTokens.tabGoldAccent.opacity(0.12)
+                                : WeekFitTheme.whiteOpacity(0.030),
                             radius: 6,
                             x: 0,
-                            y: -1
+                            y: palette.isLight ? 2 : -1
                         )
                         .shadow(
-                            color: Color.black.opacity(0.12),
+                            color: palette.isLight
+                                ? Color.black.opacity(0.06)
+                                : Color.black.opacity(0.12),
                             radius: 6,
                             x: 0,
                             y: 4
@@ -192,6 +221,33 @@ struct WeekFitBottomBar: View {
         .accessibilityIdentifier("tab.\(tabAccessibilityName(tab))")
         .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(active ? [.isSelected] : [])
+    }
+
+    private var activePillFill: LinearGradient {
+        if palette.isLight {
+            return LinearGradient(
+                colors: [
+                    WeekFitLightTokens.tabActiveCapsule,
+                    WeekFitLightTokens.tabActiveCapsule.opacity(0.85)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                WeekFitTheme.whiteOpacity(0.100),
+                WeekFitTheme.whiteOpacity(0.045)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var activePillStroke: Color {
+        palette.isLight
+            ? WeekFitLightTokens.tabGoldAccent.opacity(0.28)
+            : WeekFitTheme.whiteOpacity(0.065)
     }
 
     private func tabAccessibilityName(_ tab: WeekFitTab) -> String {

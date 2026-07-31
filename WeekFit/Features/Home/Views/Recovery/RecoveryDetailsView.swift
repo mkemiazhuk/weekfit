@@ -76,7 +76,6 @@ struct RecoveryDetailsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .preferredColorScheme(.dark)
         .task {
             await load(date: activeDate)
         }
@@ -96,7 +95,6 @@ struct RecoveryDetailsView: View {
                 recoveryScore: viewModel.snapshot.recoveryScore
             )
             .presentationDetents([.medium, .large])
-            .preferredColorScheme(.dark)
         }
     }
 
@@ -118,7 +116,7 @@ struct RecoveryDetailsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(WeekFitLocalizedString("recovery.details.title"))
                     .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
 
@@ -128,21 +126,9 @@ struct RecoveryDetailsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            WeekFitCloseButton(size: .large) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                    .overlay {
-                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -186,7 +172,7 @@ private struct RecoveryHeroCard: View {
 
                 Text(statusText)
                     .font(.system(size: RecoveryTypography.heroTitle, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
 
@@ -221,7 +207,7 @@ private struct RecoveryHeroCard: View {
             VStack(spacing: -2) {
                 Text("\(snapshot.recoveryScore)")
                     .font(.system(size: RecoveryTypography.heroScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(WeekFitLocalizedString("common.unit.score"))
@@ -317,7 +303,7 @@ private struct StressIndexCompactCard: View {
                 if let score = result.score {
                     Text("\(score)")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .monospacedDigit()
                 }
 
@@ -400,7 +386,6 @@ private struct StressIndexDetailSheet: View {
                     : result.usedSignalKinds
             )
             .presentationDetents([.medium])
-            .preferredColorScheme(.dark)
         }
     }
 
@@ -408,26 +393,19 @@ private struct StressIndexDetailSheet: View {
         HStack(alignment: .center, spacing: 12) {
             Text(WeekFitLocalizedString("recovery.stressIndex.title"))
                 .font(.system(size: RecoveryTypography.stressSheetTitle, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
 
-            Button {
+            WeekFitCloseButton(
+                size: .large,
+                playsHaptic: false,
+                accessibilityLabel: WeekFitLocalizedString("recovery.stressIndex.close.a11y")
+            ) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.90))
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                    .overlay {
-                        Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                    }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(WeekFitLocalizedString("recovery.stressIndex.close.a11y")))
         }
     }
 
@@ -437,7 +415,7 @@ private struct StressIndexDetailSheet: View {
             case .unavailable:
                 Text(WeekFitLocalizedString("recovery.stressIndex.empty.title"))
                     .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
 
                 Text(WeekFitLocalizedString("recovery.stressIndex.empty.supporting"))
                     .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
@@ -488,7 +466,7 @@ private struct StressIndexDetailSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(scoreText)
                     .font(.system(size: RecoveryTypography.stressScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(levelText)
@@ -499,7 +477,7 @@ private struct StressIndexDetailSheet: View {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(scoreText)
                     .font(.system(size: RecoveryTypography.stressScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(levelText)
@@ -515,7 +493,7 @@ private struct StressIndexDetailSheet: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(WeekFitLocalizedString("recovery.stressIndex.sheet.meaningTitle"))
                 .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             Text(StressIndexCopy.meaningBody(for: result, recoveryScore: recoveryScore))
                 .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
@@ -533,7 +511,7 @@ private struct StressIndexDetailSheet: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(WeekFitLocalizedString("recovery.stressIndex.sheet.meaningTitle"))
                 .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             Text(WeekFitLocalizedString("recovery.stressIndex.meaning.unavailable"))
                 .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
@@ -551,7 +529,7 @@ private struct StressIndexDetailSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(WeekFitLocalizedString("recovery.stressIndex.sheet.driversTitle"))
                 .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(topDrivers, id: \.kind) { contributor in
@@ -608,7 +586,7 @@ private struct StressIndexDetailSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(WeekFitLocalizedString("recovery.stressIndex.sheet.confidenceTitle"))
                 .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             Text(StressIndexCopy.confidenceTitle(result.confidence))
                 .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
@@ -691,25 +669,18 @@ private struct StressIndexCalculationSheet: View {
                 HStack(alignment: .center, spacing: 12) {
                     Text(WeekFitLocalizedString("recovery.stressIndex.sheet.calculationTitle"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Button {
+                    WeekFitCloseButton(
+                        size: .large,
+                        playsHaptic: false,
+                        accessibilityLabel: WeekFitLocalizedString("recovery.stressIndex.close.a11y")
+                    ) {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.90))
-                            .frame(width: 44, height: 44)
-                            .background(Circle().fill(WeekFitTheme.whiteOpacity(0.075)))
-                            .overlay {
-                                Circle().stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                            }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(WeekFitLocalizedString("recovery.stressIndex.close.a11y")))
                 }
 
                 Text(StressIndexCopy.calculationBody(usedKinds: usedKinds))
@@ -1236,7 +1207,7 @@ private enum RecoveryTypography {
 }
 
 private enum RecoveryStyle {
-    static var screenBackground: Color { WeekFitTheme.backgroundColor }
+    static var screenBackground: Color { WeekFitTheme.appScreenBackground }
     static var cardBackground: Color { WeekFitTheme.cardSurface }
     static var border: Color { WeekFitTheme.border }
 

@@ -86,7 +86,6 @@ struct CoachReflectionContinuationView_Previews: PreviewProvider {
             )
             .previewDisplayName("Evening settled")
         }
-        .preferredColorScheme(.dark)
         .padding(16)
         .background(WeekFitTheme.appBackground)
     }

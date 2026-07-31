@@ -43,10 +43,11 @@ struct SettingsGroupedSection<Content: View>: View {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .shadow(color: WeekFitTheme.softShadow, radius: 14, y: 6)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
+                    .stroke(WeekFitTheme.cardBorder.opacity(0.85), lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }

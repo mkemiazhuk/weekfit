@@ -80,7 +80,6 @@ struct LoginView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         // Light status-bar content over the warm photo + soft top wash.
-        .preferredColorScheme(.dark)
         .onAppear {
             runEntranceAnimation()
         }
@@ -126,7 +125,7 @@ struct LoginView: View {
     private var heroText: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Week\(Text("Fit").foregroundStyle(brandGreen))")
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .font(.system(size: brandFontSize, weight: .bold, design: .rounded))
                 .tracking(-0.3)
                 .opacity(showBrand ? 1 : 0)
@@ -135,7 +134,7 @@ struct LoginView: View {
 
             VStack(alignment: .leading, spacing: LoginMetrics.headlineLineGap) {
                 Text(WeekFitLocalizedString("login.hero.title.line1"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WeekFitTheme.primaryText)
                     .font(.system(size: headlineFontSize, weight: .bold))
                     .tracking(-0.55)
                     .lineLimit(usesCompactLayout ? 3 : 2)

@@ -13,6 +13,8 @@ struct PremiumAssetImage: View {
     var accentColor: Color = WeekFitTheme.whiteOpacity(0.4)
     var fallbackSystemName: String = "fork.knife"
 
+    @Environment(\.weekFitPalette) private var palette
+
     private var isDisplayable: Bool {
         FoodImageQualityValidator.isDisplayableAsset(named: imageName)
     }
@@ -44,7 +46,11 @@ struct PremiumAssetImage: View {
     private var thumbnailBody: some View {
         ZStack {
             RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.04))
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.surfaceTertiary
+                        : WeekFitTheme.whiteOpacity(0.04)
+                )
 
             assetOrFallback
         }
@@ -52,7 +58,12 @@ struct PremiumAssetImage: View {
         .clipShape(RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.whiteOpacity(0.045), lineWidth: 1)
+                .stroke(
+                    palette.isLight
+                        ? WeekFitLightTokens.divider.opacity(0.45)
+                        : WeekFitTheme.whiteOpacity(0.045),
+                    lineWidth: 1
+                )
         }
     }
 

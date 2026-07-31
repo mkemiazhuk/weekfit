@@ -43,7 +43,7 @@ struct EmailLoginSheet: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
 
             VStack(spacing: 22) {
                 header
@@ -96,13 +96,13 @@ struct EmailLoginSheet: View {
     private var header: some View {
         VStack(spacing: 8) {
             Capsule()
-                .fill(.white.opacity(0.18))
+                .fill(WeekFitTheme.whiteOpacity(0.18))
                 .frame(width: 42, height: 5)
                 .padding(.bottom, 12)
 
             Text(mode.title)
                 .font(.system(size: 27, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
 
             Text(mode.subtitle)
                 .font(.system(size: 14, weight: .medium))
@@ -127,7 +127,7 @@ struct EmailLoginSheet: View {
                 } else {
                     Text(mode.buttonTitle)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WeekFitTheme.primaryText)
                 }
             }
         }
@@ -246,16 +246,16 @@ struct EmailLoginSheet: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
         }
         .padding(.horizontal, 16)
         .frame(height: 52)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.white.opacity(0.08))
+                .fill(WeekFitTheme.whiteOpacity(0.08))
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                 }
         }
         .accessibilityIdentifier(accessibilityIdentifier ?? "")
@@ -277,16 +277,16 @@ struct EmailLoginSheet: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WeekFitTheme.primaryText)
         }
         .padding(.horizontal, 16)
         .frame(height: 52)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.white.opacity(0.08))
+                .fill(WeekFitTheme.whiteOpacity(0.08))
                 .overlay {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                        .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                 }
         }
         .accessibilityIdentifier(accessibilityIdentifier ?? "")

@@ -9,7 +9,7 @@ struct HelpWeekFitView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WeekFitTheme.backgroundColor.ignoresSafeArea()
             ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
 
             ScrollView(showsIndicators: false) {

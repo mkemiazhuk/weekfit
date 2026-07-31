@@ -183,7 +183,7 @@ struct WeekFitRootView: View {
 
     private var rootShell: some View {
         ZStack(alignment: .bottom) {
-            WeekFitTheme.appBackground
+            WeekFitTheme.appScreenBackground
                 .ignoresSafeArea()
             ambientBackground
                 .ignoresSafeArea()
@@ -208,7 +208,13 @@ struct WeekFitRootView: View {
                         .frame(height: 1)
                         .offset(y: -7)
                 }
-                .shadow(color: Color.black.opacity(0.4), radius: 25, y: -10)
+                .shadow(
+                    color: palette.isLight
+                        ? WeekFitLightTokens.shadowAmbient.opacity(0.08)
+                        : Color.black.opacity(0.4),
+                    radius: palette.isLight ? 18 : 25,
+                    y: palette.isLight ? -6 : -10
+                )
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 120)
         }

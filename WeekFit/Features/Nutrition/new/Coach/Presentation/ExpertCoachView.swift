@@ -52,11 +52,8 @@ struct ExpertCoachView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack(alignment: .top) {
-            WeekFitTheme.appBackground
-                .ignoresSafeArea()
-
-            ambientBackground
-
+            // Root already paints `appScreenBackground` + tab ambient.
+            // Do not add a second canvas — ScrollView must show through to the same plane.
             WeekFitScreenContainer {
                 WeekFitScreenHeader(
                     title: WeekFitLocalizedString("common.tab.coach"),
@@ -69,9 +66,10 @@ struct ExpertCoachView: View {
                 }
             } content: {
                 coachContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .background(WeekFitTheme.appScreenBackground)
             }
         }
-        .preferredColorScheme(.dark)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.coach")
         .weekFitSettingsSheet(isPresented: $showProfile)
@@ -81,16 +79,21 @@ struct ExpertCoachView: View {
                 showBeliefDebug = true
             } label: {
                 Image(systemName: "brain.head.profile")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.purple.opacity(0.92))
-                    .padding(10)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(WeekFitTheme.coachAccent)
+                    .padding(11)
                     .background {
                         Circle()
-                            .fill(Color.black.opacity(0.55))
+                            .fill(WeekFitLightTokens.coachPurpleSoft)
+                            .overlay {
+                                Circle()
+                                    .stroke(WeekFitTheme.coachAccent.opacity(0.28), lineWidth: 1)
+                            }
                     }
+                    .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
             }
-            .padding(.trailing, 18)
-            .padding(.bottom, 118)
+            .padding(.trailing, WeekFitScreenLayout.horizontalPadding)
+            .padding(.bottom, WeekFitScreenLayout.tabBarClearance + 18)
             .accessibilityIdentifier("coach.beliefDebug")
         }
         .sheet(isPresented: $showBeliefDebug) {
@@ -167,14 +170,6 @@ struct ExpertCoachView: View {
         return "coach.unavailable.sleepSync.message"
     }
 
-    // MARK: - Background
-
-    private var ambientBackground: some View {
-        WeekFitTheme.coachAmbient
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-    }
-
     // MARK: - Coach Content
 
     private var coachContent: some View {
@@ -205,8 +200,9 @@ struct ExpertCoachView: View {
             }
             .padding(.horizontal, coachContentHorizontalInset)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 110)
+            .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
+        .weekFitTransparentScrollBackground()
     }
 
     // MARK: - Coach Card
@@ -217,7 +213,7 @@ struct ExpertCoachView: View {
         return ZStack(alignment: .topTrailing) {
             Image(systemName: ui?.icon ?? "sparkles")
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle((ui?.accentColor ?? WeekFitTheme.secondaryText).opacity(0.058))
+                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.058))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
@@ -233,7 +229,7 @@ struct ExpertCoachView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text(ui?.coachTitle ?? "")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(WeekFitType.cardTitle)
                         .foregroundStyle(textPrimary)
                         .tracking(-0.8)
                         .lineSpacing(1)
@@ -292,10 +288,9 @@ struct ExpertCoachView: View {
             .padding(16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .weekFitPremiumCard(
-            emphasis: .elevated,
-            accent: ui?.accentColor ?? WeekFitTheme.coachAccent,
-            cornerRadius: 28
+        .weekFitPrimaryCard(
+            accent: WeekFitTheme.coachAccent,
+            featured: true
         )
     }
 
@@ -396,7 +391,7 @@ struct ExpertCoachView: View {
             Spacer()
         }
         .padding(16)
-        .weekFitPremiumCard(emphasis: .elevated, accent: WeekFitTheme.coachAccent, cornerRadius: 18)
+        .weekFitPrimaryCard(accent: WeekFitTheme.coachAccent)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -421,7 +416,7 @@ struct ExpertCoachView: View {
             Spacer()
         }
         .padding(16)
-        .weekFitPremiumCard(emphasis: .elevated, accent: CoachState.registryGapColor, cornerRadius: 18)
+        .weekFitPrimaryCard(accent: CoachState.registryGapColor)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -462,14 +457,14 @@ struct ExpertCoachView: View {
         title: String,
         subtitle: String
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 15.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
 
             Text(subtitle)
-                .font(.system(size: 12.1, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.62))
+                .font(WeekFitType.secondary)
+                .foregroundStyle(textSecondary)
         }
     }
 
@@ -480,33 +475,26 @@ struct ExpertCoachView: View {
     ) -> some View {
         HStack(spacing: 10) {
             ZStack {
-                Circle()
-                    .fill(color.opacity(0.10))
-                    .frame(width: 28, height: 28)
+                RoundedRectangle(cornerRadius: WeekFitSurface.iconWellRadius, style: .continuous)
+                    .fill(color.opacity(0.12))
+                    .frame(width: 32, height: 32)
 
                 Image(systemName: icon)
-                    .font(.system(size: 11.5, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(color)
             }
 
             Text(text)
-                .font(.system(size: 13.8, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary.opacity(0.94))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(textPrimary)
                 .lineLimit(2)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .frame(height: 46)
+        .padding(.horizontal, WeekFitSurface.compactHorizontalPadding)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(cardBackground.opacity(0.25))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
-                )
-        )
+        .weekFitCompactRowCard(accent: color)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
     }
@@ -518,9 +506,9 @@ enum CoachPalette {
     static let warning = Color(red: 1.00, green: 0.76, blue: 0.26)
     static let fueling = WeekFitTheme.orange
     static let training = WeekFitTheme.workout
-    static let stable = Color(red: 0.16, green: 0.80, blue: 0.43)
-    static let protection = Color(red: 0.58, green: 0.52, blue: 0.95)
-    static let stress = Color(red: 1.00, green: 0.47, blue: 0.47)
+    static let stable = WeekFitLightTokens.success
+    static let protection = WeekFitTheme.coachAccent
+    static let stress = WeekFitLightTokens.critical
 
     static let good = stable
     static let activity = training

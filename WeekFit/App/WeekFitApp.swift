@@ -17,6 +17,7 @@ struct WeekFitApp: App {
     @StateObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @StateObject private var languageManager = AppLanguageManager()
     @StateObject private var nightComfort = NightComfortController()
+    @StateObject private var appearance = WeekFitAppearanceController()
     @StateObject private var reviewPromptManager = ReviewPromptManager()
     @StateObject private var unitsStore = WeekFitUnitsStore.shared
     @State private var nightComfortLocationService: NightComfortLocationService?
@@ -44,10 +45,15 @@ struct WeekFitApp: App {
                 .environmentObject(activityCoordinator)
                 .environmentObject(languageManager)
                 .environmentObject(nightComfort)
+                .environmentObject(appearance)
                 .environmentObject(reviewPromptManager)
                 .environmentObject(unitsStore)
                 .environment(\.locale, languageManager.locale)
-                .environment(\.weekFitPalette, WeekFitSemanticPalette.interpolated(blend: nightComfort.blendFactor))
+                .preferredColorScheme(appearance.colorSchemeOverride)
+                .modifier(WeekFitPaletteEnvironmentSync(
+                    blendFactor: nightComfort.blendFactor,
+                    preference: appearance.preference
+                ))
                 .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)
                 .onAppear {
                     activityCoordinator.prepareLaunchServices()
@@ -135,5 +141,34 @@ struct WeekFitApp: App {
         default:
             break
         }
+    }
+}
+
+/// Keeps `weekFitPalette` env + `WeekFitPaletteStore` aligned with appearance preference and Night Comfort.
+private struct WeekFitPaletteEnvironmentSync: ViewModifier {
+    let blendFactor: CGFloat
+    let preference: WeekFitAppearancePreference
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var appearance: WeekFitAppearance {
+        preference.resolvedAppearance(system: colorScheme)
+    }
+
+    private var resolvedPalette: WeekFitSemanticPalette {
+        let blend = appearance == .light ? 0 : blendFactor
+        return .interpolated(blend: blend, appearance: appearance)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.weekFitPalette, resolvedPalette)
+            .onAppear { syncStore() }
+            .onChange(of: blendFactor) { _, _ in syncStore() }
+            .onChange(of: colorScheme) { _, _ in syncStore() }
+            .onChange(of: preference) { _, _ in syncStore() }
+    }
+
+    private func syncStore() {
+        WeekFitPaletteStore.update(blend: appearance == .light ? 0 : blendFactor, appearance: appearance)
     }
 }

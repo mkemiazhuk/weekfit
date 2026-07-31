@@ -16,6 +16,8 @@ struct BuiltMealPlateView: View {
     var showsEmptyPlate: Bool = false
     /// Soft fade-assemble on Meal Details (disabled in lists).
     var animatesAppearance: Bool = false
+    /// When false, only ingredients/custom food render (host provides its own dish).
+    var showsPlateChrome: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -29,7 +31,7 @@ struct BuiltMealPlateView: View {
     var body: some View {
         let hasCustomFoodVisual = customFoodImage != nil || customFoodInitial != nil
         let hasFoodItems = items.contains { !$0.id.hasPrefix("drink_") } || hasCustomFoodVisual
-        let showPlate = hasFoodItems || showsEmptyPlate
+        let showPlate = showsPlateChrome && (hasFoodItems || showsEmptyPlate)
         let itemIDs = items.map(\.id).joined(separator: "|")
 
         ZStack {

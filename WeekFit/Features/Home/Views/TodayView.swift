@@ -57,27 +57,30 @@ struct TodayView: View {
     private let todayRingStroke: CGFloat = 4
     private let todayPremiumBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
     private let todayPremiumBronzeSoft = Color(red: 0.60, green: 0.52, blue: 0.39)
-    private let todayActivityColor = WeekFitProgressRingColor.activity
-    private let todayNutritionColor = WeekFitProgressRingColor.nutrition
-    private let todayRecoveryColor = WeekFitProgressRingColor.recovery
+
+    private var todayActivityColor: Color { WeekFitProgressRingColor.activity }
+    private var todayNutritionColor: Color { WeekFitProgressRingColor.nutrition }
+    private var todayRecoveryColor: Color { WeekFitProgressRingColor.recovery }
 
     private enum TodayLayout {
-        static let cardRadius: CGFloat = 20
-        /// Added to `WeekFitScreenContainer` header bottom (10 pt) → ~10 pt after the date.
+        static let cardRadius: CGFloat = WeekFitSurface.primaryRadius
+        /// Header spacing now lives in `WeekFitScreenLayout.headerBottomSpacing`.
         static let contentTopInset: CGFloat = 0
-        static let gapBetweenCards: CGFloat = 20
+        static let gapBetweenCards: CGFloat = 22
         static let gapAfterOverview: CGFloat = gapBetweenCards
         static let gapAfterUpNext: CGFloat = gapBetweenCards
         static let gapBeforeQuickActions: CGFloat = gapBetweenCards
-        /// Tab bar body (52 + 10) plus visible gap above it (~3 pt).
-        static let tabBarContentInset: CGFloat = 65
+        /// Align with shared tab clearance.
+        static let tabBarContentInset: CGFloat = WeekFitScreenLayout.tabBarClearance
         static let ringGroupSpacing: CGFloat = 4
         static let cardTitleBottomGap: CGFloat = 10
-        static let overviewContentTopPadding: CGFloat = 11
-        static let overviewContentBottomPadding: CGFloat = 12
+        static let overviewContentTopPadding: CGFloat = 13
+        static let overviewContentBottomPadding: CGFloat = 14
         static let overviewHorizontalPadding: CGFloat = 16
         static let coachCardVerticalPadding: CGFloat = 19
-        static let cardInteriorVerticalPadding: CGFloat = 13
+        static let cardInteriorVerticalPadding: CGFloat = 14
+        static let quickTileRadius: CGFloat = 18
+        static let quickTileSpacing: CGFloat = 10
     }
 
     private var shouldScrollSummary: Bool {
@@ -1168,6 +1171,7 @@ struct TodayView: View {
                             .padding(.top, TodayLayout.contentTopInset)
                             .padding(.bottom, 8)
                     }
+                    .weekFitTransparentScrollBackground()
                 } else {
                     summaryContent()
                         .padding(.top, TodayLayout.contentTopInset)
@@ -1246,16 +1250,16 @@ struct TodayView: View {
 
     private func todayCardSectionTitle(_ title: String) -> some View {
         Text(title.uppercased())
-            .font(.caption2.weight(.semibold))
+            .font(.caption2.weight(.bold))
             .fontDesign(.rounded)
-            .tracking(1.15)
-            .foregroundStyle(palette.textTertiary.opacity(0.68))
+            .tracking(palette.isLight ? 1.2 : 1.15)
+            .foregroundStyle(palette.isLight ? WeekFitTheme.secondaryText : palette.textTertiary.opacity(0.68))
             .offset(y: 0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func todayPremiumCard<Content: View>(
-        accent: Color,
+        accent: Color?,
         cornerRadius: CGFloat = TodayLayout.cardRadius,
         featured: Bool = true,
         @ViewBuilder content: () -> Content
@@ -1288,6 +1292,11 @@ struct TodayView: View {
             return coachCoordinator.state.coachUIPresentation?.accentColor ?? WeekFitTheme.coachAccent
         }
         return WeekFitTheme.coachAccent
+    }
+
+    private var todayCoachCardAccent: Color {
+        // Coach identity is purple; green is reserved for positive status chips.
+        WeekFitTheme.coachAccent
     }
 
     private func todayOverviewShell<Content: View>(
@@ -1325,7 +1334,7 @@ struct TodayView: View {
     }
 
     private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
-        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
+        todayPremiumCard(accent: todayCoachCardAccent, featured: true) {
             HStack(alignment: .top, spacing: 14) {
                 coachSettlingGlyph
                     .padding(.top, 2)
@@ -1335,7 +1344,7 @@ struct TodayView: View {
                         .font(.caption2.weight(.bold))
                         .fontDesign(.rounded)
                         .tracking(1.45)
-                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+                        .foregroundStyle(todayCoachCardAccent.opacity(0.78))
 
                     Text(AppText.Today.coachSettlingTitle)
                         .font(.callout.weight(.bold))
@@ -1371,20 +1380,20 @@ struct TodayView: View {
     }
 
     private func coachPreparingCard() -> some View {
-        todayPremiumCard(accent: WeekFitTheme.coachAccent, featured: true) {
+        todayPremiumCard(accent: todayCoachCardAccent, featured: true) {
             HStack(alignment: .top, spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(WeekFitTheme.coachAccent.opacity(0.11))
+                        .fill(todayCoachCardAccent.opacity(0.11))
                         .frame(width: 40, height: 40)
                         .overlay {
                             Circle()
-                                .stroke(WeekFitTheme.coachAccent.opacity(0.20), lineWidth: 1)
+                                .stroke(todayCoachCardAccent.opacity(0.20), lineWidth: 1)
                         }
 
                     Image(systemName: CoachState.registryGapIcon)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.90))
+                        .foregroundStyle(todayCoachCardAccent.opacity(0.90))
                 }
                 .padding(.top, 2)
 
@@ -1393,7 +1402,7 @@ struct TodayView: View {
                         .font(.caption2.weight(.bold))
                         .fontDesign(.rounded)
                         .tracking(1.45)
-                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
+                        .foregroundStyle(todayCoachCardAccent.opacity(0.78))
 
                     Text(CoachState.registryGapTitle)
                         .font(.callout.weight(.bold))
@@ -1437,21 +1446,21 @@ struct TodayView: View {
     private var coachSettlingGlyph: some View {
         ZStack {
             Circle()
-                .fill(WeekFitTheme.coachAccent.opacity(livePulse ? 0.16 : 0.09))
+                .fill(todayCoachCardAccent.opacity(livePulse ? 0.16 : 0.09))
                 .frame(width: 40, height: 40)
                 .blur(radius: livePulse ? 1 : 0)
 
             Circle()
-                .fill(WeekFitTheme.coachAccent.opacity(0.11))
+                .fill(todayCoachCardAccent.opacity(0.11))
                 .frame(width: 40, height: 40)
                 .overlay {
                     Circle()
-                        .stroke(WeekFitTheme.coachAccent.opacity(0.20), lineWidth: 1)
+                        .stroke(todayCoachCardAccent.opacity(0.20), lineWidth: 1)
                 }
 
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.90))
+                .foregroundStyle(todayCoachCardAccent.opacity(0.90))
                 .offset(y: 0.5)
                 .scaleEffect(livePulse ? 1.03 : 0.97)
         }
@@ -1900,14 +1909,14 @@ struct TodayView: View {
                 Text(title)
                     .font(.footnote.weight(.semibold))
                     .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary.opacity(0.94))
+                    .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.88 : 0.94))
                     .lineLimit(ringCaptionLineLimit)
                     .minimumScaleFactor(0.85)
 
                 Text(valueText)
                     .font(.caption.weight(.bold))
                     .fontDesign(.rounded)
-                    .foregroundStyle(color)
+                    .foregroundStyle(palette.isLight ? color : color.opacity(1))
                     .lineLimit(ringCaptionLineLimit)
                     .minimumScaleFactor(0.84)
 
@@ -1915,7 +1924,11 @@ struct TodayView: View {
                     Text(infoText)
                         .font(.caption2.weight(.medium))
                         .fontDesign(.rounded)
-                        .foregroundStyle(textSecondary.opacity(0.58))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? WeekFitTheme.secondaryText
+                                : textSecondary.opacity(0.58)
+                        )
                         .lineLimit(ringCaptionLineLimit)
                         .minimumScaleFactor(0.82)
                 }
@@ -1928,8 +1941,6 @@ struct TodayView: View {
 
     private var upNextSection: some View {
         let now = Date()
-        let neutralIconFill = WeekFitTheme.whiteOpacity(0.07)
-        let neutralStroke = WeekFitTheme.whiteOpacity(0.08)
 
         let activeSession = currentLiveUpNextActivity(now: now)
         let nextActivity = activeSession == nil
@@ -1938,7 +1949,7 @@ struct TodayView: View {
 
         return Group {
             if let activeSession {
-                todayPremiumCard(accent: todayPremiumBronze, featured: false) {
+                todayPremiumCard(accent: palette.isLight ? nil : todayPremiumBronze, featured: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
                             .padding(.bottom, TodayLayout.cardTitleBottomGap)
@@ -1947,9 +1958,7 @@ struct TodayView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 upNextIconBadge(
                                     systemName: upNextIcon(for: activeSession, isLive: true),
-                                    fill: todayPremiumBronzeSoft.opacity(0.10),
-                                    stroke: todayPremiumBronze.opacity(0.18),
-                                    iconColor: todayPremiumBronze.opacity(0.88)
+                                    accent: todayPremiumBronze
                                 )
 
                                 VStack(alignment: .leading, spacing: 2) {
@@ -2033,7 +2042,7 @@ struct TodayView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onSelectTab(.calendar)
                 } label: {
-                    todayPremiumCard(accent: todayPremiumBronze.opacity(0.75), featured: false) {
+                    todayPremiumCard(accent: palette.isLight ? nil : todayPremiumBronze.opacity(0.75), featured: false) {
                         VStack(alignment: .leading, spacing: 0) {
                             todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
                                 .padding(.bottom, TodayLayout.cardTitleBottomGap)
@@ -2042,9 +2051,7 @@ struct TodayView: View {
                                 HStack(alignment: .top, spacing: 12) {
                                     upNextIconBadge(
                                         systemName: upNextIcon(for: activity),
-                                        fill: neutralIconFill,
-                                        stroke: neutralStroke,
-                                        iconColor: textSecondary.opacity(0.82)
+                                        accent: upNextAccent(for: activity)
                                     )
 
                                     VStack(alignment: .leading, spacing: 2) {
@@ -2104,7 +2111,7 @@ struct TodayView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onSelectTab(.calendar)
                 } label: {
-                    todayPremiumCard(accent: WeekFitTheme.border, featured: false) {
+                    todayPremiumCard(accent: nil, featured: false) {
                         VStack(alignment: .leading, spacing: 0) {
                             todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
                                 .padding(.bottom, TodayLayout.cardTitleBottomGap)
@@ -2157,22 +2164,37 @@ struct TodayView: View {
             .fixedSize(horizontal: true, vertical: false)
     }
 
-    private func upNextIconBadge(
-        systemName: String,
-        fill: Color,
-        stroke: Color,
-        iconColor: Color
-    ) -> some View {
+    private func upNextAccent(for activity: PlannedActivity) -> Color {
+        switch activity.type.lowercased() {
+        case "meal", "drink", "hydration":
+            return WeekFitTheme.meal
+        case "workout":
+            return todayActivityColor
+        case "recovery":
+            return palette.isLight ? WeekFitLightTokens.coachPurple : WeekFitTheme.recovery
+        case "habit":
+            return WeekFitTheme.habit
+        default:
+            return todayActivityColor
+        }
+    }
+
+    private func upNextIconBadge(systemName: String, accent: Color) -> some View {
         WeekFitIconBadge(
             systemName: systemName,
-            color: iconColor,
+            color: accent,
             size: .lg,
             shape: .circle,
+            backgroundOpacity: palette.isLight ? 0.16 : 0.14,
             strokeOpacity: 1,
             strokeWidth: 1,
-            fillColor: fill,
-            strokeColor: stroke,
-            iconColor: iconColor
+            fillColor: palette.isLight
+                ? accent.opacity(0.14)
+                : WeekFitTheme.whiteOpacity(0.07),
+            strokeColor: palette.isLight
+                ? accent.opacity(0.32)
+                : accent.opacity(0.22),
+            iconColor: palette.isLight ? accent : accent.opacity(0.92)
         )
     }
     
@@ -2265,7 +2287,7 @@ struct TodayView: View {
     }
 
     private func coachInsightCard(presentation: CoachUIPresentation) -> some View {
-        let insightColor = presentation.accentColor
+        let insightColor = WeekFitTheme.coachAccent
         let insightTitle = presentation.todayTitle
         let insightIcon = presentation.icon
         let insightMessage = presentation.showsLimitedConfidenceBadge
@@ -2918,22 +2940,12 @@ struct TodayView: View {
             }
             .buttonStyle(.plain)
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            WeekFitCloseButton(
+                size: .compact,
+                accessibilityLabel: WeekFitLocalizedString("coach.proposal.chrome.dismiss")
+            ) {
                 (onClose ?? { dismissMorningProposalChrome(permanent: true) })()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.70))
-                    .frame(width: 30, height: 30)
-                    .background {
-                        Circle()
-                            .fill(WeekFitTheme.whiteOpacity(0.08))
-                    }
-                    .contentShape(Circle())
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(WeekFitLocalizedString("coach.proposal.chrome.dismiss"))
             .padding(.top, 10)
             .padding(.trailing, 10)
         }
@@ -3485,12 +3497,13 @@ struct TodayView: View {
         }
     }
 
+    @ViewBuilder
     private var quickActionsSection: some View {
         let now = todayViewModel.now
         let activeSession = currentActiveSession(now: now)
         let accent = todayQuickActionsAccent
 
-        return todayActionSurfaceCard(accent: accent) {
+        todayActionSurfaceCard(accent: accent) {
             VStack(alignment: .leading, spacing: 0) {
                 todayCardSectionTitle(WeekFitLocalizedString("today.quickActions.title"))
                     .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.74))
@@ -3521,10 +3534,13 @@ struct TodayView: View {
         toastMessage: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        let iconFillOpacity = isEmphasized ? 0.17 : 0.11
-        let iconStrokeOpacity = isEmphasized ? 0.22 : 0.15
-        let iconGlowOpacity = isEmphasized ? 0.24 : 0.15
-        let subtitleOpacity = isEmphasized ? 0.72 : 0.62
+        let iconFillOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.17) : (palette.isLight ? 0.14 : 0.11)
+        let iconStrokeOpacity = isEmphasized ? (palette.isLight ? 0.32 : 0.22) : (palette.isLight ? 0.24 : 0.15)
+        let iconGlowOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.24) : (palette.isLight ? 0.10 : 0.15)
+        let subtitleOpacity = isEmphasized ? 0.88 : 0.78
+        let iconForeground = palette.isLight
+            ? color
+            : color.opacity(isEmphasized ? 0.94 : 0.88)
 
         return Button {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -3556,7 +3572,7 @@ struct TodayView: View {
 
                     Image(systemName: icon)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(color.opacity(isEmphasized ? 0.94 : 0.88))
+                        .foregroundStyle(iconForeground)
                         .offset(y: quickActionIconOpticalYOffset(icon))
                         .frame(width: 40, height: 40)
 
@@ -3587,7 +3603,11 @@ struct TodayView: View {
                     Text(verbatim: label)
                         .font(.caption.weight(.semibold))
                         .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary.opacity(isEmphasized ? 0.94 : 0.88))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? textPrimary
+                                : textPrimary.opacity(isEmphasized ? 0.94 : 0.88)
+                        )
                         .lineLimit(quickActionCaptionLineLimit)
                         .minimumScaleFactor(0.85)
                         .multilineTextAlignment(.center)

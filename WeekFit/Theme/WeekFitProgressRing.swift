@@ -1,13 +1,28 @@
 import SwiftUI
 
-/// OLED-style progress rings — crisp stroke, tight leading-edge luminance (Apple Activity / Health).
+/// Progress ring accents — punchy on OLED; approved soft daylight metrics in Light.
 enum WeekFitProgressRingColor {
-    /// Move / activity — saturated exercise green (Apple-style punch).
-    static let activity = Color(red: 0.40, green: 0.94, blue: 0.44)
-    /// Nutrition — vivid warm orange.
-    static let nutrition = Color(red: 1.00, green: 0.58, blue: 0.14)
-    /// Recovery — saturated stand-ring cyan.
-    static let recovery = Color(red: 0.18, green: 0.86, blue: 0.98)
+    private static let activityDark = Color(red: 0.40, green: 0.94, blue: 0.44)
+    private static let nutritionDark = Color(red: 1.00, green: 0.58, blue: 0.14)
+    private static let recoveryDark = Color(red: 0.18, green: 0.86, blue: 0.98)
+
+    /// Move / activity.
+    @MainActor
+    static var activity: Color {
+        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.activity : activityDark
+    }
+
+    /// Nutrition.
+    @MainActor
+    static var nutrition: Color {
+        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.nutrition : nutritionDark
+    }
+
+    /// Recovery.
+    @MainActor
+    static var recovery: Color {
+        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.recovery : recoveryDark
+    }
 }
 
 struct WeekFitProgressRing<Label: View>: View {
@@ -39,17 +54,20 @@ struct WeekFitProgressRing<Label: View>: View {
 
     var body: some View {
         ZStack {
+            // Matte track — airy #E5E5EA in Light.
             Circle()
-                .stroke(Color.white.opacity(palette.ringTrackOpacity), lineWidth: strokeWidth)
+                .stroke(trackColor, lineWidth: strokeWidth)
                 .frame(width: size, height: size)
 
             if progress > 0 {
-                leadingEdgeGlow
+                if !palette.isLight {
+                    leadingEdgeGlow
+                }
 
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        AngularGradient(colors: resolvedGradientColors, center: .center),
+                        progressStroke,
                         style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
                     )
                     .frame(width: size, height: size)
@@ -61,13 +79,25 @@ struct WeekFitProgressRing<Label: View>: View {
         .frame(width: size, height: size)
     }
 
+    private var trackColor: Color {
+        palette.ringTrack
+    }
+
+    private var progressStroke: AnyShapeStyle {
+        if palette.isLight {
+            // Smooth matte ring — full-strength light metric color.
+            return AnyShapeStyle(tipGlowColor.opacity(Double(palette.ringGradientPeakOpacity)))
+        }
+        return AnyShapeStyle(AngularGradient(colors: resolvedGradientColors, center: .center))
+    }
+
     private var resolvedGradientColors: [Color] {
         gradientColors.map { color in
             palette.accent(color).opacity(Double(palette.ringGradientPeakOpacity))
         }
     }
 
-    /// Short arc bloom at the progress tip — no full-circumference halo.
+    /// Short arc bloom at the progress tip — dark OLED only.
     private var leadingEdgeGlow: some View {
         let span = min(0.10, max(0.035, progress * 0.12))
         let tipStart = max(0, progress - span)
