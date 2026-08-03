@@ -624,6 +624,15 @@ private struct MealTimelineCard: View {
         ) {
             return catalogMeal.localizedShortTitle
         }
+
+        // Drinks/snacks persist English catalog titles (e.g. "Iced Coffee") and
+        // localize only at display time — same contract as Quick Log toasts / Today.
+        let trimmedTitle = meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
+        }
+
         return MealBuilderTitleComposer.localizedStoredTitle(meal.title)
     }
 

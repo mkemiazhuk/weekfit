@@ -126,17 +126,30 @@ enum PlanTimelineNutritionVisualResolver {
         let kind: PlanTimelineNutritionKind = isWaterActivity(activity) ? .water : .drink
         let imageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Same contract as food avatars: trust bundled `ingredient-*` keys even when
+        // UIImage(named:) is unavailable in unit tests / before asset warm-up.
         if imageName.lowercased() != "hydration",
-           FoodImageQualityValidator.isDisplayableAsset(named: imageName) {
+           isTrustedNutritionAssetName(imageName) {
             return .assetImage(name: imageName, kind: kind)
         }
 
-        if kind == .water,
-           FoodImageQualityValidator.isDisplayableAsset(named: "ingredient-water") {
+        if kind == .water, isTrustedNutritionAssetName("ingredient-water") {
             return .assetImage(name: "ingredient-water", kind: kind)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
+    }
+
+    private static func isTrustedNutritionAssetName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(trimmed) else {
+            return false
+        }
+        if trimmed.lowercased().hasPrefix("ingredient-") {
+            return true
+        }
+        return FoodImageQualityValidator.isDisplayableAsset(named: trimmed)
     }
 
     private static func foodKind(
