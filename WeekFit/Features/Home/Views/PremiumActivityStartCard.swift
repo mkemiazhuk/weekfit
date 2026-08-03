@@ -19,6 +19,7 @@ struct PremiumActivityStartCard: View {
     @State private var pressed = false
 
     private var actionButtonSize: CGFloat { QuickActionSheetDesign.Row.actionButtonSize }
+    private var softAccent: Color { accentColor }
 
     var body: some View {
         Button {
@@ -27,10 +28,10 @@ struct PremiumActivityStartCard: View {
             HStack(spacing: QuickActionSheetDesign.Row.contentSpacing) {
                 imageBlock
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(QuickActionSheetDesign.Typography.rowTitle)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(hasConflict ? 0.46 : 0.96))
+                        .foregroundStyle(WeekFitTheme.primaryText.opacity(hasConflict ? 0.46 : 0.96))
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
 
@@ -39,7 +40,7 @@ struct PremiumActivityStartCard: View {
                             Text(badge.uppercased())
                                 .font(QuickActionSheetDesign.Typography.rowBadge)
                                 .tracking(0.35)
-                                .foregroundStyle(accentColor.opacity(0.82))
+                                .foregroundStyle(softAccent.opacity(0.78))
                                 .lineLimit(1)
                         }
 
@@ -68,9 +69,10 @@ struct PremiumActivityStartCard: View {
             .padding(.horizontal, QuickActionSheetDesign.Row.horizontalPadding)
             .frame(maxWidth: .infinity)
             .frame(height: QuickActionSheetDesign.Row.height)
+            // Quiet surface like drinks/food rows — no bright accent wash.
             .weekFitPremiumCard(
                 emphasis: .compact,
-                accent: hasConflict ? nil : accentColor,
+                accent: nil,
                 cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius
             )
             .scaleEffect(pressed ? 0.985 : 1.0)
@@ -86,17 +88,20 @@ struct PremiumActivityStartCard: View {
                 PremiumAssetImage(
                     imageName: imageName,
                     style: .activityThumbnail,
-                    accentColor: accentColor,
+                    accentColor: softAccent,
                     fallbackSystemName: systemIcon
                 )
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .fill(accentColor.opacity(0.10))
+                    RoundedRectangle(
+                        cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
+                        style: .continuous
+                    )
+                    .fill(softAccent.opacity(0.08))
 
                     Image(systemName: systemIcon)
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(accentColor.opacity(0.76))
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(softAccent.opacity(0.72))
                         .offset(y: -0.5)
                 }
                 .frame(
@@ -110,8 +115,11 @@ struct PremiumActivityStartCard: View {
                     )
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .stroke(.white.opacity(0.05), lineWidth: 1)
+                    RoundedRectangle(
+                        cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
+                        style: .continuous
+                    )
+                    .stroke(WeekFitTheme.whiteOpacity(0.06), lineWidth: 1)
                 }
             }
         }
@@ -120,15 +128,19 @@ struct PremiumActivityStartCard: View {
     private var startControl: some View {
         ZStack {
             Circle()
-                .fill(accentColor.opacity(hasConflict ? 0.07 : 0.18))
+                .fill(softAccent.opacity(hasConflict ? 0.06 : 0.12))
                 .frame(width: actionButtonSize, height: actionButtonSize)
 
             Circle()
-                .stroke(accentColor.opacity(hasConflict ? 0.07 : 0.15), lineWidth: 1)
+                .stroke(softAccent.opacity(hasConflict ? 0.08 : 0.22), lineWidth: 1)
 
             Image(systemName: hasConflict ? "lock.fill" : "play.fill")
                 .font(.system(size: hasConflict ? 10.5 : 11, weight: .semibold))
-                .foregroundStyle(hasConflict ? .white.opacity(0.26) : .white.opacity(0.92))
+                .foregroundStyle(
+                    hasConflict
+                    ? WeekFitTheme.whiteOpacity(0.26)
+                    : softAccent.opacity(0.92)
+                )
                 .offset(x: hasConflict ? 0 : 0.5)
         }
         .frame(width: actionButtonSize, height: actionButtonSize)

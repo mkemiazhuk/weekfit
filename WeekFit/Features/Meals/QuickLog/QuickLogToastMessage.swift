@@ -7,7 +7,12 @@ enum QuickLogToastMessage {
         selection: QuickLogSelection
     ) -> String {
         let nutrition = QuickLogServingMath.nutrition(for: profile, selection: selection)
-        let displayTitle = QuickItem.localizedTitle(forStoredTitle: profile.title)
+        let displayTitle: String = {
+            if profile.kind == .meal {
+                return MealBuilderTitleComposer.localizedStoredTitle(profile.title)
+            }
+            return QuickItem.localizedTitle(forStoredTitle: profile.title)
+        }()
 
         if profile.isWater {
             let ml = Int(

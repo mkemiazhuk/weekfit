@@ -168,7 +168,15 @@ struct MealDetailsView: View {
         ZStack {
             if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealPreview(items)
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
+            } else if meal.hasCustomPhoto {
+                FoodMediaView(
+                    meal: meal,
+                    presentation: .hero(size: 200),
+                    forceCircleForLocalPhoto: true
+                )
+                .frame(width: 200, height: 200)
+            } else if !meal.imageName.isEmpty,
+                      FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
                 Image(meal.imageName)
                     .resizable()
                     .scaledToFit()
@@ -375,9 +383,9 @@ struct MealDetailsView: View {
                 storedIcon: PlannerType.meal.icon,
                 title: meal.title,
                 type: "meal",
-                imageName: meal.imageName
+                imageName: meal.activityImageName
             ),
-            imageName: meal.imageName,
+            imageName: meal.activityImageName,
             colorRed: PlannerType.meal.colorComponents.red,
             colorGreen: PlannerType.meal.colorComponents.green,
             colorBlue: PlannerType.meal.colorComponents.blue,
@@ -411,10 +419,18 @@ struct MealDetailsView: View {
         meal.protein = updatedMeal.protein
         meal.carbs = updatedMeal.carbs
         meal.fats = updatedMeal.fats
+        meal.fiber = updatedMeal.fiber
         meal.benefits = updatedMeal.benefits
         meal.ingredients = updatedMeal.ingredients
         meal.suggestedTime = updatedMeal.suggestedTime
         meal.builderImageItems = updatedMeal.builderImageItems
+        meal.libraryKind = updatedMeal.libraryKind
+        meal.creationMode = updatedMeal.creationMode
+        meal.servingGrams = updatedMeal.servingGrams
+        meal.localPhotoFilename = updatedMeal.localPhotoFilename
+        meal.localPhotoThumbnailFilename = updatedMeal.localPhotoThumbnailFilename
+        meal.barcode = updatedMeal.barcode
+        meal.nutritionDataSource = updatedMeal.nutritionDataSource
     }
 
     private func sectionTitle(_ title: String) -> some View {

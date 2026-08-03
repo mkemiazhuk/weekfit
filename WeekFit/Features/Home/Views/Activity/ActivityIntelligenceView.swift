@@ -170,7 +170,10 @@ struct ActivityIntelligenceView: View {
                 )
                 .padding(.horizontal, 18)
                 .padding(.top, 9)
-                .padding(.bottom, 8)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .background(ActivityStyle.screenBackground)
+                .zIndex(2)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 9) {
@@ -192,9 +195,10 @@ struct ActivityIntelligenceView: View {
                         }
                     }
                     .padding(.horizontal, 18)
-                    .padding(.top, 5)
+                    .padding(.top, 10)
                     .padding(.bottom, 36)
                 }
+                .clipped()
             }
 
             if viewModel.isLoading && viewModel.weekSnapshots.isEmpty {

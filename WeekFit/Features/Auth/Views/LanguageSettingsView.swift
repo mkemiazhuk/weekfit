@@ -10,7 +10,7 @@ struct LanguageSettingsView: View {
     private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private let accentGreen = WeekFitStyle.brandGreen
 
     var body: some View {
         ZStack {
@@ -84,15 +84,7 @@ private extension LanguageSettingsView {
             )
         } label: {
             HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(.white.opacity(0.045))
-
-                    Image(systemName: "globe")
-                        .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(accentGreen)
-                }
-                .frame(width: 40, height: 40)
+                languageGlyph(language)
 
                 Text(language.title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -111,6 +103,20 @@ private extension LanguageSettingsView {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    func languageGlyph(_ language: AppLanguage) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(accentGreen.opacity(0.10))
+
+            Text(language == .english ? "EN" : "RU")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(accentGreen.opacity(0.95))
+                .tracking(0.4)
+        }
+        .frame(width: 40, height: 40)
+        .accessibilityHidden(true)
     }
 
     var softDivider: some View {

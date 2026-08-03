@@ -34,12 +34,10 @@ enum PlanTimelineRouter {
     ) -> Meals? {
         guard activity.type.lowercased() == "meal" else { return nil }
 
-        let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
-        guard !normalizedTitle.isEmpty else { return nil }
-
-        return customMeals.first {
-            CustomMealStore.normalizedTitle($0.title) == normalizedTitle
-        }
+        return CustomMealStore.meal(
+            matchingActivityTitle: activity.title,
+            in: customMeals
+        )
     }
 }
 
