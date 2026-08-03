@@ -10,7 +10,7 @@ struct LanguageSettingsView: View {
     private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private let accentGreen = WeekFitStyle.brandGreen
 
     var body: some View {
         ZStack {
@@ -86,11 +86,11 @@ private extension LanguageSettingsView {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(.white.opacity(0.045))
+                        .fill(accentGreen.opacity(0.10))
 
                     Image(systemName: "globe")
                         .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(accentGreen)
+                        .foregroundStyle(accentGreen.opacity(0.92))
                 }
                 .frame(width: 40, height: 40)
 
