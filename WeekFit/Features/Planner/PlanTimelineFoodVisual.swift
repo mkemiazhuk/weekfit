@@ -206,13 +206,11 @@ enum PlanTimelineNutritionVisualResolver {
             return nil
         }
 
-        let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
-        guard !normalizedTitle.isEmpty else { return nil }
-
-        if let exact = customMeals.first(where: {
-            CustomMealStore.normalizedTitle($0.title) == normalizedTitle
-        }) {
-            return exact
+        if let matched = CustomMealStore.meal(
+            matchingActivityTitle: activity.title,
+            in: customMeals
+        ) {
+            return matched
         }
 
         // Fall back to catalog matcher title/image rules without its nutritionLog skip —

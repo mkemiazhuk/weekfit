@@ -52,7 +52,12 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     var localizedTitle: String {
         guard WeekFitUsesRussianLanguage() else { return title }
 
-        return Self.russianTitles[id] ?? title
+        return russianTitle
+    }
+
+    /// Stable Russian label for catalog matching (independent of current UI language).
+    var russianTitle: String {
+        Self.russianTitles[id] ?? title
     }
 
     private static let russianTitles: [String: String] = [
