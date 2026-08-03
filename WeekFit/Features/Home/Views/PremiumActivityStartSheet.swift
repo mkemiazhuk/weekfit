@@ -43,13 +43,13 @@ struct PremiumActivityStartSheet: View {
 
     private var selectedAccent: Color {
         currentSubTab == "Workout"
-            ? CoachPalette.stable
+            ? WeekFitStyle.brandGreen
             : Color(red: 0.66, green: 0.58, blue: 0.86)
     }
 
     private var selectedAccentComponents: (red: Double, green: Double, blue: Double) {
         currentSubTab == "Workout"
-            ? (0.16, 0.80, 0.43)
+            ? (0.40, 0.74, 0.53)
             : (0.66, 0.58, 0.86)
     }
 

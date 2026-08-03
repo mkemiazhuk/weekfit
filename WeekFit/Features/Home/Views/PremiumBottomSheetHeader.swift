@@ -42,19 +42,20 @@ struct PremiumBottomSheetHeader: View {
                         onClose()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
-                            .frame(width: 32, height: 32)
-                            .background(
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(WeekFitTheme.primaryText.opacity(0.92))
+                            .frame(width: 36, height: 36)
+                            .background {
                                 Circle()
-                                    .fill(.white.opacity(0.05))
-                            )
+                                    .fill(WeekFitTheme.whiteOpacity(0.075))
+                            }
                             .overlay {
                                 Circle()
-                                    .stroke(.white.opacity(0.05), lineWidth: 1)
+                                    .stroke(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
                             }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Text(AppText.Common.Action.close))
                     .fixedSize()
                 }
             }

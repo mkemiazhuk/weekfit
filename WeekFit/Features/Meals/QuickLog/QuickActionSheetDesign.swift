@@ -15,10 +15,10 @@ enum QuickActionSheetDesign {
     }
 
     enum Row {
-        static let height: CGFloat = 76
+        static let height: CGFloat = 84
         static let horizontalPadding: CGFloat = 12
-        static let imageSize: CGFloat = 64
-        static let imageCornerRadius: CGFloat = 15
+        static let imageSize: CGFloat = 72
+        static let imageCornerRadius: CGFloat = 18
         static let cardCornerRadius: CGFloat = 20
         static let actionButtonSize: CGFloat = 36
         static let actionExpandedWidth: CGFloat = 88
