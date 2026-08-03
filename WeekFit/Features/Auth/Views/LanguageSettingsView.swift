@@ -84,19 +84,7 @@ private extension LanguageSettingsView {
             )
         } label: {
             HStack(spacing: 14) {
-<<<<<<< HEAD
                 languageGlyph(language)
-=======
-                ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(accentGreen.opacity(0.10))
-
-                    Image(systemName: "globe")
-                        .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(accentGreen.opacity(0.92))
-                }
-                .frame(width: 40, height: 40)
->>>>>>> ef8bc4f (Calm Activity sheet close chrome and food-like workout cards.)
 
                 Text(language.title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
