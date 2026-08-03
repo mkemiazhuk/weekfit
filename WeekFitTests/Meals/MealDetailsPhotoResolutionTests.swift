@@ -323,7 +323,8 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             creationMode: .ingredients
         )
 
-        // Quick Log persists the Russian short title while catalog keeps English.
+        // Older Quick Log rows may still carry a Russian short title while the
+        // catalog keeps English; newer rows persist the canonical English title.
         let activity = PlannedActivity(
             date: Date(),
             type: PlannerType.meal.title,
@@ -454,6 +455,71 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
         )
 
         XCTAssertEqual(matched?.id, catalogMeal.id)
+    }
+
+    func testQuickLogDrinkPersistsEnglishTitleAndIngredientAsset() {
+        let item = QuickItem(
+            id: "drink_iced_coffee",
+            title: "Iced Coffee",
+            subtitle: "250 ml",
+            category: .drink,
+            imageName: "ingredient-iced-coffee",
+            icon: "cup.and.saucer.fill",
+            calories: 80,
+            protein: 1,
+            carbs: 12,
+            fats: 2,
+            fiber: 0,
+            defaultServingAmount: 250,
+            servingUnit: .ml,
+            gramsPerServing: nil,
+            mlPerServing: 250
+        )
+
+        let profile = QuickLogNutritionProfile.from(item: item)
+        XCTAssertEqual(profile.title, "Iced Coffee")
+        XCTAssertEqual(profile.imageName, "ingredient-iced-coffee")
+        XCTAssertEqual(profile.kind, .drink)
+
+        // Russian UI maps the stored English title for display; the activity
+        // itself stays English so Nutrition Details can keep the asset.
+        XCTAssertEqual(
+            QuickItem.localizedTitle(forStoredTitle: "Iced Coffee"),
+            WeekFitUsesRussianLanguage() ? "Холодный кофе" : "Iced Coffee"
+        )
+    }
+
+    func testNutritionVisualResolvesDrinkAssetFromActivityImageName() throws {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: "drink",
+            title: "Iced Coffee",
+            durationMinutes: 5,
+            icon: "cup.and.saucer.fill",
+            imageName: "ingredient-iced-coffee",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            calories: 80,
+            protein: 1,
+            carbs: 12,
+            fats: 2,
+            fiber: 0,
+            source: "today"
+        )
+
+        let visual = try XCTUnwrap(
+            PlanTimelineNutritionVisualResolver.resolve(
+                for: activity,
+                customMeals: []
+            )
+        )
+
+        guard case .assetImage(let name, let kind) = visual else {
+            return XCTFail("Expected drink asset visual, got \(visual)")
+        }
+        XCTAssertEqual(name, "ingredient-iced-coffee")
+        XCTAssertEqual(kind, .drink)
     }
 
     private func makeTestPhoto() throws -> MealPhotoStore.PhotoSet {

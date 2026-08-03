@@ -58,8 +58,9 @@ enum CustomMealStore {
     }
 
     /// Resolves a logged/planned activity title back to a catalog meal.
-    /// Quick Log persists localized short titles for recipe meals, while the
-    /// catalog stores canonical English builder titles.
+    /// Catalog stores canonical English builder titles. Older Quick Log rows may
+    /// still carry localized short titles (e.g. "Индейка Огурец"); newer rows
+    /// persist `meal.title` and localize only at display time.
     static func meal(matchingActivityTitle title: String, in meals: [Meals]) -> Meals? {
         let normalized = normalizedTitle(title)
         guard !normalized.isEmpty else { return nil }
