@@ -346,12 +346,18 @@ extension Meals {
 
     /// Image key persisted onto `PlannedActivity.imageName` when logging/planning.
     /// Prefer a custom photo filename so Nutrition Details can resolve media without
-    /// relying only on catalog title matching. Skip placeholder plate assets.
+    /// relying only on catalog title matching. For Meal Builder recipes, persist the
+    /// primary ingredient asset so timeline avatars work even when title localization
+    /// diverges from the catalog. Skip placeholder plate assets.
     var activityImageName: String {
         if let photoFilename = displayPhotoFilename?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !photoFilename.isEmpty {
             return photoFilename
+        }
+
+        if let primaryIngredient = primaryBuilderIngredientImageName {
+            return primaryIngredient
         }
 
         let trimmed = imageName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -360,6 +366,18 @@ extension Meals {
             return ""
         }
         return trimmed
+    }
+
+    var primaryBuilderIngredientImageName: String? {
+        guard let items = builderImageItems, !items.isEmpty else { return nil }
+
+        let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first
+        let name = primary?.imageName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !name.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(name) else {
+            return nil
+        }
+        return name
     }
 
     var color: Color {

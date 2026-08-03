@@ -199,6 +199,82 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
         XCTAssertEqual(meal.activityImageName, "")
     }
 
+    func testMealActivityImageNameUsesPrimaryBuilderIngredient() {
+        let meal = Meals(
+            id: "builder_primary_ingredient",
+            title: "Turkey Cucumber",
+            subtitle: "Custom",
+            imageName: "plate-dark",
+            type: .balanced,
+            calories: 250,
+            protein: 40,
+            carbs: 8,
+            fats: 5,
+            fiber: 2,
+            benefits: [],
+            ingredients: [],
+            builderImageItems: [
+                MealBuilderImageItem(
+                    id: "veg_cucumber",
+                    imageName: "ingredient-cucumber",
+                    visualSize: 1,
+                    visualDensity: 1,
+                    supportsStandalonePresentation: true,
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    zIndex: 1,
+                    grams: 100
+                ),
+                MealBuilderImageItem(
+                    id: "protein_turkey",
+                    imageName: "ingredient-turkey",
+                    visualSize: 1,
+                    visualDensity: 1,
+                    supportsStandalonePresentation: true,
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    zIndex: 5,
+                    grams: 150
+                )
+            ]
+        )
+
+        XCTAssertEqual(meal.activityImageName, "ingredient-turkey")
+    }
+
+    func testNutritionVisualInfersBuilderPlateFromRussianTitleWithoutCatalog() throws {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: "meal",
+            title: "Индейка Огурец",
+            durationMinutes: 10,
+            icon: "fork.knife",
+            imageName: "plate-dark",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            calories: 250,
+            source: "today"
+        )
+
+        let visual = try XCTUnwrap(
+            PlanTimelineNutritionVisualResolver.resolve(
+                for: activity,
+                customMeals: []
+            )
+        )
+
+        guard case .builderPlate(let items, _) = visual else {
+            return XCTFail("Expected inferred builder plate, got \(visual)")
+        }
+
+        let names = Set(items.map(\.imageName))
+        XCTAssertTrue(names.contains("ingredient-turkey"))
+        XCTAssertTrue(names.contains("ingredient-cucumber"))
+    }
+
     func testNutritionVisualMatchesLocalizedBuilderTitleToEnglishCatalogMeal() throws {
         let catalogMeal = Meals(
             id: "custom_turkey_cucumber",
