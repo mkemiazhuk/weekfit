@@ -14,6 +14,7 @@ struct ExpertCoachView: View {
     @State private var showProfile = false
     @State private var keepCoachMounted = false
     @State private var didRecordCoachRecommendationOpen = false
+    @State private var resolvedConsultationFingerprints: Set<String> = []
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -59,7 +60,7 @@ struct ExpertCoachView: View {
 
             WeekFitScreenContainer {
                 WeekFitScreenHeader(
-                    title: WeekFitLocalizedString("common.tab.coach"),
+                    title: screenTitle,
                     subtitle: selectedDateTitle,
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
@@ -125,6 +126,21 @@ struct ExpertCoachView: View {
         WeekFitShortWeekdayMonthDay(Date())
     }
 
+    private var todayPlanConsultation: CoachTodayPlanConsultationPresentation? {
+        if let fingerprint = coachState.fingerprint?.rawValue,
+           resolvedConsultationFingerprints.contains(fingerprint) {
+            return nil
+        }
+        return CoachTodayPlanConsultationBuilder.build(from: coachState)
+    }
+
+    private var screenTitle: String {
+        if todayPlanConsultation != nil {
+            return WeekFitLocalizedString("coach.todayPlan.screenTitle")
+        }
+        return WeekFitLocalizedString("common.tab.coach")
+    }
+
     private var shouldShowHealthConnectPrompt: Bool {
         !hasTodayRecoverySignals &&
         !healthManager.isHealthAccessGranted &&
@@ -178,6 +194,16 @@ struct ExpertCoachView: View {
     // MARK: - Coach Content
 
     private var coachContent: some View {
+        Group {
+            if let consultation = todayPlanConsultation, shouldSurfaceCoach {
+                todayPlanConsultationContent(consultation)
+            } else {
+                standardCoachScrollContent
+            }
+        }
+    }
+
+    private var standardCoachScrollContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .center, spacing: WeekFitScreenLayout.rootSpacing) {
                 if !coachIntroDismissed {
@@ -207,6 +233,61 @@ struct ExpertCoachView: View {
             .frame(maxWidth: .infinity)
             .padding(.bottom, 110)
         }
+    }
+
+    private func todayPlanConsultationContent(
+        _ consultation: CoachTodayPlanConsultationPresentation
+    ) -> some View {
+        CoachTodayPlanConsultationView(
+            presentation: consultation,
+            onApply: { selectedIDs in
+                applyTodayPlanConsultation(selectedTimelineIDs: selectedIDs, presentation: consultation)
+            },
+            onKeepCurrent: {
+                keepCurrentTodayPlan(presentation: consultation)
+            }
+        )
+        .onAppear {
+            recordCoachRecommendationOpenIfNeeded()
+        }
+        .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
+    }
+
+    private func applyTodayPlanConsultation(
+        selectedTimelineIDs: Set<String>,
+        presentation: CoachTodayPlanConsultationPresentation
+    ) {
+        guard !selectedTimelineIDs.isEmpty else { return }
+        markTodayPlanConsultationResolved()
+        ProductAnalytics.coachRecommendationViewed(
+            scenario: presentation.scenario,
+            warningAlert: coachUIPresentation?.warningAlert
+        )
+        ReviewEngagement.record(.coachRecommendationOpened)
+    }
+
+    private func keepCurrentTodayPlan(
+        presentation: CoachTodayPlanConsultationPresentation
+    ) {
+        markTodayPlanConsultationResolved()
+        _ = presentation
+    }
+
+    private func markTodayPlanConsultationResolved() {
+        if let fingerprint = coachState.fingerprint?.rawValue {
+            resolvedConsultationFingerprints.insert(fingerprint)
+        }
+    }
+
+    private func recordCoachRecommendationOpenIfNeeded() {
+        guard !didRecordCoachRecommendationOpen else { return }
+        guard let ui = coachUIPresentation else { return }
+        didRecordCoachRecommendationOpen = true
+        ReviewEngagement.record(.coachRecommendationOpened)
+        ProductAnalytics.coachRecommendationViewed(
+            scenario: ui.scenario,
+            warningAlert: ui.warningAlert
+        )
     }
 
     // MARK: - Coach Card
