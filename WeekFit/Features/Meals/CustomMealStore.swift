@@ -56,6 +56,37 @@ enum CustomMealStore {
             .lowercased()
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
+
+    /// Resolves a logged/planned activity title back to a catalog meal.
+    /// Quick Log persists localized short titles for recipe meals, while the
+    /// catalog stores canonical English builder titles.
+    static func meal(matchingActivityTitle title: String, in meals: [Meals]) -> Meals? {
+        let normalized = normalizedTitle(title)
+        guard !normalized.isEmpty else { return nil }
+
+        return meals.first { activityTitleCandidates(for: $0).contains(normalized) }
+    }
+
+    static func activityTitleCandidates(for meal: Meals) -> Set<String> {
+        var candidates: Set<String> = []
+
+        func insert(_ value: String) {
+            let normalized = normalizedTitle(value)
+            guard !normalized.isEmpty else { return }
+            candidates.insert(normalized)
+        }
+
+        insert(meal.title)
+        insert(meal.shortTitle)
+        insert(meal.localizedShortTitle)
+        insert(meal.localizedDisplayTitle)
+
+        for composed in MealBuilderTitleComposer.matchingTitleCandidates(from: meal.builderImageItems) {
+            insert(composed)
+        }
+
+        return candidates
+    }
 }
 
 enum CustomIngredientStore {

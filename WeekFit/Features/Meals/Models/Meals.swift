@@ -346,14 +346,20 @@ extension Meals {
 
     /// Image key persisted onto `PlannedActivity.imageName` when logging/planning.
     /// Prefer a custom photo filename so Nutrition Details can resolve media without
-    /// relying only on catalog title matching.
+    /// relying only on catalog title matching. Skip placeholder plate assets.
     var activityImageName: String {
         if let photoFilename = displayPhotoFilename?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !photoFilename.isEmpty {
             return photoFilename
         }
-        return imageName
+
+        let trimmed = imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(trimmed) else {
+            return ""
+        }
+        return trimmed
     }
 
     var color: Color {
@@ -546,6 +552,23 @@ enum MealBuilderTitleComposer {
     }
 
     static func compose(from items: [MealBuilderImageItem]?) -> String? {
+        compose(from: items, titleForIngredient: { $0.localizedTitle })
+    }
+
+    /// English + Russian composed titles so logged Quick Log rows still match
+    /// catalog meals after localization (e.g. "Индейка Огурец" ↔ "Turkey Cucumber").
+    static func matchingTitleCandidates(from items: [MealBuilderImageItem]?) -> [String] {
+        [
+            compose(from: items, titleForIngredient: { $0.title }),
+            compose(from: items, titleForIngredient: { $0.russianTitle }),
+        ]
+        .compactMap { $0 }
+    }
+
+    static func compose(
+        from items: [MealBuilderImageItem]?,
+        titleForIngredient: (MealBuilderIngredient) -> String
+    ) -> String? {
         guard let items, !items.isEmpty else { return nil }
 
         let resolvedIngredients = resolvedSelections(from: items).map(\.ingredient)
@@ -555,11 +578,11 @@ enum MealBuilderTitleComposer {
             resolvedIngredients.first { $0.category == category }
         }
 
-        let protein = first(in: .protein)?.localizedTitle
-        let base = first(in: .base)?.localizedTitle
-        let vegetable = first(in: .vegetables)?.localizedTitle
-        let extra = first(in: .extras)?.localizedTitle
-        let drinks = first(in: .drinks)?.localizedTitle
+        let protein = first(in: .protein).map(titleForIngredient)
+        let base = first(in: .base).map(titleForIngredient)
+        let vegetable = first(in: .vegetables).map(titleForIngredient)
+        let extra = first(in: .extras).map(titleForIngredient)
+        let drinks = first(in: .drinks).map(titleForIngredient)
 
         if let protein, let base { return "\(protein) \(base)" }
         if let base, let extra { return "\(extra) \(base)" }
@@ -571,6 +594,6 @@ enum MealBuilderTitleComposer {
         if let extra { return extra }
         if let drinks { return drinks }
 
-        return resolvedIngredients.first?.localizedTitle
+        return resolvedIngredients.first.map(titleForIngredient)
     }
 }
