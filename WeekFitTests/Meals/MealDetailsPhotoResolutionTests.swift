@@ -118,9 +118,10 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .builderPlate = visual else {
-            return XCTFail("Expected builder plate visual for matched meal, got \(visual)")
+        guard case .assetImage(let name, _) = visual else {
+            return XCTFail("Expected primary ingredient asset for matched meal, got \(visual)")
         }
+        XCTAssertTrue(name.hasPrefix("ingredient-"))
     }
 
     func testNutritionVisualResolvesLocalPhotoFromActivityImageNameWithoutCatalog() throws {
@@ -266,13 +267,13 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .builderPlate(let items, _) = visual else {
-            return XCTFail("Expected inferred builder plate, got \(visual)")
+        guard case .assetImage(let name, _) = visual else {
+            return XCTFail("Expected inferred ingredient asset, got \(visual)")
         }
-
-        let names = Set(items.map(\.imageName))
-        XCTAssertTrue(names.contains("ingredient-turkey"))
-        XCTAssertTrue(names.contains("ingredient-cucumber"))
+        XCTAssertTrue(
+            name == "ingredient-turkey" || name == "ingredient-cucumber",
+            "Unexpected primary ingredient \(name)"
+        )
     }
 
     func testNutritionVisualMatchesLocalizedBuilderTitleToEnglishCatalogMeal() throws {
@@ -348,10 +349,59 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .builderPlate(let items, _) = visual else {
-            return XCTFail("Expected builder plate for localized Quick Log title, got \(visual)")
+        guard case .assetImage(let name, _) = visual else {
+            return XCTFail("Expected primary ingredient asset for localized Quick Log title, got \(visual)")
         }
-        XCTAssertEqual(Set(items.map(\.imageName)), ["ingredient-turkey", "ingredient-cucumber"])
+        XCTAssertEqual(name, "ingredient-turkey")
+    }
+
+    func testQuickLogProfilePersistsCanonicalMealTitleNotLocalized() {
+        let meal = Meals(
+            id: "ql_canonical_title",
+            title: "Turkey Cucumber",
+            subtitle: "Custom",
+            imageName: "plate-dark",
+            type: .balanced,
+            calories: 250,
+            protein: 40,
+            carbs: 8,
+            fats: 5,
+            fiber: 2,
+            benefits: [],
+            ingredients: [],
+            builderImageItems: [
+                MealBuilderImageItem(
+                    id: "protein_turkey",
+                    imageName: "ingredient-turkey",
+                    visualSize: 1,
+                    visualDensity: 1,
+                    supportsStandalonePresentation: true,
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    zIndex: 2,
+                    grams: 150
+                ),
+                MealBuilderImageItem(
+                    id: "veg_cucumber",
+                    imageName: "ingredient-cucumber",
+                    visualSize: 1,
+                    visualDensity: 1,
+                    supportsStandalonePresentation: true,
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    zIndex: 1,
+                    grams: 100
+                )
+            ],
+            libraryKind: .meal,
+            creationMode: .ingredients
+        )
+
+        let profile = QuickLogNutritionProfile.from(meal: meal)
+        XCTAssertEqual(profile.title, "Turkey Cucumber")
+        XCTAssertEqual(profile.imageName, "ingredient-turkey")
     }
 
     func testCustomMealStoreMatchesRussianActivityTitleToEnglishBuilderMeal() {

@@ -54,6 +54,11 @@ enum PlanTimelineNutritionVisualResolver {
             }
 
             if let items = displayableBuilderItems(for: meal), !items.isEmpty {
+                // Prefer a single ingredient asset in timelines — plate collages
+                // collapse to an unreadable dark disc at Nutrition Details size.
+                if let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+                    return .assetImage(name: primary.imageName, kind: kind)
+                }
                 return .builderPlate(items, kind: kind)
             }
 
@@ -79,8 +84,11 @@ enum PlanTimelineNutritionVisualResolver {
         }
 
         // Last resort for already-logged localized builder titles without catalog hit:
-        // rebuild a plate from ingredient labels found in the activity title.
+        // rebuild visuals from ingredient labels found in the activity title.
         if let inferred = inferredBuilderItems(fromTitle: activity.title), !inferred.isEmpty {
+            if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
+                return .assetImage(name: primary.imageName, kind: kind)
+            }
             return .builderPlate(inferred, kind: kind)
         }
 
