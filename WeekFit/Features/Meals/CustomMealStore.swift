@@ -227,6 +227,21 @@ enum MealPhotoStore {
         imageCache.removeAllObjects()
     }
 
+    /// Prefetch a photo into memory so detail sheets can paint immediately after save.
+    nonisolated static func warmCache(for filename: String?) {
+        guard let filename, !filename.isEmpty else { return }
+
+        DispatchQueue.global(qos: .utility).async {
+            _ = image(for: filename)
+                ?? loadDecodedImageFromDisk(
+                    filename: filename,
+                    targetPixelSize: thumbnailPixelSize,
+                    cacheDecodedImage: true
+                )
+            _ = timelineImage(for: filename)
+        }
+    }
+
     nonisolated private static func storeInCache(_ image: UIImage, filename: String) {
         _ = cacheConfigured
         imageCache.setObject(image, forKey: filename as NSString, cost: estimatedBytes(for: image))
