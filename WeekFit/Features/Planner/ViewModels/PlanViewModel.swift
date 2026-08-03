@@ -538,14 +538,8 @@ final class PlanViewModel: ObservableObject {
 
     private func displayImageName(for meal: Meals?) -> String {
         guard let meal else { return selectedItem.imageName }
-
-        if let photoFilename = meal.displayPhotoFilename?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !photoFilename.isEmpty {
-            return photoFilename
-        }
-
-        return meal.imageName
+        let resolved = meal.activityImageName
+        return resolved.isEmpty ? selectedItem.imageName : resolved
     }
 
     func closeAddSheet() {

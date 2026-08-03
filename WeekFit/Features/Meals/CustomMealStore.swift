@@ -56,6 +56,82 @@ enum CustomMealStore {
             .lowercased()
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
+
+    /// Resolves a logged/planned activity title back to a catalog meal.
+    /// Catalog stores canonical English builder titles. Older Quick Log rows may
+    /// still carry localized short titles (e.g. "Индейка Огурец"); newer rows
+    /// persist `meal.title` and localize only at display time.
+    static func meal(matchingActivityTitle title: String, in meals: [Meals]) -> Meals? {
+        let normalized = normalizedTitle(title)
+        guard !normalized.isEmpty else { return nil }
+
+        if let exact = meals.first(where: { activityTitleCandidates(for: $0).contains(normalized) }) {
+            return exact
+        }
+
+        return meals.first {
+            activityTitleMatchesBuilderIngredients(title, meal: $0)
+        }
+    }
+
+    static func activityTitleCandidates(for meal: Meals) -> Set<String> {
+        var candidates: Set<String> = []
+
+        func insert(_ value: String) {
+            let normalized = normalizedTitle(value)
+            guard !normalized.isEmpty else { return }
+            candidates.insert(normalized)
+        }
+
+        insert(meal.title)
+        insert(meal.shortTitle)
+        insert(meal.localizedShortTitle)
+        insert(meal.localizedDisplayTitle)
+
+        for composed in MealBuilderTitleComposer.matchingTitleCandidates(from: meal.builderImageItems) {
+            insert(composed)
+        }
+
+        return candidates
+    }
+
+    /// True when every meaningful token in the activity title maps to an
+    /// ingredient label (EN/RU) from the meal's builder items.
+    static func activityTitleMatchesBuilderIngredients(
+        _ title: String,
+        meal: Meals
+    ) -> Bool {
+        let tokens = titleTokens(title)
+        guard tokens.count >= 2 else { return false }
+
+        let ingredientLabels = builderIngredientLabels(for: meal)
+        guard ingredientLabels.count >= 2 else { return false }
+
+        return tokens.allSatisfy { token in
+            ingredientLabels.contains { label in
+                label == token || label.split(separator: " ").map(String.init).contains(token)
+            }
+        }
+    }
+
+    static func titleTokens(_ title: String) -> [String] {
+        normalizedTitle(title)
+            .split(whereSeparator: { $0.isWhitespace || $0 == "," || $0 == "+" || $0 == "-" })
+            .map(String.init)
+            .filter { $0.count > 1 }
+    }
+
+    private static func builderIngredientLabels(for meal: Meals) -> Set<String> {
+        var labels: Set<String> = []
+        let selections = MealBuilderTitleComposer.resolvedSelections(from: meal.builderImageItems)
+
+        for selection in selections {
+            labels.insert(normalizedTitle(selection.ingredient.title))
+            labels.insert(normalizedTitle(selection.ingredient.russianTitle))
+        }
+
+        return labels.filter { !$0.isEmpty }
+    }
 }
 
 enum CustomIngredientStore {

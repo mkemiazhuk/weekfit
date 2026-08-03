@@ -10,7 +10,8 @@ struct LanguageSettingsView: View {
     private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private var accentGreen: Color { WeekFitTheme.settingsAccent }
+    /// Calm app green — avoid the OLED neon settingsAccent in Dark Mode.
+    private var accentGreen: Color { WeekFitTheme.primaryGreen }
 
     var body: some View {
         ZStack {
@@ -84,15 +85,7 @@ private extension LanguageSettingsView {
             )
         } label: {
             HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(WeekFitTheme.settingsIconWell)
-
-                    Image(systemName: "globe")
-                        .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(accentGreen)
-                }
-                .frame(width: 40, height: 40)
+                languageGlyph(language)
 
                 Text(language.title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -103,7 +96,7 @@ private extension LanguageSettingsView {
                 if languageManager.selectedLanguage == language {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(accentGreen)
+                        .foregroundStyle(accentGreen.opacity(0.92))
                 }
             }
             .padding(.horizontal, 17)
@@ -111,6 +104,20 @@ private extension LanguageSettingsView {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    func languageGlyph(_ language: AppLanguage) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(WeekFitTheme.coachSoftSurface)
+
+            Text(language == .english ? "EN" : "RU")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(accentGreen.opacity(0.95))
+                .tracking(0.4)
+        }
+        .frame(width: 40, height: 40)
+        .accessibilityHidden(true)
     }
 
     var softDivider: some View {

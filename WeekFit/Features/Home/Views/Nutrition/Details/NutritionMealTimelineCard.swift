@@ -67,7 +67,7 @@ struct NutritionMealTimelineCard: View {
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(meal.title)
+                Text(timelineTitle(for: meal))
                     .font(NutritionDetailsDesign.Typography.mealTitle)
                     .foregroundStyle(WeekFitLightTokens.textPrimary)
                     .lineLimit(1)
@@ -101,13 +101,13 @@ struct NutritionMealTimelineCard: View {
     private func timelineIndicator(isLast: Bool) -> some View {
         VStack(spacing: 0) {
             Circle()
-                .fill(WeekFitLightTokens.activity)
+                .fill(WeekFitLightTokens.coach)
                 .frame(width: 8, height: 8)
                 .padding(.top, 8)
 
             if !isLast {
                 Rectangle()
-                    .fill(WeekFitLightTokens.activity.opacity(0.22))
+                    .fill(WeekFitLightTokens.coach.opacity(0.22))
                     .frame(width: 1)
                     .frame(maxHeight: .infinity)
             }
@@ -173,5 +173,22 @@ struct NutritionMealTimelineCard: View {
 
     private func timeText(for date: Date) -> String {
         date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    }
+
+    private func timelineTitle(for meal: PlannedActivity) -> String {
+        if let catalogMeal = CustomMealStore.meal(
+            matchingActivityTitle: meal.title,
+            in: mealCatalog
+        ) {
+            return catalogMeal.localizedShortTitle
+        }
+
+        let trimmedTitle = meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
+        }
+
+        return MealBuilderTitleComposer.localizedStoredTitle(meal.title)
     }
 }

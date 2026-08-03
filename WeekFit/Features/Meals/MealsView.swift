@@ -823,9 +823,9 @@ struct MealsView: View {
                 storedIcon: PlannerType.meal.icon,
                 title: meal.title,
                 type: "meal",
-                imageName: meal.imageName
+                imageName: meal.activityImageName
             ),
-            imageName: meal.imageName,
+            imageName: meal.activityImageName,
             colorRed: PlannerType.meal.colorComponents.red,
             colorGreen: PlannerType.meal.colorComponents.green,
             colorBlue: PlannerType.meal.colorComponents.blue,

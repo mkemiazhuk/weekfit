@@ -121,21 +121,15 @@ struct WeekFitDetailScreenSaveButton: View {
             action()
         } label: {
             ZStack {
+                // Keep the solid dark-gray disc from Meal Builder (distinct from light Back).
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.14),
-                                WeekFitTheme.whiteOpacity(0.09)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(saveDiscFill)
                     .overlay {
                         Circle()
                             .stroke(
-                                isEnabled ? accent.opacity(0.18) : WeekFitTheme.whiteOpacity(0.065),
+                                isEnabled
+                                ? WeekFitTheme.whiteOpacity(0.08)
+                                : WeekFitTheme.whiteOpacity(0.05),
                                 lineWidth: 1
                             )
                     }
@@ -144,7 +138,7 @@ struct WeekFitDetailScreenSaveButton: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(
                         isEnabled
-                        ? accent.opacity(0.85)
+                        ? accent.opacity(0.95)
                         : WeekFitTheme.secondaryText.opacity(0.42)
                     )
             }
@@ -155,5 +149,11 @@ struct WeekFitDetailScreenSaveButton: View {
         .accessibilityLabel(WeekFitLocalizedString("common.action.save"))
         .scaleEffect(isEnabled ? 1.0 : 0.96)
         .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isEnabled)
+    }
+
+    private var saveDiscFill: Color {
+        // Light Mode: charcoal disc matching the Create Meal header control.
+        // Dark Mode: soft raised fill on OLED.
+        WeekFitTheme.whiteOpacity(0.16)
     }
 }
