@@ -344,6 +344,18 @@ extension Meals {
         localPhotoThumbnailFilename ?? localPhotoFilename
     }
 
+    /// Image key persisted onto `PlannedActivity.imageName` when logging/planning.
+    /// Prefer a custom photo filename so Nutrition Details can resolve media without
+    /// relying only on catalog title matching.
+    var activityImageName: String {
+        if let photoFilename = displayPhotoFilename?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !photoFilename.isEmpty {
+            return photoFilename
+        }
+        return imageName
+    }
+
     var color: Color {
         type.color
     }

@@ -123,6 +123,63 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
         }
     }
 
+    func testNutritionVisualResolvesLocalPhotoFromActivityImageNameWithoutCatalog() throws {
+        let photo = try makeTestPhoto()
+        defer {
+            MealPhotoStore.deletePhotoSet(
+                originalFilename: photo.originalFilename,
+                thumbnailFilename: photo.thumbnailFilename
+            )
+            MealPhotoStore.releaseMemoryCache()
+        }
+
+        let activity = PlannedActivity(
+            date: Date(),
+            type: PlannerType.meal.title,
+            title: "Unmatched New Dish",
+            durationMinutes: 10,
+            icon: "fork.knife",
+            imageName: photo.thumbnailFilename,
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            calories: 180,
+            source: "nutritionLog"
+        )
+
+        let visual = try XCTUnwrap(
+            PlanTimelineNutritionVisualResolver.resolve(
+                for: activity,
+                customMeals: []
+            )
+        )
+
+        guard case .localPhoto = visual else {
+            return XCTFail("Expected local photo from activity.imageName, got \(visual)")
+        }
+    }
+
+    func testMealActivityImageNamePrefersCustomPhotoFilename() {
+        let meal = Meals(
+            id: "activity_image_name",
+            title: "Photo Meal",
+            subtitle: "Custom",
+            imageName: "meal-chicken",
+            type: .balanced,
+            calories: 400,
+            protein: 30,
+            carbs: 20,
+            fats: 10,
+            fiber: 2,
+            benefits: [],
+            ingredients: [],
+            localPhotoFilename: "original-abc.jpg",
+            localPhotoThumbnailFilename: "thumbnail-abc.jpg"
+        )
+
+        XCTAssertEqual(meal.activityImageName, "thumbnail-abc.jpg")
+    }
+
     private func makeTestPhoto() throws -> MealPhotoStore.PhotoSet {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64))
         let image = renderer.image { context in
