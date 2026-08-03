@@ -288,17 +288,28 @@ struct PlanTimelineNutritionAvatar: View {
                 .clipShape(Circle())
 
         case .builderPlate(let items, _):
-            BuiltMealPlateView(
-                items: items,
-                plateSize: contentSize,
-                itemScale: 0.38,
-                offsetScale: 0.22,
-                plateOpacity: 0,
-                shadowOpacity: 0.06,
-                layoutMode: .compactPreview
-            )
-            .frame(width: contentSize, height: contentSize)
-            .clipShape(Circle())
+            if contentSize <= 28,
+               let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+                // Tiny Nutrition Details dots can't render a readable plate collage.
+                Image(primary.imageName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: contentSize, height: contentSize)
+                    .clipShape(Circle())
+            } else {
+                BuiltMealPlateView(
+                    items: items,
+                    plateSize: contentSize,
+                    itemScale: 0.38,
+                    offsetScale: 0.22,
+                    plateOpacity: 0,
+                    shadowOpacity: 0.06,
+                    layoutMode: .compactPreview
+                )
+                .frame(width: contentSize, height: contentSize)
+                .clipShape(Circle())
+            }
 
         case .fallbackIcon(let systemName, _):
             Image(systemName: systemName)
