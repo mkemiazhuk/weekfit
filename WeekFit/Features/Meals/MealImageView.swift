@@ -73,15 +73,13 @@ struct AsyncMealPhotoView<Content: View>: View {
     }
 
     private func loadImageIfNeeded() {
-        guard tabIsActive else {
-            loadedImage = nil
-            return
-        }
         guard !resolvedFilename.isEmpty else {
             loadedImage = nil
             return
         }
 
+        // Detail sheets and inactive-tab mounts still need photos for already-visible rows.
+        // Keep clearing only when the filename is empty.
         let requestedFilename = resolvedFilename
         MealPhotoStore.loadImage(for: requestedFilename, targetPixelSize: targetPixelSize) { image in
             guard requestedFilename == resolvedFilename else { return }
@@ -256,7 +254,10 @@ struct FoodMediaView: View {
         .filter { !$0.isEmpty }
 
         for filename in candidates {
-            if let image = MealPhotoStore.image(for: filename),
+            // Prefer timeline decode so detail sheets still resolve photos on the
+            // main thread after MealPhotoStore.releaseMemoryCache().
+            if let image = MealPhotoStore.timelineImage(for: filename)
+                ?? MealPhotoStore.image(for: filename),
                FoodImageQualityValidator.isDisplayable(image) {
                 return image
             }
@@ -319,7 +320,8 @@ struct FoodMediaView: View {
 
     @ViewBuilder
     private func resolvedMedia(size: CGFloat, isHero: Bool) -> some View {
-        if let image = MealPhotoStore.image(for: meal.displayPhotoFilename),
+        if let image = MealPhotoStore.timelineImage(for: meal.displayPhotoFilename)
+            ?? MealPhotoStore.image(for: meal.displayPhotoFilename),
            FoodImageQualityValidator.isDisplayable(image) {
             Image(uiImage: image)
                 .resizable()
@@ -349,7 +351,7 @@ struct FoodMediaView: View {
     }
 
     private func mediaShape(size: CGFloat, isHero: Bool) -> FoodMediaShape {
-        if !forceCircleForLocalPhoto && MealPhotoStore.image(for: meal.displayPhotoFilename) != nil {
+        if !forceCircleForLocalPhoto && meal.hasCustomPhoto {
             let radius: CGFloat = isHero ? 24 : min(22, max(18, size * 0.22))
             return .roundedRectangle(cornerRadius: radius)
         } else {

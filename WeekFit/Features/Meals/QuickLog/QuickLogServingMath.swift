@@ -82,9 +82,12 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
         let grams = Double(meal.servingGrams ?? 100)
         return QuickLogNutritionProfile(
             id: meal.id,
-            title: meal.isFoodProduct ? meal.title : meal.localizedShortTitle,
+            // Persist the catalog/canonical title only. Localized short titles
+            // (e.g. "Индейка Огурец") break Nutrition Details matching when the
+            // UI language later changes. Rows/toasts localize at display time.
+            title: meal.title,
             subtitle: meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle,
-            imageName: meal.imageName,
+            imageName: meal.activityImageName,
             icon: "fork.knife",
             kind: .meal,
             caloriesPerServing: meal.calories,

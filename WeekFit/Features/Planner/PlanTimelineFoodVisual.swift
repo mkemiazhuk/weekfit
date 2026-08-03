@@ -54,13 +54,42 @@ enum PlanTimelineNutritionVisualResolver {
             }
 
             if let items = displayableBuilderItems(for: meal), !items.isEmpty {
+                // Prefer a single ingredient asset in timelines — plate collages
+                // collapse to an unreadable dark disc at Nutrition Details size.
+                if let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+                    return .assetImage(name: primary.imageName, kind: kind)
+                }
                 return .builderPlate(items, kind: kind)
+            }
+
+            if let primary = meal.primaryBuilderIngredientImageName,
+               FoodImageQualityValidator.isDisplayableAsset(named: primary)
+                || primary.lowercased().hasPrefix("ingredient-") {
+                return .assetImage(name: primary, kind: kind)
             }
         }
 
         let activityImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if FoodImageQualityValidator.isDisplayableAsset(named: activityImageName) {
-            return .assetImage(name: activityImageName, kind: kind)
+        if !FoodImageQualityValidator.isPlaceholderAssetName(activityImageName) {
+            if FoodImageQualityValidator.isDisplayableAsset(named: activityImageName)
+                || activityImageName.lowercased().hasPrefix("ingredient-") {
+                return .assetImage(name: activityImageName, kind: kind)
+            }
+
+            // Planner/quick-log may store MealPhotoStore filenames on the activity itself
+            // (especially for newly created custom foods).
+            if let photo = displayableLocalPhoto(filename: activityImageName) {
+                return .localPhoto(photo, kind: kind)
+            }
+        }
+
+        // Last resort for already-logged localized builder titles without catalog hit:
+        // rebuild visuals from ingredient labels found in the activity title.
+        if let inferred = inferredBuilderItems(fromTitle: activity.title), !inferred.isEmpty {
+            if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
+                return .assetImage(name: primary.imageName, kind: kind)
+            }
+            return .builderPlate(inferred, kind: kind)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
@@ -97,17 +126,30 @@ enum PlanTimelineNutritionVisualResolver {
         let kind: PlanTimelineNutritionKind = isWaterActivity(activity) ? .water : .drink
         let imageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Same contract as food avatars: trust bundled `ingredient-*` keys even when
+        // UIImage(named:) is unavailable in unit tests / before asset warm-up.
         if imageName.lowercased() != "hydration",
-           FoodImageQualityValidator.isDisplayableAsset(named: imageName) {
+           isTrustedNutritionAssetName(imageName) {
             return .assetImage(name: imageName, kind: kind)
         }
 
-        if kind == .water,
-           FoodImageQualityValidator.isDisplayableAsset(named: "ingredient-water") {
+        if kind == .water, isTrustedNutritionAssetName("ingredient-water") {
             return .assetImage(name: "ingredient-water", kind: kind)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
+    }
+
+    private static func isTrustedNutritionAssetName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(trimmed) else {
+            return false
+        }
+        if trimmed.lowercased().hasPrefix("ingredient-") {
+            return true
+        }
+        return FoodImageQualityValidator.isDisplayableAsset(named: trimmed)
     }
 
     private static func foodKind(
@@ -155,9 +197,7 @@ enum PlanTimelineNutritionVisualResolver {
         .filter { !$0.isEmpty }
 
         for filename in candidates {
-            if let image = MealPhotoStore.timelineImage(for: filename)
-                ?? MealPhotoStore.image(for: filename),
-               FoodImageQualityValidator.isDisplayable(image) {
+            if let image = displayableLocalPhoto(filename: filename) {
                 return image
             }
         }
@@ -165,28 +205,98 @@ enum PlanTimelineNutritionVisualResolver {
         return nil
     }
 
+    private static func displayableLocalPhoto(filename: String) -> UIImage? {
+        let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        guard let image = MealPhotoStore.timelineImage(for: trimmed)
+            ?? MealPhotoStore.image(for: trimmed),
+              FoodImageQualityValidator.isDisplayable(image) else {
+            return nil
+        }
+
+        return image
+    }
+
     private static func displayableBuilderItems(for meal: Meals) -> [MealBuilderImageItem]? {
         guard let items = meal.builderImageItems, !items.isEmpty else { return nil }
 
-        let validItems = items.filter {
-            FoodImageQualityValidator.isDisplayableAsset(named: $0.imageName)
+        let validItems = items.filter { item in
+            let name = item.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return false }
+            if name.lowercased().hasPrefix("ingredient-") { return true }
+            return FoodImageQualityValidator.isDisplayableAsset(named: name)
         }
 
         return validItems.isEmpty ? nil : validItems
+    }
+
+    /// Reconstruct builder visuals from a localized/English activity title when the
+    /// catalog row is missing or title matching failed (common for Quick Log).
+    private static func inferredBuilderItems(fromTitle title: String) -> [MealBuilderImageItem]? {
+        let paddedTitle = " \(CustomMealStore.normalizedTitle(title)) "
+        guard paddedTitle.trimmingCharacters(in: .whitespacesAndNewlines).count > 1 else {
+            return nil
+        }
+
+        let matched = MealBuilderDemoData.ingredients.compactMap { ingredient -> MealBuilderImageItem? in
+            let labels = [
+                CustomMealStore.normalizedTitle(ingredient.title),
+                CustomMealStore.normalizedTitle(ingredient.russianTitle)
+            ]
+            .filter { !$0.isEmpty }
+
+            let hits = labels.contains { label in
+                paddedTitle.contains(" \(label) ")
+            }
+            guard hits else { return nil }
+
+            return MealBuilderImageItem(
+                id: ingredient.id,
+                imageName: ingredient.imageName,
+                visualSize: ingredient.visualSize,
+                visualDensity: ingredient.visualDensity,
+                supportsStandalonePresentation: ingredient.supportsStandalonePresentation,
+                offsetX: ingredient.offsetX,
+                offsetY: ingredient.offsetY,
+                rotation: ingredient.rotation,
+                zIndex: ingredient.zIndex,
+                grams: ingredient.defaultGrams
+            )
+        }
+
+        guard matched.count >= 1 else { return nil }
+        return matched
     }
 
     private static func matchingCustomMeal(
         for activity: PlannedActivity,
         in customMeals: [Meals]
     ) -> Meals? {
-        guard activity.type.lowercased() == "meal" else { return nil }
-
-        let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
-        guard !normalizedTitle.isEmpty else { return nil }
-
-        return customMeals.first {
-            CustomMealStore.normalizedTitle($0.title) == normalizedTitle
+        let normalizedType = activity.type
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        // Logged foods use PlannerType.meal.title ("Meal"); also accept food/nutrition aliases.
+        guard normalizedType == "meal"
+            || normalizedType == "food"
+            || normalizedType == "nutrition" else {
+            return nil
         }
+
+        if let matched = CustomMealStore.meal(
+            matchingActivityTitle: activity.title,
+            in: customMeals
+        ) {
+            return matched
+        }
+
+        // Fall back to catalog matcher title/image rules without its nutritionLog skip —
+        // photos still need the catalog row even when macros are already on the activity.
+        return MealCatalogMatcher.match(
+            title: activity.title,
+            imageName: activity.imageName,
+            in: customMeals
+        )
     }
 
     static func isDrinkActivity(_ activity: PlannedActivity) -> Bool {
@@ -255,17 +365,28 @@ struct PlanTimelineNutritionAvatar: View {
                 .clipShape(Circle())
 
         case .builderPlate(let items, _):
-            BuiltMealPlateView(
-                items: items,
-                plateSize: contentSize,
-                itemScale: 0.38,
-                offsetScale: 0.22,
-                plateOpacity: 0,
-                shadowOpacity: 0.06,
-                layoutMode: .compactPreview
-            )
-            .frame(width: contentSize, height: contentSize)
-            .clipShape(Circle())
+            if contentSize <= 28,
+               let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+                // Tiny Nutrition Details dots can't render a readable plate collage.
+                Image(primary.imageName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: contentSize, height: contentSize)
+                    .clipShape(Circle())
+            } else {
+                BuiltMealPlateView(
+                    items: items,
+                    plateSize: contentSize,
+                    itemScale: 0.38,
+                    offsetScale: 0.22,
+                    plateOpacity: 0,
+                    shadowOpacity: 0.06,
+                    layoutMode: .compactPreview
+                )
+                .frame(width: contentSize, height: contentSize)
+                .clipShape(Circle())
+            }
 
         case .fallbackIcon(let systemName, _):
             Image(systemName: systemName)

@@ -78,19 +78,10 @@ struct NutritionDetailsView: View {
             VStack(spacing: 0) {
                 header
 
-                HealthDetailsWeekPicker(
-                    selectedDate: $displayedDate,
-                    accentColor: NutritionStyle.nutritionColor
-                ) { date in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onDateChanged(date)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-                .padding(.bottom, 6)
+                weekPickerChrome
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 7) {
+                    VStack(spacing: 10) {
                         NutritionHeroCard(
                             qualityScore: nutritionQualityScore,
                             primaryInsightText: nutritionPrimaryInsight
@@ -123,13 +114,31 @@ struct NutritionDetailsView: View {
                         noteCard
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 4)
+                    .padding(.top, 10)
                     .padding(.bottom, 28)
                 }
+                .clipped()
             }
         }
         .navigationBarBackButtonHidden(true)
         .preferredColorScheme(.dark)
+    }
+
+    private var weekPickerChrome: some View {
+        HealthDetailsWeekPicker(
+            selectedDate: $displayedDate,
+            accentColor: NutritionStyle.nutritionColor
+        ) { date in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onDateChanged(date)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity)
+        .background(NutritionStyle.screenBackground)
+        .zIndex(2)
+        .accessibilityElement(children: .contain)
     }
 
     private var header: some View {
@@ -174,6 +183,7 @@ struct NutritionDetailsView: View {
                 .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
+        .zIndex(3)
     }
 
     private var nutritionQualityInput: NutritionQualityPresenter.Input {
@@ -586,7 +596,7 @@ private struct MealTimelineCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(meal.title)
+                    Text(timelineTitle(for: meal))
                         .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
                         .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
                         .lineLimit(1)
@@ -605,6 +615,25 @@ private struct MealTimelineCard: View {
             .padding(.top, 2)
         }
         .padding(.bottom, isLast ? 0 : 8)
+    }
+
+    private func timelineTitle(for meal: PlannedActivity) -> String {
+        if let catalogMeal = CustomMealStore.meal(
+            matchingActivityTitle: meal.title,
+            in: mealCatalog
+        ) {
+            return catalogMeal.localizedShortTitle
+        }
+
+        // Drinks/snacks persist English catalog titles (e.g. "Iced Coffee") and
+        // localize only at display time — same contract as Quick Log toasts / Today.
+        let trimmedTitle = meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
+        }
+
+        return MealBuilderTitleComposer.localizedStoredTitle(meal.title)
     }
 
     @ViewBuilder

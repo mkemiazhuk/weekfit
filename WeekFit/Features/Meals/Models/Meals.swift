@@ -344,6 +344,42 @@ extension Meals {
         localPhotoThumbnailFilename ?? localPhotoFilename
     }
 
+    /// Image key persisted onto `PlannedActivity.imageName` when logging/planning.
+    /// Prefer a custom photo filename so Nutrition Details can resolve media without
+    /// relying only on catalog title matching. For Meal Builder recipes, persist the
+    /// primary ingredient asset so timeline avatars work even when title localization
+    /// diverges from the catalog. Skip placeholder plate assets.
+    var activityImageName: String {
+        if let photoFilename = displayPhotoFilename?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !photoFilename.isEmpty {
+            return photoFilename
+        }
+
+        if let primaryIngredient = primaryBuilderIngredientImageName {
+            return primaryIngredient
+        }
+
+        let trimmed = imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(trimmed) else {
+            return ""
+        }
+        return trimmed
+    }
+
+    var primaryBuilderIngredientImageName: String? {
+        guard let items = builderImageItems, !items.isEmpty else { return nil }
+
+        let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first
+        let name = primary?.imageName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !name.isEmpty,
+              !FoodImageQualityValidator.isPlaceholderAssetName(name) else {
+            return nil
+        }
+        return name
+    }
+
     var color: Color {
         type.color
     }
@@ -534,6 +570,23 @@ enum MealBuilderTitleComposer {
     }
 
     static func compose(from items: [MealBuilderImageItem]?) -> String? {
+        compose(from: items, titleForIngredient: { $0.localizedTitle })
+    }
+
+    /// English + Russian composed titles so logged Quick Log rows still match
+    /// catalog meals after localization (e.g. "Индейка Огурец" ↔ "Turkey Cucumber").
+    static func matchingTitleCandidates(from items: [MealBuilderImageItem]?) -> [String] {
+        [
+            compose(from: items, titleForIngredient: { $0.title }),
+            compose(from: items, titleForIngredient: { $0.russianTitle }),
+        ]
+        .compactMap { $0 }
+    }
+
+    static func compose(
+        from items: [MealBuilderImageItem]?,
+        titleForIngredient: (MealBuilderIngredient) -> String
+    ) -> String? {
         guard let items, !items.isEmpty else { return nil }
 
         let resolvedIngredients = resolvedSelections(from: items).map(\.ingredient)
@@ -543,11 +596,11 @@ enum MealBuilderTitleComposer {
             resolvedIngredients.first { $0.category == category }
         }
 
-        let protein = first(in: .protein)?.localizedTitle
-        let base = first(in: .base)?.localizedTitle
-        let vegetable = first(in: .vegetables)?.localizedTitle
-        let extra = first(in: .extras)?.localizedTitle
-        let drinks = first(in: .drinks)?.localizedTitle
+        let protein = first(in: .protein).map(titleForIngredient)
+        let base = first(in: .base).map(titleForIngredient)
+        let vegetable = first(in: .vegetables).map(titleForIngredient)
+        let extra = first(in: .extras).map(titleForIngredient)
+        let drinks = first(in: .drinks).map(titleForIngredient)
 
         if let protein, let base { return "\(protein) \(base)" }
         if let base, let extra { return "\(extra) \(base)" }
@@ -559,6 +612,57 @@ enum MealBuilderTitleComposer {
         if let extra { return extra }
         if let drinks { return drinks }
 
-        return resolvedIngredients.first?.localizedTitle
+        return resolvedIngredients.first.map(titleForIngredient)
+    }
+
+    /// Maps a stored English/Russian recipe title into the active UI language
+    /// by swapping known Meal Builder ingredient labels.
+    static func localizedStoredTitle(_ title: String) -> String {
+        remapStoredTitle(title, toRussian: WeekFitUsesRussianLanguage())
+    }
+
+    static func remapStoredTitle(_ title: String, toRussian: Bool) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return title }
+
+        // Longer names first so "Sweet Potato" wins over "Potato".
+        let ingredients = MealBuilderDemoData.ingredients.sorted {
+            max($0.title.count, $0.russianTitle.count) > max($1.title.count, $1.russianTitle.count)
+        }
+
+        var result = trimmed
+        for ingredient in ingredients {
+            let source = toRussian ? ingredient.title : ingredient.russianTitle
+            let target = toRussian ? ingredient.russianTitle : ingredient.title
+            guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
+                continue
+            }
+            result = replaceWholePhrase(source, with: target, in: result)
+        }
+        return result
+    }
+
+    private static func replaceWholePhrase(_ phrase: String, with replacement: String, in text: String) -> String {
+        guard !phrase.isEmpty else { return text }
+
+        // Space-padded matching works for both Latin and Cyrillic (unlike \\b).
+        let haystack = " \(text) "
+        let needle = " \(phrase) "
+        guard let regex = try? NSRegularExpression(
+            pattern: NSRegularExpression.escapedPattern(for: needle),
+            options: [.caseInsensitive]
+        ) else {
+            return text
+        }
+
+        let range = NSRange(haystack.startIndex..<haystack.endIndex, in: haystack)
+        let replaced = regex.stringByReplacingMatches(
+            in: haystack,
+            options: [],
+            range: range,
+            withTemplate: " \(replacement) "
+        )
+        return replaced.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 }
