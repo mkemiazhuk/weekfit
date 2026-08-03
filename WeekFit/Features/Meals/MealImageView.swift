@@ -351,10 +351,7 @@ struct FoodMediaView: View {
     }
 
     private func mediaShape(size: CGFloat, isHero: Bool) -> FoodMediaShape {
-        let hasResolvedLocalPhoto =
-            (MealPhotoStore.timelineImage(for: meal.displayPhotoFilename)
-                ?? MealPhotoStore.image(for: meal.displayPhotoFilename)) != nil
-        if !forceCircleForLocalPhoto && hasResolvedLocalPhoto {
+        if !forceCircleForLocalPhoto && meal.hasCustomPhoto {
             let radius: CGFloat = isHero ? 24 : min(22, max(18, size * 0.22))
             return .roundedRectangle(cornerRadius: radius)
         } else {
