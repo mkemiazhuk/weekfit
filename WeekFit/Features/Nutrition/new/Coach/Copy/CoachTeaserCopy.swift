@@ -105,6 +105,8 @@ enum CoachTeaserCopy {
                 return bi("On the ride", "На заезде")
             case .swimming:
                 return bi("In the swim", "В плавании")
+            case .hiit:
+                return bi("In HIIT", "В HIIT")
             default:
                 return bi("In session", "В тренировке")
             }
@@ -192,6 +194,8 @@ enum CoachTeaserCopy {
             return bi("Preparing to run", "Готовимся к бегу")
         case .swimming:
             return bi("Preparing to swim", "Готовимся к плаванию")
+        case .hiit:
+            return bi("Preparing for HIIT", "Готовимся к HIIT")
         default:
             return bi("Before session", "Перед тренировкой")
         }
@@ -444,6 +448,8 @@ enum CoachTeaserCopy {
                 return bi("On the ride", "На заезде")
             case .swimming:
                 return bi("In the swim", "В плавании")
+            case .hiit:
+                return bi("In HIIT", "В HIIT")
             default:
                 return bi("In session", "В тренировке")
             }
@@ -557,6 +563,8 @@ enum CoachTeaserCopy {
             return bi("Before the run", "Перед пробежкой")
         case .swimming:
             return bi("Before the swim", "Перед плаванием")
+        case .hiit:
+            return bi("Before HIIT", "Перед HIIT")
         default:
             return bi("Before session", "Перед тренировкой")
         }
@@ -570,6 +578,8 @@ enum CoachTeaserCopy {
             return bi("Run done", "Пробежка завершена")
         case .swimming:
             return bi("Swim done", "Плавание завершено")
+        case .hiit:
+            return bi("HIIT done", "HIIT завершён")
         default:
             return bi("Session done", "Тренировка завершена")
         }
@@ -583,6 +593,8 @@ enum CoachTeaserCopy {
             return bi("After the run", "После пробежки")
         case .swimming:
             return bi("After the swim", "После плавания")
+        case .hiit:
+            return bi("After HIIT", "После HIIT")
         default:
             return bi("After session", "После тренировки")
         }

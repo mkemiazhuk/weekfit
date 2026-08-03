@@ -94,6 +94,81 @@ final class MorningProposalBriefComposerTests: XCTestCase {
         XCTAssertEqual(brief.recommendedCount, 2)
         XCTAssertEqual(brief.tipCount, 1)
         XCTAssertNotNil(brief.metaLine)
+        XCTAssertFalse(brief.dayMoments.isEmpty)
+        XCTAssertEqual(brief.dayMoments.first?.title.contains("Tempo") ?? false, true)
+    }
+
+    func testDayMoments_areChronologicAndPreferSelected() {
+        let earlier = Date()
+        let later = earlier.addingTimeInterval(3 * 3600)
+        let walk = CoachProposedChange(
+            id: "walk",
+            kind: .createRecoveryWalk,
+            reasonCode: .lowRecoveryLoadProtection,
+            payload: .createRecoveryWalk(
+                CreateRecoveryWalkPayload(
+                    proposedDate: later,
+                    durationMinutes: 25,
+                    title: "Walk",
+                    activityType: "recovery"
+                )
+            ),
+            defaultSelected: true,
+            isSelected: true,
+            sortTime: later,
+            evidenceScenarioKey: nil,
+            scoreTotal: 80
+        )
+        let meal = CoachProposedChange(
+            id: "meal",
+            kind: .createMealFromLibrary,
+            reasonCode: .libraryMealSupport,
+            payload: .createMealFromLibrary(
+                CreateMealFromLibraryPayload(
+                    mealId: "m1",
+                    title: "Dinner Bowl",
+                    proposedDate: earlier,
+                    durationMinutes: 15,
+                    calories: 500,
+                    protein: 30,
+                    carbs: 45,
+                    fats: 15,
+                    fiber: 8,
+                    imageName: "plate-dark"
+                )
+            ),
+            defaultSelected: true,
+            isSelected: true,
+            sortTime: earlier,
+            evidenceScenarioKey: nil,
+            scoreTotal: 70
+        )
+        let proposal = MorningPlanProposal(
+            id: "p-day",
+            dayKey: "2026-08-02",
+            generatedAt: Date(),
+            status: .proposalReady,
+            fingerprint: ProposalInputFingerprint(
+                dayKey: "2026-08-02",
+                planSignature: "plan",
+                tomorrowPlanSignature: "",
+                recoveryBand: .moderate,
+                sleepPresence: .present,
+                scenarioKey: "maintain",
+                yesterdayHeavy: false
+            ),
+            changes: [walk, meal],
+            appliedAt: nil,
+            dismissedAt: nil,
+            lastErrorCode: nil,
+            strategy: .maintain
+        )
+
+        let moments = MorningProposalBriefComposer.dayMoments(for: proposal)
+        XCTAssertEqual(moments.count, 2)
+        XCTAssertEqual(moments[0].id, "meal")
+        XCTAssertEqual(moments[1].id, "walk")
+        XCTAssertEqual(moments[0].title, "Dinner Bowl")
     }
 
     func testActionLine_shortenIncludesActivityTitle() {

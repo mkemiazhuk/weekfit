@@ -136,7 +136,7 @@ enum CoachMorningOverviewPolicy {
                 "A walk is next — let the morning settle first.",
                 "Впереди прогулка — дайте утру спокойно начаться."
             )
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             return .en(
                 "Training is on the plan — start from how you feel now.",
                 "Тренировка в календаре — начните с того, как вы себя чувствуете."

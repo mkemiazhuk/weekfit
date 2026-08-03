@@ -235,7 +235,7 @@ enum MorningProposalWalkPolicy {
         let hasMovement = todayOpen.contains {
             let family = CoachActivityClassifier.family(for: $0)
             let type = CoachActivityClassifier.type(for: $0)
-            return family == .endurance || family == .recovery || type == .walk || type == .cycling || type == .running
+            return family == .endurance || family == .recovery || type == .walk || type == .cycling || type == .running || type == .hiit
         }
         if hasMovement { return .omit }
 
@@ -549,9 +549,16 @@ enum FullDayProposalComposer {
 
     private static func defaultMealSlots(now: Date, calendar: Calendar) -> [Date] {
         let base = calendar.startOfDay(for: now)
+        let earliest = now.addingTimeInterval(25 * 60)
         let breakfast = calendar.date(bySettingHour: 8, minute: 30, second: 0, of: base) ?? now
         let lunch = calendar.date(bySettingHour: 13, minute: 0, second: 0, of: base) ?? now
-        return [max(breakfast, now.addingTimeInterval(45 * 60)), lunch]
+        let dinner = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: base) ?? now
+        var unique: [Date] = []
+        for slot in [breakfast, lunch, dinner].map({ max($0, earliest) }) where slot >= earliest {
+            if unique.contains(where: { abs($0.timeIntervalSince(slot)) < 40 * 60 }) { continue }
+            unique.append(slot)
+        }
+        return unique.isEmpty ? [earliest.addingTimeInterval(20 * 60)] : unique
     }
 
     private static func remapTime(

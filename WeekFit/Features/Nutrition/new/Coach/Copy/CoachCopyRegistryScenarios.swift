@@ -97,6 +97,11 @@ enum CoachCopyRegistryScenarios {
                 "Run is ahead — dial in effort before the first mile.",
                 "Пробежка впереди — найдите свой темп до первого километра."
             )
+        case .hiit:
+            assessment = .en(
+                "HIIT is ahead — warm up before the first hard interval.",
+                "HIIT впереди — разомнитесь до первого жёсткого интервала."
+            )
         case .swimming:
             assessment = .en(
                 "Swim is coming — settle into a steady stroke early.",
@@ -109,20 +114,83 @@ enum CoachCopyRegistryScenarios {
             )
         }
 
-        return Draft(
-            assessment: assessment,
-            recommendation: .en(
-                "Start easy — let breathing and rhythm find their place.",
-                "Начните легко — пусть дыхание и ритм настроятся сами."
-            ),
-            avoid: .en(
+        let recommendation: CoachBilingualText
+        let avoid: CoachBilingualText
+        let nextAction: CoachBilingualText
+
+        switch input.activityType {
+        case .hiit:
+            recommendation = .en(
+                "Open with a short warm-up, then hit intervals clean — not all-out from round one.",
+                "Короткая разминка, потом чистые интервалы — не на максимум с первого раунда."
+            )
+            avoid = .en(
+                "Don't open with an all-out interval — earn the intensity.",
+                "Не открывайте первым интервалом на максимум — интенсивность нужно заслужить."
+            )
+            nextAction = .en(
+                "Five minutes easy warm-up, then start the first interval controlled.",
+                "Пять минут лёгкой разминки — потом первый интервал под контролем."
+            )
+        case .cycling:
+            recommendation = .en(
+                "Start easy — let cadence and breathing find their place.",
+                "Начните легко — пусть каденс и дыхание настроятся сами."
+            )
+            avoid = .en(
                 "Don't open with a sprint or heavy gear.",
                 "Не стартуйте рывком или тяжёлой передачей."
-            ),
-            nextAction: .en(
+            )
+            nextAction = .en(
                 "Five minutes easy warm-up, then check the plan.",
                 "Пять минут лёгкой разминки — потом сверьтесь с планом."
             )
+        case .running:
+            recommendation = .en(
+                "Start easy — let breathing and rhythm find their place.",
+                "Начните легко — пусть дыхание и ритм настроятся сами."
+            )
+            avoid = .en(
+                "Don't open with a sprint from the first minutes.",
+                "Не стартуйте рывком с первых минут."
+            )
+            nextAction = .en(
+                "Five minutes easy warm-up, then check the plan.",
+                "Пять минут лёгкой разминки — потом сверьтесь с планом."
+            )
+        case .swimming:
+            recommendation = .en(
+                "Start easy — find a steady stroke before any speed work.",
+                "Начните легко — сначала ровный гребок, потом скорость."
+            )
+            avoid = .en(
+                "Don't open with a sprint from the first minutes.",
+                "Не стартуйте рывком с первых минут."
+            )
+            nextAction = .en(
+                "Five minutes easy warm-up, then check the plan.",
+                "Пять минут лёгкой разминки — потом сверьтесь с планом."
+            )
+        default:
+            recommendation = .en(
+                "Start easy — warm up before the hard work.",
+                "Начните легко — разомнитесь до основной работы."
+            )
+            avoid = .en(
+                "Don't race the clock from the first set.",
+                "Не гонитесь с первых же подходов."
+            )
+            nextAction = .en(
+                "Five minutes easy warm-up, then check the plan.",
+                "Пять минут лёгкой разминки — потом сверьтесь с планом."
+            )
+        }
+
+        return Draft(
+            assessment: assessment,
+            recommendation: recommendation,
+            avoid: avoid,
+            nextAction: nextAction
         )
     }
 
@@ -138,6 +206,11 @@ enum CoachCopyRegistryScenarios {
             assessment = .en(
                 "Run is done — heart rate is still catching up.",
                 "Пробежка позади — пульс ещё не успокоился."
+            )
+        case .hiit:
+            assessment = .en(
+                "HIIT is done — heart rate is still catching up.",
+                "HIIT позади — пульс ещё не успокоился."
             )
         case .swimming:
             assessment = .en(

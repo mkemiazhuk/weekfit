@@ -122,6 +122,8 @@ enum CoachCopySubjectGuard {
                 return ["run", "running", "пробеж", "бег"]
             case .swimming:
                 return ["swim", "swimming", "pool", "заплыв", "плав", "бассейн"]
+            case .hiit:
+                return ["hiit", "interval", "intervals", "интервал"]
             default:
                 return ["session", "training", "тренировк"]
             }
@@ -133,6 +135,8 @@ enum CoachCopySubjectGuard {
                 return ["run", "miles", "legs", "пробеж", "бег", "ног"]
             case .swimming:
                 return ["swim", "stroke", "water", "заплыв", "плав", "гребок", "бассейн"]
+            case .hiit:
+                return ["hiit", "interval", "intervals", "интервал", "круг"]
             default:
                 return ["session", "live", "тренировк", "процесс"]
             }
@@ -144,6 +148,8 @@ enum CoachCopySubjectGuard {
                 return ["run", "heart", "пробеж", "пульс"]
             case .swimming:
                 return ["swim", "shoulders", "заплыв", "плав", "плеч"]
+            case .hiit:
+                return ["hiit", "interval", "recovery", "интервал", "восстанов"]
             default:
                 return ["session", "ended", "тренировк", "законч"]
             }

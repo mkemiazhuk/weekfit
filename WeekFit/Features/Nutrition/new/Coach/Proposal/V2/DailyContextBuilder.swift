@@ -11,7 +11,7 @@ enum DailyContextBuilder {
         let hasMovement = todayOpen.contains {
             let family = CoachActivityClassifier.family(for: $0)
             let type = CoachActivityClassifier.type(for: $0)
-            return family == .endurance || family == .recovery || type == .walk || type == .cycling || type == .running
+            return family == .endurance || family == .recovery || type == .walk || type == .cycling || type == .running || type == .hiit
         }
         let hasCompletedOrPartial = input.todayActivities.contains {
             ($0.isCompleted || $0.isPartialCompletion || ($0.actualDurationMinutes ?? 0) > 0) && !$0.isSkipped

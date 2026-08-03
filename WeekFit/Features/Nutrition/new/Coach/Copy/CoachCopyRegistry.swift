@@ -178,6 +178,16 @@ enum CoachCopyRegistry {
                 "You're in the run — miles are ticking.",
                 "Вы в пробежке — километры набираются."
             )
+        case (.hiit, true):
+            assessment = .en(
+                "Still in HIIT on a stacked day — keep intervals honest.",
+                "Плотный день — а вы всё ещё в HIIT, держите интервалы честными."
+            )
+        case (.hiit, false):
+            assessment = .en(
+                "You're in HIIT — work the intervals, recover between.",
+                "Вы в HIIT — работайте интервалы, отдыхайте между."
+            )
         case (.swimming, true):
             assessment = .en(
                 "Still swimming after a full day — steady strokes count.",
@@ -433,7 +443,7 @@ enum CoachCopyRegistry {
 
         let activityHint: CoachBilingualText
         switch input.activityType {
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             activityHint = .en(
                 "Hard endurance is coming — recovery is not fully there yet.",
                 "Впереди серьёзная работа на выносливость — тело ещё не восстановилось."

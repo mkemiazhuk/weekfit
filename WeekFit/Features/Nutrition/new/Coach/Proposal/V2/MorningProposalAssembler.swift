@@ -71,12 +71,10 @@ enum MorningProposalAssembler {
         // Guidance-only payloads are normally dropped (no Apply chrome). Exceptions:
         // 1) empty meal library → morning fuel tips
         // 2) adverse weather → outdoor caution tips
-        // 3) cold start → curated first-morning tip(s) so new users get a coherent brief
+        // Soft cold-start tips ("learning patterns") stay silent until we have mutations.
         if mutating.isEmpty {
             var guidanceOnly: [CoachProposedChange] = []
-            if context.isColdStart {
-                guidanceOnly.append(contentsOf: changes.filter { $0.kind == .guidanceOnly })
-            } else if context.mealLibrary.isEmpty {
+            if context.mealLibrary.isEmpty {
                 guidanceOnly.append(contentsOf: fuelGuidance)
             }
             for tip in weatherGuidance where !guidanceOnly.contains(where: { $0.id == tip.id }) {

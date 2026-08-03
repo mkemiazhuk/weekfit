@@ -11,6 +11,10 @@ struct MorningProposalBrief: Equatable, Sendable {
     let ctaTitle: String
     let recommendedCount: Int
     let tipCount: Int
+    /// Chronologic day beats for premium Today / review surfaces.
+    let dayMoments: [MorningProposalDayMoment]
+    /// Soft body-state framing (strategy), optional.
+    let contextLine: String?
 }
 
 enum MorningProposalBriefComposer {
@@ -68,7 +72,9 @@ enum MorningProposalBriefComposer {
             metaLine: metaParts.isEmpty ? nil : metaParts.joined(separator: " · "),
             ctaTitle: WeekFitLocalizedString("coach.proposal.chrome.reviewCTA.short"),
             recommendedCount: mutations.count,
-            tipCount: tips.count
+            tipCount: tips.count,
+            dayMoments: dayMoments(for: proposal),
+            contextLine: isColdStart(proposal) ? nil : contextLine(for: proposal)
         )
     }
 
@@ -191,6 +197,76 @@ enum MorningProposalBriefComposer {
             return WeekFitLocalizedString("coach.proposal.brief.weather.cold")
         case .calm, .unavailable:
             return nil
+        }
+    }
+
+    // MARK: - Day picture
+
+    /// Chronologic day moments for Today card + review timeline (mutations only).
+    static func dayMoments(
+        for proposal: MorningPlanProposal,
+        limit: Int = 5
+    ) -> [MorningProposalDayMoment] {
+        let formatter = DateFormatter()
+        formatter.locale = WeekFitCurrentLocale()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+
+        let mutations = proposal.changes
+            .filter { $0.kind != .guidanceOnly }
+            .sorted { lhs, rhs in
+                if lhs.sortTime != rhs.sortTime { return lhs.sortTime < rhs.sortTime }
+                if lhs.isSelected != rhs.isSelected { return lhs.isSelected && !rhs.isSelected }
+                return (lhs.scoreTotal ?? 0) > (rhs.scoreTotal ?? 0)
+            }
+
+        let selected = mutations.filter(\.isSelected)
+        let source = Array((selected.isEmpty ? mutations : selected).prefix(limit))
+
+        return source.map { change in
+            MorningProposalDayMoment(
+                id: change.id,
+                timeLabel: formatter.string(from: change.sortTime),
+                title: momentTitle(for: change),
+                systemImage: momentSymbol(for: change),
+                isRecommended: change.defaultSelected || change.isSelected
+            )
+        }
+    }
+
+    /// Soft body-state framing under the headline — not technical inventory.
+    static func contextLine(for proposal: MorningPlanProposal) -> String? {
+        MorningProposalStrategyCopy.localizedSummary(for: proposal.strategy)
+    }
+
+    private static func momentTitle(for change: CoachProposedChange) -> String {
+        switch change.payload {
+        case .modifyDuration(let payload):
+            return activityLabel(payload.activityTitle)
+        case .moveActivity(let payload):
+            return activityLabel(payload.activityTitle)
+        case .skipActivity(let payload):
+            return activityLabel(payload.activityTitle)
+        case .createRecoveryWalk:
+            return WeekFitLocalizedString("coach.proposal.moment.walk")
+        case .createPlannedActivity(let payload):
+            return payload.title
+        case .createMealFromLibrary(let payload):
+            return payload.title
+        case .guidanceOnly(let payload):
+            return CoachProposalReasonCopy.localizedGuidance(payload.guidanceCode)
+        }
+    }
+
+    private static func momentSymbol(for change: CoachProposedChange) -> String {
+        switch change.kind {
+        case .modifyDuration: return "timer"
+        case .moveActivity: return "arrow.right.circle"
+        case .skipActivity: return "minus.circle"
+        case .createRecoveryWalk: return "figure.walk"
+        case .createPlannedActivity: return "figure.run"
+        case .createMealFromLibrary: return "fork.knife"
+        case .guidanceOnly: return "lightbulb.fill"
         }
     }
 }

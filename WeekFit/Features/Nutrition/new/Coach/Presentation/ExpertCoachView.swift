@@ -260,7 +260,9 @@ struct ExpertCoachView: View {
                                 )
                                 if ui.planAdjustmentMode == .appliedExecuting {
                                     let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+                                    MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
                                     MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
+                                    coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.coach")
                                 }
                             }
                         }

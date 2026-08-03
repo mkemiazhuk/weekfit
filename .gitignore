@@ -40,3 +40,11 @@ web/public/reels/.tmp/
 .tmp-transparency-test/
 .venv-reels/
 .venv-scripts/
+
+# Local asset optimization backups (large)
+backups/
+
+# Local generated artifacts
+.screenshot-artifacts/
+*.xcresult
+build/

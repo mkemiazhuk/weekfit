@@ -752,7 +752,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         XCTAssertEqual(proposal.status, .proposalReady)
     }
 
-    func testColdStartCapsGuidanceAndOmitsInventedWalk() {
+    func testColdStartOmitsSoftGuidanceOverlay() {
         let now = date(2026, 7, 31, 8, 0) // Friday
         let proposal = MorningProposalEngine.generate(
             input: makeEngineInput(
@@ -765,10 +765,14 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             )
         )
         XCTAssertFalse(proposal.changes.contains { $0.kind == .createRecoveryWalk })
-        let guidance = proposal.changes.filter { $0.kind == .guidanceOnly }
-        XCTAssertLessThanOrEqual(guidance.count, 2, "Cold start must not emit tip soup")
-        XCTAssertEqual(proposal.status, .proposalReady)
-        XCTAssertTrue(MorningProposalBriefComposer.isColdStart(proposal))
+        // Soft cold-start tips must not surface Morning Adjustments on Today.
+        if proposal.changes.filter({ $0.kind != .guidanceOnly }).isEmpty {
+            XCTAssertEqual(proposal.status, .noChangesNeeded)
+            XCTAssertEqual(MorningProposalPresenter.chromeState(for: proposal), .hidden)
+        } else {
+            XCTAssertEqual(proposal.status, .proposalReady)
+            XCTAssertNotEqual(MorningProposalPresenter.chromeState(for: proposal), .hidden)
+        }
     }
 
     // MARK: - Helpers

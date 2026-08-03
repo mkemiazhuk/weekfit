@@ -16,6 +16,7 @@ enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
     case cycling
     case running
     case swimming
+    case hiit
     case tennis
     case squash
     case upperBody
@@ -265,7 +266,7 @@ enum CoachActivityClassifier {
 
     static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
         switch type(for: activity) {
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             return .endurance
         case .tennis, .squash:
             return .racket
@@ -302,6 +303,10 @@ enum CoachActivityClassifier {
     private static func classifyType(in text: String) -> CoachActivityType? {
         if containsAny(text, ["cycling", "cycle", "bike", "biking", "ride"]) {
             return .cycling
+        }
+        // HIIT before running — "interval training" must not inherit run copy/icons.
+        if containsAny(text, ["hiit", "high intensity interval", "interval training", "workout-hiit"]) {
+            return .hiit
         }
         if containsAny(text, ["running", "run", "jog", "jogging"]) {
             return .running
@@ -357,7 +362,7 @@ enum CoachActivityClassifier {
         switch activityType {
         case .walk, .stretching, .yoga, .breathing, .sauna, .none:
             return false
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             let minutes = activity.effectiveDurationMinutes
             let load = inferredLoad(for: activity)
             let text = tokenText(for: activity)
@@ -456,7 +461,7 @@ enum CoachActivityClassifier {
         }
 
         switch type(for: activity) {
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             return .endurance
         case .tennis, .squash, .upperBody, .lowerBody, .core, .fullBody:
             return .workout

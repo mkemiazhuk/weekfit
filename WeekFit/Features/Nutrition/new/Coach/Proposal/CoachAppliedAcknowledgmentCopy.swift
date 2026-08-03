@@ -17,7 +17,15 @@ enum CoachAppliedAcknowledgmentCopy {
 
     /// Resolves whether Coach should stay in post-Apply execution tone,
     /// acknowledge a cleared plan, or fall through to regular copy.
+    ///
+    /// Acknowledgment is one-shot: after the user has glanced at the applied
+    /// (or cleared) state once, mode returns `.none` and the normal engine owns copy.
+    /// Dismiss / cancel never enters this path (`proposal.status != .applied`).
     static func planAdjustmentMode(forDayKey dayKey: String) -> CoachPlanAdjustmentMode {
+        guard MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey) else {
+            return .none
+        }
+
         let adjustments = CoachAdjustmentProvenanceStore.adjustments(forDayKey: dayKey)
             .filter { $0.kind != .guidanceOnly }
         guard !adjustments.isEmpty else {

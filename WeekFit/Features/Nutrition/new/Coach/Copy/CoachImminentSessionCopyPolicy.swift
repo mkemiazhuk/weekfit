@@ -88,7 +88,7 @@ enum CoachImminentSessionCopyPolicy {
             if input.dayReadiness.isLowRecovery {
                 return .en(
                     "\(titleEN) \(minutesEN) (\(durationClauseEN)) — recovery is still lagging.",
-                    "\\(titleRU.capitalized) \\(minutesRU) (\\(durationClauseRU)) — тело ещё не восстановилось."
+                    "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — тело ещё не восстановилось."
                 )
             }
             return .en(
@@ -97,10 +97,33 @@ enum CoachImminentSessionCopyPolicy {
             )
         }
 
-        return .en(
-            "\(titleEN) \(minutesEN) (\(durationClauseEN)) — time to settle pace and legs.",
-            "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — пора настроить темп и ноги."
-        )
+        switch activity.activityType {
+        case .hiit:
+            return .en(
+                "\(titleEN) \(minutesEN) (\(durationClauseEN)) — warm up before the first hard interval.",
+                "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — разомнитесь до первого жёсткого интервала."
+            )
+        case .cycling:
+            return .en(
+                "\(titleEN) \(minutesEN) (\(durationClauseEN)) — time to settle pace and legs.",
+                "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — пора настроить темп и ноги."
+            )
+        case .running:
+            return .en(
+                "\(titleEN) \(minutesEN) (\(durationClauseEN)) — dial in effort before the first mile.",
+                "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — найдите темп до первого километра."
+            )
+        case .swimming:
+            return .en(
+                "\(titleEN) \(minutesEN) (\(durationClauseEN)) — settle into a steady stroke early.",
+                "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — с первых метров ищите ровный гребок."
+            )
+        default:
+            return .en(
+                "\(titleEN) \(minutesEN) (\(durationClauseEN)) — arrive calm, not already chasing.",
+                "\(titleRU.capitalized) \(minutesRU) (\(durationClauseRU)) — выходите спокойно, без гонки с порога."
+            )
+        }
     }
 
     private static func recommendation(
@@ -113,8 +136,8 @@ enum CoachImminentSessionCopyPolicy {
         if protective {
             if longSession {
                 return .en(
-                    "Keep the first hour easy; shorten the route if legs stay heavy.",
-                    "Первый час держите легко; сократите маршрут, если ноги тяжёлые."
+                    "Keep the first hour easy; shorten the session if legs stay heavy.",
+                    "Первый час держите легко; сократите объём, если ноги тяжёлые."
                 )
             }
             return .en(
@@ -123,16 +146,57 @@ enum CoachImminentSessionCopyPolicy {
             )
         }
 
-        if longSession {
+        switch activity.activityType {
+        case .hiit:
+            if longSession {
+                return .en(
+                    "Ease into the first rounds — quality intervals beat an early blow-up.",
+                    "Первые раунды мягче — лучше качественные интервалы, чем ранний срыв."
+                )
+            }
             return .en(
-                "First hour easy — let breathing and rhythm settle before pushing.",
-                "Первый час легко — дайте дыханию и ритму настроиться до усилия."
+                "Open with a short warm-up, then hit intervals clean — not all-out from round one.",
+                "Короткая разминка, потом чистые интервалы — не на максимум с первого раунда."
+            )
+        case .cycling:
+            if longSession {
+                return .en(
+                    "First hour easy — let breathing and rhythm settle before pushing.",
+                    "Первый час легко — дайте дыханию и ритму настроиться до усилия."
+                )
+            }
+            return .en(
+                "Start easy — let cadence and breathing find their place.",
+                "Начните легко — пусть каденс и дыхание настроятся сами."
+            )
+        case .running:
+            if longSession {
+                return .en(
+                    "First hour easy — let breathing and rhythm settle before pushing.",
+                    "Первый час легко — дайте дыханию и ритму настроиться до усилия."
+                )
+            }
+            return .en(
+                "Start easy — let breathing and rhythm find their place.",
+                "Начните легко — пусть дыхание и ритм настроятся сами."
+            )
+        case .swimming:
+            return .en(
+                "Start easy — find a steady stroke before any speed work.",
+                "Начните легко — сначала ровный гребок, потом скорость."
+            )
+        default:
+            if longSession {
+                return .en(
+                    "First block easy — settle in before you push.",
+                    "Первый блок легко — сначала войдите в ритм, потом усилие."
+                )
+            }
+            return .en(
+                "Start easy — warm up before the hard work.",
+                "Начните легко — разомнитесь до основной работы."
             )
         }
-        return .en(
-            "Start easy — let breathing and rhythm find their place.",
-            "Начните легко — пусть дыхание и ритм настроятся сами."
-        )
     }
 
     private static func avoid(
@@ -140,7 +204,18 @@ enum CoachImminentSessionCopyPolicy {
         protective: Bool
     ) -> CoachBilingualText {
         switch activity.activityType {
-        case .cycling, .running, .swimming:
+        case .hiit:
+            if protective {
+                return .en(
+                    "Don't force every interval to max when recovery is still behind.",
+                    "Не делайте каждый интервал на максимум, пока восстановление отстаёт."
+                )
+            }
+            return .en(
+                "Don't open with an all-out interval — earn the intensity.",
+                "Не открывайте первым интервалом на максимум — интенсивность нужно заслужить."
+            )
+        case .cycling:
             if protective {
                 let durationEN = durationClause(minutes: activity.durationMinutes, russian: false)
                 let durationRU = durationClause(minutes: activity.durationMinutes, russian: true)
@@ -152,6 +227,19 @@ enum CoachImminentSessionCopyPolicy {
             return .en(
                 "Don't open with a sprint or heavy gear.",
                 "Не стартуйте рывком или тяжёлой передачей."
+            )
+        case .running, .swimming:
+            if protective {
+                let durationEN = durationClause(minutes: activity.durationMinutes, russian: false)
+                let durationRU = durationClause(minutes: activity.durationMinutes, russian: true)
+                return .en(
+                    "Don't force the full \(durationEN) effort from the first minutes.",
+                    "Не форсируйте полный объём (\(durationRU)) с первых минут."
+                )
+            }
+            return .en(
+                "Don't open with a sprint from the first minutes.",
+                "Не стартуйте рывком с первых минут."
             )
         case .tennis, .squash:
             return .en(
@@ -183,7 +271,7 @@ enum CoachImminentSessionCopyPolicy {
         }
 
         switch activity.activityType {
-        case .cycling, .running, .swimming:
+        case .cycling, .running, .swimming, .hiit:
             return .en(
                 "10-minute warmup — \(titleEN) at \(time).",
                 "10 минут разминки — \(titleRU) в \(time)."
@@ -219,6 +307,8 @@ enum CoachImminentSessionCopyPolicy {
             return russian ? "пробежка" : "run"
         case .swimming:
             return russian ? "заплыв" : "swim"
+        case .hiit:
+            return russian ? "HIIT" : "HIIT"
         case .tennis:
             return russian ? "теннис" : "tennis"
         case .squash:
@@ -238,6 +328,8 @@ enum CoachImminentSessionCopyPolicy {
             return .en("Before the run", "Перед пробежкой")
         case .swimming:
             return .en("Before the swim", "Перед плаванием")
+        case .hiit:
+            return .en("Before HIIT", "Перед HIIT")
         case .tennis, .squash:
             return .en("Before the match", "Перед игрой")
         default:

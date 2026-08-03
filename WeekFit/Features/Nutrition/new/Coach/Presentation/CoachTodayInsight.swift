@@ -272,6 +272,8 @@ enum CoachPresentationResolver {
             return "figure.run"
         case .swimming:
             return "figure.pool.swim"
+        case .hiit:
+            return "figure.highintensity.intervaltraining"
         case .tennis:
             return "figure.tennis"
         case .squash:

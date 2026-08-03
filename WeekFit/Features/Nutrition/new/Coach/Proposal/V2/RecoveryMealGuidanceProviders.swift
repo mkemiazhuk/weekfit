@@ -258,7 +258,7 @@ enum MealLibraryProvider {
             preferredTypes = ["balanced"]
         }
 
-        let picks = pickMeals(from: context.mealLibrary, preferredTypes: preferredTypes, limit: 2)
+        let picks = pickMeals(from: context.mealLibrary, preferredTypes: preferredTypes, limit: 3)
         let slots = defaultMealSlots(now: context.now, library: picks)
         return picks.enumerated().map { index, meal in
             let slot = slots[min(index, slots.count - 1)]
@@ -327,17 +327,39 @@ enum MealLibraryProvider {
     private static func defaultMealSlots(now: Date, library: [ProposalMealCandidate]) -> [Date] {
         let calendar = Calendar.current
         let base = calendar.startOfDay(for: now)
-        let parsed = library.compactMap { parseSuggestedTime($0.suggestedTime, on: base, calendar: calendar) }
+        let earliest = now.addingTimeInterval(25 * 60)
+
+        let parsed = library
+            .compactMap { parseSuggestedTime($0.suggestedTime, on: base, calendar: calendar) }
+            .filter { $0 >= earliest }
+            .sorted()
         if parsed.count >= 2 {
-            return parsed.sorted()
+            return parsed
         }
+
+        // Full-day fuel: breakfast → lunch → dinner (skip slots already past).
         let breakfast = calendar.date(bySettingHour: 8, minute: 30, second: 0, of: base) ?? now
         let lunch = calendar.date(bySettingHour: 13, minute: 0, second: 0, of: base) ?? now
-        var slots = [max(breakfast, now.addingTimeInterval(45 * 60)), lunch]
-        if let first = parsed.first {
-            slots[0] = max(first, now.addingTimeInterval(30 * 60))
+        let dinner = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: base) ?? now
+
+        var slots = [breakfast, lunch, dinner]
+            .map { max($0, earliest) }
+            .filter { $0 >= earliest }
+
+        // De-dupe when early morning bumps multiple slots to the same window.
+        var unique: [Date] = []
+        for slot in slots {
+            if unique.contains(where: { abs($0.timeIntervalSince(slot)) < 40 * 60 }) { continue }
+            unique.append(slot)
         }
-        return slots
+        if unique.isEmpty {
+            unique = [earliest.addingTimeInterval(20 * 60)]
+        }
+
+        if let first = parsed.first {
+            unique[0] = max(first, earliest)
+        }
+        return unique
     }
 
     private static func parseSuggestedTime(

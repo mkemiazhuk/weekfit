@@ -11,6 +11,7 @@ struct ProposalReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.weekFitPalette) private var palette
     @Query(sort: \PlannedActivity.date) private var plannedActivities: [PlannedActivity]
 
     @State private var proposal: MorningPlanProposal?
@@ -19,8 +20,12 @@ struct ProposalReviewView: View {
     @State private var expandedReasonIds: Set<String> = []
     @State private var didRecordReviewOpen = false
 
+    private var accent: Color { WeekFitTheme.recovery }
+
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            sheetHeader
+
             Group {
                 if let proposal {
                     reviewContent(proposal)
@@ -30,30 +35,65 @@ struct ProposalReviewView: View {
                         systemImage: "calendar.badge.exclamationmark",
                         description: Text(WeekFitLocalizedString("coach.proposal.review.emptyBody"))
                     )
+                    .foregroundStyle(WeekFitTheme.primaryText)
                 }
             }
-            .navigationTitle(WeekFitLocalizedString("coach.proposal.review.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(WeekFitLocalizedString("common.action.close")) {
-                        dismiss()
-                    }
-                    .disabled(isApplying)
-                }
-            }
-            .interactiveDismissDisabled(isApplying)
-            .safeAreaInset(edge: .bottom) {
-                if let proposal, proposal.status != .applied {
-                    stickyFooter(proposal)
-                }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+        .interactiveDismissDisabled(isApplying)
+        .safeAreaInset(edge: .bottom) {
+            if let proposal, proposal.status != .applied {
+                stickyFooter(proposal)
             }
         }
+        .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+        .accessibilityIdentifier("morning.proposal.review")
         .onAppear {
             proposal = MorningProposalStore.proposal(for: dayKey)
             guard !didRecordReviewOpen, let proposal else { return }
             didRecordReviewOpen = true
             MorningProposalAnalytics.reviewOpened(changeCount: proposal.changes.count)
+        }
+    }
+
+    private var sheetHeader: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.shadowContact.opacity(0.18)
+                        : Color.white.opacity(0.14)
+                )
+                .frame(width: 42, height: 4)
+                .padding(.top, 10)
+                .padding(.bottom, 14)
+
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WeekFitLocalizedString("coach.proposal.brief.eyebrow"))
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.15)
+                        .foregroundStyle(accent.opacity(palette.isLight ? 0.92 : 0.78))
+
+                    Text(WeekFitLocalizedString("coach.proposal.review.title"))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                WeekFitCloseButton(size: .large, playsHaptic: false) {
+                    dismiss()
+                }
+                .disabled(isApplying)
+                .opacity(isApplying ? 0.45 : 1)
+                .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
         }
     }
 
@@ -66,115 +106,173 @@ struct ProposalReviewView: View {
                 return name.isEmpty ? nil : name
             }()
         )
-        let recommended = orderedChanges(proposal.changes.filter { $0.kind != .guidanceOnly && $0.defaultSelected })
-        let optional = orderedChanges(proposal.changes.filter { $0.kind != .guidanceOnly && !$0.defaultSelected })
+        let dayChanges = orderedChanges(proposal.changes.filter { $0.kind != .guidanceOnly })
         let tips = orderedChanges(proposal.changes.filter { $0.kind == .guidanceOnly })
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header(proposal, brief: brief)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                heroBrief(proposal, brief: brief)
 
                 if proposal.status == .stale {
                     Text(WeekFitLocalizedString("coach.proposal.review.staleBanner"))
-                        .font(.footnote)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.7))
-                        .padding(12)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
+                        .padding(14)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .weekFitPremiumCard(emphasis: .standard, accent: WeekFitTheme.recovery)
+                        .weekFitPremiumCard(emphasis: .accent, accent: accent)
                 }
 
-                if !recommended.isEmpty {
-                    sectionLabel(WeekFitLocalizedString("coach.proposal.review.section.recommended"))
-                    ForEach(recommended) { change in
-                        changeRow(change)
-                    }
-                }
-
-                if !optional.isEmpty {
-                    sectionLabel(WeekFitLocalizedString("coach.proposal.review.section.optional"))
-                    ForEach(optional) { change in
-                        changeRow(change)
-                    }
+                if !dayChanges.isEmpty {
+                    dayTimelineSection(dayChanges)
                 }
 
                 if !tips.isEmpty {
-                    sectionLabel(WeekFitLocalizedString("coach.proposal.review.section.tips"))
-                    ForEach(tips) { change in
-                        changeRow(change)
-                    }
+                    tipsSection(tips)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 120)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
         }
-        .background(WeekFitTheme.cardSurface.ignoresSafeArea())
     }
 
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.weight(.bold))
-            .fontDesign(.rounded)
-            .tracking(0.6)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-            .textCase(.uppercase)
-            .padding(.top, 4)
-    }
-
-    private func header(_ proposal: MorningPlanProposal, brief: MorningProposalBrief) -> some View {
-        let selected = proposal.changes.filter(\.isSelected).count
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(brief.eyebrow)
+    private func dayTimelineSection(_ changes: [CoachProposedChange]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(WeekFitLocalizedString("coach.proposal.review.section.day"))
                 .font(.caption2.weight(.bold))
                 .fontDesign(.rounded)
-                .tracking(1.2)
-                .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                .tracking(1.15)
+                .foregroundStyle(WeekFitTheme.secondaryText)
+                .textCase(.uppercase)
+                .padding(.leading, 2)
 
-            Text(brief.headline)
-                .font(.title3.weight(.bold))
+            VStack(spacing: 0) {
+                ForEach(Array(changes.enumerated()), id: \.element.id) { index, change in
+                    timelineRow(change, isLast: index == changes.count - 1)
+                }
+            }
+        }
+    }
+
+    private func tipsSection(_ tips: [CoachProposedChange]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(WeekFitLocalizedString("coach.proposal.review.section.tips"))
+                .font(.caption2.weight(.bold))
                 .fontDesign(.rounded)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel(brief.headline)
+                .tracking(1.15)
+                .foregroundStyle(WeekFitTheme.secondaryText)
+                .textCase(.uppercase)
+                .padding(.leading, 2)
 
-            if !brief.actionLines.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(brief.actionLines.prefix(3).enumerated()), id: \.offset) { _, line in
-                        HStack(alignment: .top, spacing: 6) {
-                            Text("•")
-                                .font(.footnote.weight(.bold))
-                                .foregroundStyle(WeekFitTheme.recovery.opacity(0.8))
-                            Text(line)
-                                .font(.footnote.weight(.medium))
-                                .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
-                                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                ForEach(tips) { tip in
+                    tipRow(tip)
+                }
+            }
+        }
+    }
+
+    private func heroBrief(_ proposal: MorningPlanProposal, brief: MorningProposalBrief) -> some View {
+        let selected = proposal.changes.filter { $0.kind != .guidanceOnly && $0.isSelected }.count
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.recoverySoft
+                                : accent.opacity(0.16)
+                        )
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "sun.horizon.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent)
+                }
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(brief.headline)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(brief.headline)
+
+                    Text(WeekFitLocalizedString("coach.proposal.review.heroSupport"))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2)
+                }
+            }
+
+            if !brief.dayMoments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(brief.dayMoments) { moment in
+                            HStack(spacing: 6) {
+                                Image(systemName: moment.systemImage)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(accent)
+                                Text(moment.timeLabel)
+                                    .font(.caption2.weight(.bold))
+                                    .fontDesign(.rounded)
+                                    .foregroundStyle(WeekFitTheme.secondaryText)
+                                Text(moment.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(WeekFitTheme.primaryText)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background {
+                                Capsule(style: .continuous)
+                                    .fill(
+                                        palette.isLight
+                                            ? WeekFitLightTokens.internalTile
+                                            : WeekFitTheme.whiteOpacity(0.06)
+                                    )
+                            }
                         }
                     }
                 }
             }
 
-            if let meta = brief.metaLine {
-                Text(meta)
-                    .font(.caption)
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Text(
-                String(
-                    format: WeekFitLocalizedString("coach.proposal.review.selectedCountFormat"),
-                    selected
+            HStack(spacing: 8) {
+                metaChip(
+                    String(
+                        format: WeekFitLocalizedString("coach.proposal.review.selectedCountFormat"),
+                        selected
+                    )
                 )
-            )
-            .font(.footnote)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+                if let meta = brief.metaLine {
+                    metaChip(meta)
+                }
+            }
         }
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .weekFitPremiumCard(emphasis: .elevated, accent: accent)
         .accessibilityElement(children: .combine)
     }
 
+    private func metaChip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .fontDesign(.rounded)
+            .foregroundStyle(WeekFitTheme.secondaryText)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                Capsule()
+                    .fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.internalTile
+                            : WeekFitTheme.whiteOpacity(0.06)
+                    )
+            }
+    }
+
     private func orderedChanges(_ changes: [CoachProposedChange]) -> [CoachProposedChange] {
-        // Actionable plan changes first; tips are informational and sit below.
         changes.sorted { lhs, rhs in
             let lTip = lhs.kind == .guidanceOnly
             let rTip = rhs.kind == .guidanceOnly
@@ -183,85 +281,156 @@ struct ProposalReviewView: View {
         }
     }
 
-    private func changeRow(_ change: CoachProposedChange) -> some View {
-        let isTip = change.kind == .guidanceOnly
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                if isTip {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.72))
-                        .frame(minWidth: 44, minHeight: 44, alignment: .top)
-                        .accessibilityHidden(true)
-                } else {
-                    Button {
-                        toggle(change)
-                    } label: {
+    private func timelineRow(_ change: CoachProposedChange, isLast: Bool) -> some View {
+        let timeLabel: String = {
+            let formatter = DateFormatter()
+            formatter.locale = WeekFitCurrentLocale()
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter.string(from: change.sortTime)
+        }()
+
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                Circle()
+                    .fill(change.isSelected ? accent : WeekFitTheme.secondaryText.opacity(0.28))
+                    .frame(width: 9, height: 9)
+                    .padding(.top, 18)
+                if !isLast {
+                    Rectangle()
+                        .fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.divider.opacity(0.7)
+                                : WeekFitTheme.whiteOpacity(0.1)
+                        )
+                        .frame(width: 1.5)
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .frame(width: 12)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    toggle(change)
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(timeLabel)
+                                .font(.caption2.weight(.bold))
+                                .fontDesign(.rounded)
+                                .foregroundStyle(accent.opacity(0.9))
+
+                            Text(rowTitle(change))
+                                .font(.callout.weight(.semibold))
+                                .fontDesign(.rounded)
+                                .foregroundStyle(WeekFitTheme.primaryText)
+                                .multilineTextAlignment(.leading)
+
+                            Text(rowDetail(change))
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(WeekFitTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                        }
+
+                        Spacer(minLength: 0)
+
                         Image(systemName: change.isSelected ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(
-                                change.isSelected ? WeekFitTheme.recovery : WeekFitTheme.whiteOpacity(0.35)
+                                change.isSelected
+                                    ? accent
+                                    : WeekFitTheme.secondaryText.opacity(0.45)
                             )
-                            .frame(minWidth: 44, minHeight: 44, alignment: .top)
+                            .padding(.top, 2)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        change.isSelected
-                            ? WeekFitLocalizedString("coach.proposal.review.a11y.selected")
-                            : WeekFitLocalizedString("coach.proposal.review.a11y.notSelected")
-                    )
-                    .accessibilityHint(WeekFitLocalizedString("coach.proposal.review.a11y.toggleHint"))
-                    .disabled(isApplying)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 14)
+                    .padding(.bottom, 8)
                 }
+                .buttonStyle(.plain)
+                .disabled(isApplying)
+                .accessibilityLabel(
+                    change.isSelected
+                        ? WeekFitLocalizedString("coach.proposal.review.a11y.selected")
+                        : WeekFitLocalizedString("coach.proposal.review.a11y.notSelected")
+                )
+                .accessibilityHint(WeekFitLocalizedString("coach.proposal.review.a11y.toggleHint"))
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(rowTitle(change))
-                        .font(.callout.weight(.semibold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-                    Text(rowDetail(change))
+                if expandedReasonIds.contains(change.id) {
+                    Text(CoachProposalReasonCopy.localizedReason(change.reasonCode))
                         .font(.footnote)
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if expandedReasonIds.contains(change.id) {
-                        Text(CoachProposalReasonCopy.localizedReason(change.reasonCode))
-                            .font(.footnote)
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
-                            .padding(.top, 4)
-                            .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
-                    }
-
-                    Button {
-                        toggleReason(change)
-                    } label: {
-                        Text(
-                            expandedReasonIds.contains(change.id)
-                                ? WeekFitLocalizedString("coach.proposal.review.hideReason")
-                                : WeekFitLocalizedString("coach.proposal.review.showReason")
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(WeekFitTheme.recovery)
-                        .frame(minHeight: 32, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isApplying)
+                        .foregroundStyle(WeekFitTheme.secondaryText)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 4)
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                 }
 
-                Spacer(minLength: 0)
+                Button {
+                    toggleReason(change)
+                } label: {
+                    Text(
+                        expandedReasonIds.contains(change.id)
+                            ? WeekFitLocalizedString("coach.proposal.review.hideReason")
+                            : WeekFitLocalizedString("coach.proposal.review.showReason")
+                    )
+                    .font(.caption.weight(.bold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(accent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 12)
+                    .frame(minHeight: 28, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .disabled(isApplying)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .weekFitPremiumCard(
+                emphasis: .standard,
+                accent: change.isSelected ? accent : nil
+            )
+            .padding(.bottom, isLast ? 0 : 10)
+        }
+    }
+
+    private func tipRow(_ change: CoachProposedChange) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "lightbulb.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(accent.opacity(0.85))
+                .frame(width: 28, height: 28)
+                .background {
+                    Circle()
+                        .fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.recoverySoft
+                                : accent.opacity(0.12)
+                        )
+                }
+
+            Text(rowTitle(change))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(WeekFitTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
-        .weekFitPremiumCard(emphasis: .standard, accent: nil)
-        .accessibilityElement(children: .contain)
+        .weekFitPremiumCard(emphasis: .compact)
     }
 
     private func stickyFooter(_ proposal: MorningPlanProposal) -> some View {
-        VStack(spacing: 10) {
+        let canApply = !proposal.selectedChanges.isEmpty && !isApplying
+
+        return VStack(spacing: 10) {
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Color.red.opacity(0.9))
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.critical
+                            : Color.red.opacity(0.9)
+                    )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityLabel(errorMessage)
             }
@@ -269,21 +438,28 @@ struct ProposalReviewView: View {
             Button {
                 apply(proposal)
             } label: {
-                Text(
-                    isApplying
-                        ? WeekFitLocalizedString("coach.proposal.review.applying")
-                        : WeekFitLocalizedString("coach.proposal.review.apply")
-                )
-                .font(.callout.weight(.bold))
-                .fontDesign(.rounded)
+                HStack(spacing: 8) {
+                    if isApplying {
+                        ProgressView()
+                            .tint(WeekFitTheme.primaryCTAForeground)
+                    }
+                    Text(
+                        isApplying
+                            ? WeekFitLocalizedString("coach.proposal.review.applying")
+                            : WeekFitLocalizedString("coach.proposal.review.apply")
+                    )
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(WeekFitTheme.primaryCTAForeground)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .frame(height: 54)
+                .background {
+                    Capsule()
+                        .fill(accent.opacity(canApply ? 1 : 0.38))
+                }
             }
             .buttonStyle(.plain)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.96))
-            .background(WeekFitTheme.recovery.opacity(proposal.selectedChanges.isEmpty || isApplying ? 0.35 : 0.95))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .disabled(proposal.selectedChanges.isEmpty || isApplying)
+            .disabled(!canApply)
             .accessibilityHint(WeekFitLocalizedString("coach.proposal.review.a11y.applyHint"))
 
             Button(WeekFitLocalizedString("coach.proposal.review.keepPlan")) {
@@ -291,16 +467,34 @@ struct ProposalReviewView: View {
                 onDismissPlan()
                 dismiss()
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
+            .font(.subheadline.weight(.semibold))
+            .fontDesign(.rounded)
+            .foregroundStyle(WeekFitTheme.secondaryText)
             .buttonStyle(.plain)
             .disabled(isApplying)
             .frame(minHeight: 44)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background {
+            Rectangle()
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.surfacePrimary.opacity(0.96)
+                        : WeekFitTheme.cardSurfaceElevated.opacity(0.96)
+                )
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.divider.opacity(0.55)
+                                : WeekFitTheme.whiteOpacity(0.08)
+                        )
+                        .frame(height: 0.5)
+                }
+                .ignoresSafeArea(edges: .bottom)
+        }
     }
 
     private func toggle(_ change: CoachProposedChange) {

@@ -4,6 +4,8 @@ import XCTest
 final class CoachAppliedAcknowledgmentCopyTests: XCTestCase {
 
     override func tearDown() {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+        MorningProposalPresenter.resetAppliedAcknowledgmentShownForTests(dayKey: dayKey)
         MorningProposalStore.resetAllForTests()
         CoachDecisionHistoryStore.resetAllForTests()
         CoachAdjustmentProvenanceStore.resetAllForTests()
@@ -41,6 +43,7 @@ final class CoachAppliedAcknowledgmentCopyTests: XCTestCase {
 
     func testDeletedCoachAdjustmentClearsAppliedExecutingMode() {
         let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+        MorningProposalPresenter.resetAppliedAcknowledgmentShownForTests(dayKey: dayKey)
         CoachAdjustmentProvenanceStore.upsert(
             AppliedCoachAdjustment(
                 id: "adj-1",
@@ -78,8 +81,50 @@ final class CoachAppliedAcknowledgmentCopyTests: XCTestCase {
         )
     }
 
+    func testOneShotAcknowledgmentGraduatesToNormalEngine() {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+        MorningProposalPresenter.resetAppliedAcknowledgmentShownForTests(dayKey: dayKey)
+        CoachAdjustmentProvenanceStore.upsert(
+            AppliedCoachAdjustment(
+                id: "adj-meal",
+                dayKey: dayKey,
+                proposalId: "p1",
+                changeId: "c1",
+                kind: .createMealFromLibrary,
+                activityId: "meal-1",
+                reasonCode: .libraryMealSupport,
+                originalSnapshot: nil,
+                appliedSnapshot: CoachActivitySnapshot(
+                    activityId: "meal-1",
+                    date: Date(),
+                    type: "meal",
+                    title: "Toast",
+                    durationMinutes: 0,
+                    isCompleted: false,
+                    isSkipped: false,
+                    source: "planner"
+                ),
+                appliedAt: Date(),
+                userManuallyEditedAfterApply: false,
+                terminalOutcome: nil
+            )
+        )
+
+        XCTAssertEqual(
+            CoachAppliedAcknowledgmentCopy.planAdjustmentMode(forDayKey: dayKey),
+            .appliedExecuting
+        )
+
+        MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
+        XCTAssertEqual(
+            CoachAppliedAcknowledgmentCopy.planAdjustmentMode(forDayKey: dayKey),
+            .none
+        )
+    }
+
     func testPlanAdjustmentModeFromAppliedStore() {
         let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+        MorningProposalPresenter.resetAppliedAcknowledgmentShownForTests(dayKey: dayKey)
         let proposal = MorningPlanProposal(
             id: "p1",
             dayKey: dayKey,

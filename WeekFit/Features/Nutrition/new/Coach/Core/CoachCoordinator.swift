@@ -65,6 +65,14 @@ final class CoachCoordinator: ObservableObject {
         return recomputeIfNeeded(input: latestInput, reason: reason)
     }
 
+    /// Drops the fingerprint gate so copy that depends on external day flags
+    /// (e.g. one-shot applied acknowledgment) can rebuild immediately.
+    @discardableResult
+    func forceRecompute(reason: String) -> CoachState {
+        lastResolvedFingerprint = nil
+        return recomputeIfNeeded(reason: reason)
+    }
+
     @discardableResult
     func forceRecomputeForLanguageChange(reason: String) -> CoachState {
         // Prefer live cache; fall back to the input baked into visible state when
