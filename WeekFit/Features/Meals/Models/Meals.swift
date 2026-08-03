@@ -614,4 +614,55 @@ enum MealBuilderTitleComposer {
 
         return resolvedIngredients.first.map(titleForIngredient)
     }
+
+    /// Maps a stored English/Russian recipe title into the active UI language
+    /// by swapping known Meal Builder ingredient labels.
+    static func localizedStoredTitle(_ title: String) -> String {
+        remapStoredTitle(title, toRussian: WeekFitUsesRussianLanguage())
+    }
+
+    static func remapStoredTitle(_ title: String, toRussian: Bool) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return title }
+
+        // Longer names first so "Sweet Potato" wins over "Potato".
+        let ingredients = MealBuilderDemoData.ingredients.sorted {
+            max($0.title.count, $0.russianTitle.count) > max($1.title.count, $1.russianTitle.count)
+        }
+
+        var result = trimmed
+        for ingredient in ingredients {
+            let source = toRussian ? ingredient.title : ingredient.russianTitle
+            let target = toRussian ? ingredient.russianTitle : ingredient.title
+            guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
+                continue
+            }
+            result = replaceWholePhrase(source, with: target, in: result)
+        }
+        return result
+    }
+
+    private static func replaceWholePhrase(_ phrase: String, with replacement: String, in text: String) -> String {
+        guard !phrase.isEmpty else { return text }
+
+        // Space-padded matching works for both Latin and Cyrillic (unlike \\b).
+        let haystack = " \(text) "
+        let needle = " \(phrase) "
+        guard let regex = try? NSRegularExpression(
+            pattern: NSRegularExpression.escapedPattern(for: needle),
+            options: [.caseInsensitive]
+        ) else {
+            return text
+        }
+
+        let range = NSRange(haystack.startIndex..<haystack.endIndex, in: haystack)
+        let replaced = regex.stringByReplacingMatches(
+            in: haystack,
+            options: [],
+            range: range,
+            withTemplate: " \(replacement) "
+        )
+        return replaced.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+    }
 }
