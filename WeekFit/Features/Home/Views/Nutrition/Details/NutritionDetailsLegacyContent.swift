@@ -662,7 +662,7 @@ private struct MealTimelineCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(meal.title)
+                    Text(timelineTitle(for: meal))
                         .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
                         .foregroundStyle(WeekFitTheme.primaryText)
                         .lineLimit(1)
@@ -788,6 +788,23 @@ private struct MealTimelineCard: View {
                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
         }
         .font(.system(size: 10, weight: .medium, design: .rounded))
+    }
+
+    private func timelineTitle(for meal: PlannedActivity) -> String {
+        if let catalogMeal = CustomMealStore.meal(
+            matchingActivityTitle: meal.title,
+            in: mealCatalog
+        ) {
+            return catalogMeal.localizedShortTitle
+        }
+
+        let trimmedTitle = meal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
+        if quickLocalized != trimmedTitle {
+            return quickLocalized
+        }
+
+        return MealBuilderTitleComposer.localizedStoredTitle(meal.title)
     }
 
     private func mealTimelineIcon(for meal: PlannedActivity) -> String {

@@ -49,6 +49,12 @@ enum QuickLogActivitySync {
             activity.durationMinutes = durationMinutes
             activity.isCompleted = true
             activity.isSkipped = false
+            // Refresh legacy rows that still carry localized titles / plate-dark.
+            activity.title = profile.title
+            let resolvedImage = profile.isWater ? "hydration" : profile.imageName
+            if !resolvedImage.isEmpty {
+                activity.imageName = resolvedImage
+            }
             do {
                 try modelContext.save()
                 recordSuccessfulLog(

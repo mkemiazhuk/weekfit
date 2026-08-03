@@ -116,8 +116,24 @@ enum CustomMealStore {
 
     static func titleTokens(_ title: String) -> [String] {
         normalizedTitle(title)
-            .split(whereSeparator: { $0.isWhitespace || $0 == "," || $0 == "+" || $0 == "-" })
+            .split(whereSeparator: {
+                $0.isWhitespace
+                    || $0 == ","
+                    || $0 == "+"
+                    || $0 == "-"
+                    || $0 == "("
+                    || $0 == ")"
+                    || $0 == "/"
+                    || $0 == "·"
+            })
             .map(String.init)
+            .map { token in
+                // Drop pure numeric amount tokens ("150", "100g").
+                if token.allSatisfy({ $0.isNumber || $0 == "g" || $0 == "м" || $0 == "л" }) {
+                    return ""
+                }
+                return token
+            }
             .filter { $0.count > 1 }
     }
 

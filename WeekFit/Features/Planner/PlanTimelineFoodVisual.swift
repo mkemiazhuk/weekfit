@@ -87,9 +87,20 @@ enum PlanTimelineNutritionVisualResolver {
         // rebuild visuals from ingredient labels found in the activity title.
         if let inferred = inferredBuilderItems(fromTitle: activity.title), !inferred.isEmpty {
             if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
-                return .assetImage(name: primary.imageName, kind: kind)
+                return .assetImage(name: primary.imageName, kind: .meal)
             }
-            return .builderPlate(inferred, kind: kind)
+            return .builderPlate(inferred, kind: .meal)
+        }
+
+        // Also try remapping RU↔EN before giving up (covers mixed-language titles).
+        let remappedEnglish = MealBuilderTitleComposer.remapStoredTitle(activity.title, toRussian: false)
+        if remappedEnglish != activity.title,
+           let inferred = inferredBuilderItems(fromTitle: remappedEnglish),
+           !inferred.isEmpty {
+            if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
+                return .assetImage(name: primary.imageName, kind: .meal)
+            }
+            return .builderPlate(inferred, kind: .meal)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
@@ -162,11 +173,20 @@ enum PlanTimelineNutritionVisualResolver {
 
         let imageName = activity.imageName.lowercased()
         if imageName.hasPrefix("ingredient-") {
-            return .product
+            return .meal
         }
 
+        // Quick Log recipes without a catalog hit are still meals — reserve the
+        // takeout-bag glyph for real food products / barcode items.
         let source = activity.source.lowercased()
         if source == "today" || source == "nutritionlog" || source == "foodlog" {
+            if inferredBuilderItems(fromTitle: activity.title) != nil {
+                return .meal
+            }
+            // Heuristic: multi-token builder-style titles → meal; single product names → product.
+            if CustomMealStore.titleTokens(activity.title).count >= 2 {
+                return .meal
+            }
             return .product
         }
 
@@ -234,10 +254,9 @@ enum PlanTimelineNutritionVisualResolver {
     /// Reconstruct builder visuals from a localized/English activity title when the
     /// catalog row is missing or title matching failed (common for Quick Log).
     private static func inferredBuilderItems(fromTitle title: String) -> [MealBuilderImageItem]? {
-        let paddedTitle = " \(CustomMealStore.normalizedTitle(title)) "
-        guard paddedTitle.trimmingCharacters(in: .whitespacesAndNewlines).count > 1 else {
-            return nil
-        }
+        let tokens = Set(CustomMealStore.titleTokens(title))
+        let normalizedFull = CustomMealStore.normalizedTitle(title)
+        guard !tokens.isEmpty || !normalizedFull.isEmpty else { return nil }
 
         let matched = MealBuilderDemoData.ingredients.compactMap { ingredient -> MealBuilderImageItem? in
             let labels = [
@@ -247,7 +266,15 @@ enum PlanTimelineNutritionVisualResolver {
             .filter { !$0.isEmpty }
 
             let hits = labels.contains { label in
-                paddedTitle.contains(" \(label) ")
+                if tokens.contains(label) { return true }
+                // Multi-word labels ("sweet potato" / "батат") and titles with
+                // amounts ("Индейка (150 г)") — substring match on normalized text.
+                if normalizedFull == label { return true }
+                if normalizedFull.contains(label), label.count >= 3 {
+                    return true
+                }
+                let labelTokens = CustomMealStore.titleTokens(label)
+                return !labelTokens.isEmpty && labelTokens.allSatisfy(tokens.contains)
             }
             guard hits else { return nil }
 
@@ -283,11 +310,30 @@ enum PlanTimelineNutritionVisualResolver {
             return nil
         }
 
-        if let matched = CustomMealStore.meal(
-            matchingActivityTitle: activity.title,
-            in: customMeals
-        ) {
-            return matched
+        let titleCandidates = [
+            activity.title,
+            MealBuilderTitleComposer.remapStoredTitle(activity.title, toRussian: false),
+            MealBuilderTitleComposer.remapStoredTitle(activity.title, toRussian: true),
+        ]
+
+        for candidate in titleCandidates {
+            if let matched = CustomMealStore.meal(
+                matchingActivityTitle: candidate,
+                in: customMeals
+            ) {
+                return matched
+            }
+        }
+
+        // Ingredient-token overlap against every catalog builder meal (covers
+        // localized titles that don't exact-match composed EN/RU candidates).
+        let activityTokens = Set(CustomMealStore.titleTokens(activity.title))
+        if activityTokens.count >= 2 {
+            if let overlapMatch = customMeals.first(where: { meal in
+                CustomMealStore.activityTitleMatchesBuilderIngredients(activity.title, meal: meal)
+            }) {
+                return overlapMatch
+            }
         }
 
         // Fall back to catalog matcher title/image rules without its nutritionLog skip —
@@ -351,11 +397,14 @@ struct PlanTimelineNutritionAvatar: View {
     private var content: some View {
         switch visual {
         case .assetImage(let name, _):
+            // Ingredient cutouts need fill+clip at timeline size — scaledToFit
+            // leaves a tiny floating glyph that reads as "no image".
             Image(name)
                 .resizable()
                 .interpolation(.high)
-                .scaledToFit()
+                .scaledToFill()
                 .frame(width: contentSize, height: contentSize)
+                .clipShape(Circle())
 
         case .localPhoto(let image, _):
             Image(uiImage: image)
@@ -365,7 +414,7 @@ struct PlanTimelineNutritionAvatar: View {
                 .clipShape(Circle())
 
         case .builderPlate(let items, _):
-            if contentSize <= 28,
+            if contentSize <= 36,
                let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
                 // Tiny Nutrition Details dots can't render a readable plate collage.
                 Image(primary.imageName)

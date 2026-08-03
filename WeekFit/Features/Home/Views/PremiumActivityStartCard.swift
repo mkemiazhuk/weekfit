@@ -203,4 +203,15 @@ enum QuickActivityAccent {
         guard isLight else { return WeekFitTheme.whiteOpacity(0.08) }
         return accent.opacity(0.16)
     }
+
+    /// Matches Quick Food / Drink frequent tile gradient chrome.
+    static func cardTop(accent: Color, isLight: Bool) -> Color {
+        guard isLight else { return accent.opacity(0.18) }
+        return accent.opacity(0.16)
+    }
+
+    static func cardBottom(accent: Color, isLight: Bool) -> Color {
+        guard isLight else { return accent.opacity(0.06) }
+        return accent.opacity(0.05)
+    }
 }

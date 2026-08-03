@@ -147,13 +147,21 @@ struct PremiumActivityStartSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
 
-                        ForEach(frequent, id: \.option.imageName) { pick in
-                            activityFrequentCard(
-                                option: pick.option,
-                                badge: pick.badge,
-                                isBlocked: isBlocked
-                            )
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(Array(frequent.enumerated()), id: \.element.option.imageName) { _, pick in
+                                    activityFrequentCard(
+                                        option: pick.option,
+                                        badge: pick.badge,
+                                        isBlocked: isBlocked
+                                    )
+                                }
+                            }
+                            .padding(.vertical, 14)
+                            .padding(.trailing, 18)
                         }
+                        .padding(.horizontal, -18)
+                        .padding(.leading, 18)
                     }
                 }
 
@@ -250,93 +258,87 @@ struct PremiumActivityStartSheet: View {
     ) -> some View {
         let duration = defaultDuration(for: option, type: selectedPlannerType)
         let intensityKey = ActivityOptionPresentation.intensityLabelKey(for: option)
+        let cardWidth: CGFloat = 172
+        let cardHeight: CGFloat = 228
+        let cardRadius: CGFloat = 26
+        let accent = activityAccent
 
         return Button {
             start(option: option, duration: duration)
         } label: {
-            HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 activityThumb(option.imageName)
-                    .frame(width: 72, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(width: 108, height: 108)
+                    .clipShape(Circle())
                     .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.black.opacity(palette.isLight ? 0.05 : 0.0), lineWidth: 1)
+                        Circle()
+                            .strokeBorder(Color.black.opacity(palette.isLight ? 0.05 : 0.0), lineWidth: 0.8)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 5) {
-                        Image(systemName: badge.symbolName)
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(activityAccent)
-                        Text(WeekFitLocalizedString(badge.localizationKey))
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                Text(localizedOptionTitle(option.title))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .lineLimit(1)
+                    .padding(.top, 12)
+
+                Text(WeekFitLocalizedString(intensityKey))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
+                    .lineLimit(1)
+                    .padding(.top, 2)
+
+                Spacer(minLength: 8)
+
+                HStack(alignment: .center, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(accent)
+                        Text(formattedDurationLabel(duration))
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background {
-                        Capsule()
-                            .fill(
-                                palette.isLight
-                                    ? WeekFitLightTokens.internalTile
-                                    : WeekFitTheme.whiteOpacity(0.08)
-                            )
-                    }
+                    .fixedSize()
 
-                    Text(localizedOptionTitle(option.title))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.primaryText)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.88)
+                    Spacer(minLength: 2)
 
-                    HStack(spacing: 12) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(activityAccent)
-                            Text(formattedDurationLabel(duration))
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .offset(x: 0.5)
+                        .frame(width: 36, height: 36)
+                        .background {
+                            Circle().fill(accent)
                         }
-
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(activityAccent)
-                            Text(WeekFitLocalizedString(intensityKey))
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
-                                .lineLimit(1)
-                        }
-                    }
+                        .shadow(
+                            color: palette.isLight ? accent.opacity(0.28) : .clear,
+                            radius: 6,
+                            y: 2
+                        )
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.white)
-                    .offset(x: 0.5)
-                    .frame(width: 44, height: 44)
-                    .background {
-                        Circle().fill(activityAccent)
-                    }
-                    .shadow(
-                        color: palette.isLight ? activityAccent.opacity(0.28) : .clear,
-                        radius: 8,
-                        y: 3
-                    )
             }
             .padding(14)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
             .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(QuickActivityAccent.frequentFill(accent: activityAccent, isLight: palette.isLight))
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                QuickActivityAccent.cardTop(accent: accent, isLight: palette.isLight),
+                                QuickActivityAccent.cardBottom(accent: accent, isLight: palette.isLight)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                             .fill(
                                 palette.isLight
-                                    ? Color.clear
+                                    ? Color.white.opacity(0.22)
                                     : WeekFitTheme.cardBackground.opacity(0.55)
                             )
                     }
@@ -347,16 +349,48 @@ struct PremiumActivityStartSheet: View {
                     )
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                     .strokeBorder(
-                        QuickActivityAccent.frequentStroke(accent: activityAccent, isLight: palette.isLight),
+                        palette.isLight
+                            ? accent.opacity(0.14)
+                            : WeekFitTheme.whiteOpacity(0.08),
                         lineWidth: 0.75
                     )
+            }
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 4) {
+                    Image(systemName: badge.symbolName)
+                        .font(.system(size: 9, weight: .bold))
+                    Text(WeekFitLocalizedString(badge.localizationKey))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(palette.isLight ? accent : WeekFitTheme.secondaryText.opacity(0.88))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background {
+                    Capsule()
+                        .fill(
+                            palette.isLight
+                                ? Color.white.opacity(0.92)
+                                : WeekFitTheme.whiteOpacity(0.08)
+                        )
+                }
+                .overlay {
+                    Capsule().strokeBorder(
+                        palette.isLight
+                            ? accent.opacity(0.28)
+                            : WeekFitTheme.whiteOpacity(0.10),
+                        lineWidth: 0.8
+                    )
+                }
+                .padding(10)
             }
             .opacity(isBlocked ? 0.55 : 1)
         }
         .buttonStyle(.plain)
         .disabled(isBlocked)
+        .accessibilityLabel(localizedOptionTitle(option.title))
     }
 
     @ViewBuilder

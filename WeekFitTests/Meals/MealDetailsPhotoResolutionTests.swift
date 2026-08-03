@@ -267,6 +267,38 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
+        guard case .assetImage(let name, let kind) = visual else {
+            return XCTFail("Expected inferred ingredient asset, got \(visual)")
+        }
+        XCTAssertTrue(
+            name == "ingredient-turkey" || name == "ingredient-cucumber",
+            "Unexpected primary ingredient \(name)"
+        )
+        XCTAssertEqual(kind, .meal)
+    }
+
+    func testNutritionVisualInfersFromRussianTitleWithGramAmounts() throws {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: PlannerType.meal.title,
+            title: "Индейка (150 г) + Огурец (100 г)",
+            durationMinutes: 10,
+            icon: "fork.knife",
+            imageName: "",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            calories: 250,
+            source: "today"
+        )
+
+        let visual = try XCTUnwrap(
+            PlanTimelineNutritionVisualResolver.resolve(
+                for: activity,
+                customMeals: []
+            )
+        )
+
         guard case .assetImage(let name, _) = visual else {
             return XCTFail("Expected inferred ingredient asset, got \(visual)")
         }
