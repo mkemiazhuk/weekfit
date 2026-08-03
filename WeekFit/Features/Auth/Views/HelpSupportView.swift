@@ -16,7 +16,7 @@ struct HelpSupportView: View {
     var body: some View {
         ZStack {
             WeekFitTheme.backgroundColor.ignoresSafeArea()
-            ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
+            ProfilePremiumBackground(accent: WeekFitTheme.settingsAccent)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -78,7 +78,7 @@ private extension HelpSupportView {
             VStack(alignment: .leading, spacing: 7) {
                 Text(WeekFitLocalizedString("support.help.hero"))
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
             }
             .padding(.top, 2)
         }
@@ -87,7 +87,7 @@ private extension HelpSupportView {
     var headerSection: some View {
         ProfilePremiumHeader(
             title: WeekFitLocalizedString("support.help.title"),
-            accent: WeekFitStyle.brandGreen
+            accent: WeekFitTheme.settingsAccent
         ) {
             dismiss()
         }
@@ -97,7 +97,7 @@ private extension HelpSupportView {
         supportSection(title: WeekFitLocalizedString("support.help.quickHelp")) {
             SupportRow(
                 icon: "message.fill",
-                iconColor: WeekFitStyle.brandGreen,
+                iconColor: WeekFitTheme.settingsAccent,
                 title: WeekFitLocalizedString("support.contactSupport"),
                 subtitle: WeekFitLocalizedString("support.contactSupport.subtitle")
             ) {
@@ -108,7 +108,7 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "questionmark",
-                iconColor: .cyan,
+                iconColor: WeekFitTheme.recovery,
                 title: WeekFitLocalizedString("support.faq.title"),
                 subtitle: WeekFitLocalizedString("support.faq.subtitle")
             ) {
@@ -117,7 +117,7 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "doc.text.fill",
-                iconColor: .teal,
+                iconColor: WeekFitTheme.brandGold,
                 title: WeekFitLocalizedString("support.guides.title"),
                 subtitle: WeekFitLocalizedString("support.guides.subtitle")
             ) {
@@ -175,17 +175,17 @@ private extension HelpSupportView {
     var footerSection: some View {
         VStack(spacing: 12) {
             Capsule()
-                .fill(.white.opacity(0.08))
-                .frame(width: 44, height: 5)
+                .fill(WeekFitTheme.borderSoft.opacity(0.7))
+                .frame(width: 44, height: 4)
 
             VStack(spacing: 4) {
                 Text(WeekFitLocalizedString("support.help.footerTitle"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.36))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
 
                 Text(WeekFitLocalizedString("support.help.footerSubtitle"))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
             }
         }
         .frame(maxWidth: .infinity)
@@ -269,21 +269,12 @@ private extension HelpSupportView {
                             Text(WeekFitLocalizedString("support.sheet.openEmail"))
                         }
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(WeekFitTheme.primaryCTAForeground)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 50)
+                        .frame(height: 52)
                         .background {
                             Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            WeekFitStyle.brandGreen,
-                                            WeekFitStyle.brandGreen.opacity(0.84)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                                .fill(WeekFitTheme.primaryCTA)
                         }
                     }
                     .buttonStyle(PressableButtonStyle())
@@ -296,15 +287,15 @@ private extension HelpSupportView {
                             Text(WeekFitLocalizedString("support.copyEmailAddress"))
                         }
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                        .foregroundStyle(WeekFitTheme.primaryText)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 50)
+                        .frame(height: 52)
                         .background {
                             Capsule()
-                                .fill(.white.opacity(0.07))
+                                .fill(WeekFitTheme.whiteOpacity(0.06))
                                 .overlay {
                                     Capsule()
-                                        .stroke(.white.opacity(0.09), lineWidth: 1)
+                                        .stroke(WeekFitTheme.borderSoft.opacity(0.8), lineWidth: 1)
                                 }
                         }
                     }
@@ -429,7 +420,7 @@ private struct SupportRow: View {
 
                     Text(subtitle)
                         .font(.system(size: 13.2, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -439,7 +430,7 @@ private struct SupportRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.22))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
             }
             .padding(.horizontal, 17)
             .padding(.vertical, 12)
@@ -490,7 +481,7 @@ struct FAQView: View {
             title: WeekFitLocalizedString("support.faq.title"),
             subtitle: WeekFitLocalizedString("support.faq.subtitle"),
             icon: "questionmark",
-            iconColor: .cyan,
+            iconColor: WeekFitTheme.settingsAccent,
             items: items,
             dismiss: dismiss
         )
@@ -512,7 +503,7 @@ struct GuidesView: View {
             title: WeekFitLocalizedString("support.guides.title"),
             subtitle: WeekFitLocalizedString("support.guides.subtitle"),
             icon: "doc.text.fill",
-            iconColor: .teal,
+            iconColor: WeekFitTheme.brandGold,
             items: items,
             dismiss: dismiss
         )
@@ -536,7 +527,6 @@ struct SupportDetailView: View {
             ProfilePremiumBackground(accent: iconColor)
 
             VStack(spacing: 0) {
-
                 VStack(alignment: .leading, spacing: 18) {
                     headerSection
                     introSection
@@ -544,12 +534,11 @@ struct SupportDetailView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 4)
                 .padding(.bottom, 18)
-                .background(Color.black)
 
                 ScrollView(showsIndicators: false) {
                     contentSection
                         .padding(.horizontal, 22)
-                        .padding(.bottom, 22)
+                        .padding(.bottom, 28)
                 }
             }
         }
@@ -604,7 +593,7 @@ private extension SupportDetailView {
 
             Text(subtitle)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.5))
+                .foregroundStyle(WeekFitTheme.secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -630,15 +619,12 @@ private extension SupportDetailView {
 
             Text(text)
                 .font(.system(size: 13.2, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                .foregroundStyle(WeekFitTheme.secondaryText)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background {
-            Color.clear
-                .profilePremiumCard(cornerRadius: 22, glow: iconColor)
-        }
+        .padding(16)
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 22)
     }
 }

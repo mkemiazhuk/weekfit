@@ -248,28 +248,6 @@ extension View {
     }
 
     func profilePremiumSectionCard(cornerRadius: CGFloat = 24) -> some View {
-        // Settings list chrome — shared surface tokens, not full premium elevation.
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            WeekFitTheme.cardSurfaceElevated.opacity(0.92),
-                            WeekFitTheme.cardSurface
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(
-                    color: WeekFitTheme.softShadow,
-                    radius: 14,
-                    y: 6
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(WeekFitTheme.cardBorder.opacity(0.85), lineWidth: 1)
-        }
+        weekFitPremiumCard(emphasis: .standard, cornerRadius: cornerRadius)
     }
 }

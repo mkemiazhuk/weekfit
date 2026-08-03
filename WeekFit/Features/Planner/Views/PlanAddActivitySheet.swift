@@ -39,7 +39,10 @@ private struct PlannerMealSheetHost<Library: View>: View {
             selection: $detent
         )
         .presentationDragIndicator(step == .library ? .visible : .hidden)
-        .weekFitSheetChrome(cornerRadius: step == .library ? 30 : 36)
+        .weekFitSheetChrome(
+            cornerRadius: step == .library ? 30 : 36,
+            background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+        )
     }
 }
 

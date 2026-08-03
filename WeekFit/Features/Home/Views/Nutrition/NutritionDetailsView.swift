@@ -4,6 +4,7 @@ import WeekFitPlanner
 struct NutritionDetailsView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
     @State private var displayedDate: Date
 
@@ -26,11 +27,6 @@ struct NutritionDetailsView: View {
     let mealCatalog: [Meals]
 
     var onDateChanged: (Date) -> Void = { _ in }
-
-    private let proteinColor = NutritionStyle.proteinColor
-    private let carbsColor = NutritionStyle.carbsColor
-    private let fatColor = NutritionStyle.fatColor
-    private let fiberColor = NutritionStyle.fiberColor
 
     init(
         selectedDate: Date,
@@ -71,36 +67,71 @@ struct NutritionDetailsView: View {
     var body: some View {
         let _ = languageManager.selectedLanguage
 
+        Group {
+            if palette.isLight {
+                lightBody
+            } else {
+                NutritionDetailsLegacyContent(
+                    selectedDate: displayedDate,
+                    calories: calories,
+                    protein: protein,
+                    carbs: carbs,
+                    fats: fats,
+                    fiber: fiber,
+                    caloriesGoal: caloriesGoal,
+                    proteinGoal: proteinGoal,
+                    carbsGoal: carbsGoal,
+                    fatsGoal: fatsGoal,
+                    fiberGoal: fiberGoal,
+                    waterLiters: waterLiters,
+                    waterGoal: waterGoal,
+                    meals: meals,
+                    mealCatalog: mealCatalog,
+                    onDateChanged: { newDate in
+                        displayedDate = newDate
+                        onDateChanged(newDate)
+                    }
+                )
+            }
+        }
+    }
+
+    // MARK: - Light (reference redesign)
+
+    private var lightBody: some View {
         ZStack {
-            NutritionStyle.screenBackground
+            NutritionDetailsDesign.canvas
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header
+                NutritionDetailsHeader(
+                    title: WeekFitLocalizedString("nutrition.details.title"),
+                    subtitle: nutritionDetailsDateTitle,
+                    onClose: { dismiss() }
+                )
 
-                HealthDetailsWeekPicker(
+                NutritionWeekSelector(
                     selectedDate: $displayedDate,
-                    accentColor: NutritionStyle.nutritionColor
+                    accentColor: NutritionDetailsDesign.nutritionAccent
                 ) { date in
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onDateChanged(date)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-                .padding(.bottom, 6)
+                .padding(.horizontal, NutritionDetailsDesign.horizontalPadding)
+                .padding(.top, 8)
+                .padding(.bottom, 2)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 7) {
-                        NutritionHeroCard(
+                    VStack(spacing: NutritionDetailsDesign.sectionSpacing) {
+                        NutritionQualityCard(
                             qualityScore: nutritionQualityScore,
-                            primaryInsightText: nutritionPrimaryInsight
+                            primaryInsightText: nutritionPrimaryInsight,
+                            primaryInsight: nutritionPrimaryInsightKind
                         )
 
-                        NutritionBalanceCard(
-                            waterLiters: waterLiters,
-                            waterGoal: waterGoal,
-                            calories: calories,
-                            caloriesGoal: caloriesGoal,
+                        metricsRow
+
+                        MacroBalanceCard(
                             protein: protein,
                             carbs: carbs,
                             fats: fats,
@@ -111,57 +142,89 @@ struct NutritionDetailsView: View {
                             fiberGoal: fiberGoal
                         )
 
-                        MealTimelineCard(
+                        NutritionMealTimelineCard(
                             meals: meals,
-                            mealCatalog: mealCatalog,
-                            proteinColor: proteinColor,
-                            carbsColor: carbsColor,
-                            fatColor: fatColor,
-                            fiberColor: fiberColor
+                            mealCatalog: mealCatalog
                         )
 
-                        noteCard
+                        NutritionEstimateNotice(
+                            message: WeekFitLocalizedString("nutrition.details.note.full")
+                        )
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 28)
+                    .padding(.horizontal, NutritionDetailsDesign.horizontalPadding)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
     }
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(AppText.Nutrition.Details.title)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
+    @ViewBuilder
+    private var metricsRow: some View {
+        let waterPercent = percent(waterLiters, of: waterGoal)
+        let caloriePercent = percent(calories, of: caloriesGoal)
+        let status = hydrationStatus
 
-                Text(nutritionDetailsDateTitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 10) {
+                waterCard(percent: waterPercent, status: status)
+                caloriesCard(percent: caloriePercent)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            WeekFitCloseButton(size: .regular) {
-                dismiss()
+            VStack(spacing: 10) {
+                waterCard(percent: waterPercent, status: status)
+                caloriesCard(percent: caloriePercent)
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 8)
-        .background {
-            NutritionStyle.screenBackground.ignoresSafeArea(edges: .top)
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(WeekFitTheme.whiteOpacity(0.04))
-                .frame(height: 1)
         }
     }
+
+    private func waterCard(
+        percent: Int?,
+        status: (text: String, color: Color)?
+    ) -> some View {
+        NutritionMetricCard(
+            kind: .water,
+            title: WeekFitLocalizedString("nutrition.details.hydration.short"),
+            valueText: waterGoal > 0
+                ? String(
+                    format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
+                    waterLiters,
+                    waterGoal
+                )
+                : String(
+                    format: WeekFitLocalizedString("nutrition.details.hydration.literFormat"),
+                    waterLiters
+                ),
+            percentOfGoal: percent,
+            progress: waterGoal > 0 ? min(max(waterLiters / waterGoal, 0), 1) : 0,
+            statusText: status?.text,
+            statusColor: status?.color
+        )
+    }
+
+    private func caloriesCard(percent: Int?) -> some View {
+        NutritionMetricCard(
+            kind: .calories,
+            title: WeekFitLocalizedString("nutrition.macro.calories"),
+            valueText: caloriesGoal > 0
+                ? String(
+                    format: WeekFitLocalizedString("nutrition.details.calories.progressFormat"),
+                    Int(calories),
+                    Int(caloriesGoal)
+                )
+                : String(
+                    format: WeekFitLocalizedString("nutrition.details.calories.valueFormat"),
+                    Int(calories)
+                ),
+            percentOfGoal: percent,
+            progress: caloriesGoal > 0 ? min(max(calories / caloriesGoal, 0), 1) : 0,
+            statusText: nil,
+            statusColor: nil
+        )
+    }
+
+    // MARK: - Shared derived state
 
     private var nutritionQualityInput: NutritionQualityPresenter.Input {
         NutritionQualityPresenter.Input(
@@ -176,12 +239,16 @@ struct NutritionDetailsView: View {
             fiberGoal: fiberGoal,
             caloriesGoal: caloriesGoal,
             mealsLogged: !meals.isEmpty,
-            isToday: isToday
+            isToday: Calendar.current.isDate(displayedDate, inSameDayAs: Date())
         )
     }
 
     private var nutritionQualityScore: Int {
         NutritionQualityPresenter.qualityScore(for: nutritionQualityInput)
+    }
+
+    private var nutritionPrimaryInsightKind: NutritionQualityPresenter.PrimaryInsight {
+        NutritionQualityPresenter.primaryInsight(for: nutritionQualityInput)
     }
 
     private var nutritionPrimaryInsight: String {
@@ -195,594 +262,136 @@ struct NutritionDetailsView: View {
         return formatter.string(from: displayedDate)
     }
 
-    private var isToday: Bool {
-        Calendar.current.isDate(displayedDate, inSameDayAs: Date())
-    }
-
-    private var noteCard: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(NutritionStyle.nutritionColor.opacity(0.62))
-                .padding(.top, 1)
-
-            Text(WeekFitLocalizedString("nutrition.details.note.full"))
-                .font(.system(size: NutritionTypography.helperText, weight: .regular, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.32))
-                .lineSpacing(2)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .background(WeekFitTheme.whiteOpacity(0.025))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-// MARK: - Hero
-
-private struct NutritionHeroCard: View {
-    let qualityScore: Int
-    let primaryInsightText: String
-
-    private var progress: CGFloat {
-        CGFloat(min(max(qualityScore, 0), 100)) / 100
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            nutritionRing
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(WeekFitLocalizedString("nutrition.details.quality.title"))
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .tracking(1.6)
-                    .foregroundStyle(NutritionStyle.nutritionColor)
-
-                Text(primaryInsightText)
-                    .font(.system(size: NutritionTypography.heroTitle, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .lineSpacing(1.5)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .layoutPriority(1)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .nutritionCard(glow: NutritionStyle.nutritionColor)
-    }
-
-    private var nutritionRing: some View {
-        WeekFitProgressRing(
-            progress: progress,
-            color: WeekFitProgressRingColor.nutrition,
-            size: 58,
-            strokeWidth: 3.5,
-            gradientColors: [
-                Color(red: 0.58, green: 0.38, blue: 0.96).opacity(0.86),
-                WeekFitProgressRingColor.nutrition,
-                Color(red: 1.00, green: 0.28, blue: 0.38).opacity(0.92),
-                Color(red: 0.36, green: 0.88, blue: 0.44).opacity(0.92)
-            ]
-        ) {
-            VStack(spacing: -2) {
-                Text("\(qualityScore)")
-                    .font(.system(size: NutritionTypography.heroScore, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .monospacedDigit()
-
-                Text("/100")
-                    .font(.system(size: NutritionTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
-            }
-        }
-    }
-}
-
-// MARK: - Balance (hydration + macros)
-
-private struct NutritionBalanceCard: View {
-    let waterLiters: Double
-    let waterGoal: Double
-    let calories: Double
-    let caloriesGoal: Double
-
-    let protein: Double
-    let carbs: Double
-    let fats: Double
-    let fiber: Double
-
-    let proteinGoal: Double
-    let carbsGoal: Double
-    let fatsGoal: Double
-    let fiberGoal: Double
-
-    private var hydrationColor: Color {
-        Color(red: 0.25, green: 0.55, blue: 0.95)
-    }
-
-    private var hydrationStatus: (text: String, color: Color) {
-        guard waterGoal > 0 else {
-            return (
-                WeekFitLocalizedString("nutrition.details.hydration.status.unavailable"),
-                WeekFitTheme.whiteOpacity(0.42)
-            )
-        }
+    private var hydrationStatus: (text: String, color: Color)? {
+        guard waterGoal > 0 else { return nil }
 
         if waterLiters >= waterGoal {
             return (
                 WeekFitLocalizedString("nutrition.details.hydration.status.goalReached"),
-                Color(red: 0.36, green: 0.88, blue: 0.44)
+                WeekFitLightTokens.success
             )
         }
 
         if waterLiters >= waterGoal * 0.85 {
             return (
                 WeekFitLocalizedString("nutrition.details.hydration.status.onTrack"),
-                hydrationColor
+                NutritionDetailsDesign.waterAccent
             )
         }
 
         return (
             WeekFitLocalizedString("nutrition.details.hydration.status.behind"),
-            Color(red: 0.96, green: 0.68, blue: 0.30)
+            NutritionDetailsDesign.waterAccent
         )
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 8) {
-                intakePanel(
-                    icon: "drop.fill",
-                    title: WeekFitLocalizedString("nutrition.details.hydration.short"),
-                    value: waterGoal > 0
-                        ? String(
-                            format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
-                            waterLiters,
-                            waterGoal
-                        )
-                        : String(format: WeekFitLocalizedString("nutrition.details.hydration.literFormat"), waterLiters),
-                    progress: waterGoal > 0 ? min(max(waterLiters / waterGoal, 0), 1) : 0,
-                    color: hydrationColor,
-                    status: hydrationStatus.text,
-                    statusColor: hydrationStatus.color
-                )
-
-                intakePanel(
-                    icon: "flame.fill",
-                    title: WeekFitLocalizedString("nutrition.macro.calories"),
-                    value: caloriesGoal > 0
-                        ? String(format: WeekFitLocalizedString("nutrition.details.calories.progressFormat"), Int(calories), Int(caloriesGoal))
-                        : String(format: WeekFitLocalizedString("nutrition.details.calories.valueFormat"), Int(calories)),
-                    progress: caloriesGoal > 0 ? min(max(calories / caloriesGoal, 0), 1) : 0,
-                    color: NutritionStyle.nutritionColor,
-                    status: nil,
-                    statusColor: nil
-                )
-            }
-
-            Rectangle()
-                .fill(WeekFitTheme.whiteOpacity(0.045))
-                .frame(height: 1)
-
-            SectionLabel(WeekFitLocalizedString("nutrition.details.section.macroBalance"))
-
-            HStack(alignment: .top, spacing: 4) {
-                macroRing(title: WeekFitLocalizedString("nutrition.macro.protein"), value: protein, goal: proteinGoal, color: NutritionStyle.proteinColor)
-                macroRing(title: WeekFitLocalizedString("nutrition.macro.carbs"), value: carbs, goal: carbsGoal, color: NutritionStyle.carbsColor)
-                macroRing(title: WeekFitLocalizedString("nutrition.macro.fats"), value: fats, goal: fatsGoal, color: NutritionStyle.fatColor)
-                macroRing(title: WeekFitLocalizedString("nutrition.macro.fiber"), value: fiber, goal: fiberGoal, color: NutritionStyle.fiberColor)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .nutritionCard(glow: NutritionStyle.nutritionColor)
-    }
-
-    private func intakePanel(
-        icon: String,
-        title: String,
-        value: String,
-        progress: Double,
-        color: Color,
-        status: String?,
-        statusColor: Color?
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(color)
-
-                Text(title)
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.44))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Spacer(minLength: 0)
-
-                if let status, let statusColor {
-                    Text(status)
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(statusColor)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(statusColor.opacity(0.12))
-                        .clipShape(Capsule())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-            }
-
-            Text(value)
-                .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(WeekFitTheme.whiteOpacity(0.06))
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [color.opacity(0.72), color],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * CGFloat(progress))
-                }
-            }
-            .frame(height: 3.5)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.026))
-        }
-    }
-
-    private func macroRing(title: String, value: Double, goal: Double, color: Color) -> some View {
-        let progressValue = goal > 0 ? min(max(value / goal, 0), 1) : 0
-        let progress = CGFloat(progressValue)
-        let percent = Int((progressValue * 100).rounded())
-
-        return VStack(spacing: 5) {
-            WeekFitProgressRing(
-                progress: progress,
-                color: color,
-                size: 46,
-                strokeWidth: 3,
-                gradientColors: [
-                    color.opacity(0.78),
-                    color,
-                    color.opacity(0.90)
-                ]
-            ) {
-                Text("\(percent)%")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-                    .monospacedDigit()
-            }
-
-            VStack(spacing: 0) {
-                Text(title)
-                    .font(.system(size: NutritionTypography.metricTitle, weight: .semibold, design: .rounded))
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Text(String(format: WeekFitLocalizedString("nutrition.details.macro.valueFormat"), Int(value), Int(goal)))
-                    .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.36))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-            }
-        }
-        .frame(maxWidth: .infinity)
+    private func percent(_ value: Double, of goal: Double) -> Int? {
+        guard goal > 0 else { return nil }
+        return Int(((value / goal) * 100).rounded())
     }
 }
 
-// MARK: - Meal Timeline
-
-private struct MealTimelineCard: View {
-    let meals: [PlannedActivity]
-    let mealCatalog: [Meals]
-    let proteinColor: Color
-    let carbsColor: Color
-    let fatColor: Color
-    let fiberColor: Color
-
-    private var timelineChromeColor: Color {
-        WeekFitTheme.whiteOpacity(0.12)
-    }
-
-    private var timelineConnectorColor: Color {
-        WeekFitTheme.whiteOpacity(0.08)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionLabel(WeekFitLocalizedString("nutrition.details.section.mealTimeline"))
-
-            if meals.isEmpty {
-                emptyMeals
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(meals.enumerated()), id: \.element.id) { index, meal in
-                        mealRow(meal, isLast: index == meals.count - 1)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .nutritionCard()
-    }
-
-    private var emptyMeals: some View {
-        VStack(spacing: 7) {
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.26))
-
-            Text(AppText.Nutrition.Details.emptyTitle)
-                .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
-
-            Text(WeekFitLocalizedString("nutrition.details.empty.timelineMessage"))
-                .font(.system(size: NutritionTypography.helperText, weight: .regular, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.38))
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .innerNutritionCard(cornerRadius: 16)
-    }
-
-    private func mealRow(_ meal: PlannedActivity, isLast: Bool) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(meal.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
-                .font(.system(size: NutritionTypography.metricSecondary, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
-                .frame(width: 40, alignment: .leading)
-                .padding(.top, 5)
-
-            VStack(spacing: 0) {
-                mealAvatar(for: meal)
-
-                if !isLast {
-                    Rectangle()
-                        .fill(timelineConnectorColor)
-                        .frame(width: 1, height: 24)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(meal.title)
-                        .font(.system(size: NutritionTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-
-                    Spacer(minLength: 4)
-
-                    Text(String(format: WeekFitLocalizedString("nutrition.details.meal.caloriesFormat"), meal.calories))
-                        .font(.system(size: NutritionTypography.metricSecondary, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
-                        .lineLimit(1)
-                }
-
-                macroSummaryRow(meal)
-            }
-            .padding(.top, 2)
-        }
-        .padding(.bottom, isLast ? 0 : 8)
-    }
-
-    @ViewBuilder
-    private func mealAvatar(for meal: PlannedActivity) -> some View {
-        if let visual = PlanTimelineNutritionVisualResolver.resolve(for: meal, customMeals: mealCatalog) {
-            PlanTimelineNutritionAvatar(
-                visual: visual,
-                accent: .white,
-                backgroundOpacity: 0.07,
-                foregroundOpacity: 0.88,
-                size: 32,
-                contentSize: 22
+#if DEBUG
+#Preview("Nutrition Details — Standard") {
+    NutritionDetailsView(
+        selectedDate: Date(),
+        calories: 445,
+        protein: 24,
+        carbs: 45,
+        fats: 18,
+        fiber: 7,
+        caloriesGoal: 1986,
+        proteinGoal: 153,
+        carbsGoal: 194,
+        fatsGoal: 66,
+        fiberGoal: 27,
+        waterLiters: 1.2,
+        waterGoal: 3.7,
+        meals: [
+            PlannedActivity(
+                date: Calendar.current.date(bySettingHour: 8, minute: 30, second: 0, of: Date()) ?? Date(),
+                type: "meal",
+                title: "Cottage Cheese Toast",
+                durationMinutes: 20,
+                icon: "fork.knife",
+                imageName: "",
+                colorRed: 0.9,
+                colorGreen: 0.6,
+                colorBlue: 0.2,
+                calories: 445,
+                protein: 24,
+                carbs: 45,
+                fats: 18,
+                fiber: 7,
+                source: "preview"
             )
-            .overlay {
-                Circle()
-                    .stroke(timelineChromeColor, lineWidth: 1)
-                    .frame(width: 32, height: 32)
-            }
-        } else {
-            ZStack {
-                Circle()
-                    .fill(timelineChromeColor)
-                    .frame(width: 32, height: 32)
-
-                Circle()
-                    .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: mealTimelineIcon(for: meal))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.58))
-            }
-        }
-    }
-
-    private func macroSummaryRow(_ meal: PlannedActivity) -> some View {
-        let resolvedFiber = PlannedActivityNutritionResolver.resolvedFiber(for: meal, in: mealCatalog)
-
-        return HStack(spacing: 6) {
-            macroInlineItem(
-                label: WeekFitLocalizedString("meals.library.macroProtein"),
-                value: meal.protein,
-                tint: proteinColor
-            )
-
-            macroSeparator
-
-            macroInlineItem(
-                label: WeekFitLocalizedString("meals.library.macroCarbs"),
-                value: meal.carbs,
-                tint: carbsColor
-            )
-
-            macroSeparator
-
-            macroInlineItem(
-                label: WeekFitLocalizedString("meals.library.macroFats"),
-                value: meal.fats,
-                tint: fatColor
-            )
-
-            if resolvedFiber > 0 {
-                macroSeparator
-
-                macroInlineItem(
-                    label: WeekFitLocalizedString("meals.library.macroFiber"),
-                    value: resolvedFiber,
-                    tint: fiberColor
-                )
-            }
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.82)
-    }
-
-    private var macroSeparator: some View {
-        Text("·")
-            .font(.system(size: 10, weight: .bold, design: .rounded))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.22))
-    }
-
-    private func macroInlineItem(label: String, value: Int, tint: Color) -> some View {
-        HStack(spacing: 2) {
-            Text(label)
-                .foregroundStyle(tint.opacity(0.55))
-
-            Text(String(format: WeekFitLocalizedString("common.unit.gramFormat"), value))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
-        }
-        .font(.system(size: 10, weight: .medium, design: .rounded))
-    }
-
-    private func mealTimelineIcon(for meal: PlannedActivity) -> String {
-        let normalizedType = meal.type.lowercased()
-        if normalizedType == "drink" || normalizedType == "hydration" {
-            return WeekFitActivityIconResolver.resolve(for: meal)
-        }
-
-        let text = "\(meal.title) \(meal.imageName) \(meal.icon)".lowercased()
-
-        if text.contains("water") || text.contains("hydration") {
-            return WeekFitActivityIconResolver.resolve(for: meal)
-        }
-
-        if text.contains("coffee") || text.contains("espresso") || text.contains("latte") || text.contains("tea") {
-            return WeekFitActivityIconResolver.resolve(for: meal)
-        }
-
-        if text.contains("juice") || text.contains("drink") {
-            return "takeoutbag.and.cup.and.straw.fill"
-        }
-
-        if text.contains("chocolate") || text.contains("snack") || text.contains("nuts") {
-            return "square.grid.2x2.fill"
-        }
-
-        if text.contains("egg") || text.contains("toast") || text.contains("breakfast") {
-            return "fork.knife"
-        }
-
-        if meal.icon.isEmpty {
-            return "fork.knife"
-        }
-
-        return meal.icon
-    }
+        ]
+    )
+    .environmentObject(AppLanguageManager())
+    .preferredColorScheme(.light)
 }
 
-// MARK: - Shared UI
-
-private struct SectionLabel: View {
-    let text: String
-
-    init(_ text: String) {
-        self.text = text
-    }
-
-    var body: some View {
-        Text(text)
-            .font(.system(size: NutritionTypography.sectionLabel, weight: .bold, design: .rounded))
-            .tracking(1.8)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
-    }
+#Preview("Nutrition Details — Empty timeline") {
+    NutritionDetailsView(
+        selectedDate: Date(),
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        fiber: 0,
+        caloriesGoal: 1986,
+        proteinGoal: 153,
+        carbsGoal: 194,
+        fatsGoal: 66,
+        fiberGoal: 27,
+        waterLiters: 0.4,
+        waterGoal: 3.7,
+        meals: []
+    )
+    .environmentObject(AppLanguageManager())
+    .preferredColorScheme(.light)
 }
 
-// MARK: - Style
-
-private enum NutritionTypography {
-    static let sectionLabel: CGFloat = 10
-
-    static let heroTitle: CGFloat = 16
-    static let heroScore: CGFloat = 22
-    static let heroScoreLabel: CGFloat = 8
-
-    static let metricTitle: CGFloat = 10.5
-    static let metricValue: CGFloat = 13
-    static let metricSecondary: CGFloat = 11
-    static let helperText: CGFloat = 10.5
+#Preview("Nutrition Details — Long insight") {
+    NutritionDetailsView(
+        selectedDate: Date(),
+        calories: 1200,
+        protein: 40,
+        carbs: 120,
+        fats: 40,
+        fiber: 10,
+        caloriesGoal: 1986,
+        proteinGoal: 153,
+        carbsGoal: 194,
+        fatsGoal: 66,
+        fiberGoal: 27,
+        waterLiters: 2.1,
+        waterGoal: 3.7,
+        meals: []
+    )
+    .environmentObject(AppLanguageManager())
+    .preferredColorScheme(.light)
+    .environment(\.dynamicTypeSize, .accessibility2)
 }
 
-enum NutritionStyle {
-    static var screenBackground: Color { WeekFitTheme.appScreenBackground }
-    static var cardBackground: Color { WeekFitTheme.cardSurface }
-    static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
-    static var border: Color { WeekFitTheme.border }
-
-    static var nutritionColor: Color { WeekFitTheme.accent(Color(red: 0.95, green: 0.65, blue: 0.12)) }
-
-    static var proteinColor: Color { WeekFitTheme.accent(Color(red: 0.55, green: 0.40, blue: 0.95)) }
-    static var carbsColor: Color { WeekFitTheme.accent(Color(red: 1.00, green: 0.55, blue: 0.16)) }
-    static var fatColor: Color { WeekFitTheme.accent(Color(red: 1.00, green: 0.22, blue: 0.43)) }
-    static var fiberColor: Color { WeekFitTheme.accent(Color(red: 0.16, green: 0.80, blue: 0.43)) }
+#Preview("Nutrition Details — iPhone mini") {
+    NutritionDetailsView(
+        selectedDate: Date(),
+        calories: 445,
+        protein: 24,
+        carbs: 45,
+        fats: 18,
+        fiber: 7,
+        caloriesGoal: 1986,
+        proteinGoal: 153,
+        carbsGoal: 194,
+        fatsGoal: 66,
+        fiberGoal: 27,
+        waterLiters: 1.2,
+        waterGoal: 3.7,
+        meals: []
+    )
+    .environmentObject(AppLanguageManager())
+    .preferredColorScheme(.light)
 }
-
-private extension View {
-    func nutritionCard(
-        cornerRadius: CGFloat = 20,
-        glow: Color = .clear
-    ) -> some View {
-        weekFitPremiumCard(
-            emphasis: glow == .clear ? .standard : .accent,
-            accent: glow == .clear ? nil : glow,
-            cornerRadius: cornerRadius
-        )
-    }
-
-    func innerNutritionCard(cornerRadius: CGFloat) -> some View {
-        weekFitPremiumCard(
-            emphasis: .compact,
-            accent: nil,
-            cornerRadius: cornerRadius
-        )
-    }
-}
+#endif

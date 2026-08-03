@@ -5,13 +5,12 @@ struct TermsPrivacyView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var background: Color { WeekFitTheme.backgroundColor }
-    private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private let textSecondary = WeekFitTheme.whiteOpacity(0.58)
-    private let textMuted = WeekFitTheme.whiteOpacity(0.42)
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var textMuted: Color { WeekFitTheme.tertiaryText }
 
-    private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private var accentGreen: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         ZStack {
@@ -49,11 +48,11 @@ private extension TermsPrivacyView {
                 .padding(.bottom, 12)
 
             Rectangle()
-                .fill(.white.opacity(0.055))
-                .frame(height: 1)
+                .fill(WeekFitTheme.borderSoft.opacity(0.55))
+                .frame(height: 0.5)
         }
         .background(
-            Color.black.opacity(0.74)
+            WeekFitTheme.backgroundColor
                 .ignoresSafeArea(edges: .top)
         )
     }
@@ -281,8 +280,8 @@ private extension TermsPrivacyView {
 
     var sectionDivider: some View {
         Rectangle()
-            .fill(.white.opacity(0.05))
-            .frame(height: 1)
+            .fill(WeekFitTheme.borderSoft.opacity(0.55))
+            .frame(height: 0.5)
     }
 
     var footerLink: some View {

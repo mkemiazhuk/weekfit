@@ -1,12 +1,13 @@
 import SwiftUI
 
-struct WeekFitScreenHeader: View {
+struct WeekFitScreenHeader<Trailing: View>: View {
 
     let title: String
     let subtitle: String
     let initials: String
     var hasProfileName: Bool = false
     let showAvatar: Bool
+    @ViewBuilder let trailing: () -> Trailing
     let onAvatarTap: () -> Void
 
     var body: some View {
@@ -22,16 +23,39 @@ struct WeekFitScreenHeader: View {
 
             Spacer(minLength: 20)
 
-            if showAvatar {
-                WeekFitAvatarButton(
-                    initials: initials,
-                    hasProfileName: hasProfileName,
-                    action: onAvatarTap
-                )
-                .accessibilityIdentifier("settings.open")
+            HStack(spacing: 10) {
+                trailing()
+
+                if showAvatar {
+                    WeekFitAvatarButton(
+                        initials: initials,
+                        hasProfileName: hasProfileName,
+                        action: onAvatarTap
+                    )
+                    .accessibilityIdentifier("settings.open")
+                }
             }
         }
         .frame(minHeight: 52)
+    }
+}
+
+extension WeekFitScreenHeader where Trailing == EmptyView {
+    init(
+        title: String,
+        subtitle: String,
+        initials: String,
+        hasProfileName: Bool = false,
+        showAvatar: Bool,
+        onAvatarTap: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.initials = initials
+        self.hasProfileName = hasProfileName
+        self.showAvatar = showAvatar
+        self.trailing = { EmptyView() }
+        self.onAvatarTap = onAvatarTap
     }
 }
 

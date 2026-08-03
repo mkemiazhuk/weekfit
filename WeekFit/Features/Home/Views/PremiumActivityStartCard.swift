@@ -1,87 +1,77 @@
 import SwiftUI
-import SwiftData
 
 struct PremiumActivityStartCard: View {
 
     let title: String
-    let subtitle: String
+    let category: ActivityOptionPresentation.Category
+    let categoryLabel: String
+    let detailLine: String
+    let chip: ActivityOptionPresentation.DetailChip
+    let chipLabel: String
     let imageName: String
     let systemIcon: String
     let accentColor: Color
-    let cardBackground: Color
-    let textSecondary: Color
-    let durationMinutes: Int
-    let plannerType: PlannerType
-    let badge: String?
     let hasConflict: Bool
     let action: () -> Void
 
     @Environment(\.weekFitPalette) private var palette
     @State private var pressed = false
 
-    private var actionButtonSize: CGFloat { QuickActionSheetDesign.Row.actionButtonSize }
+    private var actionButtonSize: CGFloat { 40 }
 
     private var titleColor: Color {
         hasConflict ? WeekFitTheme.secondaryText : WeekFitTheme.primaryText
     }
 
     private var metaColor: Color {
-        hasConflict ? WeekFitTheme.tertiaryText : WeekFitTheme.secondaryText
+        hasConflict ? WeekFitTheme.tertiaryText : WeekFitTheme.secondaryText.opacity(0.62)
     }
 
     var body: some View {
         Button {
             action()
         } label: {
-            HStack(spacing: QuickActionSheetDesign.Row.contentSpacing) {
+            HStack(spacing: 12) {
                 imageBlock
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(title)
-                        .font(QuickActionSheetDesign.Typography.rowTitle)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(titleColor)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
 
-                    HStack(spacing: 6) {
-                        if let badge {
-                            Text(badge.uppercased())
-                                .font(QuickActionSheetDesign.Typography.rowBadge)
-                                .tracking(0.35)
-                                .foregroundStyle(accentColor)
-                                .lineLimit(1)
-                        }
+                    HStack(spacing: 5) {
+                        Text(categoryLabel.uppercased())
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .tracking(0.4)
+                            .foregroundStyle(categoryForeground)
 
-                        Text(cleanSubtitle)
+                        Text(detailLine)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(metaColor)
                             .lineLimit(1)
-
-                        if badge != nil {
-                            Circle()
-                                .fill(WeekFitTheme.quaternaryText)
-                                .frame(width: 3, height: 3)
-                        }
-
-                        Text(formattedDuration(durationMinutes))
-                            .monospacedDigit()
                     }
-                    .font(QuickActionSheetDesign.Typography.rowSubtitle)
-                    .foregroundStyle(metaColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                }
 
-                Spacer(minLength: 4)
+                    detailChip
+                        .padding(.top, 1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 startControl
             }
-            .padding(.horizontal, QuickActionSheetDesign.Row.horizontalPadding)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: QuickActionSheetDesign.Row.height)
-            .weekFitCompactRowCard(
-                accent: hasConflict ? nil : accentColor,
-                cornerRadius: QuickActionSheetDesign.Row.cardCornerRadius
+            .quickSheetFloatingCard(
+                cornerRadius: 18,
+                fill: palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground,
+                stroke: palette.isLight
+                    ? Color.black.opacity(0.05)
+                    : WeekFitTheme.whiteOpacity(0.07),
+                isLight: palette.isLight
             )
-            .opacity(hasConflict ? 0.78 : 1.0)
+            .opacity(hasConflict ? 0.72 : 1.0)
             .scaleEffect(pressed ? 0.985 : 1.0)
         }
         .buttonStyle(.plain)
@@ -92,6 +82,11 @@ struct PremiumActivityStartCard: View {
                 ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle")
                 : WeekFitLocalizedString("home.activityStart.subtitle")
         )
+    }
+
+    /// Light keeps mock rainbow; Dark uses the tab accent only.
+    private var categoryForeground: Color {
+        palette.isLight ? category.color : accentColor
     }
 
     private var imageBlock: some View {
@@ -105,97 +100,107 @@ struct PremiumActivityStartCard: View {
                 )
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .fill(accentColor.opacity(palette.isLight ? 0.14 : 0.10))
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(
+                            palette.isLight
+                                ? accentColor.opacity(0.10)
+                                : WeekFitTheme.whiteOpacity(0.06)
+                        )
 
                     Image(systemName: systemIcon)
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(accentColor)
-                        .offset(y: -0.5)
-                }
-                .frame(
-                    width: QuickActionSheetDesign.Row.imageSize,
-                    height: QuickActionSheetDesign.Row.imageSize
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius,
-                        style: .continuous
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: QuickActionSheetDesign.Row.imageCornerRadius, style: .continuous)
-                        .stroke(
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(
                             palette.isLight
-                                ? WeekFitLightTokens.divider.opacity(0.45)
-                                : WeekFitTheme.whiteOpacity(0.05),
-                            lineWidth: 1
+                                ? accentColor.opacity(0.75)
+                                : WeekFitTheme.secondaryText.opacity(0.55)
                         )
                 }
             }
         }
+        .frame(width: 64, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(
+                    palette.isLight ? Color.black.opacity(0.05) : WeekFitTheme.whiteOpacity(0.06),
+                    lineWidth: 1
+                )
+        }
         .opacity(hasConflict ? 0.72 : 1.0)
+    }
+
+    private var detailChip: some View {
+        HStack(spacing: 5) {
+            Image(systemName: chip.symbol)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(chipIconColor)
+            Text(chipLabel)
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background {
+            Capsule()
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.internalTile
+                        : WeekFitTheme.whiteOpacity(0.08)
+                )
+        }
+    }
+
+    private var chipIconColor: Color {
+        palette.isLight ? category.color : accentColor
     }
 
     private var startControl: some View {
         ZStack {
             Circle()
-                .fill(
+                .strokeBorder(
                     hasConflict
-                        ? WeekFitTheme.internalTile
-                        : (palette.isLight ? accentColor.opacity(0.16) : accentColor.opacity(0.22))
+                        ? WeekFitTheme.iconInactive.opacity(0.35)
+                        : accentColor,
+                    lineWidth: 1.6
                 )
                 .frame(width: actionButtonSize, height: actionButtonSize)
 
-            Circle()
-                .stroke(
-                    hasConflict
-                        ? WeekFitLightTokens.divider.opacity(0.50)
-                        : accentColor.opacity(palette.isLight ? 0.35 : 0.22),
-                    lineWidth: 1
-                )
-
             Image(systemName: hasConflict ? "lock.fill" : "play.fill")
-                .font(.system(size: hasConflict ? 10.5 : 11, weight: .semibold))
-                .foregroundStyle(
-                    hasConflict
-                        ? WeekFitTheme.iconInactive
-                        : (palette.isLight ? accentColor : Color.white.opacity(0.94))
-                )
+                .font(.system(size: hasConflict ? 11 : 12, weight: .semibold))
+                .foregroundStyle(hasConflict ? WeekFitTheme.iconInactive : accentColor)
                 .offset(x: hasConflict ? 0 : 0.5)
         }
         .frame(width: actionButtonSize, height: actionButtonSize)
     }
+}
 
-    private var cleanSubtitle: String {
-        if subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return plannerType == .workout
-                ? WeekFitLocalizedString("home.activityStart.subtitle.training")
-                : WeekFitLocalizedString("home.activityStart.subtitle.recovery")
+enum QuickActivityAccent {
+    /// Workout — green (matches mock / activity token).
+    static let workout = Color(red: 0.22, green: 0.72, blue: 0.45)
+    /// Recovery — soft purple (distinct from workout).
+    static let recovery = Color(red: 0.62, green: 0.54, blue: 0.86)
+
+    static let green = workout
+
+    static func color(for type: PlannerType, isLight: Bool) -> Color {
+        switch type {
+        case .workout:
+            return isLight ? workout : Color(red: 0.42, green: 0.78, blue: 0.58)
+        case .recovery:
+            return isLight ? WeekFitLightTokens.coachPurple : recovery
+        default:
+            return workout
         }
-
-        return subtitle
-            .replacingOccurrences(of: "• 60 min", with: "")
-            .replacingOccurrences(of: "60 min", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func formattedDuration(_ minutes: Int) -> String {
-        if minutes >= 60 {
-            let hours = minutes / 60
-            let remainingMinutes = minutes % 60
+    static func frequentFill(accent: Color, isLight: Bool) -> Color {
+        guard isLight else { return WeekFitTheme.whiteOpacity(0.06) }
+        return accent.opacity(0.11)
+    }
 
-            if remainingMinutes == 0 {
-                return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), Int64(hours))
-            }
-
-            return String(
-                format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"),
-                Int64(hours),
-                Int64(remainingMinutes)
-            )
-        }
-
-        return String(format: WeekFitLocalizedString("common.duration.minutesFormat"), Int64(minutes))
+    static func frequentStroke(accent: Color, isLight: Bool) -> Color {
+        guard isLight else { return WeekFitTheme.whiteOpacity(0.08) }
+        return accent.opacity(0.16)
     }
 }

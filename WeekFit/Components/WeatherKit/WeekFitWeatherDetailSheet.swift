@@ -6,198 +6,316 @@ struct WeekFitWeatherDetailSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     @State private var attribution: WeatherAttribution?
     @State private var attributionFetchFailed = false
     @State private var didFetchAttribution = false
 
+    private var period: WeekFitWeatherPeriod { summary.resolvedPeriod }
+    private var tokens: WeekFitWeatherTokens { summary.resolvedTokens }
+    private var relevance: WeekFitWeatherRelevance.Content {
+        WeekFitWeatherRelevance.content(for: summary, period: period)
+    }
+
+    private var locationLabel: String {
+        summary.placeName
+            ?? (WeekFitUsesRussianLanguage() ? "Рядом с вами" : "Near you")
+    }
+
     var body: some View {
         ZStack {
-            WeekFitTheme.backgroundColor.ignoresSafeArea()
+            adaptiveCanvas.ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    header
-                    detailsGrid
-                    coachInsight
-                    attributionSection
-                }
-                .padding(.horizontal, 22)
-                .padding(.top, 18)
-                .padding(.bottom, 36)
+            VStack(spacing: 12) {
+                sheetHeader
+                heroCard
+                primaryMetrics
+                secondaryMetricsGrid
+                coachInsight
+                attributionSection
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
         }
+        .presentationBackground(tokens.backgroundPrimary)
         .task {
             guard !didFetchAttribution else { return }
             didFetchAttribution = true
             await fetchAttribution()
         }
     }
+
+    private var adaptiveCanvas: some View {
+        LinearGradient(
+            colors: [
+                tokens.backgroundSecondary,
+                tokens.backgroundPrimary,
+                tokens.backgroundPrimary
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 }
 
 // MARK: - Header
 
 private extension WeekFitWeatherDetailSheet {
-    var header: some View {
-        VStack(spacing: 22) {
-            HStack(spacing: 13) {
+    var sheetHeader: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(WeekFitUsesRussianLanguage() ? "Погода" : "Weather")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .font(.system(size: 26, weight: .bold, design: .default))
+                    .foregroundStyle(tokens.textPrimary)
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
 
-                WeekFitCloseButton(size: .large) {
-                    dismiss()
-                }
-                .fixedSize()
+                Text(locationLabel)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(tokens.textSecondary)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            heroCondition
-        }
-    }
-
-    var heroCondition: some View {
-        let system = unitsStore.resolvedSystem
-        let tempValue = WeekFitUnitPolicy.temperatureValueForBadge(summary.temperature, system: system)
-
-        return HStack(alignment: .center, spacing: 14) {
-            Image(systemName: summary.badgeSymbolName)
-                .font(.system(size: 40, weight: .medium))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(
-                    summary.badgeIconPrimary,
-                    summary.badgeIconSecondary
-                )
-                .shadow(color: summary.badgeNaturalColor.opacity(0.45), radius: 10, y: 0)
-                .frame(width: 56, height: 56)
-                .contentTransition(.symbolEffect(.replace))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("\(tempValue)°")
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .tracking(-1.5)
-
-                Text(summary.badgeShortLabel)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.65))
+            WeekFitCloseButton(size: .large) {
+                dismiss()
             }
-
-            Spacer()
-        }
-        .padding(20)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(WeekFitTheme.cardSurface)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.22), radius: 14, y: 5)
+            .fixedSize()
         }
     }
 }
 
-// MARK: - Details Grid
+// MARK: - Hero
 
 private extension WeekFitWeatherDetailSheet {
-    var detailsGrid: some View {
-        let isRu = WeekFitUsesRussianLanguage()
+    var heroCard: some View {
         let system = unitsStore.resolvedSystem
+        let tempValue = WeekFitUnitPolicy.temperatureValueForBadge(summary.temperature, system: system)
 
-        let feelsLikeValue = WeekFitUnitPolicy.temperatureValueForBadge(summary.feelsLike, system: system)
-        let windText = WeekFitUnitPolicy.formatSpeed(summary.windSpeed, system: system)
-
-        var cells: [(icon: String, label: String, value: String, color: Color)] = [
-            (
-                "thermometer.medium",
-                isRu ? "Ощущается" : "Feels like",
-                "\(feelsLikeValue)°",
-                Color(red: 0.96, green: 0.60, blue: 0.30)
-            ),
-            (
-                "humidity",
-                isRu ? "Влажность" : "Humidity",
-                "\(summary.humidityPercent)%",
-                Color(red: 0.35, green: 0.60, blue: 0.92)
-            ),
-            (
-                "wind",
-                isRu ? "Ветер" : "Wind",
-                windText,
-                Color(red: 0.55, green: 0.65, blue: 0.75)
-            ),
-            (
-                "sun.max",
-                isRu ? "УФ-индекс" : "UV Index",
-                uvLabel,
-                Color(red: 0.96, green: 0.76, blue: 0.26)
-            ),
-        ]
-
-        if let high = summary.highTemperature, let low = summary.lowTemperature {
-            let highValue = WeekFitUnitPolicy.temperatureValueForBadge(high, system: system)
-            let lowValue = WeekFitUnitPolicy.temperatureValueForBadge(low, system: system)
-            cells.insert(
-                (
-                    "thermometer.sun",
-                    isRu ? "Макс / Мин" : "High / Low",
-                    "\(highValue)° / \(lowValue)°",
-                    Color(red: 0.90, green: 0.50, blue: 0.40)
-                ),
-                at: 1
+        return ZStack(alignment: .bottomLeading) {
+            WeekFitWeatherHeroAtmosphere(
+                condition: summary.condition,
+                period: period,
+                tokens: tokens,
+                temperatureC: summary.temperature.value,
+                reduceMotion: reduceMotion
             )
-        }
 
-        if let chance = summary.precipitationChance {
-            cells.append(
-                (
-                    "cloud.rain",
-                    isRu ? "Осадки" : "Rain chance",
-                    "\(chance)%",
-                    Color(red: 0.40, green: 0.65, blue: 0.95)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tokens.heroReadabilityWash.opacity(0.05),
+                            tokens.heroReadabilityWash.opacity(0.55),
+                            tokens.heroReadabilityWash.opacity(0.82)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
-            )
-        }
+                .allowsHitTesting(false)
 
-        return LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ],
-            spacing: 12
-        ) {
-            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
-                detailCell(icon: cell.icon, label: cell.label, value: cell.value, tint: cell.color)
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(tempValue)°")
+                            .font(.system(size: 46, weight: .bold, design: .rounded))
+                            .foregroundStyle(tokens.textPrimary)
+                            .tracking(-1.6)
+                            .contentTransition(.numericText())
+
+                        Image(systemName: summary.badgeSymbolName)
+                            .font(.system(size: 26, weight: .semibold))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(
+                                tokens.heroIllustrationPrimary,
+                                tokens.heroIllustrationSecondary
+                            )
+                            .shadow(
+                                color: tokens.ambientGlow.opacity(0.55),
+                                radius: reduceMotion ? 0 : 10,
+                                y: 0
+                            )
+                            .offset(y: -1)
+                    }
+
+                    Text(summary.badgeShortLabel)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(tokens.textPrimary.opacity(0.88))
+                }
+
+                Text(relevance.contextSentence)
+                    .font(.system(size: 13.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(tokens.textSecondary)
+                    .lineSpacing(2)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16)
+        }
+        .frame(height: 168)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(tokens.cardStroke, lineWidth: 0.8)
+        }
+        .shadow(color: Color.black.opacity(tokens.isNightAtmosphere ? 0.24 : 0.045), radius: 12, y: 5)
+        .shadow(color: Color.black.opacity(tokens.isNightAtmosphere ? 0.08 : 0.018), radius: 2, y: 1)
+    }
+}
+
+// MARK: - Metrics
+
+private extension WeekFitWeatherDetailSheet {
+    var primaryMetrics: some View {
+        let kinds = WeekFitWeatherMetricsOrder.primaryMetrics(for: summary)
+        return HStack(spacing: 10) {
+            ForEach(kinds, id: \.self) { kind in
+                metricCell(kind: kind, emphasized: true)
             }
         }
     }
 
-    func detailCell(icon: String, label: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(tint)
+    var secondaryMetricsGrid: some View {
+        // Cap at 4 cells (2×2) so the sheet still fits one screen.
+        let kinds = Array(
+            WeekFitWeatherMetricsOrder.secondaryMetrics(for: summary, period: period).prefix(4)
+        )
+        return LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 10),
+                GridItem(.flexible(), spacing: 10)
+            ],
+            spacing: 10
+        ) {
+            ForEach(kinds, id: \.self) { kind in
+                metricCell(kind: kind, emphasized: false)
+            }
+        }
+    }
 
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText)
+    func metricCell(kind: WeekFitWeatherMetricKind, emphasized: Bool) -> some View {
+        let content = metricContent(for: kind)
+        return VStack(alignment: .leading, spacing: 5) {
+            Image(systemName: content.icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(content.tint)
 
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
+            Text(content.value)
+                .font(.system(size: emphasized ? 18 : 16, weight: .bold, design: .rounded))
+                .foregroundStyle(tokens.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+
+            Text(content.label)
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(tokens.textSecondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(12)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(WeekFitTheme.cardSurface)
+                .fill(tokens.cardSurface)
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(WeekFitTheme.cardBorder, lineWidth: 1)
+                        .strokeBorder(tokens.cardStroke, lineWidth: 0.7)
                 }
+                .shadow(
+                    color: Color.black.opacity(tokens.isNightAtmosphere ? 0.16 : 0.032),
+                    radius: 8,
+                    y: 3
+                )
+                .shadow(
+                    color: Color.black.opacity(tokens.isNightAtmosphere ? 0.06 : 0.014),
+                    radius: 1.5,
+                    y: 1
+                )
+        }
+    }
+
+    func metricContent(for kind: WeekFitWeatherMetricKind) -> (icon: String, label: String, value: String, tint: Color) {
+        let isRu = WeekFitUsesRussianLanguage()
+        let system = unitsStore.resolvedSystem
+        let accent = tokens.primaryAccent
+        let secondary = tokens.metricIconTint
+
+        switch kind {
+        case .feelsLike:
+            let value = WeekFitUnitPolicy.temperatureValueForBadge(summary.feelsLike, system: system)
+            return (
+                "thermometer.medium",
+                isRu ? "Ощущается" : "Feels like",
+                "\(value)°",
+                accent
+            )
+
+        case .highLow:
+            let high = summary.highTemperature.map {
+                "\(WeekFitUnitPolicy.temperatureValueForBadge($0, system: system))"
+            } ?? "—"
+            let low = summary.lowTemperature.map {
+                "\(WeekFitUnitPolicy.temperatureValueForBadge($0, system: system))"
+            } ?? "—"
+            return (
+                "thermometer.sun",
+                isRu ? "Макс / Мин" : "High / Low",
+                "\(high)° / \(low)°",
+                Color(red: 0.90, green: 0.55, blue: 0.40)
+            )
+
+        case .humidity:
+            return (
+                "humidity",
+                isRu ? "Влажность" : "Humidity",
+                "\(summary.humidityPercent)%",
+                Color(red: 0.35, green: 0.60, blue: 0.92)
+            )
+
+        case .wind:
+            return (
+                "wind",
+                isRu ? "Ветер" : "Wind",
+                WeekFitUnitPolicy.formatSpeed(summary.windSpeed, system: system),
+                secondary
+            )
+
+        case .uvIndex:
+            return (
+                "sun.max",
+                isRu ? "УФ-индекс" : "UV Index",
+                uvLabel,
+                Color(red: 0.96, green: 0.76, blue: 0.26)
+            )
+
+        case .rainChance:
+            let chance = summary.precipitationChance ?? 0
+            return (
+                "cloud.rain",
+                isRu ? "Осадки" : "Rain chance",
+                "\(chance)%",
+                tokens.primaryAccent
+            )
+
+        case .visibility:
+            return (
+                "eye",
+                isRu ? "Видимость" : "Visibility",
+                visibilityLabel(system: system),
+                Color(red: 0.55, green: 0.65, blue: 0.78)
+            )
+
+        case .sunriseSunset:
+            return (
+                "sunrise.fill",
+                isRu ? "Восход / Закат" : "Sunrise / Sunset",
+                sunTimesLabel,
+                Color(red: 0.95, green: 0.68, blue: 0.35)
+            )
         }
     }
 
@@ -214,43 +332,73 @@ private extension WeekFitWeatherDetailSheet {
         }
         return "\(val) · \(descriptor)"
     }
+
+    func visibilityLabel(system: WeekFitResolvedUnitSystem) -> String {
+        guard let km = summary.visibilityKilometers else {
+            return "—"
+        }
+        if system == .us {
+            let miles = km * 0.621371
+            if miles < 1 {
+                return String(format: "%.1f mi", miles)
+            }
+            return String(format: "%.0f mi", miles.rounded())
+        }
+        if km < 1 {
+            return String(format: "%.0f m", km * 1000)
+        }
+        return String(format: "%.1f km", km)
+    }
+
+    var sunTimesLabel: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        let rise = summary.sunrise.map { formatter.string(from: $0) } ?? "—"
+        let set = summary.sunset.map { formatter.string(from: $0) } ?? "—"
+        return "\(rise) / \(set)"
+    }
 }
 
 // MARK: - Coach Insight
 
 private extension WeekFitWeatherDetailSheet {
     var coachInsight: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.coachAccent)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(WeekFitLightTokens.coachPurple)
 
-                Text(WeekFitUsesRussianLanguage() ? "Рекомендация" : "Coach Insight")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.coachAccent)
+                Text(WeekFitUsesRussianLanguage() ? "Совет тренера" : "Coach Insight")
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitLightTokens.coachPurple)
             }
 
-            Text(coachRecommendation)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.82))
-                .lineSpacing(3)
+            Text(WeekFitWeatherCoachInsight.recommendation(for: summary, period: period))
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(tokens.textPrimary.opacity(0.92))
+                .lineSpacing(2)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+        .padding(14)
         .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(WeekFitTheme.coachAccent.opacity(0.08))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    tokens.isNightAtmosphere
+                        ? WeekFitLightTokens.coachPurple.opacity(0.14)
+                        : WeekFitLightTokens.coachPurpleSoft.opacity(0.88)
+                )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(WeekFitTheme.coachAccent.opacity(0.18), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            WeekFitLightTokens.coachPurple.opacity(tokens.isNightAtmosphere ? 0.28 : 0.16),
+                            lineWidth: 0.8
+                        )
                 }
         }
-    }
-
-    var coachRecommendation: String {
-        WeekFitWeatherCoachInsight.recommendation(for: summary)
     }
 }
 
@@ -270,14 +418,18 @@ private extension WeekFitWeatherDetailSheet {
             if let attribution {
                 HStack(spacing: 8) {
                     AsyncImage(
-                        url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL
+                        url: tokens.isNightAtmosphere
+                            ? attribution.combinedMarkDarkURL
+                            : (colorScheme == .dark
+                                ? attribution.combinedMarkDarkURL
+                                : attribution.combinedMarkLightURL)
                     ) { image in
                         image
                             .resizable()
                             .scaledToFit()
-                            .frame(height: 14)
+                            .frame(height: 12)
                     } placeholder: {
-                        Color.clear.frame(height: 14)
+                        Color.clear.frame(height: 12)
                     }
                     .accessibilityHidden(true)
 
@@ -286,19 +438,15 @@ private extension WeekFitWeatherDetailSheet {
                         destination: attribution.legalPageURL
                     )
                     .font(.caption2)
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                    .foregroundStyle(tokens.textSecondary.opacity(0.85))
                 }
-                .padding(.vertical, 8)
             } else if attributionFetchFailed {
                 Text(WeekFitUsesRussianLanguage() ? "Источник погодных данных недоступен." : "Weather data sources are unavailable.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(tokens.textSecondary.opacity(0.55))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
             } else {
-                // While loading attribution, keep spacing stable.
-                Text("")
-                    .frame(height: 22)
+                Color.clear.frame(height: 12)
             }
         }
     }

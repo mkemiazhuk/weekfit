@@ -105,12 +105,12 @@ struct FeedbackSheetView: View {
         } label: {
             Text(title)
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(isPrimary ? Color.black.opacity(0.92) : WeekFitTheme.primaryText)
+                .foregroundStyle(isPrimary ? WeekFitTheme.primaryCTAForeground : WeekFitTheme.primaryText)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 48)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(isPrimary ? WeekFitStyle.brandGreen : WeekFitTheme.whiteOpacity(0.08))
+                        .fill(isPrimary ? WeekFitTheme.primaryCTA : WeekFitTheme.whiteOpacity(0.06))
                 }
         }
         .buttonStyle(ReviewPressableButtonStyle())

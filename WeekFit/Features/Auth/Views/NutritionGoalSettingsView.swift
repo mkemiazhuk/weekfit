@@ -4,6 +4,7 @@ import SwiftUI
 struct NutritionGoalSettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var healthManager: HealthManager
     @ObservedObject var viewModel: ProfileViewModel
@@ -12,7 +13,7 @@ struct NutritionGoalSettingsView: View {
     @State private var hasLoaded = false
 
     private var background: Color { WeekFitTheme.backgroundColor }
-    private let accentGreen = Color(red: 0.58, green: 0.79, blue: 0.62)
+    private var accentGreen: Color { WeekFitTheme.settingsAccent }
 
     private var hasHealthBiometrics: Bool {
         UserNutritionProfile.hasSufficientHealthDataForAutoGoal(
@@ -46,7 +47,7 @@ struct NutritionGoalSettingsView: View {
 
                     Text(WeekFitLocalizedString("settings.nutritionGoal.subtitle"))
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
 
                     BodyGoalPickerSection(
@@ -69,10 +70,15 @@ struct NutritionGoalSettingsView: View {
                 .padding(.bottom, 14)
                 .background {
                     LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.0),
-                            Color.black.opacity(0.82)
-                        ],
+                        colors: palette.isLight
+                            ? [
+                                WeekFitTheme.backgroundColor.opacity(0),
+                                WeekFitTheme.backgroundColor.opacity(0.94)
+                            ]
+                            : [
+                                Color.black.opacity(0.0),
+                                Color.black.opacity(0.82)
+                            ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -91,17 +97,13 @@ struct NutritionGoalSettingsView: View {
             save()
         } label: {
             Text(AppText.Common.Action.save)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(.black.opacity(0.92))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.primaryCTAForeground)
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(height: 52)
                 .background {
                     Capsule()
-                        .fill(accentGreen)
-                        .overlay {
-                            Capsule()
-                                .stroke(.white.opacity(0.12), lineWidth: 1)
-                        }
+                        .fill(WeekFitTheme.primaryCTA)
                 }
         }
         .buttonStyle(.plain)

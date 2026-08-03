@@ -31,24 +31,7 @@ struct SettingsGroupedSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.cardSurfaceElevated.opacity(0.92),
-                                WeekFitTheme.cardSurface
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(color: WeekFitTheme.softShadow, radius: 14, y: 6)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(WeekFitTheme.cardBorder.opacity(0.85), lineWidth: 1)
-            }
+            .weekFitPremiumCard(emphasis: .standard, cornerRadius: cornerRadius)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }

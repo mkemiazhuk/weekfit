@@ -9,6 +9,8 @@ final class NightComfortController: ObservableObject {
     @Published private(set) var preference: NightComfortPreference
 
     var resolvedPalette: WeekFitSemanticPalette {
+        // Appearance comes from the synced store (owned by WeekFitAppearanceSync).
+        // Night Comfort only owns blend intensity — never Light/Dark.
         WeekFitSemanticPalette.interpolated(
             blend: blendFactor,
             appearance: WeekFitPaletteStore.current.appearance
@@ -85,10 +87,9 @@ final class NightComfortController: ObservableObject {
         #endif
 
         blendFactor = newBlend
-        WeekFitPaletteStore.update(
-            blend: newBlend,
-            appearance: WeekFitPaletteStore.current.appearance
-        )
+        // Appearance / WeekFitPaletteStore are owned solely by WeekFitAppearanceSync.
+        // Writing the store here races resume and can leave env Light + WeekFitTheme Dark
+        // (black canvas, white cards, unreadable titles).
     }
 
     private enum RefreshReason {

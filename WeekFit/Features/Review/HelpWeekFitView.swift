@@ -4,19 +4,22 @@ import SwiftUI
 struct HelpWeekFitView: View {
     @ObservedObject var reviewManager: ReviewPromptManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
 
     @State private var formRoute: HelpWeekFitFormRoute?
+
+    private var accent: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         ZStack {
             WeekFitTheme.backgroundColor.ignoresSafeArea()
-            ProfilePremiumBackground(accent: WeekFitStyle.brandGreen)
+            ProfilePremiumBackground(accent: accent)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
                     ProfilePremiumHeader(
                         title: WeekFitLocalizedString("review.helpWeekFit.title"),
-                        accent: WeekFitStyle.brandGreen
+                        accent: accent
                     ) {
                         dismiss()
                     }
@@ -29,7 +32,10 @@ struct HelpWeekFitView: View {
                     SettingsGroupedSection(title: nil) {
                         helpRow(
                             icon: "star.fill",
-                            tint: WeekFitStyle.champagneGold,
+                            tint: WeekFitTheme.brandGold,
+                            softFill: palette.isLight
+                                ? WeekFitLightTokens.brandGoldSoft
+                                : WeekFitTheme.brandGold.opacity(0.14),
                             title: WeekFitLocalizedString("review.helpWeekFit.rate"),
                             subtitle: WeekFitLocalizedString("review.helpWeekFit.rate.subtitle"),
                             id: "settings.helpWeekFit.rate"
@@ -41,7 +47,8 @@ struct HelpWeekFitView: View {
 
                         helpRow(
                             icon: "bubble.left.and.bubble.right.fill",
-                            tint: WeekFitStyle.brandGreen,
+                            tint: accent,
+                            softFill: WeekFitTheme.settingsIconWell,
                             title: WeekFitLocalizedString("review.helpWeekFit.sendFeedback"),
                             subtitle: WeekFitLocalizedString("review.helpWeekFit.sendFeedback.subtitle"),
                             id: "settings.helpWeekFit.sendFeedback"
@@ -53,7 +60,12 @@ struct HelpWeekFitView: View {
 
                         helpRow(
                             icon: "lightbulb.fill",
-                            tint: Color(red: 0.95, green: 0.72, blue: 0.38),
+                            tint: palette.isLight
+                                ? WeekFitLightTokens.nutrition
+                                : WeekFitTheme.meal,
+                            softFill: palette.isLight
+                                ? WeekFitLightTokens.nutritionSoft
+                                : WeekFitTheme.meal.opacity(0.14),
                             title: WeekFitLocalizedString("review.helpWeekFit.suggestFeature"),
                             subtitle: WeekFitLocalizedString("review.helpWeekFit.suggestFeature.subtitle"),
                             id: "settings.helpWeekFit.suggestFeature"
@@ -65,7 +77,12 @@ struct HelpWeekFitView: View {
 
                         helpRow(
                             icon: "exclamationmark.bubble.fill",
-                            tint: Color(red: 1, green: 0.45, blue: 0.45),
+                            tint: palette.isLight
+                                ? WeekFitLightTokens.critical
+                                : Color(red: 1, green: 0.45, blue: 0.45),
+                            softFill: palette.isLight
+                                ? WeekFitLightTokens.critical.opacity(0.12)
+                                : Color(red: 1, green: 0.45, blue: 0.45).opacity(0.14),
                             title: WeekFitLocalizedString("review.helpWeekFit.reportProblem"),
                             subtitle: WeekFitLocalizedString("review.helpWeekFit.reportProblem.subtitle"),
                             id: "settings.helpWeekFit.reportProblem"
@@ -104,6 +121,7 @@ struct HelpWeekFitView: View {
     private func helpRow(
         icon: String,
         tint: Color,
+        softFill: Color,
         title: String,
         subtitle: String,
         id: String,
@@ -113,10 +131,10 @@ struct HelpWeekFitView: View {
             HStack(spacing: 13) {
                 ZStack {
                     Circle()
-                        .fill(tint.opacity(0.13))
+                        .fill(softFill)
                     Image(systemName: icon)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(tint.opacity(0.96))
+                        .foregroundStyle(tint)
                 }
                 .frame(width: 34, height: 34)
                 .accessibilityHidden(true)
@@ -127,14 +145,14 @@ struct HelpWeekFitView: View {
                         .foregroundStyle(WeekFitTheme.primaryText)
                     Text(subtitle)
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 16)

@@ -48,3 +48,4 @@ backups/
 .screenshot-artifacts/
 *.xcresult
 build/
+docs/privacy-report/WeekFit.xcarchive/

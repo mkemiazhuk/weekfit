@@ -260,6 +260,21 @@ enum WeekFitTheme {
 
     static var primaryGreen: Color { palette.accent(primaryGreenBase) }
 
+    /// Settings / preference chrome (icons, toggles, checks).
+    /// Light: calm coach green. Dark: keeps OLED neon used across settings.
+    static var settingsAccent: Color {
+        palette.isLight
+            ? WeekFitLightTokens.coach
+            : Color(red: 170 / 255, green: 255 / 255, blue: 70 / 255)
+    }
+
+    /// Soft well behind settings row icons.
+    static var settingsIconWell: Color {
+        palette.isLight
+            ? WeekFitLightTokens.coachSoft
+            : Color.white.opacity(0.045)
+    }
+
     /// Brand metallic gold — onboarding splash / premium accents.
     /// Light Mode uses the restrained brand gold; Dark keeps OLED champagne.
     static var brandGold: Color {

@@ -714,6 +714,72 @@ enum StressIndexCopy {
         }
     }
 
+    /// Short analytical line for the compact Recovery card — never a paragraph.
+    static func compactInterpretation(for result: StressIndexResult) -> String {
+        switch result.confidence {
+        case .unavailable:
+            return WeekFitLocalizedString("recovery.stressIndex.empty.supporting")
+        case .low:
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.lowConfidence")
+        case .medium, .high:
+            break
+        }
+
+        guard let level = result.level else {
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.generic")
+        }
+
+        switch level {
+        case .low:
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.low")
+        case .moderate:
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.moderate")
+        case .elevated:
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.elevated")
+        case .high:
+            return WeekFitLocalizedString("recovery.stressIndex.interpretation.high")
+        }
+    }
+
+    /// Compact contributor chips for the card footer (elevating first).
+    static func compactContributorLabels(
+        for result: StressIndexResult,
+        bedtimeDeviationMinutes: Int? = nil
+    ) -> [String] {
+        let preferred = result.contributors.filter { $0.tone == .elevating }
+        let source = preferred.isEmpty ? Array(result.contributors.prefix(2)) : Array(preferred.prefix(2))
+        return source.map {
+            compactContributorLabel(for: $0, bedtimeDeviationMinutes: bedtimeDeviationMinutes)
+        }
+    }
+
+    static func compactContributorLabel(
+        for contributor: StressIndexContributor,
+        bedtimeDeviationMinutes: Int? = nil
+    ) -> String {
+        switch (contributor.kind, contributor.tone) {
+        case (.hrv, .elevating):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.hrv.below")
+        case (.hrv, _):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.hrv.stable")
+        case (.restingHeartRate, .elevating):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.rhr.above")
+        case (.restingHeartRate, _):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.rhr.stable")
+        case (.sleep, .elevating):
+            if let deviation = bedtimeDeviationMinutes, deviation >= 45 {
+                return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.late")
+            }
+            return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short")
+        case (.sleep, _):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.stable")
+        case (.trainingLoad, .elevating):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.training.heavy")
+        case (.trainingLoad, _):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.training.light")
+        }
+    }
+
     private static func calculationSignalLabel(_ kind: StressIndexContributorKind) -> String {
         switch kind {
         case .hrv:

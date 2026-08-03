@@ -26,6 +26,14 @@ enum FoodImageQualityValidator {
       return false
     }
 
+    // Workout / recovery / habit scene photos can be legitimately dark;
+    // food-plate luminance gating must not hide them (e.g. workout-hiit).
+    if isNonFoodSceneAssetName(trimmed) {
+      let exists = UIImage(named: trimmed) != nil
+      assetCache[trimmed] = exists
+      return exists
+    }
+
     guard let image = UIImage(named: trimmed) else {
       assetCache[trimmed] = false
       return false
@@ -34,6 +42,13 @@ enum FoodImageQualityValidator {
     let isValid = isDisplayable(image)
     assetCache[trimmed] = isValid
     return isValid
+  }
+
+  private static func isNonFoodSceneAssetName(_ name: String) -> Bool {
+    let lower = name.lowercased()
+    return lower.hasPrefix("workout-")
+      || lower.hasPrefix("recovery-")
+      || lower.hasPrefix("habit-")
   }
 
   static func isDisplayable(_ image: UIImage) -> Bool {

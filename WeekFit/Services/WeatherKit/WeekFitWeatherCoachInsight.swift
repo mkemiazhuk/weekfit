@@ -1,62 +1,92 @@
 import Foundation
 
 enum WeekFitWeatherCoachInsight {
-    static func recommendation(for summary: WeekFitWeatherSummary, isRussian: Bool = WeekFitUsesRussianLanguage()) -> String {
-        let tempC = summary.temperature.value // canonical
-        let windKmh = summary.windSpeed.value // canonical
+    static func recommendation(
+        for summary: WeekFitWeatherSummary,
+        period: WeekFitWeatherPeriod? = nil,
+        isRussian: Bool = WeekFitUsesRussianLanguage()
+    ) -> String {
+        let resolvedPeriod = period ?? summary.resolvedPeriod
+        let tempC = summary.temperature.value
+        let feelsC = summary.feelsLike.value
+        let windKmh = summary.windSpeed.value
         let precipChance = summary.precipitationChance ?? 0
-
-        if precipChance >= 60 {
-            return isRussian
-                ? "Возможны осадки позже сегодня. Если планировали тренировку на улице, рассмотрите более раннее время или зал."
-                : "Rain is expected later today. If you planned an outdoor workout, consider moving it earlier or switching indoors."
-        }
+        let visibilityKm = summary.visibilityKilometers
 
         if summary.condition == .storm {
             return isRussian
-                ? "Ожидаются грозовые условия. Рассмотрите занятие в помещении и уделите внимание безопасности."
-                : "Storm conditions are possible. Consider an indoor session and use caution."
+                ? "Пропустите активность на улице, пока гроза не пройдёт."
+                : "Skip outdoor activity until the storm has passed."
+        }
+
+        if summary.condition == .fog || (visibilityKm ?? 20) < 1.2 {
+            return isRussian
+                ? "Видимость низкая. Выбирайте знакомый и хорошо освещённый маршрут или перенесите тренировку в зал."
+                : "Visibility is low. Choose a familiar, well-lit route or move the session indoors."
+        }
+
+        if precipChance >= 55 || summary.condition == .rain {
+            return isRussian
+                ? "На улице может быть некомфортно. Рассмотрите зал или подождите, пока дождь ослабнет."
+                : "Outdoor activity may be uncomfortable. Consider an indoor workout or wait until the rain eases."
+        }
+
+        if summary.condition == .snow {
+            return isRussian
+                ? "Холодно и скользко. Сократите интенсивность и уделите внимание разминке и сцеплению."
+                : "Cold and slippery. Ease intensity and prioritize warm-up and footing."
         }
 
         if windKmh > 40 {
             return isRussian
-                ? "Ветер может быть сильным и сделать пробежки или велотренировки менее комфортными. Выбирайте более защищённые маршруты."
-                : "Wind conditions may make cycling less comfortable today. Choose sheltered routes."
+                ? "Сильный ветер снижает комфорт. Выбирайте более защищённые маршруты и короче интервалы."
+                : "Strong wind lowers comfort. Prefer sheltered routes and shorter outdoor intervals."
         }
 
-        if tempC > 33 {
+        if tempC >= 33 {
             return isRussian
-                ? "Тепло может повысить воспринимаемую нагрузку. Сделайте сессию полегче и уделите внимание гидратации."
-                : "Warm conditions may increase perceived effort. Consider an easier outdoor session and hydrate well."
+                ? "Хорошие условия для лёгкой активности. Пейте воду заранее и избегайте самого жаркого солнца."
+                : "Good conditions for light activity. Hydrate before heading out and avoid the strongest sun."
         }
 
-        if tempC < 0 {
+        if tempC <= 0 || (feelsC <= 2 && windKmh >= 22) {
             return isRussian
-                ? "Прохладно — не забудьте тщательную разминку и слой за слоем. Так вам будет комфортнее."
-                : "Cool conditions can feel sharper. Warm up thoroughly and dress in layers."
+                ? "Одевайтесь слоями и начните с более длинной разминки."
+                : "Dress in layers and start with a longer warm-up."
         }
 
-        if summary.uvIndex >= 8 {
+        if summary.uvIndex >= 8 && !resolvedPeriod.isNightLike {
             return isRussian
-                ? "УФ-индекс высокий. Используйте солнцезащитный крем и по возможности тренируйтесь в тени."
-                : "Very high UV. Wear sunscreen and prefer shaded routes for outdoor training."
+                ? "УФ высокий. Используйте защиту от солнца и по возможности тренируйтесь в тени."
+                : "UV is high. Use sun protection and prefer shaded routes while outdoors."
         }
 
-        if summary.condition == .clear && tempC > 15 && tempC < 28 {
+        if resolvedPeriod.isNightLike {
             return isRussian
-                ? "Отличные условия для тренировки на свежем воздухе. Хорошей сессии!"
-                : "Excellent conditions for outdoor training. Enjoy your session."
+                ? "Условия спокойные, но видимость ниже. Выбирайте хорошо освещённый маршрут."
+                : "Conditions are calm, but visibility is lower. Choose a well-lit route."
         }
 
-        if summary.condition == .cloudy {
+        if summary.condition == .clear && tempC > 15 && tempC < 28 && windKmh < 28 {
             return isRussian
-                ? "Облачная погода — обычно комфортнее для тренировки."
-                : "Overcast skies can be comfortable for training, with less glare."
+                ? "Отличные условия для лёгкой активности на улице. Держите темп комфортным."
+                : "Excellent conditions for light outdoor activity. Keep the effort comfortable."
+        }
+
+        if summary.condition == .partlyCloudy || summary.condition == .cloudy {
+            return isRussian
+                ? "Мягкий рассеянный свет — обычно комфортнее для тренировки на улице."
+                : "Soft diffused light is usually comfortable for outdoor training."
+        }
+
+        if resolvedPeriod == .goldenHour || resolvedPeriod == .dusk {
+            return isRussian
+                ? "Мягкий свет и спокойные условия — хорошее окно для вечерней активности."
+                : "Soft light and calm conditions — a strong window for evening activity."
         }
 
         return isRussian
-            ? "Перед выходом проверьте погодные условия и выбирайте одежду по погоде."
-            : "Check conditions before heading out and dress accordingly."
+            ? "Подстройте одежду и интенсивность под текущую температуру и ветер."
+            : "Match clothing and intensity to the current temperature and wind."
     }
 }
-

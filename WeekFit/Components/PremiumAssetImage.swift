@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum PremiumAssetImageStyle {
     case quickLogThumbnail
@@ -16,7 +19,21 @@ struct PremiumAssetImage: View {
     @Environment(\.weekFitPalette) private var palette
 
     private var isDisplayable: Bool {
-        FoodImageQualityValidator.isDisplayableAsset(named: imageName)
+        let trimmed = imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        switch style {
+        case .activityThumbnail:
+            // Workout / recovery photos are opaque scene crops — don't apply
+            // food-plate luminance gates that reject dark gym imagery (e.g. HIIT).
+            #if canImport(UIKit)
+            return UIImage(named: trimmed) != nil
+            #else
+            return true
+            #endif
+        case .quickLogThumbnail, .mealCard, .timelineAvatar:
+            return FoodImageQualityValidator.isDisplayableAsset(named: trimmed)
+        }
     }
 
     private var contentScale: CGFloat {
@@ -45,25 +62,38 @@ struct PremiumAssetImage: View {
 
     private var thumbnailBody: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
-                .fill(
-                    palette.isLight
-                        ? WeekFitLightTokens.surfaceTertiary
-                        : WeekFitTheme.whiteOpacity(0.04)
-                )
+            // Light: no grey tile — cutouts sit on the card surface.
+            // Dark: keep a soft well so transparent assets stay readable.
+            if !palette.isLight {
+                RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
+                    .fill(WeekFitTheme.whiteOpacity(0.04))
+            } else if !isDisplayable {
+                RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
+                    .fill(WeekFitLightTokens.surfaceTertiary.opacity(0.55))
+            }
 
             assetOrFallback
         }
         .frame(width: frameSize, height: frameSize)
         .clipShape(RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
-                .stroke(
-                    palette.isLight
-                        ? WeekFitLightTokens.divider.opacity(0.45)
-                        : WeekFitTheme.whiteOpacity(0.045),
-                    lineWidth: 1
-                )
+            if style == .activityThumbnail && isDisplayable {
+                RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
+                    .stroke(
+                        palette.isLight
+                            ? Color.black.opacity(0.07)
+                            : WeekFitTheme.whiteOpacity(0.08),
+                        lineWidth: 1
+                    )
+            } else if !palette.isLight || !isDisplayable {
+                RoundedRectangle(cornerRadius: plateCornerRadius, style: .continuous)
+                    .stroke(
+                        palette.isLight
+                            ? WeekFitLightTokens.divider.opacity(0.35)
+                            : WeekFitTheme.whiteOpacity(0.045),
+                        lineWidth: 1
+                    )
+            }
         }
     }
 
@@ -81,14 +111,26 @@ struct PremiumAssetImage: View {
     @ViewBuilder
     private var assetOrFallback: some View {
         if isDisplayable {
-            Image(imageName)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(
-                    width: frameSize * contentScale,
-                    height: frameSize * contentScale
-                )
+            switch style {
+            case .activityThumbnail:
+                // Opaque workout/recovery photos: edge-to-edge so Light sheets
+                // aren't dominated by empty pearl margins around landscape crops.
+                Image(imageName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: frameSize, height: frameSize)
+                    .clipped()
+            default:
+                Image(imageName)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(
+                        width: frameSize * contentScale,
+                        height: frameSize * contentScale
+                    )
+            }
         } else {
             Image(systemName: fallbackSystemName)
                 .font(.system(size: fallbackIconSize, weight: .semibold))

@@ -1272,7 +1272,7 @@ private extension WeekPlannerLiveQueryView {
         HStack(spacing: 8) {
             if counts.workouts > 0 {
                 PlanDayStatChip(
-                    icon: "figure.run",
+                    icon: "figure.mixed.cardio",
                     count: counts.workouts,
                     tint: WeekFitTheme.workout
                 )

@@ -238,7 +238,7 @@ struct MealLibraryGridCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .center, spacing: 8) {
             ZStack(alignment: .topTrailing) {
                 MealLibraryThumbnail(
                     meal: meal,
@@ -275,18 +275,19 @@ struct MealLibraryGridCard: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .center, spacing: 3) {
                 Text(meal.localizedDisplayTitle)
                     .font(.system(size: MealLibraryCardMetrics.titleSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.22)
+                    .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
                     .frame(
                         maxWidth: .infinity,
                         minHeight: MealLibraryCardMetrics.titleBlockHeight,
                         maxHeight: MealLibraryCardMetrics.titleBlockHeight,
-                        alignment: .topLeading
+                        alignment: .center
                     )
 
                 Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
@@ -294,6 +295,7 @@ struct MealLibraryGridCard: View {
                     .foregroundStyle(kcalColor)
                     .monospacedDigit()
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity)
 
                 macroGrid
                     .padding(.top, 2)
@@ -303,7 +305,7 @@ struct MealLibraryGridCard: View {
         }
         .padding(.horizontal, MealLibraryCardMetrics.horizontalPadding)
         .padding(.vertical, MealLibraryCardMetrics.verticalPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .frame(height: MealLibraryCardMetrics.cardHeight, alignment: .top)
         .weekFitPremiumCard(
             emphasis: kind.premiumEmphasis,
@@ -345,7 +347,7 @@ struct MealLibraryGridCard: View {
 
     /// Fixed 2×2 macro block — matches the Saved Meals reference layout.
     private var macroGrid: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .center, spacing: 3) {
             HStack(spacing: 8) {
                 macroCell(
                     label: WeekFitLocalizedString("meals.library.macroProtein"),
@@ -371,7 +373,8 @@ struct MealLibraryGridCard: View {
                 )
             }
         }
-        .frame(height: 32, alignment: .topLeading)
+        .frame(maxWidth: .infinity)
+        .frame(height: 32, alignment: .top)
     }
 
     private func macroCell(label: String, value: Int, tint: Color) -> some View {
@@ -385,7 +388,7 @@ struct MealLibraryGridCard: View {
                 .foregroundStyle(textSecondary)
                 .monospacedDigit()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .lineLimit(1)
         .minimumScaleFactor(0.78)
     }

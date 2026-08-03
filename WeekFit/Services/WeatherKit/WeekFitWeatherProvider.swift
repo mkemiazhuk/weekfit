@@ -65,10 +65,13 @@ final class WeekFitWeatherProvider {
                 .first(where: { $0.date >= Date() })?
                 .precipitationChance
 
+            let placeName = await locationProvider.cachedPlaceNameIfAvailable()
+
             return WeekFitWeatherSummary.from(
                 currentWeather: current,
                 dailyForecast: todayForecast,
-                hourlyPrecipChance: nextHourPrecip
+                hourlyPrecipChance: nextHourPrecip,
+                placeName: placeName
             )
         }
     }
@@ -80,6 +83,7 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
     // Canonical values (independent from unit preference):
     // - Temperature: Celsius
     // - Wind speed: kilometres per hour
+    // - Visibility: kilometres
     let temperature: Measurement<UnitTemperature>
     let feelsLike: Measurement<UnitTemperature>
     let highTemperature: Measurement<UnitTemperature>?
@@ -95,12 +99,24 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
     let uvIndex: Int
     let precipitationChance: Int?
 
+    /// Horizontal visibility in kilometres when WeatherKit provides it.
+    let visibilityKilometers: Double?
+    let sunrise: Date?
+    let sunset: Date?
+    /// Short place label (city / locality) when reverse-geocode is available.
+    let placeName: String?
+
     var badgeSymbolName: String {
         condition.premiumBadgeSymbolName(isDaylight: isDaylight)
     }
 
     var badgeShortLabel: String {
         condition.shortLabel(isDaylight: isDaylight)
+    }
+
+    /// Compact pill label — shorter than `badgeShortLabel` for tight Today chrome.
+    var badgeCompactLabel: String {
+        condition.compactBadgeLabel(isDaylight: isDaylight)
     }
 
     var badgeIconPrimary: Color {
@@ -115,6 +131,24 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
         condition.naturalColor(isDaylight: isDaylight)
     }
 
+    var resolvedPeriod: WeekFitWeatherPeriod {
+        WeekFitWeatherPeriod.resolve(
+            sunrise: sunrise,
+            sunset: sunset,
+            isDaylightHint: isDaylight
+        )
+    }
+
+    var resolvedTokens: WeekFitWeatherTokens {
+        WeekFitWeatherTokens.resolve(
+            period: resolvedPeriod,
+            condition: condition,
+            temperatureC: temperature.value,
+            visibilityKm: visibilityKilometers,
+            precipitationChance: precipitationChance
+        )
+    }
+
     init(
         temperature: Measurement<UnitTemperature>,
         feelsLike: Measurement<UnitTemperature>,
@@ -126,7 +160,11 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
         humidityPercent: Int,
         windSpeed: Measurement<UnitSpeed>,
         uvIndex: Int,
-        precipitationChance: Int?
+        precipitationChance: Int?,
+        visibilityKilometers: Double? = nil,
+        sunrise: Date? = nil,
+        sunset: Date? = nil,
+        placeName: String? = nil
     ) {
         self.temperature = temperature
         self.feelsLike = feelsLike
@@ -139,12 +177,17 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
         self.windSpeed = windSpeed
         self.uvIndex = uvIndex
         self.precipitationChance = precipitationChance
+        self.visibilityKilometers = visibilityKilometers
+        self.sunrise = sunrise
+        self.sunset = sunset
+        self.placeName = placeName
     }
 
     static func from(
         currentWeather: CurrentWeather,
         dailyForecast: DayWeather? = nil,
-        hourlyPrecipChance: Double? = nil
+        hourlyPrecipChance: Double? = nil,
+        placeName: String? = nil
     ) -> WeekFitWeatherSummary? {
         guard !currentWeather.symbolName.isEmpty else { return nil }
 
@@ -159,9 +202,13 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
 
         var highTemperature: Measurement<UnitTemperature>?
         var lowTemperature: Measurement<UnitTemperature>?
+        var sunrise: Date?
+        var sunset: Date?
         if let day = dailyForecast {
             highTemperature = day.highTemperature.converted(to: .celsius)
             lowTemperature = day.lowTemperature.converted(to: .celsius)
+            sunrise = day.sun.sunrise
+            sunset = day.sun.sunset
         }
 
         let humidityPercent = Int((currentWeather.humidity * 100).rounded())
@@ -174,6 +221,8 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
         } else {
             precipChance = nil
         }
+
+        let visibilityKm = currentWeather.visibility.converted(to: .kilometers).value
 
         // Prefer WeatherKit daylight; moon glyphs are a hard night signal.
         let symbol = currentWeather.symbolName.lowercased()
@@ -190,13 +239,18 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
             humidityPercent: humidityPercent,
             windSpeed: windSpeed,
             uvIndex: currentWeather.uvIndex.value,
-            precipitationChance: precipChance
+            precipitationChance: precipChance,
+            visibilityKilometers: visibilityKm.isFinite ? visibilityKm : nil,
+            sunrise: sunrise,
+            sunset: sunset,
+            placeName: placeName
         )
     }
 }
 
 enum WeekFitWeatherCondition: String, Sendable {
     case clear
+    case partlyCloudy
     case cloudy
     case rain
     case snow
@@ -209,6 +263,7 @@ enum WeekFitWeatherCondition: String, Sendable {
         if WeekFitUsesRussianLanguage() {
             switch self {
             case .clear: return isDaylight ? "Солнечно" : "Ясно"
+            case .partlyCloudy: return "Переменная облачность"
             case .cloudy: return "Облачно"
             case .rain: return "Дождь"
             case .snow: return "Снег"
@@ -221,6 +276,36 @@ enum WeekFitWeatherCondition: String, Sendable {
 
         switch self {
         case .clear: return isDaylight ? "Sunny" : "Clear"
+        case .partlyCloudy: return "Partly cloudy"
+        case .cloudy: return "Cloudy"
+        case .rain: return "Rain"
+        case .snow: return "Snow"
+        case .storm: return "Storm"
+        case .windy: return "Windy"
+        case .fog: return "Fog"
+        case .other: return "Other"
+        }
+    }
+
+    /// Tight Today-header pill copy. Prefer short words that fit beside the avatar.
+    func compactBadgeLabel(isDaylight: Bool = true) -> String {
+        if WeekFitUsesRussianLanguage() {
+            switch self {
+            case .clear: return isDaylight ? "Солнечно" : "Ясно"
+            case .partlyCloudy: return "Перем."
+            case .cloudy: return "Облачно"
+            case .rain: return "Дождь"
+            case .snow: return "Снег"
+            case .storm: return "Гроза"
+            case .windy: return "Ветер"
+            case .fog: return "Туман"
+            case .other: return "Погода"
+            }
+        }
+
+        switch self {
+        case .clear: return isDaylight ? "Sunny" : "Clear"
+        case .partlyCloudy: return "Partly"
         case .cloudy: return "Cloudy"
         case .rain: return "Rain"
         case .snow: return "Snow"
@@ -237,6 +322,10 @@ enum WeekFitWeatherCondition: String, Sendable {
             return isDaylight
                 ? Color(red: 1.00, green: 0.78, blue: 0.28)
                 : Color(red: 0.72, green: 0.80, blue: 0.98)
+        case .partlyCloudy:
+            return isDaylight
+                ? Color(red: 0.85, green: 0.78, blue: 0.55)
+                : Color(red: 0.70, green: 0.76, blue: 0.92)
         case .cloudy: return Color(red: 0.68, green: 0.78, blue: 0.94)
         case .rain:   return Color(red: 0.42, green: 0.68, blue: 0.98)
         case .snow:   return Color(red: 0.82, green: 0.90, blue: 1.00)
@@ -251,6 +340,7 @@ enum WeekFitWeatherCondition: String, Sendable {
     func premiumBadgeSymbolName(isDaylight: Bool = true) -> String {
         switch self {
         case .clear:  return isDaylight ? "sun.max.fill" : "moon.stars.fill"
+        case .partlyCloudy: return isDaylight ? "cloud.sun.fill" : "cloud.moon.fill"
         case .cloudy: return isDaylight ? "cloud.fill" : "cloud.moon.fill"
         case .rain:   return "cloud.rain.fill"
         case .snow:   return "cloud.snow.fill"
@@ -267,6 +357,10 @@ enum WeekFitWeatherCondition: String, Sendable {
             return isDaylight
                 ? Color(red: 1.00, green: 0.86, blue: 0.42)
                 : Color(red: 0.86, green: 0.90, blue: 1.00)
+        case .partlyCloudy:
+            return isDaylight
+                ? Color(red: 0.92, green: 0.82, blue: 0.48)
+                : Color(red: 0.80, green: 0.84, blue: 0.96)
         case .cloudy: return Color(red: 0.62, green: 0.70, blue: 0.84)
         case .rain:   return Color(red: 0.62, green: 0.82, blue: 1.00)
         case .snow:   return Color(red: 0.78, green: 0.86, blue: 0.96)
@@ -283,6 +377,10 @@ enum WeekFitWeatherCondition: String, Sendable {
             return isDaylight
                 ? Color(red: 1.00, green: 0.58, blue: 0.18)
                 : Color(red: 0.42, green: 0.52, blue: 0.88)
+        case .partlyCloudy:
+            return isDaylight
+                ? Color(red: 0.55, green: 0.68, blue: 0.88)
+                : Color(red: 0.45, green: 0.52, blue: 0.78)
         case .cloudy: return Color(red: 0.42, green: 0.56, blue: 0.82)
         case .rain:   return Color(red: 0.22, green: 0.46, blue: 0.92)
         case .snow:   return Color(red: 0.55, green: 0.72, blue: 0.95)
@@ -299,29 +397,35 @@ enum WeekFitWeatherCondition: String, Sendable {
         let raw = rawDescription.lowercased()
         let sym = symbolName.lowercased()
 
-        if raw.contains("clear") || raw.contains("sun") || sym.contains("sun") {
-            return .clear
+        if raw.contains("storm") || raw.contains("thunder") || raw.contains("hail") || sym.contains("bolt") {
+            return .storm
         }
-        if raw.contains("cloud") || sym.contains("cloud") {
-            return .cloudy
-        }
-        if raw.contains("rain") {
-            return .rain
-        }
-        if raw.contains("snow") {
+        if raw.contains("snow") || raw.contains("blizzard") || raw.contains("sleet") || raw.contains("flurries") {
             return .snow
         }
-        if raw.contains("storm") || raw.contains("thunder") {
-            return .storm
+        if raw.contains("rain") || raw.contains("drizzle") || raw.contains("shower") {
+            return .rain
         }
-        if raw.contains("wind") {
-            return .windy
-        }
-        if raw.contains("fog") || sym.contains("fog") {
+        if raw.contains("fog") || raw.contains("haze") || raw.contains("smoke") || sym.contains("fog") {
             return .fog
         }
-        if raw.contains("hail") {
-            return .storm
+        if raw.contains("wind") || sym == "wind" {
+            return .windy
+        }
+        if raw.contains("partly") || raw.contains("mostlyclear")
+            || (sym.contains("sun") && sym.contains("cloud"))
+            || (sym.contains("moon") && sym.contains("cloud")) {
+            return .partlyCloudy
+        }
+        if raw.contains("mostlycloudy") || raw.contains("cloudy") || raw.contains("overcast")
+            || (sym.contains("cloud") && !sym.contains("sun") && !sym.contains("moon")) {
+            return .cloudy
+        }
+        if raw.contains("clear") || raw.contains("sun") || sym.contains("sun") || sym.contains("moon") {
+            return .clear
+        }
+        if sym.contains("cloud") {
+            return .cloudy
         }
         return .other
     }
@@ -448,6 +552,19 @@ private final class LocationProvider: NSObject, CLLocationManagerDelegate {
         let lon = defaults.object(forKey: NightComfortLocationService.cachedLongitudeKey) as? Double
         guard let lat, let lon else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+    }
+
+    /// Best-effort locality label from the Night Comfort coordinate cache.
+    func cachedPlaceNameIfAvailable() async -> String? {
+        guard let coordinate = cachedCoordinateIfAvailable() else { return nil }
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        return await withCheckedContinuation { (cont: CheckedContinuation<String?, Never>) in
+            CLGeocoder().reverseGeocodeLocation(location) { placemarks, _ in
+                let place = placemarks?.first
+                let name = place?.locality ?? place?.subAdministrativeArea ?? place?.name
+                cont.resume(returning: name)
+            }
+        }
     }
 
     // MARK: CLLocationManagerDelegate

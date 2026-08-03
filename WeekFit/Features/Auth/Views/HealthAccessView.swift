@@ -6,6 +6,7 @@ import WatchConnectivity
 struct HealthAccessView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var healthManager: HealthManager
     @Environment(\.scenePhase) private var scenePhase
 
@@ -280,7 +281,11 @@ private extension HealthAccessView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(heroCardBackground)
         .overlay(heroCardBorder)
-        .shadow(color: .black.opacity(0.20), radius: 16, y: 10)
+        .shadow(
+            color: .black.opacity(palette.isLight ? 0.06 : 0.20),
+            radius: palette.isLight ? 12 : 16,
+            y: palette.isLight ? 6 : 10
+        )
     }
 
     var heroCardBackground: some View {
@@ -288,10 +293,15 @@ private extension HealthAccessView {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [
-                            WeekFitTheme.cardBackground.opacity(0.70),
-                            WeekFitTheme.cardBackground.opacity(0.90)
-                        ],
+                        colors: palette.isLight
+                            ? [
+                                WeekFitLightTokens.surfacePrimary,
+                                WeekFitLightTokens.surfaceCard
+                            ]
+                            : [
+                                WeekFitTheme.cardBackground.opacity(0.70),
+                                WeekFitTheme.cardBackground.opacity(0.90)
+                            ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -310,18 +320,20 @@ private extension HealthAccessView {
                     )
                 )
 
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            .white.opacity(0.020),
-                            .clear
-                        ],
-                        center: .topTrailing,
-                        startRadius: 20,
-                        endRadius: 220
+            if !palette.isLight {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                .white.opacity(0.020),
+                                .clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 20,
+                            endRadius: 220
+                        )
                     )
-                )
+            }
         }
     }
 
@@ -346,10 +358,15 @@ private extension HealthAccessView {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [
-                            WeekFitTheme.whiteOpacity(0.99),
-                            Color(red: 0.96, green: 0.96, blue: 0.97)
-                        ],
+                        colors: palette.isLight
+                            ? [
+                                WeekFitLightTokens.surfacePrimary,
+                                WeekFitLightTokens.surfaceSecondary
+                            ]
+                            : [
+                                Color.white.opacity(0.99),
+                                Color(red: 0.96, green: 0.96, blue: 0.97)
+                            ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -357,27 +374,34 @@ private extension HealthAccessView {
                 .frame(width: 54, height: 54)
                 .overlay {
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .stroke(.white.opacity(0.55), lineWidth: 0.8)
+                        .stroke(
+                            palette.isLight
+                                ? WeekFitLightTokens.shadowContact.opacity(0.08)
+                                : Color.white.opacity(0.55),
+                            lineWidth: 0.8
+                        )
                 }
                 .overlay(alignment: .top) {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    .white.opacity(0.34),
-                                    .clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                    if !palette.isLight {
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        .white.opacity(0.34),
+                                        .clear
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
                             )
-                        )
-                        .frame(height: 16)
-                        .blur(radius: 1)
+                            .frame(height: 16)
+                            .blur(radius: 1)
+                    }
                 }
                 .shadow(
-                    color: .black.opacity(0.16),
-                    radius: 10,
-                    y: 6
+                    color: .black.opacity(palette.isLight ? 0.06 : 0.16),
+                    radius: palette.isLight ? 8 : 10,
+                    y: palette.isLight ? 4 : 6
                 )
 
             Image(systemName: "heart.fill")
@@ -393,7 +417,7 @@ private extension HealthAccessView {
                     )
                 )
                 .shadow(
-                    color: Color(red: 1.0, green: 0.20, blue: 0.45).opacity(0.16),
+                    color: Color(red: 1.0, green: 0.20, blue: 0.45).opacity(palette.isLight ? 0.22 : 0.16),
                     radius: 3,
                     y: 1
                 )
@@ -708,7 +732,7 @@ private extension HealthAccessView {
     }
 
     var softGreen: Color {
-        Color(red: 0.55, green: 0.80, blue: 0.58)
+        WeekFitTheme.settingsAccent
     }
 
     var softBlue: Color {

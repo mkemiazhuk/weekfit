@@ -5,6 +5,7 @@ struct AccountSettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
@@ -25,7 +26,7 @@ struct AccountSettingsView: View {
 
     private var background: Color { WeekFitTheme.backgroundColor }
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
 
     private var isShowingDialog: Bool {
@@ -194,10 +195,14 @@ private extension AccountSettingsView {
         } label: {
             accountRow(
                 icon: "rectangle.portrait.and.arrow.right",
-                iconTint: WeekFitTheme.whiteOpacity(0.88),
-                iconBackground: WeekFitTheme.whiteOpacity(0.10),
+                iconTint: palette.isLight
+                    ? WeekFitLightTokens.iconSecondary
+                    : WeekFitTheme.whiteOpacity(0.88),
+                iconBackground: palette.isLight
+                    ? WeekFitLightTokens.internalTile
+                    : WeekFitTheme.whiteOpacity(0.10),
                 title: WeekFitLocalizedString("settings.profile.signOut"),
-                titleColor: WeekFitTheme.whiteOpacity(0.86),
+                titleColor: WeekFitTheme.primaryText,
                 showsChevron: false
             )
         }

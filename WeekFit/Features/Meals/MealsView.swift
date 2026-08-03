@@ -2,13 +2,7 @@ import SwiftUI
 import SwiftData
 import WeekFitPlanner
 
-private enum MealCreationRoute {
-    case builder
-    case manualFood
-}
-
 private enum MealCreationStep: Equatable {
-    case chooser
     case builder
     case manualFood
 }
@@ -40,8 +34,7 @@ struct MealsView: View {
     private var plannedActivities: [PlannedActivity]
 
     @State private var showCreationSheet = false
-    @State private var creationStep: MealCreationStep = .chooser
-    @State private var creationDetent: PresentationDetent = .height(270)
+    @State private var creationStep: MealCreationStep = .builder
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
     @State private var showContent = false
@@ -163,10 +156,14 @@ struct MealsView: View {
                     subtitle: headerSubtitle,
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
-                    showAvatar: true
-                ) {
-                    showProfile = true
-                }
+                    showAvatar: true,
+                    trailing: {
+                        if !isQuickLogMode {
+                            mealsAddMenu
+                        }
+                    },
+                    onAvatarTap: { showProfile = true }
+                )
 
             } content: {
                 mealsContent
@@ -255,7 +252,10 @@ struct MealsView: View {
                     selectedMeal = nil
                 }
             )
-            .weekFitSheetChrome(cornerRadius: 36)
+            .weekFitSheetChrome(
+                cornerRadius: 36,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            )
         }
         .sheet(item: $selectedFood) { food in
             CustomFoodDetailsView(
@@ -272,7 +272,10 @@ struct MealsView: View {
                 }
             )
             .id("\(food.id)-\(food.title)")
-            .weekFitSheetChrome(cornerRadius: 36)
+            .weekFitSheetChrome(
+                cornerRadius: 36,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            )
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(item: $expandedLibraryKind) { kind in
@@ -292,13 +295,15 @@ struct MealsView: View {
                     deleteCustomMeal(meal)
                 }
             )
-            .weekFitSheetChrome(cornerRadius: 36)
+            .weekFitSheetChrome(
+                cornerRadius: 36,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            )
         }
         .sheet(isPresented: $showCreationSheet) {
             // One sheet only — SwiftUI cannot present a second sheet on top of this one.
             MealCreationSheetHost(
                 step: $creationStep,
-                detent: $creationDetent,
                 existingMeals: mealsViewModel.customMeals,
                 onSaved: { newMeal in
                     showCreationSheet = false
@@ -310,15 +315,78 @@ struct MealsView: View {
             guard !isPresented else { return }
             // Manual food path: cancel only if started and not already completed/failed.
             ProductAnalytics.foodLoggingCancelIfNeeded()
-            creationStep = .chooser
-            creationDetent = .height(270)
+            creationStep = .builder
         }
     }
 
-    private func openCreationChooser() {
-        creationStep = .chooser
-        creationDetent = .height(270)
+    private func openCreation(_ step: MealCreationStep) {
+        switch step {
+        case .builder:
+            ProductAnalytics.mealBuilderStarted(mode: .new, source: .meals)
+            ProductAnalytics.trackScreen(.mealBuilder)
+        case .manualFood:
+            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
+        }
+        creationStep = step
         showCreationSheet = true
+    }
+
+    private var mealsAddMenu: some View {
+        Menu {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                openCreation(.builder)
+            } label: {
+                Label(
+                    WeekFitLocalizedString("meals.creation.builder.title"),
+                    systemImage: "fork.knife"
+                )
+            }
+            .accessibilityIdentifier("meals.creation.builder")
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                openCreation(.manualFood)
+            } label: {
+                Label(
+                    WeekFitLocalizedString("meals.creation.customFood.title"),
+                    systemImage: "camera.fill"
+                )
+            }
+            .accessibilityIdentifier("meals.creation.customFood")
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(mealsAddForeground)
+                .frame(width: 36, height: 36)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(mealsAddBackground)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            WeekFitTheme.meal.opacity(palette.isLight ? 0.28 : 0.34),
+                            lineWidth: 1
+                        )
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(WeekFitLocalizedString("meals.create"))
+        .accessibilityHint(WeekFitLocalizedString("meals.createFoodOrMeal"))
+        .accessibilityIdentifier("meals.create")
+    }
+
+    private var mealsAddBackground: Color {
+        if palette.isLight {
+            return WeekFitLightTokens.activitySoft
+        }
+        return Color(red: 0.16, green: 0.30, blue: 0.22)
+    }
+
+    private var mealsAddForeground: Color {
+        palette.isLight ? WeekFitTheme.meal : WeekFitTheme.primaryText
     }
     
     @MainActor
@@ -731,31 +799,17 @@ struct MealsView: View {
         MealLibraryEmptyStateCard(
             title: WeekFitLocalizedString("meals.emptyState.expanded.title"),
             message: WeekFitLocalizedString("meals.emptyState.expanded.message"),
-            ctaTitle: WeekFitLocalizedString("meals.emptyState.expanded.cta"),
-            benefits: [
-                .init(
-                    id: "build",
-                    icon: "fork.knife",
-                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.build.title"),
-                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.build.subtitle")
-                ),
-                .init(
-                    id: "scan",
-                    icon: "barcode.viewfinder",
-                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.scan.title"),
-                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.scan.subtitle")
-                ),
-                .init(
-                    id: "reuse",
-                    icon: "arrow.triangle.2.circlepath",
-                    title: WeekFitLocalizedString("meals.emptyState.expanded.benefit.reuse.title"),
-                    subtitle: WeekFitLocalizedString("meals.emptyState.expanded.benefit.reuse.subtitle")
-                )
-            ],
-            presentation: .expanded
+            ctaTitle: WeekFitLocalizedString("meals.emptyLibrary.createMealCTA"),
+            benefits: [],
+            presentation: .compact,
+            secondaryCTATitle: WeekFitLocalizedString("meals.creation.customFood.title"),
+            secondaryAction: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                openCreation(.manualFood)
+            }
         ) {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            openCreationChooser()
+            openCreation(.builder)
         }
     }
 
@@ -853,74 +907,18 @@ struct MealsView: View {
         return meal.ingredients.count <= 1 ? .ingredient : .meal
     }
 
-    private var createActionTitle: String {
-        "meals.createFoodOrMeal"
-    }
-
     private var bottomFixedActionArea: some View {
-        VStack(spacing: 0) {
-            if !isQuickLogMode && hasAnyItems {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    openCreationChooser()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .semibold))
-
-                        Text(WeekFitLocalizedString(createActionTitle))
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .tracking(-0.10)
-                    }
-                    .foregroundStyle(createCTAForeground)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background {
-                        Capsule(style: .continuous)
-                            .fill(createCTABackground)
-                    }
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(WeekFitTheme.meal.opacity(palette.isLight ? 0.36 : 0.40), lineWidth: 1)
-                    }
-                    .shadow(color: Color.black.opacity(palette.isLight ? 0.08 : 0.40), radius: 10, y: 4)
-                    .contentShape(Capsule(style: .continuous))
-                }
-                .buttonStyle(MealsCreateCTAButtonStyle())
-                .accessibilityIdentifier("meals.create")
-                .accessibilityLabel(WeekFitLocalizedString(createActionTitle))
-                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
-                .padding(.top, 8)
-                .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
-            } else {
-                bottomFadeOnly
-                    .frame(height: 64)
+        bottomFadeOnly
+            .frame(height: WeekFitScreenLayout.tabBarClearance + 18)
+            .background {
+                bottomFadeGradient
             }
-        }
-        .background {
-            bottomFadeGradient
-        }
-    }
-
-    private var createCTABackground: Color {
-        if palette.isLight {
-            // Solid soft green — no translucent wash over scrolling content.
-            return WeekFitLightTokens.activitySoft
-        }
-        // Opaque dark green chip (was meal @ 16% and see-through).
-        return Color(red: 0.16, green: 0.30, blue: 0.22)
-    }
-
-    private var createCTAForeground: Color {
-        palette.isLight
-            ? WeekFitTheme.meal
-            : WeekFitTheme.primaryText
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private var bottomFadeOnly: some View {
-        bottomFadeGradient
-            .frame(height: 66)
-            .allowsHitTesting(false)
+        Color.clear
     }
 
     private var bottomFadeGradient: some View {
@@ -941,7 +939,6 @@ struct MealsView: View {
 
 private struct MealCreationSheetHost: View {
     @Binding var step: MealCreationStep
-    @Binding var detent: PresentationDetent
 
     let existingMeals: [Meals]
     let onSaved: (Meals) -> Void
@@ -949,22 +946,6 @@ private struct MealCreationSheetHost: View {
     var body: some View {
         Group {
             switch step {
-            case .chooser:
-                MealCreationChooserSheet { route in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    // Expand first while both detents are still allowed, then swap content.
-                    detent = .large
-                    switch route {
-                    case .builder:
-                        ProductAnalytics.mealBuilderStarted(mode: .new, source: .meals)
-                        ProductAnalytics.trackScreen(.mealBuilder)
-                        step = .builder
-                    case .manualFood:
-                        ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
-                        step = .manualFood
-                    }
-                }
-
             case .builder:
                 MealBuilderView(onSave: onSaved)
 
@@ -972,120 +953,14 @@ private struct MealCreationSheetHost: View {
                 CustomMealBuilderView(existingMeals: existingMeals, onSave: onSaved)
             }
         }
-        .presentationDetents(
-            step == .chooser ? [.height(270), .large] : [.large],
-            selection: $detent
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .weekFitSheetChrome(
+            cornerRadius: 36,
+            background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
         )
-        .presentationDragIndicator(step == .chooser ? .hidden : .visible)
-        .weekFitSheetChrome(cornerRadius: 36)
     }
 }
-
-private struct MealCreationChooserSheet: View {
-    let onSelect: (MealCreationRoute) -> Void
-
-    private let card = WeekFitTheme.elevatedCard
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
-    private let accent = WeekFitTheme.meal
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Capsule()
-                .fill(WeekFitTheme.whiteOpacity(0.14))
-                .frame(width: 38, height: 4)
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 2)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(WeekFitLocalizedString("meals.create"))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(textPrimary)
-                    .tracking(-0.55)
-
-                Text(WeekFitLocalizedString("meals.chooseHowYouWantToAddFood"))
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.76))
-            }
-
-            VStack(spacing: 10) {
-                optionRow(
-                    icon: "square.grid.2x2.fill",
-                    title: "meals.creation.builder.title",
-                    subtitle: "meals.creation.builder.subtitle",
-                    route: .builder,
-                    accessibilityId: "meals.creation.builder"
-                )
-
-                optionRow(
-                    icon: "camera.fill",
-                    title: "meals.creation.customFood.title",
-                    subtitle: "meals.creation.customFood.subtitle",
-                    route: .manualFood,
-                    accessibilityId: "meals.creation.customFood"
-                )
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 10)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color.clear)
-    }
-
-    private func optionRow(
-        icon: String,
-        title: String,
-        subtitle: String,
-        route: MealCreationRoute,
-        accessibilityId: String
-    ) -> some View {
-        Button {
-            onSelect(route)
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.12))
-
-                    Image(systemName: icon)
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(accent.opacity(0.94))
-                }
-                .frame(width: 46, height: 46)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(WeekFitLocalizedString(title))
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(textPrimary)
-                        .tracking(-0.15)
-                        .lineLimit(1)
-
-                    Text(WeekFitLocalizedString(subtitle))
-                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.68))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(textSecondary.opacity(0.46))
-            }
-            .padding(14)
-            .weekFitPremiumCard(
-                emphasis: .standard,
-                accent: accent,
-                cornerRadius: 20
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityId)
-    }
-}
-
 
 private typealias CustomFoodFormView = CustomMealBuilderView
 
@@ -1960,14 +1835,4 @@ private struct MealLibraryExpandSheet: View {
     }
 }
 
-private struct MealsCreateCTAButtonStyle: ButtonStyle {
-    var pressedScale: CGFloat = 0.982
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .scaleEffect(configuration.isPressed ? pressedScale : 1.0)
-            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
-    }
-}
 

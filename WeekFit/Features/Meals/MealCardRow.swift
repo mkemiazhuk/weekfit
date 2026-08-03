@@ -169,19 +169,16 @@ struct MealCardRow: View {
     private func builtMealImage(_ items: [MealBuilderImageItem]) -> some View {
         let previewSize: CGFloat = isQuickLogMode ? 74 : 60
 
-        return ZStack {
-            Color.black.opacity(0.10)
-
-            BuiltMealPlateView(
-                items: items,
-                plateSize: previewSize,
-                itemScale: isQuickLogMode ? 0.28 : 0.24,
-                offsetScale: isQuickLogMode ? 0.28 : 0.23,
-                plateOpacity: 0.42,
-                shadowOpacity: 0.12,
-                layoutMode: .compactPreview
-            )
-        }
+        // No square well behind plated meals — matches MealLibraryThumbnail.
+        return BuiltMealPlateView(
+            items: items,
+            plateSize: previewSize,
+            itemScale: isQuickLogMode ? 0.28 : 0.24,
+            offsetScale: isQuickLogMode ? 0.28 : 0.23,
+            plateOpacity: 0.42,
+            shadowOpacity: 0.12,
+            layoutMode: .compactPreview
+        )
         .frame(
             width: isQuickLogMode ? 78 : 64,
             height: isQuickLogMode ? 62 : 64

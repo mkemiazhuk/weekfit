@@ -23,6 +23,11 @@ struct PremiumActivityStartSheet: View {
     private var allPlannedActivities: [PlannedActivity]
 
     @State private var currentSubTab: String = "Workout"
+    @State private var usageEntries: [String: QuickActivityUsageStore.Entry] = QuickActivityUsageStore.load()
+    @State private var weatherRisk: ProposalWeatherRiskToken = .unavailable
+    @State private var sortAscending = true
+    @State private var revealContent = false
+    @Environment(\.weekFitPalette) private var palette
 
     private var activeLiveActivity: PlannedActivity? {
         let now = Date()
@@ -41,16 +46,21 @@ struct PremiumActivityStartSheet: View {
         currentSubTab == "Workout" ? .workout : .recovery
     }
 
-    private var selectedAccent: Color {
-        currentSubTab == "Workout"
-            ? CoachPalette.stable
-            : Color(red: 0.66, green: 0.58, blue: 0.86)
+    private var activityAccent: Color {
+        QuickActivityAccent.color(for: selectedPlannerType, isLight: palette.isLight)
     }
 
     private var selectedAccentComponents: (red: Double, green: Double, blue: Double) {
         currentSubTab == "Workout"
-            ? (0.16, 0.80, 0.43)
-            : (0.66, 0.58, 0.86)
+            ? (palette.isLight ? (0.208, 0.678, 0.816) : (0.50, 0.62, 0.92))
+            : (palette.isLight ? (0.482, 0.380, 0.820) : (0.66, 0.58, 0.86))
+    }
+
+    private var recoveryBand: CoachRecoveryBand? {
+        guard let input = coachInputProvider.lastInput else { return nil }
+        let readiness = CoachDayReadinessResolver.resolve(from: input)
+        guard readiness.recoveryDataAvailable else { return nil }
+        return readiness.recoveryBand
     }
 
     var body: some View {
@@ -60,17 +70,11 @@ struct PremiumActivityStartSheet: View {
         ZStack {
             background.ignoresSafeArea()
 
-//            ambientGlow
-
             VStack(spacing: 0) {
-//                grabber
-//                    .padding(.top, 8)
-
-                PremiumBottomSheetHeader(
+                QuickSheetPremiumHeader(
                     title: liveActivity != nil
                         ? WeekFitLocalizedString("home.activityStart.activeSession.title")
                         : WeekFitLocalizedString("home.activityStart.title"),
-
                     subtitle: liveActivity != nil
                         ? WeekFitLocalizedString("home.activityStart.activeSession.subtitle")
                         : WeekFitLocalizedString("home.activityStart.subtitle")
@@ -81,7 +85,7 @@ struct PremiumActivityStartSheet: View {
 
                 if let liveItem = liveActivity {
                     liveSessionCard(liveItem)
-                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
+                        .padding(.horizontal, 18)
                         .padding(.bottom, 12)
                 }
 
@@ -89,52 +93,312 @@ struct PremiumActivityStartSheet: View {
                     segments: [
                         QuickActionSheetSegment(
                             id: "Workout",
-                            title: WeekFitLocalizedString("home.activityStart.tab.workout")
+                            title: WeekFitLocalizedString("home.activityStart.tab.workout"),
+                            systemImage: "dumbbell.fill"
                         ),
                         QuickActionSheetSegment(
                             id: "Recovery",
-                            title: WeekFitLocalizedString("home.activityStart.tab.recovery")
+                            title: WeekFitLocalizedString("home.activityStart.tab.recovery"),
+                            systemImage: "leaf.fill"
                         )
                     ],
-                    selection: $currentSubTab
+                    selection: $currentSubTab,
+                    selectedAccent: activityAccent
                 )
-                .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
-                .padding(.bottom, QuickActionSheetDesign.Layout.segmentedBottomPadding)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 8)
 
                 activityOptionsList(liveActivity: liveActivity)
+            }
+        }
+        .onAppear {
+            usageEntries = QuickActivityUsageStore.load()
+            revealContent = false
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.86).delay(0.04)) {
+                revealContent = true
+            }
+            Task {
+                let (summary, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
+                weatherRisk = ProposalWeatherRisk.resolve(from: summary)
+            }
+        }
+        .onChange(of: currentSubTab) { _, _ in
+            revealContent = false
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+                revealContent = true
             }
         }
     }
 
     private func activityOptionsList(liveActivity: PlannedActivity?) -> some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
-                QuickActionCoachRecommendationSlot()
+        let options = selectedPlannerType.options
+        let frequent = QuickActivityFrequentComposer.picks(
+            options: options,
+            usage: usageEntries,
+            weatherRisk: weatherRisk,
+            recoveryBand: recoveryBand
+        )
+        let sorted = sortedOptions(options)
+        let isBlocked = liveActivity != nil
 
-                ForEach(selectedPlannerType.options, id: \.title) { option in
-                    let isBlocked = liveActivity != nil
-                    let duration = defaultDuration(for: option, type: selectedPlannerType)
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                if !frequent.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
 
-                    PremiumActivityStartCard(
-                        title: localizedOptionTitle(option.title),
-                        subtitle: localizedOptionSubtitle(option.subtitle),
-                        imageName: option.imageName,
-                        systemIcon: selectedPlannerType.icon,
-                        accentColor: selectedAccent,
-                        cardBackground: cardBackground,
-                        textSecondary: textSecondary,
-                        durationMinutes: duration,
-                        plannerType: selectedPlannerType,
-                        badge: smartBadge(for: option, type: selectedPlannerType),
-                        hasConflict: isBlocked
-                    ) {
-                        start(option: option, duration: duration)
+                        ForEach(frequent, id: \.option.imageName) { pick in
+                            activityFrequentCard(
+                                option: pick.option,
+                                badge: pick.badge,
+                                isBlocked: isBlocked
+                            )
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    allHeader(
+                        title: WeekFitLocalizedString(
+                            currentSubTab == "Workout"
+                                ? "home.activityStart.section.allWorkouts"
+                                : "home.activityStart.section.allRecovery"
+                        )
+                    )
+
+                    VStack(spacing: 10) {
+                        ForEach(sorted, id: \.imageName) { option in
+                            let duration = defaultDuration(for: option, type: selectedPlannerType)
+                            let category = ActivityOptionPresentation.category(for: option)
+                            let chip = ActivityOptionPresentation.detailChip(for: option)
+                            PremiumActivityStartCard(
+                                title: localizedOptionTitle(option.title),
+                                category: category,
+                                categoryLabel: WeekFitLocalizedString(category.localizationKey),
+                                detailLine: listDetailLine(option: option, duration: duration),
+                                chip: chip,
+                                chipLabel: WeekFitLocalizedString(chip.localizationKey),
+                                imageName: option.imageName,
+                                systemIcon: selectedPlannerType.icon,
+                                accentColor: activityAccent,
+                                hasConflict: isBlocked
+                            ) {
+                                start(option: option, duration: duration)
+                            }
+                        }
                     }
                 }
             }
-            .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
-            .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 28)
+            .opacity(revealContent ? 1 : 0)
+            .offset(y: revealContent ? 0 : 10)
         }
+    }
+
+    private func sortedOptions(_ options: [PlannerOption]) -> [PlannerOption] {
+        options.sorted {
+            let left = localizedOptionTitle($0.title)
+            let right = localizedOptionTitle($1.title)
+            return sortAscending
+                ? left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+                : left.localizedCaseInsensitiveCompare(right) == .orderedDescending
+        }
+    }
+
+    private func listDetailLine(option: PlannerOption, duration: Int) -> String {
+        // Duration only — category is already shown as the colored label (avoids "Mobility Mobility").
+        formattedDurationLabel(duration)
+    }
+
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
+    }
+
+    private func allHeader(title: String) -> some View {
+        HStack {
+            sectionHeader(title)
+            Spacer(minLength: 8)
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                sortAscending.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Text(
+                        WeekFitLocalizedString(
+                            sortAscending ? "today.quickLog.sort.az" : "today.quickLog.sort.za"
+                        )
+                    )
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(activityAccent)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func activityFrequentCard(
+        option: PlannerOption,
+        badge: QuickActivityFrequentComposer.Badge,
+        isBlocked: Bool
+    ) -> some View {
+        let duration = defaultDuration(for: option, type: selectedPlannerType)
+        let intensityKey = ActivityOptionPresentation.intensityLabelKey(for: option)
+
+        return Button {
+            start(option: option, duration: duration)
+        } label: {
+            HStack(spacing: 14) {
+                activityThumb(option.imageName)
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.black.opacity(palette.isLight ? 0.05 : 0.0), lineWidth: 1)
+                    }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 5) {
+                        Image(systemName: badge.symbolName)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(activityAccent)
+                        Text(WeekFitLocalizedString(badge.localizationKey))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background {
+                        Capsule()
+                            .fill(
+                                palette.isLight
+                                    ? WeekFitLightTokens.internalTile
+                                    : WeekFitTheme.whiteOpacity(0.08)
+                            )
+                    }
+
+                    Text(localizedOptionTitle(option.title))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.88)
+
+                    HStack(spacing: 12) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(activityAccent)
+                            Text(formattedDurationLabel(duration))
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                        }
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(activityAccent)
+                            Text(WeekFitLocalizedString(intensityKey))
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "play.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .offset(x: 0.5)
+                    .frame(width: 44, height: 44)
+                    .background {
+                        Circle().fill(activityAccent)
+                    }
+                    .shadow(
+                        color: palette.isLight ? activityAccent.opacity(0.28) : .clear,
+                        radius: 8,
+                        y: 3
+                    )
+            }
+            .padding(14)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(QuickActivityAccent.frequentFill(accent: activityAccent, isLight: palette.isLight))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(
+                                palette.isLight
+                                    ? Color.clear
+                                    : WeekFitTheme.cardBackground.opacity(0.55)
+                            )
+                    }
+                    .shadow(
+                        color: QuickSheetChrome.cardShadowColor(isLight: palette.isLight),
+                        radius: QuickSheetChrome.cardShadowRadius,
+                        y: QuickSheetChrome.cardShadowY
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(
+                        QuickActivityAccent.frequentStroke(accent: activityAccent, isLight: palette.isLight),
+                        lineWidth: 0.75
+                    )
+            }
+            .opacity(isBlocked ? 0.55 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isBlocked)
+    }
+
+    @ViewBuilder
+    private func activityThumb(_ imageName: String) -> some View {
+        if !imageName.isEmpty, UIImage(named: imageName) != nil {
+            PremiumAssetImage(
+                imageName: imageName,
+                style: .activityThumbnail,
+                accentColor: activityAccent,
+                fallbackSystemName: selectedPlannerType.icon
+            )
+        } else {
+            Image(systemName: selectedPlannerType.icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(
+                    palette.isLight
+                        ? activityAccent.opacity(0.7)
+                        : WeekFitTheme.secondaryText.opacity(0.55)
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    palette.isLight
+                        ? activityAccent.opacity(0.10)
+                        : WeekFitTheme.whiteOpacity(0.06)
+                )
+        }
+    }
+
+    private func formattedDurationLabel(_ minutes: Int) -> String {
+        if minutes >= 60 {
+            let hours = minutes / 60
+            let remaining = minutes % 60
+            if remaining == 0 {
+                return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), Int64(hours))
+            }
+            return String(
+                format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"),
+                Int64(hours),
+                Int64(remaining)
+            )
+        }
+        return String(format: WeekFitLocalizedString("common.duration.minutesFormat"), Int64(minutes))
     }
 
     private func start(option: PlannerOption, duration: Int) {
@@ -176,6 +440,8 @@ struct PremiumActivityStartSheet: View {
         modelContext.insert(newActivity)
         do {
             try modelContext.save()
+            QuickActivityUsageStore.record(imageName: option.imageName)
+            usageEntries = QuickActivityUsageStore.load()
             ProductAnalytics.activityStarted(
                 category: ProductAnalytics.activityCategory(forType: newActivity.type),
                 source: .today
@@ -219,32 +485,6 @@ struct PremiumActivityStartSheet: View {
         }
 
         return 60
-    }
-
-    private func smartBadge(for option: PlannerOption, type: PlannerType) -> String? {
-        let title = option.title.lowercased()
-
-        if title.contains("sleep") || title.contains("bedtime") {
-            return WeekFitLocalizedString("home.activityStart.badge.evening")
-        }
-
-        if title.contains("yoga") || title.contains("stretch") || title.contains("mobility") {
-            return WeekFitLocalizedString("home.activityStart.badge.lowImpact")
-        }
-
-        if title.contains("breath") {
-            return WeekFitLocalizedString("home.activityStart.badge.reset")
-        }
-
-        if title.contains("run") || title.contains("cycling") || title.contains("cardio") {
-            return WeekFitLocalizedString("home.activityStart.badge.cardio")
-        }
-
-        if title.contains("upper") || title.contains("strength") || title.contains("body") {
-            return WeekFitLocalizedString("home.activityStart.badge.strength")
-        }
-
-        return type == .recovery ? WeekFitLocalizedString("home.activityStart.badge.recovery") : nil
     }
 
     private func localizedOptionTitle(_ title: String) -> String {

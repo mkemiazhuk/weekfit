@@ -78,7 +78,6 @@ final class RecoveryDetailsViewModel: ObservableObject {
             input: input
         )
         stressIndex = stress
-
         isLoading = false
     }
 

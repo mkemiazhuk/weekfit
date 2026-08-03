@@ -57,18 +57,17 @@ struct QuickLogMealRow: View {
                 }
             }
         } else if !row.sortedBuilderImageItems.isEmpty {
-            ZStack {
-                Color.black.opacity(0.10)
-                BuiltMealPlateView(
-                    items: row.sortedBuilderImageItems,
-                    plateSize: imageContentSize,
-                    itemScale: 0.33,
-                    offsetScale: 0.30,
-                    plateOpacity: 0.42,
-                    shadowOpacity: 0.12,
-                    layoutMode: .compactPreview
-                )
-            }
+            // No square well behind plated meals — plate chrome is enough
+            // (avoids the light-grey tile on ivory/white cards).
+            BuiltMealPlateView(
+                items: row.sortedBuilderImageItems,
+                plateSize: imageContentSize,
+                itemScale: 0.33,
+                offsetScale: 0.30,
+                plateOpacity: 0.42,
+                shadowOpacity: 0.12,
+                layoutMode: .compactPreview
+            )
             .frame(width: imageContentSize, height: imageContentSize)
         } else if row.usesAssetImage {
             PremiumAssetImage(

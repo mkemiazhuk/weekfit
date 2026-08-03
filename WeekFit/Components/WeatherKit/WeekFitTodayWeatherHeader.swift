@@ -102,9 +102,12 @@ struct WeekFitTodayWeatherHeader: View {
         .sheet(isPresented: $showWeatherSheet) {
             if case .loaded(let summary) = badgeState {
                 WeekFitWeatherDetailSheet(summary: summary)
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.fraction(0.92), .large])
                     .presentationDragIndicator(.visible)
-                    .weekFitSheetChrome(cornerRadius: 28)
+                    .weekFitSheetChrome(
+                        cornerRadius: 28,
+                        background: summary.resolvedTokens.backgroundPrimary
+                    )
             }
         }
     }

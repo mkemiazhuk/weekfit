@@ -183,7 +183,7 @@ struct WeekFitRootView: View {
 
     private var rootShell: some View {
         ZStack(alignment: .bottom) {
-            WeekFitTheme.appScreenBackground
+            palette.appScreenBackground
                 .ignoresSafeArea()
             ambientBackground
                 .ignoresSafeArea()
@@ -256,6 +256,7 @@ struct WeekFitRootView: View {
             if mountedTabs.contains(.today) {
                 WeekFitMountedTabLayers.today(
                     isActive: selectedTab == .today,
+                    appearanceInvalidationToken: palette.appearanceInvalidationToken,
                     returnToTodayTrigger: todayResetTrigger,
                     nutritionRevision: nutritionViewModel.coachStateRefreshID,
                     plannedActivitiesRevision: cachedPlannedActivitiesSignature,
@@ -269,6 +270,7 @@ struct WeekFitRootView: View {
             if mountedTabs.contains(.coach) {
                 WeekFitMountedTabLayers.coach(
                     isActive: selectedTab == .coach,
+                    appearanceInvalidationToken: palette.appearanceInvalidationToken,
                     coachStateID: coachCoordinator.state.id,
                     authViewModel: authViewModel,
                     coachInputProvider: coachInputProvider
@@ -278,6 +280,7 @@ struct WeekFitRootView: View {
             if mountedTabs.contains(.meals) {
                 WeekFitMountedTabLayers.meals(
                     isActive: selectedTab == .meals,
+                    appearanceInvalidationToken: palette.appearanceInvalidationToken,
                     nutritionRevision: nutritionViewModel.coachStateRefreshID,
                     nutritionResult: nutritionViewModel.nutritionResult,
                     authViewModel: authViewModel

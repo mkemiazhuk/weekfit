@@ -167,6 +167,7 @@ struct ActivityIntelligenceView: View {
     @StateObject private var viewModel = ActivityIntelligenceViewModel()
     @State private var selectedSession: ActivitySessionSnapshot?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     private var snapshot: ActivityDaySnapshot {
@@ -177,25 +178,44 @@ struct ActivityIntelligenceView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack {
-            ActivityStyle.screenBackground
+            (palette.isLight ? HealthDetailsSoftChrome.canvas : ActivityStyle.screenBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header
+                if palette.isLight {
+                    NutritionDetailsHeader(
+                        title: WeekFitLocalizedString("activity.activityDetails"),
+                        subtitle: activityDetailsDateTitle,
+                        onClose: { dismiss() }
+                    )
 
-                HealthDetailsWeekPicker(
-                    selectedDate: Binding(
-                        get: { viewModel.selectedDate },
-                        set: { select($0) }
-                    ),
-                    accentColor: ActivityStyle.activityColor
-                )
-                .padding(.horizontal, 18)
-                .padding(.top, 9)
-                .padding(.bottom, 8)
+                    NutritionWeekSelector(
+                        selectedDate: Binding(
+                            get: { viewModel.selectedDate },
+                            set: { select($0) }
+                        ),
+                        accentColor: WeekFitLightTokens.activity
+                    )
+                    .padding(.horizontal, HealthDetailsSoftChrome.horizontalPadding)
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+                } else {
+                    header
+
+                    HealthDetailsWeekPicker(
+                        selectedDate: Binding(
+                            get: { viewModel.selectedDate },
+                            set: { select($0) }
+                        ),
+                        accentColor: ActivityStyle.activityColor
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.top, 9)
+                    .padding(.bottom, 8)
+                }
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 9) {
+                    VStack(spacing: palette.isLight ? HealthDetailsSoftChrome.sectionSpacing : 9) {
                         ActivityHeroCard(snapshot: snapshot)
                         ActivityDailyMetricsCard(snapshot: snapshot)
                         ActivityTimelineCard(
@@ -213,15 +233,15 @@ struct ActivityIntelligenceView: View {
                             selectedSession = session
                         }
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 5)
-                    .padding(.bottom, 36)
+                    .padding(.horizontal, palette.isLight ? HealthDetailsSoftChrome.horizontalPadding : 18)
+                    .padding(.top, palette.isLight ? 8 : 5)
+                    .padding(.bottom, palette.isLight ? 24 : 36)
                 }
             }
 
             if viewModel.isLoading && viewModel.weekSnapshots.isEmpty {
                 ProgressView()
-                    .tint(.white.opacity(0.75))
+                    .tint(palette.isLight ? WeekFitLightTokens.activity : .white.opacity(0.75))
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -302,30 +322,49 @@ struct ActivityIntelligenceView: View {
 
 private struct ActivityHeroCard: View {
     let snapshot: ActivityDaySnapshot
+    @Environment(\.weekFitPalette) private var palette
 
     private var progress: CGFloat {
         CGFloat(min(max(snapshot.activityPercent, 0), 100)) / 100
     }
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: palette.isLight ? 12 : 15) {
             activityRing
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: palette.isLight ? 4 : 5) {
                 Text(WeekFitLocalizedString("activity.activityScore"))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(1.8)
-                    .foregroundStyle(ActivityStyle.activityColor)
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.eyebrow
+                            : .system(size: 10, weight: .bold, design: .rounded)
+                    )
+                    .tracking(palette.isLight ? 0.6 : 1.8)
+                    .foregroundStyle(
+                        palette.isLight ? WeekFitLightTokens.activity : ActivityStyle.activityColor
+                    )
 
                 Text(WeekFitLocalizedString(statusText))
-                    .font(.system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.insight
+                            : .system(size: ActivityTypography.heroTitle, weight: .bold, design: .rounded)
+                    )
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
                 Text(WeekFitLocalizedString(insightText))
-                    .font(.system(size: ActivityTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.metricSecondary
+                            : .system(size: ActivityTypography.heroText, weight: .medium, design: .rounded)
+                    )
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.textSecondary
+                            : WeekFitTheme.whiteOpacity(0.52)
+                    )
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -333,17 +372,20 @@ private struct ActivityHeroCard: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 14)
-        .activityCard(glow: ActivityStyle.activityColor)
+        .padding(.horizontal, palette.isLight ? 14 : 17)
+        .padding(.vertical, palette.isLight ? 12 : 14)
+        .healthDetailsSoftCard(
+            isLight: palette.isLight,
+            darkGlow: ActivityStyle.activityColor
+        )
     }
 
     private var activityRing: some View {
         WeekFitProgressRing(
             progress: progress,
             color: WeekFitProgressRingColor.activity,
-            size: 70,
-            strokeWidth: 4,
+            size: palette.isLight ? 58 : 70,
+            strokeWidth: palette.isLight ? 4.5 : 4,
             gradientColors: [
                 WeekFitProgressRingColor.activity.opacity(0.80),
                 WeekFitProgressRingColor.activity,
@@ -353,13 +395,25 @@ private struct ActivityHeroCard: View {
         ) {
             VStack(spacing: -2) {
                 Text("\(snapshot.activityPercent)")
-                    .font(.system(size: ActivityTypography.heroScore, weight: .bold, design: .rounded))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.score
+                            : .system(size: ActivityTypography.heroScore, weight: .bold, design: .rounded)
+                    )
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(WeekFitLocalizedString("activity.score"))
-                    .font(.system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.scoreDenom
+                            : .system(size: ActivityTypography.heroScoreLabel, weight: .bold, design: .rounded)
+                    )
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.textQuaternary
+                            : WeekFitTheme.whiteOpacity(0.40)
+                    )
             }
         }
     }
@@ -507,10 +561,7 @@ private struct ActivityDailyMetricsCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 9)
         .padding(.horizontal, 5)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.026))
-        }
+        .healthDetailsNestedTile(isLight: WeekFitPaletteStore.current.isLight)
     }
 }
 
@@ -1921,16 +1972,28 @@ struct ActivitySessionDetailView: View {
         guard detail?.shouldShowDistanceMetrics != false else { return nil }
         guard routePoints.count > 1 else { return nil }
 
-        let speeds = zip(routePoints, routePoints.dropFirst()).compactMap { start, end -> Double? in
-            let interval = end.timestamp.timeIntervalSince(start.timestamp)
-            guard interval > 0, interval <= 120 else { return nil }
+        return WorkoutRouteMaxSpeedCalculator.maxSpeedKmh(
+            from: routePoints,
+            averageSpeedKmh: detail?.averageSpeedKmh,
+            absoluteCeilingKmh: maxSpeedAbsoluteCeilingKmh
+        )
+    }
 
-            let distance = WorkoutRouteGeometry.distance(from: start, to: end)
-            let speed = distance / interval * 3.6
-            return speed.isFinite && speed > 0 ? speed : nil
+    private var maxSpeedAbsoluteCeilingKmh: Double {
+        switch detail?.activityType {
+        case .cycling, .handCycling:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.cycling
+        case .running:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.running
+        case .walking, .wheelchairWalkPace:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.walking
+        case .hiking:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.hiking
+        case .swimming, .paddleSports, .rowing:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.swimming
+        default:
+            return WorkoutRouteMaxSpeedCalculator.AbsoluteCeilingKmh.outdoorDefault
         }
-
-        return speeds.max()
     }
 
     private func routeMetric(
@@ -2997,10 +3060,7 @@ private struct SectionLabel: View {
     }
 
     var body: some View {
-        Text(text)
-            .font(.system(size: ActivityTypography.sectionLabel, weight: .bold, design: .rounded))
-            .tracking(1.8)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
+        HealthDetailsSectionTitle(text: text)
     }
 }
 
@@ -3131,18 +3191,41 @@ private extension View {
         cornerRadius: CGFloat = 22,
         glow: Color = .clear
     ) -> some View {
-        weekFitPremiumCard(
-            emphasis: glow == .clear ? .standard : .accent,
-            accent: glow == .clear ? nil : glow,
-            cornerRadius: cornerRadius
-        )
+        modifier(ActivityCardChrome(cornerRadius: cornerRadius, glow: glow))
     }
 
     func innerActivityCard(cornerRadius: CGFloat) -> some View {
-        weekFitPremiumCard(
-            emphasis: .compact,
-            accent: nil,
-            cornerRadius: cornerRadius
+        modifier(ActivityInnerCardChrome(cornerRadius: cornerRadius))
+    }
+}
+
+private struct ActivityCardChrome: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+    var cornerRadius: CGFloat
+    var glow: Color
+
+    func body(content: Content) -> some View {
+        content.healthDetailsSoftCard(
+            isLight: palette.isLight,
+            cornerRadius: palette.isLight ? NutritionDetailsDesign.largeCorner : cornerRadius,
+            darkGlow: glow
         )
+    }
+}
+
+private struct ActivityInnerCardChrome: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+    var cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if palette.isLight {
+            content.healthDetailsNestedTile(isLight: true, cornerRadius: cornerRadius)
+        } else {
+            content.weekFitPremiumCard(
+                emphasis: .compact,
+                accent: nil,
+                cornerRadius: cornerRadius
+            )
+        }
     }
 }

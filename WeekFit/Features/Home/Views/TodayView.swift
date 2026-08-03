@@ -136,10 +136,16 @@ struct TodayView: View {
     @State private var quickLogSnacks: [QuickItem] = []
     @State private var quickLogDrinks: [QuickItem] = []
     @State private var quickLogSnackRows: [QuickItemDisplayRow] = []
+    @State private var quickLogFrequentSnackRows: [QuickFoodFrequentSnackRow] = []
+    @State private var quickLogRecentSnackRows: [QuickItemDisplayRow] = []
+    @State private var quickLogFrequentMealRows: [QuickFoodFrequentMealRow] = []
+    @State private var quickLogRecentMealRows: [QuickMealDisplayRow] = []
     @State private var quickLogDrinkRows: [QuickItemDisplayRow] = []
+    @State private var quickLogFrequentDrinkRows: [QuickDrinkFrequentDisplayRow] = []
+    @State private var quickLogRecentDrinkRows: [QuickItemDisplayRow] = []
     @State private var quickLogSession = QuickLogSessionStore()
     @State private var quickLogCommittedUsageIDs: Set<String> = []
-    @State private var quickItemUsage: [String: Int] = [:]
+    @State private var quickItemUsageEntries: [String: QuickItemUsageStore.Entry] = [:]
     @State private var didPreloadQuickFood = false
     @State private var didPreloadQuickDrinks = false
     
@@ -155,7 +161,9 @@ struct TodayView: View {
 
     @State private var showRecoveryDetails = false
     
-    private let quickItemUsageKey = "weekfit_quick_item_usage_v1"
+    private var quickItemUsage: [String: Int] {
+        QuickItemUsageStore.counts(from: quickItemUsageEntries)
+    }
 
     init(
         authViewModel: AuthViewModel,
@@ -167,20 +175,6 @@ struct TodayView: View {
         self._selectedDate = selectedDate
         self.returnToTodayTrigger = returnToTodayTrigger
         self.onSelectTab = onSelectTab
-    }
-    
-    private enum QuickNutritionLogTab: String, CaseIterable, Identifiable {
-        case meals
-        case snacks
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .meals: return WeekFitLocalizedString("today.quickLog.section.meals")
-            case .snacks: return WeekFitLocalizedString("today.quickLog.section.snacks")
-            }
-        }
     }
     
     private var completedNutritionLogsForSelectedDay: [PlannedActivity] {
@@ -319,17 +313,24 @@ struct TodayView: View {
     }
     
     private func incrementQuickItemUsage(_ item: QuickItem) {
-        var nextUsage = quickItemUsage
-        nextUsage[item.id, default: 0] += 1
-        setQuickItemUsage(nextUsage, persist: true)
+        var nextUsage = quickItemUsageEntries
+        QuickItemUsageStore.recordUse(of: item.id, in: &nextUsage)
+        setQuickItemUsageEntries(nextUsage, persist: true)
 
         if !quickLogSnacks.isEmpty {
-            setQuickLogSnacks(sortByUsage(quickLogSnacks, usage: nextUsage))
+            refreshSnackPartitions(snacks: quickLogSnacks, usage: nextUsage)
         }
 
         if !quickLogDrinks.isEmpty {
-            setQuickLogDrinks(sortByUsage(quickLogDrinks, usage: nextUsage))
+            refreshDrinkPartitions(drinks: quickLogDrinks, usage: nextUsage)
         }
+    }
+
+    private func incrementMealUsage(_ meal: Meals) {
+        var nextUsage = quickItemUsageEntries
+        QuickItemUsageStore.recordUse(of: meal.id, in: &nextUsage)
+        setQuickItemUsageEntries(nextUsage, persist: true)
+        refreshMealPartitions(meals: quickLogMeals, usage: nextUsage)
     }
 
     @ViewBuilder
@@ -517,7 +518,7 @@ struct TodayView: View {
             }
         ) {
             PremiumActivityStartSheet(
-                background: QuickActionSheetDesign.Color.sheetBackground,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .activity),
                 cardBackground: WeekFitTheme.cardBackground,
                 textSecondary: WeekFitTheme.secondaryText,
                 isPresented: $showDirectWorkoutLogSheet,
@@ -529,132 +530,68 @@ struct TodayView: View {
             .environmentObject(coachInputProvider)
             .environmentObject(activityCoordinator)
             .presentationDetents([
-                .fraction(0.45),
+                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
                 .large
             ])
-            .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
+            )
         }
         .sheet(isPresented: $showDirectMealLogSheet) {
             ZStack {
-                QuickActionSheetDesign.Color.sheetBackground
+                QuickActionSheetDesign.Color.sheetBackground(for: .food)
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    PremiumBottomSheetHeader(
-                        title: WeekFitLocalizedString("today.quickActions.logFood"),
-                        subtitle: selectedLogTab == .meals
-                            ? WeekFitLocalizedString("today.quickLog.subtitle.savedFoods")
-                            : WeekFitLocalizedString("today.quickLog.subtitle.drinksSnacks")
-                    ) {
+                QuickFoodLogSheet(
+                    selectedTab: $selectedLogTab,
+                    mealRows: quickLogMealRows,
+                    frequentMealRows: quickLogFrequentMealRows,
+                    recentMealRows: quickLogRecentMealRows,
+                    snackRows: quickLogSnackRows,
+                    frequentSnackRows: quickLogFrequentSnackRows,
+                    recentSnackRows: quickLogRecentSnackRows,
+                    session: quickLogSession,
+                    onClose: { showDirectMealLogSheet = false },
+                    onOpenMealsTab: {
                         showDirectMealLogSheet = false
-                    }
-
-                    QuickActionSheetSegmentedControl(
-                        segments: [
-                            QuickActionSheetSegment(
-                                id: QuickNutritionLogTab.meals.rawValue,
-                                title: WeekFitLocalizedString("today.quickLog.section.meals"),
-                                badgeCount: quickLogMealRows.count
-                            ),
-                            QuickActionSheetSegment(
-                                id: QuickNutritionLogTab.snacks.rawValue,
-                                title: WeekFitLocalizedString("today.quickLog.section.snacks"),
-                                badgeCount: quickLogSnackRows.count
-                            )
-                        ],
-                        selection: Binding(
-                            get: { selectedLogTab.rawValue },
-                            set: { newValue in
-                                selectedLogTab = QuickNutritionLogTab(rawValue: newValue) ?? .meals
-                            }
+                        onSelectTab(.meals)
+                    },
+                    onMealPlus: { meal in
+                        handleQuickAdd(profile: QuickLogNutritionProfile.from(meal: meal))
+                    },
+                    onMealIncrement: { meal in
+                        handleQuickIncrement(profile: QuickLogNutritionProfile.from(meal: meal))
+                    },
+                    onMealDecrement: { meal in
+                        handleQuickDecrement(profile: QuickLogNutritionProfile.from(meal: meal))
+                    },
+                    onSnackPlus: { item in
+                        handleQuickAdd(
+                            profile: QuickLogNutritionProfile.from(item: item),
+                            quickItem: item
                         )
-                    )
-                    .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
-                    .padding(.bottom, QuickActionSheetDesign.Layout.segmentedBottomPadding)
-
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
-                            QuickActionCoachRecommendationSlot()
-
-                            switch selectedLogTab {
-
-                            case .meals:
-                                if quickLogMealRows.isEmpty {
-                                    quickLogEmptyState(
-                                        icon: "fork.knife.circle.fill",
-                                        title: WeekFitLocalizedString("today.quickLog.empty.savedFood.title"),
-                                        message: WeekFitLocalizedString("today.quickLog.empty.savedFood.message"),
-                                        buttonTitle: WeekFitLocalizedString("today.quickLog.empty.savedFood.action"),
-                                        showAction: true
-                                    )
-                                } else {
-                                    ForEach(quickLogMealRows) { row in
-                                        let profile = QuickLogNutritionProfile.from(meal: row.meal)
-                                        let selection = quickLogSession.selection(for: row.id)
-                                        QuickLogMealRow(
-                                            row: row,
-                                            accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
-                                            selection: selection,
-                                            displayQuantity: selection.effectivePortions(for: profile),
-                                            onPlusTap: {
-                                                handleQuickAdd(profile: profile)
-                                            },
-                                            onIncrement: {
-                                                handleQuickIncrement(profile: profile)
-                                            },
-                                            onDecrement: {
-                                                handleQuickDecrement(profile: profile)
-                                            }
-                                        )
-                                    }
-                                }
-
-                            case .snacks:
-                                if quickLogSnackRows.isEmpty {
-                                    quickLogEmptyState(
-                                        icon: "leaf.fill",
-                                        title: WeekFitLocalizedString("today.quickLog.empty.quickItems.title"),
-                                        message: WeekFitLocalizedString("today.quickLog.empty.quickItems.message"),
-                                        buttonTitle: nil,
-                                        showAction: false
-                                    )
-                                } else {
-                                    ForEach(quickLogSnackRows) { row in
-                                        let profile = QuickLogNutritionProfile.from(item: row.item)
-                                        let selection = quickLogSession.selection(for: row.id)
-                                        QuickLogItemRow(
-                                            row: row,
-                                            accentColor: Color(red: 0.50, green: 0.74, blue: 0.54),
-                                            selection: selection,
-                                            displayQuantity: selection.effectivePortions(for: profile),
-                                            onPlusTap: {
-                                                handleQuickAdd(profile: profile, quickItem: row.item)
-                                            },
-                                            onIncrement: {
-                                                handleQuickIncrement(profile: profile)
-                                            },
-                                            onDecrement: {
-                                                handleQuickDecrement(profile: profile)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
-                        .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
+                    },
+                    onSnackIncrement: { item in
+                        handleQuickIncrement(profile: QuickLogNutritionProfile.from(item: item))
+                    },
+                    onSnackDecrement: { item in
+                        handleQuickDecrement(profile: QuickLogNutritionProfile.from(item: item))
                     }
-                }
+                )
             }
             .presentationDetents([
-                .fraction(0.45),
+                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
                 .large
             ])
-            .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            )
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: true)
             }
@@ -678,63 +615,39 @@ struct TodayView: View {
         }
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
-                QuickActionSheetDesign.Color.sheetBackground
+                QuickActionSheetDesign.Color.sheetBackground(for: .drinks)
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    PremiumBottomSheetHeader(
-                        title: WeekFitLocalizedString("today.quickActions.logDrinks"),
-                        subtitle: WeekFitLocalizedString("today.quickLog.subtitle.drinks")
-                    ) {
-                        showDirectDrinkLogSheet = false
+                QuickDrinkLogSheet(
+                    frequentRows: quickLogFrequentDrinkRows,
+                    recentRows: quickLogRecentDrinkRows,
+                    allRows: quickLogDrinkRows,
+                    session: quickLogSession,
+                    onClose: { showDirectDrinkLogSheet = false },
+                    onPlusTap: { item in
+                        handleQuickAdd(
+                            profile: QuickLogNutritionProfile.from(item: item),
+                            quickItem: item
+                        )
+                    },
+                    onIncrement: { item in
+                        handleQuickIncrement(profile: QuickLogNutritionProfile.from(item: item))
+                    },
+                    onDecrement: { item in
+                        handleQuickDecrement(profile: QuickLogNutritionProfile.from(item: item))
                     }
-
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: QuickActionSheetDesign.Layout.listRowSpacing) {
-                            QuickActionCoachRecommendationSlot()
-
-                            if quickLogDrinkRows.isEmpty {
-                                quickLogEmptyState(
-                                    icon: "drop.fill",
-                                    title: WeekFitLocalizedString("today.quickLog.empty.drinks.title"),
-                                    message: WeekFitLocalizedString("today.quickLog.empty.quickItems.message"),
-                                    buttonTitle: nil,
-                                    showAction: false
-                                )
-                            } else {
-                                ForEach(quickLogDrinkRows) { row in
-                                    let profile = QuickLogNutritionProfile.from(item: row.item)
-                                    let selection = quickLogSession.selection(for: row.id)
-                                    QuickLogItemRow(
-                                        row: row,
-                                        accentColor: Color(red: 0.25, green: 0.55, blue: 0.95),
-                                        selection: selection,
-                                        displayQuantity: selection.effectivePortions(for: profile),
-                                        onPlusTap: {
-                                            handleQuickAdd(profile: profile, quickItem: row.item)
-                                        },
-                                        onIncrement: {
-                                            handleQuickIncrement(profile: profile)
-                                        },
-                                        onDecrement: {
-                                            handleQuickDecrement(profile: profile)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        .padding(.horizontal, QuickActionSheetDesign.Layout.horizontalPadding)
-                        .padding(.bottom, QuickActionSheetDesign.Layout.listBottomPadding)
-                    }
-                }
+                )
             }
             .presentationDetents([
-                .fraction(0.45),
+                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
                 .large
             ])
-            .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .drinks)
+            )
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: false)
             }
@@ -817,12 +730,12 @@ struct TodayView: View {
     private func prepareQuickNutritionLogData() {
         let start = Self.debugStart("quickNutrition.prepare")
         let repository = NutritionRepository()
-        let usage = loadQuickItemUsage()
+        let usageEntries = QuickItemUsageStore.load()
         let quickItems = repository.loadQuickItems()
 
-        setQuickItemUsage(usage)
+        setQuickItemUsageEntries(usageEntries)
         refreshQuickLogMealsFromCatalog()
-        setQuickLogSnacks(sortByUsage(quickItems.filter { $0.category == .snack }, usage: usage))
+        setQuickLogSnacks(quickItems.filter { $0.category == .snack })
         Self.debugEnd(
             "quickNutrition.prepare meals=\(quickLogMeals.count) snacks=\(quickLogSnacks.count)",
             start: start
@@ -856,16 +769,13 @@ struct TodayView: View {
 
     private func prepareQuickDrinkLogData() {
         let start = Self.debugStart("quickDrink.prepare")
-        let usage = loadQuickItemUsage()
-        let drinks = sortByUsage(
-            NutritionRepository().loadQuickItems().filter { $0.category == .drink },
-            usage: usage
-        )
+        let usageEntries = QuickItemUsageStore.load()
+        let drinks = NutritionRepository().loadQuickItems().filter { $0.category == .drink }
 
-        setQuickItemUsage(usage)
-        setQuickLogDrinks(drinks)
+        setQuickItemUsageEntries(usageEntries)
+        refreshDrinkPartitions(drinks: drinks, usage: usageEntries)
         Self.debugEnd(
-            "quickDrink.prepare drinks=\(quickLogDrinks.count)",
+            "quickDrink.prepare drinks=\(quickLogDrinks.count) frequent=\(quickLogFrequentDrinkRows.count) recent=\(quickLogRecentDrinkRows.count)",
             start: start
         )
     }
@@ -876,8 +786,50 @@ struct TodayView: View {
         prepareQuickDrinkLogData()
     }
 
-    private func loadQuickItemUsage() -> [String: Int] {
-        UserDefaults.standard.dictionary(forKey: quickItemUsageKey) as? [String: Int] ?? [:]
+    private func refreshDrinkPartitions(
+        drinks: [QuickItem],
+        usage: [String: QuickItemUsageStore.Entry]
+    ) {
+        let temperatureC = morningWeatherSummary?.temperature.converted(to: .celsius).value
+        let frequentPicks = QuickDrinkFrequentComposer.picks(
+            drinks: drinks,
+            usage: usage,
+            now: Date(),
+            temperatureCelsius: temperatureC
+        )
+        let frequentIDs = Set(frequentPicks.map(\.item.id))
+        let partition = QuickItemUsageStore.partition(
+            drinks: drinks,
+            usage: usage,
+            excludingFromRecent: frequentIDs
+        )
+
+        if quickLogDrinks != drinks {
+            quickLogDrinks = drinks
+        }
+
+        let allRows = makeQuickItemRows(partition.all)
+        if quickLogDrinkRows != allRows {
+            quickLogDrinkRows = allRows
+        }
+
+        let frequentRows = frequentPicks.map { pick in
+            QuickDrinkFrequentDisplayRow(
+                row: QuickItemDisplayRow(
+                    item: pick.item,
+                    usesAssetImage: !pick.item.imageName.isEmpty && UIImage(named: pick.item.imageName) != nil
+                ),
+                badge: pick.badge
+            )
+        }
+        if quickLogFrequentDrinkRows != frequentRows {
+            quickLogFrequentDrinkRows = frequentRows
+        }
+
+        let recentRows = makeQuickItemRows(partition.recent)
+        if quickLogRecentDrinkRows != recentRows {
+            quickLogRecentDrinkRows = recentRows
+        }
     }
 
     private func sortByUsage(_ items: [QuickItem], usage: [String: Int]) -> [QuickItem] {
@@ -893,43 +845,115 @@ struct TodayView: View {
         }
     }
 
-    private func setQuickItemUsage(_ usage: [String: Int], persist: Bool = false) {
-        guard quickItemUsage != usage else { return }
-        quickItemUsage = usage
+    private func setQuickItemUsageEntries(
+        _ entries: [String: QuickItemUsageStore.Entry],
+        persist: Bool = false
+    ) {
+        guard quickItemUsageEntries != entries else { return }
+        quickItemUsageEntries = entries
 
         if persist {
-            UserDefaults.standard.set(usage, forKey: quickItemUsageKey)
+            QuickItemUsageStore.save(entries)
         }
     }
 
     private func setQuickLogMeals(_ meals: [Meals]) {
-        guard quickLogMeals != meals else { return }
-        quickLogMeals = meals
-
-        let rows = makeQuickMealRows(meals)
-        if quickLogMealRows != rows {
-            quickLogMealRows = rows
+        if quickLogMeals != meals {
+            quickLogMeals = meals
         }
+        refreshMealPartitions(meals: meals, usage: quickItemUsageEntries)
     }
 
     private func setQuickLogSnacks(_ snacks: [QuickItem]) {
-        guard quickLogSnacks != snacks else { return }
-        quickLogSnacks = snacks
+        if quickLogSnacks != snacks {
+            quickLogSnacks = snacks
+        }
+        refreshSnackPartitions(snacks: snacks, usage: quickItemUsageEntries)
+    }
 
-        let rows = makeQuickItemRows(snacks)
-        if quickLogSnackRows != rows {
-            quickLogSnackRows = rows
+    private func refreshSnackPartitions(
+        snacks: [QuickItem],
+        usage: [String: QuickItemUsageStore.Entry]
+    ) {
+        let frequentPicks = QuickSnackFrequentComposer.picks(snacks: snacks, usage: usage)
+        let frequentIDs = Set(frequentPicks.map(\.item.id))
+        let partition = QuickItemUsageStore.partition(
+            drinks: snacks,
+            usage: usage,
+            excludingFromRecent: frequentIDs
+        )
+
+        if quickLogSnacks != snacks {
+            quickLogSnacks = snacks
+        }
+
+        let allRows = makeQuickItemRows(partition.all)
+        if quickLogSnackRows != allRows {
+            quickLogSnackRows = allRows
+        }
+
+        let frequentRows = frequentPicks.map {
+            QuickFoodFrequentSnackRow(
+                row: QuickItemDisplayRow(
+                    item: $0.item,
+                    usesAssetImage: !$0.item.imageName.isEmpty && UIImage(named: $0.item.imageName) != nil
+                ),
+                badgeKey: $0.badge.localizationKey,
+                badgeSymbol: $0.badge.symbolName
+            )
+        }
+        if quickLogFrequentSnackRows != frequentRows {
+            quickLogFrequentSnackRows = frequentRows
+        }
+
+        let recentRows = makeQuickItemRows(partition.recent)
+        if quickLogRecentSnackRows != recentRows {
+            quickLogRecentSnackRows = recentRows
+        }
+    }
+
+    private func refreshMealPartitions(
+        meals: [Meals],
+        usage: [String: QuickItemUsageStore.Entry]
+    ) {
+        let frequentPicks = QuickMealFrequentComposer.picks(meals: meals, usage: usage)
+        let frequentIDs = Set(frequentPicks.map(\.meal.id))
+
+        let allRows = makeQuickMealRows(meals)
+        if quickLogMealRows != allRows {
+            quickLogMealRows = allRows
+        }
+
+        let frequentRows = frequentPicks.map {
+            QuickFoodFrequentMealRow(
+                row: makeQuickMealRows([$0.meal])[0],
+                badgeKey: $0.badge.localizationKey,
+                badgeSymbol: $0.badge.symbolName
+            )
+        }
+        if quickLogFrequentMealRows != frequentRows {
+            quickLogFrequentMealRows = frequentRows
+        }
+
+        let recentMealIDs = usage
+            .filter { entry in
+                entry.value.lastUsedAt > .distantPast
+                    && !frequentIDs.contains(entry.key)
+                    && meals.contains(where: { $0.id == entry.key })
+            }
+            .sorted { $0.value.lastUsedAt > $1.value.lastUsedAt }
+            .prefix(6)
+            .map(\.key)
+
+        let recentMeals = recentMealIDs.compactMap { id in meals.first(where: { $0.id == id }) }
+        let recentRows = makeQuickMealRows(recentMeals)
+        if quickLogRecentMealRows != recentRows {
+            quickLogRecentMealRows = recentRows
         }
     }
 
     private func setQuickLogDrinks(_ drinks: [QuickItem]) {
-        guard quickLogDrinks != drinks else { return }
-        quickLogDrinks = drinks
-
-        let rows = makeQuickItemRows(drinks)
-        if quickLogDrinkRows != rows {
-            quickLogDrinkRows = rows
-        }
+        refreshDrinkPartitions(drinks: drinks, usage: quickItemUsageEntries)
     }
 
     private func makeQuickItemRows(_ items: [QuickItem]) -> [QuickItemDisplayRow] {
@@ -1096,6 +1120,13 @@ struct TodayView: View {
     private func commitQuickItemUsageIfNeeded(itemID: String, selection: QuickLogSelection) {
         guard selection.portions > 0 else { return }
         guard !quickLogCommittedUsageIDs.contains(itemID) else { return }
+
+        if let meal = quickLogMeals.first(where: { $0.id == itemID }) {
+            incrementMealUsage(meal)
+            quickLogCommittedUsageIDs.insert(itemID)
+            return
+        }
+
         guard let item = quickLogSnacks.first(where: { $0.id == itemID })
             ?? quickLogDrinks.first(where: { $0.id == itemID }) else {
             return
@@ -1376,53 +1407,6 @@ struct TodayView: View {
             withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
                 livePulse = true
             }
-        }
-    }
-
-    private func coachPreparingCard() -> some View {
-        todayPremiumCard(accent: todayCoachCardAccent, featured: true) {
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(todayCoachCardAccent.opacity(0.11))
-                        .frame(width: 40, height: 40)
-                        .overlay {
-                            Circle()
-                                .stroke(todayCoachCardAccent.opacity(0.20), lineWidth: 1)
-                        }
-
-                    Image(systemName: CoachState.registryGapIcon)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(todayCoachCardAccent.opacity(0.90))
-                }
-                .padding(.top, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(AppText.Today.coachInsightLabel)
-                        .font(.caption2.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(1.45)
-                        .foregroundStyle(todayCoachCardAccent.opacity(0.78))
-
-                    Text(CoachState.registryGapTitle)
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .padding(.top, 2)
-                        .lineSpacing(1)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(CoachState.registryGapMessage)
-                        .font(.footnote)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textSecondary.opacity(0.68))
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
         }
     }
 
@@ -2376,6 +2360,13 @@ struct TodayView: View {
         )
         .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
         .transition(.identity)
+        .onAppear {
+            guard presentation.planAdjustmentMode == .appliedExecuting else { return }
+            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+            MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
+            MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
+            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
+        }
     }
 
     private var coachInsightSection: some View {
@@ -2475,6 +2466,8 @@ struct TodayView: View {
                     refreshMorningProposal()
                 }
             )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
         }
         .onAppear {
             refreshMorningProposal()
@@ -2496,18 +2489,74 @@ struct TodayView: View {
 
     @ViewBuilder
     private var coachInsightWithOptionalProposalOverlay: some View {
-        // Stack proposal on top of the regular coach card (same footprint, WeekFit chrome —
-        // no grey material overlay). Full copy lives in Review.
+        // Compact proposal teaser floats above the usual Coach card.
+        // Underlay is nudged down and slightly inset so the familiar card peeks out.
         let showProposal = !morningProposalChromeHidden && morningProposalCard() != nil
+        let peek: CGFloat = 16
+        let underlayInset: CGFloat = 10
 
-        Group {
-            if showProposal, let proposalCard = morningProposalCard() {
-                morningProposalStackedOverCoach(front: proposalCard)
+        ZStack(alignment: .top) {
+            if showProposal {
+                morningProposalStackUnderlay
+                    .padding(.top, peek)
+                    .padding(.horizontal, underlayInset)
+                    .allowsHitTesting(false)
             } else {
                 coachInsightPhaseContent
             }
+
+            if showProposal, let proposalCard = morningProposalCard() {
+                proposalCard
+                    .zIndex(1)
+                    .shadow(
+                        color: palette.isLight
+                            ? Color.black.opacity(0.10)
+                            : Color.black.opacity(0.55),
+                        radius: palette.isLight ? 16 : 22,
+                        y: palette.isLight ? 8 : 12
+                    )
+            }
         }
+        .padding(.bottom, showProposal ? peek : 0)
         .animation(.easeOut(duration: 0.22), value: showProposal)
+    }
+
+    /// Real Coach card when ready; quiet plate while Coach is still settling —
+    /// keeps the stacked “volume” look either way.
+    @ViewBuilder
+    private var morningProposalStackUnderlay: some View {
+        switch todayCoachInsightPhase {
+        case .insight, .awaitingHealthConnect, .awaitingMorningSync:
+            coachInsightPhaseContent
+                .opacity(0.90)
+        case .preparing:
+            RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                .fill(palette.cardSurfaceElevated.opacity(palette.isLight ? 0.92 : 0.88))
+                .overlay {
+                    RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                        .strokeBorder(
+                            palette.isLight
+                                ? WeekFitLightTokens.cardBorder.opacity(0.35)
+                                : Color.white.opacity(0.07),
+                            lineWidth: 1
+                        )
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 96)
+                .overlay(alignment: .topLeading) {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(WeekFitTheme.coachAccent.opacity(0.12))
+                            .frame(width: 28, height: 28)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(textSecondary.opacity(0.18))
+                            .frame(width: 72, height: 8)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 22)
+                    .opacity(0.55)
+                }
+        }
     }
 
     @ViewBuilder
@@ -2520,116 +2569,15 @@ struct TodayView: View {
         case .awaitingMorningSync:
             coachSettlingCard(needsHealthConnect: false)
         case .preparing:
-            coachPreparingCard()
+            EmptyView()
         }
-    }
-
-    /// Bevel-style stack: front proposal card + underlays (coach silhouette) peeking below.
-    private func morningProposalStackedOverCoach<Front: View>(front: Front) -> some View {
-        let radius = TodayLayout.cardRadius
-        let peek: CGFloat = 9
-
-        return front
-            .background(alignment: .top) {
-                GeometryReader { geo in
-                    let w = geo.size.width
-                    let h = geo.size.height
-                    ZStack {
-                        // Deepest sheet — same family as WeekFit cards, slightly inset.
-                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .fill(WeekFitTheme.cardSurface.opacity(0.78))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                    .strokeBorder(WeekFitTheme.whiteOpacity(0.07), lineWidth: 1)
-                            }
-                            .frame(width: w * 0.94, height: h)
-                            .shadow(color: Color.black.opacity(0.30), radius: 12, y: 8)
-                            .offset(y: peek * 2)
-
-                        // Mid sheet — faded coach face so the stack reads as “over coach”.
-                        morningProposalCoachUnderlayFace
-                            .frame(width: w * 0.97, height: h, alignment: .topLeading)
-                            .background {
-                                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                    .fill(WeekFitTheme.cardSurfaceElevated)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                            .fill(coachUnderlayAccent.opacity(0.08))
-                                    }
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                            .strokeBorder(WeekFitTheme.whiteOpacity(0.10), lineWidth: 1)
-                                    }
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.24), radius: 8, y: 5)
-                            .offset(y: peek)
-                    }
-                    .frame(width: w, height: h, alignment: .top)
-                    .allowsHitTesting(false)
-                }
-            }
-            .padding(.bottom, peek * 2 + 2)
-    }
-
-    private var coachUnderlayAccent: Color {
-        if case .insight(let presentation, _) = todayCoachInsightPhase {
-            return presentation.accentColor
-        }
-        return WeekFitTheme.coachAccent
-    }
-
-    @ViewBuilder
-    private var morningProposalCoachUnderlayFace: some View {
-        let accent = coachUnderlayAccent
-        let title: String = {
-            if case .insight(let presentation, _) = todayCoachInsightPhase {
-                return presentation.todayTitle
-            }
-            return WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
-        }()
-
-        HStack(alignment: .top, spacing: 14) {
-            Circle()
-                .fill(accent.opacity(0.11))
-                .frame(width: 40, height: 40)
-                .overlay {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(accent.opacity(0.55))
-                }
-                .padding(.top, 2)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(AppText.Today.coachInsightLabel)
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .tracking(1.45)
-                    .foregroundStyle(accent.opacity(0.45))
-                Text(title)
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary.opacity(0.42))
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, TodayLayout.coachCardVerticalPadding)
-        .opacity(0.9)
     }
 
     private func morningProposalCard() -> AnyView? {
         let chrome = MorningProposalPresenter.chromeState(for: morningProposal)
         switch chrome {
-        case .gathering:
-            return AnyView(morningProposalGatheringCard())
-        case .proposalReady(let changeCount, let guidanceCount):
-            return AnyView(morningProposalReadyCard(changeCount: changeCount, guidanceCount: guidanceCount))
-        case .noChangesNeeded:
-            return AnyView(morningProposalNoChangesCard())
+        case .proposalReady:
+            return AnyView(morningProposalReadyCard())
         case .applied:
             guard let dayKey = morningProposal?.dayKey,
                   MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey),
@@ -2637,60 +2585,17 @@ struct TodayView: View {
                 return nil
             }
             return AnyView(morningProposalAppliedCard(dayKey: dayKey))
-        case .stale:
-            return AnyView(morningProposalStaleCard())
-        case .failed:
-            return AnyView(morningProposalFailedCard())
-        case .hidden, .unavailable:
+        case .gathering, .noChangesNeeded, .stale, .failed, .hidden, .unavailable:
             return nil
         }
     }
 
-    private func morningProposalGatheringCard() -> some View {
-        morningProposalDismissibleChrome(accent: WeekFitTheme.coachAccent) {
-            dismissMorningProposalChrome(permanent: false)
-        } content: {
-            HStack(alignment: .top, spacing: 14) {
-                ProgressView()
-                    .tint(WeekFitTheme.coachAccent)
-                    .padding(.top, 4)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                        .font(.caption2.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(1.45)
-                        .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.gathering"))
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 28)
-            }
-        }
-    }
+    private func morningProposalReadyCard() -> some View {
+        let accent = WeekFitTheme.recovery
+        let title = WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
+        let review = WeekFitLocalizedString("coach.proposal.chrome.reviewCTA.short")
 
-    private func morningProposalReadyCard(changeCount: Int, guidanceCount: Int) -> some View {
-        let givenName = ProfileService.resolvedGivenName()
-        let weatherLine = MorningProposalBriefComposer.weatherMetaLine(
-            from: morningWeatherSummary
-        )
-        let brief = morningProposal.map {
-            MorningProposalBriefComposer.compose(
-                proposal: $0,
-                givenName: givenName.isEmpty ? nil : givenName,
-                weatherLine: weatherLine
-            )
-        }
-
-        let title = brief?.headline
-            ?? MorningProposalStrategyCopy.localizedSummary(for: morningProposal?.strategy)
-            ?? WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
-        let actionLines = brief?.actionLines ?? []
-        let metaLine = brief?.metaLine
-
-        return morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+        return morningProposalDismissibleChrome(accent: accent) {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             morningProposalChromeHidden = true
             showProposalReview = true
@@ -2700,109 +2605,55 @@ struct TodayView: View {
             HStack(alignment: .top, spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(WeekFitTheme.recovery.opacity(0.14))
+                        .fill(accent.opacity(palette.isLight ? 0.10 : 0.12))
                         .frame(width: 40, height: 40)
                         .overlay {
                             Circle()
-                                .stroke(WeekFitTheme.recovery.opacity(0.22), lineWidth: 1)
+                                .stroke(accent.opacity(palette.isLight ? 0.20 : 0.22), lineWidth: 1)
                         }
-                    Image(systemName: "sunrise.fill")
+
+                    Image(systemName: "sun.horizon.fill")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.95))
+                        .foregroundStyle(accent.opacity(0.94))
                 }
                 .padding(.top, 2)
+                .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(brief?.eyebrow ?? WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
                         .font(.caption2.weight(.bold))
                         .fontDesign(.rounded)
-                        .tracking(1.45)
-                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
+                        .tracking(1.35)
+                        .foregroundStyle(accent.opacity(0.80))
 
                     Text(title)
                         .font(.callout.weight(.bold))
                         .fontDesign(.rounded)
                         .foregroundStyle(textPrimary)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.88)
+                        .lineLimit(2)
+                        .lineSpacing(1)
+                        .minimumScaleFactor(0.9)
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(title)
-
-                    if !actionLines.isEmpty {
-                        VStack(alignment: .leading, spacing: 3) {
-                            ForEach(Array(actionLines.prefix(3).enumerated()), id: \.offset) { _, line in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Text("•")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
-                                    Text(line)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(textSecondary.opacity(0.88))
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .lineLimit(2)
-                                }
-                            }
-                        }
                         .padding(.top, 1)
-                    } else if changeCount > 0 || guidanceCount > 0 {
-                        // Fallback if brief empty but counts exist.
-                        Text(
-                            [
-                                changeCount > 0
-                                    ? String(
-                                        format: WeekFitLocalizedString(
-                                            changeCount == 1
-                                                ? "coach.proposal.chrome.adjustmentCount.one"
-                                                : "coach.proposal.chrome.adjustmentCount.other"
-                                        ),
-                                        changeCount
-                                    )
-                                    : nil,
-                                guidanceCount > 0
-                                    ? String(
-                                        format: WeekFitLocalizedString(
-                                            guidanceCount == 1
-                                                ? "coach.proposal.chrome.guidanceCount.one"
-                                                : "coach.proposal.chrome.guidanceCount.other"
-                                        ),
-                                        guidanceCount
-                                    )
-                                    : nil,
-                            ]
-                            .compactMap { $0 }
-                            .joined(separator: " · ")
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(WeekFitTheme.recovery.opacity(0.88))
-                        .lineLimit(1)
-                    }
 
-                    if let metaLine, !metaLine.isEmpty {
-                        Text(metaLine)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(textSecondary.opacity(0.62))
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    HStack {
-                        Spacer(minLength: 0)
-                        Text(brief?.ctaTitle ?? WeekFitLocalizedString("coach.proposal.chrome.reviewCTA.short"))
-                            .font(.caption.weight(.bold))
+                    HStack(spacing: 4) {
+                        Text(review)
+                            .font(.footnote.weight(.semibold))
                             .fontDesign(.rounded)
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.94))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background {
-                                Capsule(style: .continuous)
-                                    .fill(WeekFitTheme.recovery.opacity(0.92))
-                            }
+                            .foregroundStyle(accent.opacity(0.95))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(accent.opacity(0.72))
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, 18)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(WeekFitLocalizedString("coach.proposal.chrome.eyebrow")). \(title)")
+            .accessibilityHint(WeekFitLocalizedString("coach.proposal.chrome.reviewCTA"))
         }
         .onAppear {
             if let proposal = morningProposal {
@@ -2814,113 +2665,50 @@ struct TodayView: View {
         }
     }
 
-    private func morningProposalNoChangesCard() -> some View {
-        morningProposalDismissibleChrome(accent: WeekFitTheme.coachAccent) {
-            dismissMorningProposalChrome(permanent: true)
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .tracking(1.45)
-                    .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.78))
-                Text(WeekFitLocalizedString("coach.proposal.chrome.noChangesTitle"))
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(2)
-                Text(WeekFitLocalizedString("coach.proposal.chrome.noChangesBody"))
-                    .font(.footnote)
-                    .foregroundStyle(textSecondary.opacity(0.72))
-                    .lineLimit(2)
-            }
-            .padding(.trailing, 18)
-        }
-    }
-
     private func morningProposalAppliedCard(dayKey: String) -> some View {
-        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
+        let accent = WeekFitTheme.recovery
+        return morningProposalDismissibleChrome(accent: accent) {
             morningProposalChromeHidden = true
         } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .tracking(1.45)
-                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
-                Text(WeekFitLocalizedString("coach.proposal.chrome.appliedTitle"))
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(2)
-                Text(WeekFitLocalizedString("coach.proposal.chrome.appliedBody"))
-                    .font(.footnote)
-                    .foregroundStyle(textSecondary.opacity(0.72))
-                    .lineLimit(2)
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            palette.isLight
+                                ? WeekFitLightTokens.recoverySoft
+                                : accent.opacity(0.16)
+                        )
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(accent)
+                }
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
+                        .font(.caption2.weight(.bold))
+                        .fontDesign(.rounded)
+                        .tracking(1.2)
+                        .foregroundStyle(accent.opacity(0.78))
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.appliedTitle"))
+                        .font(.callout.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(2)
+                    Text(WeekFitLocalizedString("coach.proposal.chrome.appliedBody"))
+                        .font(.footnote)
+                        .foregroundStyle(textSecondary.opacity(0.72))
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.trailing, 18)
         }
         .onAppear {
             MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
             MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
-        }
-    }
-
-    private func morningProposalStaleCard() -> some View {
-        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            morningProposalChromeHidden = true
-            refreshMorningProposal(forceRegenerate: true)
-            morningProposalChromeHidden = false
-        } onClose: {
-            dismissMorningProposalChrome(permanent: true)
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .tracking(1.45)
-                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
-                Text(WeekFitLocalizedString("coach.proposal.chrome.staleTitle"))
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(2)
-                Text(WeekFitLocalizedString("coach.proposal.chrome.staleBody"))
-                    .font(.footnote)
-                    .foregroundStyle(textSecondary.opacity(0.72))
-                    .lineLimit(2)
-            }
-            .padding(.trailing, 18)
-        }
-    }
-
-    private func morningProposalFailedCard() -> some View {
-        morningProposalDismissibleChrome(accent: WeekFitTheme.recovery) {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            morningProposalChromeHidden = true
-            refreshMorningProposal(forceRegenerate: true)
-            morningProposalChromeHidden = false
-        } onClose: {
-            dismissMorningProposalChrome(permanent: true)
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .tracking(1.45)
-                    .foregroundStyle(WeekFitTheme.recovery.opacity(0.78))
-                Text(WeekFitLocalizedString("coach.proposal.chrome.failedTitle"))
-                    .font(.callout.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textPrimary)
-                    .lineLimit(2)
-                Text(WeekFitLocalizedString("coach.proposal.chrome.failedBody"))
-                    .font(.footnote)
-                    .foregroundStyle(textSecondary.opacity(0.72))
-                    .lineLimit(2)
-            }
-            .padding(.trailing, 18)
+            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.today")
         }
     }
 
@@ -2954,6 +2742,24 @@ struct TodayView: View {
             accent: accent,
             cornerRadius: TodayLayout.cardRadius
         )
+        // Soft ceramic edge lift so the teaser reads above the coach underlay.
+        .overlay {
+            RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(palette.isLight ? 0.55 : 0.14),
+                            Color.white.opacity(palette.isLight ? 0.12 : 0.04),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+                .allowsHitTesting(false)
+        }
+        .accessibilityIdentifier("morning.proposal.card")
     }
 
     private func dismissMorningProposalChrome(permanent: Bool) {
@@ -2974,6 +2780,19 @@ struct TodayView: View {
     }
 
     private func refreshMorningProposal(forceRegenerate: Bool = false) {
+        #if DEBUG
+        if MorningProposalScreenshotFixtures.shouldSeed {
+            let proposal = MorningProposalScreenshotFixtures.sampleProposal()
+            MorningProposalStore.upsert(proposal)
+            morningProposal = proposal
+            morningProposalChromeHidden = false
+            if MorningProposalScreenshotFixtures.shouldOpenReview {
+                showProposalReview = true
+            }
+            return
+        }
+        #endif
+
         let now = Date()
         let calendar = Calendar.current
         let dayKey = ProposalInputFingerprintBuilder.dayKey(for: now, calendar: calendar)
@@ -2982,6 +2801,9 @@ struct TodayView: View {
             let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
             if morningWeatherSummary != cached {
                 morningWeatherSummary = cached
+                if !quickLogDrinks.isEmpty {
+                    refreshDrinkPartitions(drinks: quickLogDrinks, usage: quickItemUsageEntries)
+                }
             }
         }
 
@@ -3287,7 +3109,13 @@ struct TodayView: View {
         setQuickLogMeals([])
         setQuickLogSnacks([])
         setQuickLogDrinks([])
-        setQuickItemUsage([:])
+        setQuickItemUsageEntries([:], persist: true)
+        quickLogFrequentDrinkRows = []
+        quickLogRecentDrinkRows = []
+        quickLogFrequentSnackRows = []
+        quickLogRecentSnackRows = []
+        quickLogFrequentMealRows = []
+        quickLogRecentMealRows = []
         didPreloadQuickFood = false
         didPreloadQuickDrinks = false
 

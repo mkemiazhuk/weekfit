@@ -57,19 +57,19 @@ struct WeekFitPremiumCardModifier: ViewModifier {
                                 .fill(accentWashGradient)
                         }
                     }
-                    .overlay {
-                        if showsBorder {
-                            RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                                .strokeBorder(
-                                    borderGradient(boost: increasedContrast ? 1.35 : 1.0),
-                                    lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 0.9 : 1)
-                                )
-                        }
-                    }
-                    .compositingGroup()
+                    // Shadow on the rounded shape — never compositingGroup→shadow (rectangular slab).
                     .shadow(color: contactShadowColor, radius: contactShadowRadius, y: contactShadowY)
                     .shadow(color: ambientShadowColor, radius: ambientShadowRadius, y: ambientShadowY)
                     .shadow(color: primaryShadowColor, radius: primaryShadowRadius, y: primaryShadowY)
+            }
+            .overlay {
+                if showsBorder {
+                    RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                        .strokeBorder(
+                            borderGradient(boost: increasedContrast ? 1.35 : 1.0),
+                            lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 0.9 : 1)
+                        )
+                }
             }
     }
 

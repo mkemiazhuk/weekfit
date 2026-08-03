@@ -105,12 +105,26 @@ struct FeedbackFormView: View {
         } label: {
             Text(WeekFitLocalizedString(category.localizationKey))
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(selected ? Color.black.opacity(0.9) : WeekFitTheme.primaryText)
+                .foregroundStyle(
+                    selected
+                        ? WeekFitTheme.primaryCTAForeground
+                        : WeekFitTheme.primaryText
+                )
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 44)
                 .background {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(selected ? WeekFitStyle.brandGreen : WeekFitTheme.whiteOpacity(0.08))
+                        .fill(
+                            selected
+                                ? WeekFitTheme.primaryCTA
+                                : WeekFitTheme.whiteOpacity(0.06)
+                        )
+                        .overlay {
+                            if !selected {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(WeekFitTheme.borderSoft.opacity(0.7), lineWidth: 0.8)
+                            }
+                        }
                 }
         }
         .buttonStyle(ReviewPressableButtonStyle())
@@ -131,10 +145,10 @@ struct FeedbackFormView: View {
                 .scrollContentBackground(.hidden)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(WeekFitTheme.whiteOpacity(0.06))
+                        .fill(WeekFitTheme.whiteOpacity(0.04))
                         .overlay {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
+                                .stroke(WeekFitTheme.borderSoft.opacity(0.75), lineWidth: 1)
                         }
                 }
                 .foregroundStyle(WeekFitTheme.primaryText)
@@ -150,7 +164,7 @@ struct FeedbackFormView: View {
                 .foregroundStyle(WeekFitTheme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .tint(WeekFitStyle.brandGreen)
+        .tint(WeekFitTheme.settingsAccent)
         .padding(.vertical, 4)
         .accessibilityIdentifier("review.feedback.form.contactToggle")
     }
@@ -165,13 +179,13 @@ struct FeedbackFormView: View {
                         ? WeekFitLocalizedString("review.feedback.form.sending")
                         : WeekFitLocalizedString("review.feedback.form.send")
                 )
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.black.opacity(0.92))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.primaryCTAForeground)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 50)
+                .frame(height: 52)
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(WeekFitStyle.brandGreen)
+                    Capsule()
+                        .fill(WeekFitTheme.primaryCTA)
                 }
             }
             .buttonStyle(ReviewPressableButtonStyle())

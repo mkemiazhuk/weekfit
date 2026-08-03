@@ -18,6 +18,8 @@ struct MealLibraryEmptyStateCard: View {
     let ctaTitle: String
     let benefits: [BenefitRow]
     let presentation: Presentation
+    var secondaryCTATitle: String? = nil
+    var secondaryAction: (() -> Void)? = nil
     let action: () -> Void
 
     private var isExpanded: Bool { presentation == .expanded }
@@ -38,8 +40,23 @@ struct MealLibraryEmptyStateCard: View {
                 .padding(.top, 2)
             }
 
-            ctaButton
-                .padding(.top, isExpanded ? 2 : 10)
+            VStack(spacing: isExpanded ? 10 : 8) {
+                ctaButton
+
+                if let secondaryCTATitle, let secondaryAction {
+                    Button(action: secondaryAction) {
+                        Text(secondaryCTATitle)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(secondaryCTATitle)
+                    .accessibilityIdentifier("meals.create.secondary")
+                }
+            }
+            .padding(.top, isExpanded ? 2 : 10)
         }
         .padding(.horizontal, isExpanded ? 18 : 18)
         .padding(.vertical, isExpanded ? 16 : 18)

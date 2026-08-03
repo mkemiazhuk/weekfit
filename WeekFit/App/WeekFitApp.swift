@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @main
 struct WeekFitApp: App {
@@ -54,7 +57,14 @@ struct WeekFitApp: App {
                     blendFactor: nightComfort.blendFactor,
                     preference: appearance.preference
                 ))
-                .animation(.easeInOut(duration: 0.8), value: nightComfort.blendFactor)
+                // Night Comfort crossfade is Dark-only. Never animate blend for Light / System —
+                // resume flaps otherwise paint half-Light / half-Dark chrome.
+                .animation(
+                    appearance.preference == .dark
+                        ? .easeInOut(duration: 0.8)
+                        : nil,
+                    value: nightComfort.blendFactor
+                )
                 .onAppear {
                     activityCoordinator.prepareLaunchServices()
                     activityCoordinator.beforePlannedActivityMutation = {
@@ -118,6 +128,9 @@ struct WeekFitApp: App {
         case .active:
             activityCoordinator.refresh()
             nightComfort.handleSceneBecameActive()
+            // Palette store is owned solely by `WeekFitPaletteEnvironmentSync`.
+            // Do not write it here from `UITraitCollection` — that races SwiftUI's
+            // `colorScheme` and leaves env Light + WeekFitTheme Dark (or vice versa).
             nightComfortLocationService?.refreshIfNeeded()
             healthManager.retryPendingWorkoutRouteAuthorizationIfNeeded()
 
@@ -149,9 +162,28 @@ private struct WeekFitPaletteEnvironmentSync: ViewModifier {
     let blendFactor: CGFloat
     let preference: WeekFitAppearancePreference
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// System scheme for `.system` preference. On resume, SwiftUI `colorScheme` can lag
+    /// behind the window trait — prefer the trait when they disagree so store + env stay paired.
+    private var resolvedSystemColorScheme: ColorScheme {
+        guard preference == .system else { return colorScheme }
+        #if canImport(UIKit)
+        switch UITraitCollection.current.userInterfaceStyle {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        default:
+            return colorScheme
+        }
+        #else
+        return colorScheme
+        #endif
+    }
 
     private var appearance: WeekFitAppearance {
-        preference.resolvedAppearance(system: colorScheme)
+        preference.resolvedAppearance(system: resolvedSystemColorScheme)
     }
 
     private var resolvedPalette: WeekFitSemanticPalette {
@@ -160,15 +192,38 @@ private struct WeekFitPaletteEnvironmentSync: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content
-            .environment(\.weekFitPalette, resolvedPalette)
-            .onAppear { syncStore() }
-            .onChange(of: blendFactor) { _, _ in syncStore() }
-            .onChange(of: colorScheme) { _, _ in syncStore() }
-            .onChange(of: preference) { _, _ in syncStore() }
+        // Align static store on every render *before* descendants read WeekFitTheme.*,
+        // so env palette and Theme.* never diverge mid-frame after resume.
+        let palette = resolvedPalette
+        alignStore(to: palette)
+
+        return content
+            .environment(\.weekFitPalette, palette)
+            .onChange(of: blendFactor) { _, _ in
+                // Store already aligned in body; keep onChange for explicit resume snaps.
+                alignStore(to: resolvedPalette)
+            }
+            .onChange(of: colorScheme) { _, _ in
+                alignStore(to: resolvedPalette)
+            }
+            .onChange(of: preference) { _, _ in
+                alignStore(to: resolvedPalette)
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                // Snap immediately — then once more after traits settle.
+                alignStore(to: resolvedPalette)
+                DispatchQueue.main.async {
+                    alignStore(to: resolvedPalette)
+                }
+            }
     }
 
-    private func syncStore() {
-        WeekFitPaletteStore.update(blend: appearance == .light ? 0 : blendFactor, appearance: appearance)
+    private func alignStore(to palette: WeekFitSemanticPalette) {
+        WeekFitAppearanceSync.apply(
+            preference: preference,
+            system: resolvedSystemColorScheme,
+            nightBlend: palette.blendFactor
+        )
     }
 }

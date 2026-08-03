@@ -56,7 +56,9 @@ enum WeekFitStyle {
     static let cardWhite = Color.white.opacity(0.94)
     static let textPrimary = Color.black.opacity(0.88)
     static let textSecondary = Color.black.opacity(0.48)
-    static let brandGreen = Color(red: 0.40, green: 0.74, blue: 0.53)
+    /// Soft brand green — Light follows theme coach/CTA; Dark keeps legacy sage.
+    @MainActor
+    static var brandGreen: Color { WeekFitTheme.primaryGreen }
     static let sageGreen = Color(red: 0.54, green: 0.88, blue: 0.65)
     static let champagneGold = Color(red: 0.96, green: 0.75, blue: 0.36)
 

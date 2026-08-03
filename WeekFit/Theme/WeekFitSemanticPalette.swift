@@ -42,6 +42,24 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
 
     var isLight: Bool { appearance == .light }
 
+    /// Solid root canvas — Light ivory / Dark OLED. Prefer this over `WeekFitTheme.appScreenBackground`
+    /// so chrome never paints from a stale static store snapshot.
+    var appScreenBackground: Color {
+        switch appearance {
+        case .light:
+            return WeekFitLightTokens.backgroundPrimary
+        case .dark:
+            return Color(red: 0.014, green: 0.016, blue: 0.022)
+        }
+    }
+
+    /// Invalidates `EquatableView` tab layers when Light/Dark or Night Comfort blend changes.
+    var appearanceInvalidationToken: UInt64 {
+        let appearanceBit: UInt64 = appearance == .light ? 1 : 0
+        let blendBits = UInt64(clamping: Int((blendFactor * 1000).rounded()))
+        return (appearanceBit << 32) | blendBits
+    }
+
     static let daytime = WeekFitSemanticPalette(appearance: .dark, blendFactor: 0)
     static let light = WeekFitSemanticPalette(appearance: .light, blendFactor: 0)
 

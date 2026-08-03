@@ -33,14 +33,12 @@ struct NotificationSettingsView: View {
     private var sleepWindDownEnabled = false
 
     private var background: Color { WeekFitTheme.backgroundColor }
-    private let cardBackground = Color(red: 24/255, green: 24/255, blue: 28/255)
-    private let rowBackground = WeekFitTheme.whiteOpacity(0.065)
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private let sectionText = WeekFitTheme.whiteOpacity(0.34)
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var sectionText: Color { WeekFitTheme.tertiaryText }
 
-    private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private var accentGreen: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         ZStack {
@@ -162,8 +160,9 @@ private extension NotificationSettingsView {
     }
 
     var softDivider: some View {
-        Divider()
-            .overlay(.white.opacity(0.035))
+        Rectangle()
+            .fill(WeekFitTheme.borderSoft.opacity(0.55))
+            .frame(height: 0.5)
             .padding(.leading, 68)
     }
 
@@ -176,7 +175,7 @@ private extension NotificationSettingsView {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(.white.opacity(0.045))
+                    .fill(WeekFitTheme.settingsIconWell)
 
                 Image(systemName: icon)
                     .font(.system(size: 15.5, weight: .semibold))
@@ -205,7 +204,7 @@ private extension NotificationSettingsView {
 
             Toggle("", isOn: notificationBinding(isOn))
                 .labelsHidden()
-                .tint(accentGreen.opacity(0.88))
+                .tint(accentGreen.opacity(0.92))
                 .scaleEffect(0.86)
         }
         .padding(.horizontal, 17)
@@ -216,7 +215,7 @@ private extension NotificationSettingsView {
     var footerNote: some View {
         Text(AppText.Settings.Notifications.footerNote)
             .font(.system(size: 13.5, weight: .medium))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
+            .foregroundStyle(WeekFitTheme.tertiaryText)
             .lineSpacing(2)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)

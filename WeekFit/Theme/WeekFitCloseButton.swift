@@ -7,12 +7,15 @@ struct WeekFitCloseButton: View {
         case compact
         case regular
         case large
+        /// Nutrition / details hero close (~52pt reference).
+        case hero
 
         var dimension: CGFloat {
             switch self {
             case .compact: return 30
             case .regular: return 36
             case .large: return 42
+            case .hero: return 48
             }
         }
 
@@ -21,6 +24,7 @@ struct WeekFitCloseButton: View {
             case .compact: return 12
             case .regular: return 13
             case .large: return 14
+            case .hero: return 15
             }
         }
     }

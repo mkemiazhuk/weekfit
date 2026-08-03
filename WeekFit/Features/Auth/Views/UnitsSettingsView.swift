@@ -6,9 +6,9 @@ struct UnitsSettingsView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     private var background: Color { WeekFitTheme.backgroundColor }
-    private let textPrimary: Color = WeekFitTheme.primaryText
-    private let textSecondary: Color = WeekFitTheme.whiteOpacity(0.54)
-    private let accent = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private var textPrimary: Color { WeekFitTheme.primaryText }
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var accent: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         ZStack {
@@ -55,15 +55,16 @@ private extension UnitsSettingsView {
     }
 
     var softDivider: some View {
-        Divider()
-            .overlay(.white.opacity(0.035))
+        Rectangle()
+            .fill(WeekFitTheme.borderSoft.opacity(0.55))
+            .frame(height: 0.5)
             .padding(.leading, 68)
     }
 
     var footerNote: some View {
         Text(WeekFitLocalizedString("settings.units.footer"))
             .font(.system(size: 13.5, weight: .medium))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
+            .foregroundStyle(WeekFitTheme.tertiaryText)
             .lineSpacing(2)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -81,7 +82,7 @@ private extension UnitsSettingsView {
             HStack(alignment: .center, spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(.white.opacity(0.045))
+                        .fill(WeekFitTheme.settingsIconWell)
 
                     Image(systemName: icon(for: preference))
                         .font(.system(size: 15.5, weight: .semibold))
@@ -101,12 +102,14 @@ private extension UnitsSettingsView {
                     if isRecommended {
                         Text(WeekFitLocalizedString("settings.units.recommended"))
                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
+                            .foregroundStyle(WeekFitTheme.settingsAccent)
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(WeekFitTheme.whiteOpacity(0.06)))
+                            .background {
+                                Capsule().fill(WeekFitTheme.settingsIconWell)
+                            }
                     }
 
                     Text(preference.subtitle)

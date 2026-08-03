@@ -12,8 +12,8 @@ struct BodyGoalPickerSection: View {
     var footerOverride: String? = nil
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private let textSecondary = WeekFitTheme.whiteOpacity(0.54)
-    private let accentGreen = Color(red: 170/255, green: 255/255, blue: 70/255)
+    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var accentGreen: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -97,8 +97,8 @@ struct BodyGoalPickerSection: View {
 
     private var softDivider: some View {
         Rectangle()
-            .fill(WeekFitTheme.whiteOpacity(0.06))
-            .frame(height: 1)
+            .fill(WeekFitTheme.borderSoft.opacity(0.55))
+            .frame(height: 0.5)
             .padding(.leading, 16)
     }
 }

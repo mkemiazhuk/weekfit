@@ -47,18 +47,11 @@ enum WeekFitType {
 
 extension View {
     func weekFitScreenTitle() -> some View {
-        font(WeekFitType.screenTitle)
-            .foregroundStyle(WeekFitTheme.primaryText)
-            .tracking(-0.55)
-            .lineLimit(1)
-            .minimumScaleFactor(0.88)
+        modifier(WeekFitScreenTitleModifier())
     }
 
     func weekFitScreenSubtitle() -> some View {
-        font(WeekFitType.screenSubtitle)
-            .foregroundStyle(WeekFitTheme.secondaryText)
-            .lineLimit(1)
-            .minimumScaleFactor(0.86)
+        modifier(WeekFitScreenSubtitleModifier())
     }
 
     func weekFitSectionEyebrow() -> some View {
@@ -92,11 +85,7 @@ extension View {
     /// Kill UIKit List/ScrollView chrome and paint the shared root canvas
     /// through the full scroll viewport (not only the laid-out content size).
     func weekFitTransparentScrollBackground() -> some View {
-        scrollContentBackground(.hidden)
-            .background {
-                WeekFitTheme.appScreenBackground
-                    .ignoresSafeArea(edges: .bottom)
-            }
+        modifier(WeekFitTransparentScrollBackgroundModifier())
     }
 
     /// Today-class primary card.
@@ -144,12 +133,38 @@ enum WeekFitScreenAmbient: Equatable {
     }
 }
 
+private struct WeekFitScreenTitleModifier: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+
+    func body(content: Content) -> some View {
+        content
+            .font(WeekFitType.screenTitle)
+            .foregroundStyle(palette.textPrimary)
+            .tracking(-0.55)
+            .lineLimit(1)
+            .minimumScaleFactor(0.88)
+    }
+}
+
+private struct WeekFitScreenSubtitleModifier: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+
+    func body(content: Content) -> some View {
+        content
+            .font(WeekFitType.screenSubtitle)
+            .foregroundStyle(palette.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+    }
+}
+
 private struct WeekFitScreenCanvasModifier: ViewModifier {
     let ambient: WeekFitScreenAmbient
+    @Environment(\.weekFitPalette) private var palette
 
     func body(content: Content) -> some View {
         ZStack {
-            WeekFitTheme.appScreenBackground
+            palette.appScreenBackground
                 .ignoresSafeArea()
 
             if let gradient = ambient.gradient {
@@ -160,5 +175,18 @@ private struct WeekFitScreenCanvasModifier: ViewModifier {
 
             content
         }
+    }
+}
+
+private struct WeekFitTransparentScrollBackgroundModifier: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background {
+                palette.appScreenBackground
+                    .ignoresSafeArea(edges: .bottom)
+            }
     }
 }

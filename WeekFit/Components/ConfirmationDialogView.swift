@@ -13,6 +13,8 @@ struct ConfirmationDialogView: View {
     let onSecondary: (() -> Void)?
     let onPrimary: () -> Void
 
+    @Environment(\.weekFitPalette) private var palette
+
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
 
     init(
@@ -45,7 +47,7 @@ struct ConfirmationDialogView: View {
                 guard dismissOnBackgroundTap else { return }
                 onSecondary?()
             } label: {
-                Color.black.opacity(WeekFitPaletteStore.current.isLight ? 0.22 : 0.58)
+                Color.black.opacity(palette.isLight ? 0.22 : 0.58)
                     .ignoresSafeArea()
             }
             .buttonStyle(.plain)
@@ -85,12 +87,12 @@ struct ConfirmationDialogView: View {
         .padding(.bottom, 18)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(WeekFitPaletteStore.current.isLight ? 0.88 : 0.62))
+                .fill(.ultraThinMaterial.opacity(palette.isLight ? 0.88 : 0.62))
                 .background {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: WeekFitPaletteStore.current.isLight
+                                colors: palette.isLight
                                     ? [
                                         Color.white.opacity(0.96),
                                         WeekFitTheme.cardSurfaceElevated,

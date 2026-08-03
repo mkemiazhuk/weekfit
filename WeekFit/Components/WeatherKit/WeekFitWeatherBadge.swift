@@ -23,7 +23,6 @@ struct WeekFitWeatherBadge: View {
         case .hidden:
             Color.clear
                 .frame(height: pillHeight)
-                .frame(width: reservedWidth)
 
         case .loading:
             badgeContent(
@@ -33,7 +32,6 @@ struct WeekFitWeatherBadge: View {
                 conditionWord: nil,
                 accessibilitySentence: nil
             )
-                .frame(width: reservedWidth)
 
         case .loaded(let summary):
             let showConditionWord = sizeCategory < .accessibilityMedium
@@ -44,10 +42,9 @@ struct WeekFitWeatherBadge: View {
                 symbolName: summary.badgeSymbolName,
                 condition: summary.condition,
                 isDaylight: summary.isDaylight,
-                conditionWord: showConditionWord ? summary.badgeShortLabel : nil,
+                conditionWord: showConditionWord ? summary.badgeCompactLabel : nil,
                 accessibilitySentence: "Current weather, \(tempValue) degrees \(WeekFitUnitPolicy.accessibilityTemperatureUnitName(for: system)), \(summary.badgeShortLabel.lowercased())"
             )
-            .frame(width: reservedWidth)
         }
     }
 
@@ -76,18 +73,21 @@ struct WeekFitWeatherBadge: View {
             Text(temperatureText)
                 .font(.system(size: 14.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText)
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
 
             if let conditionWord {
                 Text(conditionWord)
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.72))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: true, vertical: false)
                     .accessibilityHidden(true)
             }
         }
         .padding(.horizontal, 10)
-        .frame(height: pillHeight, alignment: .leading)
+        .frame(height: pillHeight, alignment: .center)
+        .fixedSize(horizontal: true, vertical: false)
         .background {
             weatherBadgeChrome
         }
@@ -105,10 +105,7 @@ struct WeekFitWeatherBadge: View {
             generator.impactOccurred()
             onTap()
         }
-        .scaleEffect(1.0)
     }
-
-    private var reservedWidth: CGFloat { 132 }
 
     @ViewBuilder
     private var weatherBadgeChrome: some View {

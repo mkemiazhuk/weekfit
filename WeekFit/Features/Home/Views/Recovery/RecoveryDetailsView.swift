@@ -8,6 +8,7 @@ struct RecoveryDetailsView: View {
 
     @StateObject private var viewModel = RecoveryDetailsViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @State private var activeDate: Date
@@ -35,26 +36,47 @@ struct RecoveryDetailsView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack {
-            RecoveryStyle.screenBackground
+            (palette.isLight ? HealthDetailsSoftChrome.canvas : RecoveryStyle.screenBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header
+                if palette.isLight {
+                    NutritionDetailsHeader(
+                        title: WeekFitLocalizedString("recovery.details.title"),
+                        subtitle: recoveryDetailsDateTitle,
+                        onClose: { dismiss() }
+                    )
 
-                HealthDetailsWeekPicker(
-                    selectedDate: $activeDate,
-                    accentColor: RecoveryStyle.recoveryColor
-                ) { date in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    NutritionWeekSelector(
+                        selectedDate: $activeDate,
+                        accentColor: WeekFitLightTokens.recovery
+                    ) { _ in
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                    .padding(.horizontal, HealthDetailsSoftChrome.horizontalPadding)
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+                } else {
+                    header
+
+                    HealthDetailsWeekPicker(
+                        selectedDate: $activeDate,
+                        accentColor: RecoveryStyle.recoveryColor
+                    ) { _ in
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 9)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 9)
-                .padding(.bottom, 8)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 9) {
+                    VStack(spacing: palette.isLight ? HealthDetailsSoftChrome.sectionSpacing : 9) {
                         RecoveryHeroCard(snapshot: viewModel.snapshot)
-                        StressIndexCompactCard(result: viewModel.stressIndex) {
+                        StressIndexCompactCard(
+                            result: viewModel.stressIndex,
+                            bedtimeDeviationMinutes: viewModel.snapshot.recoveryInput?.bedtimeDeviationMinutes
+                        ) {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             showStressIndexSheet = true
                             AppAnalytics.shared.track(.stressIndexDetailsOpened)
@@ -64,15 +86,15 @@ struct RecoveryDetailsView: View {
                         SleepDetailsCard(snapshot: viewModel.snapshot)
                         SleepStagesCard(snapshot: viewModel.snapshot)
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 5)
-                    .padding(.bottom, 36)
+                    .padding(.horizontal, palette.isLight ? HealthDetailsSoftChrome.horizontalPadding : 18)
+                    .padding(.top, palette.isLight ? 8 : 5)
+                    .padding(.bottom, palette.isLight ? 24 : 36)
                 }
             }
 
             if viewModel.isLoading {
                 ProgressView()
-                    .tint(.white.opacity(0.75))
+                    .tint(palette.isLight ? WeekFitLightTokens.recovery : .white.opacity(0.75))
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -155,30 +177,49 @@ struct RecoveryDetailsView: View {
 
 private struct RecoveryHeroCard: View {
     let snapshot: RecoveryDaySnapshot
+    @Environment(\.weekFitPalette) private var palette
 
     private var progress: CGFloat {
         CGFloat(min(max(snapshot.recoveryScore, 0), 100)) / 100
     }
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: palette.isLight ? 12 : 15) {
             recoveryRing
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: palette.isLight ? 4 : 5) {
                 Text(WeekFitLocalizedString("recovery.details.score.title").uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(1.8)
-                    .foregroundStyle(RecoveryStyle.recoveryColor)
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.eyebrow
+                            : .system(size: 10, weight: .bold, design: .rounded)
+                    )
+                    .tracking(palette.isLight ? 0.6 : 1.8)
+                    .foregroundStyle(
+                        palette.isLight ? WeekFitLightTokens.recovery : RecoveryStyle.recoveryColor
+                    )
 
                 Text(statusText)
-                    .font(.system(size: RecoveryTypography.heroTitle, weight: .bold, design: .rounded))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.insight
+                            : .system(size: RecoveryTypography.heroTitle, weight: .bold, design: .rounded)
+                    )
                     .foregroundStyle(WeekFitTheme.primaryText)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.72)
 
                 Text(snapshot.insightText)
-                    .font(.system(size: RecoveryTypography.heroText, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.metricSecondary
+                            : .system(size: RecoveryTypography.heroText, weight: .medium, design: .rounded)
+                    )
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.textSecondary
+                            : WeekFitTheme.whiteOpacity(0.52)
+                    )
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -186,17 +227,20 @@ private struct RecoveryHeroCard: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 14)
-        .recoveryCard(glow: RecoveryStyle.recoveryColor)
+        .padding(.horizontal, palette.isLight ? 14 : 17)
+        .padding(.vertical, palette.isLight ? 12 : 14)
+        .healthDetailsSoftCard(
+            isLight: palette.isLight,
+            darkGlow: RecoveryStyle.recoveryColor
+        )
     }
 
     private var recoveryRing: some View {
         WeekFitProgressRing(
             progress: progress,
             color: WeekFitProgressRingColor.recovery,
-            size: 70,
-            strokeWidth: 4,
+            size: palette.isLight ? 58 : 70,
+            strokeWidth: palette.isLight ? 4.5 : 4,
             gradientColors: [
                 WeekFitProgressRingColor.recovery.opacity(0.80),
                 WeekFitProgressRingColor.recovery,
@@ -206,13 +250,25 @@ private struct RecoveryHeroCard: View {
         ) {
             VStack(spacing: -2) {
                 Text("\(snapshot.recoveryScore)")
-                    .font(.system(size: RecoveryTypography.heroScore, weight: .bold, design: .rounded))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.score
+                            : .system(size: RecoveryTypography.heroScore, weight: .bold, design: .rounded)
+                    )
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .monospacedDigit()
 
                 Text(WeekFitLocalizedString("common.unit.score"))
-                    .font(.system(size: RecoveryTypography.heroScoreLabel, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                    .font(
+                        palette.isLight
+                            ? NutritionDetailsDesign.Typography.scoreDenom
+                            : .system(size: RecoveryTypography.heroScoreLabel, weight: .bold, design: .rounded)
+                    )
+                    .foregroundStyle(
+                        palette.isLight
+                            ? WeekFitLightTokens.textQuaternary
+                            : WeekFitTheme.whiteOpacity(0.40)
+                    )
             }
         }
     }
@@ -245,81 +301,175 @@ private struct RecoveryHeroCard: View {
 
 private struct StressIndexCompactCard: View {
     let result: StressIndexResult
+    var bedtimeDeviationMinutes: Int? = nil
     let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(WeekFitLocalizedString("recovery.stressIndex.title").uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.4)
-                        .foregroundStyle(accentColor.opacity(0.92))
-
-                    valueRow
-
-                    Text(StressIndexCopy.compactSummary(for: result))
-                        .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.48))
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
-                    .padding(.top, 4)
-            }
-            .padding(.horizontal, 17)
-            .padding(.vertical, 13)
-            .recoveryCard(glow: accentColor.opacity(0.55))
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(StressIndexCopy.accessibilityLabel(for: result)))
-        .accessibilityAddTraits(.isButton)
-    }
-
-    @ViewBuilder
-    private var valueRow: some View {
-        switch result.confidence {
-        case .unavailable:
-            Text(WeekFitLocalizedString("recovery.stressIndex.empty.title"))
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-        case .low:
-            if let level = result.level {
-                Text(StressIndexCopy.levelTitle(level))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(accentColor)
-                    .lineLimit(1)
-            }
-        case .medium, .high:
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                if let score = result.score {
-                    Text("\(score)")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.primaryText)
-                        .monospacedDigit()
-                }
-
-                if let level = result.level {
-                    Text("· \(StressIndexCopy.levelTitle(level))")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(accentColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                }
-            }
-        }
-    }
+    @Environment(\.weekFitPalette) private var palette
 
     private var accentColor: Color {
         StressIndexStyle.color(for: result.level, confidence: result.confidence)
+    }
+
+    private var softFill: Color {
+        guard palette.isLight else {
+            return HealthDetailsSoftChrome.cardSurface
+        }
+        return StressIndexStyle.softFill(for: result.level, confidence: result.confidence)
+    }
+
+    private var contributorLabels: [String] {
+        StressIndexCopy.compactContributorLabels(
+            for: result,
+            bedtimeDeviationMinutes: bedtimeDeviationMinutes
+        )
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 10) {
+                topRow
+                scoreRow
+
+                if result.confidence != .unavailable {
+                    Text(StressIndexCopy.compactInterpretation(for: result))
+                        .font(
+                            palette.isLight
+                                ? NutritionDetailsDesign.Typography.metricSecondary
+                                : .system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded)
+                        )
+                        .foregroundStyle(
+                            palette.isLight
+                                ? WeekFitLightTokens.textSecondary
+                                : WeekFitTheme.whiteOpacity(0.52)
+                        )
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if !contributorLabels.isEmpty {
+                        contributorsRow
+                    }
+                } else {
+                    Text(StressIndexCopy.compactInterpretation(for: result))
+                        .font(.system(size: RecoveryTypography.helperText, weight: .medium, design: .rounded))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? WeekFitLightTokens.textSecondary
+                                : WeekFitTheme.whiteOpacity(0.48)
+                        )
+                        .lineLimit(2)
+                }
+            }
+            .padding(.horizontal, palette.isLight ? 14 : 16)
+            .padding(.vertical, palette.isLight ? 13 : 14)
+            .healthDetailsSoftCard(
+                isLight: palette.isLight,
+                fill: softFill,
+                darkGlow: accentColor.opacity(0.45)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(accessibilitySummary))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var topRow: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(WeekFitLocalizedString("recovery.stressIndex.title").uppercased())
+                .font(
+                    palette.isLight
+                        ? NutritionDetailsDesign.Typography.eyebrow
+                        : .system(size: 10, weight: .bold, design: .rounded)
+                )
+                .tracking(palette.isLight ? 0.6 : 1.4)
+                .foregroundStyle(accentColor.opacity(0.92))
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitLightTokens.textQuaternary
+                        : WeekFitTheme.whiteOpacity(0.28)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private var scoreRow: some View {
+        switch result.confidence {
+        case .unavailable:
+            Text(WeekFitLocalizedString("recovery.stressIndex.empty.title"))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(
+                    palette.isLight
+                        ? WeekFitLightTokens.textPrimary
+                        : WeekFitTheme.whiteOpacity(0.78)
+                )
+                .lineLimit(1)
+
+        case .low:
+            if let level = result.level {
+                Text(StressIndexCopy.levelTitle(level))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(accentColor)
+                    .lineLimit(1)
+            }
+
+        case .medium, .high:
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let score = result.score {
+                    Text("\(score)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? WeekFitLightTokens.textPrimary
+                                : WeekFitTheme.primaryText
+                        )
+                        .monospacedDigit()
+                        .tracking(-0.8)
+                }
+
+                if let level = result.level {
+                    Text(StressIndexCopy.levelTitle(level))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(accentColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .padding(.bottom, 2)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var contributorsRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(contributorLabels.enumerated()), id: \.offset) { _, label in
+                HStack(alignment: .center, spacing: 7) {
+                    Circle()
+                        .fill(accentColor.opacity(0.55))
+                        .frame(width: 4, height: 4)
+
+                    Text(label)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(
+                            palette.isLight
+                                ? WeekFitLightTokens.textPrimary.opacity(0.82)
+                                : WeekFitTheme.whiteOpacity(0.70)
+                        )
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(.top, 1)
+    }
+
+    private var accessibilitySummary: String {
+        var parts = [StressIndexCopy.accessibilityLabel(for: result)]
+        parts.append(contentsOf: contributorLabels)
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -705,11 +855,17 @@ private struct StressIndexCalculationSheet: View {
 }
 
 private enum StressIndexStyle {
-    static let low = WeekFitTheme.accent(Color(red: 0.55, green: 0.68, blue: 0.72))
-    static let moderate = WeekFitTheme.accent(Color(red: 0.90, green: 0.72, blue: 0.38))
-    static let elevated = WeekFitTheme.accent(Color(red: 0.92, green: 0.58, blue: 0.32))
-    static let high = WeekFitTheme.accent(Color(red: 0.90, green: 0.48, blue: 0.42))
+    static let low = WeekFitTheme.accent(Color(red: 0.42, green: 0.66, blue: 0.58))
+    static let moderate = WeekFitTheme.accent(Color(red: 0.86, green: 0.68, blue: 0.40))
+    static let elevated = WeekFitTheme.accent(Color(red: 0.90, green: 0.58, blue: 0.36))
+    static let high = WeekFitTheme.accent(Color(red: 0.88, green: 0.48, blue: 0.44))
     static let unavailable = WeekFitTheme.whiteOpacity(0.42)
+
+    /// Very soft semantic washes — calm, never alarming blocks.
+    static let softLow = Color(red: 0.925, green: 0.960, blue: 0.942)
+    static let softModerate = Color(red: 0.985, green: 0.960, blue: 0.925)
+    static let softElevated = Color(red: 0.988, green: 0.945, blue: 0.922)
+    static let softHigh = Color(red: 0.985, green: 0.938, blue: 0.935)
 
     static func color(for level: StressIndexLevel?, confidence: StressIndexConfidence) -> Color {
         guard confidence != .unavailable, let level else { return unavailable }
@@ -718,6 +874,18 @@ private enum StressIndexStyle {
         case .moderate: return moderate
         case .elevated: return elevated
         case .high: return high
+        }
+    }
+
+    static func softFill(for level: StressIndexLevel?, confidence: StressIndexConfidence) -> Color {
+        guard confidence != .unavailable, let level else {
+            return HealthDetailsSoftChrome.cardSurface
+        }
+        switch level {
+        case .low: return softLow
+        case .moderate: return softModerate
+        case .elevated: return softElevated
+        case .high: return softHigh
         }
     }
 }
@@ -804,10 +972,7 @@ private struct RecoveryVitalsCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 9)
         .padding(.horizontal, 5)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.026))
-        }
+        .healthDetailsNestedTile(isLight: WeekFitPaletteStore.current.isLight)
     }
 }
 
@@ -1050,10 +1215,7 @@ private struct SleepDetailsCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 9)
         .padding(.horizontal, 5)
-        .background {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(WeekFitTheme.whiteOpacity(0.026))
-        }
+        .healthDetailsNestedTile(isLight: WeekFitPaletteStore.current.isLight)
     }
 }
 
@@ -1176,10 +1338,7 @@ private struct SectionLabel: View {
     }
 
     var body: some View {
-        Text(text)
-            .font(.system(size: RecoveryTypography.sectionLabel, weight: .bold, design: .rounded))
-            .tracking(1.8)
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
+        HealthDetailsSectionTitle(text: text)
     }
 }
 
@@ -1253,10 +1412,20 @@ private extension View {
         cornerRadius: CGFloat = 22,
         glow: Color = .clear
     ) -> some View {
-        weekFitPremiumCard(
-            emphasis: glow == .clear ? .standard : .accent,
-            accent: glow == .clear ? nil : glow,
-            cornerRadius: cornerRadius
+        modifier(RecoveryCardChrome(cornerRadius: cornerRadius, glow: glow))
+    }
+}
+
+private struct RecoveryCardChrome: ViewModifier {
+    @Environment(\.weekFitPalette) private var palette
+    var cornerRadius: CGFloat
+    var glow: Color
+
+    func body(content: Content) -> some View {
+        content.healthDetailsSoftCard(
+            isLight: palette.isLight,
+            cornerRadius: palette.isLight ? NutritionDetailsDesign.largeCorner : cornerRadius,
+            darkGlow: glow
         )
     }
 }
@@ -1275,7 +1444,7 @@ private struct MiniProgressBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(WeekFitTheme.whiteOpacity(0.085))
+                    .fill(WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.inactiveTrack : WeekFitTheme.whiteOpacity(0.085))
 
                 Capsule()
                     .fill(color)

@@ -36,17 +36,21 @@ struct BuiltMealPlateView: View {
 
         ZStack {
             if showPlate {
-                Ellipse()
-                    .fill(Color.black.opacity(hasFoodItems ? 0.14 : 0.10))
-                    .frame(width: plateSize * 0.98, height: plateSize * 0.21)
-                    .blur(radius: 9)
-                    .offset(y: plateSize * 0.26)
+                // Compact list/sheet thumbs: plate only — no soft ground blob (reads as a halo).
+                if layoutMode != .compactPreview {
+                    Ellipse()
+                        .fill(Color.black.opacity(hasFoodItems ? 0.14 : 0.10))
+                        .frame(width: plateSize * 0.98, height: plateSize * 0.21)
+                        .blur(radius: 9)
+                        .offset(y: plateSize * 0.26)
+                        .opacity(plateOpacity <= 0.001 ? 0 : 1)
+                }
 
                 Image("plate-dark")
                     .resizable()
                     .scaledToFit()
                     .frame(width: plateSize, height: plateSize)
-                    .blendMode(.multiply)
+                    .blendMode(layoutMode == .compactPreview ? .normal : .multiply)
                     .opacity(hasFoodItems ? plateOpacity : min(plateOpacity, 0.72))
             }
 

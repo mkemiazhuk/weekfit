@@ -11,20 +11,22 @@ struct TodayAtmosphereBackground: View {
             if palette.isLight {
                 lightCanvas
             } else {
-                WeekFitTheme.appScreenBackground
+                palette.appScreenBackground
                 primaryGlow
                 secondaryGlow
             }
         }
         .animation(.easeInOut(duration: 1.4), value: snapshot)
-        .animation(.easeInOut(duration: 0.45), value: palette.appearance)
+        // Never animate Light↔Dark here — resume flaps otherwise paint a black
+        // canvas under Light cards. Dark Night Comfort blend crossfades elsewhere.
+        .animation(palette.isLight ? nil : .easeInOut(duration: 0.45), value: palette.appearance)
     }
 
     // MARK: - Light: warm ivory + subtle top glow only
 
     private var lightCanvas: some View {
         ZStack {
-            WeekFitTheme.appScreenBackground
+            palette.appScreenBackground
 
             // Top champagne glow — restrained, header-only.
             RadialGradient(
