@@ -78,19 +78,10 @@ struct NutritionDetailsView: View {
             VStack(spacing: 0) {
                 header
 
-                HealthDetailsWeekPicker(
-                    selectedDate: $displayedDate,
-                    accentColor: NutritionStyle.nutritionColor
-                ) { date in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onDateChanged(date)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-                .padding(.bottom, 6)
+                weekPickerChrome
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 7) {
+                    VStack(spacing: 10) {
                         NutritionHeroCard(
                             qualityScore: nutritionQualityScore,
                             primaryInsightText: nutritionPrimaryInsight
@@ -123,13 +114,31 @@ struct NutritionDetailsView: View {
                         noteCard
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 4)
+                    .padding(.top, 10)
                     .padding(.bottom, 28)
                 }
+                .clipped()
             }
         }
         .navigationBarBackButtonHidden(true)
         .preferredColorScheme(.dark)
+    }
+
+    private var weekPickerChrome: some View {
+        HealthDetailsWeekPicker(
+            selectedDate: $displayedDate,
+            accentColor: NutritionStyle.nutritionColor
+        ) { date in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onDateChanged(date)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity)
+        .background(NutritionStyle.screenBackground)
+        .zIndex(2)
+        .accessibilityElement(children: .contain)
     }
 
     private var header: some View {
@@ -174,6 +183,7 @@ struct NutritionDetailsView: View {
                 .fill(WeekFitTheme.whiteOpacity(0.04))
                 .frame(height: 1)
         }
+        .zIndex(3)
     }
 
     private var nutritionQualityInput: NutritionQualityPresenter.Input {

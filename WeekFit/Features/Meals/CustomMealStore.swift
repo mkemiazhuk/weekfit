@@ -64,7 +64,13 @@ enum CustomMealStore {
         let normalized = normalizedTitle(title)
         guard !normalized.isEmpty else { return nil }
 
-        return meals.first { activityTitleCandidates(for: $0).contains(normalized) }
+        if let exact = meals.first(where: { activityTitleCandidates(for: $0).contains(normalized) }) {
+            return exact
+        }
+
+        return meals.first {
+            activityTitleMatchesBuilderIngredients(title, meal: $0)
+        }
     }
 
     static func activityTitleCandidates(for meal: Meals) -> Set<String> {
@@ -86,6 +92,44 @@ enum CustomMealStore {
         }
 
         return candidates
+    }
+
+    /// True when every meaningful token in the activity title maps to an
+    /// ingredient label (EN/RU) from the meal's builder items.
+    static func activityTitleMatchesBuilderIngredients(
+        _ title: String,
+        meal: Meals
+    ) -> Bool {
+        let tokens = titleTokens(title)
+        guard tokens.count >= 2 else { return false }
+
+        let ingredientLabels = builderIngredientLabels(for: meal)
+        guard ingredientLabels.count >= 2 else { return false }
+
+        return tokens.allSatisfy { token in
+            ingredientLabels.contains { label in
+                label == token || label.split(separator: " ").map(String.init).contains(token)
+            }
+        }
+    }
+
+    static func titleTokens(_ title: String) -> [String] {
+        normalizedTitle(title)
+            .split(whereSeparator: { $0.isWhitespace || $0 == "," || $0 == "+" || $0 == "-" })
+            .map(String.init)
+            .filter { $0.count > 1 }
+    }
+
+    private static func builderIngredientLabels(for meal: Meals) -> Set<String> {
+        var labels: Set<String> = []
+        let selections = MealBuilderTitleComposer.resolvedSelections(from: meal.builderImageItems)
+
+        for selection in selections {
+            labels.insert(normalizedTitle(selection.ingredient.title))
+            labels.insert(normalizedTitle(selection.ingredient.russianTitle))
+        }
+
+        return labels.filter { !$0.isEmpty }
     }
 }
 

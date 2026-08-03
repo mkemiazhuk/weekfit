@@ -56,17 +56,32 @@ enum PlanTimelineNutritionVisualResolver {
             if let items = displayableBuilderItems(for: meal), !items.isEmpty {
                 return .builderPlate(items, kind: kind)
             }
+
+            if let primary = meal.primaryBuilderIngredientImageName,
+               FoodImageQualityValidator.isDisplayableAsset(named: primary)
+                || primary.lowercased().hasPrefix("ingredient-") {
+                return .assetImage(name: primary, kind: kind)
+            }
         }
 
         let activityImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if FoodImageQualityValidator.isDisplayableAsset(named: activityImageName) {
-            return .assetImage(name: activityImageName, kind: kind)
+        if !FoodImageQualityValidator.isPlaceholderAssetName(activityImageName) {
+            if FoodImageQualityValidator.isDisplayableAsset(named: activityImageName)
+                || activityImageName.lowercased().hasPrefix("ingredient-") {
+                return .assetImage(name: activityImageName, kind: kind)
+            }
+
+            // Planner/quick-log may store MealPhotoStore filenames on the activity itself
+            // (especially for newly created custom foods).
+            if let photo = displayableLocalPhoto(filename: activityImageName) {
+                return .localPhoto(photo, kind: kind)
+            }
         }
 
-        // Planner/quick-log may store MealPhotoStore filenames on the activity itself
-        // (especially for newly created custom foods).
-        if let photo = displayableLocalPhoto(filename: activityImageName) {
-            return .localPhoto(photo, kind: kind)
+        // Last resort for already-logged localized builder titles without catalog hit:
+        // rebuild a plate from ingredient labels found in the activity title.
+        if let inferred = inferredBuilderItems(fromTitle: activity.title), !inferred.isEmpty {
+            return .builderPlate(inferred, kind: kind)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
@@ -185,11 +200,52 @@ enum PlanTimelineNutritionVisualResolver {
     private static func displayableBuilderItems(for meal: Meals) -> [MealBuilderImageItem]? {
         guard let items = meal.builderImageItems, !items.isEmpty else { return nil }
 
-        let validItems = items.filter {
-            FoodImageQualityValidator.isDisplayableAsset(named: $0.imageName)
+        let validItems = items.filter { item in
+            let name = item.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return false }
+            if name.lowercased().hasPrefix("ingredient-") { return true }
+            return FoodImageQualityValidator.isDisplayableAsset(named: name)
         }
 
         return validItems.isEmpty ? nil : validItems
+    }
+
+    /// Reconstruct builder visuals from a localized/English activity title when the
+    /// catalog row is missing or title matching failed (common for Quick Log).
+    private static func inferredBuilderItems(fromTitle title: String) -> [MealBuilderImageItem]? {
+        let paddedTitle = " \(CustomMealStore.normalizedTitle(title)) "
+        guard paddedTitle.trimmingCharacters(in: .whitespacesAndNewlines).count > 1 else {
+            return nil
+        }
+
+        let matched = MealBuilderDemoData.ingredients.compactMap { ingredient -> MealBuilderImageItem? in
+            let labels = [
+                CustomMealStore.normalizedTitle(ingredient.title),
+                CustomMealStore.normalizedTitle(ingredient.russianTitle)
+            ]
+            .filter { !$0.isEmpty }
+
+            let hits = labels.contains { label in
+                paddedTitle.contains(" \(label) ")
+            }
+            guard hits else { return nil }
+
+            return MealBuilderImageItem(
+                id: ingredient.id,
+                imageName: ingredient.imageName,
+                visualSize: ingredient.visualSize,
+                visualDensity: ingredient.visualDensity,
+                supportsStandalonePresentation: ingredient.supportsStandalonePresentation,
+                offsetX: ingredient.offsetX,
+                offsetY: ingredient.offsetY,
+                rotation: ingredient.rotation,
+                zIndex: ingredient.zIndex,
+                grams: ingredient.defaultGrams
+            )
+        }
+
+        guard matched.count >= 1 else { return nil }
+        return matched
     }
 
     private static func matchingCustomMeal(
