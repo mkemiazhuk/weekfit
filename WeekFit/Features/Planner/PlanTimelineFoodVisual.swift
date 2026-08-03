@@ -63,6 +63,12 @@ enum PlanTimelineNutritionVisualResolver {
             return .assetImage(name: activityImageName, kind: kind)
         }
 
+        // Planner/quick-log may store MealPhotoStore filenames on the activity itself
+        // (especially for newly created custom foods).
+        if let photo = displayableLocalPhoto(filename: activityImageName) {
+            return .localPhoto(photo, kind: kind)
+        }
+
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
     }
 
@@ -155,14 +161,25 @@ enum PlanTimelineNutritionVisualResolver {
         .filter { !$0.isEmpty }
 
         for filename in candidates {
-            if let image = MealPhotoStore.timelineImage(for: filename)
-                ?? MealPhotoStore.image(for: filename),
-               FoodImageQualityValidator.isDisplayable(image) {
+            if let image = displayableLocalPhoto(filename: filename) {
                 return image
             }
         }
 
         return nil
+    }
+
+    private static func displayableLocalPhoto(filename: String) -> UIImage? {
+        let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        guard let image = MealPhotoStore.timelineImage(for: trimmed)
+            ?? MealPhotoStore.image(for: trimmed),
+              FoodImageQualityValidator.isDisplayable(image) else {
+            return nil
+        }
+
+        return image
     }
 
     private static func displayableBuilderItems(for meal: Meals) -> [MealBuilderImageItem]? {

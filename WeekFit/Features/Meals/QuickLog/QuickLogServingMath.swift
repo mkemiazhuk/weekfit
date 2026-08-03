@@ -84,7 +84,7 @@ struct QuickLogNutritionProfile: Identifiable, Equatable {
             id: meal.id,
             title: meal.isFoodProduct ? meal.title : meal.localizedShortTitle,
             subtitle: meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle,
-            imageName: meal.imageName,
+            imageName: meal.activityImageName,
             icon: "fork.knife",
             kind: .meal,
             caloriesPerServing: meal.calories,
