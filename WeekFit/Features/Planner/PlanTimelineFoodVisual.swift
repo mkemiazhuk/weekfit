@@ -179,14 +179,32 @@ enum PlanTimelineNutritionVisualResolver {
         for activity: PlannedActivity,
         in customMeals: [Meals]
     ) -> Meals? {
-        guard activity.type.lowercased() == "meal" else { return nil }
+        let normalizedType = activity.type
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        // Logged foods use PlannerType.meal.title ("Meal"); also accept food/nutrition aliases.
+        guard normalizedType == "meal"
+            || normalizedType == "food"
+            || normalizedType == "nutrition" else {
+            return nil
+        }
 
         let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
         guard !normalizedTitle.isEmpty else { return nil }
 
-        return customMeals.first {
+        if let exact = customMeals.first(where: {
             CustomMealStore.normalizedTitle($0.title) == normalizedTitle
+        }) {
+            return exact
         }
+
+        // Fall back to catalog matcher title/image rules without its nutritionLog skip —
+        // photos still need the catalog row even when macros are already on the activity.
+        return MealCatalogMatcher.match(
+            title: activity.title,
+            imageName: activity.imageName,
+            in: customMeals
+        )
     }
 
     static func isDrinkActivity(_ activity: PlannedActivity) -> Bool {

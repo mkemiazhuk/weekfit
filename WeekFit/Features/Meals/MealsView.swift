@@ -768,6 +768,7 @@ struct MealsView: View {
         }
 
         MealPhotoStore.releaseMemoryCache()
+        MealPhotoStore.warmCache(for: meal.displayPhotoFilename)
         userSettings.replaceCustomMealsCatalog(mealsViewModel.customMeals)
 
         if scrollToNewItem && wasNew {
