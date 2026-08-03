@@ -121,30 +121,24 @@ struct WeekFitDetailScreenSaveButton: View {
             action()
         } label: {
             ZStack {
+                // Match Back / Circle button chrome — quiet light disc, never a solid fill.
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.14),
-                                WeekFitTheme.whiteOpacity(0.09)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(WeekFitTheme.whiteOpacity(0.045))
                     .overlay {
                         Circle()
                             .stroke(
-                                isEnabled ? accent.opacity(0.18) : WeekFitTheme.whiteOpacity(0.065),
+                                isEnabled
+                                ? WeekFitTheme.whiteOpacity(0.10)
+                                : WeekFitTheme.whiteOpacity(0.065),
                                 lineWidth: 1
                             )
                     }
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 14.5, weight: .bold))
                     .foregroundStyle(
                         isEnabled
-                        ? accent.opacity(0.85)
+                        ? accent.opacity(0.92)
                         : WeekFitTheme.secondaryText.opacity(0.42)
                     )
             }
@@ -153,7 +147,7 @@ struct WeekFitDetailScreenSaveButton: View {
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .accessibilityLabel(WeekFitLocalizedString("common.action.save"))
-        .scaleEffect(isEnabled ? 1.0 : 0.96)
+        .opacity(isEnabled ? 1.0 : 0.72)
         .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isEnabled)
     }
 }
