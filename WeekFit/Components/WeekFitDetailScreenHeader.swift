@@ -116,22 +116,20 @@ struct WeekFitDetailScreenSaveButton: View {
     let accent: Color
     let action: () -> Void
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
         Button {
             action()
         } label: {
             ZStack {
-                // Keep the solid dark-gray disc from Meal Builder (distinct from light Back).
+                // Light: same soft circle chrome as Back / close controls.
+                // Dark: slightly stronger disc so the save affordance still reads.
                 Circle()
                     .fill(saveDiscFill)
                     .overlay {
                         Circle()
-                            .stroke(
-                                isEnabled
-                                ? WeekFitTheme.whiteOpacity(0.08)
-                                : WeekFitTheme.whiteOpacity(0.05),
-                                lineWidth: 1
-                            )
+                            .stroke(saveDiscStroke, lineWidth: 1)
                     }
 
                 Image(systemName: "checkmark")
@@ -152,8 +150,14 @@ struct WeekFitDetailScreenSaveButton: View {
     }
 
     private var saveDiscFill: Color {
-        // Light Mode: charcoal disc matching the Create Meal header control.
-        // Dark Mode: soft raised fill on OLED.
-        WeekFitTheme.whiteOpacity(0.16)
+        palette.isLight
+            ? WeekFitTheme.whiteOpacity(0.045)
+            : WeekFitTheme.whiteOpacity(isEnabled ? 0.16 : 0.10)
+    }
+
+    private var saveDiscStroke: Color {
+        palette.isLight
+            ? WeekFitTheme.whiteOpacity(0.065)
+            : WeekFitTheme.whiteOpacity(isEnabled ? 0.08 : 0.05)
     }
 }

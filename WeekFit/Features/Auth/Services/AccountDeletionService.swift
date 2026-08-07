@@ -47,6 +47,7 @@ final class AccountDeletionService: AccountDeletionServicing {
         // 2. Stop reminder / wellness notification schedules.
         ActivityNotificationService.shared.cancelAllNotifications()
         WellnessNotificationService.shared.cancelAll()
+        MorningProposalNotificationService.shared.cancelAll()
 
         // 3. Wipe local WeekFit data (SwiftData, photos, caches, preferences).
         let resetService = LocalDataResetService(

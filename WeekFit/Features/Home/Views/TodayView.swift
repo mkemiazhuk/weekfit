@@ -530,7 +530,7 @@ struct TodayView: View {
             .environmentObject(coachInputProvider)
             .environmentObject(activityCoordinator)
             .presentationDetents([
-                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
+                .fraction(QuickActionSheetDesign.Layout.activitySheetDetentFraction),
                 .large
             ])
             .presentationDragIndicator(.hidden)
@@ -2471,6 +2471,7 @@ struct TodayView: View {
         }
         .onAppear {
             refreshMorningProposal()
+            openPendingMorningProposalReviewIfNeeded()
         }
         .onChange(of: coachCoordinator.state.id) { _, _ in
             refreshMorningProposal()
@@ -2484,6 +2485,10 @@ struct TodayView: View {
         }
         .onChange(of: morningProposal?.id) { _, _ in
             morningProposalChromeHidden = false
+        }
+        .onChange(of: PendingMorningProposalReview.shared.shouldOpenReview) { _, shouldOpen in
+            guard shouldOpen else { return }
+            openPendingMorningProposalReviewIfNeeded()
         }
     }
 
@@ -2507,6 +2512,12 @@ struct TodayView: View {
 
             if showProposal, let proposalCard = morningProposalCard() {
                 proposalCard
+                    .onAppear {
+                        if let dayKey = morningProposal?.dayKey {
+                            MorningProposalNotificationService.shared.cancel(dayKey: dayKey)
+                            MorningProposalNotificationService.shared.markHandled(dayKey: dayKey)
+                        }
+                    }
                     .zIndex(1)
                     .shadow(
                         color: palette.isLight
@@ -2794,8 +2805,6 @@ struct TodayView: View {
         #endif
 
         let now = Date()
-        let calendar = Calendar.current
-        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: now, calendar: calendar)
 
         Task { @MainActor in
             let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
@@ -2807,171 +2816,38 @@ struct TodayView: View {
             }
         }
 
-        if forceRegenerate {
-            MorningProposalStore.remove(dayKey: dayKey)
-        }
-
-        let todayStart = calendar.startOfDay(for: now)
-        let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
-        let todayActivities = plannedActivities
-            .filter { calendar.isDate($0.date, inSameDayAs: todayStart) }
-            .map(CoachPlannedActivitySnapshot.init(from:))
-        let tomorrowActivities = plannedActivities
-            .filter { calendar.isDate($0.date, inSameDayAs: tomorrowStart) }
-            .map(CoachPlannedActivitySnapshot.init(from:))
-
         let coachState = coachCoordinator.state
+        let sleepHours = Double(healthManager.sleepMinutes) / 60.0
         let readiness: CoachDayReadiness = {
             if let input = coachState.input {
                 return CoachDayReadinessResolver.resolve(from: input)
             }
-            let percent = Int(healthManager.readyScore.rounded())
-            let sleepHours = Double(healthManager.sleepMinutes) / 60.0
-            return CoachDayReadiness(
-                recoveryPercent: percent,
-                sleepHours: sleepHours,
-                recoveryBand: percent >= 70 ? .good : (percent >= 55 ? .moderate : .low),
-                hadHeavyYesterday: false,
-                sleepIsLow: sleepHours > 0 && sleepHours < 6,
-                recoveryDataAvailable: percent > 0 || sleepHours > 0
+            return MorningProposalEvaluator.readinessFallback(
+                readyScore: healthManager.readyScore,
+                sleepHours: sleepHours
             )
         }()
-
-        let scenarioKey = coachState.coachIntegrationDebug?.scenario
-        let tomorrowDemand = CoachTomorrowDemandResolver.resolve(activities: tomorrowActivities).level
-
-        let completedWalkToday = todayActivities.contains {
-            $0.isCompleted && CoachActivityClassifier.type(for: $0) == .walk
-        }
-
-        let hasCompletedPlannedItemToday = todayActivities.contains {
-            ($0.isCompleted || $0.isPartialCompletion || ($0.actualDurationMinutes ?? 0) > 0) && !$0.isSkipped
-        }
-
-        let isMorningWindow = CoachMorningOverviewPolicy.isBeforeLocalNoon(now: now, calendar: calendar)
-        let healthSettled = healthManager.hasSettledMetrics(for: selectedDate)
-        // Recovery rings can populate before the settled flag flips; don't block the proposal on that race.
-        let healthRefreshCompleted = healthSettled || hasTodayRecoverySignals
-        let existingProposal = MorningProposalStore.proposal(for: dayKey)
-        let healthRefreshTimedOut = !healthRefreshCompleted
-            && existingProposal?.status == .gatheringData
-            && now.timeIntervalSince(existingProposal?.generatedAt ?? now)
-                >= MorningProposalGate.healthTimeoutSeconds
-
-        let recentDayTemplates = buildRecentDayTemplates(
-            from: plannedActivities,
-            excludingDayStart: todayStart,
-            calendar: calendar,
-            lookbackDays: 90
-        )
-        let observationContextRevision = ProposalObservationContextRevision.make(from: recentDayTemplates)
-        let mealLibraryRevision = "\(userSettings.customMealsCatalogRevision)"
-        let behavioralSnapshot = ProposalBehavioralPreferences.load()
-        let mealLibrary = userSettings.customMealsCatalog.map {
-            ProposalMealCandidate(
-                id: $0.id,
-                title: $0.title,
-                imageName: $0.imageName,
-                calories: $0.calories,
-                protein: $0.protein,
-                carbs: $0.carbs,
-                fats: $0.fats,
-                fiber: $0.fiber,
-                mealsTypeRaw: $0.type.rawValue,
-                suggestedTime: $0.suggestedTime
-            )
-        }
-
-        let recoveryBand = ProposalInputFingerprintBuilder.recoveryBand(from: readiness)
-        let sleepPresenceForFP = MorningProposalGate.sleepPresence(
-            from: MorningProposalGateInput(
-                now: now,
-                dayRolloverCompleted: true,
-                healthRefreshCompleted: healthRefreshCompleted,
-                healthRefreshTimedOut: healthRefreshTimedOut,
-                isHealthAccessGranted: healthManager.isHealthAccessGranted,
-                sleepHours: Double(healthManager.sleepMinutes) / 60.0,
-                recoveryDataAvailable: readiness.recoveryDataAvailable,
-                todayPlanLoaded: true,
-                tomorrowPlanLoaded: true,
-                yesterdayContextLoaded: true,
-                isMorningWindow: isMorningWindow,
-                hasCompletedPlannedItemToday: hasCompletedPlannedItemToday,
-                existingStatus: existingProposal?.status
-            )
-        )
-        let seriousOpen = todayActivities.filter {
-            !$0.isCompleted && !$0.isSkipped && CoachActivityClassifier.isSeriousTraining($0)
-        }.count
-        let stackedLoad = ProposalStackedLoadResolver.resolve(
-            yesterdayHeavy: readiness.hadHeavyYesterday,
-            tomorrowDemand: tomorrowDemand,
-            recoveryBand: recoveryBand,
-            todaySeriousOpenCount: seriousOpen
-        )
-        let generationMode = MorningProposalGenerationModeResolver.resolve(
-            openCount: todayActivities.filter {
-                !$0.isCompleted && !$0.isSkipped && CoachActivityClassifier.type(for: $0) != .none
-            }.count,
-            hasCompletedOrPartialToday: hasCompletedPlannedItemToday,
-            isMorningWindow: isMorningWindow
-        )
-        let physiologyRevision = ProposalInputFingerprintBuilder.physiologyRevision(
-            recoveryBand: recoveryBand,
-            sleepPresence: sleepPresenceForFP,
-            yesterdayHeavy: readiness.hadHeavyYesterday,
-            stackedLoad: stackedLoad
-        )
-
+        let meals = MorningProposalEvaluator.mealLibrary(from: userSettings)
         let weatherRiskToken = ProposalWeatherRisk.resolve(from: morningWeatherSummary)
 
-        // Mark ready/reviewing drafts stale when live fingerprint diverges before regenerate.
-        let liveFingerprint = ProposalInputFingerprintBuilder.make(
-            dayKey: dayKey,
-            todaySnapshots: todayActivities,
-            tomorrowSnapshots: tomorrowActivities,
-            recoveryBand: recoveryBand,
-            sleepPresence: sleepPresenceForFP,
-            scenarioKey: scenarioKey?.rawValue ?? "none",
-            yesterdayHeavy: readiness.hadHeavyYesterday,
-            observationContextRevision: observationContextRevision,
-            behavioralGeneration: ProposalBehavioralPreferences.generation,
-            stackedLoad: stackedLoad,
-            generationMode: generationMode,
-            mealLibraryRevision: mealLibraryRevision,
-            physiologyContextRevision: physiologyRevision,
-            weatherRiskToken: weatherRiskToken
-        )
-        MorningProposalService.markStaleIfNeeded(dayKey: dayKey, liveFingerprint: liveFingerprint)
-
-        morningProposal = MorningProposalService.evaluateAndPersist(
-            context: .init(
+        morningProposal = MorningProposalEvaluator.evaluate(
+            .init(
                 now: now,
-                dayRolloverCompleted: true,
-                healthRefreshCompleted: healthRefreshCompleted,
-                healthRefreshTimedOut: healthRefreshTimedOut,
+                plannedActivities: plannedActivities,
                 isHealthAccessGranted: healthManager.isHealthAccessGranted,
-                sleepHours: Double(healthManager.sleepMinutes) / 60.0,
+                sleepHours: sleepHours,
+                hasSettledMetrics: healthManager.hasSettledMetrics(for: selectedDate),
+                hasRecoverySignals: hasTodayRecoverySignals,
                 readiness: readiness,
-                scenarioKey: scenarioKey,
-                tomorrowDemand: tomorrowDemand,
-                stackedLoad: stackedLoad,
-                yesterdayHeavy: readiness.hadHeavyYesterday,
-                completedWalkToday: completedWalkToday,
-                todayActivities: todayActivities,
-                tomorrowActivities: tomorrowActivities,
-                isMorningWindow: isMorningWindow,
-                hasCompletedPlannedItemToday: hasCompletedPlannedItemToday,
-                recentDayTemplates: recentDayTemplates,
-                mealLibrary: mealLibrary,
-                observationContextRevision: observationContextRevision,
-                mealLibraryRevision: mealLibraryRevision,
-                behavioralGeneration: ProposalBehavioralPreferences.generation,
-                walkRejectPenalty: ProposalBehavioralPreferences.walkRejectPenalty(from: behavioralSnapshot),
-                stronglyRejectsWalk: ProposalBehavioralPreferences.stronglyRejectsWalk(from: behavioralSnapshot),
-                weatherRiskToken: weatherRiskToken
+                scenarioKey: coachState.coachIntegrationDebug?.scenario,
+                mealLibrary: meals.candidates,
+                mealLibraryRevision: meals.revision,
+                weatherRiskToken: weatherRiskToken,
+                forceRegenerate: forceRegenerate
             )
         )
+
+        syncMorningProposalNotification(proposal: morningProposal, todaySurfaceVisible: true)
 
         if morningProposal?.status == .gatheringData {
             scheduleMorningProposalHealthTimeout()
@@ -2981,42 +2857,30 @@ struct TodayView: View {
         }
     }
 
-    private func buildRecentDayTemplates(
-        from activities: [PlannedActivity],
-        excludingDayStart: Date,
-        calendar: Calendar,
-        lookbackDays: Int
-    ) -> [SimilarDayTemplate] {
-        let oldest = calendar.date(byAdding: .day, value: -lookbackDays, to: excludingDayStart) ?? excludingDayStart
-        let grouped = Dictionary(grouping: activities) { calendar.startOfDay(for: $0.date) }
-        return grouped.compactMap { dayStart, dayActivities -> SimilarDayTemplate? in
-            guard dayStart < excludingDayStart, dayStart >= oldest else { return nil }
-            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: dayStart, calendar: calendar)
-            let snapshots = dayActivities.map(CoachPlannedActivitySnapshot.init(from:))
-            // Keep skipped items for quality scoring; miner filters for cloning.
-            guard snapshots.contains(where: { !$0.isSkipped }) else { return nil }
+    private func syncMorningProposalNotification(
+        proposal: MorningPlanProposal?,
+        todaySurfaceVisible: Bool
+    ) {
+        let givenName: String? = {
+            let name = ProfileService.resolvedGivenName()
+            return name.isEmpty ? nil : name
+        }()
+        MorningProposalNotificationService.shared.sync(
+            proposal: proposal,
+            wakeTime: healthManager.wakeTime,
+            todaySurfaceVisible: todaySurfaceVisible,
+            givenName: givenName
+        )
+    }
 
-            let observation = CoachObservationStore.observation(for: dayKey)
-            let observationAvailable = observation?.hasRecoverySignal == true
-            let band: ProposalRecoveryBandToken
-            let sleepPresence: ProposalSleepPresenceToken
-            if let observation, observation.hasRecoverySignal {
-                band = SimilarDayPlanMiner.recoveryBand(fromPercent: observation.recoveryPercent)
-                sleepPresence = observation.hasSleepSignal ? .present : .missing
-            } else {
-                // Neutral fallback — do not pretend physiological similarity.
-                band = .unavailable
-                sleepPresence = .unavailable
-            }
-
-            return SimilarDayTemplate(
-                dayKey: dayKey,
-                recoveryBand: band,
-                observationAvailable: observationAvailable,
-                sleepPresence: sleepPresence,
-                activities: snapshots
-            )
-        }
+    private func openPendingMorningProposalReviewIfNeeded() {
+        guard PendingMorningProposalReview.shared.consume() else { return }
+        morningProposal = MorningProposalStore.proposal(
+            for: ProposalInputFingerprintBuilder.dayKey(for: Date())
+        ) ?? morningProposal
+        guard morningProposal != nil else { return }
+        morningProposalChromeHidden = false
+        showProposalReview = true
     }
 
     private func scheduleMorningProposalHealthTimeout() {

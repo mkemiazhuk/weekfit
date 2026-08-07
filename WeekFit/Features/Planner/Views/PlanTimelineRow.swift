@@ -39,29 +39,21 @@ struct PlanTimelineNowDivider: View {
 
             ZStack {
                 Circle()
-                    .fill(liveTint.opacity(pulse ? 0.20 : 0.08))
-                    .frame(width: pulse ? 14 : 10, height: pulse ? 14 : 10)
+                    .fill(liveTint.opacity(pulse ? 0.22 : 0.10))
+                    .frame(width: pulse ? 12 : 9, height: pulse ? 12 : 9)
 
                 Circle()
-                    .fill(liveTint.opacity(pulse ? 0.98 : 0.72))
-                    .frame(width: 6, height: 6)
+                    .fill(liveTint.opacity(pulse ? 0.98 : 0.78))
+                    .frame(width: 5, height: 5)
             }
             .frame(width: PlanTimelineLayout.columnWidth)
-
-            Text(WeekFitLocalizedString("planner.timeline.now"))
-                .font(.system(size: 9.5, weight: .bold))
-                .tracking(0.55)
-                .textCase(.uppercase)
-                .foregroundStyle(liveTint.opacity(pulse ? 0.96 : 0.72))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
 
             Rectangle()
                 .fill(
                     LinearGradient(
                         colors: [
-                            liveTint.opacity(pulse ? 0.42 : 0.18),
-                            WeekFitTheme.whiteOpacity(0.05)
+                            liveTint.opacity(pulse ? 0.40 : 0.18),
+                            WeekFitTheme.whiteOpacity(0.04)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
@@ -71,9 +63,8 @@ struct PlanTimelineNowDivider: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.top, 2)
-        .padding(.bottom, 4)
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, 1)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(WeekFitLocalizedString("planner.timeline.now"))
         .onAppear {
             withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
@@ -308,7 +299,7 @@ struct PlanTimelineRow: View {
                         }
 
                         if let coachKind = coachProvenanceKind {
-                            CoachProvenanceBadge(kind: coachKind, showsLabel: true, compact: true)
+                            CoachProvenanceBadge(kind: coachKind, showsLabel: false, compact: true)
                         }
                     }
 
@@ -446,29 +437,20 @@ struct PlanTimelineRow: View {
     }
 
     private var liveStatusBadge: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(accent.opacity(livePulse ? 1.0 : 0.55))
-                .frame(width: 5, height: 5)
-
-            Text(WeekFitLocalizedString("planner.status.live"))
-                .font(.system(size: 9.2, weight: .bold, design: .rounded))
-                .tracking(0.35)
-                .textCase(.uppercase)
-                .foregroundStyle(accent.opacity(livePulse ? 0.98 : 0.82))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background {
-            Capsule()
-                .fill(accent.opacity(livePulse ? 0.18 : 0.11))
-        }
-        .overlay {
-            Capsule()
-                .stroke(accent.opacity(livePulse ? 0.34 : 0.18), lineWidth: 0.75)
-        }
-        .accessibilityHidden(true)
+        Circle()
+            .fill(accent.opacity(livePulse ? 1.0 : 0.55))
+            .frame(width: 7, height: 7)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 4)
+            .background {
+                Capsule()
+                    .fill(accent.opacity(livePulse ? 0.18 : 0.11))
+            }
+            .overlay {
+                Capsule()
+                    .stroke(accent.opacity(livePulse ? 0.34 : 0.18), lineWidth: 0.75)
+            }
+            .accessibilityLabel(WeekFitLocalizedString("planner.status.live"))
     }
 
     private var watchSourceBadge: some View {
@@ -480,6 +462,9 @@ struct PlanTimelineRow: View {
 
     private var accessibilityLabelText: String {
         var parts: [String] = [time, displayTitle]
+        if isLive {
+            parts.append(WeekFitLocalizedString("planner.status.live"))
+        }
         if status == .skipped {
             parts.append(WeekFitLocalizedString("planner.status.skipped"))
         }

@@ -151,6 +151,28 @@ enum MorningProposalAnalytics {
         )
     }
 
+    static func notificationScheduled(dayKey: String) {
+        analytics.track(
+            .morningProposalNotificationScheduled,
+            parameters: [
+                AnalyticsParameterKey.surface: MorningProposalAnalyticsSurface.other.rawValue,
+                AnalyticsParameterKey.source: AnalyticsSource.notification.rawValue
+            ]
+        )
+        _ = dayKey
+    }
+
+    static func notificationOpened(dayKey: String?) {
+        analytics.track(
+            .morningProposalNotificationOpened,
+            parameters: [
+                AnalyticsParameterKey.surface: MorningProposalAnalyticsSurface.other.rawValue,
+                AnalyticsParameterKey.source: AnalyticsSource.notification.rawValue
+            ]
+        )
+        _ = dayKey
+    }
+
     static func proposalStale() {
         analytics.track(
             .morningProposalStale,

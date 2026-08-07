@@ -589,6 +589,8 @@ enum AppText {
             static let completionCheckInsSubtitle: LocalizedStringResource = "settings.notifications.completionCheckIns.subtitle"
             static let recoverySuggestionsTitle: LocalizedStringResource = "settings.notifications.recoverySuggestions.title"
             static let recoverySuggestionsSubtitle: LocalizedStringResource = "settings.notifications.recoverySuggestions.subtitle"
+            static let morningPlanCheckTitle: LocalizedStringResource = "settings.notifications.morningPlanCheck.title"
+            static let morningPlanCheckSubtitle: LocalizedStringResource = "settings.notifications.morningPlanCheck.subtitle"
             static let hydrationRemindersTitle: LocalizedStringResource = "settings.notifications.hydrationReminders.title"
             static let hydrationRemindersSubtitle: LocalizedStringResource = "settings.notifications.hydrationReminders.subtitle"
             static let sleepWindDownTitle: LocalizedStringResource = "settings.notifications.sleepWindDown.title"

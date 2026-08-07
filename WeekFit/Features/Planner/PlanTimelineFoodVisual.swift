@@ -54,12 +54,14 @@ enum PlanTimelineNutritionVisualResolver {
             }
 
             if let items = displayableBuilderItems(for: meal), !items.isEmpty {
-                // Prefer a single ingredient asset in timelines — plate collages
-                // collapse to an unreadable dark disc at Nutrition Details size.
-                if let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+                // Multi-ingredient recipes keep the plate so both foods stay visible;
+                // single-ingredient rows use a clean cutout avatar.
+                if items.count >= 2 {
+                    return .builderPlate(items, kind: kind)
+                }
+                if let primary = items.first {
                     return .assetImage(name: primary.imageName, kind: kind)
                 }
-                return .builderPlate(items, kind: kind)
             }
 
             if let primary = meal.primaryBuilderIngredientImageName,
@@ -71,6 +73,13 @@ enum PlanTimelineNutritionVisualResolver {
 
         let activityImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !FoodImageQualityValidator.isPlaceholderAssetName(activityImageName) {
+            // Logged builder meals often persist only the primary ingredient asset.
+            // Prefer a reconstructed plate whenever the title encodes multiple foods.
+            if activityImageName.lowercased().hasPrefix("ingredient-"),
+               let multiIngredientPlate = multiIngredientPlateVisual(forTitle: activity.title) {
+                return multiIngredientPlate
+            }
+
             if FoodImageQualityValidator.isDisplayableAsset(named: activityImageName)
                 || activityImageName.lowercased().hasPrefix("ingredient-") {
                 return .assetImage(name: activityImageName, kind: kind)
@@ -86,10 +95,7 @@ enum PlanTimelineNutritionVisualResolver {
         // Last resort for already-logged localized builder titles without catalog hit:
         // rebuild visuals from ingredient labels found in the activity title.
         if let inferred = inferredBuilderItems(fromTitle: activity.title), !inferred.isEmpty {
-            if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
-                return .assetImage(name: primary.imageName, kind: .meal)
-            }
-            return .builderPlate(inferred, kind: .meal)
+            return inferredNutritionVisual(items: inferred, kind: .meal)
         }
 
         // Also try remapping RU↔EN before giving up (covers mixed-language titles).
@@ -97,10 +103,7 @@ enum PlanTimelineNutritionVisualResolver {
         if remappedEnglish != activity.title,
            let inferred = inferredBuilderItems(fromTitle: remappedEnglish),
            !inferred.isEmpty {
-            if let primary = inferred.max(by: { $0.zIndex < $1.zIndex }) ?? inferred.first {
-                return .assetImage(name: primary.imageName, kind: .meal)
-            }
-            return .builderPlate(inferred, kind: .meal)
+            return inferredNutritionVisual(items: inferred, kind: .meal)
         }
 
         return .fallbackIcon(systemName: fallbackIcon(for: kind), kind: kind)
@@ -249,6 +252,36 @@ enum PlanTimelineNutritionVisualResolver {
         }
 
         return validItems.isEmpty ? nil : validItems
+    }
+
+    private static func inferredNutritionVisual(
+        items: [MealBuilderImageItem],
+        kind: PlanTimelineNutritionKind
+    ) -> PlanTimelineNutritionVisual {
+        if items.count >= 2 {
+            return .builderPlate(items, kind: kind)
+        }
+        if let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
+            return .assetImage(name: primary.imageName, kind: kind)
+        }
+        return .builderPlate(items, kind: kind)
+    }
+
+    private static func multiIngredientPlateVisual(
+        forTitle title: String
+    ) -> PlanTimelineNutritionVisual? {
+        let candidates = [
+            title,
+            MealBuilderTitleComposer.remapStoredTitle(title, toRussian: false),
+            MealBuilderTitleComposer.remapStoredTitle(title, toRussian: true),
+        ]
+
+        for candidate in candidates {
+            if let inferred = inferredBuilderItems(fromTitle: candidate), inferred.count >= 2 {
+                return .builderPlate(inferred, kind: .meal)
+            }
+        }
+        return nil
     }
 
     /// Reconstruct builder visuals from a localized/English activity title when the
@@ -414,15 +447,10 @@ struct PlanTimelineNutritionAvatar: View {
                 .clipShape(Circle())
 
         case .builderPlate(let items, _):
-            if contentSize <= 36,
-               let primary = items.max(by: { $0.zIndex < $1.zIndex }) ?? items.first {
-                // Tiny Nutrition Details dots can't render a readable plate collage.
-                Image(primary.imageName)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFill()
-                    .frame(width: contentSize, height: contentSize)
-                    .clipShape(Circle())
+            if contentSize <= 36 {
+                // Full plate collage collapses at Nutrition Details size — stack
+                // the top ingredients as overlapping cutouts instead.
+                compactIngredientStack(items)
             } else {
                 BuiltMealPlateView(
                     items: items,
@@ -442,6 +470,42 @@ struct PlanTimelineNutritionAvatar: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(accent.opacity(foregroundOpacity))
         }
+    }
+
+    @ViewBuilder
+    private func compactIngredientStack(_ items: [MealBuilderImageItem]) -> some View {
+        let ranked = items.sorted { $0.zIndex > $1.zIndex }
+        let primary = ranked.first
+        let secondary = ranked.dropFirst().first
+
+        if let primary, let secondary {
+            let thumb = contentSize * 0.72
+            let inset = contentSize * 0.16
+            ZStack {
+                ingredientThumb(secondary.imageName, size: thumb, ring: false)
+                    .offset(x: -inset, y: inset * 0.35)
+                ingredientThumb(primary.imageName, size: thumb, ring: true)
+                    .offset(x: inset, y: -inset * 0.35)
+            }
+            .frame(width: contentSize, height: contentSize)
+        } else if let primary {
+            ingredientThumb(primary.imageName, size: contentSize, ring: false)
+        }
+    }
+
+    private func ingredientThumb(_ name: String, size: CGFloat, ring: Bool) -> some View {
+        Image(name)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+            .overlay {
+                if ring {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.92), lineWidth: 1.1)
+                }
+            }
     }
 }
 

@@ -48,6 +48,8 @@ enum AnalyticsEvent: String, Sendable {
     case morningProposalAdjustedItemManuallyEdited = "morning_proposal_adjusted_item_manually_edited"
     case morningProposalAdjustedItemCompleted = "morning_proposal_adjusted_item_completed"
     case morningProposalCoachAcknowledgmentViewed = "morning_proposal_coach_acknowledgment_viewed"
+    case morningProposalNotificationScheduled = "morning_proposal_notification_scheduled"
+    case morningProposalNotificationOpened = "morning_proposal_notification_opened"
 
     // Food logging.
     case foodLoggingStarted = "food_logging_started"

@@ -5,11 +5,12 @@ struct FeedbackSheetView: View {
     let onDismiss: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
         ZStack {
             Button(action: onDismiss) {
-                Color.black.opacity(0.58)
+                Color.black.opacity(palette.isLight ? 0.28 : 0.58)
                     .ignoresSafeArea()
             }
             .buttonStyle(.plain)
@@ -28,11 +29,15 @@ struct FeedbackSheetView: View {
         VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .fill(WeekFitStyle.brandGreen.opacity(0.14))
+                    .fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.coachSoft
+                            : WeekFitStyle.brandGreen.opacity(0.14)
+                    )
                     .frame(width: 56, height: 56)
                 Image(systemName: "heart.text.square.fill")
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(WeekFitStyle.brandGreen)
+                    .foregroundStyle(WeekFitTheme.primaryCTA)
             }
             .accessibilityHidden(true)
 
@@ -74,28 +79,11 @@ struct FeedbackSheetView: View {
         .padding(.horizontal, 20)
         .padding(.top, 22)
         .padding(.bottom, 18)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.62))
-                .background {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.092),
-                                    WeekFitTheme.backgroundColor.opacity(0.96),
-                                    Color.black.opacity(0.78)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
-                }
-        }
+        .weekFitPremiumCard(
+            emphasis: .elevated,
+            accent: WeekFitTheme.primaryCTA,
+            cornerRadius: 28
+        )
     }
 
     private func sentimentButton(title: String, sentiment: FeedbackSentiment, isPrimary: Bool) -> some View {
@@ -110,13 +98,23 @@ struct FeedbackSheetView: View {
                 .frame(minHeight: 48)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(isPrimary ? WeekFitTheme.primaryCTA : WeekFitTheme.whiteOpacity(0.06))
+                        .fill(isPrimary ? WeekFitTheme.primaryCTA : secondaryButtonFill)
+                        .overlay {
+                            if !isPrimary {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(WeekFitTheme.borderSoft.opacity(palette.isLight ? 0.9 : 0.8), lineWidth: 1)
+                            }
+                        }
                 }
         }
         .buttonStyle(ReviewPressableButtonStyle())
         .accessibilityIdentifier("review.feedback.sentiment.\(sentiment.rawValue)")
         .accessibilityLabel(title)
         .accessibilityHint(WeekFitLocalizedString("review.feedback.sentiment.a11yHint"))
+    }
+
+    private var secondaryButtonFill: Color {
+        palette.isLight ? WeekFitLightTokens.internalTile : WeekFitTheme.whiteOpacity(0.10)
     }
 }
 

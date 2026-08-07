@@ -219,6 +219,13 @@ enum NotificationPreferencesReader {
         UserDefaults.standard.bool(forKey: NotificationPreferenceKey.hydrationReminders)
     }
 
+    static var morningPlanCheckEnabled: Bool {
+        preferenceBool(
+            forKey: NotificationPreferenceKey.morningPlanCheck,
+            defaultValue: true
+        )
+    }
+
     private static func preferenceBool(forKey key: String, defaultValue: Bool) -> Bool {
         guard UserDefaults.standard.object(forKey: key) != nil else {
             return defaultValue

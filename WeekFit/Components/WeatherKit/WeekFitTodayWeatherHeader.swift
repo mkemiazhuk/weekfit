@@ -15,6 +15,7 @@ struct WeekFitTodayWeatherHeader: View {
     @State private var showEnableLocalWeather = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -101,12 +102,13 @@ struct WeekFitTodayWeatherHeader: View {
         }
         .sheet(isPresented: $showWeatherSheet) {
             if case .loaded(let summary) = badgeState {
+                let tokens = summary.resolvedTokens(appAppearanceDark: !palette.isLight)
                 WeekFitWeatherDetailSheet(summary: summary)
                     .presentationDetents([.fraction(0.92), .large])
                     .presentationDragIndicator(.visible)
                     .weekFitSheetChrome(
                         cornerRadius: 28,
-                        background: summary.resolvedTokens.backgroundPrimary
+                        background: tokens.backgroundPrimary
                     )
             }
         }

@@ -32,7 +32,8 @@ struct WeekFitWeatherTokens: Equatable {
         condition: WeekFitWeatherCondition,
         temperatureC: Double,
         visibilityKm: Double?,
-        precipitationChance: Int?
+        precipitationChance: Int?,
+        appAppearanceDark: Bool = false
     ) -> WeekFitWeatherTokens {
         let modifier = climateModifier(
             temperatureC: temperatureC,
@@ -40,13 +41,52 @@ struct WeekFitWeatherTokens: Equatable {
             condition: condition
         )
         let base = baseTokens(period: period, condition: condition, modifier: modifier)
-        return refine(
+        let refined = refine(
             base,
             condition: condition,
             period: period,
             precipitationChance: precipitationChance,
             modifier: modifier
         )
+        guard appAppearanceDark else { return refined }
+        return adaptForDarkAppAppearance(refined, period: period, condition: condition)
+    }
+
+    /// Daytime weather chrome is cream by design for outdoor atmosphere.
+    /// In app dark mode, remap canvas/text/cards to dark while keeping weather accents.
+    private static func adaptForDarkAppAppearance(
+        _ tokens: WeekFitWeatherTokens,
+        period: WeekFitWeatherPeriod,
+        condition: WeekFitWeatherCondition
+    ) -> WeekFitWeatherTokens {
+        guard !period.isNightLike else { return tokens }
+
+        var adapted = tokens
+        adapted.backgroundPrimary = Color(red: 0.09, green: 0.10, blue: 0.12)
+        adapted.backgroundSecondary = Color(red: 0.13, green: 0.14, blue: 0.18)
+        adapted.heroSurface = Color(red: 0.14, green: 0.15, blue: 0.19)
+        adapted.textPrimary = Color(red: 0.95, green: 0.96, blue: 0.97)
+        adapted.textSecondary = Color(red: 0.70, green: 0.72, blue: 0.78)
+        adapted.cardSurface = Color(red: 0.16, green: 0.17, blue: 0.21).opacity(0.94)
+        adapted.cardStroke = Color.white.opacity(0.08)
+        adapted.heroReadabilityWash = Color.black.opacity(0.48)
+        adapted.ambientGlow = adapted.ambientGlow.opacity(0.50)
+        adapted.metricIconTint = adapted.primaryAccent
+        adapted.isNightAtmosphere = true
+
+        // Soft condition tint on the upper wash so dark mode still feels weather-led.
+        switch condition {
+        case .clear, .partlyCloudy:
+            adapted.backgroundSecondary = Color(red: 0.14, green: 0.16, blue: 0.22)
+        case .rain, .storm:
+            adapted.backgroundSecondary = Color(red: 0.12, green: 0.15, blue: 0.22)
+        case .snow:
+            adapted.backgroundSecondary = Color(red: 0.14, green: 0.17, blue: 0.23)
+        case .cloudy, .fog, .windy, .other:
+            break
+        }
+
+        return adapted
     }
 
     static func climateModifier(

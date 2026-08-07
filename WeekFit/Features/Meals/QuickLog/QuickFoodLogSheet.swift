@@ -7,18 +7,21 @@ enum QuickFoodAccent {
     /// Dark stays monochrome-premium: one soft lavender + quiet meta.
     static let purple = Color(red: 0.55, green: 0.42, blue: 0.82)
     static let orange = Color(red: 0.92, green: 0.55, blue: 0.32)
+    /// Former drinks CTA gold — now used on Food + circles.
+    static let actionOrange = Color(red: 0.78, green: 0.58, blue: 0.28)
     static let green = Color(red: 0.38, green: 0.70, blue: 0.48)
     static let pink = Color(red: 0.90, green: 0.42, blue: 0.50)
     static let blue = Color(red: 0.35, green: 0.58, blue: 0.88)
     static let burgundy = Color(red: 0.70, green: 0.28, blue: 0.34)
 
-    /// Soft lavender for Dark CTAs — less saturated than Light mock purple.
-    static let darkAction = Color(red: 0.62, green: 0.56, blue: 0.78)
+    /// Soft muted orange for Dark CTAs (same family as Light action).
+    static let darkAction = Color(red: 0.82, green: 0.62, blue: 0.34)
 
-    private static let lightPalette: [Color] = [purple, orange, green, pink, blue, burgundy]
+    private static let lightPalette: [Color] = [orange, green, pink, blue, burgundy, actionOrange]
 
-    static func action(isLight: Bool) -> Color {
-        isLight ? purple : darkAction
+    /// Food + circles — always the former drinks gold/orange.
+    static func action(isLight _: Bool) -> Color {
+        actionOrange
     }
 
     static func color(for id: String, isLight: Bool) -> Color {
@@ -27,10 +30,10 @@ enum QuickFoodAccent {
         return lightPalette[hash % lightPalette.count]
     }
 
-    /// Light: mock purple / orange. Dark: single action accent.
+    /// Card wash only — CTA circles use `actionOrange`, not this.
     static func frequentColor(at index: Int, isLight: Bool) -> Color {
         guard isLight else { return darkAction }
-        return index == 0 ? purple : orange
+        return index == 0 ? orange : green
     }
 
     /// kcal chips: colorful on Light, quiet stone on Dark.
@@ -99,7 +102,7 @@ struct QuickFoodLogSheet: View {
     @State private var revealContent = false
     @State private var sortAscending = true
 
-    private var foodAccent: Color { QuickFoodAccent.action(isLight: palette.isLight) }
+    private var foodAccent: Color { QuickFoodAccent.actionOrange }
 
     private var sortedMealRows: [QuickMealDisplayRow] {
         mealRows.sorted {
@@ -328,7 +331,7 @@ struct QuickFoodLogSheet: View {
                 quantity: selection.effectivePortions(for: profile),
                 isExpanded: selection.isExpanded,
                 isSelected: selection.isSelected,
-                accentColor: foodAccent,
+                accentColor: QuickFoodAccent.actionOrange,
                 chrome: .softOutline,
                 onPlusTap: { onMealPlus(row.meal) },
                 onIncrement: { onMealIncrement(row.meal) },
@@ -373,7 +376,7 @@ struct QuickFoodLogSheet: View {
                 quantity: selection.effectivePortions(for: profile),
                 isExpanded: selection.isExpanded,
                 isSelected: selection.isSelected,
-                accentColor: foodAccent,
+                accentColor: QuickFoodAccent.actionOrange,
                 chrome: .softOutline,
                 onPlusTap: { onSnackPlus(row.item) },
                 onIncrement: { onSnackIncrement(row.item) },
@@ -523,7 +526,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                     quantity: displayQuantity,
                     isExpanded: selection.isExpanded,
                     isSelected: selection.isSelected,
-                    accentColor: accent,
+                    accentColor: QuickFoodAccent.actionOrange,
                     chrome: .solidFilled,
                     onPlusTap: onPlusTap,
                     onIncrement: onIncrement,

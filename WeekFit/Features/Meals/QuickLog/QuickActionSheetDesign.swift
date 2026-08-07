@@ -52,6 +52,8 @@ enum QuickActionSheetDesign {
         /// Default quick-log sheet height — fits header + Recommended cards
         /// (Most Used + next) without peeking into Recently Added.
         static let sheetDetentFraction: CGFloat = 0.62
+        /// Activity Start sits lower so Today Overview rings/labels stay readable.
+        static let activitySheetDetentFraction: CGFloat = 0.54
     }
 
     enum Row {

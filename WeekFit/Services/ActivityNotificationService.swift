@@ -92,6 +92,7 @@ final class ActivityNotificationService {
     func cancelAllNotifications() {
         cancelAllActivityNotifications()
         WellnessNotificationService.shared.cancelAll()
+        MorningProposalNotificationService.shared.cancelAll()
     }
 
     func cancelAllActivityNotifications() {

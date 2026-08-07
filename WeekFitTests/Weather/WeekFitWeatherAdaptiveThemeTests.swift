@@ -66,6 +66,50 @@ final class WeekFitWeatherAdaptiveThemeTests: XCTestCase {
         XCTAssertFalse(tokens.isNightAtmosphere)
     }
 
+    func testTokens_dayClearInDarkAppUsesDarkChrome() {
+        let lightApp = WeekFitWeatherTokens.resolve(
+            period: .day,
+            condition: .clear,
+            temperatureC: 22,
+            visibilityKm: 12,
+            precipitationChance: 5,
+            appAppearanceDark: false
+        )
+        let darkApp = WeekFitWeatherTokens.resolve(
+            period: .day,
+            condition: .clear,
+            temperatureC: 22,
+            visibilityKm: 12,
+            precipitationChance: 5,
+            appAppearanceDark: true
+        )
+        XCTAssertFalse(lightApp.isNightAtmosphere)
+        XCTAssertTrue(darkApp.isNightAtmosphere)
+        XCTAssertNotEqual(lightApp.backgroundPrimary, darkApp.backgroundPrimary)
+        XCTAssertEqual(lightApp.primaryAccent, darkApp.primaryAccent)
+    }
+
+    func testTokens_nightDarkAppKeepsNightPalette() {
+        let lightApp = WeekFitWeatherTokens.resolve(
+            period: .night,
+            condition: .clear,
+            temperatureC: 18,
+            visibilityKm: 10,
+            precipitationChance: 0,
+            appAppearanceDark: false
+        )
+        let darkApp = WeekFitWeatherTokens.resolve(
+            period: .night,
+            condition: .clear,
+            temperatureC: 18,
+            visibilityKm: 10,
+            precipitationChance: 0,
+            appAppearanceDark: true
+        )
+        XCTAssertEqual(lightApp.isNightAtmosphere, darkApp.isNightAtmosphere)
+        XCTAssertEqual(lightApp.backgroundPrimary, darkApp.backgroundPrimary)
+    }
+
     func testMetricsOrder_rainPrioritizesPrecipAndWind() {
         let summary = WeekFitWeatherSummary(
             temperature: Measurement(value: 16, unit: .celsius),

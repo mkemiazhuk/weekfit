@@ -234,6 +234,8 @@ enum MorningProposalService {
         }
         ProposalBehavioralPreferences.recordSoftDismiss()
         MorningProposalAnalytics.proposalDismissed()
+        MorningProposalNotificationService.shared.cancel(dayKey: dayKey)
+        MorningProposalNotificationService.shared.markHandled(dayKey: dayKey)
     }
 
     static func setSelection(dayKey: String, changeId: String, isSelected: Bool) {

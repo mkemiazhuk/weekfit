@@ -26,7 +26,6 @@ struct NutritionDetailsLegacyContent: View {
     let mealCatalog: [Meals]
 
     var onDateChanged: (Date) -> Void = { _ in }
-
     private let proteinColor = NutritionStyle.proteinColor
     private let carbsColor = NutritionStyle.carbsColor
     private let fatColor = NutritionStyle.fatColor

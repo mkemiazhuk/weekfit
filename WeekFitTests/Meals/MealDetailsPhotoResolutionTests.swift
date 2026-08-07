@@ -267,14 +267,43 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .assetImage(let name, let kind) = visual else {
-            return XCTFail("Expected inferred ingredient asset, got \(visual)")
+        guard case .builderPlate(let items, let kind) = visual else {
+            return XCTFail("Expected inferred builder plate, got \(visual)")
         }
-        XCTAssertTrue(
-            name == "ingredient-turkey" || name == "ingredient-cucumber",
-            "Unexpected primary ingredient \(name)"
-        )
+        let names = Set(items.map(\.imageName))
+        XCTAssertTrue(names.contains("ingredient-turkey"))
+        XCTAssertTrue(names.contains("ingredient-cucumber"))
         XCTAssertEqual(kind, .meal)
+    }
+
+    func testNutritionVisualPrefersPlateOverPersistedPrimaryIngredientAsset() throws {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: PlannerType.meal.title,
+            title: "Индейка Огурец",
+            durationMinutes: 10,
+            icon: "fork.knife",
+            imageName: "ingredient-turkey",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9,
+            calories: 250,
+            source: "today"
+        )
+
+        let visual = try XCTUnwrap(
+            PlanTimelineNutritionVisualResolver.resolve(
+                for: activity,
+                customMeals: []
+            )
+        )
+
+        guard case .builderPlate(let items, _) = visual else {
+            return XCTFail("Expected multi-ingredient plate over single persisted asset, got \(visual)")
+        }
+        let names = Set(items.map(\.imageName))
+        XCTAssertTrue(names.contains("ingredient-turkey"))
+        XCTAssertTrue(names.contains("ingredient-cucumber"))
     }
 
     func testNutritionVisualInfersFromRussianTitleWithGramAmounts() throws {
@@ -299,13 +328,12 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .assetImage(let name, _) = visual else {
-            return XCTFail("Expected inferred ingredient asset, got \(visual)")
+        guard case .builderPlate(let items, _) = visual else {
+            return XCTFail("Expected inferred builder plate, got \(visual)")
         }
-        XCTAssertTrue(
-            name == "ingredient-turkey" || name == "ingredient-cucumber",
-            "Unexpected primary ingredient \(name)"
-        )
+        let names = Set(items.map(\.imageName))
+        XCTAssertTrue(names.contains("ingredient-turkey"))
+        XCTAssertTrue(names.contains("ingredient-cucumber"))
     }
 
     func testNutritionVisualMatchesLocalizedBuilderTitleToEnglishCatalogMeal() throws {
@@ -382,10 +410,12 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             )
         )
 
-        guard case .assetImage(let name, _) = visual else {
-            return XCTFail("Expected primary ingredient asset for localized Quick Log title, got \(visual)")
+        guard case .builderPlate(let items, _) = visual else {
+            return XCTFail("Expected builder plate for localized Quick Log title, got \(visual)")
         }
-        XCTAssertEqual(name, "ingredient-turkey")
+        let names = Set(items.map(\.imageName))
+        XCTAssertTrue(names.contains("ingredient-turkey"))
+        XCTAssertTrue(names.contains("ingredient-cucumber"))
     }
 
     func testQuickLogProfilePersistsCanonicalMealTitleNotLocalized() {
@@ -503,7 +533,7 @@ final class MealDetailsPhotoResolutionTests: XCTestCase {
             fats: 2,
             fiber: 0,
             defaultServingAmount: 250,
-            servingUnit: .ml,
+            servingUnit: .milliliters,
             gramsPerServing: nil,
             mlPerServing: 250
         )

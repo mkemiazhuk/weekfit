@@ -100,6 +100,8 @@ Never log Recovery/HRV/sleep values, titles, HealthKit samples, or localized Coa
 | `morning_proposal_adjusted_item_manually_edited` | User edits after Apply | `change_kind?`, `surface` |
 | `morning_proposal_adjusted_item_completed` | Adjusted activity completed | `change_kind?` |
 | `morning_proposal_coach_acknowledgment_viewed` | Coach/Today ack shown (once/day) | `surface` |
+| `morning_proposal_notification_scheduled` | Local proposal-ready notification scheduled | `surface`, `source=notification` |
+| `morning_proposal_notification_opened` | User opened proposal-ready notification | `surface`, `source=notification` |
 
 Helper: `MorningProposalAnalytics` / `ProductAnalytics` wrappers.
 

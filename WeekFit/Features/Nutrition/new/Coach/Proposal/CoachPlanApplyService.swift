@@ -257,6 +257,8 @@ enum CoachPlanApplyService {
         proposal.appliedAt = Date()
         proposal.lastErrorCode = nil
         MorningProposalStore.upsert(proposal)
+        MorningProposalNotificationService.shared.cancel(dayKey: proposal.dayKey)
+        MorningProposalNotificationService.shared.markHandled(dayKey: proposal.dayKey)
 
         journal.phase = "done"
         journal.finishedAt = Date()

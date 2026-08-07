@@ -813,8 +813,6 @@ private extension WeekPlannerLiveQueryView {
                 }
             }
 
-            coachAppliedDayStrip
-
             if selectedDayActivities.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     if !planIntroDismissed {
@@ -1088,41 +1086,6 @@ private extension WeekPlannerLiveQueryView {
         .buttonStyle(.plain)
         .accessibilityHint(WeekFitLocalizedString("planner.sheet.addTitle"))
     }
-
-    @ViewBuilder
-    private var coachAppliedDayStrip: some View {
-        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: viewModel.selectedDate)
-        let active = CoachAdjustmentProvenanceStore.adjustments(forDayKey: dayKey)
-            .filter { !$0.userManuallyEditedAfterApply }
-        if !active.isEmpty {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.92))
-
-                Text(
-                    String(
-                        format: WeekFitLocalizedString(
-                            active.count == 1
-                                ? "planner.coachAdjusted.one"
-                                : "planner.coachAdjusted.other"
-                        ),
-                        active.count
-                    )
-                )
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 8)
-            .weekFitPremiumCard(emphasis: .compact, accent: WeekFitTheme.coachAccent)
-            .accessibilityElement(children: .combine)
-        }
-    }
 }
 
 // MARK: - Timeline Scroll
@@ -1301,13 +1264,44 @@ private extension WeekPlannerLiveQueryView {
                     tint: WeekFitTheme.habit
                 )
             }
+
+            coachAppliedDayChip
         }
         .lineLimit(1)
         .minimumScaleFactor(0.9)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(selectedDaySubtitle)
     }
-    
+
+    @ViewBuilder
+    private var coachAppliedDayChip: some View {
+        let count = coachAdjustedActiveCount
+        if count > 0 {
+            PlanDayStatChip(
+                icon: "sparkles",
+                count: count,
+                tint: WeekFitTheme.coachAccent
+            )
+            .accessibilityLabel(
+                String(
+                    format: WeekFitLocalizedString(
+                        count == 1
+                            ? "planner.coachAdjusted.one"
+                            : "planner.coachAdjusted.other"
+                    ),
+                    count
+                )
+            )
+        }
+    }
+
+    private var coachAdjustedActiveCount: Int {
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: viewModel.selectedDate)
+        return CoachAdjustmentProvenanceStore.adjustments(forDayKey: dayKey)
+            .filter { !$0.userManuallyEditedAfterApply }
+            .count
+    }
+
     func formattedDuration(_ minutes: Int) -> String {
 
         if minutes >= 60 {
@@ -1346,6 +1340,20 @@ private extension WeekPlannerLiveQueryView {
         }
         if habits > 0 {
             parts.append(WeekFitCountPluralization.phrase(count: habits, category: .habit))
+        }
+
+        let coachCount = coachAdjustedActiveCount
+        if coachCount > 0 {
+            parts.append(
+                String(
+                    format: WeekFitLocalizedString(
+                        coachCount == 1
+                            ? "planner.coachAdjusted.one"
+                            : "planner.coachAdjusted.other"
+                    ),
+                    coachCount
+                )
+            )
         }
 
         if parts.isEmpty {

@@ -13,6 +13,28 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
     ) async {
 
         let userInfo = response.notification.request.content.userInfo
+        let notificationType = userInfo[MorningProposalNotificationKey.notificationType] as? String
+            ?? userInfo["notificationType"] as? String
+
+        if notificationType == MorningProposalNotificationType.ready
+            || response.notification.request.identifier.hasPrefix("morning-proposal-") {
+            let dayKey = userInfo[MorningProposalNotificationKey.dayKey] as? String
+            await MainActor.run {
+                ProductAnalytics.notificationOpened(category: .plan)
+                MorningProposalAnalytics.notificationOpened(dayKey: dayKey)
+                PendingMorningProposalReview.shared.requestOpen(dayKey: dayKey)
+                NotificationCenter.default.post(
+                    name: .morningProposalNotificationAction,
+                    object: nil,
+                    userInfo: [
+                        MorningProposalNotificationKey.dayKey: dayKey as Any,
+                        MorningProposalNotificationKey.notificationType:
+                            MorningProposalNotificationType.ready
+                    ]
+                )
+            }
+            return
+        }
 
         guard
             let activityId = userInfo[ActivityNotificationKey.activityId] as? String,

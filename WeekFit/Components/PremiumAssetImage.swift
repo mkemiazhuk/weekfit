@@ -15,6 +15,10 @@ struct PremiumAssetImage: View {
     var style: PremiumAssetImageStyle = .quickLogThumbnail
     var accentColor: Color = WeekFitTheme.whiteOpacity(0.4)
     var fallbackSystemName: String = "fork.knife"
+    /// When set, overrides the style’s default frame size.
+    var size: CGFloat? = nil
+    /// When set, overrides the style’s default corner radius.
+    var cornerRadius: CGFloat? = nil
 
     @Environment(\.weekFitPalette) private var palette
 
@@ -139,6 +143,7 @@ struct PremiumAssetImage: View {
     }
 
     private var frameSize: CGFloat {
+        if let size { return size }
         switch style {
         case .quickLogThumbnail:
             return QuickLogRowMetrics.imageSize
@@ -152,6 +157,7 @@ struct PremiumAssetImage: View {
     }
 
     private var plateCornerRadius: CGFloat {
+        if let cornerRadius { return cornerRadius }
         switch style {
         case .quickLogThumbnail:
             return QuickLogRowMetrics.imageCornerRadius
@@ -169,7 +175,7 @@ struct PremiumAssetImage: View {
         case .quickLogThumbnail:
             return 21
         case .activityThumbnail:
-            return 19
+            return max(19, frameSize * 0.28)
         case .mealCard:
             return 14
         case .timelineAvatar:

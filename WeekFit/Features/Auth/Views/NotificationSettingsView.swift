@@ -7,6 +7,7 @@ enum NotificationPreferenceKey {
     static let recoverySuggestions = "notifications.recoverySuggestions"
     static let hydrationReminders = "notifications.hydrationReminders"
     static let sleepWindDown = "notifications.sleepWindDown"
+    static let morningPlanCheck = "notifications.morningPlanCheck"
 }
 
 struct NotificationSettingsView: View {
@@ -28,6 +29,9 @@ struct NotificationSettingsView: View {
 
     @AppStorage(NotificationPreferenceKey.hydrationReminders)
     private var hydrationRemindersEnabled = false
+
+    @AppStorage(NotificationPreferenceKey.morningPlanCheck)
+    private var morningPlanCheckEnabled = true
 
     @AppStorage(NotificationPreferenceKey.sleepWindDown)
     private var sleepWindDownEnabled = false
@@ -69,6 +73,15 @@ struct NotificationSettingsView: View {
 
                     notificationSection(title: AppText.Settings.Notifications.wellnessSection) {
                         notificationRow(
+                            icon: "sunrise.fill",
+                            title: AppText.Settings.Notifications.morningPlanCheckTitle,
+                            subtitle: AppText.Settings.Notifications.morningPlanCheckSubtitle,
+                            isOn: $morningPlanCheckEnabled
+                        )
+
+                        softDivider
+
+                        notificationRow(
                             icon: "heart.fill",
                             title: AppText.Settings.Notifications.recoverySuggestionsTitle,
                             subtitle: AppText.Settings.Notifications.recoverySuggestionsSubtitle,
@@ -103,6 +116,11 @@ struct NotificationSettingsView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: morningPlanCheckEnabled) { _, enabled in
+            if !enabled {
+                MorningProposalNotificationService.shared.cancelAll()
+            }
+        }
         .onAppear {
             refreshNotificationAuthorization()
         }
@@ -236,6 +254,7 @@ private extension NotificationSettingsView {
                     completionCheckInsEnabled = false
                     recoverySuggestionsEnabled = false
                     hydrationRemindersEnabled = false
+                    morningPlanCheckEnabled = false
                     sleepWindDownEnabled = false
                 }
             }

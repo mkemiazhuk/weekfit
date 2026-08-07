@@ -89,6 +89,7 @@ struct WeekFitApp: App {
 
                     Task { @MainActor in
                         WellnessNotificationService.shared.cancelAll()
+                        MorningProposalNotificationService.shared.cancelAll()
                         // Language is presentation-only — do not reload HealthKit.
                         // Health refresh invalidates coach input and can re-freeze English copy.
                         appSession.triggerCoachRefresh(source: "languageChange")

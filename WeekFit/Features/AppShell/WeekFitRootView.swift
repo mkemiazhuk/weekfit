@@ -73,6 +73,7 @@ struct WeekFitRootView: View {
             }
             .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
                 syncCoachRefreshInputs()
+                evaluateMorningProposalFromRoot(source: "root.settledMetrics")
             }
             .onChange(of: healthManager.hasCompletedHealthAccessCheck) { _, _ in
                 syncCoachRefreshInputs()
@@ -174,11 +175,21 @@ struct WeekFitRootView: View {
                 guard newPhase == .active else { return }
                 reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
                 syncNotifications(source: "root.sceneActive")
+                evaluateMorningProposalFromRoot(source: "root.sceneActive")
             }
             .onReceive(
                 NotificationCenter.default.publisher(for: .activityNotificationAction),
                 perform: handleActivityNotificationAction
             )
+            .onReceive(
+                NotificationCenter.default.publisher(for: .morningProposalNotificationAction)
+            ) { _ in
+                returnToToday()
+            }
+            .onChange(of: PendingMorningProposalReview.shared.shouldOpenReview) { _, shouldOpen in
+                guard shouldOpen else { return }
+                returnToToday()
+            }
     }
 
     private var rootShell: some View {
@@ -771,5 +782,67 @@ struct WeekFitRootView: View {
                 }
             }
         )
+    }
+
+    /// Evaluates morning proposal even when Today is unmounted (Coach/Meals/Plan tabs).
+    private func evaluateMorningProposalFromRoot(source: String) {
+        let now = Date()
+        guard CoachMorningOverviewPolicy.isBeforeLocalNoon(now: now) else { return }
+
+        #if DEBUG
+        if MorningProposalScreenshotFixtures.shouldSeed { return }
+        #endif
+
+        let sleepHours = Double(healthManager.sleepMinutes) / 60.0
+        let hasRecoverySignals = MorningProposalEvaluator.hasRecoverySignals(
+            sleepMinutes: healthManager.sleepMinutes,
+            timeInBedMinutes: healthManager.timeInBedMinutes,
+            hrvSDNN: healthManager.hrvSDNN,
+            restingHeartRate: healthManager.restingHeartRate
+        )
+        let coachState = coachCoordinator.state
+        let readiness: CoachDayReadiness = {
+            if let input = coachState.input {
+                return CoachDayReadinessResolver.resolve(from: input)
+            }
+            return MorningProposalEvaluator.readinessFallback(
+                readyScore: healthManager.readyScore,
+                sleepHours: sleepHours
+            )
+        }()
+        let meals = MorningProposalEvaluator.mealLibrary(from: WeekFitUserSettings.shared)
+
+        Task { @MainActor in
+            let (weather, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
+            let proposal = MorningProposalEvaluator.evaluate(
+                .init(
+                    now: now,
+                    plannedActivities: Array(plannedActivities),
+                    isHealthAccessGranted: healthManager.isHealthAccessGranted,
+                    sleepHours: sleepHours,
+                    hasSettledMetrics: healthManager.hasSettledMetrics(for: todaySelectedDate),
+                    hasRecoverySignals: hasRecoverySignals,
+                    readiness: readiness,
+                    scenarioKey: coachState.coachIntegrationDebug?.scenario,
+                    mealLibrary: meals.candidates,
+                    mealLibraryRevision: meals.revision,
+                    weatherRiskToken: ProposalWeatherRisk.resolve(from: weather)
+                )
+            )
+
+            let givenName: String? = {
+                let name = ProfileService.resolvedGivenName()
+                return name.isEmpty ? nil : name
+            }()
+            MorningProposalNotificationService.shared.sync(
+                proposal: proposal,
+                wakeTime: healthManager.wakeTime,
+                todaySurfaceVisible: selectedTab == .today && scenePhase == .active,
+                givenName: givenName
+            )
+            #if DEBUG
+            _ = source
+            #endif
+        }
     }
 }

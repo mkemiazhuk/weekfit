@@ -157,7 +157,7 @@ struct PremiumActivityStartSheet: View {
                                     )
                                 }
                             }
-                            .padding(.vertical, 14)
+                            .padding(.vertical, 8)
                             .padding(.trailing, 18)
                         }
                         .padding(.horizontal, -18)
@@ -258,29 +258,24 @@ struct PremiumActivityStartSheet: View {
     ) -> some View {
         let duration = defaultDuration(for: option, type: selectedPlannerType)
         let intensityKey = ActivityOptionPresentation.intensityLabelKey(for: option)
-        let cardWidth: CGFloat = 172
+        let cardWidth: CGFloat = 168
         let cardHeight: CGFloat = 228
-        let cardRadius: CGFloat = 26
+        let cardRadius: CGFloat = 24
+        let mediaSize: CGFloat = 112
         let accent = activityAccent
 
         return Button {
             start(option: option, duration: duration)
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                activityThumb(option.imageName)
-                    .frame(width: 108, height: 108)
-                    .clipShape(Circle())
-                    .overlay {
-                        Circle()
-                            .strokeBorder(Color.black.opacity(palette.isLight ? 0.05 : 0.0), lineWidth: 0.8)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                activityThumb(option.imageName, size: mediaSize, cornerRadius: 18)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 Text(localizedOptionTitle(option.title))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
-                    .padding(.top, 12)
+                    .padding(.top, 10)
 
                 Text(WeekFitLocalizedString(intensityKey))
                     .font(.system(size: 12, weight: .medium, design: .rounded))
@@ -319,7 +314,7 @@ struct PremiumActivityStartSheet: View {
                         )
                 }
             }
-            .padding(14)
+            .padding(12)
             .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
             .background {
@@ -394,28 +389,38 @@ struct PremiumActivityStartSheet: View {
     }
 
     @ViewBuilder
-    private func activityThumb(_ imageName: String) -> some View {
+    private func activityThumb(
+        _ imageName: String,
+        size: CGFloat,
+        cornerRadius: CGFloat
+    ) -> some View {
         if !imageName.isEmpty, UIImage(named: imageName) != nil {
             PremiumAssetImage(
                 imageName: imageName,
                 style: .activityThumbnail,
                 accentColor: activityAccent,
-                fallbackSystemName: selectedPlannerType.icon
+                fallbackSystemName: selectedPlannerType.icon,
+                size: size,
+                cornerRadius: cornerRadius
             )
         } else {
             Image(systemName: selectedPlannerType.icon)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: size * 0.28, weight: .semibold))
                 .foregroundStyle(
                     palette.isLight
                         ? activityAccent.opacity(0.7)
                         : WeekFitTheme.secondaryText.opacity(0.55)
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: size, height: size)
                 .background(
-                    palette.isLight
-                        ? activityAccent.opacity(0.10)
-                        : WeekFitTheme.whiteOpacity(0.06)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(
+                            palette.isLight
+                                ? activityAccent.opacity(0.10)
+                                : WeekFitTheme.whiteOpacity(0.06)
+                        )
                 )
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
 

@@ -142,7 +142,8 @@ private struct WeekFitScreenTitleModifier: ViewModifier {
             .foregroundStyle(palette.textPrimary)
             .tracking(-0.55)
             .lineLimit(1)
-            .minimumScaleFactor(0.88)
+            .minimumScaleFactor(0.72)
+            .allowsTightening(true)
     }
 }
 

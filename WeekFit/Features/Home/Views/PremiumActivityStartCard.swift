@@ -18,6 +18,7 @@ struct PremiumActivityStartCard: View {
     @State private var pressed = false
 
     private var actionButtonSize: CGFloat { 40 }
+    private var listImageSize: CGFloat { 76 }
 
     private var titleColor: Color {
         hasConflict ? WeekFitTheme.secondaryText : WeekFitTheme.primaryText
@@ -61,7 +62,7 @@ struct PremiumActivityStartCard: View {
                 startControl
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 12)
+            .padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .quickSheetFloatingCard(
                 cornerRadius: 18,
@@ -96,11 +97,13 @@ struct PremiumActivityStartCard: View {
                     imageName: imageName,
                     style: .activityThumbnail,
                     accentColor: accentColor,
-                    fallbackSystemName: systemIcon
+                    fallbackSystemName: systemIcon,
+                    size: listImageSize,
+                    cornerRadius: 16
                 )
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(
                             palette.isLight
                                 ? accentColor.opacity(0.10)
@@ -108,23 +111,15 @@ struct PremiumActivityStartCard: View {
                         )
 
                     Image(systemName: systemIcon)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(
                             palette.isLight
                                 ? accentColor.opacity(0.75)
                                 : WeekFitTheme.secondaryText.opacity(0.55)
                         )
                 }
+                .frame(width: listImageSize, height: listImageSize)
             }
-        }
-        .frame(width: 64, height: 64)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(
-                    palette.isLight ? Color.black.opacity(0.05) : WeekFitTheme.whiteOpacity(0.06),
-                    lineWidth: 1
-                )
         }
         .opacity(hasConflict ? 0.72 : 1.0)
     }

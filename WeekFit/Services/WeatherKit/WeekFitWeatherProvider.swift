@@ -140,12 +140,17 @@ struct WeekFitWeatherSummary: Equatable, Sendable {
     }
 
     var resolvedTokens: WeekFitWeatherTokens {
+        resolvedTokens(appAppearanceDark: false)
+    }
+
+    func resolvedTokens(appAppearanceDark: Bool) -> WeekFitWeatherTokens {
         WeekFitWeatherTokens.resolve(
             period: resolvedPeriod,
             condition: condition,
             temperatureC: temperature.value,
             visibilityKm: visibilityKilometers,
-            precipitationChance: precipitationChance
+            precipitationChance: precipitationChance,
+            appAppearanceDark: appAppearanceDark
         )
     }
 

@@ -224,6 +224,7 @@ final class HealthManager: ObservableObject {
     @Published var awakeMinutes: Int = 0
     @Published var awakeningsCount: Int = 0
     @Published var bedStart: Date?
+    @Published var wakeTime: Date?
     @Published var recoveryBreakdown: RecoveryScoreBreakdown = .empty
     @Published private(set) var recoveryPhysiologyBaseline: RecoveryPhysiologyBaseline = .empty
     @Published private(set) var recoveryPriorDayLoad: RecoveryPriorDayLoad = .empty
@@ -1241,6 +1242,7 @@ final class HealthManager: ObservableObject {
         remSleepMinutes = sleep.remSleepMinutes
         coreSleepMinutes = sleep.coreSleepMinutes
         bedStart = sleep.bedStart
+        wakeTime = sleep.wakeTime
 
         standHours = metrics.standHours
         sleepHours = Double(sleepMinutes) / 60.0
@@ -1402,6 +1404,7 @@ final class HealthManager: ObservableObject {
         self.remSleepMinutes = loadedSleepSnapshot.remSleepMinutes
         self.coreSleepMinutes = loadedSleepSnapshot.coreSleepMinutes
         self.bedStart = loadedSleepSnapshot.bedStart
+        self.wakeTime = loadedSleepSnapshot.wakeTime
 
         self.standHours = hkStand
         self.sleepHours = Double(self.sleepMinutes) / 60.0
@@ -1745,6 +1748,7 @@ final class HealthManager: ObservableObject {
         awakeMinutes = 0
         awakeningsCount = 0
         bedStart = nil
+        wakeTime = nil
         recoveryBreakdown = .empty
         recoveryPhysiologyBaseline = .empty
         recoveryPriorDayLoad = .empty

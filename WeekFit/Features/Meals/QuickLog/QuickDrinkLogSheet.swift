@@ -8,8 +8,8 @@ enum QuickDrinkAccent {
     static let tea = Color(red: 0.42, green: 0.62, blue: 0.48)
     static let juice = Color(red: 0.92, green: 0.58, blue: 0.28)
     static let milk = Color(red: 0.64, green: 0.66, blue: 0.76)
-    /// List + outline — muted gold from the mock.
-    static let listAction = Color(red: 0.78, green: 0.58, blue: 0.28)
+    /// List / CTA circles — cool hydration blue (matches drop icon family).
+    static let listAction = hydration
 
     static func color(for item: QuickItem, isLight: Bool) -> Color {
         let id = item.id.lowercased()
@@ -23,9 +23,9 @@ enum QuickDrinkAccent {
         return hydration
     }
 
-    /// CTA on Dark — one muted gold, not per-drink rainbow.
-    static func action(for item: QuickItem, isLight: Bool) -> Color {
-        isLight ? color(for: item, isLight: true) : listAction
+    /// CTA circles — always hydration blue (not per-drink orange/gold).
+    static func action(for _: QuickItem, isLight _: Bool) -> Color {
+        listAction
     }
 
     static func meta(for item: QuickItem, isLight: Bool) -> Color {
@@ -530,14 +530,15 @@ private struct QuickDrinkRecommendedCard: View {
 
     @Environment(\.weekFitPalette) private var palette
 
-    private var accent: Color { QuickDrinkAccent.action(for: row.item, isLight: palette.isLight) }
+    private var tint: Color { QuickDrinkAccent.color(for: row.item, isLight: palette.isLight) }
+    private var action: Color { QuickDrinkAccent.listAction }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             QuickDrinkPhoto(
                 row: row,
                 role: .recommended,
-                accent: accent
+                accent: tint
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -558,7 +559,7 @@ private struct QuickDrinkRecommendedCard: View {
             HStack(alignment: .center, spacing: 6) {
                 Image(systemName: QuickDrinkAccent.metaSymbol(for: row.item))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(accent)
+                    .foregroundStyle(tint)
 
                 Text(QuickLogLocalizedNutrition.calories(row.item.calories))
                     .font(QuickDrinkLogDesign.Typography.recommendedCalories)
@@ -571,7 +572,7 @@ private struct QuickDrinkRecommendedCard: View {
                     quantity: displayQuantity,
                     isExpanded: selection.isExpanded,
                     isSelected: selection.isSelected,
-                    accentColor: accent,
+                    accentColor: action,
                     chrome: .solidFilled,
                     onPlusTap: onPlusTap,
                     onIncrement: onIncrement,
@@ -630,7 +631,7 @@ private struct QuickDrinkRecommendedCard: View {
             )
             .strokeBorder(
                 palette.isLight
-                    ? accent.opacity(0.14)
+                    ? tint.opacity(0.14)
                     : WeekFitTheme.whiteOpacity(0.08),
                 lineWidth: 0.75
             )
@@ -639,7 +640,7 @@ private struct QuickDrinkRecommendedCard: View {
             if let badge {
                 Text(badge)
                     .font(QuickDrinkLogDesign.Typography.badge)
-                    .foregroundStyle(palette.isLight ? accent : WeekFitTheme.secondaryText.opacity(0.88))
+                    .foregroundStyle(palette.isLight ? tint : WeekFitTheme.secondaryText.opacity(0.88))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background {
@@ -654,7 +655,7 @@ private struct QuickDrinkRecommendedCard: View {
                         Capsule()
                             .strokeBorder(
                                 palette.isLight
-                                    ? accent.opacity(0.28)
+                                    ? tint.opacity(0.28)
                                     : WeekFitTheme.whiteOpacity(0.10),
                                 lineWidth: 0.8
                             )

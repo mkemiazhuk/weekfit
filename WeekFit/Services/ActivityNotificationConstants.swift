@@ -3,6 +3,14 @@ import Foundation
 extension Notification.Name {
     static let activityNotificationAction =
         Notification.Name("activityNotificationAction")
+    static let morningProposalNotificationAction =
+        Notification.Name("morningProposalNotificationAction")
+}
+
+enum MorningProposalNotificationKey {
+    static let dayKey = "dayKey"
+    static let proposalId = "proposalId"
+    static let notificationType = "notificationType"
 }
 
 enum ActivityNotificationAction: String {

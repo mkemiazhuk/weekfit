@@ -11,7 +11,7 @@ struct WeekFitScreenHeader<Trailing: View>: View {
     let onAvatarTap: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .weekFitScreenTitle()
@@ -19,9 +19,8 @@ struct WeekFitScreenHeader<Trailing: View>: View {
                 Text(subtitle)
                     .weekFitScreenSubtitle()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
-
-            Spacer(minLength: 20)
 
             HStack(spacing: 10) {
                 trailing()
@@ -35,6 +34,7 @@ struct WeekFitScreenHeader<Trailing: View>: View {
                     .accessibilityIdentifier("settings.open")
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minHeight: 52)
     }

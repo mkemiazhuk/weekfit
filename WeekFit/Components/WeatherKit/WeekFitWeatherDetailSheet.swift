@@ -7,6 +7,7 @@ struct WeekFitWeatherDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     @State private var attribution: WeatherAttribution?
@@ -14,7 +15,9 @@ struct WeekFitWeatherDetailSheet: View {
     @State private var didFetchAttribution = false
 
     private var period: WeekFitWeatherPeriod { summary.resolvedPeriod }
-    private var tokens: WeekFitWeatherTokens { summary.resolvedTokens }
+    private var tokens: WeekFitWeatherTokens {
+        summary.resolvedTokens(appAppearanceDark: !palette.isLight)
+    }
     private var relevance: WeekFitWeatherRelevance.Content {
         WeekFitWeatherRelevance.content(for: summary, period: period)
     }
