@@ -264,6 +264,10 @@ enum NotificationSyncCoordinator {
         source: String = "unspecified",
         now: Date = Date()
     ) {
+        StartupDiagnostics.taskBegin(
+            "notifications.syncAll",
+            detail: "source=\(source) planned=\(plannedActivities.count) recovery=\(recoveryPercent)"
+        )
         enqueueSync(
             includeActivities: true,
             includeWellness: true,
@@ -272,6 +276,7 @@ enum NotificationSyncCoordinator {
             source: source,
             now: now
         )
+        StartupDiagnostics.taskSuccess("notifications.syncAll", detail: "enqueued source=\(source)")
     }
 
     @MainActor

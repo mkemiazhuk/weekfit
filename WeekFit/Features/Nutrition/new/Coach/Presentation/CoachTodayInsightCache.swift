@@ -19,9 +19,12 @@ enum CoachTodayInsightCache {
     private static let lock = NSLock()
 
     static func load() -> Snapshot? {
+        // Copy under lock; decode outside — UserDefaults/JSON under lock blocks MainActor body.
         lock.lock()
-        defer { lock.unlock() }
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+        let data = UserDefaults.standard.data(forKey: storageKey)
+        lock.unlock()
+
+        guard let data,
               let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) else {
             return nil
         }
@@ -46,10 +49,11 @@ enum CoachTodayInsightCache {
             showsLimitedConfidenceBadge: presentation.showsLimitedConfidenceBadge
         )
 
-        lock.lock()
-        defer { lock.unlock() }
+        // Encode outside the lock; hold lock only for the UserDefaults write.
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        lock.lock()
         UserDefaults.standard.set(data, forKey: storageKey)
+        lock.unlock()
     }
 
     static func presentation(
@@ -94,8 +98,8 @@ enum CoachTodayInsightCache {
     #if DEBUG
     static func resetForTests() {
         lock.lock()
-        defer { lock.unlock() }
         UserDefaults.standard.removeObject(forKey: storageKey)
+        lock.unlock()
     }
     #endif
 }

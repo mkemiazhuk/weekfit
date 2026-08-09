@@ -38,6 +38,13 @@ final class CoachInputProvider: ObservableObject {
         source: String,
         refreshHealth: Bool = false
     ) async {
+        let taskName = "coach.inputProvider.refresh"
+        let run = UUID()
+        StartupDiagnostics.taskBegin(
+            taskName,
+            detail: "run=\(run.uuidString.prefix(8)) source=\(source) refreshHealth=\(refreshHealth) planned=\(plannedActivities.count)"
+        )
+
         refreshGeneration += 1
         let generation = refreshGeneration
 
@@ -49,12 +56,14 @@ final class CoachInputProvider: ObservableObject {
         )
 
         if !refreshHealth, refreshKey == lastCompletedRefreshKey {
+            StartupDiagnostics.taskSuccess(taskName, detail: "deduped source=\(source)")
             return
         }
 
         if let inFlightRefreshTask {
             await inFlightRefreshTask.value
             if !refreshHealth, refreshKey == lastCompletedRefreshKey {
+                StartupDiagnostics.taskSuccess(taskName, detail: "joined in-flight")
                 return
             }
         }
@@ -110,6 +119,15 @@ final class CoachInputProvider: ObservableObject {
         await task.value
         inFlightRefreshTask = nil
         inFlightRefreshTaskForDeinit = nil
+
+        if Task.isCancelled {
+            StartupDiagnostics.taskCancelled(taskName, detail: "source=\(source)")
+        } else {
+            StartupDiagnostics.taskSuccess(
+                taskName,
+                detail: "source=\(source) coach=\(coachCoordinator.state.statusLogLabel)"
+            )
+        }
     }
 
     func invalidateCompletedRefreshCache() {
@@ -142,6 +160,8 @@ final class CoachInputProvider: ObservableObject {
         source: String
     ) {
         let coachActivities = allPlannedActivities ?? dayActivities
+        WeekFitActivityCoordinator.shared.syncHeartRateMonitoring(with: dayActivities)
+
         let dailySnapshot = DailyStateSnapshotBuilder.build(
             selectedDate: selectedDate,
             dayActivities: dayActivities,

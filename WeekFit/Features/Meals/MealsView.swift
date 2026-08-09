@@ -44,11 +44,13 @@ struct MealsView: View {
     @State private var expandedLibraryKind: MealLibraryRowKind?
     @AppStorage(OnboardingStore.Keys.introMeals) private var mealsIntroDismissed = false
 
-    private let background = WeekFitTheme.backgroundColor
     private let cardSecondary = WeekFitTheme.cardSecondary
     private let textPrimary = WeekFitTheme.primaryText
     private let textSecondary = WeekFitTheme.secondaryText
     private let textTertiary = WeekFitTheme.tertiaryText
+
+    /// Prefer env palette over `WeekFitTheme.*` snapshots — those can stay Dark after Appearance flips.
+    private var canvasBackground: Color { palette.appScreenBackground }
 
     // MARK: - Library groups
     
@@ -124,6 +126,7 @@ struct MealsView: View {
                 EquatableView(
                     content: MealsBodyGate(
                         gateRevision: mealsContentRevision,
+                        appearanceInvalidationToken: palette.appearanceInvalidationToken,
                         content: activeMealsBody
                     )
                 )
@@ -168,8 +171,9 @@ struct MealsView: View {
             } content: {
                 mealsContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .background(WeekFitTheme.appScreenBackground)
+                    .background(canvasBackground)
             }
+            .id(palette.appearanceInvalidationToken)
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 8)
         }
@@ -365,28 +369,75 @@ struct MealsView: View {
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(
-                            WeekFitTheme.meal.opacity(palette.isLight ? 0.28 : 0.34),
-                            lineWidth: 1
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    mealsAddStrokeLight.opacity(palette.isLight ? 0.98 : 0.95),
+                                    mealsAddStrokeDeep.opacity(palette.isLight ? 0.78 : 0.72)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: palette.isLight ? 1.35 : 1.1
                         )
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
+        .id(palette.appearanceInvalidationToken)
         .accessibilityLabel(WeekFitLocalizedString("meals.create"))
         .accessibilityHint(WeekFitLocalizedString("meals.createFoodOrMeal"))
         .accessibilityIdentifier("meals.create")
     }
 
-    private var mealsAddBackground: Color {
+    private var mealsAddBackground: LinearGradient {
         if palette.isLight {
-            return WeekFitLightTokens.activitySoft
+            return LinearGradient(
+                colors: [
+                    Color(red: 1.0, green: 0.998, blue: 0.992),
+                    Color(red: 0.985, green: 0.978, blue: 0.965)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
-        return Color(red: 0.16, green: 0.30, blue: 0.22)
+        return LinearGradient(
+            colors: [
+                Color(red: 30/255, green: 24/255, blue: 18/255),
+                Color(red: 10/255, green: 10/255, blue: 10/255)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
-    private var mealsAddForeground: Color {
-        palette.isLight ? WeekFitTheme.meal : WeekFitTheme.primaryText
+    private var mealsAddForeground: LinearGradient {
+        if palette.isLight {
+            return LinearGradient(
+                colors: [
+                    WeekFitLightTokens.brandGold,
+                    WeekFitLightTokens.brandGoldDark
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        return LinearGradient(
+            colors: [
+                Color(red: 255/255, green: 235/255, blue: 170/255),
+                Color(red: 211/255, green: 163/255, blue: 62/255)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var mealsAddStrokeLight: Color {
+        Color(red: 255/255, green: 221/255, blue: 132/255)
+    }
+
+    private var mealsAddStrokeDeep: Color {
+        Color(red: 142/255, green: 104/255, blue: 36/255)
     }
     
     @MainActor
@@ -922,17 +973,26 @@ struct MealsView: View {
     }
 
     private var bottomFadeGradient: some View {
-        LinearGradient(
-            colors: [
-                background.opacity(0),
-                background.opacity(0.58),
-                background.opacity(0.94),
-                background
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        Group {
+            if palette.isLight {
+                // Light canvas needs no dark veil — a Dark-stale fade was compositing
+                // as a black slab over ivory when EquatableView skipped appearance updates.
+                Color.clear
+            } else {
+                LinearGradient(
+                    colors: [
+                        canvasBackground.opacity(0),
+                        canvasBackground.opacity(0.58),
+                        canvasBackground.opacity(0.94),
+                        canvasBackground
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        }
         .ignoresSafeArea()
+        .id(palette.appearanceInvalidationToken)
     }
 }
 
@@ -973,10 +1033,11 @@ struct CustomFoodDetailsView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
     @State private var showEditForm = false
 
-    private let background = WeekFitTheme.appBackground
+    private var canvasBackground: Color { palette.appScreenBackground }
     private let cardBackground = WeekFitTheme.cardBackground
     private let elevatedCard = WeekFitTheme.elevatedCard
     private let textPrimary = WeekFitTheme.primaryText
@@ -987,7 +1048,7 @@ struct CustomFoodDetailsView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack {
-            background.ignoresSafeArea()
+            canvasBackground.ignoresSafeArea()
             WeekFitTheme.mealsAmbient
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -1142,15 +1203,16 @@ struct CustomFoodDetailsView: View {
         .background {
             LinearGradient(
                 colors: [
-                    WeekFitTheme.backgroundColor.opacity(0),
-                    WeekFitTheme.backgroundColor.opacity(0.62),
-                    WeekFitTheme.backgroundColor.opacity(0.96),
-                    WeekFitTheme.backgroundColor
+                    canvasBackground.opacity(0),
+                    canvasBackground.opacity(palette.isLight ? 0.42 : 0.62),
+                    canvasBackground.opacity(palette.isLight ? 0.82 : 0.96),
+                    canvasBackground
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
+            .id(palette.appearanceInvalidationToken)
         }
     }
 
@@ -1649,14 +1711,18 @@ enum MealRecommendationEngine {
     }
 }
 
-// MARK: - Keep-alive gate (skip heavy library body while tab inactive)
+// MARK: - Keep-alive gate (skip heavy library body while data unchanged)
 
 private struct MealsBodyGate<MealsContent: View>: View, Equatable {
     let gateRevision: String
+    /// Must invalidate on Light/Dark — otherwise opaque chrome (+ / bottom fade)
+    /// stays Dark while translucent cards composite onto the new Light root canvas.
+    let appearanceInvalidationToken: UInt64
     let content: MealsContent
 
     static func == (lhs: MealsBodyGate, rhs: MealsBodyGate) -> Bool {
         lhs.gateRevision == rhs.gateRevision
+            && lhs.appearanceInvalidationToken == rhs.appearanceInvalidationToken
     }
 
     var body: some View {
@@ -1780,15 +1846,36 @@ private struct MealLibraryExpandSheet: View {
     let onDelete: (Meals) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
+    @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     private let columns = [
         GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing),
         GridItem(.flexible(), spacing: MealLibraryCardMetrics.gridSpacing)
     ]
 
+    private var filteredItems: [Meals] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return items }
+        return items.filter { meal in
+            meal.localizedDisplayTitle.localizedCaseInsensitiveContains(query)
+                || meal.title.localizedCaseInsensitiveContains(query)
+                || meal.localizedShortTitle.localizedCaseInsensitiveContains(query)
+                || meal.localizedDisplaySubtitle.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private var searchPlaceholderKey: String {
+        switch kind {
+        case .meal: return "meals.library.search.meals"
+        case .food: return "meals.library.search.foods"
+        }
+    }
+
     var body: some View {
         ZStack {
-            WeekFitTheme.backgroundColor.ignoresSafeArea()
+            palette.appScreenBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack(alignment: .center, spacing: 12) {
@@ -1810,28 +1897,108 @@ private struct MealLibraryExpandSheet: View {
                 .padding(.top, 18)
                 .padding(.bottom, 10)
 
-                ScrollView(showsIndicators: false) {
-                    LazyVGrid(columns: columns, spacing: MealLibraryCardMetrics.gridSpacing) {
-                        ForEach(items) { meal in
-                            MealLibraryGridCard(
-                                meal: meal,
-                                kind: kind,
-                                isHighlighted: highlightedMealID == meal.id,
-                                onDelete: { onDelete(meal) }
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                onSelect(meal)
+                searchField
+                    .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                    .padding(.bottom, 12)
+
+                if filteredItems.isEmpty {
+                    emptySearchState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVGrid(columns: columns, spacing: MealLibraryCardMetrics.gridSpacing) {
+                            ForEach(filteredItems) { meal in
+                                MealLibraryGridCard(
+                                    meal: meal,
+                                    kind: kind,
+                                    isHighlighted: highlightedMealID == meal.id,
+                                    onDelete: { onDelete(meal) }
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    onSelect(meal)
+                                }
                             }
                         }
+                        .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                        .padding(.top, 4)
+                        .padding(.bottom, 28)
                     }
-                    .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
-                    .padding(.top, 4)
-                    .padding(.bottom, 28)
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
         }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.85))
+                .accessibilityHidden(true)
+
+            TextField(
+                WeekFitLocalizedString(searchPlaceholderKey),
+                text: $searchText
+            )
+            .textFieldStyle(.plain)
+            .font(.system(size: 16, weight: .medium, design: .rounded))
+            .foregroundStyle(WeekFitTheme.primaryText)
+            .tint(WeekFitTheme.meal)
+            .focused($isSearchFocused)
+            .submitLabel(.search)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .accessibilityLabel(WeekFitLocalizedString(searchPlaceholderKey))
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(WeekFitLocalizedString("common.action.clear"))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.internalTile
+                        : WeekFitTheme.whiteOpacity(0.08)
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    WeekFitTheme.whiteOpacity(palette.isLight ? 0.0 : 0.06),
+                    lineWidth: 1
+                )
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture {
+            isSearchFocused = true
+        }
+    }
+
+    private var emptySearchState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.45))
+            Text(WeekFitLocalizedString("meals.library.search.empty"))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 32)
+        .accessibilityElement(children: .combine)
     }
 }
 

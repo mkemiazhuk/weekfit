@@ -9,10 +9,13 @@ protocol StoreKitReviewRequesting: AnyObject {
 
 /// Requests a native App Store review via StoreKit.
 /// Apple may choose not to show the system prompt; callers must not re-request aggressively.
+/// StoreKit Sandbox proxy noise (SKInternalErrorDomain Code=12) is non-fatal and is not
+/// started from cold launch — WeekFit has no subscription PaymentQueue observer.
 @MainActor
 final class SystemStoreKitReviewRequester: StoreKitReviewRequesting {
     func requestReview() {
         guard let scene = activeWindowScene() else { return }
+        // Does not throw. Safe if App Store / Sandbox is unreachable.
         AppStore.requestReview(in: scene)
     }
 

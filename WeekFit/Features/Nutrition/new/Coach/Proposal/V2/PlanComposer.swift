@@ -54,6 +54,12 @@ enum PlanComposer {
                 || kind == .createRecoveryWalk
                 || kind == .createMealFromLibrary
 
+            if ProposalRepetitionGuard.shouldSuppress(item.candidate, context: context) {
+                dropped.append(item.id)
+                notes.append("repeat_cooloff:\(item.id)")
+                continue
+            }
+
             if context.generationMode == .protect, isCreate, kind != .createMealFromLibrary {
                 dropped.append(item.id)
                 notes.append("protect_blocks_create:\(item.id)")
@@ -63,6 +69,16 @@ enum PlanComposer {
             if isCreate && kind != .createMealFromLibrary {
                 if addedCreates >= maxAdditions {
                     dropped.append(item.id)
+                    continue
+                }
+            }
+
+            if kind == .createPlannedActivity, isElevatedLoad(item.candidate) {
+                if context.recoveryBand == .low
+                    || strategy == .recover
+                    || strategy == .protectTomorrow {
+                    dropped.append(item.id)
+                    notes.append("drop_elevated_for_recovery:\(item.id)")
                     continue
                 }
             }
@@ -182,6 +198,26 @@ enum PlanComposer {
     private static func isSerious(_ candidate: ProposalCandidate) -> Bool {
         if case .createPlannedActivity(let payload) = candidate.payload {
             return CoachActivityClassifier.isSeriousTraining(
+                CoachPlannedActivitySnapshot(
+                    id: candidate.id,
+                    date: payload.proposedDate,
+                    type: payload.activityType,
+                    title: payload.title,
+                    durationMinutes: payload.durationMinutes,
+                    icon: payload.icon,
+                    imageName: payload.imageName,
+                    isCompleted: false,
+                    isSkipped: false,
+                    source: "history"
+                )
+            )
+        }
+        return false
+    }
+
+    private static func isElevatedLoad(_ candidate: ProposalCandidate) -> Bool {
+        if case .createPlannedActivity(let payload) = candidate.payload {
+            return CoachActivityClassifier.isElevatedTrainingLoad(
                 CoachPlannedActivitySnapshot(
                     id: candidate.id,
                     date: payload.proposedDate,

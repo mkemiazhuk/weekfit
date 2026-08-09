@@ -8,6 +8,16 @@ enum CoachSemanticColor: String, Equatable, Sendable {
     case ready
     case activity
     case live
+    /// Live HR zone 1 — easy / recovery pace.
+    case liveZone1
+    /// Live HR zone 2 — aerobic.
+    case liveZone2
+    /// Live HR zone 3 — tempo.
+    case liveZone3
+    /// Live HR zone 4 — hard (orange).
+    case liveElevated
+    /// Live HR zone 5 — max (red).
+    case liveCritical
     case recovery
     case protection
     case heat
@@ -70,7 +80,8 @@ enum CoachPresentationResolver {
         )
         let baseSemanticColor = semanticColor(
             for: resolution.scenario,
-            stableDayProfile: stableDayProfile
+            stableDayProfile: stableDayProfile,
+            liveHeartRateZone: context.liveHeartRateZone
         )
         let energyInput = CoachConversationEnergyPolicy.Input.from(
             resolution: resolution,
@@ -126,12 +137,28 @@ enum CoachPresentationResolver {
 
     static func semanticColor(
         for scenario: CoachScenarioKey,
-        stableDayProfile: CoachStableDayProfile? = nil
+        stableDayProfile: CoachStableDayProfile? = nil,
+        liveHeartRateZone: Int? = nil
     ) -> CoachSemanticColor {
         if scenario == .stableDay, let stableDayProfile {
             return CoachStableDayPresentation.semanticColor(for: stableDayProfile)
         }
-        return baseSemanticColor(for: scenario)
+        let base = baseSemanticColor(for: scenario)
+        // Walks keep walk* keys (not `.live`); still map chrome to the live HR zone.
+        guard let zone = liveHeartRateZone, appliesLiveHeartRateChrome(to: scenario) else {
+            return base
+        }
+        return HeartRateZones.semanticColor(for: zone)
+    }
+
+    private static func appliesLiveHeartRateChrome(to scenario: CoachScenarioKey) -> Bool {
+        switch scenario {
+        case .duringEndurance, .duringRacket, .duringStrength, .duringRecovery, .saunaActive,
+             .walkLightDay, .walkAfterHeavyLoad, .walkRecoveryAction, .walkEveningWindDown:
+            return true
+        default:
+            return false
+        }
     }
 
     private static func baseSemanticColor(for scenario: CoachScenarioKey) -> CoachSemanticColor {

@@ -53,8 +53,8 @@ struct TodayView: View {
     private var textSecondary: Color { palette.textSecondary }
     private var textTertiary: Color { palette.textTertiary }
 
-    private let todayRingSize: CGFloat = 86
-    private let todayRingStroke: CGFloat = 4
+    private let todayRingSize: CGFloat = 72
+    private let todayRingStroke: CGFloat = 3.5
     private let todayPremiumBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
     private let todayPremiumBronzeSoft = Color(red: 0.60, green: 0.52, blue: 0.39)
 
@@ -73,10 +73,10 @@ struct TodayView: View {
         /// Align with shared tab clearance.
         static let tabBarContentInset: CGFloat = WeekFitScreenLayout.tabBarClearance
         static let ringGroupSpacing: CGFloat = 4
-        static let cardTitleBottomGap: CGFloat = 10
-        static let overviewContentTopPadding: CGFloat = 13
-        static let overviewContentBottomPadding: CGFloat = 14
-        static let overviewHorizontalPadding: CGFloat = 16
+        static let cardTitleBottomGap: CGFloat = 8
+        static let overviewContentTopPadding: CGFloat = 10
+        static let overviewContentBottomPadding: CGFloat = 10
+        static let overviewHorizontalPadding: CGFloat = 14
         static let coachCardVerticalPadding: CGFloat = 19
         static let cardInteriorVerticalPadding: CGFloat = 14
         static let quickTileRadius: CGFloat = 18
@@ -103,9 +103,9 @@ struct TodayView: View {
         if shouldStackRings { return todayRingSize }
         switch dynamicTypeSize {
         case .xxLarge:
-            return 78
+            return 66
         case .xxxLarge:
-            return 74
+            return 62
         default:
             return todayRingSize
         }
@@ -171,10 +171,26 @@ struct TodayView: View {
         returnToTodayTrigger: UUID = UUID(),
         onSelectTab: @escaping (WeekFitTab) -> Void = { _ in }
     ) {
+        // NOTE: @StateObject / @Query property wrappers are initialized before this body runs.
+        // Each struct value gets a new instanceID — duplicate TODAY 01 lines with different
+        // IDs mean SwiftUI recreated the view value; identical IDs cannot happen across values.
+        let instanceID = UUID()
+        TodayStartupDiagnostics.step(
+            1,
+            "init begin",
+            detail: "instance=\(instanceID.uuidString.prefix(8)) | \(TodayStartupDiagnostics.selectedDaySanity(selectedDate: selectedDate.wrappedValue))"
+        )
         self.authViewModel = authViewModel
         self._selectedDate = selectedDate
         self.returnToTodayTrigger = returnToTodayTrigger
         self.onSelectTab = onSelectTab
+        TodayStartupDiagnostics.step(
+            2,
+            "init complete",
+            detail: "instance=\(instanceID.uuidString.prefix(8)) | \(TodayStartupDiagnostics.selectedDaySanity(selectedDate: selectedDate.wrappedValue))"
+        )
+        // Do not also emit STARTUP 11 here — RootView logs mounting separately; dual STARTUP+TODAY
+        // lines with the same instance looked like two TodayView instances.
     }
     
     private var completedNutritionLogsForSelectedDay: [PlannedActivity] {
@@ -335,6 +351,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private var todayActiveBody: some View {
+        let _ = TodayStartupDiagnostics.child("todayActiveBody begin")
         let _ = languageManager.selectedLanguage
 
         ZStack(alignment: .bottom) {
@@ -342,28 +359,58 @@ struct TodayView: View {
 
             todayScreen
                 .onAppear {
+                   TodayStartupDiagnostics.step(
+                       8,
+                       "onAppear",
+                       detail: "tabActive=\(tabIsActive) healthRequested=\(healthManager.isHealthAccessRequested) planned=\(plannedActivities.count) \(TodayStartupDiagnostics.selectedDaySanity(selectedDate: selectedDate))"
+                   )
                    todayViewModel.now = Date()
                    reconcileTodayDayBoundary()
+                   StartupDiagnostics.step(
+                       19,
+                       "quick-log catalog preload begin",
+                       detail: "loads Today quick-add snacks/drinks JSON + customMealsCatalog into memory — does NOT create meal library records"
+                   )
                    preloadQuickFoodLogDataIfNeeded()
                    preloadQuickDrinkLogDataIfNeeded()
+                   StartupDiagnostics.step(
+                       20,
+                       "quick-log catalog preload complete",
+                       detail: "quickFoodCatalogLoaded=\(didPreloadQuickFood) quickDrinkCatalogLoaded=\(didPreloadQuickDrinks) customMealsCatalogCount=\(userSettings.customMealsCatalog.count) quickLogMealsInMemory=\(quickLogMeals.count) quickLogDrinksInMemory=\(quickLogDrinks.count)"
+                   )
                    if !healthManager.isHealthAccessRequested {
                        updateNutrition()
                    }
+                   TodayStartupDiagnostics.markFirstFrameStableIfNeeded(
+                       detail: "TodayView.onAppear"
+                   )
+                   StartupDiagnostics.markFirstScreenStableIfNeeded(
+                       detail: "TodayView.onAppear before health task"
+                   )
                 }
-
         }
     }
 
     var body: some View {
-        Group {
+        let _ = TodayStartupDiagnostics.step(
+            3,
+            "body evaluation begin",
+            detail: "tabActive=\(tabIsActive) \(TodayStartupDiagnostics.selectedDaySanity(selectedDate: selectedDate))"
+        )
+        let root = Group {
             if tabIsActive {
+                let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "todayActiveBody branch")
                 todayActiveBody
             } else {
+                let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "inactive clear branch")
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityHidden(true)
             }
         }
+        let _ = TodayStartupDiagnostics.step(7, "body evaluation complete", detail: "modifiers attaching")
+
+        return root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
         .fullScreenCover(isPresented: $showActivityIntelligence) {
@@ -403,7 +450,38 @@ struct TodayView: View {
         }
         .task(id: todayViewModel.healthRefreshID) {
             guard tabIsActive else { return }
+            let taskName = "today.refreshHealthAndNutrition"
+            TodayStartupDiagnostics.step(9, "initial task begin", detail: taskName)
+            TodayStartupDiagnostics.taskBegin(
+                taskName,
+                detail: "refreshID=\(todayViewModel.healthRefreshID) requested=\(healthManager.isHealthAccessRequested)"
+            )
+            StartupDiagnostics.taskBegin(
+                taskName,
+                detail: "refreshID=\(todayViewModel.healthRefreshID) requested=\(healthManager.isHealthAccessRequested)"
+            )
             await refreshHealthAndNutritionAsync()
+            if Task.isCancelled {
+                TodayStartupDiagnostics.taskCancelled(taskName)
+                StartupDiagnostics.taskCancelled(taskName)
+            } else {
+                TodayStartupDiagnostics.taskSuccess(
+                    taskName,
+                    detail: "recovery=\(healthManager.recoveryPercent) sleepMin=\(healthManager.sleepMinutes)"
+                )
+                TodayStartupDiagnostics.step(
+                    10,
+                    "initial task success",
+                    detail: "recovery=\(healthManager.recoveryPercent) sleepMin=\(healthManager.sleepMinutes)"
+                )
+                StartupDiagnostics.taskSuccess(
+                    taskName,
+                    detail: "recovery=\(healthManager.recoveryPercent) sleepMin=\(healthManager.sleepMinutes)"
+                )
+                StartupDiagnostics.markFirstScreenStableIfNeeded(
+                    detail: "after today health refresh"
+                )
+            }
         }
         .task(id: todayViewModel.trackedDisplayDayStart) {
             guard tabIsActive else { return }
@@ -427,21 +505,31 @@ struct TodayView: View {
             let validActivityIDs = Set(newActivities.map(\.id))
             quickLogSession.removeReferencesToMissingActivities(validActivityIDs: validActivityIDs)
 
-            let dayActivities = todayViewModel.selectedDayActivities(
-                on: selectedDate,
-                from: newActivities
-            )
-            coachInputProvider.refreshFromCurrentState(
-                selectedDate: selectedDate,
-                dayActivities: dayActivities,
-                allPlannedActivities: newActivities,
-                healthManager: healthManager,
-                nutritionViewModel: nutritionViewModel,
-                coachCoordinator: coachCoordinator,
-                source: "TodayView.plannedActivitiesChanged"
-            )
-
-            Task {
+            // DEFECT (fixed): previously ran coachInputProvider.refreshFromCurrentState
+            // synchronously inside the SwiftUI update. That path mutates @Published state,
+            // hits UserDefaults under NSLock (observation/understanding stores), and can
+            // re-enter body while Root reconcile still holds the same MainActor — hang site
+            // that often surfaces as the last logged marker being quickActionsSection begin.
+            let selectedDate = selectedDate
+            let healthManager = healthManager
+            let nutritionViewModel = nutritionViewModel
+            let coachCoordinator = coachCoordinator
+            let coachInputProvider = coachInputProvider
+            let todayViewModel = todayViewModel
+            Task { @MainActor in
+                let dayActivities = todayViewModel.selectedDayActivities(
+                    on: selectedDate,
+                    from: newActivities
+                )
+                coachInputProvider.refreshFromCurrentState(
+                    selectedDate: selectedDate,
+                    dayActivities: dayActivities,
+                    allPlannedActivities: newActivities,
+                    healthManager: healthManager,
+                    nutritionViewModel: nutritionViewModel,
+                    coachCoordinator: coachCoordinator,
+                    source: "TodayView.plannedActivitiesChanged"
+                )
                 await todayViewModel.reconcileNutritionAfterPlannedActivitiesChange(
                     selectedDate: selectedDate,
                     plannedActivities: newActivities,
@@ -487,12 +575,17 @@ struct TodayView: View {
         .task(id: coachCoordinator.nextScheduledCheckpoint) {
             guard tabIsActive else { return }
             guard let checkpoint = coachCoordinator.nextScheduledCheckpoint else { return }
+            let taskName = "today.coachCheckpoint"
+            TodayStartupDiagnostics.taskBegin(taskName, detail: "checkpoint=\(checkpoint)")
             let delay = checkpoint.timeIntervalSinceNow
             if delay > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
 
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                TodayStartupDiagnostics.taskCancelled(taskName)
+                return
+            }
 
             await MainActor.run {
                 let value = Date()
@@ -509,6 +602,7 @@ struct TodayView: View {
                 coachCoordinator.invalidateResolvedStateForDayChange()
                 updateTodayCoachInsightIfNeeded(source: "CoachCoordinator.checkpoint")
             }
+            TodayStartupDiagnostics.taskSuccess(taskName)
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(
@@ -994,6 +1088,7 @@ struct TodayView: View {
 
     private func updateTodayCoachInsightIfNeeded(source: String) {
         debugTodayDataState(source: "todayCoachInsight.update.\(source)")
+        WeekFitActivityCoordinator.shared.syncHeartRateMonitoring(with: selectedDayActivities)
         todayViewModel.refreshCoachInsight(
             selectedDate: selectedDate,
             plannedActivities: plannedActivities,
@@ -1181,8 +1276,10 @@ struct TodayView: View {
     }
 
     private var todayScreen: some View {
-        WeekFitScreenContainer {
+        let _ = TodayStartupDiagnostics.child("todayScreen begin")
+        return WeekFitScreenContainer {
 
+            let _ = TodayStartupDiagnostics.child("header WeekFitTodayWeatherHeader")
             WeekFitTodayWeatherHeader(
                 title: WeekFitLocalizedString("today.title"),
                 subtitle: selectedDateTitle,
@@ -1210,12 +1307,16 @@ struct TodayView: View {
             }
         }
         .padding(.bottom, TodayLayout.tabBarContentInset)
-
     }
 
     @ViewBuilder
     private var todayBackground: some View {
+        let _ = TodayStartupDiagnostics.child(
+            "todayBackground",
+            detail: "atmosphereEnabled=\(TodayAtmospherePolicy.isEnabled)"
+        )
         if TodayAtmospherePolicy.isEnabled {
+            let _ = TodayStartupDiagnostics.child("TodayAtmosphereBackground resolving snapshot")
             TodayAtmosphereBackground(
                 snapshot: todayAtmosphereSnapshot,
                 ambientOpacity: palette.ambientOpacity
@@ -1229,7 +1330,11 @@ struct TodayView: View {
     }
 
     private var todayAtmosphereSnapshot: TodayAtmosphereSnapshot {
-        TodayAtmosphereResolver.resolve(
+        let _ = TodayStartupDiagnostics.child(
+            "todayAtmosphereSnapshot",
+            detail: "recovery=\(healthManager.recoveryPercent) sleepH=\(healthManager.sleepHours) kcal=\(healthManager.activeCalories)"
+        )
+        return TodayAtmosphereResolver.resolve(
             recoveryPercent: healthManager.recoveryPercent,
             hasRecoverySignals: hasTodayRecoverySignals,
             sleepHours: healthManager.sleepHours,
@@ -1254,8 +1359,10 @@ struct TodayView: View {
     
 
     private func summaryContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let _ = TodayStartupDiagnostics.step(5, "first section created", detail: "summaryContent begin")
+        return VStack(alignment: .leading, spacing: 0) {
             if !todayIntroDismissed {
+                let _ = TodayStartupDiagnostics.child("OnboardingContextualIntroCard")
                 OnboardingContextualIntroCard(
                     title: WeekFitLocalizedString("onboarding.intro.today.title"),
                     message: WeekFitLocalizedString("onboarding.intro.today.body"),
@@ -1266,16 +1373,24 @@ struct TodayView: View {
                 .padding(.bottom, 16)
             }
 
+            let _ = TodayStartupDiagnostics.child("dailyStatusSection begin")
             dailyStatusSection
+            let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
 
+            let _ = TodayStartupDiagnostics.step(6, "timeline created", detail: "upNextSection")
             upNextSection
                 .padding(.top, TodayLayout.gapAfterOverview)
+            let _ = TodayStartupDiagnostics.child("upNextSection complete")
 
+            let _ = TodayStartupDiagnostics.child("coachEntryPointSection begin")
             coachEntryPointSection
                 .padding(.top, TodayLayout.gapAfterUpNext)
+            let _ = TodayStartupDiagnostics.child("coachEntryPointSection complete")
 
+            let _ = TodayStartupDiagnostics.child("quickActionsSection begin")
             quickActionsSection
                 .padding(.top, TodayLayout.gapBeforeQuickActions)
+            let _ = TodayStartupDiagnostics.child("quickActionsSection complete")
         }
     }
 
@@ -1326,8 +1441,7 @@ struct TodayView: View {
     }
 
     private var todayCoachCardAccent: Color {
-        // Coach identity is purple; green is reserved for positive status chips.
-        WeekFitTheme.coachAccent
+        coachCoordinator.state.coachUIPresentation?.accentColor ?? WeekFitTheme.coachAccent
     }
 
     private func todayOverviewShell<Content: View>(
@@ -1459,7 +1573,11 @@ struct TodayView: View {
     }
     
     private var coachEntryPointSection: some View {
-        Group {
+        let _ = TodayStartupDiagnostics.child(
+            "coachEntryPointSection",
+            detail: "phase=\(String(describing: todayCoachInsightPhase)) status=\(coachCoordinator.state.statusLogLabel)"
+        )
+        return Group {
 //            if shouldShowEveningReview {
 //                eveningReviewEntryPoint
 //            } else {
@@ -1569,7 +1687,12 @@ struct TodayView: View {
     }
 
     private var dailyStatusSection: some View {
+        let _ = TodayStartupDiagnostics.child(
+            "dailyStatusSection compute",
+            detail: "calories=\(healthManager.activeCalories) sleepMin=\(healthManager.sleepMinutes) recovery=\(healthManager.recoveryPercent) hrv=\(healthManager.hrvSDNN) rhr=\(healthManager.restingHeartRate)"
+        )
         let baseGoal = automatedActivityGoal
+        let _ = TodayStartupDiagnostics.child("dailyStatusSection activityGoal=\(baseGoal)")
         let activityProgress = baseGoal > 0 ? healthManager.activeCalories / baseGoal : 0
         let activityPercent = Int(activityProgress * 100)
         let activityDisplayText = healthManager.activeCalories > 0 && activityProgress > 0 && activityProgress < 0.01
@@ -1588,6 +1711,10 @@ struct TodayView: View {
             isHealthAccessGranted: healthManager.isHealthAccessGranted,
             hasRecoverySignals: hasRecoveryData,
             now: todayViewModel.now
+        )
+        let _ = TodayStartupDiagnostics.child(
+            "dailyStatusSection recoveryRingMode",
+            detail: "\(String(describing: recoveryRingMode)) hasSignals=\(hasRecoveryData)"
         )
 
         let recoveryDisplayValue: Int? =
@@ -1694,7 +1821,7 @@ struct TodayView: View {
                 todayOverviewShell {
                     VStack(alignment: .leading, spacing: 0) {
                         todayCardSectionTitle(WeekFitLocalizedString("today.overview.title"))
-                            .padding(.bottom, 8)
+                            .padding(.bottom, 6)
 
                         Group {
                             if shouldStackRings {
@@ -1872,7 +1999,7 @@ struct TodayView: View {
         let ringSize = todayEffectiveRingSize
         let ringStroke = max(3, todayRingStroke * (ringSize / todayRingSize))
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 5) {
             WeekFitProgressRing(
                 progress: value == nil ? 0 : progress,
                 color: color,
@@ -1880,8 +2007,7 @@ struct TodayView: View {
                 strokeWidth: ringStroke
             ) {
                 Text(value == nil ? "—" : (centerText ?? "\(displayValue)%"))
-                    .font(.title3.weight(.bold))
-                    .fontDesign(.rounded)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .monospacedDigit()
                     .minimumScaleFactor(0.75)
@@ -1889,16 +2015,16 @@ struct TodayView: View {
                     .offset(y: value == nil ? 1 : 0.5)
             }
 
-            VStack(spacing: 2) {
+            VStack(spacing: 1) {
                 Text(title)
-                    .font(.footnote.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .fontDesign(.rounded)
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.88 : 0.94))
                     .lineLimit(ringCaptionLineLimit)
                     .minimumScaleFactor(0.85)
 
                 Text(valueText)
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .fontDesign(.rounded)
                     .foregroundStyle(palette.isLight ? color : color.opacity(1))
                     .lineLimit(ringCaptionLineLimit)
@@ -1906,8 +2032,7 @@ struct TodayView: View {
 
                 if !infoText.isEmpty {
                     Text(infoText)
-                        .font(.caption2.weight(.medium))
-                        .fontDesign(.rounded)
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(
                             palette.isLight
                                 ? WeekFitTheme.secondaryText
@@ -1924,12 +2049,17 @@ struct TodayView: View {
     }
 
     private var upNextSection: some View {
+        let _ = TodayStartupDiagnostics.child("upNextSection compute", detail: "plannedSelectedDay=\(plannedActivitiesForSelectedDate.count)")
         let now = Date()
 
         let activeSession = currentLiveUpNextActivity(now: now)
         let nextActivity = activeSession == nil
             ? nextUpcomingPlannedActivity(now: now)
             : nil
+        let _ = TodayStartupDiagnostics.child(
+            "upNextSection resolved",
+            detail: "active=\(activeSession?.id ?? "nil") next=\(nextActivity?.id ?? "nil")"
+        )
 
         return Group {
             if let activeSession {
@@ -2238,18 +2368,23 @@ struct TodayView: View {
     }
 
     private func currentLiveUpNextActivity(now: Date = Date()) -> PlannedActivity? {
+        // Meals/drinks/snacks can fall in an "active" time window, but they are never a live session.
         selectedDayActivities
-            .filter { $0.terminalState(now: now) == .active }
+            .filter { isLiveSessionActivity($0) && $0.terminalState(now: now) == .active }
             .sorted { $0.date < $1.date }
             .first
     }
 
     private func currentActiveSession(now: Date = Date()) -> PlannedActivity? {
-        selectedDayActivities.first { activity in
-            let type = activity.type.lowercased()
+        currentLiveUpNextActivity(now: now)
+    }
 
-            guard type == "workout" || type == "recovery" else { return false }
-            return activity.terminalState(now: now) == .active
+    private func isLiveSessionActivity(_ activity: PlannedActivity) -> Bool {
+        switch activity.type.lowercased() {
+        case "workout", "recovery":
+            return true
+        default:
+            return false
         }
     }
     
@@ -2271,7 +2406,7 @@ struct TodayView: View {
     }
 
     private func coachInsightCard(presentation: CoachUIPresentation) -> some View {
-        let insightColor = WeekFitTheme.coachAccent
+        let insightColor = presentation.accentColor
         let insightTitle = presentation.todayTitle
         let insightIcon = presentation.icon
         let insightMessage = presentation.showsLimitedConfidenceBadge
@@ -2409,7 +2544,7 @@ struct TodayView: View {
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(attentionColor)
 
-                            Text(String(format: WeekFitLocalizedString("today.pending.messageFormat"), pending.title))
+                            Text(String(format: WeekFitLocalizedString("today.pending.messageFormat"), activityDisplayTitle(pending)))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(textPrimary.opacity(0.92))
                                 .lineSpacing(2)
@@ -2807,13 +2942,25 @@ struct TodayView: View {
         let now = Date()
 
         Task { @MainActor in
-            let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
+            let taskName = "today.weather.cachedSummary"
+            StartupDiagnostics.step(21, "weather load begin", detail: "cachedSummaryAndFreshness")
+            StartupDiagnostics.taskBegin(taskName)
+            let (cached, isFresh) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
             if morningWeatherSummary != cached {
                 morningWeatherSummary = cached
                 if !quickLogDrinks.isEmpty {
                     refreshDrinkPartitions(drinks: quickLogDrinks, usage: quickItemUsageEntries)
                 }
             }
+            StartupDiagnostics.taskSuccess(
+                taskName,
+                detail: "hasSummary=\(cached != nil) fresh=\(isFresh)"
+            )
+            StartupDiagnostics.step(
+                22,
+                "weather load complete",
+                detail: "hasSummary=\(cached != nil) fresh=\(isFresh)"
+            )
         }
 
         let coachState = coachCoordinator.state
@@ -3533,9 +3680,18 @@ struct TodayView: View {
         }
 
         let trimmedTitle = activity.title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Snacks / quick catalog items (Banana, Greek Yogurt, …).
         let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
         if quickLocalized != trimmedTitle {
             return quickLocalized
+        }
+
+        // Builder / starter meals persist English ingredient phrases ("Eggs Oatmeal").
+        // Meals tab remaps via MealBuilderTitleComposer; Today must do the same.
+        let mealLocalized = MealBuilderTitleComposer.localizedStoredTitle(trimmedTitle)
+        if mealLocalized != trimmedTitle {
+            return mealLocalized
         }
 
         let plannerLocalized = PlannerOptionLocalization.localizedTitle(for: trimmedTitle)

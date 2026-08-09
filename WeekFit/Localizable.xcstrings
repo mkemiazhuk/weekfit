@@ -13232,6 +13232,91 @@
         }
       }
     },
+    "coach.heartRate.zone1.effort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лёгкая"
+          }
+        }
+      }
+    },
+    "coach.heartRate.zone2.effort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aerobic"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аэробная"
+          }
+        }
+      }
+    },
+    "coach.heartRate.zone3.effort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Темповая"
+          }
+        }
+      }
+    },
+    "coach.heartRate.zone4.effort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hard"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тяжёлая"
+          }
+        }
+      }
+    },
+    "coach.heartRate.zone5.effort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Максимум"
+          }
+        }
+      }
+    },
     "coach.heatRecoveryComplete": {
       "extractionState": "manual",
       "localizations": {
@@ -28685,6 +28770,23 @@
         }
       }
     },
+    "coach.proposal.change.activityDurationFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d мин"
+          }
+        }
+      }
+    },
     "coach.proposal.change.activityFormat": {
       "extractionState": "stale",
       "localizations": {
@@ -28719,6 +28821,74 @@
         }
       }
     },
+    "coach.proposal.change.addActivityNamed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить %@"
+          }
+        }
+      }
+    },
+    "coach.proposal.change.addBreakfast": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add breakfast"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить завтрак"
+          }
+        }
+      }
+    },
+    "coach.proposal.change.addDinner": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add dinner"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить ужин"
+          }
+        }
+      }
+    },
+    "coach.proposal.change.addLunch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add lunch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить обед"
+          }
+        }
+      }
+    },
     "coach.proposal.change.addMeal": {
       "extractionState": "stale",
       "localizations": {
@@ -28732,6 +28902,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Добавить приём пищи"
+          }
+        }
+      }
+    },
+    "coach.proposal.change.addSnack": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add snack"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить перекус"
           }
         }
       }
@@ -28810,13 +28997,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep your usual %@"
+            "value": "Add %@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оставить ваш обычный %@"
+            "value": "Добавить %@"
           }
         }
       }
@@ -28970,6 +29157,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пропустить %@"
+          }
+        }
+      }
+    },
+    "coach.proposal.change.walkDurationFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d мин"
           }
         }
       }
@@ -29842,18 +30046,18 @@
       }
     },
     "coach.proposal.review.apply": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use this plan"
+            "value": "Apply changes"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Принять план"
+            "value": "Применить изменения"
           }
         }
       }
@@ -29978,18 +30182,18 @@
       }
     },
     "coach.proposal.review.heroSupport": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Built from how your body feels, what’s done, and what’s still ahead."
+            "value": "Only a few adjustments — check each one below."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Учитывает состояние тела, уже сделанное и то, что ещё впереди."
+            "value": "Только небольшие правки — ниже можно проверить каждую."
           }
         }
       }
@@ -30097,35 +30301,52 @@
       }
     },
     "coach.proposal.review.selectedCountFormat": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d in plan"
+            "value": "Apply %d changes"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В плане: %d"
+            "value": "Применить %d изменения"
+          }
+        }
+      }
+    },
+    "coach.proposal.review.selectHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the changes you want to apply"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите изменения, которые хотите применить"
           }
         }
       }
     },
     "coach.proposal.review.showReason": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Why this helps"
+            "value": "Why this helps ›"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Почему это помогает"
+            "value": "Почему это поможет ›"
           }
         }
       }
@@ -30165,86 +30386,86 @@
       }
     },
     "coach.proposal.strategy.continueExistingPlan": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your plan already looks coherent for today."
+            "value": "Your current plan already fits today."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ваш план на сегодня уже выглядит согласованным."
+            "value": "Ваш текущий план уже подходит на сегодня."
           }
         }
       }
     },
     "coach.proposal.strategy.maintain": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You’re steady today — a familiar, balanced day keeps momentum."
+            "value": "Today should stay steady."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня стабильно — знакомый сбалансированный день сохранит ритм."
+            "value": "Сегодня лучше сохранить спокойный ритм."
           }
         }
       }
     },
     "coach.proposal.strategy.protectTomorrow": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tomorrow is the bigger day — today’s plan should support it."
+            "value": "Save energy for tomorrow’s load."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завтра день поважнее — сегодняшний план лучше поддержит его."
+            "value": "Бережём силы на завтрашнюю нагрузку."
           }
         }
       }
     },
     "coach.proposal.strategy.recover": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recovery is lower today — ease the load and keep movement light."
+            "value": "Today should be lighter."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Восстановление ниже — смягчим нагрузку и оставим лёгкое движение."
+            "value": "Сегодня лучше сделать легче."
           }
         }
       }
     },
     "coach.proposal.strategy.train": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You’re well recovered — today fits one of your strong training patterns."
+            "value": "You’re ready for a proper session."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вы хорошо восстановились — сегодня подходит ваш сильный тренировочный паттерн."
+            "value": "Можно дать нормальную тренировку."
           }
         }
       }
@@ -40551,6 +40772,23 @@
         }
       }
     },
+    "common.action.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить"
+          }
+        }
+      }
+    },
     "common.action.close": {
       "extractionState": "manual",
       "localizations": {
@@ -41709,6 +41947,18 @@
         }
       }
     },
+    "domain/code: %@ / %lld": {
+      "comment": "A label that shows the error domain and code of the error.",
+      "isCommentAutoGenerated": true,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "domain/code: %1$@ / %2$lld"
+          }
+        }
+      }
+    },
     "Eat normally at next meal": {
       "extractionState": "manual",
       "localizations": {
@@ -41769,6 +42019,10 @@
           }
         }
       }
+    },
+    "error: %@": {
+      "comment": "A label showing the error description from the startup failure",
+      "isCommentAutoGenerated": true
     },
     "fastFuel.item.curd.amount100g": {
       "extractionState": "manual",
@@ -55238,6 +55492,10 @@
         }
       }
     },
+    "last step: %@": {
+      "comment": "A label showing the last step that was completed in the startup process.",
+      "isCommentAutoGenerated": true
+    },
     "Last updated: May 2026": {
       "extractionState": "manual",
       "localizations": {
@@ -55272,6 +55530,10 @@
         }
       }
     },
+    "Loading": {
+      "comment": "A label describing a loading state.",
+      "isCommentAutoGenerated": true
+    },
     "login.action.openWeekFit": {
       "extractionState": "manual",
       "localizations": {
@@ -55285,6 +55547,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть WeekFit"
+          }
+        }
+      }
+    },
+    "login.action.openWeekFit.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue into WeekFit without an email account."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить в WeekFit без входа по email."
           }
         }
       }
@@ -56757,13 +57036,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create"
+            "value": "Add meal"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Создать"
+            "value": "Добавить блюдо"
           }
         }
       }
@@ -56808,13 +57087,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Combine ingredients into a meal"
+            "value": "Create from ingredients"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Объедините ингредиенты в прием пищи"
+            "value": "Собрать из ингредиентов"
           }
         }
       }
@@ -56842,13 +57121,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add nutrition and optional photo"
+            "value": "Save your own recipe"
           }
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
-            "value": "Добавьте точную питательность и фото по желанию"
+            "state": "translated",
+            "value": "Сохранить свой рецепт"
           }
         }
       }
@@ -59947,6 +60226,57 @@
         }
       }
     },
+    "meals.library.search.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matches"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ничего не найдено"
+          }
+        }
+      }
+    },
+    "meals.library.search.foods": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search foods"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск продуктов"
+          }
+        }
+      }
+    },
+    "meals.library.search.meals": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search meals"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск блюд"
+          }
+        }
+      }
+    },
     "meals.library.section.foods": {
       "extractionState": "manual",
       "localizations": {
@@ -60072,13 +60402,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saved Meals"
+            "value": "Meals"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сохранённые блюда"
+            "value": "Блюда"
           }
         }
       }
@@ -62023,6 +62353,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Еда записана?"
+          }
+        }
+      }
+    },
+    "notifications.morningPlanCheck.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — tap to review"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — нажмите, чтобы посмотреть"
+          }
+        }
+      }
+    },
+    "notifications.morningPlanCheck.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning plan check"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Утренняя проверка плана"
           }
         }
       }
@@ -74213,13 +74577,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add a workout, meal, or recovery block to shape this day."
+            "value": "Add a workout, meal, or recovery."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавьте тренировку, еду или восстановление, чтобы собрать этот день."
+            "value": "Добавьте тренировку, еду или восстановление."
           }
         }
       }
@@ -74230,13 +74594,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan this morning"
+            "value": "No activities yet"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Спланируйте утро"
+            "value": "Нет активностей"
           }
         }
       }
@@ -76634,6 +76998,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть детали."
+          }
+        }
+      }
+    },
+    "planner.timeline.anytime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anytime"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Когда угодно"
           }
         }
       }
@@ -84420,6 +84801,40 @@
         }
       }
     },
+    "settings.notifications.morningPlanCheck.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notify when Coach has morning adjustments ready"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уведомление, когда у коуча готовы утренние правки"
+          }
+        }
+      }
+    },
+    "settings.notifications.morningPlanCheck.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning Plan Check"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Утренняя проверка плана"
+          }
+        }
+      }
+    },
     "settings.notifications.recoverySuggestions.subtitle": {
       "extractionState": "manual",
       "localizations": {
@@ -85983,6 +86398,18 @@
           }
         }
       }
+    },
+    "store bytes: %lld": {
+      "comment": "A size of a file in bytes.",
+      "isCommentAutoGenerated": true
+    },
+    "store existed: %@": {
+      "comment": "A label showing whether the on-disk store existed when the app started.",
+      "isCommentAutoGenerated": true
+    },
+    "store: %@": {
+      "comment": "A label showing the URL of the on-disk store.",
+      "isCommentAutoGenerated": true
     },
     "support.back": {
       "extractionState": "manual",
@@ -88927,6 +89354,7 @@
     },
     "Switching account": {
       "comment": "A label for a view that indicates that the user is switching accounts.",
+      "extractionState": "stale",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
@@ -93553,6 +93981,10 @@
         }
       }
     },
+    "WeekFit couldn’t open local data": {
+      "comment": "A title for a view that shows when the on-disk store cannot be opened.",
+      "isCommentAutoGenerated": true
+    },
     "WeekFit relies on Apple Health and Apple Watch sleep tracking. Sometimes sleep data is not recorded even if you wear your watch overnight.": {
       "extractionState": "manual",
       "localizations": {
@@ -93695,6 +94127,10 @@
         }
       }
     },
+    "Your on-disk store was not deleted. Capture the STARTUP logs from Console, then we can fix the open failure.": {
+      "comment": "A description of the error that occurred when the app tried to open the user's on-disk data.",
+      "isCommentAutoGenerated": true
+    },
     "Zone Segment": {
       "extractionState": "manual",
       "localizations": {
@@ -93745,70 +94181,19 @@
       "comment": "A label for the coach insight section.",
       "isCommentAutoGenerated": true
     },
-    "settings.notifications.morningPlanCheck.title": {
+    "planner.empty.accessibilityHint": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Morning Plan Check"
+            "value": "Opens the activity planner for this day."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Утренняя проверка плана"
-          }
-        }
-      }
-    },
-    "settings.notifications.morningPlanCheck.subtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notify when Coach has morning adjustments ready"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Уведомление, когда у коуча готовы утренние правки"
-          }
-        }
-      }
-    },
-    "notifications.morningPlanCheck.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your morning plan check"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Утренняя проверка плана"
-          }
-        }
-      }
-    },
-    "notifications.morningPlanCheck.body": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ — tap to review"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ — нажмите, чтобы посмотреть"
+            "value": "Открывает планирование активностей на этот день."
           }
         }
       }

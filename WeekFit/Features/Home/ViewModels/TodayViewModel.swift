@@ -13,7 +13,9 @@ final class TodayViewModel: ObservableObject {
     private let lifecycleToken = "TodayViewModel"
 
     init() {
+        TodayStartupDiagnostics.child("TodayViewModel.init begin")
         WeekFitLifecycleTracker.attach(lifecycleToken)
+        TodayStartupDiagnostics.child("TodayViewModel.init complete")
     }
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 

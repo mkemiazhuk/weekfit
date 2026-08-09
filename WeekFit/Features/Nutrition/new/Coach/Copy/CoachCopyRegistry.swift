@@ -114,7 +114,7 @@ enum CoachCopyRegistry {
             guard let draft = CoachCopyRegistryScenarios.draft(for: scenario, input: input) else {
                 return nil
             }
-            return basePack(from: draft)
+            return basePack(from: LiveHeartRateCoachCopy.apply(to: draft, input: input))
         }
     }
 
@@ -209,36 +209,56 @@ enum CoachCopyRegistry {
             )
         }
 
+        let hrAssessment = LiveHeartRateCoachCopy.assessment(for: input)
+        let hrRecommendation = LiveHeartRateCoachCopy.recommendation(for: input)
+
         let recommendation: CoachBilingualText
-        switch input.durationBand {
-        case .extended, .long:
-            recommendation = .en(
-                "Patience in the middle miles — consistency beats spikes.",
-                "В середине главное — терпение, не рывки."
-            )
-        default:
-            recommendation = .en(
-                "Hold effort flat — speed up only when breathing stays easy.",
-                "Держите темп ровным — ускоряйтесь, только если дышится легко."
-            )
+        if let hrRecommendation {
+            recommendation = hrRecommendation
+        } else {
+            switch input.durationBand {
+            case .extended, .long:
+                recommendation = .en(
+                    "Patience in the middle miles — consistency beats spikes.",
+                    "В середине главное — терпение, не рывки."
+                )
+            default:
+                recommendation = .en(
+                    "Hold effort flat — speed up only when breathing stays easy.",
+                    "Держите темп ровным — ускоряйтесь, только если дышится легко."
+                )
+            }
         }
 
+        let applied = LiveHeartRateCoachCopy.apply(
+            to: CoachCopyRegistryScenarios.Draft(
+                assessment: hrAssessment ?? assessment,
+                recommendation: recommendation,
+                avoid: .en(
+                    "No early surges you'll regret later.",
+                    "Без ранних рывков — потом пожалеете."
+                ),
+                nextAction: .en(
+                    "Check legs and breathing in ten minutes.",
+                    "Через десять минут проверьте ноги и дыхание."
+                )
+            ),
+            input: input
+        )
+
         return BasePack(
-            assessment: .single(assessment),
-            recommendation: .single(recommendation),
-            avoid: .single(.en(
-                "No early surges you'll regret later.",
-                "Без ранних рывков — потом пожалеете."
-            )),
-            nextAction: .single(.en(
-                "Check legs and breathing in ten minutes.",
-                "Через десять минут проверьте ноги и дыхание."
-            ))
+            assessment: .single(applied.assessment),
+            recommendation: .single(applied.recommendation),
+            avoid: .single(applied.avoid),
+            nextAction: .single(applied.nextAction)
         )
     }
 
     private static func walkAfterHeavyLoadPack(input: CoachCopyBuildInput) -> BasePack {
-        let draft = CoachWalkAfterHeavyLoadCopy.draft(for: input)
+        let draft = LiveHeartRateCoachCopy.apply(
+            to: CoachWalkAfterHeavyLoadCopy.draft(for: input),
+            input: input
+        )
         return BasePack(
             assessment: .single(draft.assessment),
             recommendation: .single(draft.recommendation),

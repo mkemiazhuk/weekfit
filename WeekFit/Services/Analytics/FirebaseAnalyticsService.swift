@@ -27,7 +27,10 @@ final class FirebaseAnalyticsService: AnalyticsTracking, @unchecked Sendable {
 
         let firebaseParameters = Self.firebaseParameters(from: parameters)
         Analytics.logEvent(event.rawValue, parameters: firebaseParameters.isEmpty ? nil : firebaseParameters)
-        Crashlytics.crashlytics().log("event:\(event.rawValue)")
+        let breadcrumb = "event:\(event.rawValue)"
+        DispatchQueue.global(qos: .utility).async {
+            Crashlytics.crashlytics().log(breadcrumb)
+        }
     }
 
     func trackScreen(_ screen: AnalyticsScreen, parameters: [String: String]) {
@@ -40,7 +43,10 @@ final class FirebaseAnalyticsService: AnalyticsTracking, @unchecked Sendable {
         firebaseParameters[AnalyticsParameterScreenName] = screen.rawValue
         firebaseParameters[AnalyticsParameterScreenClass] = screen.rawValue
         Analytics.logEvent(AnalyticsEventScreenView, parameters: firebaseParameters)
-        Crashlytics.crashlytics().log("screen:\(screen.rawValue)")
+        let breadcrumb = "screen:\(screen.rawValue)"
+        DispatchQueue.global(qos: .utility).async {
+            Crashlytics.crashlytics().log(breadcrumb)
+        }
     }
 
     private static func firebaseParameters(from parameters: [String: String]) -> [String: Any] {

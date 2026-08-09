@@ -235,6 +235,7 @@ enum CoachEngine {
         return context
             .withConversationPhase(resolution)
             .withHasLoggedMealToday(CoachMorningOverviewPolicy.hasLoggedMeal(input: input))
+            .withLiveHeartRate(bpm: input.liveHeartRateBPM, zone: input.liveHeartRateZone)
     }
 
     // MARK: - Idle session phase

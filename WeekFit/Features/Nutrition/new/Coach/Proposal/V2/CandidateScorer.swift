@@ -18,6 +18,13 @@ enum CandidateScorer {
         if candidate.conflicts.contains(.missingLibraryMeal) { return nil }
         if candidate.conflicts.contains(.duplicateMovement) { return nil }
         if candidate.kind == .createPlannedActivity,
+           (strategy == .recover
+            || strategy == .protectTomorrow
+            || context.recoveryBand == .low),
+           isElevatedLoad(candidate) {
+            return nil
+        }
+        if candidate.kind == .createPlannedActivity,
            strategy == .recover || strategy == .protectTomorrow,
            isSerious(candidate) {
             return nil
@@ -182,7 +189,12 @@ enum CandidateScorer {
                 && candidate.confidence >= defaultSelectionConfidenceThreshold
                 && !context.stronglyRejectsWalk
         case .createPlannedActivity:
-            return false
+            // High-evidence habitual creates on train days start selected (user can deselect).
+            return candidate.defaultSelectionEligibility == .eligible
+                && strategy == .train
+                && context.contextFreshness == .high
+                && scored.score >= defaultSelectionScoreThreshold
+                && candidate.confidence >= defaultSelectionConfidenceThreshold
         case .createMealFromLibrary:
             return candidate.defaultSelectionEligibility == .eligible
                 && context.contextFreshness == .high
@@ -196,6 +208,26 @@ enum CandidateScorer {
     private static func isSerious(_ candidate: ProposalCandidate) -> Bool {
         if case .createPlannedActivity(let payload) = candidate.payload {
             return CoachActivityClassifier.isSeriousTraining(
+                CoachPlannedActivitySnapshot(
+                    id: candidate.id,
+                    date: payload.proposedDate,
+                    type: payload.activityType,
+                    title: payload.title,
+                    durationMinutes: payload.durationMinutes,
+                    icon: payload.icon,
+                    imageName: payload.imageName,
+                    isCompleted: false,
+                    isSkipped: false,
+                    source: "history"
+                )
+            )
+        }
+        return false
+    }
+
+    private static func isElevatedLoad(_ candidate: ProposalCandidate) -> Bool {
+        if case .createPlannedActivity(let payload) = candidate.payload {
+            return CoachActivityClassifier.isElevatedTrainingLoad(
                 CoachPlannedActivitySnapshot(
                     id: candidate.id,
                     date: payload.proposedDate,

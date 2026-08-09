@@ -206,6 +206,10 @@ struct CoachContext: Equatable, Sendable {
     let conversationPhase: CoachConversationPhase
     /// Human-readable resolver reason for logs and tests.
     let conversationPhaseReason: String
+    /// Live BPM while `sessionPhase == .during` (nil when unavailable).
+    let liveHeartRateBPM: Int?
+    /// Zone 1…5 while live (nil when BPM unavailable).
+    let liveHeartRateZone: Int?
 
     init(
         activityFamily: CoachActivityFamily,
@@ -231,7 +235,9 @@ struct CoachContext: Equatable, Sendable {
         isFocusHikeLike: Bool = false,
         hasLoggedMealToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
-        conversationPhaseReason: String = CoachConversationPhase.defaultReason
+        conversationPhaseReason: String = CoachConversationPhase.defaultReason,
+        liveHeartRateBPM: Int? = nil,
+        liveHeartRateZone: Int? = nil
     ) {
         self.activityFamily = activityFamily
         self.activityType = activityType
@@ -257,6 +263,8 @@ struct CoachContext: Equatable, Sendable {
         self.hasLoggedMealToday = hasLoggedMealToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
+        self.liveHeartRateBPM = liveHeartRateBPM
+        self.liveHeartRateZone = liveHeartRateZone
     }
 }
 
@@ -376,6 +384,19 @@ enum CoachActivityClassifier {
             let minutes = activity.effectiveDurationMinutes
             let load = inferredLoad(for: activity)
             return minutes >= 45 || load == .heavy || load == .extreme
+        }
+    }
+
+    /// Endurance / strength / racket work that should not be *added* when Recovery is dialed back.
+    /// Broader than `isSeriousTraining` — a 45-min ride is still load, even if not a long hard session.
+    nonisolated static func isElevatedTrainingLoad(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+        switch type(for: activity) {
+        case .cycling, .running, .swimming, .hiit,
+             .tennis, .squash,
+             .upperBody, .lowerBody, .core, .fullBody:
+            return true
+        case .walk, .stretching, .yoga, .breathing, .sauna, .none:
+            return false
         }
     }
 

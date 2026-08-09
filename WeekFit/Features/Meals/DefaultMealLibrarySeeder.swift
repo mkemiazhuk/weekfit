@@ -160,42 +160,168 @@ enum DefaultMealLibrarySeeder {
         return recipes.compactMap { buildMeal(from: $0, catalog: catalog) }
     }
 
-    /// Seeds once when the custom catalog is empty (or only has the old
-    /// meals.json starter copies). Does not re-seed after the user clears a
-    /// real library (flag stays set until local data reset).
+    /// Single-flight gate — `seedIfNeeded` is `@MainActor` but can still be re-entered
+    /// from nested sync calls (`init` → `refreshFromStorage`) before returning.
+    @MainActor private static var isSeeding = false
+
+    /// Seeds when the custom catalog is empty (or only has obsolete JSON-catalog copies).
+    ///
+    /// Persistence is **UserDefaults** (`CustomMealStore.storageKey`), not SwiftData.
+    /// The `seededKey` flag prevents re-seeding a non-empty user library. If the flag is
+    /// set but the catalog is empty (partial wipe / stuck flag), we recover starters once.
+    ///
+    /// Important: a catalog that already contains the **current** starter IDs must NOT be
+    /// treated as replaceable — that caused every startup to wipe+reinsert the same 9 meals.
     @MainActor
+    @discardableResult
     static func seedIfNeeded(
         settings: WeekFitUserSettings,
         defaults: UserDefaults = .standard
-    ) {
-        if defaults.bool(forKey: seededKey) { return }
+    ) -> Bool {
+        let run = UUID()
+        let accountMode = String(describing: AccountSessionController.shared.mode)
+
+        if isSeeding {
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "singleFlightInProgress",
+                detail: "account=\(accountMode)"
+            )
+            return false
+        }
+
+        isSeeding = true
+        defer { isSeeding = false }
+
+        MealsSeedDiagnostics.begin(
+            run: run,
+            detail: "account=\(accountMode) storage=\(CustomMealStore.storageKey) seededKey=\(seededKey)"
+        )
 
         let existing = settings.customMealsCatalog
-        let shouldReplace = existing.isEmpty
-            || isLegacyCatalogOnly(existing)
-            || isPreviousStarterOnly(existing)
+        MealsSeedDiagnostics.info("MEALS SEED preexistingCount=\(existing.count)", run: run)
+
+        let flagSet = defaults.bool(forKey: seededKey)
+        // Current starter-only catalogs are healthy — never wipe them on every launch.
+        let isCurrentStarterCatalog = isCurrentStarterCatalogOnly(existing)
+        let shouldReplace = existing.isEmpty || isLegacyCatalogOnly(existing)
+
+        if flagSet, !existing.isEmpty, !shouldReplace {
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "alreadySeededNonEmptyCatalog",
+                detail: "preexistingCount=\(existing.count) currentStarters=\(isCurrentStarterCatalog) account=\(accountMode)"
+            )
+            return false
+        }
+
+        if isCurrentStarterCatalog {
+            // Starters already present; just ensure the version flag is set.
+            defaults.set(true, forKey: seededKey)
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "currentStarterCatalogPresent",
+                detail: "preexistingCount=\(existing.count) account=\(accountMode)"
+            )
+            return false
+        }
+
+        if flagSet, !existing.isEmpty, shouldReplace {
+            MealsSeedDiagnostics.info(
+                "MEALS SEED replacing obsolete legacy count=\(existing.count)",
+                run: run
+            )
+        }
+
+        if flagSet, existing.isEmpty {
+            MealsSeedDiagnostics.info(
+                "MEALS SEED RECOVER emptyCatalogDespiteFlag — restoring starter library",
+                run: run
+            )
+        }
 
         guard shouldReplace else {
             defaults.set(true, forKey: seededKey)
-            return
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "userLibraryPresent",
+                detail: "preexistingCount=\(existing.count) flagSet=true account=\(accountMode)"
+            )
+            return false
         }
 
         let starter = buildStarterMeals()
-        guard !starter.isEmpty else { return }
+        MealsSeedDiagnostics.info("MEALS SEED sourceItems=\(starter.count)", run: run)
+        guard !starter.isEmpty else {
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "starterBuildReturnedEmpty",
+                detail: "ingredient catalog likely missing recipe IDs account=\(accountMode)"
+            )
+            return false
+        }
 
+        for meal in starter {
+            MealsSeedDiagnostics.info(
+                "MEALS SEED inserting item id=\(meal.id) title=\(meal.title)",
+                run: run
+            )
+        }
+        MealsSeedDiagnostics.info("MEALS SEED insertedCount=\(starter.count)", run: run)
+
+        MealsSeedDiagnostics.info("MEALS SEED save BEGIN", run: run)
+        // Synchronous encode → UserDefaults → in-memory, so callers never observe a torn catalog.
+        let encoded = CustomMealStore.encode(starter)
+        defaults.set(encoded, forKey: CustomMealStore.storageKey)
         settings.replaceCustomMealsCatalog(starter)
+        settings.setCustomMealsStorage(encoded)
+
+        let verified = CustomMealStore.load(
+            from: defaults.string(forKey: CustomMealStore.storageKey) ?? ""
+        )
+        let postSaveCount = verified.count
+        MealsSeedDiagnostics.info("MEALS SEED postSaveFetchCount=\(postSaveCount)", run: run)
+
+        guard postSaveCount == starter.count, postSaveCount > 0 else {
+            MealsSeedDiagnostics.error(
+                run: run,
+                operation: "verifyPersistedCatalog",
+                error: NSError(
+                    domain: "com.weekfit.app.mealsSeed",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Expected \(starter.count) persisted meals, found \(postSaveCount)."
+                    ]
+                )
+            )
+            return false
+        }
+
         defaults.set(true, forKey: seededKey)
-        // Drop obsolete flags if present.
         defaults.removeObject(forKey: "weekfit.defaultMealLibrary.seeded.v1")
         defaults.removeObject(forKey: "weekfit.defaultMealLibrary.seeded.v2")
+        MealsSeedDiagnostics.info("MEALS SEED save SUCCESS", run: run)
+        MealsSeedDiagnostics.info("MEALS SEED account=\(accountMode)", run: run)
+        MealsSeedDiagnostics.complete(
+            run: run,
+            detail: "persistedCount=\(postSaveCount) account=\(accountMode)"
+        )
+        return true
     }
 
     static func isLegacyCatalogOnly(_ meals: [Meals]) -> Bool {
         !meals.isEmpty && meals.allSatisfy { legacyCatalogMealIDs.contains($0.id) }
     }
 
-    static func isPreviousStarterOnly(_ meals: [Meals]) -> Bool {
+    /// True when every meal is one of the **current** v3 starter IDs (healthy post-seed state).
+    static func isCurrentStarterCatalogOnly(_ meals: [Meals]) -> Bool {
         !meals.isEmpty && meals.allSatisfy { allStarterIDs.contains($0.id) }
+    }
+
+    /// Obsolete helper name kept for tests / call sites that meant "starter IDs only".
+    static func isPreviousStarterOnly(_ meals: [Meals]) -> Bool {
+        isCurrentStarterCatalogOnly(meals)
     }
 
     private static func buildMeal(

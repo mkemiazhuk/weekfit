@@ -22,6 +22,10 @@ extension CoachActivityClassifier {
         isSeriousTraining(CoachPlannedActivitySnapshot(from: activity))
     }
 
+    static func isElevatedTrainingLoad(_ activity: PlannedActivity) -> Bool {
+        isElevatedTrainingLoad(CoachPlannedActivitySnapshot(from: activity))
+    }
+
     static func coachKind(for activity: PlannedActivity) -> CoachActivityKind {
         coachKind(for: CoachPlannedActivitySnapshot(from: activity))
     }

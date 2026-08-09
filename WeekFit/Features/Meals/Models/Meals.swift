@@ -523,7 +523,7 @@ enum MealBuilderTitleComposer {
         storedTitle: String,
         builderImageItems: [MealBuilderImageItem]?
     ) -> String {
-        compose(from: builderImageItems) ?? storedTitle
+        compose(from: builderImageItems) ?? localizedStoredTitle(storedTitle)
     }
 
     static func displaySubtitle(

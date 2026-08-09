@@ -26,15 +26,15 @@ enum MorningProposalStrategyCopy {
     static func englishFallback(for strategy: DailyStrategy) -> String {
         switch strategy {
         case .recover:
-            return "Your recovery is lower today, so I’d reduce the load and keep movement easy."
+            return "Today should be lighter."
         case .maintain:
-            return "You’re in a steady place today. A familiar, manageable day should keep momentum."
+            return "Today should stay steady."
         case .train:
-            return "You’re well recovered, and today fits one of your successful training patterns."
+            return "You’re ready for a proper session."
         case .protectTomorrow:
-            return "Tomorrow carries the bigger load, so today should support it rather than compete with it."
+            return "Save energy for tomorrow’s load."
         case .continueExistingPlan:
-            return "Your plan already looks coherent for today."
+            return "Your current plan already fits today."
         }
     }
 }

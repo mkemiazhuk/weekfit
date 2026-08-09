@@ -41,6 +41,21 @@ final class CoachActivityClassifierParityTests: XCTestCase {
         XCTAssertEqual(CoachActivityClassifier.family(for: walk), .recovery)
         XCTAssertEqual(CoachActivityClassifier.coachKind(for: walk), .recovery)
         XCTAssertFalse(CoachActivityClassifier.isSeriousTraining(walk))
+        XCTAssertFalse(CoachActivityClassifier.isElevatedTrainingLoad(walk))
+    }
+
+    func testModerateCyclingIsElevatedEvenWhenNotSerious() {
+        let ride = makeActivity(
+            title: "Morning Ride",
+            type: "workout",
+            icon: "figure.outdoor.cycle",
+            durationMinutes: 45,
+            imageName: "workout-cycling"
+        )
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: ride), .cycling)
+        XCTAssertFalse(CoachActivityClassifier.isSeriousTraining(ride))
+        XCTAssertTrue(CoachActivityClassifier.isElevatedTrainingLoad(ride))
     }
 
     func testHikeMapsToWalkTypeAndRecoveryKind() {

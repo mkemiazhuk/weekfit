@@ -209,11 +209,12 @@ struct ExpertCoachView: View {
 
     private var coachCard: some View {
         let ui = coachUIPresentation
+        let accent = ui?.accentColor ?? WeekFitTheme.coachAccent
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: ui?.icon ?? "sparkles")
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.058))
+                .foregroundStyle(accent.opacity(0.058))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
@@ -291,7 +292,7 @@ struct ExpertCoachView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .weekFitPrimaryCard(
-            accent: WeekFitTheme.coachAccent,
+            accent: accent,
             featured: true
         )
     }
@@ -301,7 +302,22 @@ struct ExpertCoachView: View {
         let accent = isLimitedRecovery
             ? textSecondary.opacity(0.72)
             : (coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
-        let label = coachUIPresentation?.statusLabel ?? ""
+        let baseLabel = coachUIPresentation?.statusLabel ?? ""
+        let bpm = WeekFitActivityCoordinator.shared.liveHeartRateBPM
+        let zone = WeekFitActivityCoordinator.shared.liveHeartRateZone
+        let label: String = {
+            guard !isLimitedRecovery, let bpm, let zone else { return baseLabel }
+            let isLiveChrome: Bool = {
+                switch coachUIPresentation?.semanticColor {
+                case .live, .liveZone1, .liveZone2, .liveZone3, .liveElevated, .liveCritical:
+                    return true
+                default:
+                    return false
+                }
+            }()
+            guard isLiveChrome else { return baseLabel }
+            return HeartRateZones.badgeLabel(zone: zone, bpm: bpm)
+        }()
 
         return HStack(spacing: isLimitedRecovery ? 5 : 8) {
             Image(systemName: isLimitedRecovery ? "moon.zzz.fill" : (coachUIPresentation?.icon ?? "sparkles"))
@@ -459,14 +475,16 @@ struct ExpertCoachView: View {
         title: String,
         subtitle: String
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 15.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(textPrimary)
 
-            Text(subtitle)
-                .font(WeekFitType.secondary)
-                .foregroundStyle(textSecondary)
+            // Same eyebrow language as coachHeroTextBlock labels inside the hero card.
+            Text(subtitle.uppercased())
+                .font(.system(size: 9.5, weight: .black, design: .rounded))
+                .tracking(1.1)
+                .foregroundStyle(textSecondary.opacity(0.42))
         }
     }
 
@@ -511,6 +529,9 @@ enum CoachPalette {
     static let stable = WeekFitLightTokens.success
     static let protection = WeekFitTheme.coachAccent
     static let stress = WeekFitLightTokens.critical
+    /// Live HR zone accents (aliases of `HeartRateZones.color`).
+    static let liveElevated = HeartRateZones.color(for: 4)
+    static let liveCritical = HeartRateZones.color(for: 5)
 
     static let good = stable
     static let activity = training

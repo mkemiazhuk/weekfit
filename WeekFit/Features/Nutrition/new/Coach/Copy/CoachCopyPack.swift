@@ -71,6 +71,10 @@ struct CoachCopyBuildInput: Equatable, Sendable {
     let mealWindowOpen: Bool
     /// Presentation-only — heat, long activity, or critical dehydration risk.
     let dehydrationRisk: Bool
+    /// Live BPM while session is during (nil when unavailable).
+    let liveHeartRateBPM: Int?
+    /// Zone 1…5 while live (nil when unavailable).
+    let liveHeartRateZone: Int?
 
     var activityType: CoachActivityType { modifiers.activityType }
     var dayLoad: CoachDayLoadBand { modifiers.dayLoad }
@@ -125,7 +129,9 @@ struct CoachCopyBuildInput: Equatable, Sendable {
                 context: context,
                 scenario: resolution.scenario,
                 safetyAlert: resolution.safetyAlert
-            )
+            ),
+            liveHeartRateBPM: context.liveHeartRateBPM,
+            liveHeartRateZone: context.liveHeartRateZone
         )
     }
 
@@ -176,7 +182,9 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         focusActivity: CoachPlannedActivitySummary? = nil,
         isFocusHikeLike: Bool = false,
         mealWindowOpen: Bool = true,
-        dehydrationRisk: Bool = false
+        dehydrationRisk: Bool = false,
+        liveHeartRateBPM: Int? = nil,
+        liveHeartRateZone: Int? = nil
     ) {
         self.scenario = scenario
         self.modifiers = modifiers
@@ -199,5 +207,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         self.isFocusHikeLike = isFocusHikeLike
         self.mealWindowOpen = mealWindowOpen
         self.dehydrationRisk = dehydrationRisk
+        self.liveHeartRateBPM = liveHeartRateBPM
+        self.liveHeartRateZone = liveHeartRateZone
     }
 }

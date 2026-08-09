@@ -8,6 +8,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         MorningProposalStore.resetAllForTests()
         CoachObservationStore.resetForTests()
         ProposalBehavioralPreferences.resetAllForTests()
+        ProposalOfferHistoryStore.resetAllForTests()
         super.tearDown()
     }
 
@@ -261,6 +262,116 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             )
         )
         XCTAssertFalse(CandidateScorer.shouldDefaultSelect(scored, context: context, strategy: .train))
+    }
+
+    func testDefaultSelectionHighEvidenceHabitSelectedOnTrain() {
+        let context = makeContext(recoveryBand: .good, yesterdayHeavy: false, tomorrowDemand: .none, openCount: 0)
+        let candidate = ProposalCandidate(
+            id: "hist-ride",
+            source: .historicalActivity,
+            kind: .createPlannedActivity,
+            payload: .createPlannedActivity(
+                CreatePlannedActivityPayload(
+                    proposedDate: Date(), durationMinutes: 80, title: "Morning Ride", activityType: "workout",
+                    icon: "figure.outdoor.cycle", imageName: "", colorRed: 0, colorGreen: 0, colorBlue: 0,
+                    sourceTemplateDayKey: nil
+                )
+            ),
+            compatibleStrategies: [.train],
+            physiologicalFit: .strong,
+            confidence: 0.85,
+            burden: .high,
+            reasonCodes: [.similarDaySupport],
+            conflicts: [],
+            defaultSelectionEligibility: .eligible,
+            sortTime: Date(),
+            evidenceScenarioKey: nil,
+            identityKey: "hist:ride"
+        )
+        let scored = ScoredCandidate(
+            candidate: candidate,
+            breakdown: CandidateScoreBreakdown(
+                physiologicalFit: 22, strategyFit: 18, historicalSuccess: 14,
+                behavioralLikelihood: 10, tomorrowProtection: 0, usualTimeFit: 6,
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+            )
+        )
+        XCTAssertTrue(CandidateScorer.shouldDefaultSelect(scored, context: context, strategy: .train))
+        XCTAssertFalse(CandidateScorer.shouldDefaultSelect(scored, context: context, strategy: .maintain))
+    }
+
+    func testOptionalCreateCooloffSuppressesRepeatOffer() {
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            tomorrowDemand: .none,
+            openCount: 0,
+            sleepPresence: .present,
+            freshness: .high,
+            mode: .compose
+        )
+        let candidate = ProposalCandidate(
+            id: "hist-type|Morning Ride",
+            source: .historicalActivity,
+            kind: .createPlannedActivity,
+            payload: .createPlannedActivity(
+                CreatePlannedActivityPayload(
+                    proposedDate: date(2026, 7, 29, 10, 0),
+                    durationMinutes: 80,
+                    title: "Morning Ride",
+                    activityType: "workout",
+                    icon: "figure.outdoor.cycle",
+                    imageName: "",
+                    colorRed: 0,
+                    colorGreen: 0,
+                    colorBlue: 0,
+                    sourceTemplateDayKey: nil
+                )
+            ),
+            compatibleStrategies: [.train],
+            physiologicalFit: .strong,
+            confidence: 0.9,
+            burden: .high,
+            reasonCodes: [.similarDaySupport],
+            conflicts: [],
+            defaultSelectionEligibility: .eligible,
+            sortTime: date(2026, 7, 29, 10, 0),
+            evidenceScenarioKey: nil,
+            identityKey: "hist:type|Morning Ride"
+        )
+        let scored = ScoredCandidate(
+            candidate: candidate,
+            breakdown: CandidateScoreBreakdown(
+                physiologicalFit: 42, strategyFit: 18, historicalSuccess: 14,
+                behavioralLikelihood: 10, tomorrowProtection: 0, usualTimeFit: 6,
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+            )
+        )
+
+        ProposalOfferHistoryStore.recordOffers(
+            dayKey: "2026-07-28",
+            changes: [
+                CoachProposedChange(
+                    id: candidate.id,
+                    kind: .createPlannedActivity,
+                    reasonCode: .similarDaySupport,
+                    payload: candidate.payload,
+                    defaultSelected: true,
+                    isSelected: true,
+                    sortTime: candidate.sortTime,
+                    evidenceScenarioKey: nil,
+                    candidateSource: .historicalActivity,
+                    scoreTotal: scored.score
+                )
+            ],
+            now: date(2026, 7, 28, 8, 0)
+        )
+
+        XCTAssertTrue(ProposalRepetitionGuard.shouldSuppress(candidate, context: context))
+
+        let composed = PlanComposer.compose(scored: [scored], context: context, strategy: .train)
+        XCTAssertFalse(composed.scoredCandidates.contains(where: { $0.id == candidate.id }))
+        XCTAssertTrue(composed.validationNotes.contains(where: { $0.hasPrefix("repeat_cooloff:") }))
     }
 
     // MARK: - Correctness regressions
@@ -709,6 +820,45 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         }
     }
 
+    func testLowRecoveryDoesNotInventCyclingFromHistory() {
+        let now = date(2026, 7, 31, 8, 0) // Friday
+        let rideTemplate = SimilarDayTemplate(
+            dayKey: "2026-07-24",
+            recoveryBand: .good,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "ride-hist",
+                    date: date(2026, 7, 24, 10, 0),
+                    type: "workout",
+                    title: "Morning Ride",
+                    durationMinutes: 45,
+                    icon: "figure.outdoor.cycle",
+                    imageName: "workout-cycling",
+                    isCompleted: true,
+                    isSkipped: false,
+                    source: "planner"
+                )
+            ]
+        )
+        let proposal = MorningProposalEngine.generate(
+            input: makeEngineInput(
+                now: now,
+                recoveryBand: .low,
+                yesterdayHeavy: true,
+                tomorrowDemand: .none,
+                today: [],
+                templates: [rideTemplate]
+            )
+        )
+        XCTAssertFalse(proposal.changes.contains {
+            guard case .createPlannedActivity(let p) = $0.payload else { return false }
+            let blob = "\(p.title) \(p.activityType)".lowercased()
+            return blob.contains("ride") || blob.contains("cycl") || blob.contains("bike")
+        })
+    }
+
     func testWeekdayWithoutWalkHabitDoesNotInventEveningWalk() {
         let now = date(2026, 7, 31, 8, 0) // Friday
         let proposal = MorningProposalEngine.generate(
@@ -765,11 +915,29 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             )
         )
         XCTAssertFalse(proposal.changes.contains { $0.kind == .createRecoveryWalk })
-        // Soft cold-start tips must not surface Morning Adjustments on Today.
-        if proposal.changes.filter({ $0.kind != .guidanceOnly }).isEmpty {
+
+        // Soft body tips must not become Review inventory on cold start.
+        // Empty-library fuel tips (and weather) may still surface as actionable guidance.
+        let softGuidance = proposal.changes.filter { change in
+            guard case .guidanceOnly(let payload) = change.payload else { return false }
+            switch payload.guidanceCode {
+            case .listenToBodyOnLowReadiness,
+                 .easeIntoFirstEffort,
+                 .hydrateThroughMorning,
+                 .fuelBeforeSession,
+                 .protectTomorrowFreshness:
+                return true
+            default:
+                return false
+            }
+        }
+        XCTAssertTrue(softGuidance.isEmpty, "Soft cold-start tips must not surface as Morning Adjustments inventory")
+
+        let mutating = proposal.changes.filter { $0.kind != .guidanceOnly }
+        if mutating.isEmpty, !MorningProposalPresenter.hasConfidentProposal(proposal) {
             XCTAssertEqual(proposal.status, .noChangesNeeded)
             XCTAssertEqual(MorningProposalPresenter.chromeState(for: proposal), .hidden)
-        } else {
+        } else if !mutating.isEmpty || MorningProposalPresenter.hasConfidentProposal(proposal) {
             XCTAssertEqual(proposal.status, .proposalReady)
             XCTAssertNotEqual(MorningProposalPresenter.chromeState(for: proposal), .hidden)
         }

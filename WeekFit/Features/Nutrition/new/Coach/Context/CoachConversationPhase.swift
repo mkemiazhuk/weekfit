@@ -47,7 +47,9 @@ extension CoachContext {
             isFocusHikeLike: isFocusHikeLike,
             hasLoggedMealToday: hasLoggedMealToday,
             conversationPhase: resolution.phase,
-            conversationPhaseReason: resolution.reason
+            conversationPhaseReason: resolution.reason,
+            liveHeartRateBPM: liveHeartRateBPM,
+            liveHeartRateZone: liveHeartRateZone
         )
     }
 
@@ -76,7 +78,42 @@ extension CoachContext {
             isFocusHikeLike: isFocusHikeLike,
             hasLoggedMealToday: hasLoggedMealToday,
             conversationPhase: conversationPhase,
-            conversationPhaseReason: conversationPhaseReason
+            conversationPhaseReason: conversationPhaseReason,
+            liveHeartRateBPM: liveHeartRateBPM,
+            liveHeartRateZone: liveHeartRateZone
+        )
+    }
+
+    func withLiveHeartRate(bpm: Int?, zone: Int?) -> CoachContext {
+        // Only surface live HR while the focused session is in progress.
+        let applies = sessionPhase == .during
+        return CoachContext(
+            activityFamily: activityFamily,
+            activityType: activityType,
+            activityState: activityState,
+            sessionPhase: sessionPhase,
+            durationBand: durationBand,
+            dayLoadBand: dayLoadBand,
+            completedSeriousActivities: completedSeriousActivities,
+            fuelState: fuelState,
+            hydrationState: hydrationState,
+            tomorrowDemand: tomorrowDemand,
+            timeOfDay: timeOfDay,
+            tomorrowWorkout: tomorrowWorkout,
+            focusActivityID: focusActivityID,
+            focusSource: focusSource,
+            minutesUntilStart: minutesUntilStart,
+            minutesSinceEnd: minutesSinceEnd,
+            dayReadiness: dayReadiness,
+            lastCompletedSeriousActivityType: lastCompletedSeriousActivityType,
+            completedWalkToday: completedWalkToday,
+            completedHeatToday: completedHeatToday,
+            isFocusHikeLike: isFocusHikeLike,
+            hasLoggedMealToday: hasLoggedMealToday,
+            conversationPhase: conversationPhase,
+            conversationPhaseReason: conversationPhaseReason,
+            liveHeartRateBPM: applies ? bpm : nil,
+            liveHeartRateZone: applies ? zone : nil
         )
     }
 }

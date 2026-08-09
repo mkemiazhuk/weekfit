@@ -13,7 +13,7 @@ enum PlanTimelineCategory: Equatable {
         case .recovery:
             return Color(red: 0.66, green: 0.58, blue: 0.86)
         case .nutrition:
-            return Color(red: 0.50, green: 0.74, blue: 0.54)
+            return WeekFitProgressRingColor.nutrition
         }
     }
 

@@ -154,7 +154,8 @@ enum QuickLogActivitySync {
         case .drink:
             return (0.25, 0.55, 0.95)
         case .meal, .snack:
-            return (0.50, 0.74, 0.54)
+            // Match Today nutrition ring / WeekFitLightTokens.nutrition (#E58D32).
+            return (0.898, 0.553, 0.196)
         }
     }
 }

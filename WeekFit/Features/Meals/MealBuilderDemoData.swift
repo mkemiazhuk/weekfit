@@ -76,12 +76,12 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "base_chickpeas": "Нут",
         "base_black_beans": "Чёрная фасоль",
         "base_soba_noodles": "Соба",
-        "base_corn_tortilla": "Кукурузная тортилья",
+        "base_corn_tortilla": "Тортилья",
         "base_pita": "Пита",
         "base_brown_rice": "Коричневый рис",
         "base_bulgur": "Булгур",
         "base_plantain": "Плантайн",
-        "base_corn": "Кукуруза",
+        "base_corn": "Кукуруза консервированная",
         "protein_chicken": "Курица",
         "protein_turkey": "Индейка",
         "protein_pork": "Свинина",
@@ -97,23 +97,26 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "protein_tofu": "Тофу",
         "protein_tempeh": "Темпе",
         "protein_paneer": "Панир",
-        "protein_tuna": "Тунец",
+        "protein_tuna": "Тунец консервированный",
         "protein_edamame": "Эдамаме",
         "protein_halloumi": "Халлуми",
         "protein_scallops": "Гребешки",
         "protein_sardines": "Сардины",
         "protein_mussels": "Мидии",
+        "protein_quail_egg": "Перепелиное яйцо",
         "veg_broccoli": "Брокколи",
         "veg_spinach": "Шпинат",
         "veg_tomatoes": "Помидоры",
         "veg_cucumber": "Огурец",
         "veg_bell_pepper": "Болгарский перец",
-        "veg_lettuce": "Салат",
+        "veg_lettuce": "Айсберг салат",
+        "veg_arugula": "Руккола",
+        "veg_celery": "Сельдерей",
         "veg_carrot": "Морковь",
         "veg_red_onion": "Красный лук",
         "veg_mushrooms": "Грибы",
         "veg_asparagus": "Спаржа",
-        "veg_zucchini": "Цукини",
+        "veg_zucchini": "Кабачок",
         "veg_eggplant": "Баклажан",
         "veg_cauliflower": "Цветная капуста",
         "veg_cabbage": "Капуста",
@@ -165,7 +168,9 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "extra_peach": "Персик",
         "extra_nectarine": "Нектарин",
         "extra_watermelon": "Арбуз",
-        "extra_mixed_nuts": "Смесь орехов"
+        "extra_mixed_nuts": "Смесь орехов",
+        "extra_pork_ham": "Ветчина свиная",
+        "extra_chicken_ham": "Ветчина куриная"
     ]
 }
 
@@ -591,7 +596,7 @@ enum MealBuilderDemoData {
 
         .init(
             id: "base_corn_tortilla",
-            title: "Corn Tortilla",
+            title: "Tortilla",
             imageName: "ingredient-corn-tortilla",
             category: .base,
             defaultGrams: 50,
@@ -691,7 +696,7 @@ enum MealBuilderDemoData {
 
         .init(
             id: "base_corn",
-            title: "Corn",
+            title: "Canned Corn",
             imageName: "ingredient-corn",
             category: .base,
             defaultGrams: 120,
@@ -932,6 +937,26 @@ enum MealBuilderDemoData {
         ),
 
         .init(
+            id: "protein_quail_egg",
+            title: "Quail Egg",
+            imageName: "ingredient-quail-egg",
+            category: .protein,
+            defaultGrams: 48,
+            caloriesPer100g: 158,
+            proteinPer100g: 13.0,
+            carbsPer100g: 0.4,
+            fatsPer100g: 11.1,
+            fiberPer100g: 0,
+            visualSize: 55,
+            visualDensity: 0.18,
+            supportsStandalonePresentation: true,
+            offsetX: 34,
+            offsetY: 10,
+            rotation: 6,
+            zIndex: 3
+        ),
+
+        .init(
             id: "protein_cottage_cheese",
             title: "Cottage Cheese",
             imageName: "ingredient-cottage-cheese",
@@ -1013,7 +1038,7 @@ enum MealBuilderDemoData {
 
         .init(
             id: "protein_tuna",
-            title: "Tuna",
+            title: "Canned Tuna",
             imageName: "ingredient-tuna",
             category: .protein,
             defaultGrams: 120,
@@ -1174,6 +1199,46 @@ enum MealBuilderDemoData {
         ),
 
         .init(
+            id: "veg_arugula",
+            title: "Arugula",
+            imageName: "ingredient-arugula",
+            category: .vegetables,
+            defaultGrams: 50,
+            caloriesPer100g: 25,
+            proteinPer100g: 2.6,
+            carbsPer100g: 3.7,
+            fatsPer100g: 0.7,
+            fiberPer100g: 1.6,
+            visualSize: 68,
+            visualDensity: 1.40,
+            supportsStandalonePresentation: true,
+            offsetX: 26,
+            offsetY: -46,
+            rotation: -3,
+            zIndex: 2
+        ),
+
+        .init(
+            id: "veg_celery",
+            title: "Celery",
+            imageName: "ingredient-celery",
+            category: .vegetables,
+            defaultGrams: 80,
+            caloriesPer100g: 16,
+            proteinPer100g: 0.7,
+            carbsPer100g: 3.0,
+            fatsPer100g: 0.2,
+            fiberPer100g: 1.6,
+            visualSize: 72,
+            visualDensity: 0.55,
+            supportsStandalonePresentation: true,
+            offsetX: 22,
+            offsetY: -48,
+            rotation: 8,
+            zIndex: 2
+        ),
+
+        .init(
             id: "veg_tomatoes",
             title: "Tomatoes",
             imageName: "ingredient-tomatoes",
@@ -1235,7 +1300,7 @@ enum MealBuilderDemoData {
 
         .init(
             id: "veg_lettuce",
-            title: "Lettuce",
+            title: "Iceberg Lettuce",
             imageName: "ingredient-lettuce",
             category: .vegetables,
             defaultGrams: 70,
@@ -2392,6 +2457,46 @@ enum MealBuilderDemoData {
             offsetX: 48,
             offsetY: -18,
             rotation: -4,
+            zIndex: 5
+        ),
+
+        .init(
+            id: "extra_pork_ham",
+            title: "Pork Ham",
+            imageName: "ingredient-pork-ham",
+            category: .extras,
+            defaultGrams: 40,
+            caloriesPer100g: 145,
+            proteinPer100g: 21.0,
+            carbsPer100g: 1.5,
+            fatsPer100g: 5.5,
+            fiberPer100g: 0,
+            visualSize: 56,
+            visualDensity: 0.22,
+            supportsStandalonePresentation: true,
+            offsetX: 42,
+            offsetY: -18,
+            rotation: 6,
+            zIndex: 5
+        ),
+
+        .init(
+            id: "extra_chicken_ham",
+            title: "Chicken Ham",
+            imageName: "ingredient-chicken-ham",
+            category: .extras,
+            defaultGrams: 40,
+            caloriesPer100g: 110,
+            proteinPer100g: 20.0,
+            carbsPer100g: 1.0,
+            fatsPer100g: 2.5,
+            fiberPer100g: 0,
+            visualSize: 56,
+            visualDensity: 0.22,
+            supportsStandalonePresentation: true,
+            offsetX: 44,
+            offsetY: -16,
+            rotation: -5,
             zIndex: 5
         )
     ]

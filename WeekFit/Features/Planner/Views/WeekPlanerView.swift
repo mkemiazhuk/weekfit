@@ -42,6 +42,7 @@ private struct WeekPlannerLiveQueryView: View {
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.tabIsActive) private var tabIsActive
+    @Environment(\.weekFitPalette) private var palette
 
     @StateObject private var userSettings = WeekFitUserSettings.shared
 
@@ -119,115 +120,55 @@ private struct WeekPlannerLiveQueryView: View {
 
         GeometryReader { proxy in
             let screenWidth = UIScreen.main.bounds.width
-            
-            ZStack {
-                WeekFitScreenContainer {
-                    Group {
-                        if !viewModel.showAddActivity {
-                            WeekFitScreenHeader(
-                                title: WeekFitLocalizedString("planner.week.title"),
-                                subtitle: WeekFitLocalizedString("planner.week.subtitle"),
-                                initials: userSettings.profileInitials,
-                                hasProfileName: userSettings.hasProfileName,
-                                showAvatar: true
-                            ) {
-                                showProfile = true
-                            }
-                        }
-                    }
-                } content: {
-                    plannerContent(
-                        activitiesRevision: activitiesRevision,
-                        timelineItems: timelineItems,
-                        selectedDayKind: selectedDayKind
-                    )
-                    // Light sheet stage: keep plan mounted (scroll state) but fully hide chrome.
-                    .opacity(
-                        viewModel.showAddActivity && WeekFitPaletteStore.current.isLight ? 0 : 1
-                    )
+
+            WeekFitScreenContainer {
+                WeekFitScreenHeader(
+                    title: WeekFitLocalizedString("planner.week.title"),
+                    subtitle: WeekFitLocalizedString("planner.week.subtitle"),
+                    initials: userSettings.profileInitials,
+                    hasProfileName: userSettings.hasProfileName,
+                    showAvatar: true
+                ) {
+                    showProfile = true
                 }
-                .blur(
-                    radius: viewModel.showAddActivity
-                        ? (WeekFitPaletteStore.current.isLight ? 0 : 8)
-                        : 0
+            } content: {
+                plannerContent(
+                    activitiesRevision: activitiesRevision,
+                    timelineItems: timelineItems,
+                    selectedDayKind: selectedDayKind
                 )
-                .opacity(
-                    viewModel.showAddActivity
-                        ? (WeekFitPaletteStore.current.isLight ? 1 : 0.22)
-                        : 1
-                )
-                .allowsHitTesting(!viewModel.showAddActivity)
-                // When the add sheet is open in Dark Mode, fill the tab-bar band too so the
-                // undimmed gap under the card shows blurred plan — not solid gray.
-                .padding(
-                    .bottom,
-                    viewModel.showAddActivity && !WeekFitPaletteStore.current.isLight
-                        ? 0
-                        : WeekFitScreenLayout.tabBarClearance
-                )
-                .frame(width: screenWidth, height: proxy.size.height, alignment: .top)
-                .clipped()
-
-                if viewModel.showAddActivity {
-                    let isLight = WeekFitPaletteStore.current.isLight
-
-                    VStack(spacing: 0) {
-                        Group {
-                            if isLight {
-                                // Bright Apple-style stage: soft ivory frost over blur —
-                                // obscures calendar chrome without a muddy black veil.
-                                ZStack {
-                                    WeekFitLightTokens.backgroundElevated.opacity(0.88)
-                                    Color.white.opacity(0.28)
-                                }
-                            } else {
-                                Color.black.opacity(0.58)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            viewModel.closeAddSheet()
-                        }
-
-                        // Transparent band above the floating tab bar.
-                        Color.clear
-                            .frame(height: WeekFitScreenLayout.tabBarClearance)
-                            .allowsHitTesting(false)
-                    }
-                    .ignoresSafeArea()
-
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-
-                        PlanAddActivitySheet(
-                            viewModel: viewModel,
-                            plannedActivities: plannedActivities,
-                            modelContext: modelContext,
-                            activityRemindersEnabled: activityRemindersEnabled,
-                            completionCheckInsEnabled: completionCheckInsEnabled
-                        )
-                        .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .ignoresSafeArea(edges: .bottom)
-                    .zIndex(10)
-                }
+                // Rebind when Light/Dark / Night Comfort flips — Theme.* alone can
+                // leave day-title ink stuck on the previous appearance.
+                .id(palette.appearanceInvalidationToken)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
+            .frame(width: screenWidth, height: proxy.size.height, alignment: .top)
             .clipped()
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.plan")
         .id("planner-keepalive")
-        .animation(
-            .spring(response: 0.42, dampingFraction: 0.90, blendDuration: 0.08),
-            value: viewModel.showAddActivity
-        )
         .weekFitSettingsSheet(isPresented: $showProfile)
+        .sheet(
+            isPresented: $viewModel.showAddActivity,
+            onDismiss: {
+                viewModel.editingActivity = nil
+                viewModel.selectedSlot = nil
+            }
+        ) {
+            PlanAddActivitySheet(
+                viewModel: viewModel,
+                plannedActivities: plannedActivities,
+                modelContext: modelContext,
+                activityRemindersEnabled: activityRemindersEnabled,
+                completionCheckInsEnabled: completionCheckInsEnabled
+            )
+            .environmentObject(languageManager)
+        }
         .sheet(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
                 .environmentObject(languageManager)
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .sheet(item: $selectedFood) { food in
             CustomFoodDetailsView(
@@ -235,6 +176,10 @@ private struct WeekPlannerLiveQueryView: View {
                 existingMeals: customMeals
             )
             .environmentObject(languageManager)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            )
         }
         .fullScreenCover(isPresented: $showNutritionDetails) {
             NutritionDetailsView(
@@ -710,6 +655,7 @@ private struct WeekOverviewLegend: View {
         Entry(titleKey: "planner.legend.recovery", color: Color(hex: "#59D98E"))
     ]
 
+    @Environment(\.weekFitPalette) private var palette
     @ScaledMetric(relativeTo: .caption2) private var fontSize: CGFloat = 10.5
     @ScaledMetric(relativeTo: .caption2) private var dotSize: CGFloat = 5
 
@@ -743,7 +689,7 @@ private struct WeekOverviewLegend: View {
 
             Text(title)
                 .font(.system(size: fontSize, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
+                .foregroundStyle(palette.textTertiary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 .allowsTightening(true)
@@ -769,7 +715,9 @@ private extension WeekPlannerLiveQueryView {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(selectedDayKind.legendLabel)
                         .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.primaryText)
+                        // Environment palette — not WeekFitTheme store — so Light ink
+                        // cannot stick as white after an appearance flip.
+                        .foregroundStyle(palette.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.88)
                         .fixedSize(horizontal: false, vertical: true)
@@ -777,7 +725,7 @@ private extension WeekPlannerLiveQueryView {
                     if selectedDayActivities.isEmpty {
                         Text(WeekFitLocalizedString("planner.daySubtitle.empty"))
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+                            .foregroundStyle(palette.textSecondary)
                             .lineLimit(2)
                             .minimumScaleFactor(0.86)
                             .fixedSize(horizontal: false, vertical: true)
@@ -790,25 +738,15 @@ private extension WeekPlannerLiveQueryView {
 
                 if !selectedDayActivities.isEmpty {
                     Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         viewModel.startAdding(
                             at: viewModel.nextAvailableSlot(from: plannedActivities)
                         )
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(WeekFitTheme.primaryGreen.opacity(0.92))
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle()
-                                    .fill(WeekFitTheme.primaryGreen.opacity(0.14))
-                            )
-                            .overlay {
-                                Circle()
-                                    .stroke(WeekFitTheme.primaryGreen.opacity(0.22), lineWidth: 1)
-                            }
+                            .font(.system(size: 15, weight: .semibold))
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PlanHeaderAddButtonStyle())
                     .accessibilityLabel(WeekFitLocalizedString("planner.sheet.addTitle"))
                 }
             }
@@ -859,39 +797,40 @@ private extension WeekPlannerLiveQueryView {
                                     .listRowSeparator(.hidden)
                             }
 
-                            PlanTimelineRow(
-                                activity: activity,
-                                displayTitle: timelineTitle(for: item),
-                                metadata: PlanTimelineMetadataBuilder.metadata(
-                                    for: item,
-                                    status: status,
-                                    formattedDuration: formattedDuration
-                                ),
-                                customMeals: customMeals,
-                                time: timelineTime(for: item),
-                                category: category,
-                                status: status,
-                                emphasis: emphasis,
-                                nextEmphasis: timelineNextEmphasis(
-                                    at: index,
-                                    in: timelineItems,
-                                    focusItemID: timelineFocusItemID
-                                ),
-                                isFirst: index == 0,
-                                isLast: index == timelineItems.count - 1,
-                                connectorAbove: timelineConnectorAbove(at: index, in: timelineItems),
-                                density: PlanTimelineMetadataBuilder.density(for: item),
-                                showsTimeLabel: PlanTimelineItemGrouper.showsTimeLabel(
-                                    at: index,
-                                    in: timelineItems,
-                                    timeText: { timelineTime(for: $0) }
-                                )
-                            )
-                            .id(item.id)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                            Button {
                                 openTimelineItem(item)
+                            } label: {
+                                PlanTimelineRow(
+                                    activity: activity,
+                                    displayTitle: timelineTitle(for: item),
+                                    metadata: PlanTimelineMetadataBuilder.metadata(
+                                        for: item,
+                                        status: status,
+                                        formattedDuration: formattedDuration
+                                    ),
+                                    customMeals: customMeals,
+                                    time: timelineTime(for: item),
+                                    category: category,
+                                    status: status,
+                                    emphasis: emphasis,
+                                    nextEmphasis: timelineNextEmphasis(
+                                        at: index,
+                                        in: timelineItems,
+                                        focusItemID: timelineFocusItemID
+                                    ),
+                                    isFirst: index == 0,
+                                    isLast: index == timelineItems.count - 1,
+                                    connectorAbove: timelineConnectorAbove(at: index, in: timelineItems),
+                                    density: PlanTimelineMetadataBuilder.density(for: item),
+                                    showsTimeLabel: PlanTimelineItemGrouper.showsTimeLabel(
+                                        at: index,
+                                        in: timelineItems,
+                                        timeText: { timelineTime(for: $0) }
+                                    )
+                                )
                             }
+                            .buttonStyle(PlanTimelineRowPressStyle())
+                            .id(item.id)
                             .contextMenu {
                                 timelineItemContextMenu(for: item, status: status)
                             }
@@ -931,6 +870,12 @@ private extension WeekPlannerLiveQueryView {
                     .environment(\.defaultMinListRowHeight, 1)
                     .contentMargins(.top, 2, for: .scrollContent)
                     .contentMargins(.bottom, 28, for: .scrollContent)
+                    .id(viewModel.selectedDate)
+                    .transition(.opacity.combined(with: .offset(y: 8)))
+                    .animation(
+                        .spring(response: 0.38, dampingFraction: 0.88),
+                        value: viewModel.selectedDate
+                    )
                     .onAppear {
                         guard !hasPerformedInitialScroll else { return }
                         hasPerformedInitialScroll = true
@@ -1048,43 +993,49 @@ private extension WeekPlannerLiveQueryView {
 
             viewModel.startAdding(at: slot)
         } label: {
-            HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(WeekFitTheme.primaryGreen.opacity(0.14))
-                        .frame(width: 42, height: 42)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(WeekFitTheme.primaryGreen.opacity(0.14))
+                            .frame(width: 40, height: 40)
 
-                    Image(systemName: "calendar.badge.plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.primaryGreen.opacity(0.95))
-                }
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(WeekFitTheme.primaryGreen.opacity(0.95))
+                    }
+                    .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 4) {
                     Text(AppText.Planner.buildYourDay)
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .foregroundStyle(palette.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(AppText.Planner.buildYourDayMessage)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
 
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+                HStack(spacing: 8) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(WeekFitLocalizedString("planner.sheet.addTitle"))
+                        .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(palette.isLight ? Color.white : WeekFitTheme.primaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(WeekFitTheme.primaryGreen)
+                )
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .contentShape(Rectangle())
             .weekFitPremiumCard(emphasis: .compact, accent: WeekFitTheme.primaryGreen)
         }
         .buttonStyle(.plain)
-        .accessibilityHint(WeekFitLocalizedString("planner.sheet.addTitle"))
+        .accessibilityLabel(WeekFitLocalizedString("planner.sheet.addTitle"))
+        .accessibilityHint(WeekFitLocalizedString("planner.empty.accessibilityHint"))
     }
 }
 
@@ -1232,7 +1183,7 @@ private extension WeekPlannerLiveQueryView {
     var selectedDayStatsRow: some View {
         let counts = selectedDayActivityCounts
 
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if counts.workouts > 0 {
                 PlanDayStatChip(
                     icon: "figure.mixed.cardio",
@@ -1245,7 +1196,7 @@ private extension WeekPlannerLiveQueryView {
                 PlanDayStatChip(
                     icon: "fork.knife",
                     count: counts.meals,
-                    tint: WeekFitTheme.meal
+                    tint: WeekFitProgressRingColor.nutrition
                 )
             }
 
@@ -1385,10 +1336,11 @@ private extension WeekPlannerLiveQueryView {
         let title = item.title.lowercased()
 
         if type.contains("water")
+            || type == "drink"
             || title.contains("water")
             || title.contains("hydration")
-            || title.contains("drink") {
-            return Color(red: 0.18, green: 0.52, blue: 0.88)
+            || (title.contains("drink") && type != "meal" && type != "snack") {
+            return Color(red: 0.25, green: 0.55, blue: 0.95)
         }
 
         switch type {
@@ -1396,11 +1348,14 @@ private extension WeekPlannerLiveQueryView {
             return Color(red: 0.46, green: 0.72, blue: 0.82)
         case "recovery":
             return Color(red: 0.66, green: 0.58, blue: 0.86)
-        case "meal":
-            return Color(red: 0.50, green: 0.74, blue: 0.54)
+        case "meal", "snack", "food", "nutrition":
+            return WeekFitProgressRingColor.nutrition
         case "habit":
             return Color(red: 0.82, green: 0.60, blue: 0.36)
         default:
+            if item.timelineEventKind == .food {
+                return WeekFitProgressRingColor.nutrition
+            }
             return item.color
         }
     }
@@ -1589,28 +1544,152 @@ private struct PlanDayStatChip: View {
     let count: Int
     let tint: Color
 
+    @Environment(\.weekFitPalette) private var palette
+
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint.opacity(0.96))
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.88))
 
             Text("\(count)")
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(palette.textSecondary)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4.5)
         .background {
             Capsule()
-                .fill(tint.opacity(0.12))
+                .fill(tint.opacity(0.09))
         }
         .overlay {
             Capsule()
-                .stroke(tint.opacity(0.22), lineWidth: 0.8)
+                .stroke(tint.opacity(0.14), lineWidth: 0.7)
         }
         .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// Outlined Plan accent control — same geometry language as Meals +, Plan green rim.
+private struct PlanHeaderAddButtonStyle: ButtonStyle {
+    @Environment(\.weekFitPalette) private var palette
+
+    private let cornerRadius: CGFloat = 14
+    private let controlSize: CGFloat = 44
+    private let borderWidth: CGFloat = 1.35
+
+    func makeBody(configuration: Configuration) -> some View {
+        PlanHeaderAddButtonLabel(
+            configuration: configuration,
+            palette: palette,
+            cornerRadius: cornerRadius,
+            controlSize: controlSize,
+            borderWidth: borderWidth
+        )
+    }
+}
+
+private struct PlanHeaderAddButtonLabel: View {
+    let configuration: ButtonStyleConfiguration
+    let palette: WeekFitSemanticPalette
+    let cornerRadius: CGFloat
+    let controlSize: CGFloat
+    let borderWidth: CGFloat
+
+    @State private var didFirePressHaptic = false
+
+    private var isPressed: Bool { configuration.isPressed }
+    private var accent: Color { WeekFitTheme.primaryGreen }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(fillStyle)
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(borderGradient, lineWidth: borderWidth)
+                }
+
+            configuration.label
+                .foregroundStyle(iconStyle)
+        }
+        .frame(width: controlSize, height: controlSize)
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .shadow(color: Color.black.opacity(palette.isLight ? 0.04 : 0.20), radius: 2, y: 1)
+        .shadow(color: Color.black.opacity(palette.isLight ? 0.08 : 0.30), radius: 10, y: 4)
+        .scaleEffect(isPressed ? 0.965 : 1)
+        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isPressed)
+        .onChange(of: isPressed) { _, pressed in
+            if pressed {
+                guard !didFirePressHaptic else { return }
+                didFirePressHaptic = true
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } else {
+                didFirePressHaptic = false
+            }
+        }
+    }
+
+    private var fillStyle: AnyShapeStyle {
+        if isPressed {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [accent, accent.opacity(0.88)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
+        if palette.isLight {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.998, blue: 0.992),
+                        Color(red: 0.985, green: 0.978, blue: 0.965)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+        return AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.16, green: 0.17, blue: 0.15),
+                    Color(red: 0.10, green: 0.11, blue: 0.10)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+
+    private var borderGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                accent.opacity(palette.isLight ? (isPressed ? 0.55 : 0.72) : (isPressed ? 0.45 : 0.62)),
+                accent.opacity(palette.isLight ? (isPressed ? 0.40 : 0.48) : (isPressed ? 0.32 : 0.40))
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var iconStyle: AnyShapeStyle {
+        if isPressed {
+            return AnyShapeStyle(Color.white.opacity(0.96))
+        }
+        return AnyShapeStyle(accent.opacity(0.92))
+    }
+}
+
+private struct PlanTimelineRowPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.94 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: configuration.isPressed)
     }
 }
 
@@ -1744,20 +1823,20 @@ private struct DynamicDayCapsule: View {
             VStack(spacing: 1) {
                 HStack(spacing: 2) {
                     Text(dayLabel)
-                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .font(.system(size: 9.5, weight: isSelected ? .semibold : .medium, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.70)
 
                     if isToday {
                         Circle()
-                            .fill(kind.color)
+                            .fill(kind.color.opacity(isSelected ? 1 : 0.72))
                             .frame(width: 3, height: 3)
                     }
                 }
                 .foregroundStyle(dayLabelColor)
 
                 Text(dayNumber)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(dayNumberColor)
             }
@@ -1765,8 +1844,8 @@ private struct DynamicDayCapsule: View {
             VStack(spacing: 2) {
                 ForEach(0..<4, id: \.self) { index in
                     Capsule()
-                        .fill(index < kind.barCount ? kind.color : inactiveBarColor)
-                        .frame(width: 16, height: 3)
+                        .fill(index < kind.barCount ? kind.color.opacity(isSelected ? 1 : 0.78) : inactiveBarColor)
+                        .frame(width: 16, height: isSelected ? 3.2 : 2.75)
                 }
             }
         }
@@ -1774,39 +1853,46 @@ private struct DynamicDayCapsule: View {
         .padding(.vertical, 5)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? PlanScreenSurface.capsuleSelectedFill : PlanScreenSurface.capsuleFill.opacity(0.72))
+                .fill(isSelected ? PlanScreenSurface.capsuleSelectedFill : PlanScreenSurface.capsuleFill.opacity(0.55))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(
-                    isSelected ? kind.color.opacity(palette.isLight ? 0.55 : 0.72) : PlanScreenSurface.cardStroke,
-                    lineWidth: isSelected ? 1.05 : 1
+                    isSelected
+                        ? kind.color.opacity(palette.isLight ? 0.48 : 0.58)
+                        : PlanScreenSurface.cardStroke.opacity(palette.isLight ? 0.55 : 0.70),
+                    lineWidth: isSelected ? 1 : 0.75
                 )
         }
         .shadow(
-            color: isSelected ? kind.color.opacity(0.07) : .clear,
-            radius: 6,
-            y: 3
+            color: isSelected ? kind.color.opacity(palette.isLight ? 0.10 : 0.16) : .clear,
+            radius: isSelected ? 8 : 0,
+            y: isSelected ? 3 : 0
         )
+        .scaleEffect(isSelected ? 1.05 : 1.0)
+        .zIndex(isSelected ? 1 : 0)
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isSelected)
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var dayLabelColor: Color {
         if palette.isLight {
-            return isSelected ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText
+            return isSelected ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText.opacity(0.78)
         }
-        return isSelected ? kind.color : .white.opacity(0.70)
+        return isSelected ? kind.color.opacity(0.96) : .white.opacity(0.52)
     }
 
     private var dayNumberColor: Color {
         if palette.isLight {
-            return isSelected ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText
+            return isSelected ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText.opacity(0.82)
         }
-        return WeekFitTheme.whiteOpacity(isSelected ? 0.94 : 0.70)
+        return WeekFitTheme.whiteOpacity(isSelected ? 0.94 : 0.58)
     }
 
     private var inactiveBarColor: Color {
-        palette.isLight ? WeekFitLightTokens.inactiveTrack : WeekFitTheme.whiteOpacity(0.045)
+        palette.isLight
+            ? WeekFitLightTokens.inactiveTrack.opacity(0.72)
+            : WeekFitTheme.whiteOpacity(0.035)
     }
 
     private var dayLabel: String {
@@ -1864,7 +1950,7 @@ private enum PlanScreenSurface {
     static var cardFill: Color {
         WeekFitPaletteStore.current.isLight
             ? WeekFitTheme.cardSurface
-            : Color(red: 0.038, green: 0.042, blue: 0.048)
+            : Color(red: 0.042, green: 0.040, blue: 0.038)
     }
 
     @MainActor
@@ -1874,14 +1960,14 @@ private enum PlanScreenSurface {
     static var capsuleFill: Color {
         WeekFitPaletteStore.current.isLight
             ? WeekFitTheme.cardSurfaceWarm
-            : Color(red: 0.046, green: 0.050, blue: 0.056)
+            : Color(red: 0.052, green: 0.050, blue: 0.046)
     }
 
     @MainActor
     static var capsuleSelectedFill: Color {
         WeekFitPaletteStore.current.isLight
             ? WeekFitTheme.cardSurfaceElevated
-            : Color(red: 0.054, green: 0.058, blue: 0.066)
+            : Color(red: 0.068, green: 0.064, blue: 0.058)
     }
 }
 
@@ -1907,8 +1993,13 @@ private extension WeekPlannerLiveQueryView {
         let type = activity.type.lowercased()
 
         if isDrinkActivity(activity) {
-            if normalizedTitle.contains("water") || normalizedTitle.contains("hydration") {
+            if isWaterDrinkTitle(normalizedTitle, imageName: activity.imageName) {
                 return WeekFitLocalizedString("planner.timeline.water")
+            }
+
+            // Prefer the exact drink name (Coffee, Tea, …) over a generic "Drink" label.
+            if !trimmedTitle.isEmpty, normalizedTitle != "drink" {
+                return resolvedActivityDisplayTitle(trimmedTitle)
             }
 
             return WeekFitLocalizedString("planner.timeline.drink")
@@ -1922,13 +2013,20 @@ private extension WeekPlannerLiveQueryView {
             return WeekFitLocalizedString("planner.timeline.water")
         }
 
-        if normalizedTitle == "drink" {
-            return WeekFitLocalizedString("planner.timeline.drink")
-        }
-
         if let meal = matchingCustomMeal(for: activity) {
             return meal.localizedDisplayTitle
         }
+
+        return resolvedActivityDisplayTitle(trimmedTitle)
+    }
+
+    private func isWaterDrinkTitle(_ normalizedTitle: String, imageName: String) -> Bool {
+        if imageName.lowercased() == "hydration" { return true }
+        return normalizedTitle.contains("water") || normalizedTitle.contains("hydration")
+    }
+
+    private func resolvedActivityDisplayTitle(_ trimmedTitle: String) -> String {
+        guard !trimmedTitle.isEmpty else { return trimmedTitle }
 
         let quickLocalized = QuickItem.localizedTitle(forStoredTitle: trimmedTitle)
         if quickLocalized != trimmedTitle {

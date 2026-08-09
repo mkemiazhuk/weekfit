@@ -238,8 +238,8 @@ struct QuickDrinkLogSheet: View {
         .padding(.vertical, 14)
         .quickSheetFloatingCard(
             cornerRadius: QuickDrinkLogDesign.Layout.greetingRadius,
-            fill: palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground,
-            stroke: palette.isLight ? Color.black.opacity(0.04) : WeekFitTheme.whiteOpacity(0.06),
+            fill: palette.isLight ? Color.white : WeekFitTheme.cardBackground,
+            stroke: palette.isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.08),
             isLight: palette.isLight
         )
         .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
@@ -548,7 +548,7 @@ private struct QuickDrinkRecommendedCard: View {
                 .lineLimit(1)
                 .padding(.top, 12)
 
-            Text(row.item.localizedSubtitle)
+            Text(row.item.localizedServingSizeDescription)
                 .font(QuickDrinkLogDesign.Typography.recommendedSubtitle)
                 .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
                 .lineLimit(1)
@@ -593,35 +593,10 @@ private struct QuickDrinkRecommendedCard: View {
             )
         )
         .background {
-            RoundedRectangle(
+            QuickSheetChrome.elevatedTileBackground(
                 cornerRadius: QuickDrinkLogDesign.Layout.recommendedCardRadius,
-                style: .continuous
-            )
-            .fill(
-                LinearGradient(
-                    colors: [
-                        QuickDrinkAccent.recommendedTop(for: row.item, isLight: palette.isLight),
-                        QuickDrinkAccent.recommendedBottom(for: row.item, isLight: palette.isLight)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: QuickDrinkLogDesign.Layout.recommendedCardRadius,
-                    style: .continuous
-                )
-                .fill(
-                    palette.isLight
-                        ? Color.white.opacity(0.22)
-                        : WeekFitTheme.cardBackground.opacity(0.55)
-                )
-            }
-            .shadow(
-                color: QuickSheetChrome.cardShadowColor(isLight: palette.isLight),
-                radius: QuickSheetChrome.cardShadowRadius,
-                y: QuickSheetChrome.cardShadowY
+                accent: tint,
+                isLight: palette.isLight
             )
         }
         .overlay {
@@ -630,10 +605,8 @@ private struct QuickDrinkRecommendedCard: View {
                 style: .continuous
             )
             .strokeBorder(
-                palette.isLight
-                    ? tint.opacity(0.14)
-                    : WeekFitTheme.whiteOpacity(0.08),
-                lineWidth: 0.75
+                QuickSheetChrome.frequentCardStroke(isLight: palette.isLight),
+                lineWidth: 0.85
             )
         }
         .overlay(alignment: .topTrailing) {
@@ -647,15 +620,20 @@ private struct QuickDrinkRecommendedCard: View {
                         Capsule()
                             .fill(
                                 palette.isLight
-                                    ? Color.white.opacity(0.92)
+                                    ? Color.white
                                     : WeekFitTheme.whiteOpacity(0.08)
+                            )
+                            .shadow(
+                                color: palette.isLight ? Color.black.opacity(0.06) : .clear,
+                                radius: 4,
+                                y: 1
                             )
                     }
                     .overlay {
                         Capsule()
                             .strokeBorder(
                                 palette.isLight
-                                    ? tint.opacity(0.28)
+                                    ? tint.opacity(0.32)
                                     : WeekFitTheme.whiteOpacity(0.10),
                                 lineWidth: 0.8
                             )
@@ -694,7 +672,7 @@ private struct QuickDrinkRecentCircleItem: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
 
-                    Text(QuickLogLocalizedNutrition.calories(row.item.calories))
+                    Text(row.item.localizedServingSizeDescription)
                         .font(QuickDrinkLogDesign.Typography.recentCalories)
                         .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
                         .lineLimit(1)
@@ -736,7 +714,7 @@ private struct QuickDrinkLibraryCard: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
 
-                Text(row.item.localizedSubtitle)
+                Text(row.item.localizedServingSizeDescription)
                     .font(QuickDrinkLogDesign.Typography.listSubtitle)
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
                     .lineLimit(1)
@@ -770,8 +748,8 @@ private struct QuickDrinkLibraryCard: View {
         .frame(minHeight: QuickDrinkLogDesign.Layout.listRowMinHeight)
         .quickSheetFloatingCard(
             cornerRadius: QuickDrinkLogDesign.Layout.listCardRadius,
-            fill: palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground,
-            stroke: palette.isLight ? Color.black.opacity(0.04) : WeekFitTheme.whiteOpacity(0.06),
+            fill: palette.isLight ? Color.white : WeekFitTheme.cardBackground,
+            stroke: palette.isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.08),
             isLight: palette.isLight
         )
     }

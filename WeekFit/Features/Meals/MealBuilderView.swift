@@ -778,7 +778,7 @@ struct MealBuilderView: View {
         guard let index = selectedIngredients.firstIndex(where: { $0.ingredient.id == ingredient.id }) else { return }
 
         let currentGrams = selectedIngredients[index].grams
-        let step = ingredient.category == .extras ? 10 : 50
+        let step = 5
 
         withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
             if increment {

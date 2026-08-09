@@ -130,6 +130,24 @@ struct QuickItem: Codable, Identifiable, Equatable {
         Self.localizedSubtitle(for: self)
     }
 
+    /// Portion size shown on snack/drink cards (e.g. "118g", "250 ml").
+    var localizedServingSizeDescription: String {
+        switch category {
+        case .drink:
+            let milliliters = Int((mlPerServing ?? defaultServingAmount ?? 250).rounded())
+            return String(
+                format: WeekFitLocalizedString("common.unit.millilitersFormat"),
+                max(milliliters, 1)
+            )
+        case .snack:
+            let grams = Int((gramsPerServing ?? 100).rounded())
+            return String(
+                format: WeekFitLocalizedString("common.unit.gramValueFormat"),
+                max(grams, 1)
+            )
+        }
+    }
+
     static func localizedTitle(forStoredTitle storedTitle: String) -> String {
         let trimmed = storedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return storedTitle }

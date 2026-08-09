@@ -39,11 +39,21 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     /// Starts workout observers after the user has completed the main HealthKit authorization flow.
     /// Never requests HealthKit authorization on its own.
     func activateIfAuthorized() {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
-        guard !isActive else { return }
+        guard HKHealthStore.isHealthDataAvailable() else {
+            StartupDiagnostics.taskBegin("healthKitWorkoutSync.activate", detail: "unavailable")
+            StartupDiagnostics.taskSuccess("healthKitWorkoutSync.activate", detail: "skipped — HK unavailable")
+            return
+        }
+        guard !isActive else {
+            StartupDiagnostics.taskBegin("healthKitWorkoutSync.activate", detail: "already active")
+            StartupDiagnostics.taskSuccess("healthKitWorkoutSync.activate", detail: "noop")
+            return
+        }
+        StartupDiagnostics.taskBegin("healthKitWorkoutSync.activate", detail: "startObserver+fetchUpdates")
         isActive = true
         startObserver()
         fetchUpdates()
+        StartupDiagnostics.taskSuccess("healthKitWorkoutSync.activate")
     }
 
     func start() {

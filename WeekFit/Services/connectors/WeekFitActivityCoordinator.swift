@@ -14,19 +14,29 @@ final class WeekFitActivityCoordinator: ObservableObject {
     @Published private(set) var liveWorkout: WeekFitLiveWorkout?
     @Published private(set) var latestCompletedWorkout: HKWorkout?
     @Published private(set) var completedWorkoutsBatch: [HKWorkout] = []
+    /// Phone-side live HR while a planned session window is active (or Watch live workout).
+    @Published private(set) var liveHeartRateBPM: Int?
+    @Published private(set) var liveHeartRateZone: Int?
 
     private let watchBridge = WatchLiveWorkoutBridge.shared
     private let healthSync = HealthKitWorkoutSyncService.shared
+    private let heartRateMonitor = LiveHeartRateMonitor.shared
 
     private var cancellables = Set<AnyCancellable>()
     private var reconciledWorkoutUUIDs = Set<String>()
     private var hasStartedWatchBridge = false
     private var hasActivatedHealthSync = false
+    private var heartRateMonitoringEnabled = false
 
     /// Called before deleting or merging SwiftData `PlannedActivity` rows during HealthKit reconciliation.
     var beforePlannedActivityMutation: (() -> Void)?
 
     private init() {
+        StartupDiagnostics.step(
+            6,
+            "HealthKit service created",
+            detail: "WeekFitActivityCoordinator.init (Watch bridge + LiveHeartRateMonitor bound)"
+        )
         bind()
     }
 
@@ -34,6 +44,11 @@ final class WeekFitActivityCoordinator: ObservableObject {
     func prepareLaunchServices() {
         guard !hasStartedWatchBridge else { return }
         hasStartedWatchBridge = true
+        StartupDiagnostics.step(
+            10,
+            "watch connectivity",
+            detail: "prepareLaunchServices activate=\(WatchConnectivitySupport.shouldActivateSession)"
+        )
         watchBridge.start()
     }
 
@@ -56,6 +71,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
     func deactivateHealthKitSync() {
         hasActivatedHealthSync = false
         healthSync.deactivate()
+        setHeartRateMonitoringEnabled(false)
         resetReconciliationState()
     }
     
@@ -70,11 +86,87 @@ final class WeekFitActivityCoordinator: ObservableObject {
         start()
     }
 
+    /// Start/stop phone-side HR streaming for in-session coach chrome.
+    /// Call when a planned activity enters/leaves its live time window.
+    func setHeartRateMonitoringEnabled(_ enabled: Bool, sessionStartedAt: Date = Date()) {
+        guard AccountSessionController.shared.mode != .reviewDemo else {
+            heartRateMonitor.stop()
+            liveHeartRateBPM = nil
+            liveHeartRateZone = nil
+            heartRateMonitoringEnabled = false
+            return
+        }
+
+        heartRateMonitoringEnabled = enabled
+        if enabled {
+            heartRateMonitor.start(sessionStartedAt: sessionStartedAt)
+        } else {
+            heartRateMonitor.stop()
+            liveHeartRateBPM = nil
+            liveHeartRateZone = nil
+            if var liveWorkout {
+                liveWorkout.currentHeartRateBPM = nil
+                liveWorkout.heartRateZone = nil
+                self.liveWorkout = liveWorkout
+            }
+        }
+    }
+
+    /// Convenience: enable monitoring when any of today's activities is currently active.
+    func syncHeartRateMonitoring(with activities: [PlannedActivity], now: Date = Date()) {
+        let active = activities.first { activity in
+            guard !activity.isSkipped else { return false }
+            if activity.isActive(at: now) { return true }
+            // Keep streaming through the planned window even if HK flips completed early.
+            guard activity.isCompleted || activity.isPartialCompletion else { return false }
+            let plannedEnd = Calendar.current.date(
+                byAdding: .minute,
+                value: max(activity.effectiveDurationMinutes, activity.durationMinutes, 1),
+                to: activity.date
+            ) ?? activity.date
+            let graceEnd = plannedEnd.addingTimeInterval(5 * 60)
+            return activity.date <= now && now <= graceEnd
+        }
+
+        if let active {
+            setHeartRateMonitoringEnabled(true, sessionStartedAt: active.date)
+        } else if liveWorkout?.isLive == true {
+            setHeartRateMonitoringEnabled(true, sessionStartedAt: liveWorkout?.startedAt ?? now)
+        } else {
+            setHeartRateMonitoringEnabled(false)
+        }
+    }
+
     private func bind() {
         watchBridge.$liveWorkout
             .receive(on: RunLoop.main)
             .sink { [weak self] workout in
-                self?.liveWorkout = workout
+                guard let self else { return }
+                var next = workout
+                if heartRateMonitoringEnabled, var live = next {
+                    live.currentHeartRateBPM = liveHeartRateBPM
+                    live.heartRateZone = liveHeartRateZone
+                    next = live
+                }
+                self.liveWorkout = next
+                if let live = next, live.isLive {
+                    setHeartRateMonitoringEnabled(true, sessionStartedAt: live.startedAt)
+                }
+            }
+            .store(in: &cancellables)
+
+        heartRateMonitor.$currentBPM
+            .combineLatest(heartRateMonitor.$currentZone)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] bpm, zone in
+                guard let self else { return }
+                self.liveHeartRateBPM = bpm
+                self.liveHeartRateZone = zone
+                if var liveWorkout, liveWorkout.isLive {
+                    liveWorkout.currentHeartRateBPM = bpm
+                    liveWorkout.heartRateZone = zone
+                    self.liveWorkout = liveWorkout
+                }
             }
             .store(in: &cancellables)
 
@@ -145,10 +237,21 @@ final class WeekFitActivityCoordinator: ObservableObject {
         with activities: [PlannedActivity],
         modelContext: ModelContext
     ) async {
-        guard healthManager.isHealthAccessGranted else { return }
+        let taskName = "activity.bootstrapHealthWorkouts"
+        StartupDiagnostics.taskBegin(
+            taskName,
+            detail: "granted=\(healthManager.isHealthAccessGranted) planned=\(activities.count)"
+        )
+        guard healthManager.isHealthAccessGranted else {
+            StartupDiagnostics.taskSuccess(taskName, detail: "skipped — not granted")
+            return
+        }
 
         let workouts = await healthManager.loadWorkoutSamples(for: date)
-        guard !workouts.isEmpty else { return }
+        guard !workouts.isEmpty else {
+            StartupDiagnostics.taskSuccess(taskName, detail: "no workouts")
+            return
+        }
 
         for workout in workouts {
             reconcileCompletedAppleWorkout(
@@ -159,7 +262,12 @@ final class WeekFitActivityCoordinator: ObservableObject {
             )
         }
 
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            StartupDiagnostics.taskSuccess(taskName, detail: "workouts=\(workouts.count) saved")
+        } catch {
+            StartupDiagnostics.taskError(taskName, error: error, detail: "workouts=\(workouts.count)")
+        }
     }
 
     func reconcileCompletedAppleWorkout(

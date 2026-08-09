@@ -15,16 +15,14 @@ struct MealDetailsView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     @State private var showMealBuilder = false
 
-    private let background = WeekFitTheme.appBackground
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
-    private let cardBackground = WeekFitTheme.cardBackground
-    private let elevatedCard = WeekFitTheme.elevatedCard
-    private let softShadow = WeekFitTheme.cardShadow
+    private var background: Color { palette.appScreenBackground }
+    private var textPrimary: Color { palette.textPrimary }
+    private var textSecondary: Color { palette.textSecondary }
     private let accent = WeekFitTheme.meal
 
     private var automatedCurrentSlotTitle: String {
@@ -347,15 +345,16 @@ struct MealDetailsView: View {
     private var bottomFadeGradient: some View {
         LinearGradient(
             colors: [
-                WeekFitTheme.backgroundColor.opacity(0),
-                WeekFitTheme.backgroundColor.opacity(0.62),
-                WeekFitTheme.backgroundColor.opacity(0.96),
-                WeekFitTheme.backgroundColor
+                background.opacity(0),
+                background.opacity(0.62),
+                background.opacity(0.96),
+                background
             ],
             startPoint: .top,
             endPoint: .bottom
         )
         .ignoresSafeArea()
+        .id(palette.appearanceInvalidationToken)
     }
 
     private func executeDetailsLogBlock() {
@@ -439,11 +438,18 @@ struct MealDetailsView: View {
             ("potato", "ingredient-potatoes"), ("buckwheat", "ingredient-buckwheat"), ("chicken", "ingredient-chicken"),
             ("turkey", "ingredient-turkey"), ("beef", "ingredient-beef"), ("salmon", "ingredient-salmon"),
             ("shrimp", "ingredient-shrimp"), ("whitefish", "ingredient-white-fish"), ("broccoli", "ingredient-broccoli"),
-            ("spinach", "ingredient-spinach"), ("tomatoes", "ingredient-tomatoes"), ("tomato", "ingredient-tomatoes"),
+            ("spinach", "ingredient-spinach"), ("arugula", "ingredient-arugula"), ("celery", "ingredient-celery"),
+            ("tomatoes", "ingredient-tomatoes"), ("tomato", "ingredient-tomatoes"),
             ("avocado", "ingredient-avocado"), ("oliveoil", "ingredient-olive-oil"), ("onion", "ingredient-red-onion"),
             ("cucumber", "ingredient-cucumber"), ("toast", "ingredient-toast"), ("cheese", "ingredient-cottage-cheese"),
             ("honey", "ingredient-honey"), ("banana", "ingredient-banana"), ("apple", "ingredient-apple"),
-            ("milk", "ingredient-milk"), ("tea", "ingredient-tea"), ("coffee", "ingredient-coffee")
+            ("milk", "ingredient-milk"), ("tea", "ingredient-tea"), ("coffee", "ingredient-coffee"),
+            ("iceberg", "ingredient-lettuce"), ("lettuce", "ingredient-lettuce"), ("beet", "ingredient-beetroot"),
+            ("zucchini", "ingredient-zucchini"), ("pumpkin", "ingredient-pumpkin"), ("tuna", "ingredient-tuna"),
+            ("peas", "ingredient-peas"), ("corn", "ingredient-corn"), ("tortilla", "ingredient-corn-tortilla"),
+            ("quailegg", "ingredient-quail-egg"), ("quail", "ingredient-quail-egg"),
+            ("ham", "ingredient-pork-ham"), ("porkham", "ingredient-pork-ham"),
+            ("chickenham", "ingredient-chicken-ham")
         ]
         return map.first { key.contains(normalize($0.0)) }?.1
     }

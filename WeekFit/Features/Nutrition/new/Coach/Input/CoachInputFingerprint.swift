@@ -91,6 +91,8 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
             "nutritionWaterGoal=\(Self.rounded(nutrition?.waterGoal ?? -1))",
             "nutritionMeals=\(nutrition?.mealsCount ?? -1)",
             "nutritionLastMeal=\(nutrition?.lastMealTime.map { Int($0.timeIntervalSince1970 / 60) } ?? -1)",
+            "liveHR=\(snapshot.liveHeartRateBPM ?? -1)",
+            "liveHRZone=\(snapshot.liveHeartRateZone ?? -1)",
             "activities=\(activities)"
         ].joined(separator: "#")
     }

@@ -24,13 +24,20 @@ final class AuthViewModel: ObservableObject {
     private static let accountAuthEnabled = false
 
     init() {
+        StartupDiagnostics.step(9, "auth session restore", detail: "AuthViewModel.init")
         if AppReviewDemoCredentials.hasActiveSession {
             isLoggedIn = true
             hasResolvedInitialSession = true
+            StartupDiagnostics.step(9, "auth session restore", detail: "review demo session active")
         } else {
             Task {
                 await restorePersistedSessionIfNeeded()
                 hasResolvedInitialSession = true
+                StartupDiagnostics.step(
+                    9,
+                    "auth session restore",
+                    detail: "resolved isLoggedIn=\(isLoggedIn)"
+                )
             }
         }
     }
@@ -54,6 +61,19 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    /// Enters WeekFit on-device without Apple or email. Persists across relaunches.
+    func continueWithoutAccount() async {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        defer { isLoading = false }
+
+        clearAppReviewDemoSession()
+        AuthSessionStore.appleUserID = nil
+        AuthSessionStore.markLocalSessionActive()
+        isLoggedIn = true
+    }
+
     func signInWithEmail(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
@@ -68,9 +88,11 @@ final class AuthViewModel: ObservableObject {
             )
 
             if AppReviewDemoCredentials.matches(email: email, password: password) {
+                AuthSessionStore.clear()
                 AppReviewDemoCredentials.markSessionActive()
             } else {
                 clearAppReviewDemoSession()
+                AuthSessionStore.clearLocalSession()
             }
 
             isLoggedIn = true
@@ -95,6 +117,7 @@ final class AuthViewModel: ObservableObject {
             clearAppReviewDemoSession()
             // New identity must not inherit the previous account's on-device WeekFit data.
             AccountSessionController.shared.requestLocalDataResetOnNextRealUserEntry()
+            AuthSessionStore.clearLocalSession()
             isLoggedIn = true
         } catch {
             errorMessage = cleanError(error)
@@ -136,6 +159,7 @@ final class AuthViewModel: ObservableObject {
                 clearAppReviewDemoSession()
                 // Profile name is persisted inside handleAppleCredential before return.
                 _ = try await authService.handleAppleCredential(credential)
+                AuthSessionStore.clearLocalSession()
                 WeekFitUserSettings.shared.refreshFromStorage()
                 isLoggedIn = true
             } catch {
@@ -188,7 +212,14 @@ final class AuthViewModel: ObservableObject {
 
         if await authService.restoreAppleSessionIfValid() {
             clearAppReviewDemoSession()
+            AuthSessionStore.clearLocalSession()
             AppleIdentityStore.restoreProfileIfNeeded(appleUserID: AuthSessionStore.appleUserID)
+            isLoggedIn = true
+            return
+        }
+
+        if AuthSessionStore.hasLocalSession {
+            clearAppReviewDemoSession()
             isLoggedIn = true
         }
     }

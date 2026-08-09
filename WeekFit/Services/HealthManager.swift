@@ -284,6 +284,14 @@ final class HealthManager: ObservableObject {
     private nonisolated(unsafe) var inFlightHealthLoadForDeinit: Task<Void, Never>?
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
+    init() {
+        StartupDiagnostics.step(
+            6,
+            "HealthKit service created",
+            detail: "HealthManager.init available=\(HKHealthStore.isHealthDataAvailable())"
+        )
+    }
+
     nonisolated deinit {
         inFlightHealthLoadForDeinit?.cancel()
     }
@@ -1050,10 +1058,23 @@ final class HealthManager: ObservableObject {
         for date: Date = Date(),
         plannedActivities: [PlannedActivity] = []
     ) async {
+        let taskName = "health.loadHealthData"
+        let run = UUID()
         if let inFlightHealthLoad {
+            StartupDiagnostics.taskBegin(
+                taskName,
+                detail: "run=\(run.uuidString.prefix(8)) await in-flight day=\(Calendar.current.startOfDay(for: date)) planned=\(plannedActivities.count)"
+            )
             await inFlightHealthLoad.value
+            StartupDiagnostics.taskSuccess(taskName, detail: "run=\(run.uuidString.prefix(8)) joined in-flight")
             return
         }
+
+        StartupDiagnostics.step(13, "health initial refresh begin", detail: "run=\(run.uuidString.prefix(8)) day=\(Calendar.current.startOfDay(for: date)) planned=\(plannedActivities.count)")
+        StartupDiagnostics.taskBegin(
+            taskName,
+            detail: "run=\(run.uuidString.prefix(8)) day=\(Calendar.current.startOfDay(for: date)) planned=\(plannedActivities.count)"
+        )
 
         let task = Task { @MainActor in
             await self.performLoadHealthData(for: date, plannedActivities: plannedActivities)
@@ -1063,6 +1084,20 @@ final class HealthManager: ObservableObject {
         await task.value
         inFlightHealthLoad = nil
         inFlightHealthLoadForDeinit = nil
+
+        if Task.isCancelled {
+            StartupDiagnostics.taskCancelled(taskName)
+        } else {
+            StartupDiagnostics.taskSuccess(
+                taskName,
+                detail: "granted=\(isHealthAccessGranted) sleepMin=\(sleepMinutes) recovery=\(recoveryPercent)"
+            )
+            StartupDiagnostics.step(
+                14,
+                "health initial refresh complete",
+                detail: "granted=\(isHealthAccessGranted) sleepMin=\(sleepMinutes) hrv=\(hrvSDNN) rhr=\(restingHeartRate) recovery=\(recoveryPercent)"
+            )
+        }
     }
 
     private func performLoadHealthData(
@@ -1252,7 +1287,10 @@ final class HealthManager: ObservableObject {
         loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
     }
 
-    func refreshHealthAccessStateAfterLogin() async {
+    /// Re-probes HealthKit after login / account switch.
+    /// - Parameter loadMetrics: When false, only updates grant flags (keeps account
+    ///   transition short). Full hydrate can follow once the UI is visible.
+    func refreshHealthAccessStateAfterLogin(loadMetrics: Bool = true) async {
         guard AccountSessionController.shared.mode == .realUser else {
             hasCompletedHealthAccessCheck = true
             return
@@ -1267,7 +1305,9 @@ final class HealthManager: ObservableObject {
 
         if granted {
             UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
-            await loadHealthData(for: Date())
+            if loadMetrics {
+                await loadHealthData(for: Date())
+            }
         }
     }
 
@@ -1413,8 +1453,18 @@ final class HealthManager: ObservableObject {
         self.isRecoveryLoading = true
         defer { self.isRecoveryLoading = false }
 
+        StartupDiagnostics.step(
+            15,
+            "recovery calculation begin",
+            detail: "sleepMin=\(sleepMinutes) after header HK samples"
+        )
         await loadPremiumRecoveryMetrics(for: date)
         calculateHeaderMetrics()
+        StartupDiagnostics.step(
+            16,
+            "recovery calculation complete",
+            detail: "hrv=\(hrvSDNN) rhr=\(restingHeartRate) recovery=\(recoveryPercent)"
+        )
         #if DEBUG
         if CoachDebugSettings.todayDataAuditEnabled {
             Self.logger.debug("loadHeaderMetrics date=\(date, privacy: .public) activeCalories=\(self.activeCalories, privacy: .public) steps=\(self.steps, privacy: .public) exercise=\(self.exerciseMinutes, privacy: .public) sleepMinutes=\(self.sleepMinutes, privacy: .public) timeInBed=\(self.timeInBedMinutes, privacy: .public) awake=\(self.awakeMinutes, privacy: .public) hrv=\(self.hrvSDNN, privacy: .public) rhr=\(self.restingHeartRate, privacy: .public) recovery=\(self.recoveryPercent, privacy: .public)")
@@ -1430,21 +1480,38 @@ final class HealthManager: ObservableObject {
 
         guard HKHealthStore.isHealthDataAvailable() else { return false }
         guard let activeCaloriesType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return false }
-        
-        // Пробуем сделать микро-запрос на чтение одной верхней записи калорий
-        let predicate = HKQuery.predicateForSamples(withStart: Date().addingTimeInterval(-3600), end: Date(), options: .strictStartDate)
-        
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: activeCaloriesType, predicate: predicate, limit: 1, sortDescriptors: nil) { _, samples, error in
-                if error != nil {
-                    // Если система выдала ошибку доступа — авторизации точно нет
-                    continuation.resume(returning: false)
-                } else {
-                    // Если запрос прошел успешно (даже если samples пустой) — доступ открыт!
-                    continuation.resume(returning: true)
+
+        // Micro-read probe. Must not hang forever — on some iOS builds (esp. locked /
+        // protected-data) the HK callback can stall and leave login looking "crashed".
+        let predicate = HKQuery.predicateForSamples(
+            withStart: Date().addingTimeInterval(-3600),
+            end: Date(),
+            options: .strictStartDate
+        )
+
+        return await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                await withCheckedContinuation { continuation in
+                    let query = HKSampleQuery(
+                        sampleType: activeCaloriesType,
+                        predicate: predicate,
+                        limit: 1,
+                        sortDescriptors: nil
+                    ) { _, _, error in
+                        // Error ⇒ no read access; success (even empty) ⇒ access granted.
+                        continuation.resume(returning: error == nil)
+                    }
+                    self.healthStore.execute(query)
                 }
             }
-            self.healthStore.execute(query)
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                // Unblock launch if HK never callbacks; prefer prior grant request over false deny.
+                return UserDefaults.standard.bool(forKey: "weekfit.healthAccessRequested")
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
         }
     }
 
@@ -1526,6 +1593,20 @@ final class HealthManager: ObservableObject {
 
     // MARK: - Recovery HRV / RHR
     func loadPremiumRecoveryMetrics(for date: Date) async {
+        let taskName = "health.loadPremiumRecoveryMetrics"
+        StartupDiagnostics.taskBegin(taskName, detail: "day=\(Calendar.current.startOfDay(for: date))")
+        var finishedSuccessfully = false
+        defer {
+            if Task.isCancelled {
+                StartupDiagnostics.taskCancelled(taskName)
+            } else if finishedSuccessfully {
+                StartupDiagnostics.taskSuccess(
+                    taskName,
+                    detail: "hrv=\(hrvSDNN) rhr=\(restingHeartRate) recovery=\(recoveryBreakdown.total)"
+                )
+            }
+        }
+
         if isAppReviewDemoActive, let provider = appReviewDemoProvider {
             let vitals = provider.overnightVitals(for: date)
             let loadedContext = provider.recoveryScoreContext(for: date)
@@ -1551,10 +1632,14 @@ final class HealthManager: ObservableObject {
             recoveryPhysiologyBaseline = loadedContext.baseline
             recoveryPriorDayLoad = loadedContext.priorDayLoad
             recoveryBedtimeDeviationMinutes = loadedContext.bedtimeDeviationMinutes
+            finishedSuccessfully = true
             return
         }
 
-        guard isHealthAccessGranted else { return }
+        guard isHealthAccessGranted else {
+            finishedSuccessfully = true
+            return
+        }
 
         async let overnightVitals = recoveryScoreProvider.loadOvernightVitals(for: date)
         async let context = recoveryScoreProvider.loadRecoveryScoreContext(
@@ -1586,6 +1671,7 @@ final class HealthManager: ObservableObject {
         self.recoveryPhysiologyBaseline = loadedContext.baseline
         self.recoveryPriorDayLoad = loadedContext.priorDayLoad
         self.recoveryBedtimeDeviationMinutes = loadedContext.bedtimeDeviationMinutes
+        finishedSuccessfully = true
     }
 
     private func bedtimeDeviationMinutes(for date: Date, currentBedStart: Date?) async -> Int? {

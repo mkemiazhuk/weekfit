@@ -151,7 +151,7 @@ struct MealLibraryThumbnail: View {
                 RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
                     .strokeBorder(
                         palette.isLight
-                            ? WeekFitLightTokens.cardBorder.opacity(0.04)
+                            ? WeekFitLightTokens.cardBorder.opacity(WeekFitLightTokens.cardBorderStrokeOpacity)
                             : WeekFitTheme.whiteOpacity(0.10),
                         lineWidth: 1
                     )
@@ -233,9 +233,8 @@ struct MealLibraryGridCard: View {
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private var textSecondary: Color { WeekFitTheme.secondaryText }
 
-    private var kcalColor: Color {
-        palette.isLight ? WeekFitTheme.coachAccent : WeekFitTheme.meal
-    }
+    /// Calories stay quiet metadata — green is fiber (К) / meal chrome; orange is carbs (У).
+    private var kcalColor: Color { textSecondary }
 
     var body: some View {
         VStack(alignment: .center, spacing: 8) {

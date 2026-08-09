@@ -8,6 +8,9 @@ final class WeekFitUserSettings: ObservableObject {
     nonisolated deinit {}
     static let shared = WeekFitUserSettings()
 
+    /// Stable identity for correlating duplicate startup logs (same UUID = same singleton).
+    let instanceID = UUID()
+
     @Published private(set) var profileInitials: String
     /// True once the user has saved a non-empty profile name.
     @Published private(set) var hasProfileName: Bool
@@ -20,12 +23,28 @@ final class WeekFitUserSettings: ObservableObject {
     private var customMealsPersistGeneration: UInt = 0
 
     private init() {
+        let id = instanceID.uuidString.prefix(8)
+        TodayStartupDiagnostics.child(
+            "WeekFitUserSettings.shared.init begin",
+            detail: "instance=\(id)"
+        )
         ProfileService.migrateProfileStorageIfNeeded()
         profileInitials = ProfileService.resolvedInitials()
         hasProfileName = !ProfileService.resolvedFullName().isEmpty
         let storage = UserDefaults.standard.string(forKey: CustomMealStore.storageKey) ?? ""
         customMealsStorage = storage
         customMealsCatalog = CustomMealStore.load(from: storage)
+        // Intentionally no meal seed here — init can be triggered by SwiftUI `@StateObject`
+        // during body evaluation. Destructive catalog work runs via `ensureMealLibrarySeeded()`.
+        TodayStartupDiagnostics.child(
+            "WeekFitUserSettings.shared.init complete",
+            detail: "instance=\(id) customMealsCatalogCount=\(customMealsCatalog.count) initials=\(profileInitials) seededFlag=\(UserDefaults.standard.bool(forKey: DefaultMealLibrarySeeder.seededKey))"
+        )
+    }
+
+    /// Idempotent starter-library ensure. Safe to call from multiple launch paths.
+    @discardableResult
+    func ensureMealLibrarySeeded() -> Bool {
         DefaultMealLibrarySeeder.seedIfNeeded(settings: self)
     }
 
@@ -49,7 +68,7 @@ final class WeekFitUserSettings: ObservableObject {
             customMealsCatalogRevision &+= 1
         }
 
-        DefaultMealLibrarySeeder.seedIfNeeded(settings: self)
+        ensureMealLibrarySeeded()
     }
 
     func setProfileInitials(_ value: String) {

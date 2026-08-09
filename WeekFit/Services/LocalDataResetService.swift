@@ -129,7 +129,8 @@ final class LocalDataResetService {
                 WellnessNotificationPreferenceKey.recoveryScheduledDay,
                 "healthkit.workout.syncStartDate",
                 "weekfit.debug.auth.email",
-                "weekfit.debug.auth.password"
+                "weekfit.debug.auth.password",
+                "weekfit.auth.localSessionActive"
             ]
 
             knownKeys.forEach(defaults.removeObject(forKey:))

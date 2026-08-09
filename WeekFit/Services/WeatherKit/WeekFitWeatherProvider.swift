@@ -40,7 +40,10 @@ final class WeekFitWeatherProvider {
     }
 
     private func fetchAndUpdate(now: Date) async -> WeekFitWeatherSummary? {
-        await store.fetchAndUpdate(now: now) { [weak self] in
+        let taskName = "weather.fetchAndUpdate"
+        let run = UUID()
+        StartupDiagnostics.taskBegin(taskName, detail: "run=\(run.uuidString.prefix(8))")
+        let result = await store.fetchAndUpdate(now: now) { [weak self] in
             guard let self else { return nil }
 
             guard let coordinate = await locationProvider.coordinateIfAvailableOrRequest() else {
@@ -74,6 +77,12 @@ final class WeekFitWeatherProvider {
                 placeName: placeName
             )
         }
+        if Task.isCancelled {
+            StartupDiagnostics.taskCancelled(taskName, detail: "run=\(run.uuidString.prefix(8))")
+        } else {
+            StartupDiagnostics.taskSuccess(taskName, detail: "run=\(run.uuidString.prefix(8)) hasSummary=\(result != nil)")
+        }
+        return result
     }
 }
 

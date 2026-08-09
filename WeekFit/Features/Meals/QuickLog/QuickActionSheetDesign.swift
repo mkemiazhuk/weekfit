@@ -17,14 +17,14 @@ enum QuickActionSheetDesign {
 
             switch self {
             case .activity:
-                // Neutral deep ivory — lifts pearl cards off the sheet.
+                // Neutral deep cream — lifts warm-white cards off the sheet.
                 return WeekFitLightTokens.backgroundSecondary
             case .food:
-                // Same depth, warmer stone (meal family).
-                return SwiftUI.Color(red: 0.953, green: 0.937, blue: 0.906) // #F3EFE7
+                // Deeper warm stone so white elevated cards read clearly.
+                return SwiftUI.Color(red: 0.886, green: 0.855, blue: 0.800) // #E2DACC
             case .drinks:
                 // Same depth, cooler mist (hydration family).
-                return SwiftUI.Color(red: 0.937, green: 0.945, blue: 0.941) // #EFF1F0
+                return SwiftUI.Color(red: 0.862, green: 0.882, blue: 0.875) // #DCE1DF
             }
         }
     }
@@ -128,20 +128,81 @@ enum QuickSheetChrome {
 
     /// Neutral pearl frequent-card body (no category color wash).
     static func frequentCardFill(isLight: Bool) -> Color {
-        isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground
+        isLight ? Color.white : WeekFitTheme.cardBackground
     }
 
     static func frequentCardStroke(isLight: Bool) -> Color {
-        isLight ? Color.black.opacity(0.04) : WeekFitTheme.whiteOpacity(0.06)
+        isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.10)
     }
 
     /// Soft lift for floating cards — low opacity so the silhouette stays rounded, not a dark slab.
     static func cardShadowColor(isLight: Bool) -> Color {
-        isLight ? Color.black.opacity(0.10) : .clear
+        isLight ? Color.black.opacity(0.13) : .clear
     }
 
-    static let cardShadowRadius: CGFloat = 8
-    static let cardShadowY: CGFloat = 3
+    static let cardShadowRadius: CGFloat = 12
+    static let cardShadowY: CGFloat = 5
+
+    /// Recommended / Frequently Used tiles — white pearl + soft accent wash that lifts off warm sheet stone.
+    @ViewBuilder
+    static func elevatedTileBackground(
+        cornerRadius: CGFloat,
+        accent: Color,
+        isLight: Bool
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        shape
+            .fill(frequentCardFill(isLight: isLight))
+            .overlay {
+                shape.fill(
+                    LinearGradient(
+                        colors: isLight
+                            ? [
+                                accent.opacity(0.18),
+                                accent.opacity(0.06),
+                                Color.white.opacity(0)
+                            ]
+                            : [
+                                WeekFitTheme.whiteOpacity(0.08),
+                                WeekFitTheme.whiteOpacity(0.02)
+                            ],
+                        startPoint: .topLeading,
+                        endPoint: UnitPoint(x: 0.92, y: 0.82)
+                    )
+                )
+            }
+            .overlay {
+                // Soft top specular — reads as elevated glass, not flat wash.
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: isLight
+                            ? [
+                                Color.white.opacity(0.95),
+                                Color.white.opacity(0.20)
+                            ]
+                            : [
+                                WeekFitTheme.whiteOpacity(0.14),
+                                WeekFitTheme.whiteOpacity(0.03)
+                            ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+            }
+            // Tight per-card lift only — wide soft shadows merge into a shared slab under the row.
+            .shadow(
+                color: isLight ? Color.black.opacity(0.08) : .clear,
+                radius: 6,
+                y: 3
+            )
+            .shadow(
+                color: isLight ? Color.black.opacity(0.04) : .clear,
+                radius: 1,
+                y: 1
+            )
+    }
 }
 
 extension View {

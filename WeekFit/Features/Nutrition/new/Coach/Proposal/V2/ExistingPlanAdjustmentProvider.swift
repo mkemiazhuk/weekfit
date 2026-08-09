@@ -31,13 +31,26 @@ enum ExistingPlanAdjustmentProvider {
     static func generate(context: DailyContext, strategy: DailyStrategy) -> [ProposalCandidate] {
         guard context.canMutate else { return [] }
         guard strategy == .recover || strategy == .protectTomorrow else { return [] }
-        guard !context.todaySeriousOpen.isEmpty else { return [] }
+
+        // Low recovery: dial back any bike / run / gym — not only "long serious" sessions.
+        let adjustable: [CoachPlannedActivitySnapshot] = {
+            if context.recoveryBand == .low {
+                let elevated = context.todayOpen.filter { CoachActivityClassifier.isElevatedTrainingLoad($0) }
+                return elevated.isEmpty ? context.todaySeriousOpen : elevated
+            }
+            return context.todaySeriousOpen
+        }()
+        guard !adjustable.isEmpty else { return [] }
 
         var result: [ProposalCandidate] = []
-        let serious = context.todaySeriousOpen.sorted { $0.durationMinutes > $1.durationMinutes }
+        let serious = adjustable.sorted { $0.durationMinutes > $1.durationMinutes }
 
-        if let candidate = serious.first(where: { $0.durationMinutes >= minShortenOriginalMinutes }),
-           let proposed = proposedShortenedDuration(original: candidate.durationMinutes) {
+        let shortenFloor = context.recoveryBand == .low ? 30 : minShortenOriginalMinutes
+        if let candidate = serious.first(where: { $0.durationMinutes >= shortenFloor }),
+           let proposed = proposedShortenedDuration(
+            original: candidate.durationMinutes,
+            recoveryBand: context.recoveryBand
+           ) {
             result.append(
                 ProposalCandidate(
                     id: "adj-shorten-\(candidate.id)",
@@ -157,18 +170,25 @@ enum ExistingPlanAdjustmentProvider {
         return .lowRecoveryLoadProtection
     }
 
-    private static func proposedShortenedDuration(original: Int) -> Int? {
-        let byPercent = Int((Double(original) * 0.75).rounded())
-        let byFloor = original - minShortenDeltaMinutes
+    private static func proposedShortenedDuration(
+        original: Int,
+        recoveryBand: ProposalRecoveryBandToken
+    ) -> Int? {
+        let deltaFloor = recoveryBand == .low ? 10 : minShortenDeltaMinutes
+        let byPercent = Int((Double(original) * (recoveryBand == .low ? 0.65 : 0.75)).rounded())
+        let byFloor = original - deltaFloor
         let proposed = min(byPercent, byFloor)
         let clamped = max(15, proposed)
-        guard clamped <= original - minShortenDeltaMinutes else { return nil }
+        guard clamped <= original - deltaFloor else { return nil }
         return clamped
     }
 
     private static func shouldMove(context: DailyContext, strategy: DailyStrategy) -> Bool {
         guard strategy == .recover || strategy == .protectTomorrow else { return false }
-        guard context.todaySeriousOpen.count >= 2 else { return false }
+        let elevatedCount = context.recoveryBand == .low
+            ? context.todayOpen.filter { CoachActivityClassifier.isElevatedTrainingLoad($0) }.count
+            : context.todaySeriousOpen.count
+        guard elevatedCount >= 2 else { return false }
         // Don't pile more onto an already hard tomorrow.
         guard context.tomorrowDemand != .hard else { return false }
         return true
@@ -177,7 +197,13 @@ enum ExistingPlanAdjustmentProvider {
     private static func shouldSkip(context: DailyContext, strategy: DailyStrategy) -> Bool {
         guard strategy == .recover else { return false }
         guard context.recoveryBand == .low else { return false }
-        return context.yesterdayHeavy || context.stackedLoad.isElevated || context.tomorrowDemand == .hard
+        if context.yesterdayHeavy || context.stackedLoad.isElevated || context.tomorrowDemand == .hard {
+            return true
+        }
+        // Soft recovery with a longer bike / run / gym still on the plan.
+        return context.todayOpen.contains {
+            CoachActivityClassifier.isElevatedTrainingLoad($0) && $0.durationMinutes >= 60
+        }
     }
 
     private static func secondaryMoveCandidate(

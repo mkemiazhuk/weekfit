@@ -49,6 +49,7 @@ enum AppText {
         static let workoutValue: LocalizedStringResource = "login.card.workout.value"
         static let workoutSubtitle: LocalizedStringResource = "login.card.workout.subtitle"
         static let openWeekFit: LocalizedStringResource = "login.action.openWeekFit"
+        static let openWeekFitHint: LocalizedStringResource = "login.action.openWeekFit.hint"
         static let signIn: LocalizedStringResource = "login.action.signIn"
         static let signInHint: LocalizedStringResource = "login.action.signIn.hint"
         static let appleHealthNote: LocalizedStringResource = "login.note.appleHealth"

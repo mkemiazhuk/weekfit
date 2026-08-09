@@ -6,13 +6,13 @@ enum NutritionDetailsDesign {
 
     // MARK: - Canvas
 
-    /// Warm off-white close to #F7F5F0
-    static let canvas = Color(red: 0.969, green: 0.961, blue: 0.941)
+    /// Warm cream aligned with WeekFitLightTokens.backgroundPrimary (#F0EDE5)
+    static let canvas = Color(red: 0.941, green: 0.929, blue: 0.898)
 
-    /// Soft pearl white for elevated cards
-    static let cardSurface = Color(red: 0.999, green: 0.997, blue: 0.993)
+    /// Warm white elevated cards aligned with WeekFitLightTokens.surfaceCard (#FFFCF7)
+    static let cardSurface = Color(red: 1.000, green: 0.988, blue: 0.969)
 
-    static let divider = Color(red: 0.855, green: 0.839, blue: 0.812)
+    static let divider = Color(red: 0.835, green: 0.816, blue: 0.780)
 
     // MARK: - Metric tints
 

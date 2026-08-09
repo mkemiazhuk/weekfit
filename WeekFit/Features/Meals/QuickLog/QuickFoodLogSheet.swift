@@ -257,7 +257,7 @@ struct QuickFoodLogSheet: View {
                             let selection = session.selection(for: frequent.id)
                             QuickFoodFrequentCard(
                                 title: frequent.item.localizedTitle,
-                                subtitle: frequent.item.localizedSubtitle,
+                                subtitle: frequent.item.localizedServingSizeDescription,
                                 calories: frequent.item.calories,
                                 badgeText: WeekFitLocalizedString(frequent.badgeKey),
                                 accent: QuickFoodAccent.frequentColor(at: index, isLight: palette.isLight),
@@ -343,8 +343,8 @@ struct QuickFoodLogSheet: View {
         .frame(minHeight: 88)
         .quickSheetFloatingCard(
             cornerRadius: 18,
-            fill: palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground,
-            stroke: palette.isLight ? Color.black.opacity(0.05) : WeekFitTheme.whiteOpacity(0.06),
+            fill: palette.isLight ? Color.white : WeekFitTheme.cardBackground,
+            stroke: palette.isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.08),
             isLight: palette.isLight
         )
     }
@@ -362,7 +362,7 @@ struct QuickFoodLogSheet: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
 
-                Text(row.item.localizedSubtitle)
+                Text(row.item.localizedServingSizeDescription)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
                     .lineLimit(1)
@@ -388,8 +388,8 @@ struct QuickFoodLogSheet: View {
         .frame(minHeight: 88)
         .quickSheetFloatingCard(
             cornerRadius: 18,
-            fill: palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground,
-            stroke: palette.isLight ? Color.black.opacity(0.05) : WeekFitTheme.whiteOpacity(0.06),
+            fill: palette.isLight ? Color.white : WeekFitTheme.cardBackground,
+            stroke: palette.isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.08),
             isLight: palette.isLight
         )
     }
@@ -538,38 +538,17 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
         .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .background {
-            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            QuickFoodAccent.cardTop(for: accent, isLight: palette.isLight),
-                            QuickFoodAccent.cardBottom(for: accent, isLight: palette.isLight)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                        .fill(
-                            palette.isLight
-                                ? Color.white.opacity(0.22)
-                                : WeekFitTheme.cardBackground.opacity(0.55)
-                        )
-                }
-                .shadow(
-                    color: QuickSheetChrome.cardShadowColor(isLight: palette.isLight),
-                    radius: QuickSheetChrome.cardShadowRadius,
-                    y: QuickSheetChrome.cardShadowY
-                )
+            QuickSheetChrome.elevatedTileBackground(
+                cornerRadius: cardRadius,
+                accent: accent,
+                isLight: palette.isLight
+            )
         }
         .overlay {
             RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                 .strokeBorder(
-                    palette.isLight
-                        ? accent.opacity(0.14)
-                        : WeekFitTheme.whiteOpacity(0.08),
-                    lineWidth: 0.75
+                    QuickSheetChrome.frequentCardStroke(isLight: palette.isLight),
+                    lineWidth: 0.85
                 )
         }
         .overlay(alignment: .topTrailing) {
@@ -582,14 +561,19 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                     Capsule()
                         .fill(
                             palette.isLight
-                                ? Color.white.opacity(0.92)
+                                ? Color.white
                                 : WeekFitTheme.whiteOpacity(0.08)
+                        )
+                        .shadow(
+                            color: palette.isLight ? Color.black.opacity(0.06) : .clear,
+                            radius: 4,
+                            y: 1
                         )
                 }
                 .overlay {
                     Capsule().strokeBorder(
                         palette.isLight
-                            ? accent.opacity(0.28)
+                            ? accent.opacity(0.32)
                             : WeekFitTheme.whiteOpacity(0.10),
                         lineWidth: 0.8
                     )

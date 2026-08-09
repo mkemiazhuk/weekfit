@@ -32,11 +32,13 @@ enum PlanValidator {
             notes.append("drop_extra_serious")
         }
 
-        // protectTomorrow + serious create
-        if composed.strategy == .protectTomorrow || composed.strategy == .recover {
+        // protectTomorrow / recover / low recovery + elevated create (bike, run, gym…)
+        if composed.strategy == .protectTomorrow
+            || composed.strategy == .recover
+            || context.recoveryBand == .low {
             let before = kept.count
-            kept.removeAll { isSeriousCreate($0.candidate) }
-            if kept.count != before { notes.append("drop_serious_for_strategy") }
+            kept.removeAll { isElevatedCreate($0.candidate) || isSeriousCreate($0.candidate) }
+            if kept.count != before { notes.append("drop_elevated_for_strategy") }
         }
 
         // Temporal overlaps among creates
@@ -178,6 +180,24 @@ enum PlanValidator {
     private static func isSeriousCreate(_ candidate: ProposalCandidate) -> Bool {
         guard case .createPlannedActivity(let payload) = candidate.payload else { return false }
         return CoachActivityClassifier.isSeriousTraining(
+            CoachPlannedActivitySnapshot(
+                id: candidate.id,
+                date: payload.proposedDate,
+                type: payload.activityType,
+                title: payload.title,
+                durationMinutes: payload.durationMinutes,
+                icon: payload.icon,
+                imageName: payload.imageName,
+                isCompleted: false,
+                isSkipped: false,
+                source: "history"
+            )
+        )
+    }
+
+    private static func isElevatedCreate(_ candidate: ProposalCandidate) -> Bool {
+        guard case .createPlannedActivity(let payload) = candidate.payload else { return false }
+        return CoachActivityClassifier.isElevatedTrainingLoad(
             CoachPlannedActivitySnapshot(
                 id: candidate.id,
                 date: payload.proposedDate,

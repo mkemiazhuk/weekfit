@@ -73,6 +73,10 @@ struct CoachInputSnapshot {
     let nutritionContext: CoachNutritionContext?
     let isHealthAccessGranted: Bool
     let source: String
+    /// Latest live BPM while a session is in progress (nil when not monitoring / no fresh sample).
+    let liveHeartRateBPM: Int?
+    /// Zone 1…5 from `HeartRateZones` (nil when BPM unavailable).
+    let liveHeartRateZone: Int?
 
     var dayPriorityModel: DayPriorityModel {
         DayPriorityModel.build(from: self)
@@ -90,7 +94,9 @@ struct CoachInputSnapshot {
         recoveryContext: CoachRecoveryContext,
         nutritionContext: CoachNutritionContext?,
         isHealthAccessGranted: Bool = true,
-        source: String
+        source: String,
+        liveHeartRateBPM: Int? = nil,
+        liveHeartRateZone: Int? = nil
     ) {
         self.metricsSnapshotID = metricsSnapshotID
         self.selectedDate = selectedDate
@@ -109,5 +115,27 @@ struct CoachInputSnapshot {
         self.nutritionContext = nutritionContext
         self.isHealthAccessGranted = isHealthAccessGranted
         self.source = source
+        self.liveHeartRateBPM = liveHeartRateBPM
+        self.liveHeartRateZone = liveHeartRateZone
+    }
+
+    func enrichingLiveHeartRate(bpm: Int?, zone: Int?) -> CoachInputSnapshot {
+        guard bpm != liveHeartRateBPM || zone != liveHeartRateZone else { return self }
+        return CoachInputSnapshot(
+            metricsSnapshotID: metricsSnapshotID,
+            selectedDate: selectedDate,
+            now: now,
+            brain: brain,
+            plannedActivities: plannedActivities,
+            actualLoad: actualLoad,
+            planSource: planSource,
+            dayContext: dayContext,
+            recoveryContext: recoveryContext,
+            nutritionContext: nutritionContext,
+            isHealthAccessGranted: isHealthAccessGranted,
+            source: source,
+            liveHeartRateBPM: bpm,
+            liveHeartRateZone: zone
+        )
     }
 }

@@ -30,12 +30,19 @@ struct WeekFitApp: App {
     private let refreshThreshold: TimeInterval = 4 * 60
 
     init() {
+        StartupDiagnostics.step(1, "app init", detail: "WeekFitApp.init")
         // Earliest SwiftUI App entry — once-guarded; AppDelegate still configures
         // first in didFinishLaunching before AnalyticsBootstrap (no double configure).
-        FirebaseBootstrap.configureIfNeeded()
+        let firebaseReady = FirebaseBootstrap.configureIfNeeded()
+        StartupDiagnostics.step(
+            5,
+            "Firebase configured",
+            detail: "WeekFitApp.init configureIfNeeded ready=\(firebaseReady)"
+        )
         WeekFitWarmLocalizationCache()
         UNUserNotificationCenter.current().delegate =
             NotificationActionHandler.shared
+        StartupDiagnostics.step(1, "app init", detail: "localization + notification delegate ready")
     }
 
     var body: some Scene {
@@ -66,6 +73,7 @@ struct WeekFitApp: App {
                     value: nightComfort.blendFactor
                 )
                 .onAppear {
+                    StartupDiagnostics.step(6, "HealthKit service created", detail: "WindowGroup.onAppear")
                     activityCoordinator.prepareLaunchServices()
                     activityCoordinator.beforePlannedActivityMutation = {
                         CoachSnapshotInvalidator.invalidate(
@@ -78,6 +86,11 @@ struct WeekFitApp: App {
                         nightComfortLocationService = NightComfortLocationService(nightComfort: nightComfort)
                     }
                     nightComfortLocationService?.refreshIfNeeded()
+                    StartupDiagnostics.step(
+                        7,
+                        "root view created",
+                        detail: "ContentView appeared; lastStep=\(StartupDiagnostics.lastCompletedStep)"
+                    )
                 }
                 .onChange(of: languageManager.selectedLanguage) { _, language in
                     // Locale/cache already updated in AppLanguageManager.didSet.

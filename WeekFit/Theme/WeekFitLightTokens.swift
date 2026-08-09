@@ -10,12 +10,12 @@ enum WeekFitLightTokens {
     static let backgroundElevated = Color(red: 0.984, green: 0.976, blue: 0.957) // #FBF9F4
     static let backgroundTopGlow = Color(red: 1.000, green: 0.973, blue: 0.910) // #FFF8E8
 
-    // Surfaces — pearl / warm-white (not pure #FFF); gentle lift off ivory canvas
-    static let surfacePrimary = Color(red: 0.996, green: 0.994, blue: 0.988) // #FEFDFC elevated pearl
+    // Surfaces — brighter pearl so cards lift clearly off ivory canvas (#FBF9F4).
+    static let surfacePrimary = Color(red: 1.000, green: 0.999, blue: 0.996) // #FFFEFD elevated
     static let surfaceSecondary = Color(red: 0.969, green: 0.961, blue: 0.945) // #F7F5F1
     static let surfaceTertiary = Color(red: 0.941, green: 0.933, blue: 0.918) // #F0EEEA
-    /// Standard card body — warm pearl, slightly quieter than elevated.
-    static let surfaceCard = Color(red: 0.992, green: 0.988, blue: 0.980) // #FDFCF9
+    /// Standard card body — near-white pearl (was too close to canvas).
+    static let surfaceCard = Color(red: 1.000, green: 0.998, blue: 0.994) // #FFFEFD
     static let internalTile = Color(red: 0.961, green: 0.953, blue: 0.937) // #F5F3EF
     static let thumbnailWell = Color(red: 0.945, green: 0.937, blue: 0.922) // #F1EFEB
 
@@ -36,20 +36,21 @@ enum WeekFitLightTokens {
     // MARK: - Edges / tracks
 
     static let divider = Color(red: 0.847, green: 0.831, blue: 0.804) // #D8D4CD
-    /// Hairline edge ink — used at very low opacity; top rim prefers white highlight.
-    static let cardBorder = Color(red: 0.0, green: 0.0, blue: 0.0) // stroke via opacity
-    static let cardBorderStrokeOpacity: Double = 0.045
+    /// Warm stone hairline — readable on ivory without turning into a hard outline.
+    /// Prefer this over pure black (cold) or brand gold (competes with nav/profile).
+    static let cardBorder = Color(red: 0.36, green: 0.33, blue: 0.29) // #5C544A
+    static let cardBorderStrokeOpacity: Double = 0.14
     /// Soft top-edge highlight (precision rim, not a visible outline).
     static let cardEdgeHighlight = Color.white
     /// Airy chart / ring track (#E5E5EA).
     static let inactiveTrack = Color(red: 0.898, green: 0.898, blue: 0.918) // #E5E5EA
 
-    // MARK: - Shadows (neutral black, tight & quiet — Wallet / Journal depth)
+    // MARK: - Shadows (short contact only — wide ambient casts a rectangular slab on ivory)
 
     static let shadowAmbient = Color.black
     static let shadowContact = Color.black
-    static let cardContactShadowOpacity: Double = 0.045
-    static let cardAmbientShadowOpacity: Double = 0.028
+    static let cardContactShadowOpacity: Double = 0.055
+    static let cardAmbientShadowOpacity: Double = 0.022
 
     // MARK: - Metrics
 

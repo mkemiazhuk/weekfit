@@ -39,6 +39,7 @@ enum MorningProposalService {
         MorningProposalStore.expireBefore(dayKey: dayKey)
         CoachAdjustmentProvenanceStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
         CoachDecisionHistoryStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
+        ProposalOfferHistoryStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
 
         var existing = MorningProposalStore.proposal(for: dayKey)
         // Non-destructive expire of incompatible drafts (schema < current).
@@ -195,6 +196,11 @@ enum MorningProposalService {
         MorningProposalStore.upsert(proposal)
         switch proposal.status {
         case .proposalReady:
+            ProposalOfferHistoryStore.recordOffers(
+                dayKey: dayKey,
+                changes: proposal.changes,
+                now: context.now
+            )
             let mutating = proposal.changes.filter { $0.kind != CoachChangeKind.guidanceOnly }.count
             let guidance = proposal.changes.filter { $0.kind == CoachChangeKind.guidanceOnly }.count
             MorningProposalAnalytics.proposalGenerated(

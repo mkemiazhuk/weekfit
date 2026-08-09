@@ -218,51 +218,75 @@ struct LoginView: View {
             .frame(height: authButtonHeight)
             .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
             .accessibilityIdentifier("login.appleSignIn")
+            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
 
             authDivider
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                showEmailSignIn = true
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "envelope")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-
-                    Text(WeekFitLocalizedString("login.action.signIn"))
-                        .font(.system(size: subtitleFontSize, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.78))
+                Task {
+                    await authViewModel.continueWithoutAccount()
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(WeekFitLocalizedString("login.action.openWeekFit"))
+                        .font(.system(size: subtitleFontSize, weight: .semibold))
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                }
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: max(authButtonHeight - 6, 44))
+                .frame(height: authButtonHeight)
                 .background {
                     let shape = RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous)
-                    Group {
-                        if reduceTransparency {
-                            shape.fill(Color.black.opacity(0.42))
-                        } else {
-                            shape.fill(.ultraThinMaterial.opacity(0.20))
-                        }
-                    }
-                    .overlay {
-                        shape.strokeBorder(
+                    shape
+                        .fill(
                             LinearGradient(
                                 colors: [
-                                    .white.opacity(prefersIncreasedContrast ? 0.14 : 0.08),
-                                    .white.opacity(0.02)
+                                    Color(red: 0.38, green: 0.66, blue: 0.48),
+                                    brandGreen,
+                                    Color(red: 0.26, green: 0.50, blue: 0.36)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.5
+                            )
                         )
-                    }
+                        .overlay {
+                            shape.strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        .white.opacity(prefersIncreasedContrast ? 0.28 : 0.22),
+                                        .white.opacity(0.04)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.8
+                            )
+                        }
+                        .shadow(color: brandGreen.opacity(0.42), radius: 14, x: 0, y: 8)
+                        .shadow(color: .black.opacity(0.22), radius: 6, x: 0, y: 3)
                 }
             }
             .buttonStyle(LoginSecondaryButtonStyle())
-            .accessibilityIdentifier("login.signIn")
-            .accessibilityHint(WeekFitLocalizedString("login.action.signIn.hint"))
+            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
+            .accessibilityIdentifier("login.openWeekFit")
+            .accessibilityHint(WeekFitLocalizedString("login.action.openWeekFit.hint"))
+            .contextMenu {
+                // App Review / DEBUG: keep email credentials path without showing it as a primary CTA.
+                Button {
+                    showEmailSignIn = true
+                } label: {
+                    Label(
+                        WeekFitLocalizedString("login.action.signIn"),
+                        systemImage: "envelope"
+                    )
+                }
+                .accessibilityIdentifier("login.signIn")
+            }
 
             appleHealthFooter
         }

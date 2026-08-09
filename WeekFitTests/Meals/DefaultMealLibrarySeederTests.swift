@@ -119,4 +119,10 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
             ])
         )
     }
+
+    func testCurrentStarterCatalog_isNotTreatedAsReplaceableLegacy() {
+        let starters = DefaultMealLibrarySeeder.buildStarterMeals()
+        XCTAssertTrue(DefaultMealLibrarySeeder.isCurrentStarterCatalogOnly(starters))
+        XCTAssertFalse(DefaultMealLibrarySeeder.isLegacyCatalogOnly(starters))
+    }
 }

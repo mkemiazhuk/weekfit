@@ -54,6 +54,9 @@ struct WeekFitRootView: View {
     @State private var acknowledgedHealthRefreshToken: UUID?
     @State private var cachedPlannedActivitiesSignature = ""
 
+    /// Joins overlapping workout reconcile requests (appear + onChange can race).
+    private static var reconcileInFlight: Task<Void, Never>?
+
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
 
@@ -82,10 +85,30 @@ struct WeekFitRootView: View {
                 syncCoachRefreshInputs()
             }
             .task(id: coachRefreshInputs) {
+                let taskName = "root.refreshCoachInput"
+                StartupDiagnostics.taskBegin(
+                    taskName,
+                    detail: "tab=\(String(describing: selectedTab)) settled=\(hasSettledInitialHealthState)"
+                )
                 await refreshCoachInput(source: "rootTask")
+                if Task.isCancelled {
+                    StartupDiagnostics.taskCancelled(taskName)
+                } else {
+                    StartupDiagnostics.taskSuccess(
+                        taskName,
+                        detail: "coachState=\(coachCoordinator.state.statusLogLabel)"
+                    )
+                }
             }
             .task(id: plannedActivitiesIconRepairKey) {
+                let taskName = "root.repairPlannedActivityIcons"
+                StartupDiagnostics.taskBegin(taskName, detail: plannedActivitiesIconRepairKey)
                 repairPlannedActivityIconsIfNeeded()
+                if Task.isCancelled {
+                    StartupDiagnostics.taskCancelled(taskName)
+                } else {
+                    StartupDiagnostics.taskSuccess(taskName)
+                }
             }
     }
 
@@ -221,17 +244,24 @@ struct WeekFitRootView: View {
                 }
                 .shadow(
                     color: palette.isLight
-                        ? WeekFitLightTokens.shadowAmbient.opacity(0.08)
+                        ? Color.clear
                         : Color.black.opacity(0.4),
-                    radius: palette.isLight ? 18 : 25,
-                    y: palette.isLight ? -6 : -10
+                    radius: palette.isLight ? 0 : 25,
+                    y: palette.isLight ? 0 : -10
                 )
+                .id(palette.appearanceInvalidationToken)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 120)
         }
     }
 
     private func handleRootAppear() {
+        StartupHangDetector.armForColdLaunch()
+        StartupDiagnostics.step(
+            11,
+            "root appear — Today tab mounting",
+            detail: "mode=\(String(describing: AccountSessionController.shared.mode)) planned=\(plannedActivities.count)"
+        )
         withAnimation(.spring(response: 0.62, dampingFraction: 0.88)) {
             showContent = true
         }
@@ -248,14 +278,30 @@ struct WeekFitRootView: View {
         planViewModel.afterPlannedActivityDeleted = {
             appSession.triggerCoachRefresh(source: "plannerActivityDelete")
         }
+        StartupDiagnostics.step(17, "plan load begin", detail: "signature refresh + notification sync")
         refreshPlannedActivitiesSignature()
+        StartupDiagnostics.step(
+            18,
+            "plan load complete",
+            detail: "planned=\(plannedActivities.count) signatureLen=\(cachedPlannedActivitiesSignature.count)"
+        )
         syncNotifications(source: "root.onAppear")
         reconcileAppCalendarDay(source: "root.onAppear", returnToToday: false)
         Task {
+            let taskName = "root.reconcileHealthWorkouts.bootstrap"
+            StartupDiagnostics.taskBegin(taskName, detail: "source=root.onAppear")
             if AccountSessionController.shared.mode != .reviewDemo {
                 await reconcileHealthWorkouts(
                     source: "root.onAppear",
                     bootstrapFromHealth: true
+                )
+            }
+            if Task.isCancelled {
+                StartupDiagnostics.taskCancelled(taskName)
+            } else {
+                StartupDiagnostics.taskSuccess(
+                    taskName,
+                    detail: "batch=\(activityCoordinator.completedWorkoutsBatch.count)"
                 )
             }
         }
@@ -464,6 +510,11 @@ struct WeekFitRootView: View {
     private func handleHealthRefreshEvent() {
         healthRefreshEventTask?.cancel()
         healthRefreshEventTask = Task {
+            let taskName = "root.handleHealthRefreshEvent"
+            let sources = CoachTabHealthRefreshPolicy.summarizeSources(
+                appSession.latestHealthRefreshSources
+            )
+            StartupDiagnostics.taskBegin(taskName, detail: "sources=\(sources)")
             let decision = healthRefreshEventDecision()
             #if DEBUG
             HealthRefreshGuardLog.log(
@@ -472,11 +523,12 @@ struct WeekFitRootView: View {
                 sources: appSession.latestHealthRefreshSources
             )
             #endif
-            guard decision.shouldReloadHealth else { return }
+            guard decision.shouldReloadHealth else {
+                StartupDiagnostics.taskSuccess(taskName, detail: "skipped decision=\(String(describing: decision))")
+                return
+            }
 
-            let sourceLabel = CoachTabHealthRefreshPolicy.summarizeSources(
-                appSession.latestHealthRefreshSources
-            )
+            let sourceLabel = sources
             await reconcileHealthWorkouts(
                 source: "healthRefreshEvent.\(sourceLabel)",
                 bootstrapFromHealth: true
@@ -486,6 +538,11 @@ struct WeekFitRootView: View {
                 refreshHealth: true
             )
             acknowledgeHealthRefreshEvent()
+            if Task.isCancelled {
+                StartupDiagnostics.taskCancelled(taskName)
+            } else {
+                StartupDiagnostics.taskSuccess(taskName, detail: "reloaded")
+            }
         }
     }
 
@@ -628,6 +685,49 @@ struct WeekFitRootView: View {
         source: String,
         bootstrapFromHealth: Bool = false
     ) async {
+        let run = UUID()
+        let taskName = "root.reconcileHealthWorkouts"
+        if let existing = Self.reconcileInFlight {
+            StartupDiagnostics.taskBegin(
+                taskName,
+                detail: "run=\(run.uuidString.prefix(8)) joinInFlight source=\(source) bootstrap=\(bootstrapFromHealth)"
+            )
+            await existing.value
+            // Non-bootstrap callers can coalesce. Bootstrap must still run if it lost the race.
+            if !bootstrapFromHealth {
+                StartupDiagnostics.taskSuccess(taskName, detail: "run=\(run.uuidString.prefix(8)) joined")
+                return
+            }
+            StartupDiagnostics.taskBegin(
+                taskName,
+                detail: "run=\(run.uuidString.prefix(8)) bootstrapAfterJoin source=\(source)"
+            )
+        }
+
+        let task = Task { @MainActor in
+            await self.performReconcileHealthWorkouts(
+                run: run,
+                source: source,
+                bootstrapFromHealth: bootstrapFromHealth
+            )
+        }
+        Self.reconcileInFlight = task
+        await task.value
+        if Self.reconcileInFlight == task {
+            Self.reconcileInFlight = nil
+        }
+    }
+
+    private func performReconcileHealthWorkouts(
+        run: UUID,
+        source: String,
+        bootstrapFromHealth: Bool
+    ) async {
+        let taskName = "root.reconcileHealthWorkouts"
+        StartupDiagnostics.taskBegin(
+            taskName,
+            detail: "run=\(run.uuidString.prefix(8)) source=\(source) bootstrap=\(bootstrapFromHealth) planned=\(plannedActivities.count)"
+        )
         CoachSnapshotInvalidator.invalidate(
             coordinator: coachCoordinator,
             nutritionViewModel: nutritionViewModel,
@@ -644,7 +744,13 @@ struct WeekFitRootView: View {
             )
         }
 
-        guard !activityCoordinator.completedWorkoutsBatch.isEmpty else { return }
+        guard !activityCoordinator.completedWorkoutsBatch.isEmpty else {
+            StartupDiagnostics.taskSuccess(
+                taskName,
+                detail: "run=\(run.uuidString.prefix(8)) no completed batch"
+            )
+            return
+        }
 
         activityCoordinator.reconcileCompletedWorkouts(
             with: plannedActivities,
@@ -652,6 +758,10 @@ struct WeekFitRootView: View {
         )
         appSession.triggerHealthRefresh(source: source)
         appSession.triggerCoachRefresh(source: source)
+        StartupDiagnostics.taskSuccess(
+            taskName,
+            detail: "run=\(run.uuidString.prefix(8)) reconciled batch"
+        )
     }
 
     private func reconcileAppCalendarDay(source: String, returnToToday: Bool) {

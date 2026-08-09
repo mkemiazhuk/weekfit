@@ -3,6 +3,9 @@ import Foundation
 /// Presentation-layer morning brief — turns a mutation inventory into a coach narrative.
 struct MorningProposalBrief: Equatable, Sendable {
     let eyebrow: String
+    /// Optional first name for soft address — never mashed into `headline` with an em dash.
+    let addressName: String?
+    /// Strategy / cold-start line only (no name prefix).
     let headline: String
     /// Up to three concrete actions in plain language.
     let actionLines: [String]
@@ -45,17 +48,8 @@ enum MorningProposalBriefComposer {
             actionLines = actionSource.map(actionLine(for:))
         }
 
+        // Weather only in meta — tip counts read as inventory, not coaching.
         let metaParts: [String] = [
-            tips.isEmpty || (actionSource.isEmpty && isColdStart(proposal))
-                ? nil
-                : String(
-                    format: WeekFitLocalizedString(
-                        tips.count == 1
-                            ? "coach.proposal.brief.tipCount.one"
-                            : "coach.proposal.brief.tipCount.other"
-                    ),
-                    tips.count
-                ),
             weatherLine.flatMap { line in
                 line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : line
             },
@@ -63,9 +57,9 @@ enum MorningProposalBriefComposer {
 
         return MorningProposalBrief(
             eyebrow: WeekFitLocalizedString("coach.proposal.brief.eyebrow"),
+            addressName: resolvedAddressName(givenName),
             headline: headline(
                 for: proposal.strategy,
-                givenName: givenName,
                 isColdStart: isColdStart(proposal)
             ),
             actionLines: actionLines,
@@ -82,29 +76,26 @@ enum MorningProposalBriefComposer {
         proposal.fingerprint.observationContextRevision == "none"
     }
 
-    static func headline(
-        for strategy: DailyStrategy?,
-        givenName: String?,
-        isColdStart: Bool = false
-    ) -> String {
-        let base: String
-        if isColdStart {
-            base = WeekFitLocalizedString("coach.proposal.brief.coldStart.headline")
-        } else {
-            base = MorningProposalStrategyCopy.localizedSummary(for: strategy)
-                ?? WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
-        }
+    /// First token of a display name suitable for soft address (“Max”).
+    static func resolvedAddressName(_ givenName: String?) -> String? {
         let name = givenName?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .split(separator: " ")
             .first
             .map(String.init)
-        guard let name, !name.isEmpty else { return base }
-        return String(
-            format: WeekFitLocalizedString("coach.proposal.brief.headlineNamed"),
-            name,
-            base
-        )
+        guard let name, !name.isEmpty else { return nil }
+        return name
+    }
+
+    static func headline(
+        for strategy: DailyStrategy?,
+        isColdStart: Bool = false
+    ) -> String {
+        if isColdStart {
+            return WeekFitLocalizedString("coach.proposal.brief.coldStart.headline")
+        }
+        return MorningProposalStrategyCopy.localizedSummary(for: strategy)
+            ?? WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
     }
 
     static func actionLine(for change: CoachProposedChange) -> String {

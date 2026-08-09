@@ -84,18 +84,23 @@ final class MorningProposalBriefComposerTests: XCTestCase {
         let brief = MorningProposalBriefComposer.compose(
             proposal: proposal,
             givenName: "Max",
-            weatherLine: "Weather: rain risk — prefer indoor or earlier"
+            weatherLine: "Rain risk — prefer indoor or earlier"
         )
 
-        XCTAssertTrue(brief.headline.contains("Max"))
+        XCTAssertEqual(brief.addressName, "Max")
+        XCTAssertFalse(brief.headline.contains("Max"))
+        XCTAssertFalse(brief.headline.hasPrefix("Max"))
         XCTAssertEqual(brief.actionLines.count, 1)
         XCTAssertTrue(brief.actionLines[0].contains("Tempo Run"))
         XCTAssertTrue(brief.actionLines[0].contains("40"))
         XCTAssertEqual(brief.recommendedCount, 2)
         XCTAssertEqual(brief.tipCount, 1)
-        XCTAssertNotNil(brief.metaLine)
+        // Meta stays human (weather), not tip-count inventory.
+        XCTAssertEqual(brief.metaLine, "Rain risk — prefer indoor or earlier")
         XCTAssertFalse(brief.dayMoments.isEmpty)
         XCTAssertEqual(brief.dayMoments.first?.title.contains("Tempo") ?? false, true)
+        // Strategy headline should stay short and editorial.
+        XCTAssertLessThan(brief.headline.count, 72)
     }
 
     func testDayMoments_areChronologicAndPreferSelected() {

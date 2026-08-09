@@ -40,7 +40,7 @@ private struct PlannerMealSheetHost<Library: View>: View {
         )
         .presentationDragIndicator(step == .library ? .visible : .hidden)
         .weekFitSheetChrome(
-            cornerRadius: step == .library ? 30 : 36,
+            cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
             background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
         )
     }
@@ -67,12 +67,9 @@ struct PlanAddActivitySheet: View {
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private var textSecondary: Color { WeekFitTheme.secondaryText }
-    private var borderSoft: Color { WeekFitTheme.borderSoft }
 
     private let addSheetCarouselInset: CGFloat = 10
-    private let addSheetHorizontalInset: CGFloat = 8
     private let busySlotColor = WeekFitTheme.orange
-    private let addSheetCornerRadius: CGFloat = 30
     private let addSheetMealCardWidth: CGFloat = 118
     private let addSheetMealCardHeight: CGFloat = 104
     private let addSheetMealImageWidth: CGFloat = 104
@@ -109,17 +106,27 @@ struct PlanAddActivitySheet: View {
         return allSlots.filter { $0 >= Date() }
     }
 
-    private var addSheetMaxHeight: CGFloat {
+    private var addSheetPresentationDetents: Set<PresentationDetent> {
         if showsMealEmptyState {
-            return min(UIScreen.main.bounds.height * 0.62, 460)
+            return [.fraction(0.62), .large]
         }
-        return min(UIScreen.main.bounds.height * 0.78, 620)
+        return [.fraction(0.82), .large]
     }
     
     var body: some View {
         let _ = languageManager.selectedLanguage
 
         addActivitySheet
+            .presentationDetents(addSheetPresentationDetents)
+            .presentationDragIndicator(.hidden)
+            .presentationContentInteraction(.scrolls)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: PlanAddSheetPalette.sheetBase(
+                    for: viewModel.selectedType,
+                    isLight: palette.isLight
+                )
+            )
             .sheet(isPresented: $showMealSheet) {
                 PlannerMealSheetHost(
                     step: $mealSheetStep,
@@ -138,7 +145,7 @@ struct PlanAddActivitySheet: View {
             }
             .sheet(isPresented: $viewModel.showCustomDuration) {
                 customDurationSheet
-                    .weekFitSheetChrome(cornerRadius: 30)
+                    .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
             }
             .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
                 Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
@@ -225,24 +232,9 @@ private extension PlanAddActivitySheet {
         }
         .padding(.horizontal, WeekFitStyle.Size.horizontalPadding)
         .padding(.top, 7)
-        .padding(.bottom, viewModel.editingActivity == nil ? 9 : 8)
-        .frame(maxHeight: addSheetMaxHeight, alignment: .top)
+        .padding(.bottom, viewModel.editingActivity == nil ? 12 : 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background { addSheetBackground }
-        .overlay { addSheetBorder }
-        .shadow(
-            color: Color.black.opacity(palette.isLight ? 0.10 : 0.28),
-            radius: palette.isLight ? 18 : 22,
-            x: 0,
-            y: palette.isLight ? -4 : -6
-        )
-        .shadow(
-            color: viewModel.selectedType.color.opacity(palette.isLight ? 0.06 : 0.08),
-            radius: 16,
-            x: 0,
-            y: -2
-        )
-        .padding(.horizontal, addSheetHorizontalInset)
-        .padding(.bottom, 8)
     }
 
     var addSheetGrabber: some View {
@@ -547,22 +539,28 @@ private extension PlanAddActivitySheet {
             .background {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
                     .fill(active
-                          ? (palette.isLight ? type.color.opacity(0.18) : type.color.opacity(activeFillOpacity))
-                          : (palette.isLight ? WeekFitLightTokens.surfaceTertiary : WeekFitTheme.whiteOpacity(0.026)))
+                          ? (palette.isLight ? type.color.opacity(0.16) : type.color.opacity(activeFillOpacity))
+                          : (palette.isLight
+                             ? PlanAddSheetPalette.typeChipIdleFill(for: viewModel.selectedType)
+                             : WeekFitTheme.whiteOpacity(0.026)))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
                     .stroke(
                         active
-                            ? (palette.isLight ? type.color.opacity(0.45) : WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070))
-                            : (palette.isLight ? WeekFitLightTokens.divider.opacity(0.50) : WeekFitTheme.whiteOpacity(0.035)),
+                            ? (palette.isLight ? type.color.opacity(0.42) : WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070))
+                            : (palette.isLight
+                               ? WeekFitLightTokens.cardBorder.opacity(0.22)
+                               : WeekFitTheme.whiteOpacity(0.035)),
                         lineWidth: 1
                     )
             }
             .shadow(
-                color: active ? type.color.opacity(type == .workout ? 0.014 : 0.022) : Color.black.opacity(0.032),
-                radius: active ? 6 : 3,
-                y: active ? 3 : 2
+                color: active
+                    ? type.color.opacity(type == .workout ? 0.014 : 0.022)
+                    : Color.black.opacity(palette.isLight ? 0.02 : 0.032),
+                radius: active ? 6 : 1.5,
+                y: active ? 3 : 1
             )
         }
         .buttonStyle(.plain)
@@ -614,26 +612,34 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active
-                          ? (palette.isLight ? viewModel.selectedType.color.opacity(0.12) : viewModel.selectedType.color.opacity(0.05))
-                          : (palette.isLight ? WeekFitLightTokens.surfacePrimary : WeekFitTheme.whiteOpacity(0.022)))
+                    .fill(
+                        PlanAddSheetPalette.optionCardFill(
+                            active: active,
+                            type: viewModel.selectedType,
+                            isLight: palette.isLight
+                        )
+                    )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
                         active
-                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.42 : 0.16)
-                            : (palette.isLight ? WeekFitLightTokens.cardBorder.opacity(0.45) : WeekFitTheme.whiteOpacity(0.05)),
+                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.38 : 0.16)
+                            : (palette.isLight
+                               ? WeekFitLightTokens.cardBorder.opacity(0.28)
+                               : WeekFitTheme.whiteOpacity(0.05)),
                         lineWidth: 1
                     )
             }
             .shadow(
-                color: active
-                    ? viewModel.selectedType.color.opacity(palette.isLight ? 0.10 : 0.012)
-                    : Color.black.opacity(palette.isLight ? 0.06 : 0.018),
-                radius: active ? 6 : 3,
+                color: PlanAddSheetPalette.optionCardShadow(
+                    active: active,
+                    type: viewModel.selectedType,
+                    isLight: palette.isLight
+                ),
+                radius: active ? 6 : 2,
                 x: 0,
-                y: active ? 3 : 2
+                y: active ? 3 : 1
             )
         }
         .buttonStyle(.plain)
@@ -698,26 +704,34 @@ private extension PlanAddActivitySheet {
             .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(active
-                          ? (palette.isLight ? viewModel.selectedType.color.opacity(0.12) : viewModel.selectedType.color.opacity(0.05))
-                          : (palette.isLight ? WeekFitLightTokens.surfacePrimary : WeekFitTheme.whiteOpacity(0.022)))
+                    .fill(
+                        PlanAddSheetPalette.optionCardFill(
+                            active: active,
+                            type: viewModel.selectedType,
+                            isLight: palette.isLight
+                        )
+                    )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
                         active
-                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.42 : 0.16)
-                            : (palette.isLight ? WeekFitLightTokens.cardBorder.opacity(0.45) : WeekFitTheme.whiteOpacity(0.05)),
+                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.38 : 0.16)
+                            : (palette.isLight
+                               ? WeekFitLightTokens.cardBorder.opacity(0.28)
+                               : WeekFitTheme.whiteOpacity(0.05)),
                         lineWidth: 1
                     )
             }
             .shadow(
-                color: active
-                    ? viewModel.selectedType.color.opacity(palette.isLight ? 0.10 : 0.012)
-                    : Color.black.opacity(palette.isLight ? 0.06 : 0.014),
-                radius: active ? 6 : 3,
+                color: PlanAddSheetPalette.optionCardShadow(
+                    active: active,
+                    type: viewModel.selectedType,
+                    isLight: palette.isLight
+                ),
+                radius: active ? 6 : 2,
                 x: 0,
-                y: active ? 3 : 2
+                y: active ? 3 : 1
             )
         }
         .buttonStyle(.plain)
@@ -1262,7 +1276,12 @@ private extension PlanAddActivitySheet {
         Image(imageName)
             .resizable()
             .scaledToFill()
-            .background(WeekFitTheme.cardSurface)
+            .background(
+                PlanAddSheetPalette.imageWellFill(
+                    for: viewModel.selectedType,
+                    isLight: palette.isLight
+                )
+            )
     }
 
 }
@@ -1277,47 +1296,34 @@ private extension PlanAddActivitySheet {
 
     var addSheetBackground: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
-                .fill(palette.isLight ? WeekFitLightTokens.backgroundElevated : WeekFitTheme.backgroundColor)
+            PlanAddSheetPalette.sheetBase(for: viewModel.selectedType, isLight: palette.isLight)
+
+            // Quiet type wash — depth without painting the whole sheet in accent.
+            LinearGradient(
+                colors: PlanAddSheetPalette.sheetWash(
+                    for: viewModel.selectedType,
+                    isLight: palette.isLight
+                ),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .allowsHitTesting(false)
 
             if !palette.isLight {
-                RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                WeekFitTheme.whiteOpacity(0.045),
-                                WeekFitTheme.whiteOpacity(0.012),
-                                Color.clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .allowsHitTesting(false)
+                LinearGradient(
+                    colors: [
+                        WeekFitTheme.whiteOpacity(0.045),
+                        WeekFitTheme.whiteOpacity(0.012),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
             }
         }
-    }
-
-    var addSheetBorder: some View {
-        RoundedRectangle(cornerRadius: addSheetCornerRadius, style: .continuous)
-            .stroke(
-                LinearGradient(
-                    colors: palette.isLight
-                        ? [
-                            WeekFitLightTokens.cardBorder.opacity(0.55),
-                            WeekFitLightTokens.divider.opacity(0.40),
-                            borderSoft.opacity(0.35)
-                        ]
-                        : [
-                            WeekFitTheme.whiteOpacity(0.10),
-                            WeekFitTheme.whiteOpacity(0.04),
-                            borderSoft.opacity(0.28)
-                        ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1
-            )
+        .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.28), value: viewModel.selectedType)
     }
 
     var horizontalFadeMask: some View {
@@ -1504,7 +1510,7 @@ private extension PlanAddActivitySheet {
             if active && occupied { return WeekFitLightTokens.critical.opacity(0.12) }
             if occupied { return busySlotColor.opacity(0.12) }
             if active { return viewModel.selectedType.color.opacity(0.16) }
-            return WeekFitLightTokens.internalTile
+            return PlanAddSheetPalette.chipWellFill(for: viewModel.selectedType)
         }
         if isPast { return WeekFitTheme.whiteOpacity(0.012) }
         if active && occupied { return Color.red.opacity(0.075) }
@@ -1576,7 +1582,7 @@ private extension PlanAddActivitySheet {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+            .background(QuickActionSheetDesign.Color.sheetBackground(for: .food).ignoresSafeArea())
             .navigationTitle(WeekFitLocalizedString("planner.sheet.chooseMeal"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1689,5 +1695,110 @@ private extension PlanAddActivitySheet {
         )
         viewModel.selectedMealID = meal.id
         viewModel.selectedItem = viewModel.plannerOption(for: meal)
+    }
+}
+
+// MARK: - Add sheet surfaces (4 types)
+
+/// Soft stone sheets + family-tinted ceramic cards — Quick Log depth language, per Plan type.
+/// Idle cards must never read as pure white on the sheet.
+private enum PlanAddSheetPalette {
+
+    @MainActor
+    static func sheetBase(for type: PlannerType, isLight: Bool) -> Color {
+        guard isLight else { return WeekFitTheme.backgroundColor }
+        switch type {
+        case .meal:
+            return Color(red: 0.941, green: 0.922, blue: 0.890) // #F0EBE3 deeper food stone
+        case .workout:
+            return Color(red: 0.922, green: 0.929, blue: 0.941) // #EBEDF0 cool slate mist
+        case .recovery:
+            return Color(red: 0.937, green: 0.929, blue: 0.949) // #EFEDF2 lilac stone
+        case .habit:
+            return Color(red: 0.941, green: 0.933, blue: 0.906) // #F0EEE7 champagne stone
+        }
+    }
+
+    @MainActor
+    static func sheetWash(for type: PlannerType, isLight: Bool) -> [Color] {
+        let accent = type.color
+        if isLight {
+            return [
+                accent.opacity(0.070),
+                accent.opacity(0.022),
+                Color.clear
+            ]
+        }
+        return [
+            accent.opacity(0.08),
+            accent.opacity(0.03),
+            Color.clear
+        ]
+    }
+
+    @MainActor
+    static func optionCardFill(active: Bool, type: PlannerType, isLight: Bool) -> Color {
+        if !isLight {
+            return active ? type.color.opacity(0.07) : WeekFitTheme.whiteOpacity(0.032)
+        }
+        if active {
+            return type.color.opacity(0.16)
+        }
+        // One step lighter than the sheet, still clearly tinted — never pearl/white.
+        switch type {
+        case .meal:
+            return Color(red: 0.973, green: 0.961, blue: 0.941) // #F8F5F0
+        case .workout:
+            return Color(red: 0.957, green: 0.961, blue: 0.969) // #F4F5F7
+        case .recovery:
+            return Color(red: 0.965, green: 0.957, blue: 0.973) // #F6F4F8
+        case .habit:
+            return Color(red: 0.973, green: 0.965, blue: 0.945) // #F8F6F1
+        }
+    }
+
+    /// Shared idle well for the type row — keyed to the *current* sheet family.
+    @MainActor
+    static func typeChipIdleFill(for selectedType: PlannerType) -> Color {
+        switch selectedType {
+        case .meal:
+            return Color(red: 0.922, green: 0.906, blue: 0.875) // #EBE7DF
+        case .workout:
+            return Color(red: 0.906, green: 0.914, blue: 0.925) // #E7E9EC
+        case .recovery:
+            return Color(red: 0.918, green: 0.910, blue: 0.929) // #EAE8ED
+        case .habit:
+            return Color(red: 0.922, green: 0.914, blue: 0.890) // #EBE9E3
+        }
+    }
+
+    @MainActor
+    static func chipWellFill(for type: PlannerType) -> Color {
+        typeChipIdleFill(for: type)
+    }
+
+    @MainActor
+    static func imageWellFill(for type: PlannerType, isLight: Bool) -> Color {
+        guard isLight else { return WeekFitTheme.cardSurface.opacity(0.88) }
+        // Slightly deeper than the card body so photos sit in a quiet nest.
+        switch type {
+        case .meal:
+            return Color(red: 0.953, green: 0.941, blue: 0.918) // #F3F0EA
+        case .workout:
+            return Color(red: 0.941, green: 0.945, blue: 0.953) // #F0F1F3
+        case .recovery:
+            return Color(red: 0.949, green: 0.941, blue: 0.957) // #F2F0F4
+        case .habit:
+            return Color(red: 0.953, green: 0.945, blue: 0.925) // #F3F1EC
+        }
+    }
+
+    @MainActor
+    static func optionCardShadow(active: Bool, type: PlannerType, isLight: Bool) -> Color {
+        if active {
+            return type.color.opacity(isLight ? 0.12 : 0.014)
+        }
+        // Quiet contact only — no floating white-sticker look.
+        return Color.black.opacity(isLight ? 0.035 : 0.012)
     }
 }

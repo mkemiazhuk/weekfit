@@ -13,6 +13,14 @@ enum AccountSessionCoordinator {
         coachCoordinator: CoachCoordinator,
         appSession: AppSessionState
     ) async {
+        // Lifecycle boundary: meal seed is never triggered from SwiftUI body/init.
+        StartupDiagnostics.step(
+            12,
+            "meal library seed ensure",
+            detail: "AccountSessionCoordinator.applySessionState"
+        )
+        WeekFitUserSettings.shared.ensureMealLibrarySeeded()
+
         let targetMode = AccountMode.resolve(isLoggedIn: isLoggedIn)
         guard targetMode != accountSession.mode else {
             await refreshModeIfNeeded(
@@ -166,19 +174,39 @@ enum AccountSessionCoordinator {
             )
         }
 
-        try? DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded(
-            in: WeekFitModelContainer.productionContext()
-        )
+        StartupDiagnostics.step(3, "migration start", detail: "DemoDataMigration (realUser entry)")
+        do {
+            let removed = try DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded(
+                in: WeekFitModelContainer.productionContext()
+            )
+            StartupDiagnostics.step(
+                4,
+                "migration complete",
+                detail: "DemoDataMigration removedRows=\(removed)"
+            )
+        } catch {
+            StartupDiagnostics.failed(
+                operation: "DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded",
+                error: error,
+                step: 3
+            )
+        }
 
         accountSession.setMode(.realUser, reason: "realUserLogin")
         activityCoordinator.restartForRealUser()
-        await healthManager.refreshHealthAccessStateAfterLogin()
+
+        // Probe grant only — full HealthKit hydrate must not block the transition UI
+        // (otherwise Login flashes then the app sits on a black screen that looks like a crash).
+        StartupDiagnostics.step(6, "HealthKit service created", detail: "refreshHealthAccessStateAfterLogin(loadMetrics: false)")
+        await healthManager.refreshHealthAccessStateAfterLogin(loadMetrics: false)
+        StartupDiagnostics.step(
+            6,
+            "HealthKit service created",
+            detail: "probe done granted=\(healthManager.isHealthAccessGranted) requested=\(healthManager.isHealthAccessRequested)"
+        )
         if healthManager.isHealthAccessGranted {
             activityCoordinator.activateHealthKitSync()
         }
-
-        appSession.triggerHealthRefresh(source: "accountSession.realUser")
-        appSession.triggerCoachRefresh(source: "accountSession.realUser")
 
         OnboardingStore.migrateExistingUsersIfNeeded()
 
@@ -199,6 +227,32 @@ enum AccountSessionCoordinator {
             store: accountSession.containerIdentity,
             demoProviderEnabled: false
         )
+
+        // Hydrate after the transition can end — Root appears while metrics catch up.
+        Task {
+            let taskName = "accountSession.realUser.postApplyHydrate"
+            StartupDiagnostics.taskBegin(
+                taskName,
+                detail: "granted=\(healthManager.isHealthAccessGranted)"
+            )
+            if Task.isCancelled {
+                StartupDiagnostics.taskCancelled(taskName)
+                return
+            }
+            if healthManager.isHealthAccessGranted {
+                await healthManager.loadHealthData(for: Date())
+            }
+            if Task.isCancelled {
+                StartupDiagnostics.taskCancelled(taskName, detail: "after loadHealthData")
+                return
+            }
+            appSession.triggerHealthRefresh(source: "accountSession.realUser")
+            appSession.triggerCoachRefresh(source: "accountSession.realUser")
+            StartupDiagnostics.taskSuccess(
+                taskName,
+                detail: "triggered health+coach refresh"
+            )
+        }
     }
 
     private static func resetLocalWorkspaceForNewAccount(

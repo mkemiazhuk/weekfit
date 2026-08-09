@@ -11,6 +11,7 @@ final class CoachCoordinator: ObservableObject {
     private var lastResolvedFingerprint: CoachInputFingerprint?
     private var settlingRetryTask: Task<Void, Never>?
     private nonisolated(unsafe) var settlingRetryTaskForDeinit: Task<Void, Never>?
+    private nonisolated(unsafe) var heartRateZoneObserver: NSObjectProtocol?
 
     private(set) var recomputeCount = 0
     private(set) var skippedUnchangedCount = 0
@@ -22,16 +23,28 @@ final class CoachCoordinator: ObservableObject {
         WeekFitLifecycleTracker.attach(lifecycleToken)
         CoachIntegrationMetrics.restoreFromStorageIfNeeded()
         self.state = initialState
+        heartRateZoneObserver = NotificationCenter.default.addObserver(
+            forName: .weekFitLiveHeartRateZoneDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                _ = self?.forceRecompute(reason: "liveHeartRate.zone")
+            }
+        }
     }
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
 
     nonisolated deinit {
         settlingRetryTaskForDeinit?.cancel()
+        if let heartRateZoneObserver {
+            NotificationCenter.default.removeObserver(heartRateZoneObserver)
+        }
         WeekFitLifecycleTracker.detach(lifecycleToken)
     }
 
     func updateInput(_ input: CoachInputSnapshot?) {
-        latestInput = input
+        latestInput = input.map { enrichWithLiveHeartRate($0) }
     }
 
     func invalidateResolvedStateForDayChange() {
@@ -118,8 +131,9 @@ final class CoachCoordinator: ObservableObject {
         input: CoachInputSnapshot,
         reason: String
     ) -> CoachState {
-        latestInput = input
-        let fingerprint = CoachInputFingerprint(snapshot: input)
+        let enriched = enrichWithLiveHeartRate(input)
+        latestInput = enriched
+        let fingerprint = CoachInputFingerprint(snapshot: enriched)
         let isLanguageChange = reason.lowercased().contains("languagechange")
 
         guard fingerprint != lastResolvedFingerprint else {
@@ -129,23 +143,23 @@ final class CoachCoordinator: ObservableObject {
 
         if !isLanguageChange, CoachStateStabilizer.isSettling(source: reason) {
             logInputReadiness(
-                input: input,
+                input: enriched,
                 reason: reason,
-                readiness: CoachInputReadiness.assessment(input),
+                readiness: CoachInputReadiness.assessment(enriched),
                 outcome: state.hasValidGuidance ? "blockedSettlingPreservePrevious" : "blockedSettling"
             )
             state = state.hasValidGuidance
                 ? state.preservingPreviousDuringRefresh()
                 : .settling(reason: "Coach inputs are still syncing.")
-            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
-            scheduleSettlingRetry(for: input, reason: reason)
+            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: enriched)
+            scheduleSettlingRetry(for: enriched, reason: reason)
             return state
         }
 
-        let readiness = CoachInputReadiness.assessment(input)
+        let readiness = CoachInputReadiness.assessment(enriched)
         guard readiness.allowed || isLanguageChange else {
             logInputReadiness(
-                input: input,
+                input: enriched,
                 reason: reason,
                 readiness: readiness,
                 outcome: state.hasValidGuidance ? "blockedPreservePrevious" : "blockedSettling"
@@ -153,26 +167,26 @@ final class CoachCoordinator: ObservableObject {
             state = state.hasValidGuidance
                 ? state.preservingPreviousDuringRefresh()
                 : .settling(reason: "Coach inputs are still syncing.")
-            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
+            nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: enriched)
             return state
         }
 
         let rawState = CoachState.ready(
-            input: input,
+            input: enriched,
             fingerprint: fingerprint,
             reason: reason,
             bypassReadinessGate: isLanguageChange
         )
-        logContextDebug(input: input, state: rawState)
+        logContextDebug(input: enriched, state: rawState)
 
         lastResolvedFingerprint = fingerprint
         recomputeCount += 1
         lastRecomputeReason = reason
         state = rawState
-        nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: input)
+        nextScheduledCheckpoint = CoachCheckpointScheduler.nextCheckpoint(after: enriched)
 
         logInputReadiness(
-            input: input,
+            input: enriched,
             reason: reason,
             readiness: readiness,
             outcome: "allowed"
@@ -181,6 +195,14 @@ final class CoachCoordinator: ObservableObject {
         persistTodayInsightIfNeeded(from: rawState)
 
         return rawState
+    }
+
+    private func enrichWithLiveHeartRate(_ input: CoachInputSnapshot) -> CoachInputSnapshot {
+        let coordinator = WeekFitActivityCoordinator.shared
+        return input.enrichingLiveHeartRate(
+            bpm: coordinator.liveHeartRateBPM,
+            zone: coordinator.liveHeartRateZone
+        )
     }
 
     private func persistTodayInsightIfNeeded(from state: CoachState) {

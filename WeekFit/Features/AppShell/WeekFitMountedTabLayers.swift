@@ -28,7 +28,11 @@ private struct TodayTabLayer: View, Equatable {
     }
 
     var body: some View {
-        TodayView(
+        let _ = TodayStartupDiagnostics.child(
+            "TodayTabLayer.body",
+            detail: "isActive=\(isActive) plannedRevLen=\(plannedActivitiesRevision.count) appearanceToken=\(appearanceInvalidationToken)"
+        )
+        return TodayView(
             authViewModel: authViewModel,
             selectedDate: $selectedDate,
             returnToTodayTrigger: returnToTodayTrigger,

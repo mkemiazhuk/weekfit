@@ -144,7 +144,9 @@ enum CoachConversationEnergyPolicy {
     ) -> CoachSemanticColor {
         switch energy {
         case .low, .medium:
-            if base == .live {
+            if base == .live
+                || base == .liveZone1 || base == .liveZone2 || base == .liveZone3
+                || base == .liveElevated || base == .liveCritical {
                 return .recovery
             }
             if base == .activity, isRecoveryFamily(scenario) {

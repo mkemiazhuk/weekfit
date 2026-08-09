@@ -134,7 +134,7 @@ struct QuickLogItemRow: View {
 
         QuickLogRowView(
             title: item.localizedTitle,
-            subtitle: item.localizedSubtitle,
+            subtitle: item.localizedServingSizeDescription,
             metaText: QuickLogLocalizedNutrition.metaText(for: item),
             accentColor: accentColor,
             selection: selection,

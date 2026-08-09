@@ -24,8 +24,11 @@ enum HistoricalActivityProvider {
             guard aggregate.occurrenceCount >= 1 else { continue }
             let snapshot = makeSnapshot(from: aggregate, on: context.now)
             let isSerious = CoachActivityClassifier.isSeriousTraining(snapshot)
+            let isElevatedLoad = CoachActivityClassifier.isElevatedTrainingLoad(snapshot)
 
-            if strategy == .recover || strategy == .protectTomorrow, isSerious {
+            // Low recovery / recover days: never invent bike, run, HIIT, or strength.
+            if context.recoveryBand == .low || strategy == .recover || strategy == .protectTomorrow,
+               isElevatedLoad {
                 continue
             }
             if strategy == .maintain, isSerious {
@@ -75,6 +78,18 @@ enum HistoricalActivityProvider {
                 return .weak
             }()
 
+            let defaultEligibility: DefaultSelectionEligibility = {
+                // Only high-evidence weekday habits on train days start selected.
+                if strategy == .train,
+                   isSerious,
+                   aggregate.completionCount >= 2,
+                   aggregate.observationBackedCount > 0,
+                   aggregate.weekdayMatchCount > 0 {
+                    return .eligible
+                }
+                return .ineligible
+            }()
+
             result.append(
                 ProposalCandidate(
                     id: "hist-\(aggregate.signature)",
@@ -100,7 +115,7 @@ enum HistoricalActivityProvider {
                     burden: isSerious ? .high : .medium,
                     reasonCodes: [.similarDaySupport],
                     conflicts: aggregate.skipCount > aggregate.completionCount ? [.excessiveLoad] : [],
-                    defaultSelectionEligibility: .ineligible,
+                    defaultSelectionEligibility: defaultEligibility,
                     sortTime: proposedDate,
                     evidenceScenarioKey: context.scenarioKey?.rawValue,
                     identityKey: "hist:\(aggregate.signature)"

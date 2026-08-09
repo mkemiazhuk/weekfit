@@ -121,6 +121,16 @@ extension CoachSemanticColor {
             return CoachPalette.stable
         case .activity, .live:
             return CoachPalette.activity
+        case .liveZone1:
+            return HeartRateZones.color(for: 1)
+        case .liveZone2:
+            return HeartRateZones.color(for: 2)
+        case .liveZone3:
+            return HeartRateZones.color(for: 3)
+        case .liveElevated:
+            return HeartRateZones.color(for: 4)
+        case .liveCritical:
+            return HeartRateZones.color(for: 5)
         case .recovery:
             return CoachPalette.recovery
         case .protection:

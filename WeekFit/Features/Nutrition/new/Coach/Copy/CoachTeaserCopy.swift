@@ -207,6 +207,12 @@ enum CoachTeaserCopy {
         scenario: CoachScenarioKey,
         result: CoachEngine.Result
     ) -> CoachBilingualText {
+        let buildInput = CoachCopyBuildInput.from(result: result)
+        if result.context.sessionPhase == .during,
+           let hrTeaser = LiveHeartRateCoachCopy.teaser(for: buildInput) {
+            return hrTeaser
+        }
+
         switch scenario {
         case .tomorrowProtection:
             if CoachCopyNutritionTiming.isWindDown(result.context.timeOfDay) {
@@ -282,6 +288,9 @@ enum CoachTeaserCopy {
                 "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
             )
         case .duringEndurance:
+            if let teaser = LiveHeartRateCoachCopy.teaser(for: CoachCopyBuildInput.from(result: result)) {
+                return bi(teaser.english, teaser.russian)
+            }
             return bi("Hold effort flat.", "Держите темп ровным.")
         case .walkAfterHeavyLoad:
             let walkPhase = CoachWalkAfterHeavyLoadPresentation.phase(for: result.context)

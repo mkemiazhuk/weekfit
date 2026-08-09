@@ -2,27 +2,28 @@ import SwiftUI
 import WeekFitPlanner
 
 enum PlanTimelineLayout {
-    static let timeWidth: CGFloat = 54
+    static let timeWidth: CGFloat = 56
     static let columnWidth: CGFloat = 18
-    static let timeToTimelineSpacing: CGFloat = 4
-    static let timelineToCardSpacing: CGFloat = 5
+    static let timeToTimelineSpacing: CGFloat = 6
+    static let timelineToCardSpacing: CGFloat = 8
     static let nodeSize: CGFloat = 9
     static let nodeVerticalPadding: CGFloat = 3
     static let lineWidth: CGFloat = 1.0
-    static let rowSpacing: CGFloat = 10
+    static let rowSpacing: CGFloat = 12
     static let cardCornerRadius: CGFloat = WeekFitSurface.compactRadius
     static let compactHydrationVerticalPadding: CGFloat = 7
     static let cardHorizontalPadding: CGFloat = WeekFitSurface.compactHorizontalPadding
-    static let cardVerticalPadding: CGFloat = 10
-    static let cardIconSpacing: CGFloat = 9
+    static let cardVerticalPadding: CGFloat = 11
+    static let cardIconSpacing: CGFloat = 10
     static let cardAccentBarWidth: CGFloat = WeekFitSurface.accentIndicatorWidth
     static let rowTopInset: CGFloat = 8
     static let firstConnectorInset: CGFloat = 8
     static let lastConnectorInset: CGFloat = 4
     static let titleFontSize: CGFloat = 15.2
     static let subtitleFontSize: CGFloat = 12.5
-    static let timeFontSize: CGFloat = 15
-    static let titleSubtitleSpacing: CGFloat = 1
+    /// Slightly larger, secondary — time anchors the day without competing titles.
+    static let timeFontSize: CGFloat = 15.5
+    static let titleSubtitleSpacing: CGFloat = 2
 }
 
 struct PlanTimelineNowDivider: View {
@@ -98,7 +99,16 @@ struct PlanTimelineRow: View {
     @State private var livePulse = false
     @Environment(\.weekFitPalette) private var palette
 
-    private var accent: Color { activity.color }
+    private var accent: Color {
+        switch activity.timelineEventKind {
+        case .food:
+            return WeekFitProgressRingColor.nutrition
+        case .drink:
+            return Color(red: 0.25, green: 0.55, blue: 0.95)
+        default:
+            return activity.color
+        }
+    }
 
     private var pendingAttentionColor: Color {
         Color(red: 0.95, green: 0.60, blue: 0.15)
@@ -125,21 +135,12 @@ struct PlanTimelineRow: View {
     }
 
     private var rowOpacity: Double {
-        if palette.isLight {
-            switch emphasis {
-            case .past:
-                return 1.0
-            case .skipped:
-                return 0.72
-            case .upcoming, .active, .next:
-                return 1.0
-            }
-        }
+        // Finished rows stay readable — soften only slightly in both themes.
         switch emphasis {
         case .past:
-            return 0.88
+            return palette.isLight ? 0.94 : 0.90
         case .skipped:
-            return 0.58
+            return palette.isLight ? 0.72 : 0.62
         case .upcoming, .active, .next:
             return 1.0
         }
@@ -168,13 +169,23 @@ struct PlanTimelineRow: View {
     private var timeLabel: some View {
         Group {
             if showsTimeLabel {
-                Text(time)
-                    .font(.system(size: timeFontSize, weight: timeFontWeight).monospacedDigit())
-                    .foregroundStyle(timeColor)
+                if time.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(WeekFitLocalizedString("planner.timeline.anytime"))
+                        .font(.system(size: timeFontSize * 0.82, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.textSecondary.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                } else {
+                    Text(time)
+                        .font(.system(size: timeFontSize, weight: .medium).monospacedDigit())
+                        .foregroundStyle(timeColor)
+                }
             } else {
-                Text("·")
-                    .font(.system(size: timeFontSize * 0.72, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.quaternaryText)
+                // Duplicate clock — keep column alignment without stray punctuation.
+                Text(verbatim: " ")
+                    .font(.system(size: timeFontSize, weight: .medium).monospacedDigit())
+                    .opacity(0)
+                    .accessibilityHidden(true)
             }
         }
         .frame(width: timeColumnWidth, alignment: .trailing)
@@ -184,29 +195,18 @@ struct PlanTimelineRow: View {
         .accessibilityHidden(true)
     }
 
-    private var timeFontWeight: Font.Weight {
-        switch emphasis {
-        case .next, .active:
-            return .semibold
-        default:
-            return .medium
-        }
-    }
-
     private var timeColor: Color {
         if isLive {
-            return accent
+            return accent.opacity(0.92)
         }
 
         switch emphasis {
         case .next, .active:
-            return WeekFitTheme.primaryText
-        case .upcoming:
-            return WeekFitTheme.secondaryText
-        case .past:
-            return WeekFitTheme.secondaryText
+            return palette.textSecondary.opacity(0.96)
+        case .upcoming, .past:
+            return palette.textSecondary.opacity(0.82)
         case .skipped:
-            return WeekFitTheme.disabledText
+            return palette.textDisabled
         }
     }
 
@@ -239,10 +239,17 @@ struct PlanTimelineRow: View {
     }
 
     private func timelineLine(opacity: Double) -> some View {
+        // Continuous neutral rail — markers carry semantic color, not the line.
         Rectangle()
-            .fill(rowAccent.opacity(opacity))
+            .fill(railColor.opacity(opacity))
             .frame(width: PlanTimelineLayout.lineWidth)
             .frame(maxWidth: .infinity)
+    }
+
+    private var railColor: Color {
+        palette.isLight
+            ? WeekFitLightTokens.divider
+            : Color.white.opacity(0.22)
     }
 
     private var lineOpacityAbove: Double {
@@ -251,24 +258,21 @@ struct PlanTimelineRow: View {
 
     private var lineOpacityBelow: Double {
         guard let nextEmphasis else {
-            return lineOpacity(for: emphasis) * 0.80
+            return lineOpacity(for: emphasis) * 0.92
         }
         return (lineOpacity(for: emphasis) + lineOpacity(for: nextEmphasis)) / 2
     }
 
     private func lineOpacity(for emphasis: PlanTimelineVisualEmphasis) -> Double {
-        let lightBoost = palette.isLight ? 1.35 : 1.0
+        // Near-constant opacity so the day reads as one continuous rail.
+        let base = palette.isLight ? 0.64 : 0.48
         switch emphasis {
-        case .past:
-            return 0.36 * lightBoost
         case .skipped:
-            return 0.28 * lightBoost
-        case .upcoming:
-            return 0.48 * lightBoost
-        case .active:
-            return 0.55 * lightBoost
-        case .next:
-            return 0.60 * lightBoost
+            return base * 0.85
+        case .past:
+            return base * 0.92
+        case .upcoming, .active, .next:
+            return base
         }
     }
 
@@ -315,6 +319,7 @@ struct PlanTimelineRow: View {
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(chevronColor)
                     .frame(width: 6, alignment: .trailing)
+                    .opacity(0.55)
                     .accessibilityHidden(true)
             }
             .padding(.leading, 10)
@@ -325,24 +330,33 @@ struct PlanTimelineRow: View {
             accent: timelinePremiumAccent
         )
         .overlay {
+            // Soft category wash — Plan light canvas is bright; default compact wash reads as white.
+            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                .fill(planCardTint)
+                .allowsHitTesting(false)
+        }
+        .overlay {
             if isLive {
                 RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
                     .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
+            } else if palette.isLight {
+                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                    .strokeBorder(rowAccent.opacity(planBorderOpacity), lineWidth: 0.9)
             }
         }
         .shadow(
             color: nextGlowColor,
-            radius: emphasis == .next ? 10 : 0,
+            radius: emphasis == .next ? 8 : 0,
             y: emphasis == .next ? 2 : 0
         )
         .shadow(
             color: liveGlowColor,
-            radius: isLive && livePulse ? 16 : (isLive ? 10 : 0),
-            y: isLive ? 3 : 0
+            radius: isLive && livePulse ? 12 : (isLive ? 8 : 0),
+            y: isLive ? 2 : 0
         )
         .shadow(
             color: pendingGlowColor,
-            radius: isPending ? 10 : 0,
+            radius: isPending ? 8 : 0,
             y: isPending ? 2 : 0
         )
         .accessibilityElement(children: .ignore)
@@ -353,25 +367,67 @@ struct PlanTimelineRow: View {
 
     private var timelinePremiumAccent: Color? {
         if isPending { return pendingAttentionColor }
-        if isLive || emphasis == .next || emphasis == .active || emphasis == .upcoming {
-            return accent
+        // Keep category tint on past rows too — otherwise Plan reads as flat white.
+        return accent
+    }
+
+    private var planCardTint: LinearGradient {
+        let peak = planTintPeak
+        return LinearGradient(
+            colors: [
+                rowAccent.opacity(peak),
+                rowAccent.opacity(peak * 0.42),
+                rowAccent.opacity(peak * 0.10)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var planTintPeak: Double {
+        if isPending { return palette.isLight ? 0.12 : 0.14 }
+        if isLive { return palette.isLight ? 0.14 : 0.16 }
+
+        if palette.isLight {
+            switch emphasis {
+            case .next, .active: return 0.12
+            case .upcoming: return 0.10
+            case .past: return 0.075
+            case .skipped: return 0.045
+            }
         }
-        return nil
+
+        switch emphasis {
+        case .next, .active: return 0.13
+        case .upcoming: return 0.10
+        case .past: return 0.08
+        case .skipped: return 0.05
+        }
+    }
+
+    private var planBorderOpacity: Double {
+        if isPending { return 0.22 }
+        switch emphasis {
+        case .next, .active: return 0.18
+        case .upcoming: return 0.14
+        case .past: return 0.11
+        case .skipped: return 0.07
+        }
     }
 
     private var accentBarOpacity: Double {
-        if isPending { return 0.90 }
+        if isPending { return 0.86 }
         if isLive { return 0.80 }
 
         switch emphasis {
         case .next:
             return 0.72
         case .active:
-            return 0.62
+            return 0.64
         case .upcoming:
-            return 0.52
+            return 0.56
         case .past:
-            return 0.40
+            return 0.46
         case .skipped:
             return 0.28
         }
@@ -388,16 +444,16 @@ struct PlanTimelineRow: View {
 
     private var chevronColor: Color {
         if isPending {
-            return pendingAttentionColor.opacity(0.70)
+            return pendingAttentionColor.opacity(0.55)
         }
 
         switch emphasis {
         case .next, .active, .upcoming:
-            return WeekFitTheme.iconSecondary
+            return WeekFitTheme.iconSecondary.opacity(0.72)
         case .past:
-            return WeekFitTheme.iconInactive
+            return WeekFitTheme.iconInactive.opacity(0.65)
         case .skipped:
-            return WeekFitTheme.disabledText
+            return WeekFitTheme.disabledText.opacity(0.55)
         }
     }
 
@@ -493,33 +549,37 @@ struct PlanTimelineRow: View {
 
     private var titleColor: Color {
         switch emphasis {
-        case .next, .active, .upcoming, .past:
-            return WeekFitTheme.primaryText
+        case .next, .active, .upcoming:
+            return palette.textPrimary
+        case .past:
+            return palette.textPrimary.opacity(0.90)
         case .skipped:
-            return WeekFitTheme.disabledText
+            return palette.textDisabled
         }
     }
 
     private var metadataColor: Color {
         switch emphasis {
-        case .next, .active, .upcoming, .past:
-            return WeekFitTheme.secondaryText
+        case .next, .active, .upcoming:
+            return palette.textSecondary
+        case .past:
+            return palette.textSecondary.opacity(0.88)
         case .skipped:
-            return WeekFitTheme.tertiaryText
+            return palette.textTertiary
         }
     }
 
 
     private var nextGlowColor: Color {
-        emphasis == .next ? accent.opacity(0.10) : .clear
+        emphasis == .next ? accent.opacity(0.06) : .clear
     }
 
     private var liveGlowColor: Color {
-        isLive ? accent.opacity(livePulse ? 0.24 : 0.14) : .clear
+        isLive ? accent.opacity(livePulse ? 0.18 : 0.10) : .clear
     }
 
     private var pendingGlowColor: Color {
-        isPending ? pendingAttentionColor.opacity(0.12) : .clear
+        isPending ? pendingAttentionColor.opacity(0.10) : .clear
     }
 
     private var pendingStatusLine: some View {
@@ -562,19 +622,19 @@ struct PlanTimelineRow: View {
     }
 
     private var iconBackgroundOpacity: Double {
-        if isLive { return palette.isLight ? 0.22 : 0.20 }
+        if isLive { return palette.isLight ? 0.28 : 0.20 }
 
         switch emphasis {
         case .next:
-            return palette.isLight ? 0.22 : 0.20
+            return palette.isLight ? 0.26 : 0.20
         case .active:
-            return palette.isLight ? 0.18 : 0.17
+            return palette.isLight ? 0.24 : 0.17
         case .upcoming:
-            return palette.isLight ? 0.16 : 0.14
+            return palette.isLight ? 0.22 : 0.14
         case .past:
-            return palette.isLight ? 0.14 : 0.11
+            return palette.isLight ? 0.18 : 0.11
         case .skipped:
-            return palette.isLight ? 0.10 : 0.06
+            return palette.isLight ? 0.12 : 0.06
         }
     }
 

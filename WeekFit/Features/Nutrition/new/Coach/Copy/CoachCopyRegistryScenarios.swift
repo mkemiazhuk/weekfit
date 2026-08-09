@@ -404,17 +404,20 @@ enum CoachCopyRegistryScenarios {
             )
         }
 
-        return Draft(
-            assessment: assessment,
-            recommendation: recommendation,
-            avoid: .en(
-                "Don't chase every ball at full stretch.",
-                "Не лезьте за каждым мячом на пределе."
+        return applyLiveHeartRate(
+            Draft(
+                assessment: assessment,
+                recommendation: recommendation,
+                avoid: .en(
+                    "Don't chase every ball at full stretch.",
+                    "Не лезьте за каждым мячом на пределе."
+                ),
+                nextAction: .en(
+                    "Use changeovers — towel off, one deep breath.",
+                    "Между геймами — вытрите пот, один глубокий вдох."
+                )
             ),
-            nextAction: .en(
-                "Use changeovers — towel off, one deep breath.",
-                "Между геймами — вытрите пот, один глубокий вдох."
-            )
+            input: input
         )
     }
 
@@ -577,17 +580,20 @@ enum CoachCopyRegistryScenarios {
             )
         }
 
-        return Draft(
-            assessment: assessment,
-            recommendation: recommendation,
-            avoid: .en(
-                "Don't rush sets or chase numbers with bad form.",
-                "Не гоните подходы и цифры ценой техники."
+        return applyLiveHeartRate(
+            Draft(
+                assessment: assessment,
+                recommendation: recommendation,
+                avoid: .en(
+                    "Don't rush sets or chase numbers with bad form.",
+                    "Не гоните подходы и цифры ценой техники."
+                ),
+                nextAction: .en(
+                    "Before the next set — two breaths, brace, go.",
+                    "Перед следующим подходом — два вдоха, корпус, в работу."
+                )
             ),
-            nextAction: .en(
-                "Before the next set — two breaths, brace, go.",
-                "Перед следующим подходом — два вдоха, корпус, в работу."
-            )
+            input: input
         )
     }
 
@@ -1077,6 +1083,10 @@ enum CoachCopyRegistryScenarios {
     }
 
     // MARK: - Helpers
+
+    private static func applyLiveHeartRate(_ draft: Draft, input: CoachCopyBuildInput) -> Draft {
+        LiveHeartRateCoachCopy.apply(to: draft, input: input)
+    }
 
     private static func catchUpNextAction(
         input: CoachCopyBuildInput,

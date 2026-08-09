@@ -9,10 +9,6 @@ struct NutritionQualityCard: View {
         CGFloat(min(max(qualityScore, 0), 100)) / 100.0
     }
 
-    private var artworkName: String {
-        NutritionQualityArtwork.assetName(for: primaryInsight)
-    }
-
     var body: some View {
         NutritionDetailsCard(padding: NutritionDetailsDesign.cardPadding) {
             HStack(alignment: .center, spacing: 10) {
@@ -42,8 +38,7 @@ struct NutritionQualityCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
 
-                NutritionDetailsSoftArtwork(assetName: artworkName, size: 66)
-                    .animation(.easeInOut(duration: 0.25), value: artworkName)
+                NutritionDetailsInsightArtwork(insight: primaryInsight, size: 66)
             }
         }
         .accessibilityElement(children: .combine)

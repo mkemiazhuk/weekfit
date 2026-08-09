@@ -64,11 +64,11 @@ struct WeekFitPremiumCardModifier: ViewModifier {
             }
             .overlay {
                 if showsBorder {
-                    RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                        .strokeBorder(
-                            borderGradient(boost: increasedContrast ? 1.35 : 1.0),
-                            lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 0.9 : 1)
-                        )
+                RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                    .strokeBorder(
+                        borderGradient(boost: increasedContrast ? 1.35 : 1.0),
+                        lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 1.15 : 1)
+                    )
                 }
             }
     }
@@ -152,10 +152,7 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var shouldShowAccentWash: Bool {
         guard hasSemanticAccent else { return false }
         if palette.isLight {
-            switch emphasis {
-            case .accent, .elevated, .compact: return true
-            case .standard: return false
-            }
+            return true
         }
         switch emphasis {
         case .accent, .elevated: return true
@@ -166,12 +163,12 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var accentWashGradient: LinearGradient {
         let peak: CGFloat
         if palette.isLight {
-            // Barely-there category influence — never playful or colorful.
+            // Soft category influence — enough to read hierarchy on ivory.
             switch emphasis {
-            case .elevated: peak = 0.022
-            case .accent: peak = 0.018
-            case .compact: peak = 0.028
-            case .standard: peak = 0
+            case .elevated: peak = 0.045
+            case .accent: peak = 0.038
+            case .compact: peak = 0.050
+            case .standard: peak = 0.022
             }
         } else {
             switch emphasis {
@@ -206,26 +203,27 @@ struct WeekFitPremiumCardModifier: ViewModifier {
             let inkBottom: Double
             switch emphasis {
             case .elevated:
-                inkMid = min(0.055, ink * 1.15)
-                inkBottom = min(0.065, ink * 1.35)
+                inkMid = min(0.16, ink * 1.15)
+                inkBottom = min(0.18, ink * 1.35)
             case .accent:
-                inkMid = min(0.05, ink * 1.08)
-                inkBottom = min(0.06, ink * 1.25)
+                inkMid = min(0.15, ink * 1.08)
+                inkBottom = min(0.17, ink * 1.25)
             case .standard:
                 inkMid = ink
                 inkBottom = ink * 1.15
             case .compact:
-                inkMid = ink * 0.92
-                inkBottom = ink * 1.05
+                inkMid = ink * 0.95
+                inkBottom = ink * 1.08
             }
 
             let topHighlight = WeekFitLightTokens.cardEdgeHighlight.opacity(
                 Double((increasedContrast ? 0.55 : 0.72) * boost)
             )
-            let side = hasSemanticAccent
-                ? softenedAccent.opacity(Double(0.10 * boost))
-                : Color.black.opacity(inkMid)
-            let bottom = Color.black.opacity(inkBottom)
+            // Structural rim stays warm stone even when the card has a semantic accent
+            // (Coach / Meals). Accent color lives in the wash — not the edge — so
+            // ivory canvas still gets a readable ceramic outline.
+            let side = WeekFitLightTokens.cardBorder.opacity(inkMid)
+            let bottom = WeekFitLightTokens.cardBorder.opacity(inkBottom)
 
             return LinearGradient(
                 colors: [topHighlight, side, bottom],
@@ -294,13 +292,13 @@ struct WeekFitPremiumCardModifier: ViewModifier {
 
     private var ambientShadowColor: Color {
         if palette.isLight {
-            // Tight, quiet depth — integrated, not floating.
+            // Very soft bloom — keep radius/y tiny so it never reads as a grey rectangle.
             let base = WeekFitLightTokens.cardAmbientShadowOpacity
             switch emphasis {
-            case .elevated: return Color.black.opacity(base * 1.15)
-            case .accent: return Color.black.opacity(base * 1.05)
-            case .standard: return Color.black.opacity(base)
-            case .compact: return Color.black.opacity(base * 0.85)
+            case .elevated: return Color.black.opacity(base * 1.1)
+            case .accent: return Color.black.opacity(base)
+            case .standard: return Color.black.opacity(base * 0.9)
+            case .compact: return Color.black.opacity(base * 0.75)
             }
         }
         let factor: CGFloat
@@ -316,10 +314,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var ambientShadowRadius: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 8
-            case .accent: return 7
-            case .standard: return 6
-            case .compact: return 5
+            case .elevated: return 6
+            case .accent: return 5
+            case .standard: return 5
+            case .compact: return 4
             }
         }
         switch emphasis {
@@ -333,10 +331,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var ambientShadowY: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 3
-            case .accent: return 3
-            case .standard: return 2
-            case .compact: return 2
+            case .elevated: return 2
+            case .accent: return 2
+            case .standard: return 1.5
+            case .compact: return 1.5
             }
         }
         switch emphasis {

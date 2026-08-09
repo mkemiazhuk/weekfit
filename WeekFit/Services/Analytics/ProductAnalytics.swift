@@ -15,10 +15,19 @@ final class ProductScreenTracker: @unchecked Sendable {
 
     /// Tracks only when the active product destination changes.
     func trackScreenIfChanged(_ screen: AnalyticsScreen) {
+        let shouldTrack: Bool
         lock.lock()
-        defer { lock.unlock() }
-        guard lastScreen != screen else { return }
-        lastScreen = screen
+        if lastScreen == screen {
+            shouldTrack = false
+        } else {
+            lastScreen = screen
+            shouldTrack = true
+        }
+        lock.unlock()
+
+        // Never call Firebase/Crashlytics while holding `lock` — they may hop to MainActor
+        // and deadlock with UI that also takes analytics locks during body evaluation.
+        guard shouldTrack else { return }
         analyticsProvider().trackScreen(screen)
     }
 

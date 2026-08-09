@@ -15,26 +15,82 @@ struct ContentView: View {
         accountSession.mode == .reviewDemo || accountSession.mode == .realUser
     }
 
+    /// True until Apple/guest restore finishes. Showing Login before this causes a
+    /// flash of the sign-in screen on every cold start for already-signed-in users.
+    private var isResolvingInitialSession: Bool {
+        !authViewModel.hasResolvedInitialSession
+    }
+
+    /// Root must not mount (even at opacity 0) while account transition still runs —
+    /// onAppear / HealthKit reconcile would race the still-open transition.
+    private var shouldShowRoot: Bool {
+        authViewModel.isLoggedIn
+            && isAuthenticatedSessionReady
+            && !accountSession.isTransitioning
+    }
+
     var body: some View {
+        // Force production store open before branching UI so loadFailure is populated.
+        let _ = accountSession.activeContainer
+        Group {
+            if let failure = WeekFitModelContainer.productionLoadFailure {
+                PersistenceStartupFailureView(failure: failure)
+            } else {
+                normalRoot
+            }
+        }
+        .modelContainer(accountSession.activeContainer)
+        .onAppear {
+            StartupDiagnostics.step(
+                7,
+                "root view created",
+                detail: "ContentView.body ready persistenceFailed=\(WeekFitModelContainer.didFailToLoadProductionStore)"
+            )
+            #if DEBUG
+            authViewModel.applyUITestBypassIfNeeded()
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private var normalRoot: some View {
         ZStack {
             Group {
-                if authViewModel.isLoggedIn, isAuthenticatedSessionReady {
+                if shouldShowRoot {
                     WeekFitRootView(authViewModel: authViewModel)
                         .id(accountSession.containerIdentity)
-                } else if !authViewModel.isLoggedIn {
+                        .onAppear {
+                            StartupDiagnostics.step(
+                                7,
+                                "root view created",
+                                detail: "WeekFitRootView mounted mode=\(String(describing: accountSession.mode))"
+                            )
+                        }
+                } else if authViewModel.hasResolvedInitialSession, !authViewModel.isLoggedIn {
                     LoginView(authViewModel: authViewModel)
+                        .onAppear {
+                            StartupDiagnostics.step(
+                                7,
+                                "root view created",
+                                detail: "LoginView mounted"
+                            )
+                        }
                 }
             }
-            .opacity(accountSession.isTransitioning ? 0 : 1)
 
-            if accountSession.isTransitioning
+            if isResolvingInitialSession
+                || accountSession.isTransitioning
                 || (authViewModel.isLoggedIn && !isAuthenticatedSessionReady) {
                 AccountTransitionView()
             }
         }
-        .modelContainer(accountSession.activeContainer)
         .task(id: authViewModel.sessionCoordinationToken) {
             guard authViewModel.hasResolvedInitialSession else { return }
+            StartupDiagnostics.step(
+                8,
+                "account session apply",
+                detail: "isLoggedIn=\(authViewModel.isLoggedIn)"
+            )
             await AccountSessionCoordinator.applySessionState(
                 isLoggedIn: authViewModel.isLoggedIn,
                 accountSession: accountSession,
@@ -44,11 +100,53 @@ struct ContentView: View {
                 coachCoordinator: coachCoordinator,
                 appSession: appSession
             )
+            StartupDiagnostics.step(
+                8,
+                "account session apply",
+                detail: "complete mode=\(String(describing: accountSession.mode))"
+            )
         }
+    }
+}
+
+/// Shown when the on-disk SwiftData store cannot be opened. Does not delete or reset data.
+private struct PersistenceStartupFailureView: View {
+    let failure: WeekFitModelContainer.PersistenceLoadFailure
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("WeekFit couldn’t open local data")
+                .font(.title2.weight(.semibold))
+            Text("Your on-disk store was not deleted. Capture the STARTUP logs from Console, then we can fix the open failure.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+            Group {
+                Text("error: \(failure.errorDescription)")
+                if let domain = failure.errorDomain, let code = failure.errorCode {
+                    Text("domain/code: \(domain) / \(code)")
+                }
+                if let url = failure.storeURL {
+                    Text("store: \(url.lastPathComponent)")
+                }
+                if let existed = failure.storeExisted {
+                    Text("store existed: \(existed)")
+                }
+                if let bytes = failure.storeByteCount {
+                    Text("store bytes: \(bytes)")
+                }
+                Text("last step: \(StartupDiagnostics.lastCompletedStep)")
+            }
+            .font(.footnote.monospaced())
+            .textSelection(.enabled)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
-            #if DEBUG
-            authViewModel.applyUITestBypassIfNeeded()
-            #endif
+            StartupDiagnostics.step(
+                2,
+                "persistence init",
+                detail: "showing PersistenceStartupFailureView (no data wipe)"
+            )
         }
     }
 }
@@ -56,11 +154,12 @@ struct ContentView: View {
 private struct AccountTransitionView: View {
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55)
+            // Opaque — used for cold-start session restore as well as account switches.
+            Color.black
                 .ignoresSafeArea()
             ProgressView()
                 .tint(.white.opacity(0.85))
         }
-        .accessibilityLabel("Switching account")
+        .accessibilityLabel("Loading")
     }
 }
