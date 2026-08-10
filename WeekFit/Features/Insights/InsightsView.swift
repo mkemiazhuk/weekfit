@@ -4527,7 +4527,7 @@ struct InsightsView: View {
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
     @StateObject private var viewModel: InsightsViewModel
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
     @State private var showContent = false
     @State private var showProfile = false
     @State private var selectedDetail: InsightsDetailDestination?

@@ -11,7 +11,7 @@ struct HighlightsView: View {
     private var plannedActivities: [PlannedActivity]
 
     @StateObject private var viewModel = HighlightsViewModel()
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
     @State private var showProfile = false
     @State private var showContent = false
 

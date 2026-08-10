@@ -7,6 +7,8 @@ final class LoggingAnalyticsService: AnalyticsTracking, @unchecked Sendable {
     static let shared = LoggingAnalyticsService()
 
     private let logger = Logger(subsystem: "com.weekfit.app", category: "Analytics")
+    /// Opt in when debugging without Firebase configured.
+    private static let loggingEnabled = false
 
     func track(_ event: AnalyticsEvent, parameters: [String: String]) {
         log(kind: "event", name: event.rawValue, parameters: parameters)
@@ -17,6 +19,7 @@ final class LoggingAnalyticsService: AnalyticsTracking, @unchecked Sendable {
     }
 
     private func log(kind: String, name: String, parameters: [String: String]) {
+        guard Self.loggingEnabled else { return }
         let props = Self.format(parameters)
         logger.debug("[\(kind, privacy: .public)] \(name, privacy: .public)\(props, privacy: .public)")
     }

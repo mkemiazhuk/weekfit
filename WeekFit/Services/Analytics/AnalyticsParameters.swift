@@ -21,6 +21,8 @@ enum AnalyticsParameterKey {
     static let appliedCountBucket = "applied_count_bucket"
     static let resultType = "result_type"
     static let surface = "surface"
+    /// Release channel: `testflight` | `appstore` (set as default event parameter).
+    static let distribution = "distribution"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.

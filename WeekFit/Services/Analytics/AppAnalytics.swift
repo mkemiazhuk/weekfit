@@ -23,8 +23,8 @@ enum AppAnalytics {
     static func configure(firebaseConfigured: Bool) -> AnalyticsTracking {
         let service: AnalyticsTracking
         if firebaseConfigured {
+            // Console quiet by default. Opt in: FirebaseAnalyticsService(debugLoggingEnabled: true).
             service = FirebaseAnalyticsService()
-            logger.info("Analytics backend: Firebase")
         } else {
             service = LoggingAnalyticsService.shared
             logger.warning("Analytics backend: local logging only (Firebase not configured)")

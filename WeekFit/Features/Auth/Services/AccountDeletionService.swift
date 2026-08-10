@@ -67,7 +67,9 @@ final class AccountDeletionService: AccountDeletionServicing {
         CoachObservationStore.clearAll()
         ActivityConfirmationState.shared.pendingActivity = nil
         WeekFitActivityCoordinator.shared.deactivateHealthKitSync()
-        NightComfortLocationService.clearCachedLocation()
+
+        // Durable artifacts that survive UserDefaults domain wipe.
+        await LocalUserDataDeletionInventory.clearDurableArtifacts()
 
         // 4. Remove auth tokens / demo session / DEBUG email registration.
         // System permissions (Apple Health, Location, Notifications) cannot be revoked by the

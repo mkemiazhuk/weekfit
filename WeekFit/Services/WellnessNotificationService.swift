@@ -369,17 +369,10 @@ enum NotificationSyncCoordinator {
         )
 
         if appliedRequest == lastAppliedRequest {
-            #if DEBUG
-            print("[NotificationSync] skipped duplicate source=\(request.source)")
-            #endif
             return
         }
 
         lastAppliedRequest = appliedRequest
-
-        #if DEBUG
-        print("[NotificationSync] source=\(appliedRequest.source) recovery=\(recoveryPercent)")
-        #endif
 
         if request.includeActivities {
             ActivityNotificationService.shared.syncNotifications(

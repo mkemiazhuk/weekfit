@@ -3,7 +3,8 @@ import SwiftUI
 /// Progress ring accents — punchy on OLED; approved soft daylight metrics in Light.
 enum WeekFitProgressRingColor {
     private static let activityDark = Color(red: 0.40, green: 0.94, blue: 0.44)
-    private static let nutritionDark = Color(red: 1.00, green: 0.58, blue: 0.14)
+    /// Soft amber — full-chroma `#FF941F` vibrates on OLED black; keep readable, not neon.
+    private static let nutritionDark = Color(red: 0.84, green: 0.58, blue: 0.34)
     private static let recoveryDark = Color(red: 0.18, green: 0.86, blue: 0.98)
 
     /// Move / activity.

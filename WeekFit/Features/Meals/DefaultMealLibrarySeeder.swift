@@ -7,8 +7,10 @@ import Foundation
 /// `MealBuilderView.saveMeal()` persists a user-built plate — not from
 /// bundled `meals.json` hero assets.
 enum DefaultMealLibrarySeeder {
-    /// Bumped when starter recipe shape changes (v1 = meals.json, v2 = builder balanced).
-    static let seededKey = "weekfit.defaultMealLibrary.seeded.v3"
+    /// Bumped when starter recipe shape changes (v1 = meals.json, v2 = builder balanced,
+    /// v3 = 9 builder meals, v4 = +world breakfasts).
+    static let seededKey = "weekfit.defaultMealLibrary.seeded.v4"
+    static let v3SeededKey = "weekfit.defaultMealLibrary.seeded.v3"
 
     /// Previous seeder copied these catalog IDs; replace them with builder meals.
     private static let legacyCatalogMealIDs: Set<String> = [
@@ -23,11 +25,44 @@ enum DefaultMealLibrarySeeder {
         "meal_turkey_mushroom_potato",
     ]
 
+    private static let previousSeededKeys = [
+        "weekfit.defaultMealLibrary.seeded.v1",
+        "weekfit.defaultMealLibrary.seeded.v2",
+        v3SeededKey,
+    ]
+
+    /// Starter IDs that existed before the v4 world-breakfast expansion.
+    static let v3StarterIDs: Set<String> = [
+        "custom_meal_starter_eggs_oatmeal",
+        "custom_meal_starter_yogurt_berries",
+        "custom_meal_starter_cottage_toast",
+        "custom_meal_starter_chicken_rice",
+        "custom_meal_starter_salmon_quinoa",
+        "custom_meal_starter_shrimp_pasta",
+        "custom_meal_starter_turkey_sweet_potato",
+        "custom_meal_starter_beef_buckwheat",
+        "custom_meal_starter_tofu_brown_rice",
+    ]
+
+    /// One-time content introduced by the v3 → v4 migration.
+    static let worldBreakfastIDsIntroducedInV4: Set<String> = [
+        "custom_meal_starter_avocado_toast",
+        "custom_meal_starter_shakshuka",
+        "custom_meal_starter_huevos_rancheros",
+        "custom_meal_starter_english_breakfast",
+        "custom_meal_starter_japanese_breakfast",
+    ]
+
     /// Stable starter IDs (look like builder saves, but deterministic).
     static let breakfastIDs = [
         "custom_meal_starter_eggs_oatmeal",
         "custom_meal_starter_yogurt_berries",
         "custom_meal_starter_cottage_toast",
+        "custom_meal_starter_avocado_toast",
+        "custom_meal_starter_shakshuka",
+        "custom_meal_starter_huevos_rancheros",
+        "custom_meal_starter_english_breakfast",
+        "custom_meal_starter_japanese_breakfast",
     ]
 
     static let lunchIDs = [
@@ -84,6 +119,65 @@ enum DefaultMealLibrarySeeder {
                 ("base_toast", 70),
                 ("protein_cottage_cheese", 150),
                 ("extra_avocado", 70),
+            ]
+        ),
+        // World breakfasts — iconic plates assembled from the builder catalog
+        Recipe(
+            id: breakfastIDs[3],
+            suggestedTime: "08:30",
+            mealsType: .balanced,
+            selections: [
+                ("base_toast", 70),
+                ("extra_avocado", 90),
+                ("protein_eggs", 100),
+                ("veg_tomatoes", 60),
+            ]
+        ),
+        Recipe(
+            id: breakfastIDs[4],
+            suggestedTime: "08:30",
+            mealsType: .highProtein,
+            selections: [
+                ("protein_eggs", 120),
+                ("veg_tomatoes", 150),
+                ("veg_bell_pepper", 80),
+                ("veg_red_onion", 40),
+                ("extra_olive_oil", 10),
+            ]
+        ),
+        Recipe(
+            id: breakfastIDs[5],
+            suggestedTime: "08:30",
+            mealsType: .preWorkout,
+            selections: [
+                ("base_corn_tortilla", 60),
+                ("protein_eggs", 120),
+                ("base_black_beans", 100),
+                ("veg_tomatoes", 80),
+            ]
+        ),
+        Recipe(
+            id: breakfastIDs[6],
+            suggestedTime: "08:30",
+            mealsType: .highProtein,
+            selections: [
+                ("protein_eggs", 120),
+                ("base_toast", 70),
+                ("extra_pork_ham", 60),
+                ("veg_mushrooms", 80),
+                ("veg_tomatoes", 70),
+            ]
+        ),
+        Recipe(
+            id: breakfastIDs[7],
+            suggestedTime: "08:30",
+            mealsType: .antiInflammatory,
+            selections: [
+                ("base_brown_rice", 120),
+                ("protein_eggs", 100),
+                ("veg_spinach", 60),
+                ("veg_nori", 5),
+                ("extra_soy_sauce", 10),
             ]
         ),
         // Lunch
@@ -170,8 +264,12 @@ enum DefaultMealLibrarySeeder {
     /// The `seededKey` flag prevents re-seeding a non-empty user library. If the flag is
     /// set but the catalog is empty (partial wipe / stuck flag), we recover starters once.
     ///
+    /// When the catalog already participates in the starter library, missing recipes
+    /// (e.g. new world breakfasts after a version bump) are appended without wiping
+    /// user-created meals.
+    ///
     /// Important: a catalog that already contains the **current** starter IDs must NOT be
-    /// treated as replaceable — that caused every startup to wipe+reinsert the same 9 meals.
+    /// treated as replaceable — that caused every startup to wipe+reinsert the same meals.
     @MainActor
     @discardableResult
     static func seedIfNeeded(
@@ -202,9 +300,18 @@ enum DefaultMealLibrarySeeder {
         MealsSeedDiagnostics.info("MEALS SEED preexistingCount=\(existing.count)", run: run)
 
         let flagSet = defaults.bool(forKey: seededKey)
-        // Current starter-only catalogs are healthy — never wipe them on every launch.
         let isCurrentStarterCatalog = isCurrentStarterCatalogOnly(existing)
         let shouldReplace = existing.isEmpty || isLegacyCatalogOnly(existing)
+
+        if migrateV3ToV4WorldBreakfastsIfNeeded(
+            into: existing,
+            settings: settings,
+            defaults: defaults,
+            run: run,
+            accountMode: accountMode
+        ) {
+            return true
+        }
 
         if flagSet, !existing.isEmpty, !shouldReplace {
             MealsSeedDiagnostics.skipped(
@@ -218,6 +325,7 @@ enum DefaultMealLibrarySeeder {
         if isCurrentStarterCatalog {
             // Starters already present; just ensure the version flag is set.
             defaults.set(true, forKey: seededKey)
+            clearPreviousSeededKeys(in: defaults)
             MealsSeedDiagnostics.skipped(
                 run: run,
                 reason: "currentStarterCatalogPresent",
@@ -242,6 +350,7 @@ enum DefaultMealLibrarySeeder {
 
         guard shouldReplace else {
             defaults.set(true, forKey: seededKey)
+            clearPreviousSeededKeys(in: defaults)
             MealsSeedDiagnostics.skipped(
                 run: run,
                 reason: "userLibraryPresent",
@@ -269,11 +378,79 @@ enum DefaultMealLibrarySeeder {
         }
         MealsSeedDiagnostics.info("MEALS SEED insertedCount=\(starter.count)", run: run)
 
+        return persistCatalog(
+            starter,
+            settings: settings,
+            defaults: defaults,
+            run: run,
+            accountMode: accountMode
+        )
+    }
+
+    /// One-time v3 → v4 content migration: append world breakfasts once, then never
+    /// restore starters the user later deletes.
+    @MainActor
+    private static func migrateV3ToV4WorldBreakfastsIfNeeded(
+        into existing: [Meals],
+        settings: WeekFitUserSettings,
+        defaults: UserDefaults,
+        run: UUID,
+        accountMode: String
+    ) -> Bool {
+        // v4 marker already set — migration finished; never re-insert missing starters.
+        if defaults.bool(forKey: seededKey) {
+            return false
+        }
+
+        guard !existing.isEmpty, !isLegacyCatalogOnly(existing) else { return false }
+
+        let hadV3Marker = defaults.bool(forKey: v3SeededKey)
+        let hasV3Starter = existing.contains { v3StarterIDs.contains($0.id) }
+        guard hadV3Marker || hasV3Starter else { return false }
+
+        let existingIDs = Set(existing.map(\.id))
+        let missingWorldBreakfasts = buildStarterMeals().filter {
+            worldBreakfastIDsIntroducedInV4.contains($0.id) && !existingIDs.contains($0.id)
+        }
+
+        if missingWorldBreakfasts.isEmpty {
+            defaults.set(true, forKey: seededKey)
+            clearPreviousSeededKeys(in: defaults)
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "v3ToV4AlreadyComplete",
+                detail: "account=\(accountMode)"
+            )
+            return false
+        }
+
+        MealsSeedDiagnostics.info(
+            "MEALS SEED v3→v4 world breakfasts count=\(missingWorldBreakfasts.count) ids=\(missingWorldBreakfasts.map(\.id).joined(separator: ","))",
+            run: run
+        )
+
+        let merged = existing + missingWorldBreakfasts
+        return persistCatalog(
+            merged,
+            settings: settings,
+            defaults: defaults,
+            run: run,
+            accountMode: accountMode
+        )
+    }
+
+    @MainActor
+    private static func persistCatalog(
+        _ meals: [Meals],
+        settings: WeekFitUserSettings,
+        defaults: UserDefaults,
+        run: UUID,
+        accountMode: String
+    ) -> Bool {
         MealsSeedDiagnostics.info("MEALS SEED save BEGIN", run: run)
-        // Synchronous encode → UserDefaults → in-memory, so callers never observe a torn catalog.
-        let encoded = CustomMealStore.encode(starter)
+        let encoded = CustomMealStore.encode(meals)
         defaults.set(encoded, forKey: CustomMealStore.storageKey)
-        settings.replaceCustomMealsCatalog(starter)
+        settings.replaceCustomMealsCatalog(meals)
         settings.setCustomMealsStorage(encoded)
 
         let verified = CustomMealStore.load(
@@ -282,7 +459,7 @@ enum DefaultMealLibrarySeeder {
         let postSaveCount = verified.count
         MealsSeedDiagnostics.info("MEALS SEED postSaveFetchCount=\(postSaveCount)", run: run)
 
-        guard postSaveCount == starter.count, postSaveCount > 0 else {
+        guard postSaveCount == meals.count, postSaveCount > 0 else {
             MealsSeedDiagnostics.error(
                 run: run,
                 operation: "verifyPersistedCatalog",
@@ -291,7 +468,7 @@ enum DefaultMealLibrarySeeder {
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey:
-                            "Expected \(starter.count) persisted meals, found \(postSaveCount)."
+                            "Expected \(meals.count) persisted meals, found \(postSaveCount)."
                     ]
                 )
             )
@@ -299,8 +476,7 @@ enum DefaultMealLibrarySeeder {
         }
 
         defaults.set(true, forKey: seededKey)
-        defaults.removeObject(forKey: "weekfit.defaultMealLibrary.seeded.v1")
-        defaults.removeObject(forKey: "weekfit.defaultMealLibrary.seeded.v2")
+        clearPreviousSeededKeys(in: defaults)
         MealsSeedDiagnostics.info("MEALS SEED save SUCCESS", run: run)
         MealsSeedDiagnostics.info("MEALS SEED account=\(accountMode)", run: run)
         MealsSeedDiagnostics.complete(
@@ -310,11 +486,17 @@ enum DefaultMealLibrarySeeder {
         return true
     }
 
+    private static func clearPreviousSeededKeys(in defaults: UserDefaults) {
+        for key in previousSeededKeys {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     static func isLegacyCatalogOnly(_ meals: [Meals]) -> Bool {
         !meals.isEmpty && meals.allSatisfy { legacyCatalogMealIDs.contains($0.id) }
     }
 
-    /// True when every meal is one of the **current** v3 starter IDs (healthy post-seed state).
+    /// True when every meal is one of the **current** starter IDs (healthy post-seed state).
     static func isCurrentStarterCatalogOnly(_ meals: [Meals]) -> Bool {
         !meals.isEmpty && meals.allSatisfy { allStarterIDs.contains($0.id) }
     }
@@ -351,9 +533,12 @@ enum DefaultMealLibrarySeeder {
             )
         }
 
+        let title = StarterMealPreparation.storedEnglishTitle(forMealID: recipe.id)
+            ?? storedTitle(from: selected)
+
         return Meals(
             id: recipe.id,
-            title: storedTitle(from: selected),
+            title: title,
             subtitle: storedSubtitle(from: selected),
             imageName: "plate-dark",
             type: recipe.mealsType,

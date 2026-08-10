@@ -23,7 +23,7 @@ struct MealsView: View {
     var isQuickLogMode: Bool = false
     var onMealLogged: (() -> Void)? = nil
 
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
     @StateObject private var mealsViewModel = MealsViewModel()
 
     @Environment(\.modelContext) private var modelContext

@@ -18,6 +18,9 @@ struct LoginView: View {
     @State private var animateRecoveryWaveform = false
     @State private var ambientMotion = false
     @State private var showEmailSignIn = false
+    @State private var showAppleReplaceLocalConfirmation = false
+    @State private var showLocalReplaceAppleConfirmation = false
+    @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     @ScaledMetric(relativeTo: .title3) private var brandFontSize: CGFloat = 22
     @ScaledMetric(relativeTo: .largeTitle) private var headlineFontSize: CGFloat = 32
@@ -76,6 +79,11 @@ struct LoginView: View {
                         .offset(y: showPanel ? 0 : (reduceMotion ? 0 : 14))
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                .blur(radius: isShowingWorkspaceReplaceDialog ? 3 : 0)
+
+                if isShowingWorkspaceReplaceDialog {
+                    workspaceReplaceDialogOverlay
+                }
             }
         }
         .ignoresSafeArea(edges: .bottom)
@@ -87,6 +95,60 @@ struct LoginView: View {
             EmailLoginSheet(authViewModel: authViewModel, brandGreen: brandGreen)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var isShowingWorkspaceReplaceDialog: Bool {
+        showAppleReplaceLocalConfirmation || showLocalReplaceAppleConfirmation
+    }
+
+    @ViewBuilder
+    private var workspaceReplaceDialogOverlay: some View {
+        let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
+        if showAppleReplaceLocalConfirmation {
+            ConfirmationDialogView(
+                icon: "exclamationmark.triangle.fill",
+                iconTint: destructiveRed,
+                title: WeekFitLocalizedString("login.appleReplaceLocal.title"),
+                message: WeekFitLocalizedString("login.appleReplaceLocal.message"),
+                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                primaryTitle: WeekFitLocalizedString("login.appleReplaceLocal.primary"),
+                isPrimaryDestructive: true,
+                onSecondary: {
+                    showAppleReplaceLocalConfirmation = false
+                },
+                onPrimary: {
+                    showAppleReplaceLocalConfirmation = false
+                    startConfirmedAppleSignIn()
+                }
+            )
+        } else if showLocalReplaceAppleConfirmation {
+            ConfirmationDialogView(
+                icon: "exclamationmark.triangle.fill",
+                iconTint: destructiveRed,
+                title: WeekFitLocalizedString("login.localReplaceApple.title"),
+                message: WeekFitLocalizedString("login.localReplaceApple.message"),
+                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                primaryTitle: WeekFitLocalizedString("login.localReplaceApple.primary"),
+                isPrimaryDestructive: true,
+                onSecondary: {
+                    showLocalReplaceAppleConfirmation = false
+                },
+                onPrimary: {
+                    showLocalReplaceAppleConfirmation = false
+                    Task {
+                        await authViewModel.continueWithoutAccount()
+                    }
+                }
+            )
+        }
+    }
+
+    private func startConfirmedAppleSignIn() {
+        appleSignInPresenter.start { result in
+            Task {
+                await authViewModel.handleAppleSignIn(result)
+            }
         }
     }
 
@@ -189,44 +251,70 @@ struct LoginView: View {
 
     private var bottomAuthPanel: some View {
         VStack(spacing: LoginMetrics.authStack) {
-            SignInWithAppleButton(
-                ProfileService.resolvedFullName().isEmpty ? .signUp : .signIn
-            ) { request in
-                request.requestedScopes = [.fullName, .email]
-                #if DEBUG
-                AppleNameDiagnostics.logRequestedScopes(request.requestedScopes ?? [])
-                #endif
-            } onCompletion: { result in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                #if DEBUG
-                if case .failure(let error) = result {
-                    let ns = error as NSError
-                    if ns.code != ASAuthorizationError.canceled.rawValue {
-                        AppleNameDiagnostics.logError(
-                            error.localizedDescription,
-                            checkpoint: "1_login_onCompletion_failure"
-                        )
+            if WorkspaceIsolationPolicy.signingInWithAppleWouldReplaceLocalWorkspace() {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showAppleReplaceLocalConfirmation = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(WeekFitLocalizedString("settings.account.signInWithApple"))
+                            .font(.system(size: subtitleFontSize, weight: .semibold))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: authButtonHeight)
+                    .background(.white, in: RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
+                }
+                .buttonStyle(LoginSecondaryButtonStyle())
+                .accessibilityIdentifier("login.appleSignIn")
+                .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+                .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
+            } else {
+                SignInWithAppleButton(
+                    ProfileService.resolvedFullName().isEmpty ? .signUp : .signIn
+                ) { request in
+                    request.requestedScopes = [.fullName, .email]
+                    #if DEBUG
+                    AppleNameDiagnostics.logRequestedScopes(request.requestedScopes ?? [])
+                    #endif
+                } onCompletion: { result in
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    #if DEBUG
+                    if case .failure(let error) = result {
+                        let ns = error as NSError
+                        if ns.code != ASAuthorizationError.canceled.rawValue {
+                            AppleNameDiagnostics.logError(
+                                error.localizedDescription,
+                                checkpoint: "1_login_onCompletion_failure"
+                            )
+                        }
+                    }
+                    #endif
+                    Task {
+                        await authViewModel.handleAppleSignIn(result)
                     }
                 }
-                #endif
-                Task {
-                    await authViewModel.handleAppleSignIn(result)
-                }
+                .signInWithAppleButtonStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: authButtonHeight)
+                .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
+                .accessibilityIdentifier("login.appleSignIn")
+                .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+                .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
             }
-            .signInWithAppleButtonStyle(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: authButtonHeight)
-            .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
-            .accessibilityIdentifier("login.appleSignIn")
-            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
-            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
 
             authDivider
 
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                Task {
-                    await authViewModel.continueWithoutAccount()
+                if WorkspaceIsolationPolicy.openingLocalWouldReplaceAppleWorkspace() {
+                    showLocalReplaceAppleConfirmation = true
+                } else {
+                    Task {
+                        await authViewModel.continueWithoutAccount()
+                    }
                 }
             } label: {
                 HStack(spacing: 8) {

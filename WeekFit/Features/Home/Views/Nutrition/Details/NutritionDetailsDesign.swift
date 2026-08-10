@@ -111,7 +111,7 @@ enum NutritionStyle {
     }
 
     static var nutritionColor: Color {
-        WeekFitTheme.accent(Color(red: 0.95, green: 0.65, blue: 0.12))
+        WeekFitProgressRingColor.nutrition
     }
 
     static var proteinColor: Color {

@@ -137,7 +137,7 @@ struct WeekFitDetailScreenSaveButton: View {
                     .foregroundStyle(
                         isEnabled
                         ? accent.opacity(0.95)
-                        : WeekFitTheme.secondaryText.opacity(0.42)
+                        : WeekFitTheme.secondaryText.opacity(palette.isLight ? 0.55 : 0.42)
                     )
             }
             .frame(width: 38, height: 38)
@@ -150,14 +150,20 @@ struct WeekFitDetailScreenSaveButton: View {
     }
 
     private var saveDiscFill: Color {
-        palette.isLight
-            ? WeekFitTheme.whiteOpacity(0.045)
-            : WeekFitTheme.whiteOpacity(isEnabled ? 0.16 : 0.10)
+        if palette.isLight {
+            return isEnabled
+                ? accent.opacity(0.12)
+                : WeekFitLightTokens.internalTile
+        }
+        return WeekFitTheme.whiteOpacity(isEnabled ? 0.16 : 0.10)
     }
 
     private var saveDiscStroke: Color {
-        palette.isLight
-            ? WeekFitTheme.whiteOpacity(0.065)
-            : WeekFitTheme.whiteOpacity(isEnabled ? 0.08 : 0.05)
+        if palette.isLight {
+            return isEnabled
+                ? accent.opacity(0.28)
+                : WeekFitLightTokens.cardBorder.opacity(0.14)
+        }
+        return WeekFitTheme.whiteOpacity(isEnabled ? 0.08 : 0.05)
     }
 }

@@ -35,6 +35,41 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertEqual(match?.id, planned.id)
     }
 
+    func testShortAutoDetectedWalkDoesNotCompleteLongPlannedWalk() {
+        // Adversarial: 10-minute walk within 30 minutes of a 90-minute planned walk.
+        let planned = walk(at: time(hour: 8, minute: 0), durationMinutes: 90)
+        let synced = workout(from: time(hour: 8, minute: 10), to: time(hour: 8, minute: 20), type: .walking)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+
+        XCTAssertNil(match)
+        XCTAssertFalse(planned.isCompleted)
+    }
+
+    func testCompletedPlannedWalkIsNotMatchedAgain() {
+        let planned = walk(at: time(hour: 8, minute: 0), durationMinutes: 30)
+        planned.isCompleted = true
+        let synced = workout(from: time(hour: 8, minute: 5), to: time(hour: 8, minute: 35), type: .walking)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+
+        XCTAssertNil(match)
+    }
+
+    func testTwoCloseWalksPreferDurationCompatibleSlot() {
+        let shortPlanned = walk(at: time(hour: 8, minute: 0), durationMinutes: 20)
+        let longPlanned = walk(at: time(hour: 8, minute: 15), durationMinutes: 90)
+        let synced = workout(from: time(hour: 8, minute: 5), to: time(hour: 8, minute: 25), type: .walking)
+
+        let match = ActivityReconciler.bestMatch(
+            for: synced,
+            in: [shortPlanned, longPlanned],
+            calendar: calendar
+        )
+
+        XCTAssertEqual(match?.id, shortPlanned.id)
+    }
+
     func testPlannedCyclingMatchesWatchWorkoutStartedEarly() {
         let planned = cycling(at: time(hour: 10, minute: 0), durationMinutes: 60)
         let synced = workout(from: time(hour: 9, minute: 30), to: time(hour: 10, minute: 20), type: .cycling)

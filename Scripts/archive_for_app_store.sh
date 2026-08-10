@@ -8,6 +8,7 @@ DESTINATION="generic/platform=iOS"
 
 echo "→ Archiving WeekFit for App Store"
 cd "$ROOT"
+bash "$ROOT/Scripts/verify_firebase_plist.sh"
 mkdir -p "$(dirname "$ARCHIVE_PATH")"
 
 xcodebuild archive \

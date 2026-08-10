@@ -1506,8 +1506,8 @@ final class HealthManager: ObservableObject {
             }
             group.addTask {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
-                // Unblock launch if HK never callbacks; prefer prior grant request over false deny.
-                return UserDefaults.standard.bool(forKey: "weekfit.healthAccessRequested")
+                // Timeout must never invent a grant — treat as unavailable.
+                return false
             }
             let first = await group.next() ?? false
             group.cancelAll()
@@ -1756,11 +1756,12 @@ final class HealthManager: ObservableObject {
                 let appleSamples = sleepSamples.filter {
                     $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
                 }
+                let samplesForParsing = appleSamples.isEmpty ? sleepSamples : appleSamples
 
                 var deepMin = 0
                 var remMin = 0
 
-                for sample in appleSamples {
+                for sample in samplesForParsing {
 
                     let minutes = Int(
                         sample.endDate.timeIntervalSince(sample.startDate) / 60
@@ -2032,34 +2033,37 @@ final class HealthManager: ObservableObject {
                 let appleSamples = allSamples.filter {
                     $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
                 }
+                // Prefer Apple Sleep; if absent (Oura/Whoop/etc.), fall back to all samples —
+                // must match RecoveryHealthKitProvider so Today and Details stay aligned.
+                let samplesForParsing = appleSamples.isEmpty ? allSamples : appleSamples
 
-                let inBedSamples = appleSamples.filter {
+                let inBedSamples = samplesForParsing.filter {
                     $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue
                 }
 
-                let awakeSamples = appleSamples.filter {
+                let awakeSamples = samplesForParsing.filter {
                     $0.value == HKCategoryValueSleepAnalysis.awake.rawValue
                 }
 
-                let asleepSamples = appleSamples.filter {
+                let asleepSamples = samplesForParsing.filter {
                     Self.isAnyAsleepValue($0.value)
                 }
 
-                let deepSamples = appleSamples.filter {
+                let deepSamples = samplesForParsing.filter {
                     if #available(iOS 16.0, *) {
                         return $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue
                     }
                     return false
                 }
 
-                let remSamples = appleSamples.filter {
+                let remSamples = samplesForParsing.filter {
                     if #available(iOS 16.0, *) {
                         return $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
                     }
                     return false
                 }
 
-                let coreSamples = appleSamples.filter {
+                let coreSamples = samplesForParsing.filter {
                     if #available(iOS 16.0, *) {
                         return $0.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue
                     }
@@ -2267,7 +2271,21 @@ final class HealthManager: ObservableObject {
                         }
                     }
 
-                let intervals = appleAsleepSamples
+                let fallbackAsleepSamples = sleepSamples.filter { sample in
+                    switch sample.value {
+                    case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                         HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                         HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                         HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+                        return true
+                    default:
+                        return false
+                    }
+                }
+
+                let asleepSamples = appleAsleepSamples.isEmpty ? fallbackAsleepSamples : appleAsleepSamples
+
+                let intervals = asleepSamples
                     .map { ($0.startDate, $0.endDate) }
                     .sorted { $0.0 < $1.0 }
 
@@ -3007,4 +3025,5 @@ extension Notification.Name {
     static let healthAccessDidChange = Notification.Name("healthAccessDidChange")
     static let weekfitRequestSupplementaryPermissions = Notification.Name("weekfitRequestSupplementaryPermissions")
     static let weekfitDidCompleteAccountDeletion = Notification.Name("weekfitDidCompleteAccountDeletion")
+    static let weekfitDidCompleteAppleSignIn = Notification.Name("weekfitDidCompleteAppleSignIn")
 }

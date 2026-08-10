@@ -22,7 +22,20 @@ enum AccountSessionCoordinator {
         WeekFitUserSettings.shared.ensureMealLibrarySeeded()
 
         let targetMode = AccountMode.resolve(isLoggedIn: isLoggedIn)
-        guard targetMode != accountSession.mode else {
+
+        // Same mode can still require a workspace wipe when identity changes
+        // (local ↔ Apple, Apple A → Apple B, DEBUG create-account while already realUser).
+        let needsForcedRealUserWorkspaceReconcile =
+            targetMode == .realUser
+            && accountSession.mode == .realUser
+            && (
+                accountSession.shouldResetLocalDataOnNextRealUserEntry
+                || WorkspaceOwnerStore.requiresWorkspaceReset(
+                    forIncomingIdentity: WorkspaceOwnerStore.currentIdentityToken()
+                )
+            )
+
+        guard targetMode != accountSession.mode || needsForcedRealUserWorkspaceReconcile else {
             await refreshModeIfNeeded(
                 targetMode: targetMode,
                 accountSession: accountSession,
@@ -166,12 +179,22 @@ enum AccountSessionCoordinator {
             appSession: appSession
         )
 
-        if accountSession.consumeLocalDataResetOnNextRealUserEntry() {
+        let incomingIdentity = WorkspaceOwnerStore.currentIdentityToken()
+        let shouldWipe =
+            accountSession.consumeLocalDataResetOnNextRealUserEntry()
+            || WorkspaceOwnerStore.requiresWorkspaceReset(forIncomingIdentity: incomingIdentity)
+
+        if shouldWipe {
             await resetLocalWorkspaceForNewAccount(
                 nutritionViewModel: nutritionViewModel,
                 coachCoordinator: coachCoordinator,
-                appSession: appSession
+                appSession: appSession,
+                reclaimIdentity: incomingIdentity
             )
+            // Domain wipe cleared seed flags — restore starter library for the new owner.
+            WeekFitUserSettings.shared.ensureMealLibrarySeeded()
+        } else if let incomingIdentity {
+            WorkspaceOwnerStore.ownerID = incomingIdentity
         }
 
         StartupDiagnostics.step(3, "migration start", detail: "DemoDataMigration (realUser entry)")
@@ -221,6 +244,9 @@ enum AccountSessionCoordinator {
             appSession.dismissHealthAccess()
         }
 
+        // After Apple Sign in / Sign up (or any real-user entry), land on Today.
+        appSession.triggerReturnToToday()
+
         AccountSessionDiagnostics.log(
             "Entered real user mode",
             mode: .realUser,
@@ -258,7 +284,8 @@ enum AccountSessionCoordinator {
     private static func resetLocalWorkspaceForNewAccount(
         nutritionViewModel: NutritionViewModel,
         coachCoordinator: CoachCoordinator,
-        appSession: AppSessionState
+        appSession: AppSessionState,
+        reclaimIdentity: String?
     ) async {
         let resetService = LocalDataResetService(
             modelContext: WeekFitModelContainer.productionContext()
@@ -271,12 +298,26 @@ enum AccountSessionCoordinator {
             )
         }
         let preservedAppleUserID = AuthSessionStore.appleUserID
+        let preservedEntered = AuthSessionStore.hasEnteredWeekFit
+        let preservedOnboardingCompleted = OnboardingStore.hasCompletedOnboarding
         try? await resetService.resetAllLocalData()
 
-        // `resetAllLocalData` clears the UserDefaults domain (including appleUserID + profile).
+        // `resetAllLocalData` clears the UserDefaults domain (including auth + owner keys).
         if let appleUserID = preservedAppleUserID {
             AuthSessionStore.appleUserID = appleUserID
             AppleIdentityStore.restoreProfileIfNeeded(appleUserID: appleUserID)
+        }
+        if preservedEntered {
+            AuthSessionStore.markWeekFitEntered()
+        }
+        if preservedOnboardingCompleted {
+            // Local → Apple wipe should not force first-run onboarding again.
+            OnboardingStore.markCompleted()
+        }
+        if let reclaimIdentity {
+            WorkspaceOwnerStore.ownerID = reclaimIdentity
+        } else if preservedAppleUserID == nil, preservedEntered {
+            WorkspaceOwnerStore.ownerID = WorkspaceOwnerStore.localOwnerID
         }
 
         nutritionViewModel.resetLocalState()
@@ -308,6 +349,22 @@ enum AccountSessionCoordinator {
             nutritionViewModel: nutritionViewModel,
             coachCoordinator: coachCoordinator,
             appSession: appSession
+        )
+
+        // Sign Out no longer routes here while the user stays inside WeekFit.
+        // This path is only for true pre-entry / leave-app states (hasEnteredWeekFit == false).
+        // It must NOT wipe the production workspace.
+        let preservedOwner = WorkspaceOwnerStore.ownerID
+        AuthSessionStore.clearAppleSession()
+        AuthSessionStore.clearWeekFitEntry()
+        WorkspaceOwnerStore.clearGuestToken()
+        if let preservedOwner {
+            WorkspaceOwnerStore.ownerID = preservedOwner
+        }
+
+        invalidateCaches(
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator
         )
 
         try? DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded(

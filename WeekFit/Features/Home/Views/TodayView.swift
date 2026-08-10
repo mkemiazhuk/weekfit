@@ -16,7 +16,7 @@ struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
 
     @StateObject private var confirmationState = ActivityConfirmationState.shared
     @StateObject private var todayViewModel = TodayViewModel()
@@ -299,10 +299,11 @@ struct TodayView: View {
     private var waterGoal: Double { nutritionViewModel.nutritionResult?.goals.waterLiters ?? 4.46 }
 
     private var hasTodayRecoverySignals: Bool {
+        // Ring "has data" must mean a recovery score is actually available.
+        // Bare RHR/HRV without sleep previously painted a fake 0% while Details showed a real score.
         healthManager.sleepMinutes > 0 ||
         healthManager.timeInBedMinutes > 0 ||
-        healthManager.hrvSDNN > 0 ||
-        healthManager.restingHeartRate > 0
+        healthManager.recoveryPercent > 0
     }
 
     private var shouldShowHealthConnectPrompt: Bool {
@@ -560,6 +561,12 @@ struct TodayView: View {
         }
         .onChange(of: appSession.localDataResetTrigger) { _, _ in
             handleLocalDataResetCompleted()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .weekfitDidCompleteAppleSignIn)) { _ in
+            // Sign in / Sign up with Apple from Profile → close settings and land on Today.
+            showProfile = false
+            handleReturnToTodayRequest()
+            appSession.triggerReturnToToday()
         }
         .onReceive(confirmationState.$pendingActivity) { pending in
             guard let pending else { return }

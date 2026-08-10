@@ -305,7 +305,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload\"\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST — required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST — check target membership.\"\n  exit 1\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -14,12 +14,18 @@ enum AccountMode: Equatable {
         self != .reviewDemo
     }
 
-    /// Review demo is keyed exclusively to the App Review credential session flag.
-    static func resolve(isLoggedIn: Bool) -> AccountMode {
-        guard isLoggedIn else { return .unauthenticated }
+    /// Resolves store/mode from **app entry**, not Apple authentication.
+    /// Unauthenticated local users who have entered WeekFit still use `.realUser` (production SQLite).
+    static func resolve(hasEnteredWeekFit: Bool) -> AccountMode {
+        guard hasEnteredWeekFit else { return .unauthenticated }
         if AppReviewDemoCredentials.hasActiveSession {
             return .reviewDemo
         }
         return .realUser
+    }
+
+    /// Legacy alias — `isLoggedIn` historically meant “in the app”, not Apple-authenticated.
+    static func resolve(isLoggedIn: Bool) -> AccountMode {
+        resolve(hasEnteredWeekFit: isLoggedIn)
     }
 }

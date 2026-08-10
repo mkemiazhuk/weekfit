@@ -2,7 +2,8 @@ import Foundation
 import OSLog
 
 /// Wires `AppAnalytics` after Firebase Core is ready.
-/// Does not call `FirebaseApp.configure()` — that belongs to `FirebaseBootstrap`.
+/// Does not call `FirebaseApp.configure()` or telemetry policy — those belong to
+/// `FirebaseBootstrap` / `FirebaseEnvironment`.
 enum AnalyticsBootstrap {
     private static let logger = Logger(subsystem: "com.weekfit.app", category: "Analytics")
 

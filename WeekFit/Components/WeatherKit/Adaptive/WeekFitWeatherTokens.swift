@@ -48,8 +48,10 @@ struct WeekFitWeatherTokens: Equatable {
             precipitationChance: precipitationChance,
             modifier: modifier
         )
-        guard appAppearanceDark else { return refined }
-        return adaptForDarkAppAppearance(refined, period: period, condition: condition)
+        if appAppearanceDark {
+            return adaptForDarkAppAppearance(refined, period: period, condition: condition)
+        }
+        return adaptForLightAppAppearance(refined, period: period, condition: condition)
     }
 
     /// Daytime weather chrome is cream by design for outdoor atmosphere.
@@ -83,6 +85,53 @@ struct WeekFitWeatherTokens: Equatable {
         case .snow:
             adapted.backgroundSecondary = Color(red: 0.14, green: 0.17, blue: 0.23)
         case .cloudy, .fog, .windy, .other:
+            break
+        }
+
+        return adapted
+    }
+
+    /// Evening/night weather tokens are dark by atmosphere. In app light mode that reads
+    /// as a heavy purple sheet on cream chrome — remap to a soft dusk wash with dark text.
+    private static func adaptForLightAppAppearance(
+        _ tokens: WeekFitWeatherTokens,
+        period: WeekFitWeatherPeriod,
+        condition: WeekFitWeatherCondition
+    ) -> WeekFitWeatherTokens {
+        guard period.isNightLike else { return tokens }
+
+        var adapted = tokens
+        adapted.backgroundPrimary = Color(red: 0.965, green: 0.955, blue: 0.975)
+        adapted.backgroundSecondary = Color(red: 0.920, green: 0.910, blue: 0.955)
+        adapted.heroSurface = Color(red: 0.985, green: 0.980, blue: 0.995)
+        adapted.textPrimary = Color(red: 0.18, green: 0.16, blue: 0.24)
+        adapted.textSecondary = Color(red: 0.42, green: 0.40, blue: 0.50)
+        adapted.cardSurface = Color.white.opacity(0.94)
+        adapted.cardStroke = Color.black.opacity(0.055)
+        adapted.heroReadabilityWash = Color(red: 0.96, green: 0.95, blue: 0.99).opacity(0.72)
+        adapted.ambientGlow = Color(red: 0.62, green: 0.55, blue: 0.92).opacity(0.28)
+        adapted.metricIconTint = Color(red: 0.55, green: 0.48, blue: 0.82)
+        adapted.primaryAccent = Color(red: 0.58, green: 0.50, blue: 0.88)
+        adapted.secondaryAccent = Color(red: 0.48, green: 0.58, blue: 0.88)
+        adapted.heroIllustrationPrimary = Color(red: 0.42, green: 0.40, blue: 0.72)
+        adapted.heroIllustrationSecondary = Color(red: 0.55, green: 0.58, blue: 0.88)
+        adapted.isNightAtmosphere = false
+
+        switch condition {
+        case .clear, .partlyCloudy:
+            adapted.backgroundSecondary = Color(red: 0.900, green: 0.905, blue: 0.960)
+            adapted.ambientGlow = Color(red: 0.55, green: 0.58, blue: 0.95).opacity(0.30)
+        case .rain, .storm:
+            adapted.backgroundPrimary = Color(red: 0.940, green: 0.945, blue: 0.970)
+            adapted.backgroundSecondary = Color(red: 0.880, green: 0.895, blue: 0.950)
+            adapted.primaryAccent = Color(red: 0.42, green: 0.55, blue: 0.90)
+        case .snow:
+            adapted.backgroundPrimary = Color(red: 0.950, green: 0.960, blue: 0.985)
+            adapted.backgroundSecondary = Color(red: 0.910, green: 0.930, blue: 0.980)
+        case .fog:
+            adapted.backgroundPrimary = Color(red: 0.940, green: 0.940, blue: 0.950)
+            adapted.backgroundSecondary = Color(red: 0.900, green: 0.905, blue: 0.925)
+        case .cloudy, .windy, .other:
             break
         }
 

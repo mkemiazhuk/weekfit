@@ -1,4 +1,3 @@
-import PhotosUI
 import SwiftUI
 import UIKit
 import OSLog
@@ -18,8 +17,6 @@ struct CustomMealBuilderView: View {
         let formTitle: String
         let formSubtitle: String
         let kcal: String
-        let takePhoto: String
-        let choosePhoto: String
         let cancel: String
         let removePhoto: String
         let foodName: String
@@ -47,15 +44,12 @@ struct CustomMealBuilderView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @FocusState private var focusedField: FocusedField?
 
-    @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var selectedThumbnailImage: UIImage?
     @State private var pendingOriginalFilename: String?
     @State private var existingPreviewImage: UIImage?
     @State private var didRemovePhoto = false
     @State private var showCamera = false
-    @State private var showPhotoLibrary = false
-    @State private var showPhotoSourcePicker = false
 
     @State private var name: String
     @State private var servingGrams: String
@@ -166,10 +160,6 @@ struct CustomMealBuilderView: View {
             .onChange(of: focusedField) { oldValue, newValue in
                 Self.debugLog("focus.change \(oldValue?.rawValue ?? "nil") -> \(newValue?.rawValue ?? "nil")")
             }
-            .onChange(of: selectedPhotoItem) { _, newItem in
-                Self.debugLog("onChange.selectedPhotoItem isNil=\(newItem == nil)")
-                loadPhoto(newItem)
-            }
             .onChange(of: name) { _, newValue in
                 Self.debugLog("onChange.name length=\(newValue.count)")
             }
@@ -200,29 +190,6 @@ struct CustomMealBuilderView: View {
                 }
                 .ignoresSafeArea()
                 .preferredColorScheme(.dark)
-            }
-            .photosPicker(
-                isPresented: $showPhotoLibrary,
-                selection: $selectedPhotoItem,
-                matching: .images
-            )
-            .confirmationDialog(
-                "",
-                isPresented: $showPhotoSourcePicker,
-                titleVisibility: .hidden
-            ) {
-                Button(labels.takePhoto) {
-                    openCamera()
-                }
-
-                Button(labels.choosePhoto) {
-                    showPhotoLibrary = true
-                }
-
-                Button(role: .cancel) {
-                } label: {
-                    Text(labels.cancel)
-                }
             }
     }
 
@@ -379,12 +346,12 @@ struct CustomMealBuilderView: View {
 
     private var barcodeLookupBanner: some View {
         Group {
-            // Success/partial feedback lives in the result card.
             // Loading is shown inside the before-scan CTA.
+            // Success/partial barcode feedback lives in the result card.
+            // Neutral = product photo kept for manual nutrition entry.
             if !isAnalyzingPhoto,
                barcodeImportResult == nil,
-               let barcodeLookupMessage,
-               barcodeLookupTone == .error || barcodeLookupTone == .warning {
+               let barcodeLookupMessage {
                 lookupBanner(text: barcodeLookupMessage, tone: barcodeLookupTone)
             }
         }
@@ -420,8 +387,7 @@ struct CustomMealBuilderView: View {
     }
 
     private func beginBarcodeRescan() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        showPhotoSourcePicker = true
+        openCamera()
     }
 
     private func barcodeResultCard(_ result: BarcodeProductImportResult) -> some View {
@@ -633,10 +599,17 @@ struct CustomMealBuilderView: View {
                     )
                 )
 
-            Image(systemName: "barcode.viewfinder")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.94))
-                .symbolRenderingMode(.monochrome)
+            if let previewImage {
+                Image(uiImage: previewImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+            }
 
             if isAnalyzingPhoto {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -901,43 +874,6 @@ struct CustomMealBuilderView: View {
         return trimmed.isEmpty ? "0" : trimmed
     }
 
-    private func loadPhoto(_ item: PhotosPickerItem?) {
-        guard let item else { return }
-
-        Task {
-            let loadStart = Self.debugStart("photoPicker.loadTransferable")
-            guard let data = try? await item.loadTransferable(type: Data.self) else {
-                Self.debugEnd("photoPicker.loadTransferable.failed", start: loadStart)
-                return
-            }
-            Self.debugEnd("photoPicker.loadTransferable", start: loadStart)
-
-            let processingStart = Self.debugStart("photoPicker.processImage")
-            DispatchQueue.global(qos: .userInitiated).async {
-                autoreleasepool {
-                    guard let storageImage = MealPhotoStore.downsampledImage(from: data) else {
-                        Self.debugEnd("photoPicker.processImage.failed", start: processingStart)
-                        return
-                    }
-                    let thumbnail = MealPhotoStore.thumbnailImage(
-                        from: storageImage,
-                        sideLength: MealPhotoStore.formPreviewPixelSize
-                    )
-                    let pendingFilename = try? MealPhotoStore.savePendingOriginal(storageImage)
-                    Self.debugEnd("photoPicker.processImage", start: processingStart)
-
-                    DispatchQueue.main.async {
-                        selectedThumbnailImage = thumbnail
-                        pendingOriginalFilename = pendingFilename
-                        selectedImage = nil
-                        didRemovePhoto = false
-                        analyzePhotoForNutrition(storageImage)
-                    }
-                }
-            }
-        }
-    }
-
     private func processCapturedPhoto(_ image: UIImage) {
         let processingStart = Self.debugStart("camera.processImage")
         DispatchQueue.global(qos: .userInitiated).async {
@@ -994,12 +930,21 @@ struct CustomMealBuilderView: View {
             barcodeImportResult = nil
             switch failure {
             case .noContent:
-                ProductAnalytics.barcodeScanFailed(source: .meals, reason: .barcodeNotRecognized)
-                setBarcodeLookupMessage(
-                    WeekFitLocalizedString("meals.barcode.notFound"),
-                    tone: .error
-                )
-                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                // Product photo without barcode/label — keep the shot and continue manually.
+                if previewImage != nil {
+                    setBarcodeLookupMessage(
+                        WeekFitLocalizedString("meals.foodForm.photoKept.manualNutrition"),
+                        tone: .neutral
+                    )
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } else {
+                    ProductAnalytics.barcodeScanFailed(source: .meals, reason: .barcodeNotRecognized)
+                    setBarcodeLookupMessage(
+                        WeekFitLocalizedString("meals.barcode.notFound"),
+                        tone: .error
+                    )
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                }
 
             case let .barcode(lookup):
                 scannedBarcode = lookup.barcode
@@ -1184,10 +1129,14 @@ struct CustomMealBuilderView: View {
 
     private func openCamera() {
         Self.debugLog("openCamera.request")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            Self.debugLog("openCamera.fallbackToLibrary")
+            Self.debugLog("openCamera.unavailable")
             ProductAnalytics.barcodeScanFailed(source: .meals, reason: .cameraUnavailable)
-            showPhotoLibrary = true
+            setBarcodeLookupMessage(
+                WeekFitLocalizedString("meals.foodForm.cameraUnavailable"),
+                tone: .error
+            )
             return
         }
 
@@ -1197,7 +1146,6 @@ struct CustomMealBuilderView: View {
 
     private func removePhoto() {
         Self.debugLog("removePhoto")
-        selectedPhotoItem = nil
         releaseCapturedPhotoMemory(deletePendingOriginal: true)
         didRemovePhoto = true
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1371,8 +1319,6 @@ struct CustomMealBuilderView: View {
             formTitle: WeekFitLocalizedString(isEditing ? "meals.foodForm.title.edit" : "meals.foodForm.title.create"),
             formSubtitle: WeekFitLocalizedString(isEditing ? "meals.foodForm.subtitle.edit" : "meals.foodForm.subtitle.create"),
             kcal: WeekFitLocalizedString("common.unit.kcal"),
-            takePhoto: WeekFitLocalizedString("meals.photo.take"),
-            choosePhoto: WeekFitLocalizedString("meals.photo.choose"),
             cancel: WeekFitLocalizedString("common.action.cancel"),
             removePhoto: WeekFitLocalizedString("meals.photo.remove"),
             foodName: WeekFitLocalizedString("meals.foodName"),

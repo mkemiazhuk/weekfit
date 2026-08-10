@@ -44,7 +44,7 @@ private struct WeekPlannerLiveQueryView: View {
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
 
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var showProfile = false
     @AppStorage(OnboardingStore.Keys.introPlan) private var planIntroDismissed = false
@@ -650,7 +650,7 @@ private struct WeekOverviewLegend: View {
 
     private let entries: [Entry] = [
         Entry(titleKey: "planner.legend.endurance", color: Color(hex: "#5E7CFF")),
-        Entry(titleKey: "planner.legend.highLoad", color: Color(hex: "#FF9F43")),
+        Entry(titleKey: "planner.legend.highLoad", color: PlanDayKind.load.color),
         Entry(titleKey: "planner.legend.mixed", color: Color(hex: "#FFD166")),
         Entry(titleKey: "planner.legend.recovery", color: Color(hex: "#59D98E"))
     ]
@@ -2058,7 +2058,11 @@ extension PlanDayKind {
     var color: Color {
         switch self {
         case .endurance: return Color(hex: "#5E7CFF")
-        case .load: return Color(hex: "#FF9F43")
+        case .load:
+            // Soften on OLED — same amber as nutrition accents, keep daylight punch in Light.
+            return WeekFitPaletteStore.current.isLight
+                ? Color(hex: "#FF9F43")
+                : Color(red: 0.84, green: 0.58, blue: 0.34)
         case .mixed: return Color(hex: "#FFD166")
         case .recovery: return Color(hex: "#59D98E")
         case .open:

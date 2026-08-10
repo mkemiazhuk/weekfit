@@ -97,7 +97,12 @@ final class ProfileViewModel: ObservableObject {
 
         userProfile = updatedProfile
         service.saveUserProfile(updatedProfile)
-        WeekFitUserSettings.shared.refreshFromStorage()
+        // Push into the shared settings object immediately so tab headers (Meals/Today/…)
+        // refresh without waiting for the next tab onAppear → refreshFromStorage().
+        WeekFitUserSettings.shared.applyProfileIdentity(
+            initials: updatedProfile.initials,
+            hasProfileName: !cleanName.isEmpty
+        )
     }
 
     func signOut() {

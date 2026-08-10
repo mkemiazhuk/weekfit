@@ -3,15 +3,15 @@ import XCTest
 
 final class DefaultMealLibrarySeederTests: XCTestCase {
 
-    func testBuildStarterMeals_hasThreePerMainSlot() {
+    func testBuildStarterMeals_hasExpectedSlotCounts() {
         let meals = DefaultMealLibrarySeeder.buildStarterMeals()
-        XCTAssertEqual(meals.count, 9)
+        XCTAssertEqual(meals.count, 14)
 
         let breakfast = meals.filter { $0.slot == .breakfast }
         let lunch = meals.filter { $0.slot == .lunch }
         let dinner = meals.filter { $0.slot == .dinner }
 
-        XCTAssertEqual(breakfast.count, 3)
+        XCTAssertEqual(breakfast.count, 8)
         XCTAssertEqual(lunch.count, 3)
         XCTAssertEqual(dinner.count, 3)
     }
@@ -120,9 +120,78 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         )
     }
 
+    func testWorldBreakfasts_useCuratedTitlesAndUniqueSteps() {
+        let curatedIDs = [
+            "custom_meal_starter_avocado_toast",
+            "custom_meal_starter_shakshuka",
+            "custom_meal_starter_huevos_rancheros",
+            "custom_meal_starter_english_breakfast",
+            "custom_meal_starter_japanese_breakfast",
+        ]
+        let meals = DefaultMealLibrarySeeder.buildStarterMeals()
+
+        for id in curatedIDs {
+            let meal = meals.first { $0.id == id }
+            XCTAssertNotNil(meal, "Missing world breakfast \(id)")
+            XCTAssertEqual(meal?.suggestedTime, "08:30")
+            XCTAssertEqual(meal?.slot, .breakfast)
+            XCTAssertEqual(
+                meal?.localizedDisplayTitle,
+                StarterMealPreparation.title(forMealID: id)
+            )
+            XCTAssertEqual(meal?.title, StarterMealPreparation.storedEnglishTitle(forMealID: id))
+        }
+    }
+
+    @MainActor
+    func testV3ToV4Migration_addsWorldBreakfastsOnceAndDoesNotRestoreDeletes() {
+        let suiteName = "weekfit.tests.meals.seed.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let v3Meals = DefaultMealLibrarySeeder.buildStarterMeals().filter {
+            DefaultMealLibrarySeeder.v3StarterIDs.contains($0.id)
+        }
+        XCTAssertEqual(v3Meals.count, 9)
+
+        defaults.set(true, forKey: DefaultMealLibrarySeeder.v3SeededKey)
+        defaults.set(false, forKey: DefaultMealLibrarySeeder.seededKey)
+
+        let settings = WeekFitUserSettings.shared
+        settings.replaceCustomMealsCatalog(v3Meals)
+
+        // First seed after upgrade: append world breakfasts + set v4.
+        XCTAssertTrue(
+            DefaultMealLibrarySeeder.seedIfNeeded(settings: settings, defaults: defaults)
+        )
+        XCTAssertTrue(defaults.bool(forKey: DefaultMealLibrarySeeder.seededKey))
+        let afterUpgrade = settings.customMealsCatalog
+        XCTAssertEqual(afterUpgrade.count, 14)
+
+        // User deletes a world breakfast.
+        let pruned = afterUpgrade.filter { $0.id != "custom_meal_starter_shakshuka" }
+        settings.replaceCustomMealsCatalog(pruned)
+        settings.setCustomMealsStorage(CustomMealStore.encode(pruned))
+
+        // Subsequent launches must NOT restore the deleted starter.
+        XCTAssertFalse(
+            DefaultMealLibrarySeeder.seedIfNeeded(settings: settings, defaults: defaults)
+        )
+        XCTAssertFalse(settings.customMealsCatalog.contains { $0.id == "custom_meal_starter_shakshuka" })
+        XCTAssertEqual(settings.customMealsCatalog.count, 13)
+    }
+
     func testCurrentStarterCatalog_isNotTreatedAsReplaceableLegacy() {
         let starters = DefaultMealLibrarySeeder.buildStarterMeals()
         XCTAssertTrue(DefaultMealLibrarySeeder.isCurrentStarterCatalogOnly(starters))
         XCTAssertFalse(DefaultMealLibrarySeeder.isLegacyCatalogOnly(starters))
+
+        let legacySubset = starters.filter {
+            DefaultMealLibrarySeeder.v3StarterIDs.contains($0.id)
+        }
+        XCTAssertEqual(legacySubset.count, 9)
+        XCTAssertTrue(DefaultMealLibrarySeeder.isCurrentStarterCatalogOnly(legacySubset))
     }
 }

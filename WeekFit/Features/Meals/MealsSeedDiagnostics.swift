@@ -10,6 +10,9 @@ import OSLog
 enum MealsSeedDiagnostics {
     static let logger = Logger(subsystem: "com.weekfit.app", category: "MealsSeed")
 
+    /// Set to `true` temporarily when diagnosing meal-library seed issues.
+    private static let loggingEnabled = false
+
     static func begin(run: UUID, detail: String? = nil) {
         log("MEALS SEED BEGIN", run: run, detail: detail)
     }
@@ -37,7 +40,7 @@ enum MealsSeedDiagnostics {
     }
 
     private static func log(_ headline: String, run: UUID, detail: String?) {
-        #if DEBUG
+        guard loggingEnabled else { return }
         let runTag = "run=\(run.uuidString.prefix(8))"
         let message: String
         if let detail, !detail.isEmpty {
@@ -46,6 +49,5 @@ enum MealsSeedDiagnostics {
             message = "\(headline) | \(runTag)"
         }
         logger.info("\(message, privacy: .public)")
-        #endif
     }
 }

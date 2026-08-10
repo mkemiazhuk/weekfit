@@ -1,12 +1,14 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import AuthenticationServices
 
 struct ProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
@@ -21,9 +23,11 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
     @State private var showResetFailure = false
+    @State private var showAppleReplaceLocalConfirmation = false
     @State private var resetFailureMessage = ""
     @State private var isResettingLocalData = false
     @State private var showVersionCopiedToast = false
+    @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     private var background: Color { WeekFitTheme.backgroundColor }
 
@@ -36,7 +40,7 @@ struct ProfileView: View {
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
 
     private var isShowingDialog: Bool {
-        showResetConfirmation || showResetFailure
+        showResetConfirmation || showResetFailure || showAppleReplaceLocalConfirmation
     }
 
     var body: some View {
@@ -180,7 +184,28 @@ private extension ProfileView {
 
     @ViewBuilder
     var resetDialogOverlay: some View {
-        if showResetConfirmation {
+        if showAppleReplaceLocalConfirmation {
+            ConfirmationDialogView(
+                icon: "exclamationmark.triangle.fill",
+                iconTint: destructiveRed,
+                title: WeekFitLocalizedString("settings.account.appleReplaceLocal.title"),
+                message: WeekFitLocalizedString("settings.account.appleReplaceLocal.message"),
+                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                primaryTitle: WeekFitLocalizedString("settings.account.appleReplaceLocal.primary"),
+                isPrimaryDestructive: true,
+                onSecondary: {
+                    withDialogAnimation {
+                        showAppleReplaceLocalConfirmation = false
+                    }
+                },
+                onPrimary: {
+                    withDialogAnimation {
+                        showAppleReplaceLocalConfirmation = false
+                    }
+                    startConfirmedAppleSignIn()
+                }
+            )
+        } else if showResetConfirmation {
             ConfirmationDialogView(
                 icon: "exclamationmark.triangle.fill",
                 iconTint: destructiveRed,
@@ -350,9 +375,43 @@ private extension ProfileView {
 
     var privacyDataSection: some View {
         let showReset = AccountSessionController.shared.mode != .reviewDemo
+        let showSignInWithApple =
+            showReset
+            && !authViewModel.isAppleSignedIn
+            && !AppReviewDemoCredentials.hasActiveSession
         let legalItems = viewModel.privacyLegalSettings
 
         return SettingsGroupedSection(title: AppText.Settings.Profile.privacyDataSection) {
+            if showSignInWithApple {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if WorkspaceIsolationPolicy.signingInWithAppleWouldReplaceLocalWorkspace() {
+                        withDialogAnimation {
+                            showAppleReplaceLocalConfirmation = true
+                        }
+                    } else {
+                        startConfirmedAppleSignIn()
+                    }
+                } label: {
+                    profileActionRow(
+                        icon: "apple.logo",
+                        iconColor: textPrimary,
+                        iconBackground: palette.isLight
+                            ? WeekFitLightTokens.internalTile
+                            : WeekFitTheme.whiteOpacity(0.10),
+                        title: LocalizedStringResource("settings.account.signInWithApple"),
+                        titleColor: textPrimary
+                    )
+                }
+                .buttonStyle(PressableScaleButtonStyle())
+                .accessibilityIdentifier("settings.signInWithApple")
+                .disabled(authViewModel.isLoading)
+
+                if showReset || !legalItems.isEmpty {
+                    SettingsGroupDivider()
+                }
+            }
+
             if showReset {
                 Button {
                     withDialogAnimation {
@@ -564,6 +623,17 @@ private extension ProfileView {
         }
     }
 
+    func startConfirmedAppleSignIn() {
+        appleSignInPresenter.start { result in
+            Task {
+                await authViewModel.handleAppleSignIn(result)
+                if authViewModel.isAppleSignedIn {
+                    dismiss()
+                }
+            }
+        }
+    }
+
     func withDialogAnimation(_ updates: @escaping () -> Void) {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             updates()
@@ -584,7 +654,20 @@ private extension ProfileView {
                     reason: "localDataReset"
                 )
             }
+            let preservedAppleUserID = AuthSessionStore.appleUserID
+            let preservedEntered = AuthSessionStore.hasEnteredWeekFit
+
             try await resetService.resetAllLocalData()
+
+            // Preferred invariant: preserve authentication identity / app entry, rebuild empty workspace.
+            if let appleUserID = preservedAppleUserID {
+                AuthSessionStore.appleUserID = appleUserID
+                AppleIdentityStore.restoreProfileIfNeeded(appleUserID: appleUserID)
+                WorkspaceOwnerStore.ownerID = WorkspaceOwnerStore.appleOwnerID(appleUserID)
+            } else if preservedEntered {
+                AuthSessionStore.markWeekFitEntered()
+                WorkspaceOwnerStore.ownerID = WorkspaceOwnerStore.localOwnerID
+            }
 
             ActivityConfirmationState.shared.pendingActivity = nil
             nutritionViewModel.resetLocalState()

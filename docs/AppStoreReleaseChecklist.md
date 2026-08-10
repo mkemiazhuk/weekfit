@@ -37,7 +37,7 @@
 | 1.5 | Debug paths | UI-testing / debug diagnostics are `#if DEBUG` | [ ] spot-check |
 | 1.6 | Unshipped modules | Insights / Highlights remain disabled — `docs/UnshippedFeatures.md` | [x] |
 | 1.7 | Watch | No Watch companion promised in listing | [x] |
-| 1.8 | `GoogleService-Info.plist` | Present locally for archive (gitignored); bundle id `com.weekfit.app` | [ ] verify before archive |
+| 1.8 | `GoogleService-Info.plist` | Present locally for archive (gitignored); bundle id `com.weekfit.app`. Release/Archive build fails if missing (`Scripts/verify_firebase_plist.sh` + Crashlytics phase). | [ ] verify before archive |
 | 1.9 | Localization | `Scripts/check_localization_parity.py` + language-mix | [x] 2026-07-28 |
 | 1.10 | Focused unit tests | Analytics + Review + Settings IA | [x] 2026-07-28 · iPhone 16 / iOS 18.5 |
 | 1.11 | Full `WeekFitTests` | Unit suite only (UITests flaky / separate) | [x] 2026-07-28 · **TEST SUCCEEDED** |

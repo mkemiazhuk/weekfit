@@ -20,8 +20,8 @@ enum WeekFitTheme {
     private static let recoveryBaseDark = Color(red: 0.68, green: 0.56, blue: 0.90)
     private static let recoveryBaseLight = WeekFitLightTokens.recovery
 
-    /// Nutrition orange.
-    private static let habitBaseDark = Color(red: 0.93, green: 0.62, blue: 0.34)
+    /// Nutrition orange — muted on OLED so it sits with workout blue instead of blazing.
+    private static let habitBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
     private static let habitBaseLight = WeekFitLightTokens.nutrition
 
     private static let coachAccentBaseDark = Color(red: 0.55, green: 0.40, blue: 0.85)
@@ -30,7 +30,7 @@ enum WeekFitTheme {
     private static let primaryGreenBaseDark = Color(red: 0.62, green: 0.82, blue: 0.45)
     private static let primaryGreenBaseLight = WeekFitLightTokens.coach
 
-    private static let avatarOrangeBaseDark = Color(red: 0.93, green: 0.62, blue: 0.34)
+    private static let avatarOrangeBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
     private static let avatarOrangeBaseLight = WeekFitLightTokens.nutrition
 
     /// Champagne warmth for light canvas vignettes / Quick Log.
@@ -151,7 +151,7 @@ enum WeekFitTheme {
         let peak = palette.isLight ? 0.0 : 0.042
         return RadialGradient(
             colors: [
-                (palette.isLight ? WeekFitLightTokens.nutrition : Color(red: 0.93, green: 0.58, blue: 0.26))
+                (palette.isLight ? WeekFitLightTokens.nutrition : Color(red: 0.84, green: 0.58, blue: 0.34))
                     .opacity(peak * palette.ambientOpacity),
                 Color.clear
             ],
@@ -256,7 +256,7 @@ enum WeekFitTheme {
     static let mealRGB = (red: 0.55, green: 0.82, blue: 0.61)
     static let workoutRGB = (red: 0.50, green: 0.62, blue: 0.92)
     static let recoveryRGB = (red: 0.68, green: 0.56, blue: 0.90)
-    static let habitRGB = (red: 0.93, green: 0.62, blue: 0.34)
+    static let habitRGB = (red: 0.84, green: 0.58, blue: 0.34)
 
     static var primaryGreen: Color { palette.accent(primaryGreenBase) }
 
@@ -317,7 +317,7 @@ enum WeekFitMacroColor {
         WeekFitPaletteStore.current
     }
 
-    private static let caloriesBaseDark = Color(red: 0.93, green: 0.58, blue: 0.26)
+    private static let caloriesBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
     private static let proteinBaseDark = Color(red: 0.42, green: 0.62, blue: 0.88)
     private static let carbsBaseDark = Color(red: 0.66, green: 0.55, blue: 0.86)
     private static let fatsBaseDark = Color(red: 0.49, green: 0.70, blue: 0.52)

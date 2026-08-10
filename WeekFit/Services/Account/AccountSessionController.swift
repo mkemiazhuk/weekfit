@@ -71,5 +71,8 @@ final class AccountSessionController: ObservableObject {
         mode = .unauthenticated
         isTransitioning = false
         shouldResetLocalDataOnNextRealUserEntry = false
+        WorkspaceOwnerStore.clearOwner()
+        WorkspaceOwnerStore.clearGuestToken()
+        AuthSessionStore.clear()
     }
 }

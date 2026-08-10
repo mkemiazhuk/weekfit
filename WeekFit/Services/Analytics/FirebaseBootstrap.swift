@@ -37,7 +37,7 @@ enum FirebaseBootstrap {
 
         // Quiet Firebase internal chatter before configure (does not disable collection).
         #if DEBUG
-        FirebaseConfiguration.shared.setLoggerLevel(.warning)
+        FirebaseConfiguration.shared.setLoggerLevel(.min)
         #else
         FirebaseConfiguration.shared.setLoggerLevel(.error)
         #endif
@@ -45,7 +45,9 @@ enum FirebaseBootstrap {
         // Do not probe FirebaseApp.app() here — that emits the pre-configure warning.
         FirebaseApp.configure()
         didConfigureFirebase = true
-        logger.info("FirebaseApp configured")
+
+        // Collection policy must run immediately after configure — single source of truth.
+        FirebaseEnvironment.configureTelemetry()
         return true
     }
 

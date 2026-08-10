@@ -267,7 +267,10 @@ extension Meals {
     }
 
     var localizedDisplayTitle: String {
-        MealBuilderTitleComposer.displayTitle(
+        if let starterTitle = StarterMealPreparation.title(forMealID: id) {
+            return starterTitle
+        }
+        return MealBuilderTitleComposer.displayTitle(
             storedTitle: shortTitle,
             builderImageItems: builderImageItems
         )

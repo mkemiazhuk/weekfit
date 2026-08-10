@@ -56,7 +56,7 @@ struct PlanAddActivitySheet: View {
     let activityRemindersEnabled: Bool
     let completionCheckInsEnabled: Bool
 
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var showDeleteConfirmation = false
     @State private var showMealSheet = false

@@ -159,15 +159,19 @@ final class AccountDeletionServiceTests: XCTestCase {
 
     func testAuthViewModelCompletesSignOutAfterDeletion() {
         let viewModel = AuthViewModel()
-        viewModel.isLoggedIn = true
+        viewModel.syncPublishedAuthFlagsFromStoreForTests()
         AuthSessionStore.appleUserID = "to-clear"
+        AuthSessionStore.markWeekFitEntered()
+        viewModel.syncPublishedAuthFlagsFromStoreForTests()
         AppReviewDemoCredentials.markSessionActive()
 
         viewModel.completeAccountDeletionSignOut()
 
-        XCTAssertFalse(viewModel.isLoggedIn)
+        XCTAssertFalse(viewModel.isLoggedIn, "Delete Account returns to welcome/login")
+        XCTAssertFalse(viewModel.hasEnteredWeekFit)
         XCTAssertNil(AuthSessionStore.appleUserID)
         XCTAssertFalse(AppReviewDemoCredentials.hasActiveSession)
+        XCTAssertFalse(viewModel.isAuthenticated)
     }
 
     #if DEBUG

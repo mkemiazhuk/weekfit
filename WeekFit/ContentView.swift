@@ -15,16 +15,16 @@ struct ContentView: View {
         accountSession.mode == .reviewDemo || accountSession.mode == .realUser
     }
 
-    /// True until Apple/guest restore finishes. Showing Login before this causes a
-    /// flash of the sign-in screen on every cold start for already-signed-in users.
+    /// True until app-entry / Apple restore finishes. Showing Login before this causes a
+    /// flash of the welcome screen on every cold start for users who already entered WeekFit.
     private var isResolvingInitialSession: Bool {
         !authViewModel.hasResolvedInitialSession
     }
 
-    /// Root must not mount (even at opacity 0) while account transition still runs —
-    /// onAppear / HealthKit reconcile would race the still-open transition.
+    /// Root mounts from **app entry**, not Apple authentication.
+    /// Local (unauthenticated) users who have entered WeekFit stay in the main app.
     private var shouldShowRoot: Bool {
-        authViewModel.isLoggedIn
+        authViewModel.hasEnteredWeekFit
             && isAuthenticatedSessionReady
             && !accountSession.isTransitioning
     }
@@ -66,7 +66,7 @@ struct ContentView: View {
                                 detail: "WeekFitRootView mounted mode=\(String(describing: accountSession.mode))"
                             )
                         }
-                } else if authViewModel.hasResolvedInitialSession, !authViewModel.isLoggedIn {
+                } else if authViewModel.hasResolvedInitialSession, !authViewModel.hasEnteredWeekFit {
                     LoginView(authViewModel: authViewModel)
                         .onAppear {
                             StartupDiagnostics.step(
@@ -80,7 +80,7 @@ struct ContentView: View {
 
             if isResolvingInitialSession
                 || accountSession.isTransitioning
-                || (authViewModel.isLoggedIn && !isAuthenticatedSessionReady) {
+                || (authViewModel.hasEnteredWeekFit && !isAuthenticatedSessionReady) {
                 AccountTransitionView()
             }
         }
@@ -89,10 +89,10 @@ struct ContentView: View {
             StartupDiagnostics.step(
                 8,
                 "account session apply",
-                detail: "isLoggedIn=\(authViewModel.isLoggedIn)"
+                detail: "hasEntered=\(authViewModel.hasEnteredWeekFit) apple=\(authViewModel.isAppleSignedIn)"
             )
             await AccountSessionCoordinator.applySessionState(
-                isLoggedIn: authViewModel.isLoggedIn,
+                isLoggedIn: authViewModel.hasEnteredWeekFit,
                 accountSession: accountSession,
                 healthManager: healthManager,
                 activityCoordinator: activityCoordinator,

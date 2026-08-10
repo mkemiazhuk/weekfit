@@ -50,7 +50,8 @@ final class WeekFitWeatherAdaptiveThemeTests: XCTestCase {
             condition: .clear,
             temperatureC: 18,
             visibilityKm: 10,
-            precipitationChance: 0
+            precipitationChance: 0,
+            appAppearanceDark: true
         )
         XCTAssertTrue(tokens.isNightAtmosphere)
     }
@@ -89,10 +90,10 @@ final class WeekFitWeatherAdaptiveThemeTests: XCTestCase {
         XCTAssertEqual(lightApp.primaryAccent, darkApp.primaryAccent)
     }
 
-    func testTokens_nightDarkAppKeepsNightPalette() {
+    func testTokens_nightInLightAppUsesLightChrome() {
         let lightApp = WeekFitWeatherTokens.resolve(
             period: .night,
-            condition: .clear,
+            condition: .partlyCloudy,
             temperatureC: 18,
             visibilityKm: 10,
             precipitationChance: 0,
@@ -100,14 +101,28 @@ final class WeekFitWeatherAdaptiveThemeTests: XCTestCase {
         )
         let darkApp = WeekFitWeatherTokens.resolve(
             period: .night,
-            condition: .clear,
+            condition: .partlyCloudy,
             temperatureC: 18,
             visibilityKm: 10,
             precipitationChance: 0,
             appAppearanceDark: true
         )
-        XCTAssertEqual(lightApp.isNightAtmosphere, darkApp.isNightAtmosphere)
-        XCTAssertEqual(lightApp.backgroundPrimary, darkApp.backgroundPrimary)
+        // Light app should not inherit the heavy dusk/night purple sheet.
+        XCTAssertFalse(lightApp.isNightAtmosphere)
+        XCTAssertTrue(darkApp.isNightAtmosphere)
+        XCTAssertNotEqual(lightApp.backgroundPrimary, darkApp.backgroundPrimary)
+    }
+
+    func testTokens_duskInLightAppUsesLightChrome() {
+        let tokens = WeekFitWeatherTokens.resolve(
+            period: .dusk,
+            condition: .partlyCloudy,
+            temperatureC: 25,
+            visibilityKm: 12,
+            precipitationChance: 0,
+            appAppearanceDark: false
+        )
+        XCTAssertFalse(tokens.isNightAtmosphere)
     }
 
     func testMetricsOrder_rainPrioritizesPrecipAndWind() {

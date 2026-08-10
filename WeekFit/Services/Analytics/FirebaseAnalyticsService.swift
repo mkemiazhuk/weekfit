@@ -5,17 +5,13 @@ import OSLog
 
 /// Firebase-backed analytics + Crashlytics breadcrumbs.
 /// Feature modules must not import Firebase — use `AppAnalytics` / `AnalyticsTracking`.
+///
+/// Collection enable/disable is **not** decided here — see `FirebaseEnvironment.configureTelemetry()`.
 final class FirebaseAnalyticsService: AnalyticsTracking, @unchecked Sendable {
     private let logger = Logger(subsystem: "com.weekfit.app", category: "Analytics")
     private let debugLoggingEnabled: Bool
 
-    init(debugLoggingEnabled: Bool = {
-        #if DEBUG
-        true
-        #else
-        false
-        #endif
-    }()) {
+    init(debugLoggingEnabled: Bool = false) {
         self.debugLoggingEnabled = debugLoggingEnabled
     }
 

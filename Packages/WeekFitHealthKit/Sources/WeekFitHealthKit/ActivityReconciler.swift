@@ -5,7 +5,8 @@ import WeekFitPlanner
 
 public enum ActivityReconciler {
     public static let pastMatchingWindow: TimeInterval = 60 * 60
-    public static let startProximityWindow: TimeInterval = 45 * 60
+    /// Prefer leaving unresolved over auto-completing a distant planned slot.
+    public static let startProximityWindow: TimeInterval = 30 * 60
 
     public static func bestMatch(
         for workout: HKWorkout,
@@ -18,6 +19,7 @@ public enum ActivityReconciler {
         let allPlanned = activities.filter { activity in
             samePlannedWorkoutDay(activity.date, workout: workout, calendar: calendar) &&
             !activity.isSkipped &&
+            !activity.isCompleted &&
             activity.healthKitWorkoutUUID == nil
         }
 
@@ -26,6 +28,10 @@ public enum ActivityReconciler {
 
         let eligible = allPlanned.compactMap { activity -> MatchCandidate? in
             guard matches(activity: activity, workoutType: workout.workoutActivityType) else {
+                return nil
+            }
+
+            guard durationIsCompatible(activity: activity, workout: workout) else {
                 return nil
             }
 
@@ -217,9 +223,8 @@ public enum ActivityReconciler {
         timing: TimingMatch
     ) -> Double {
         let overlapBonus = min(timing.overlapSeconds / 60, 60)
-        let durationPenalty = durationIsCompatible(activity: activity, workout: workout) ? 0 : 15
-
-        return (timing.startDeltaSeconds / 60) + Double(durationPenalty) - overlapBonus
+        // Duration is a hard gate in bestMatch; score is timing-only.
+        return (timing.startDeltaSeconds / 60) - overlapBonus
     }
 
     private static func familiesAreCompatible(
@@ -230,11 +235,10 @@ public enum ActivityReconciler {
             return true
         }
 
+        // Core ↔ strength share the same training family; HIIT stays distinct.
         switch (planned, workout) {
         case (.core, .strength),
-             (.strength, .core),
-             (.hiit, .strength),
-             (.strength, .hiit):
+             (.strength, .core):
             return true
         default:
             return false
@@ -383,6 +387,8 @@ public enum ActivityReconciler {
 
 enum ActivityReconciliationDebug {
     private static let logger = Logger(subsystem: "WeekFit", category: "ActivityReconciliation")
+    /// Set to `true` temporarily when diagnosing HealthKit ↔ plan matching.
+    private static let loggingEnabled = false
 
     static func log(
         syncedActivityTitle: String,
@@ -394,10 +400,9 @@ enum ActivityReconciliationDebug {
         ignoredFutureCandidates: [String],
         reason: String
     ) {
-        #if DEBUG
+        guard loggingEnabled else { return }
         logger.debug(
             "syncedActivityTitle=\"\(syncedActivityTitle, privacy: .public)\" syncedStart=\(syncedStart, privacy: .public) syncedEnd=\(syncedEnd, privacy: .public) plannedCandidatesBeforeEnd=\(plannedCandidatesBeforeEnd, privacy: .public) plannedCandidatesAfterEnd=\(plannedCandidatesAfterEnd, privacy: .public) selectedMatch=\(selectedMatch ?? "nil", privacy: .public) ignoredFutureCandidates=\(ignoredFutureCandidates, privacy: .public) reason=\"\(reason, privacy: .public)\""
         )
-        #endif
     }
 }

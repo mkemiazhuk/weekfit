@@ -52,7 +52,8 @@ final class LiveHeartRateMonitor: ObservableObject {
     }
 
     func stop() {
-        guard isMonitoring else { return }
+        // Idempotent: always tear down queries + background delivery even if already stopped.
+        let wasMonitoring = isMonitoring
         isMonitoring = false
         sessionStartedAt = nil
 
@@ -64,9 +65,16 @@ final class LiveHeartRateMonitor: ObservableObject {
         pollTask = nil
         stopProtectedDataObservers()
 
+        if let type = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+            healthStore.disableBackgroundDelivery(for: type) { _, _ in }
+        }
+
         currentBPM = nil
         currentZone = nil
         updatedAt = nil
+
+        // Keep wasMonitoring for readability / future diagnostics.
+        _ = wasMonitoring
     }
 
     // MARK: - Protected data
@@ -125,13 +133,11 @@ final class LiveHeartRateMonitor: ObservableObject {
 
     private func startObserver(type: HKQuantityType) {
         let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completionHandler, error in
-            if error != nil {
-                completionHandler()
-                return
-            }
+            // Always complete promptly — never wait on MainActor for HealthKit delivery.
+            completionHandler()
+            guard error == nil else { return }
             Task { @MainActor in
                 self?.fetchLatest()
-                completionHandler()
             }
         }
 

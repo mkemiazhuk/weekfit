@@ -33,6 +33,8 @@ final class HealthKitWorkoutSyncService: ObservableObject {
 
     private var isActive = false
     private var observerQuery: HKObserverQuery?
+    private var anchoredQuery: HKAnchoredObjectQuery?
+    private var isFetchInFlight = false
 
     private init() {}
 
@@ -67,10 +69,15 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             healthStore.stop(observerQuery)
             self.observerQuery = nil
         }
+        if let anchoredQuery {
+            healthStore.stop(anchoredQuery)
+            self.anchoredQuery = nil
+        }
 
         healthStore.disableBackgroundDelivery(for: HKObjectType.workoutType()) { _, _ in }
 
         isActive = false
+        isFetchInFlight = false
         resetSyncState()
     }
 
@@ -81,15 +88,11 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             sampleType: type,
             predicate: nil
         ) { [weak self] _, completionHandler, error in
-
-            if error != nil {
-                completionHandler()
-                return
-            }
-
+            // Complete promptly — never wait on MainActor for HealthKit delivery.
+            completionHandler()
+            guard error == nil else { return }
             Task { @MainActor in
                 self?.fetchUpdates()
-                completionHandler()
             }
         }
 
@@ -103,19 +106,18 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     }
 
     func forceRefresh() {
-//        print("🔄 Manual forceRefresh()")
         fetchUpdates()
     }
 
     private func fetchUpdates() {
-//        print("⬇️ Fetching workout updates")
+        guard isActive else { return }
+        guard !isFetchInFlight else { return }
+        isFetchInFlight = true
 
         let type = HKObjectType.workoutType()
 
         let startOfDay = Calendar.current.startOfDay(for: Date())
         let fromDate = max(syncStartDate, startOfDay)
-
-//        print("🕒 Workout sync from:", fromDate)
 
         let predicate = HKQuery.predicateForSamples(
             withStart: fromDate,
@@ -123,45 +125,36 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             options: .strictStartDate
         )
 
+        if let anchoredQuery {
+            healthStore.stop(anchoredQuery)
+            self.anchoredQuery = nil
+        }
+
         let query = HKAnchoredObjectQuery(
             type: type,
             predicate: predicate,
             anchor: anchor,
             limit: HKObjectQueryNoLimit
         ) { [weak self] _, samples, _, newAnchor, error in
-
-            if let error {
-//                print("❌ Initial anchored query error:", error)
-                return
-            }
-
-            let count = samples?.count ?? 0
-//            print("📥 Initial anchored fetch received:", count, "samples")
-
             Task { @MainActor in
+                defer { self?.isFetchInFlight = false }
+                guard error == nil else { return }
                 self?.anchor = newAnchor
                 self?.consume(samples)
             }
         }
 
         query.updateHandler = { [weak self] _, samples, _, newAnchor, error in
-
-            if let error {
-//                print("❌ Update handler error:", error)
-                return
-            }
-
-            let count = samples?.count ?? 0
-//            print("🔄 Anchored update received:", count, "samples")
-
             Task { @MainActor in
+                guard error == nil else { return }
                 self?.anchor = newAnchor
                 self?.consume(samples)
             }
         }
 
+        anchoredQuery = query
         healthStore.execute(query)
-        
+
         fetchRecentCompletedWorkoutsFallback()
     }
 

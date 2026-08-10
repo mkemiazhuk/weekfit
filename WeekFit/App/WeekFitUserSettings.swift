@@ -80,6 +80,20 @@ final class WeekFitUserSettings: ObservableObject {
         profileInitials = resolvedInitials
     }
 
+    /// Updates avatar initials + name presence for all tab headers observing this object.
+    func applyProfileIdentity(initials: String, hasProfileName: Bool) {
+        let nextInitials = initials.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedInitials = nextInitials.isEmpty ? "P" : nextInitials
+        UserDefaults.standard.set(resolvedInitials, forKey: ProfileService.Keys.initials)
+
+        if profileInitials != resolvedInitials {
+            profileInitials = resolvedInitials
+        }
+        if self.hasProfileName != hasProfileName {
+            self.hasProfileName = hasProfileName
+        }
+    }
+
     func setCustomMealsStorage(_ value: String) {
         guard customMealsStorage != value else { return }
         customMealsStorage = value

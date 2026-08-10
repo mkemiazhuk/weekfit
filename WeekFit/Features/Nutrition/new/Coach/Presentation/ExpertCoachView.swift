@@ -9,7 +9,7 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.tabIsActive) private var tabIsActive
 
-    @StateObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false

@@ -32,7 +32,10 @@ enum PlanCategory: CaseIterable {
 
     var color: Color {
         switch self {
-        case .meal: Color(red: 0.898, green: 0.553, blue: 0.196) // nutrition ring orange
+        case .meal:
+            WeekFitPaletteStore.current.isLight
+                ? WeekFitLightTokens.nutrition
+                : Color(red: 0.84, green: 0.58, blue: 0.34)
         case .workout: Color(red: 0.30, green: 0.48, blue: 0.90)
         case .hydration: Color(red: 0.25, green: 0.55, blue: 0.92)
         case .recovery: Color(red: 0.95, green: 0.58, blue: 0.12)

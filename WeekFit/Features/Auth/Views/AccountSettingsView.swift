@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AuthenticationServices
 
 struct AccountSettingsView: View {
 
@@ -18,8 +19,10 @@ struct AccountSettingsView: View {
     @State private var showDeleteConfirmation = false
     @State private var showDeleteFailure = false
     @State private var showDeleteSuccess = false
+    @State private var showAppleReplaceLocalConfirmation = false
     @State private var isDeletingAccount = false
     @State private var deleteFailureMessage = ""
+    @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     /// Optional injection for tests; production creates `AccountDeletionService` on demand.
     private let deletionServiceOverride: AccountDeletionServicing?
@@ -30,7 +33,10 @@ struct AccountSettingsView: View {
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
 
     private var isShowingDialog: Bool {
-        showDeleteConfirmation || showDeleteFailure || showDeleteSuccess
+        showDeleteConfirmation
+            || showDeleteFailure
+            || showDeleteSuccess
+            || showAppleReplaceLocalConfirmation
     }
 
     private var profile: UserProfile {
@@ -92,7 +98,9 @@ private extension AccountSettingsView {
 
                 accountActionsGroup
 
-                deleteAccountSection
+                if hasAppleAccount {
+                    deleteAccountSection
+                }
 
                 appleHealthPrivacyNote
             }
@@ -136,6 +144,11 @@ private extension AccountSettingsView {
         .accessibilityElement(children: .combine)
     }
 
+    /// True when the signed-in user has a Sign in with Apple identity (not local-only).
+    private var hasAppleAccount: Bool {
+        authViewModel.isAppleSignedIn || AuthSessionStore.hasPersistedAppleSession
+    }
+
     var accountIdentityLabel: String {
         let email = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -145,17 +158,22 @@ private extension AccountSettingsView {
         }
         if !email.isEmpty { return email }
         if !name.isEmpty { return name }
-        if AuthSessionStore.hasPersistedAppleSession {
+        if hasAppleAccount {
             return WeekFitLocalizedString("settings.account.summary.appleSignIn")
         }
-        return WeekFitLocalizedString("settings.account.summary.signedIn")
+        return WeekFitLocalizedString("settings.account.summary.localOnly")
     }
 
     var accountActionsGroup: some View {
         SettingsGroupedSection {
             editNameButton
-            SettingsGroupDivider()
-            signOutButton
+            if hasAppleAccount {
+                SettingsGroupDivider()
+                signOutButton
+            } else if !AppReviewDemoCredentials.hasActiveSession {
+                SettingsGroupDivider()
+                signInWithAppleButton
+            }
         }
     }
 
@@ -211,6 +229,44 @@ private extension AccountSettingsView {
         .accessibilityLabel(Text(AppText.Settings.Profile.signOut))
         .accessibilityHint(WeekFitLocalizedString("settings.a11y.signOut.hint"))
         .disabled(isDeletingAccount)
+    }
+
+    var signInWithAppleButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            if WorkspaceIsolationPolicy.signingInWithAppleWouldReplaceLocalWorkspace() {
+                withDialogAnimation {
+                    showAppleReplaceLocalConfirmation = true
+                }
+            } else {
+                startConfirmedAppleSignIn()
+            }
+        } label: {
+            accountRow(
+                icon: "apple.logo",
+                iconTint: textPrimary,
+                iconBackground: palette.isLight
+                    ? WeekFitLightTokens.internalTile
+                    : WeekFitTheme.whiteOpacity(0.10),
+                title: WeekFitLocalizedString("settings.account.signInWithApple"),
+                titleColor: textPrimary,
+                showsChevron: false
+            )
+        }
+        .buttonStyle(AccountPressableButtonStyle())
+        .accessibilityIdentifier("settings.signInWithApple")
+        .disabled(isDeletingAccount || authViewModel.isLoading)
+    }
+
+    func startConfirmedAppleSignIn() {
+        appleSignInPresenter.start { result in
+            Task {
+                await authViewModel.handleAppleSignIn(result)
+                if authViewModel.isAppleSignedIn {
+                    dismiss()
+                }
+            }
+        }
     }
 
     var deleteAccountSection: some View {
@@ -335,7 +391,28 @@ private extension AccountSettingsView {
 
     @ViewBuilder
     var dialogOverlay: some View {
-        if showDeleteConfirmation {
+        if showAppleReplaceLocalConfirmation {
+            ConfirmationDialogView(
+                icon: "exclamationmark.triangle.fill",
+                iconTint: destructiveRed,
+                title: WeekFitLocalizedString("settings.account.appleReplaceLocal.title"),
+                message: WeekFitLocalizedString("settings.account.appleReplaceLocal.message"),
+                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                primaryTitle: WeekFitLocalizedString("settings.account.appleReplaceLocal.primary"),
+                isPrimaryDestructive: true,
+                onSecondary: {
+                    withDialogAnimation {
+                        showAppleReplaceLocalConfirmation = false
+                    }
+                },
+                onPrimary: {
+                    withDialogAnimation {
+                        showAppleReplaceLocalConfirmation = false
+                    }
+                    startConfirmedAppleSignIn()
+                }
+            )
+        } else if showDeleteConfirmation {
             ConfirmationDialogView(
                 icon: "trash.fill",
                 iconTint: destructiveRed,
@@ -449,7 +526,7 @@ private extension AccountSettingsView {
         withDialogAnimation {
             showDeleteSuccess = false
         }
-        // Sign out first so ContentView swaps to LoginView and tears down the sheet tree.
+        // Tear down the sheet tree by routing ContentView back to welcome/login.
         authViewModel.completeAccountDeletionSignOut()
     }
 }

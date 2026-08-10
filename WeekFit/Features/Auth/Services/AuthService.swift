@@ -268,7 +268,8 @@ final class AuthService {
 
     func signOut() async throws {
         try await Task.sleep(nanoseconds: 200_000_000)
-        AuthSessionStore.clear()
+        // Sign Out ends Apple/session auth only — preserve app-entry / local workspace.
+        AuthSessionStore.clearAppleSession()
     }
 }
 

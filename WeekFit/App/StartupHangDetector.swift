@@ -17,6 +17,7 @@ enum StartupHangDetector {
     /// Call once when root UI becomes eligible to paint (e.g. ContentView / Root appear).
     static func armForColdLaunch() {
         #if DEBUG
+        guard StartupDiagnostics.loggingEnabled else { return }
         lock.lock()
         isArmed = true
         heartbeatSerial = 0

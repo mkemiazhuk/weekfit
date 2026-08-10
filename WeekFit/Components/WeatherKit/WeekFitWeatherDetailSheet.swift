@@ -371,11 +371,11 @@ private extension WeekFitWeatherDetailSheet {
             HStack(spacing: 7) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(WeekFitLightTokens.coachPurple)
+                    .foregroundStyle(coachInsightAccent)
 
                 Text(WeekFitUsesRussianLanguage() ? "Совет тренера" : "Coach Insight")
                     .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitLightTokens.coachPurple)
+                    .foregroundStyle(coachInsightAccent)
             }
 
             Text(WeekFitWeatherCoachInsight.recommendation(for: summary, period: period))
@@ -389,19 +389,28 @@ private extension WeekFitWeatherDetailSheet {
         .padding(14)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    tokens.isNightAtmosphere
-                        ? WeekFitLightTokens.coachPurple.opacity(0.14)
-                        : WeekFitLightTokens.coachPurpleSoft.opacity(0.88)
-                )
+                .fill(coachInsightFill)
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(
-                            WeekFitLightTokens.coachPurple.opacity(tokens.isNightAtmosphere ? 0.28 : 0.16),
-                            lineWidth: 0.8
-                        )
+                        .strokeBorder(coachInsightStroke, lineWidth: 0.8)
                 }
         }
+    }
+
+    private var coachInsightAccent: Color {
+        tokens.isNightAtmosphere
+            ? WeekFitLightTokens.coachPurple
+            : Color(red: 0.52, green: 0.42, blue: 0.78)
+    }
+
+    private var coachInsightFill: Color {
+        tokens.isNightAtmosphere
+            ? WeekFitLightTokens.coachPurple.opacity(0.14)
+            : Color(red: 0.92, green: 0.90, blue: 0.98).opacity(0.95)
+    }
+
+    private var coachInsightStroke: Color {
+        coachInsightAccent.opacity(tokens.isNightAtmosphere ? 0.28 : 0.18)
     }
 }
 

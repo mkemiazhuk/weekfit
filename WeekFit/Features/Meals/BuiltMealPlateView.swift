@@ -20,6 +20,7 @@ struct BuiltMealPlateView: View {
     var showsPlateChrome: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weekFitPalette) private var palette
 
     /// Cached so layout does not recompute every animation frame (main jank source).
     @State private var layoutCache: [PlateLayoutItem] = []
@@ -27,6 +28,21 @@ struct BuiltMealPlateView: View {
     /// 0 → 1 continuous progress; interpolated via `Animatable` child.
     @State private var assembleProgress: CGFloat = 1
     @State private var didRunAssemble = false
+
+    private var plateBlendMode: BlendMode {
+        if layoutMode == .compactPreview { return .normal }
+        // Multiply on ivory + empty plate muddies the chrome and kills overlay contrast.
+        if palette.isLight && items.isEmpty && showsEmptyPlate { return .normal }
+        return .multiply
+    }
+
+    private func resolvedPlateOpacity(hasFoodItems: Bool) -> CGFloat {
+        if hasFoodItems { return plateOpacity }
+        if palette.isLight && showsEmptyPlate {
+            return min(max(plateOpacity, 0.88), 1.0)
+        }
+        return min(plateOpacity, 0.72)
+    }
 
     var body: some View {
         let hasCustomFoodVisual = customFoodImage != nil || customFoodInitial != nil
@@ -50,8 +66,8 @@ struct BuiltMealPlateView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: plateSize, height: plateSize)
-                    .blendMode(layoutMode == .compactPreview ? .normal : .multiply)
-                    .opacity(hasFoodItems ? plateOpacity : min(plateOpacity, 0.72))
+                    .blendMode(plateBlendMode)
+                    .opacity(resolvedPlateOpacity(hasFoodItems: hasFoodItems))
             }
 
             if hasCustomFoodVisual {

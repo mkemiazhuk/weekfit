@@ -54,6 +54,15 @@ actor BarcodeProductCache {
         persist()
     }
 
+    /// Removes all on-disk + in-memory barcode lookup history (account deletion).
+    func clearAll() {
+        entries = [:]
+        didLoad = true
+        try? FileManager.default.removeItem(at: fileURL)
+        let folder = fileURL.deletingLastPathComponent()
+        try? FileManager.default.removeItem(at: folder)
+    }
+
     private func loadIfNeeded() {
         guard !didLoad else { return }
         didLoad = true

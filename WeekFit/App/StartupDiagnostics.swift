@@ -6,9 +6,15 @@ import FirebaseCrashlytics
 
 /// Temporary high-signal cold-start breadcrumbs.
 /// Filter Console / device logs by subsystem `com.weekfit.app` and category `Startup`.
-/// Release builds log warnings/errors only (no chatty info os.Logger / Crashlytics spam).
+///
+/// Off by default (DEBUG and Release). Flip `loggingEnabled` when diagnosing launch hangs.
+/// Release still records warning/error to os.Logger + Crashlytics when enabled paths fire failures
+/// via `failed` / task ERROR — those go through `record` which keeps errors unless fully muted.
 enum StartupDiagnostics {
     static let logger = Logger(subsystem: "com.weekfit.app", category: "Startup")
+
+    /// Set to `true` temporarily when investigating cold-start stalls.
+    static let loggingEnabled = false
 
     /// Stable per-process cold-launch id for comparing success vs hang traces.
     static let launchID = UUID()
@@ -28,6 +34,7 @@ enum StartupDiagnostics {
 
     /// `STARTUP NN — label` plus optional detail.
     static func step(_ number: Int, _ label: String, detail: String? = nil) {
+        guard loggingEnabled else { return }
         let padded = String(format: "%02d", number)
         var parts = ["STARTUP \(padded) — \(label)", "launch=\(launchIDShort)"]
         if let detail, !detail.isEmpty {
@@ -74,14 +81,17 @@ enum StartupDiagnostics {
     // MARK: - Async task lifecycle
 
     static func taskBegin(_ name: String, detail: String? = nil) {
+        guard loggingEnabled else { return }
         taskPhase("BEGIN", name: name, detail: detail)
     }
 
     static func taskSuccess(_ name: String, detail: String? = nil) {
+        guard loggingEnabled else { return }
         taskPhase("SUCCESS", name: name, detail: detail)
     }
 
     static func taskError(_ name: String, error: Error, detail: String? = nil) {
+        // Always keep task failures visible — useful in Release Crashlytics too.
         let nsError = error as NSError
         var parts = [
             "errorType=\(String(describing: type(of: error)))",
@@ -101,6 +111,7 @@ enum StartupDiagnostics {
     }
 
     static func taskCancelled(_ name: String, detail: String? = nil) {
+        guard loggingEnabled else { return }
         taskPhase("CANCELLED", name: name, detail: detail)
     }
 
@@ -130,7 +141,9 @@ enum StartupDiagnostics {
         }
         lock.unlock()
         guard !already else { return }
-        step(23, "first screen stable", detail: detail)
+        if loggingEnabled {
+            step(23, "first screen stable", detail: detail)
+        }
         StartupHangDetector.disarm()
     }
 
@@ -140,28 +153,26 @@ enum StartupDiagnostics {
     static func logCrashlyticsStatus() {
         #if canImport(FirebaseCrashlytics)
         guard FirebaseBootstrap.isConfigured else {
-            logger.warning("STARTUP — Crashlytics status skipped; Firebase not configured yet")
+            if loggingEnabled {
+                logger.warning("STARTUP — Crashlytics status skipped; Firebase not configured yet")
+            }
             return
         }
         let crashlytics = Crashlytics.crashlytics()
-        #if DEBUG
-        crashlytics.setCustomValue("debug", forKey: "weekfit_build_config")
-        step(
-            5,
-            "Firebase configured",
-            detail: "Crashlytics SDK present build=DEBUG (remote upload may be disabled for Debug)"
-        )
-        #else
-        crashlytics.setCustomValue("release", forKey: "weekfit_build_config")
-        step(
-            5,
-            "Firebase configured",
-            detail: "Crashlytics SDK present build=RELEASE"
-        )
-        #endif
+        let distribution = AppDistribution.current
+        crashlytics.setCustomValue(distribution.analyticsValue, forKey: "weekfit_build_config")
+        if loggingEnabled {
+            step(
+                5,
+                "Firebase configured",
+                detail: "Crashlytics SDK present distribution=\(distribution.analyticsValue)"
+            )
+        }
         crashlytics.setCustomValue(lastCompletedStep, forKey: "weekfit_last_startup_step")
         #else
-        logger.warning("STARTUP — Crashlytics module not linked; breadcrumbs are os.Logger only")
+        if loggingEnabled {
+            logger.warning("STARTUP — Crashlytics module not linked; breadcrumbs are os.Logger only")
+        }
         #endif
     }
 
@@ -175,29 +186,21 @@ enum StartupDiagnostics {
         let elapsedMs = Int((CFAbsoluteTimeGetCurrent() - startedAt) * 1000)
         lock.unlock()
 
-        #if DEBUG
+        // Chatty info/warning only when explicitly enabled.
+        // Errors always reach os.Logger + Crashlytics.
         switch level {
         case .info:
+            guard loggingEnabled else { return }
             logger.info("\(message, privacy: .public) +\(elapsedMs, privacy: .public)ms")
+            breadcrumb(message)
         case .warning:
-            logger.warning("\(message, privacy: .public) +\(elapsedMs, privacy: .public)ms")
-        case .error:
-            logger.error("\(message, privacy: .public) +\(elapsedMs, privacy: .public)ms")
-        }
-        breadcrumb(message)
-        #else
-        // Release: keep failures in os.Logger + Crashlytics; skip chatty info breadcrumbs.
-        switch level {
-        case .info:
-            break
-        case .warning:
+            guard loggingEnabled else { return }
             logger.warning("\(message, privacy: .public) +\(elapsedMs, privacy: .public)ms")
             breadcrumb(message)
         case .error:
             logger.error("\(message, privacy: .public) +\(elapsedMs, privacy: .public)ms")
             breadcrumb(message)
         }
-        #endif
     }
 
     /// Never touch Crashlytics on the calling thread during UI construction —
@@ -219,10 +222,14 @@ enum StartupDiagnostics {
 /// Fine-grained Today first-frame breadcrumbs.
 /// Filter Console by subsystem `com.weekfit.app` category `TodayStartup`.
 ///
+/// Off by default even in DEBUG — flip `loggingEnabled` when diagnosing cold-start hangs.
 /// Does **not** mirror into `StartupDiagnostics.logger` — that made every line appear twice
 /// with the same instance/run id when filtering by subsystem only.
 enum TodayStartupDiagnostics {
     static let logger = Logger(subsystem: "com.weekfit.app", category: "TodayStartup")
+
+    /// Set to `true` temporarily when investigating Today launch stalls.
+    private static let loggingEnabled = false
 
     private static let lock = NSLock()
     private static var lastStep: String = "none"
@@ -238,9 +245,7 @@ enum TodayStartupDiagnostics {
     }
 
     static func step(_ number: Int, _ label: String, detail: String? = nil) {
-        #if !DEBUG
-        return
-        #else
+        guard loggingEnabled else { return }
         let padded = String(format: "%02d", number)
         var parts = [
             "TODAY \(padded) — \(label)",
@@ -251,13 +256,10 @@ enum TodayStartupDiagnostics {
             parts.insert(detail, at: 1)
         }
         emit(parts.joined(separator: " | "), level: .info)
-        #endif
     }
 
     static func child(_ name: String, detail: String? = nil) {
-        #if !DEBUG
-        return
-        #else
+        guard loggingEnabled else { return }
         var parts = [
             "TODAY CHILD — \(name)",
             "launch=\(StartupDiagnostics.launchIDShort)",
@@ -267,7 +269,6 @@ enum TodayStartupDiagnostics {
             parts.insert(detail, at: 1)
         }
         emit(parts.joined(separator: " | "), level: .info)
-        #endif
     }
 
     // MARK: - Timed QUICK probes (quickActionsSection)
@@ -276,9 +277,7 @@ enum TodayStartupDiagnostics {
     @discardableResult
     static func quickBegin(_ number: Int, _ label: String, detail: String? = nil) -> CFAbsoluteTime {
         let start = CFAbsoluteTimeGetCurrent()
-        #if !DEBUG
-        return start
-        #else
+        guard loggingEnabled else { return start }
         let padded = String(format: "%02d", number)
         let message: String
         if let detail, !detail.isEmpty {
@@ -288,13 +287,10 @@ enum TodayStartupDiagnostics {
         }
         emit(message, level: .info)
         return start
-        #endif
     }
 
     static func quickComplete(_ number: Int, _ label: String, startedAt start: CFAbsoluteTime, detail: String? = nil) {
-        #if !DEBUG
-        return
-        #else
+        guard loggingEnabled else { return }
         let elapsedMs = (CFAbsoluteTimeGetCurrent() - start) * 1000
         let padded = String(format: "%02d", number)
         var parts = [
@@ -321,16 +317,13 @@ enum TodayStartupDiagnostics {
         } else {
             emit(message, level: .info)
         }
-        #endif
     }
 
     /// Arms a background watchdog that fires even if the main thread is blocked.
     /// Call `disarmWatchdog` when the section finishes constructing.
     @discardableResult
     static func armWatchdog(label: String) -> UUID {
-        #if !DEBUG
-        return UUID()
-        #else
+        guard loggingEnabled else { return UUID() }
         let token = UUID()
         let started = CFAbsoluteTimeGetCurrent()
         lock.lock()
@@ -359,7 +352,6 @@ enum TodayStartupDiagnostics {
             }
         }
         return token
-        #endif
     }
 
     static func disarmWatchdog(_ token: UUID) {
@@ -396,6 +388,7 @@ enum TodayStartupDiagnostics {
     }
 
     private static func taskPhase(_ phase: String, name: String, detail: String?) {
+        guard loggingEnabled else { return }
         var parts = [
             "TODAY TASK \(phase) — \(name)",
             "launch=\(StartupDiagnostics.launchIDShort)",

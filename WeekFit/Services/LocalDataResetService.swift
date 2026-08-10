@@ -44,6 +44,9 @@ final class LocalDataResetService {
 
         clearUserDefaults()
 
+        // Durable files / system schedules outside the UserDefaults domain.
+        await LocalUserDataDeletionInventory.clearWorkspaceScopedArtifacts()
+
         WeekFitActivityCoordinator.shared.resetReconciliationState()
         HealthKitWorkoutSyncService.shared.resetSyncState()
 

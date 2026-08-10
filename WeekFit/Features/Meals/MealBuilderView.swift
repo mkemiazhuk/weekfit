@@ -9,6 +9,7 @@ struct MealBuilderView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @Environment(\.weekFitPalette) private var palette
 
     @State private var selectedIngredients: [SelectedBuilderIngredient] = []
     @State private var didPrefill = false
@@ -148,11 +149,11 @@ struct MealBuilderView: View {
     private var header: some View {
         WeekFitDetailScreenHeader(
             title: WeekFitLocalizedString(isEditMode ? "meals.builder.title.edit" : "meals.builder.title.create"),
-            subtitle: WeekFitLocalizedString(isEditMode ? "meals.builder.subtitle.edit" : "meals.builder.subtitle.create"),
+            subtitle: headerSubtitle,
             titleSize: 22,
             titleTracking: -0.35,
             titleColor: textPrimary,
-            subtitleColor: textSecondary.opacity(0.76),
+            subtitleColor: textSecondary,
             titleDesign: .default
         ) {
             WeekFitDetailScreenBackButton {
@@ -168,6 +169,16 @@ struct MealBuilderView: View {
                 saveMeal()
             }
         }
+    }
+
+    private var headerSubtitle: String {
+        if isEditMode {
+            return WeekFitLocalizedString("meals.builder.subtitle.edit")
+        }
+        if selectedIngredients.isEmpty {
+            return WeekFitLocalizedString("meals.builder.subtitle.createEmpty")
+        }
+        return WeekFitLocalizedString("meals.builder.subtitle.create")
     }
 
     private var flyingIngredientOverlay: some View {
@@ -451,10 +462,22 @@ struct MealBuilderView: View {
     private var emptyDrinkOrPlateState: some View {
         VStack(spacing: 6) {
             Text(WeekFitLocalizedString(selectedDrinks.isEmpty ? "meals.builder.empty.startWithBase" : "meals.builder.empty.drinksSelected"))
-                .font(.system(size: 12.4, weight: .semibold, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.78))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(palette.isLight ? textPrimary : textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 28)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(palette.isLight
+                              ? Color.white.opacity(0.88)
+                              : Color.black.opacity(0.42))
+                        .shadow(
+                            color: Color.black.opacity(palette.isLight ? 0.08 : 0.28),
+                            radius: palette.isLight ? 8 : 6,
+                            y: 2
+                        )
+                }
         }
         .offset(y: 4)
         .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -469,15 +492,10 @@ struct MealBuilderView: View {
                     .tracking(-0.28)
                     .lineLimit(1)
 
-                if selectedIngredients.isEmpty {
-                    Text(WeekFitLocalizedString("meals.pickIngredientsBelowToComposeYourMeal"))
-                        .font(.system(size: 12.2, weight: .medium))
-                        .foregroundStyle(textSecondary.opacity(0.76))
-                        .lineLimit(1)
-                } else {
+                if !selectedIngredients.isEmpty {
                     Text(selectedIngredients.map { "\($0.ingredient.localizedTitle) (\(amountText($0)))" }.joined(separator: " + "))
                         .font(.system(size: 12.2, weight: .medium))
-                        .foregroundStyle(textSecondary.opacity(0.76))
+                        .foregroundStyle(textSecondary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.74)
                 }
@@ -491,32 +509,75 @@ struct MealBuilderView: View {
 
     private var buildProgress: some View {
         HStack(spacing: 7) {
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .base }, "meals.builder.progress.base")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .protein }, "meals.builder.progress.protein")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .vegetables }, "meals.builder.progress.veg")
-            progressPill(selectedIngredients.contains { $0.ingredient.category == .extras }, "meals.builder.progress.extra")
+            progressPill(
+                selectedIngredients.contains { $0.ingredient.category == .base },
+                titleKey: "meals.builder.progress.base",
+                category: .base
+            )
+            progressPill(
+                selectedIngredients.contains { $0.ingredient.category == .protein },
+                titleKey: "meals.builder.progress.protein",
+                category: .protein
+            )
+            progressPill(
+                selectedIngredients.contains { $0.ingredient.category == .vegetables },
+                titleKey: "meals.builder.progress.veg",
+                category: .vegetables
+            )
+            progressPill(
+                selectedIngredients.contains { $0.ingredient.category == .extras },
+                titleKey: "meals.builder.progress.extra",
+                category: .extras
+            )
         }
     }
 
-    private func progressPill(_ active: Bool, _ title: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: active ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 10.6, weight: .bold))
+    private func progressPill(_ active: Bool, titleKey: String, category: MealIngredientCategory) -> some View {
+        Button {
+            focusedCategory = category
+            focusedIngredientID = ingredients.first { $0.category == category }?.id
+            focusScrollToken &+= 1
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        } label: {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(active ? accent : textSecondary.opacity(palette.isLight ? 0.28 : 0.35))
+                    .frame(width: 7, height: 7)
+                    .overlay {
+                        if active {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 5.5, weight: .heavy))
+                                .foregroundStyle(Color.white)
+                        }
+                    }
 
-            Text(WeekFitLocalizedString(title))
-                .font(.system(size: 10.6, weight: .bold))
+                Text(WeekFitLocalizedString(titleKey))
+                    .font(.system(size: 10.6, weight: .bold))
+            }
+            .foregroundStyle(active ? accent : textSecondary.opacity(palette.isLight ? 0.72 : 0.55))
+            .frame(maxWidth: .infinity)
+            .frame(height: 30)
+            .background {
+                Capsule()
+                    .fill(active
+                          ? accent.opacity(palette.isLight ? 0.12 : 0.075)
+                          : (palette.isLight ? WeekFitTheme.internalTile : WeekFitTheme.whiteOpacity(0.026)))
+            }
+            .overlay {
+                Capsule()
+                    .stroke(
+                        active
+                        ? accent.opacity(palette.isLight ? 0.28 : 0.12)
+                        : (palette.isLight
+                           ? WeekFitLightTokens.cardBorder.opacity(0.14)
+                           : WeekFitTheme.whiteOpacity(0.035)),
+                        lineWidth: 1
+                    )
+            }
         }
-        .foregroundStyle(active ? accent.opacity(0.92) : textSecondary.opacity(0.45))
-        .frame(maxWidth: .infinity)
-        .frame(height: 28)
-        .background {
-            Capsule()
-                .fill(active ? accent.opacity(0.075) : WeekFitTheme.whiteOpacity(0.026))
-        }
-        .overlay {
-            Capsule()
-                .stroke(active ? accent.opacity(0.12) : WeekFitTheme.whiteOpacity(0.035), lineWidth: 1)
-        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(WeekFitLocalizedString(titleKey))
+        .accessibilityAddTraits(active ? [.isSelected] : [])
     }
 
     private var ingredientSections: some View {
@@ -541,7 +602,7 @@ struct MealBuilderView: View {
 
                 Text(categoryHint(category))
                     .font(.system(size: 11.2, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.68))
+                    .foregroundStyle(textSecondary.opacity(palette.isLight ? 0.82 : 0.68))
             }
 
             ScrollViewReader { horizontalProxy in
@@ -640,8 +701,8 @@ struct MealBuilderView: View {
                 .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             } else {
                 Text(String(format: WeekFitLocalizedString(ingredient.category == .drinks ? "common.unit.millilitersFormat" : "common.unit.gramValueFormat"), ingredient.defaultGrams))
-                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.5))
+                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(palette.isLight ? 0.72 : 0.5))
                     .frame(maxWidth: .infinity)
                     .frame(height: 18)
                     .multilineTextAlignment(.center)
@@ -687,16 +748,19 @@ struct MealBuilderView: View {
     }
 
     private func ingredientCardBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(
-                isSelected
-                    ? accent.opacity(0.06)
-                    : WeekFitTheme.whiteOpacity(0.022)
-            )
+        let unselectedFill = palette.isLight
+            ? WeekFitTheme.internalTile
+            : WeekFitTheme.whiteOpacity(0.022)
+        let unselectedStroke = palette.isLight
+            ? WeekFitLightTokens.cardBorder.opacity(0.12)
+            : WeekFitTheme.whiteOpacity(0.034)
+
+        return RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(isSelected ? accent.opacity(palette.isLight ? 0.10 : 0.06) : unselectedFill)
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(
-                        isSelected ? accent.opacity(0.34) : WeekFitTheme.whiteOpacity(0.034),
+                        isSelected ? accent.opacity(palette.isLight ? 0.42 : 0.34) : unselectedStroke,
                         lineWidth: 1
                     )
             }

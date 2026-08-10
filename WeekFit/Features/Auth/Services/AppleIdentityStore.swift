@@ -64,6 +64,33 @@ enum AppleIdentityStore {
         try? FileManager.default.removeItem(at: diskURL(appleUserID: appleUserID))
     }
 
+    /// Drops in-process cache for all Apple identities.
+    static func clearAllSessionCache() {
+        sessionCache.removeAll()
+    }
+
+    /// Hard-delete all Apple identity Keychain + disk mirrors (account deletion).
+    static func clearAllPersistedIdentities() {
+        let ids = Array(sessionCache.keys)
+        for id in ids {
+            clear(appleUserID: id)
+        }
+        sessionCache.removeAll()
+
+        // Also wipe the Keychain service namespace and on-disk folder for identities
+        // that may not be in the session cache.
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service
+        ]
+        SecItemDelete(query as CFDictionary)
+
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let folder = base.appendingPathComponent("WeekFit/AppleIdentity", isDirectory: true)
+        try? FileManager.default.removeItem(at: folder)
+    }
+
     /// Re-applies cached Apple name/email into the local profile (after UserDefaults wipes).
     @MainActor
     static func restoreProfileIfNeeded(appleUserID: String?) {
