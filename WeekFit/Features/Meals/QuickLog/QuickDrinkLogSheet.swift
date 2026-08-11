@@ -6,6 +6,7 @@ enum QuickDrinkAccent {
     static let hydration = Color(red: 0.29, green: 0.56, blue: 0.92)
     static let coffee = Color(red: 0.86, green: 0.55, blue: 0.30)
     static let tea = Color(red: 0.42, green: 0.62, blue: 0.48)
+    static let cocoa = Color(red: 0.62, green: 0.38, blue: 0.24)
     static let juice = Color(red: 0.92, green: 0.58, blue: 0.28)
     static let milk = Color(red: 0.64, green: 0.66, blue: 0.76)
     /// List / CTA circles — cool hydration blue (matches drop icon family).
@@ -15,6 +16,9 @@ enum QuickDrinkAccent {
         let id = item.id.lowercased()
         if id.contains("water") { return hydration }
         if id.contains("espresso") || id.contains("coffee") || id.contains("latte") { return coffee }
+        if id.contains("cocoa") || id.contains("chocolate") {
+            return isLight ? cocoa : Color(red: 0.78, green: 0.52, blue: 0.34)
+        }
         if id.contains("tea") {
             return isLight ? tea : Color(red: 0.78, green: 0.62, blue: 0.42)
         }
@@ -35,6 +39,7 @@ enum QuickDrinkAccent {
     static func metaSymbol(for item: QuickItem) -> String {
         let id = item.id.lowercased()
         if id.contains("water") { return "drop.fill" }
+        if id.contains("cocoa") || id.contains("chocolate") { return "cup.and.saucer.fill" }
         if id.contains("tea") { return "leaf.fill" }
         if id.contains("juice") { return "sun.max.fill" }
         if id.contains("milk") || id.contains("kefir") { return "cup.and.saucer.fill" }

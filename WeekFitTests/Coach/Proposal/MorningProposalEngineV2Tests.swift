@@ -859,8 +859,46 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         })
     }
 
-    func testWeekdayWithoutWalkHabitDoesNotInventEveningWalk() {
+    func testColdStartOffersOptionalWalkOnEmptyWeekday() {
         let now = date(2026, 7, 31, 8, 0) // Friday
+        let proposal = MorningProposalEngine.generate(
+            input: makeEngineInput(
+                now: now,
+                recoveryBand: .good,
+                yesterdayHeavy: false,
+                tomorrowDemand: .none,
+                today: [],
+                templates: []
+            )
+        )
+        let walks = proposal.changes.filter { $0.kind == .createRecoveryWalk }
+        XCTAssertEqual(walks.count, 1, "Cold start should offer at least an optional Walk")
+        XCTAssertEqual(walks.first?.isSelected, false, "Cold-start Walk must stay unselected")
+        XCTAssertEqual(walks.first?.defaultSelected, false)
+    }
+
+    func testWeekdayWithHistoryButNoWalkHabitDoesNotInventEveningWalk() {
+        let now = date(2026, 7, 31, 8, 0) // Friday
+        let mealOnlyTemplate = SimilarDayTemplate(
+            dayKey: "2026-07-24",
+            recoveryBand: .moderate,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "meal-hist",
+                    date: date(2026, 7, 24, 12, 0),
+                    type: "meal",
+                    title: "Lunch",
+                    durationMinutes: 20,
+                    icon: "fork.knife",
+                    imageName: "",
+                    isCompleted: true,
+                    isSkipped: false,
+                    source: "planner"
+                )
+            ]
+        )
         let proposal = MorningProposalEngine.generate(
             input: makeEngineInput(
                 now: now,
@@ -868,12 +906,12 @@ final class MorningProposalEngineV2Tests: XCTestCase {
                 yesterdayHeavy: true,
                 tomorrowDemand: .none,
                 today: [],
-                templates: []
+                templates: [mealOnlyTemplate]
             )
         )
         XCTAssertFalse(
             proposal.changes.contains { $0.kind == .createRecoveryWalk },
-            "Empty weekday history must not invent Walk@18"
+            "Non-cold-start weekday without walk habit must not invent Walk@18"
         )
     }
 
@@ -914,7 +952,10 @@ final class MorningProposalEngineV2Tests: XCTestCase {
                 templates: []
             )
         )
-        XCTAssertFalse(proposal.changes.contains { $0.kind == .createRecoveryWalk })
+        XCTAssertTrue(
+            proposal.changes.contains { $0.kind == .createRecoveryWalk },
+            "Cold start should still surface an optional Walk"
+        )
 
         // Soft body tips must not become Review inventory on cold start.
         // Empty-library fuel tips (and weather) may still surface as actionable guidance.

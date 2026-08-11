@@ -292,11 +292,12 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
 				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}.debug.dylib",
 			);
 			name = "Upload Crashlytics dSYM";
 			outputFileListPaths = (
@@ -305,7 +306,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST — required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST — check target membership.\"\n  exit 1\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST — required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST — check target membership.\"\n  exit 1\nfi\necho \"note: Crashlytics dSYM upload starting (DWARF_DSYM_FOLDER_PATH=${DWARF_DSYM_FOLDER_PATH}, DWARF_DSYM_FILE_NAME=${DWARF_DSYM_FILE_NAME})\"\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nstatus=$?\nif [ $status -eq 0 ]; then\n  echo \"note: Crashlytics dSYM upload finished successfully\"\nelse\n  echo \"error: Crashlytics dSYM upload failed with exit code $status\"\nfi\nexit $status\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -477,7 +478,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -500,7 +501,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -528,7 +529,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -551,7 +552,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

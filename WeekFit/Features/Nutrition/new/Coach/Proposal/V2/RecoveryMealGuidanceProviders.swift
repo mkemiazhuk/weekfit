@@ -17,13 +17,10 @@ enum RecoveryMovementProvider {
             return []
         }
 
-        // Cold start: never invent Walk; GuidanceCandidateProvider owns the first-morning tip.
+        // Cold start: offer an optional Walk so the first morning isn't meals-only.
+        // No Plan rhythm yet — keep it unselected and skip habit/weekday gates.
         if context.isColdStart {
-            #if DEBUG
-            MorningProposalDebugTrace.lastWalkDecision = .omit
-            MorningProposalDebugTrace.lastNoProposalReason = "cold_start"
-            #endif
-            return []
+            return coldStartOptionalWalk(context: context)
         }
 
         let decision = MorningProposalWalkPolicy.decide(
@@ -119,6 +116,86 @@ enum RecoveryMovementProvider {
         case .medium: return .medium
         case .low: return .low
         }
+    }
+
+    /// First morning with no Plan history: suggest a gentle Walk the user can opt into.
+    private static func coldStartOptionalWalk(context: DailyContext) -> [ProposalCandidate] {
+        guard context.generationMode == .compose || context.generationMode == .optimize else {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_mode"
+            #endif
+            return []
+        }
+        guard context.sleepPresence == .present else {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_no_sleep"
+            #endif
+            return []
+        }
+        guard context.recoveryBand == .low
+            || context.recoveryBand == .moderate
+            || context.recoveryBand == .good
+        else {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_recovery_unavailable"
+            #endif
+            return []
+        }
+        guard !context.completedWalkToday, !context.hasExistingMovement else {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_movement_exists"
+            #endif
+            return []
+        }
+        if context.stronglyRejectsWalk {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_rejects_walk"
+            #endif
+            return []
+        }
+        guard let walkDate = recoveryWalkSlot(context: context) else {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_no_slot"
+            #endif
+            return []
+        }
+
+        #if DEBUG
+        MorningProposalDebugTrace.lastWalkDecision = .unselected
+        MorningProposalDebugTrace.lastNoProposalReason = "cold_start_optional_walk"
+        #endif
+
+        return [
+            ProposalCandidate(
+                id: "walk-recovery",
+                source: .recoveryMovement,
+                kind: .createRecoveryWalk,
+                payload: .createRecoveryWalk(
+                    CreateRecoveryWalkPayload(
+                        proposedDate: walkDate,
+                        durationMinutes: context.recoveryBand == .low ? 20 : 25,
+                        title: "Walk",
+                        activityType: "recovery"
+                    )
+                ),
+                compatibleStrategies: [.recover, .maintain, .protectTomorrow],
+                physiologicalFit: context.recoveryBand == .low ? .strong : .moderate,
+                confidence: 0.55,
+                burden: .low,
+                reasonCodes: [.openDayMovementSupport],
+                conflicts: [],
+                defaultSelectionEligibility: .ineligible,
+                sortTime: walkDate,
+                evidenceScenarioKey: context.scenarioKey?.rawValue,
+                identityKey: "walk:recovery"
+            )
+        ]
     }
 
     /// Workday-aware slot: prefer habitual walk time from history; otherwise

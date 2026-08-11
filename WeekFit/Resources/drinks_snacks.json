@@ -48,6 +48,22 @@
     "fiber": 0
   },
   {
+    "id": "drink_cocoa",
+    "title": "Cocoa",
+    "subtitle": "Warm chocolate comfort",
+    "category": "drink",
+    "imageName": "ingredient-cocoa",
+    "icon": "cup.and.saucer.fill",
+    "calories": 190,
+    "protein": 8,
+    "carbs": 27,
+    "fats": 6,
+    "defaultServingAmount": 250,
+    "servingUnit": "milliliters",
+    "mlPerServing": 250,
+    "fiber": 2
+  },
+  {
     "id": "drink_milk",
     "title": "Milk",
     "subtitle": "Simple protein drink",

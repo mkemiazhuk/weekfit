@@ -444,6 +444,7 @@ struct MealDetailsView: View {
             ("cucumber", "ingredient-cucumber"), ("toast", "ingredient-toast"), ("cheese", "ingredient-cottage-cheese"),
             ("honey", "ingredient-honey"), ("banana", "ingredient-banana"), ("apple", "ingredient-apple"),
             ("milk", "ingredient-milk"), ("tea", "ingredient-tea"), ("coffee", "ingredient-coffee"),
+            ("cocoa", "ingredient-cocoa"), ("hotchocolate", "ingredient-cocoa"),
             ("iceberg", "ingredient-lettuce"), ("lettuce", "ingredient-lettuce"), ("beet", "ingredient-beetroot"),
             ("zucchini", "ingredient-zucchini"), ("pumpkin", "ingredient-pumpkin"), ("tuna", "ingredient-tuna"),
             ("peas", "ingredient-peas"), ("corn", "ingredient-corn"), ("tortilla", "ingredient-corn-tortilla"),

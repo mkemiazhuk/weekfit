@@ -71,7 +71,7 @@ enum MorningProposalAssembler {
         // Guidance-only payloads are normally dropped (no Apply chrome). Exceptions:
         // 1) empty meal library → morning fuel tips
         // 2) adverse weather → outdoor caution tips
-        // Soft cold-start tips ("learning patterns") stay silent until we have mutations.
+        // Soft cold-start body tips stay out of Review even when Walk/meals mutate.
         if mutating.isEmpty {
             var guidanceOnly: [CoachProposedChange] = []
             if context.mealLibrary.isEmpty {
@@ -114,13 +114,33 @@ enum MorningProposalAssembler {
             )
         }
 
+        let reviewChanges: [CoachProposedChange]
+        if context.isColdStart {
+            reviewChanges = changes.filter { change in
+                guard change.kind == .guidanceOnly,
+                      case .guidanceOnly(let payload) = change.payload else { return true }
+                switch payload.guidanceCode {
+                case .listenToBodyOnLowReadiness,
+                     .easeIntoFirstEffort,
+                     .hydrateThroughMorning,
+                     .fuelBeforeSession,
+                     .protectTomorrowFreshness:
+                    return false
+                default:
+                    return true
+                }
+            }
+        } else {
+            reviewChanges = changes
+        }
+
         return MorningPlanProposal(
             id: UUID().uuidString,
             dayKey: context.dayKey,
             generatedAt: context.now,
             status: .proposalReady,
             fingerprint: context.fingerprint,
-            changes: changes,
+            changes: reviewChanges,
             appliedAt: nil,
             dismissedAt: nil,
             lastErrorCode: nil,

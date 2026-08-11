@@ -115,7 +115,7 @@ enum QuickDrinkFrequentComposer {
                 return ["drink_iced_coffee", "drink_water", "drink_tonic", "drink_coffee", "drink_tea"]
             }
             if isCold {
-                return ["drink_coffee", "drink_tea", "drink_espresso", "drink_milk", "drink_water"]
+                return ["drink_coffee", "drink_cocoa", "drink_tea", "drink_espresso", "drink_milk", "drink_water"]
             }
             return ["drink_coffee", "drink_espresso", "drink_tea", "drink_water", "drink_orange_juice"]
 
@@ -125,7 +125,7 @@ enum QuickDrinkFrequentComposer {
                 return ["drink_water", "drink_iced_coffee", "drink_tonic", "drink_orange_juice", "drink_tea"]
             }
             if isCold {
-                return ["drink_tea", "drink_coffee", "drink_milk", "drink_water"]
+                return ["drink_tea", "drink_cocoa", "drink_coffee", "drink_milk", "drink_water"]
             }
             return ["drink_water", "drink_tea", "drink_coffee", "drink_orange_juice"]
 
@@ -138,26 +138,26 @@ enum QuickDrinkFrequentComposer {
                 return ["drink_water", "drink_iced_coffee", "drink_tonic", "drink_tea"]
             }
             if isCold {
-                return ["drink_tea", "drink_coffee", "drink_milk", "drink_water"]
+                return ["drink_tea", "drink_cocoa", "drink_coffee", "drink_milk", "drink_water"]
             }
             return ["drink_water", "drink_tea", "drink_coffee", "drink_tonic"]
 
         case 18..<22:
-            // Evening — soften caffeine; hydrate or warm tea.
+            // Evening — soften caffeine; hydrate or warm cocoa/tea.
             if isHot {
                 return ["drink_water", "drink_tonic", "drink_tea", "drink_iced_coffee"]
             }
             if isCold {
-                return ["drink_tea", "drink_milk", "drink_water", "drink_kefir"]
+                return ["drink_cocoa", "drink_tea", "drink_milk", "drink_water", "drink_kefir"]
             }
-            return ["drink_tea", "drink_water", "drink_milk", "drink_kefir"]
+            return ["drink_cocoa", "drink_tea", "drink_water", "drink_milk", "drink_kefir"]
 
         default:
-            // Night — calm hydration.
+            // Night — calm hydration / warm cocoa.
             if isHot {
                 return ["drink_water", "drink_tonic", "drink_tea"]
             }
-            return ["drink_water", "drink_tea", "drink_milk"]
+            return ["drink_cocoa", "drink_water", "drink_tea", "drink_milk"]
         }
     }
 
