@@ -210,7 +210,11 @@ public enum CoachActivityLabelBuilder {
             return .walk
         }
         // Token fallback if descriptor helpers miss edge titles.
-        if tokens.contains("hike") || tokens.contains("hiking") || tokens.contains("поход") {
+        if tokens.contains("hike") ||
+            tokens.contains("hiking") ||
+            tokens.contains("figure.hiking") ||
+            tokens.contains("поход") ||
+            tokens.contains("хайкинг") {
             return .hike
         }
         if tokens.contains("walk") || tokens.contains("walking") || tokens.contains("прогул") {

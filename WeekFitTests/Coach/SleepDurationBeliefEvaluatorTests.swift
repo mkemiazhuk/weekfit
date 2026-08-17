@@ -112,6 +112,39 @@ final class SleepDurationBeliefEvaluatorTests: XCTestCase {
         )
     }
 
+    func testPersonalThresholdUsesMedianClampedBelowSevenHours() {
+        // Median around 6.5h (390m) among eligible days → threshold < 7h fixed split.
+        var observations: [CoachDailyObservation] = []
+        let calendar = Calendar.current
+        let anchor = CoachTestClock.reference
+
+        // 5 nights near 6.5–7h with strong recovery, 4 nights near 5.5h with weaker recovery.
+        let configs: [(sleep: Int, recovery: Int)] = [
+            (390, 82), (400, 84), (380, 83), (395, 85), (385, 82),
+            (330, 68), (320, 66), (340, 70), (325, 67),
+        ]
+
+        for (index, config) in configs.enumerated() {
+            let offset = configs.count - index
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: anchor) else { continue }
+            observations.append(
+                CoachDailyObservation(
+                    dayKey: CoachDailyObservation.dayKey(for: date),
+                    sleepMinutes: config.sleep,
+                    recoveryPercent: config.recovery,
+                    bedStartNormalizedMinutes: 23 * 60
+                )
+            )
+        }
+
+        let evaluation = SleepDurationBeliefEvaluator.analyze(observations: observations)
+        XCTAssertNotNil(evaluation)
+        let threshold = evaluation?.sufficientSleepThresholdMinutes ?? 0
+        XCTAssertLessThan(threshold, 7 * 60)
+        XCTAssertGreaterThanOrEqual(threshold, 6 * 60)
+        XCTAssertLessThanOrEqual(threshold, Int(8.5 * 60))
+    }
+
     // MARK: - Helpers
 
     private func sampleObservations(

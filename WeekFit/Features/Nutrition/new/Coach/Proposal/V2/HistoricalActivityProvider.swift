@@ -16,22 +16,43 @@ enum HistoricalActivityProvider {
         )
 
         let existingTitles = Set(context.todayOpen.map { $0.title.lowercased() })
+        let yesterdaySignatures = yesterdayActivitySignatures(context: context, calendar: calendar)
         var result: [ProposalCandidate] = []
 
         for aggregate in aggregates {
             if existingTitles.contains(aggregate.title.lowercased()) { continue }
+            // Don't photocopy yesterday's exact session.
+            if yesterdaySignatures.contains(aggregate.signature) { continue }
             // One-off occurrences must not dominate.
             guard aggregate.occurrenceCount >= 1 else { continue }
-            let snapshot = makeSnapshot(from: aggregate, on: context.now)
-            let isSerious = CoachActivityClassifier.isSeriousTraining(snapshot)
-            let isElevatedLoad = CoachActivityClassifier.isElevatedTrainingLoad(snapshot)
+            let rawSnapshot = makeSnapshot(
+                from: aggregate,
+                on: context.now,
+                durationMinutes: aggregate.medianDurationMinutes
+            )
+            let isSerious = CoachActivityClassifier.isSeriousTraining(rawSnapshot)
+            let isElevatedLoad = CoachActivityClassifier.isElevatedTrainingLoad(rawSnapshot)
+            let shapedDuration = ProposalInventedSessionPolicy.durationMinutes(
+                raw: aggregate.medianDurationMinutes,
+                recoveryBand: context.recoveryBand,
+                strategy: strategy
+            )
 
-            // Low recovery / recover days: never invent bike, run, HIIT, or strength.
-            if context.recoveryBand == .low || strategy == .recover || strategy == .protectTomorrow,
+            // Low recovery / recover / post-heavy days: never invent bike, run, HIIT, or strength.
+            if context.recoveryBand == .low
+                || strategy == .recover
+                || strategy == .protectTomorrow
+                || context.yesterdayHeavy,
                isElevatedLoad {
                 continue
             }
             if strategy == .maintain, isSerious {
+                continue
+            }
+            // Don't invent a hard session from a single one-off.
+            if (isElevatedLoad || isSerious),
+               aggregate.completionCount < 2,
+               aggregate.weekdayMatchCount < 2 {
                 continue
             }
             if strategy == .train, !isSerious {
@@ -39,12 +60,12 @@ enum HistoricalActivityProvider {
                 continue
             }
             if (strategy == .recover || strategy == .maintain),
-               CoachActivityClassifier.type(for: snapshot) == .walk,
+               CoachActivityClassifier.type(for: rawSnapshot) == .walk,
                context.hasExistingMovement || context.completedWalkToday {
                 continue
             }
 
-            let activityType = CoachActivityClassifier.type(for: snapshot)
+            let activityType = CoachActivityClassifier.type(for: rawSnapshot)
             let isLightRecoveryHabit = HabitualLightRecoveryDetector.isLightRecoveryHabit(
                 aggregate,
                 on: context.now
@@ -95,10 +116,10 @@ enum HistoricalActivityProvider {
                     id: "hist-\(aggregate.signature)",
                     source: .historicalActivity,
                     kind: .createPlannedActivity,
-                    payload: .createPlannedActivity(
+                        payload: .createPlannedActivity(
                         CreatePlannedActivityPayload(
                             proposedDate: proposedDate,
-                            durationMinutes: aggregate.medianDurationMinutes,
+                            durationMinutes: shapedDuration,
                             title: aggregate.title,
                             activityType: aggregate.activityType,
                             icon: aggregate.icon,
@@ -128,14 +149,15 @@ enum HistoricalActivityProvider {
 
     private static func makeSnapshot(
         from aggregate: HistoricalActivityAggregate,
-        on date: Date
+        on date: Date,
+        durationMinutes: Int
     ) -> CoachPlannedActivitySnapshot {
         CoachPlannedActivitySnapshot(
             id: aggregate.id,
             date: date,
             type: aggregate.activityType,
             title: aggregate.title,
-            durationMinutes: aggregate.medianDurationMinutes,
+            durationMinutes: durationMinutes,
             icon: aggregate.icon,
             imageName: aggregate.imageName,
             isCompleted: false,
@@ -144,19 +166,52 @@ enum HistoricalActivityProvider {
         )
     }
 
-    /// Exact habitual clock for today. Returns nil if that slot already passed —
+    /// Habitual clock rounded to :00 / :30. Returns nil if that slot already passed —
     /// never invent a different clock (e.g. 12:30) over the person's habit.
     private static func remapHabitualTime(
         aggregate: HistoricalActivityAggregate,
         context: DailyContext,
         calendar: Calendar
     ) -> Date? {
+        let rounded = ProposalInventedSessionPolicy.roundedHalfHour(
+            hour: aggregate.habitualHour,
+            minute: aggregate.habitualMinute
+        )
         var comps = calendar.dateComponents([.year, .month, .day], from: context.now)
-        comps.hour = aggregate.habitualHour
-        comps.minute = aggregate.habitualMinute
+        comps.hour = rounded.hour
+        comps.minute = rounded.minute
         comps.second = 0
-        guard let proposed = calendar.date(from: comps) else { return nil }
-        guard proposed >= context.now.addingTimeInterval(15 * 60) else { return nil }
+        guard var proposed = calendar.date(from: comps) else { return nil }
+        let earliest = context.now.addingTimeInterval(15 * 60)
+        if proposed < earliest {
+            proposed = proposed.addingTimeInterval(30 * 60)
+        }
+        guard proposed >= earliest else { return nil }
+        // Stay close to the habit — don't slide more than 90 minutes.
+        let habitualMinutes = aggregate.habitualHour * 60 + aggregate.habitualMinute
+        let proposedMinutes = calendar.component(.hour, from: proposed) * 60
+            + calendar.component(.minute, from: proposed)
+        guard abs(proposedMinutes - habitualMinutes) <= 90 else { return nil }
         return proposed
+    }
+
+    private static func yesterdayActivitySignatures(
+        context: DailyContext,
+        calendar: Calendar
+    ) -> Set<String> {
+        guard let yesterday = calendar.date(
+            byAdding: .day,
+            value: -1,
+            to: calendar.startOfDay(for: context.now)
+        ) else {
+            return []
+        }
+        let key = ProposalInputFingerprintBuilder.dayKey(for: yesterday, calendar: calendar)
+        let activities = context.recentDayTemplates.first { $0.dayKey == key }?.activities ?? []
+        return Set(
+            activities
+                .filter { !$0.isSkipped && !CoachCanonicalDayState.isNutritionLog($0) }
+                .map { HistoricalActivityAggregator.makeSignature(title: $0.title, type: $0.type) }
+        )
     }
 }

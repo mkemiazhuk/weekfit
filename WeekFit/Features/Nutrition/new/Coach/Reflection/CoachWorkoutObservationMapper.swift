@@ -14,13 +14,16 @@ enum CoachWorkoutObservationMapper {
         let calories = Int(
             (workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0).rounded()
         )
+        let endComponents = Calendar.current.dateComponents([.hour, .minute], from: workout.endDate)
+        let endMinutes = ((endComponents.hour ?? 0) * 60) + (endComponents.minute ?? 0)
 
         return CoachWorkoutObservationSample(
             typeToken: activity.title.lowercased(),
             durationMinutes: activity.effectiveDurationMinutes,
             activeCalories: max(calories, 0),
             isHardTraining: CoachActivityClassifier.isSeriousTraining(snapshot),
-            isRecoveryActivity: CoachActivityClassification.isRecoveryTier(snapshot)
+            isRecoveryActivity: CoachActivityClassification.isRecoveryTier(snapshot),
+            endMinutesFromMidnight: endMinutes
         )
     }
 }

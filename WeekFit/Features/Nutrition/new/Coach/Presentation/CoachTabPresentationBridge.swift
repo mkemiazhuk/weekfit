@@ -249,11 +249,10 @@ enum CoachTabPresentationBridge {
         )
         let base = localized(english: labels.english, russian: labels.russian)
         guard let zone = context.liveHeartRateZone,
-              let bpm = context.liveHeartRateBPM,
               context.sessionPhase == .during else {
             return base
         }
-        return HeartRateZones.badgeLabel(zone: zone, bpm: bpm)
+        return HeartRateZones.badgeLabel(zone: zone)
     }
 
     private static func localized(english: String, russian: String) -> String {

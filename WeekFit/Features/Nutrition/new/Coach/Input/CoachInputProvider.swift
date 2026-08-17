@@ -81,7 +81,8 @@ final class CoachInputProvider: ObservableObject {
             await CoachUnderstandingService.refresh(
                 healthManager: healthManager,
                 through: selectedDate,
-                plannedActivities: plannedActivities
+                plannedActivities: plannedActivities,
+                calorieTarget: nutritionViewModel.nutritionResult.map { Int($0.targetCalories.rounded()) }
             )
 
             let previousRefreshReason = lastRefreshReason
@@ -195,13 +196,23 @@ final class CoachInputProvider: ObservableObject {
             debugSource: "CoachInputProvider.\(source)"
         )
 
-        CoachObservationStore.recordToday(
-            from: healthManager,
-            date: selectedDate,
-            plannedActivities: dailySnapshot.dayActivities,
-            calorieTarget: nutritionViewModel.nutritionResult.map { Int($0.targetCalories.rounded()) }
-        )
+        let calorieTarget = nutritionViewModel.nutritionResult.map { Int($0.targetCalories.rounded()) }
+        // Repair historical deficits as soon as today's target is known; load workouts async.
+        CoachObservationStore.repairNutritionMetadata(calorieTarget: calorieTarget)
         CoachUnderstandingService.evaluateBeliefs()
+
+        let observationHealthManager = healthManager
+        let observationDate = selectedDate
+        let observationActivities = dailySnapshot.dayActivities
+        Task { @MainActor in
+            await CoachObservationStore.recordToday(
+                from: observationHealthManager,
+                date: observationDate,
+                plannedActivities: observationActivities,
+                calorieTarget: calorieTarget
+            )
+            CoachUnderstandingService.evaluateBeliefs()
+        }
 
         guard let snapshot = nutritionViewModel.coachMetricsSnapshot else {
             coachCoordinator.updateInput(nil)

@@ -7,13 +7,14 @@ import Foundation
 /// 2. unavailable Recovery OR low context confidence without mutate → continueExistingPlan
 /// 3. low Recovery → recover
 /// 4. moderate Recovery + (yesterdayHeavy OR stacked elevated OR serious overload) → recover
-/// 5. tomorrow hard/moderate → protectTomorrow
+/// 5. good Recovery + yesterdayHeavy → recover (post long hike / hard day; don't "stay steady")
+/// 6. tomorrow hard/moderate → protectTomorrow
 ///    (protect mode with no serious opens still protects tomorrow rather than maintain)
-/// 6. good Recovery + sleep + no fatigue + quiet tomorrow + mode allows adds
+/// 7. good Recovery + sleep + no fatigue + quiet tomorrow + mode allows adds
 ///    + observation-backed repeated serious success → train
-/// 7. protect mode with coherent packed plan → continueExistingPlan
-/// 8. moderate/good with no strong train/recover signal → maintain
-/// 9. fallback → continueExistingPlan
+/// 8. protect mode with coherent packed plan → continueExistingPlan
+/// 9. moderate/good with no strong train/recover signal → maintain
+/// 10. fallback → continueExistingPlan
 enum DailyStrategyResolver {
 
     static func resolve(context: DailyContext) -> DailyStrategy {
@@ -29,7 +30,7 @@ enum DailyStrategyResolver {
             return .continueExistingPlan
         }
 
-        // 3–4 recover
+        // 3–5 recover
         if context.recoveryBand == .low {
             return .recover
         }
@@ -37,13 +38,18 @@ enum DailyStrategyResolver {
            context.yesterdayHeavy || context.stackedLoad.isElevated || seriousLoadInappropriate(context) {
             return .recover
         }
+        // Even with good recovery, a heavy prior day should stay lighter —
+        // habitual Saturday workouts after a 6h hike feel wrong.
+        if context.recoveryBand == .good, context.yesterdayHeavy {
+            return .recover
+        }
 
-        // 5 protectTomorrow — good Recovery must not auto-override a demanding tomorrow
+        // 6 protectTomorrow — good Recovery must not auto-override a demanding tomorrow
         if context.tomorrowDemand == .hard || context.tomorrowDemand == .moderate {
             return .protectTomorrow
         }
 
-        // 6 train
+        // 7 train
         if context.recoveryBand == .good,
            context.sleepPresence == .present,
            !context.yesterdayHeavy,
@@ -55,7 +61,7 @@ enum DailyStrategyResolver {
             return .train
         }
 
-        // 7 protect / packed day with no necessary mutation → continue
+        // 8 protect / packed day with no necessary mutation → continue
         if context.generationMode == .protect {
             return .continueExistingPlan
         }
@@ -63,7 +69,7 @@ enum DailyStrategyResolver {
             return .continueExistingPlan
         }
 
-        // 8 maintain
+        // 9 maintain
         if context.recoveryBand == .moderate || context.recoveryBand == .good {
             return .maintain
         }

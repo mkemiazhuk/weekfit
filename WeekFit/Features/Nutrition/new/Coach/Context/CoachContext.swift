@@ -200,6 +200,8 @@ struct CoachContext: Equatable, Sendable {
     let completedHeatToday: Bool
     /// True when the focused `.walk` activity is hike-flavored — copy/icon use hike nouns instead of generic walk nouns.
     let isFocusHikeLike: Bool
+    /// Planned duration of the focused activity in minutes (0 when idle / unknown).
+    let focusDurationMinutes: Int
     /// True when at least one meal has been logged today (calories or mealsCount).
     let hasLoggedMealToday: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
@@ -233,6 +235,7 @@ struct CoachContext: Equatable, Sendable {
         completedWalkToday: Bool = false,
         completedHeatToday: Bool = false,
         isFocusHikeLike: Bool = false,
+        focusDurationMinutes: Int = 0,
         hasLoggedMealToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason,
@@ -260,6 +263,7 @@ struct CoachContext: Equatable, Sendable {
         self.completedWalkToday = completedWalkToday
         self.completedHeatToday = completedHeatToday
         self.isFocusHikeLike = isFocusHikeLike
+        self.focusDurationMinutes = max(0, focusDurationMinutes)
         self.hasLoggedMealToday = hasLoggedMealToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason
@@ -369,6 +373,14 @@ enum CoachActivityClassifier {
 
         switch activityType {
         case .walk, .stretching, .yoga, .breathing, .sauna, .none:
+            // Long/extended hikes (and very long walks) are real load — not recovery fluff.
+            if activityType == .walk {
+                let minutes = activity.effectiveDurationMinutes
+                if CoachActivityClassification.isHikeLike(activity) {
+                    return minutes >= 90
+                }
+                return minutes >= 180
+            }
             return false
         case .cycling, .running, .swimming, .hiit:
             let minutes = activity.effectiveDurationMinutes
@@ -395,7 +407,13 @@ enum CoachActivityClassifier {
              .tennis, .squash,
              .upperBody, .lowerBody, .core, .fullBody:
             return true
-        case .walk, .stretching, .yoga, .breathing, .sauna, .none:
+        case .walk:
+            let minutes = activity.effectiveDurationMinutes
+            if CoachActivityClassification.isHikeLike(activity) {
+                return minutes >= 90
+            }
+            return minutes >= 180
+        case .stretching, .yoga, .breathing, .sauna, .none:
             return false
         }
     }
@@ -512,13 +530,16 @@ enum CoachActivityClassifier {
             return .high
         }
 
-        if CoachActivityClassification.isWalkLike(activity) {
-            return calories >= 600 ? .moderate : .low
+        // Hike before walk — hike icons/titles can also look walk-like.
+        if CoachActivityClassification.isHikeLike(activity) {
+            if duration >= 180 || calories >= 1000 { return .high }
+            if duration >= 90 || calories >= 600 { return .moderate }
+            return .low
         }
 
-        if CoachActivityClassification.isHikeLike(activity) {
-            if duration >= 180 || calories >= 1000 { return .moderate }
-            return .low
+        if CoachActivityClassification.isWalkLike(activity) {
+            if duration >= 180 || calories >= 800 { return .moderate }
+            return calories >= 600 ? .moderate : .low
         }
 
         if title.contains("walk") || typeLabel.contains("walk") {

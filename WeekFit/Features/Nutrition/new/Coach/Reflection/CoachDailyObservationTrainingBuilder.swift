@@ -35,7 +35,10 @@ enum CoachDailyObservationTrainingBuilder {
             hadHardTraining: hadHardTraining,
             hadRecoveryActivity: hadRecoveryActivity,
             hadRestDay: intensityBand == .rest,
-            trainingLoadScore: trainingLoadScore(for: intensityBand)
+            trainingLoadScore: trainingLoadScore(for: intensityBand),
+            hardestWorkoutEndMinutes: CoachPostWorkoutNutritionObservation.hardestWorkoutEndMinutes(
+                from: workouts
+            )
         )
     }
 

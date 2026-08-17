@@ -25,6 +25,8 @@ struct CoachState: Identifiable {
     let coachIntegrationDebug: CoachIntegrationDebug?
     /// Optional reflection utterance at conversational pause. Nil unless understanding changed.
     let reflectionOffer: ReflectionOffer?
+    /// Optional Discovery Tell moment at conversational pause. Wins over quiet reflection when present.
+    let discoveryOffer: CoachDiscoveryOffer?
 
     var hasValidGuidance: Bool {
         coachUIPresentation != nil
@@ -77,7 +79,8 @@ struct CoachState: Identifiable {
             fingerprint: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil,
-            reflectionOffer: nil
+            reflectionOffer: nil,
+            discoveryOffer: nil
         )
     }
 
@@ -90,7 +93,8 @@ struct CoachState: Identifiable {
             fingerprint: nil,
             coachUIPresentation: nil,
             coachIntegrationDebug: nil,
-            reflectionOffer: nil
+            reflectionOffer: nil,
+            discoveryOffer: nil
         )
     }
 
@@ -123,6 +127,13 @@ struct CoachState: Identifiable {
         if readiness.dataReadinessState == .limitedRecovery, let pack = copyPack {
             copyPack = CoachLimitedRecoveryCopyPolicy.apply(to: pack)
         }
+        if let pack = copyPack {
+            copyPack = CoachDiscoveryAdaptCopyPolicy.apply(
+                to: pack,
+                input: input,
+                context: v6Result.context
+            )
+        }
         let engineResultForPresentation = CoachEngine.Result(
             context: v6Result.context,
             resolution: v6Result.resolution,
@@ -148,8 +159,15 @@ struct CoachState: Identifiable {
             logCoachRegistryGap(debug: coachIntegrationDebug, reason: reason)
         }
 
-        let reflectionOffer = ReflectionComposer.compose(
-            ReflectionComposer.Input(
+        let composerInput = ReflectionComposer.Input(
+            snapshot: input,
+            context: v6Result.context,
+            urgencyLevel: v6Result.todayInsight.urgencyLevel,
+            safetyAlert: v6Result.todayInsight.safetyAlert,
+            alertSeverity: v6Result.todayInsight.alertSeverity
+        )
+        let discoveryOffer = CoachDiscoveryComposer.compose(
+            CoachDiscoveryComposer.Input(
                 snapshot: input,
                 context: v6Result.context,
                 urgencyLevel: v6Result.todayInsight.urgencyLevel,
@@ -157,6 +175,8 @@ struct CoachState: Identifiable {
                 alertSeverity: v6Result.todayInsight.alertSeverity
             )
         )
+        // Discovery owns the Tell slot when an offer is ready; quiet reflection remains for understanding-only events.
+        let reflectionOffer = discoveryOffer == nil ? ReflectionComposer.compose(composerInput) : nil
 
         return CoachState(
             id: UUID(),
@@ -166,7 +186,8 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug,
-            reflectionOffer: reflectionOffer
+            reflectionOffer: reflectionOffer,
+            discoveryOffer: discoveryOffer
         )
     }
 
@@ -181,7 +202,8 @@ struct CoachState: Identifiable {
             fingerprint: fingerprint,
             coachUIPresentation: coachUIPresentation,
             coachIntegrationDebug: coachIntegrationDebug,
-            reflectionOffer: reflectionOffer
+            reflectionOffer: reflectionOffer,
+            discoveryOffer: discoveryOffer
         )
     }
 

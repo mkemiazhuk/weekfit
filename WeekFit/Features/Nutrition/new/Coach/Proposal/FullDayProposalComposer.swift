@@ -243,8 +243,9 @@ enum MorningProposalWalkPolicy {
         if stronglyRejectsWalk {
             return .guidance
         }
+        // After a heavy day, keep an optional recovery walk even when recovery looks good.
         if yesterdayHeavyEndurance && recoveryBand == .good {
-            return .guidance
+            return .unselected
         }
 
         let purposeOK = recoveryBand == .low || recoveryBand == .moderate

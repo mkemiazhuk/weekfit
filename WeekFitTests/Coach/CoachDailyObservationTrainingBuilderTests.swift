@@ -35,7 +35,8 @@ final class CoachDailyObservationTrainingBuilderTests: XCTestCase {
                     durationMinutes: 95,
                     activeCalories: 800,
                     isHardTraining: true,
-                    isRecoveryActivity: false
+                    isRecoveryActivity: false,
+                    endMinutesFromMidnight: 19 * 60
                 )
             ],
             trainingDataAvailable: true
@@ -46,6 +47,7 @@ final class CoachDailyObservationTrainingBuilderTests: XCTestCase {
         XCTAssertEqual(snapshot?.hadHardTraining, true)
         XCTAssertEqual(snapshot?.workoutTypes, ["cycling"])
         XCTAssertEqual(snapshot?.trainingLoadScore, 90)
+        XCTAssertEqual(snapshot?.hardestWorkoutEndMinutes, 19 * 60)
     }
 
     func testModerateDayWithoutHardWorkouts() {

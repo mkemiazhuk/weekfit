@@ -181,6 +181,36 @@ enum BeliefBlockingReasonRegistry {
                 currentMaturity: currentMaturity,
                 evaluation: evaluation
             )
+        case .proteinTrainingDayRecovery:
+            ProteinTrainingDayRecoveryBeliefEvaluator.blockingReason(
+                observations: observations,
+                currentMaturity: currentMaturity,
+                evaluation: evaluation
+            )
+        case .postWorkoutProteinRecovery:
+            PostWorkoutProteinRecoveryBeliefEvaluator.blockingReason(
+                observations: observations,
+                currentMaturity: currentMaturity,
+                evaluation: evaluation
+            )
+        case .hardTrainingLowRecoveryCost:
+            HardTrainingLowRecoveryCostBeliefEvaluator.blockingReason(
+                observations: observations,
+                currentMaturity: currentMaturity,
+                evaluation: evaluation
+            )
+        case .carbsTrainingDayRecovery:
+            CarbsTrainingDayRecoveryBeliefEvaluator.blockingReason(
+                observations: observations,
+                currentMaturity: currentMaturity,
+                evaluation: evaluation
+            )
+        case .lateHardTrainingSleep:
+            LateHardTrainingSleepBeliefEvaluator.blockingReason(
+                observations: observations,
+                currentMaturity: currentMaturity,
+                evaluation: evaluation
+            )
         }
 
         return providerReason

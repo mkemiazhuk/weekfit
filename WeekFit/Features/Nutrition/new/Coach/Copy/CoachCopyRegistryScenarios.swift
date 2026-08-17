@@ -42,9 +42,15 @@ enum CoachCopyRegistryScenarios {
             return eveningAfterStrength(input: input)
         case .walkLightDay:
             if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
+                if CoachLongHikeCopy.isSubstantialHike(input: input) {
+                    return CoachLongHikeCopy.draft(for: input)
+                }
                 return CoachWalkRecoveryActionCopy.draft(for: input)
             }
-            return walkLightDay(isHike: input.isFocusHikeLike)
+            if CoachLongHikeCopy.isSubstantialHike(input: input) {
+                return CoachLongHikeCopy.draft(for: input)
+            }
+            return walkLightDay(isHike: input.isFocusHikeLike, durationBand: input.modifiers.durationBand)
         case .walkEveningWindDown:
             if CoachWalkRecoveryActionCopy.phase(for: input) == .completed {
                 return CoachWalkRecoveryActionCopy.draft(for: input)
@@ -676,7 +682,8 @@ enum CoachCopyRegistryScenarios {
 
     // MARK: - Walk
 
-    private static func walkLightDay(isHike: Bool) -> Draft {
+    /// Short / easy walk+hike framing only. Substantial hikes route through `CoachLongHikeCopy`.
+    private static func walkLightDay(isHike: Bool, durationBand: CoachDurationBand) -> Draft {
         if isHike {
             return Draft(
                 assessment: .en(
@@ -697,6 +704,34 @@ enum CoachCopyRegistryScenarios {
                 )
             )
         }
+
+        let isSubstantial = durationBand == .long || durationBand == .extended
+        if isSubstantial {
+            return Draft(
+                assessment: durationBand == .extended
+                    ? .en(
+                        "Long walk day — time on feet adds up.",
+                        "Длинная прогулка — время на ногах накапливается."
+                    )
+                    : .en(
+                        "Walk day — treat it as real movement, not filler.",
+                        "День прогулки — это движение, а не просто фон."
+                    ),
+                recommendation: .en(
+                    "Keep a sustainable pace and stay ahead on water.",
+                    "Держите устойчивый темп и не отставайте по воде."
+                ),
+                avoid: .en(
+                    "Don't rush the first half or ignore sore spots.",
+                    "Не ускоряйтесь в первой половине и не игнорируйте дискомфорт."
+                ),
+                nextAction: .en(
+                    "Start easy, check feet early, and leave something in the tank.",
+                    "Начните легко, рано проверьте ноги и оставьте запас сил."
+                )
+            )
+        }
+
         return Draft(
             assessment: .en(
                 "Easy walk day — movement without a scoreboard.",

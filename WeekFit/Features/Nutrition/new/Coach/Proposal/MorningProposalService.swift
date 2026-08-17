@@ -189,7 +189,10 @@ enum MorningProposalService {
             mealLibrary: context.mealLibrary,
             walkRejectPenalty: context.walkRejectPenalty,
             stronglyRejectsWalk: context.stronglyRejectsWalk,
-            weatherRiskToken: context.weatherRiskToken
+            weatherRiskToken: context.weatherRiskToken,
+            preferAvoidHardLoadOnLowRecovery: CoachLearnedContextBuilder.preferAvoidHardLoadOnLowRecovery(
+                recoveryPercent: context.readiness.recoveryPercent
+            )
         )
 
         let proposal = MorningProposalEngine.generate(input: engineInput)

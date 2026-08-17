@@ -21,6 +21,7 @@ struct MorningProposalEngineInput: Sendable, Equatable {
     let walkRejectPenalty: Int
     let stronglyRejectsWalk: Bool
     var weatherRiskToken: ProposalWeatherRiskToken = .unavailable
+    var preferAvoidHardLoadOnLowRecovery: Bool = false
 }
 
 /// Thin orchestrator over the deterministic v2 proposal stages.

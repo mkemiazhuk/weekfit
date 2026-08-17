@@ -114,9 +114,11 @@ enum CoachBeliefSynthesisAudit {
         switch beliefID {
         case .sleepConsistencyRecovery, .sleepDurationRecovery, .lateBedtimeRecovery:
             return .sleep
-        case .heavyLoadRecoveryLag, .recoveryAfterRestDay, .consecutiveHardDaysFatigue:
+        case .heavyLoadRecoveryLag, .recoveryAfterRestDay, .consecutiveHardDaysFatigue,
+             .hardTrainingLowRecoveryCost, .lateHardTrainingSleep:
             return .trainingLoad
-        case .underfuelingRecovery:
+        case .underfuelingRecovery, .proteinTrainingDayRecovery, .postWorkoutProteinRecovery,
+             .carbsTrainingDayRecovery:
             return .nutrition
         }
     }
@@ -514,6 +516,16 @@ enum CoachBeliefSynthesisAudit {
             return "Consecutive hard days"
         case .underfuelingRecovery:
             return "Underfueling"
+        case .proteinTrainingDayRecovery:
+            return "Protein on training days"
+        case .postWorkoutProteinRecovery:
+            return "Post-workout protein"
+        case .hardTrainingLowRecoveryCost:
+            return "Hard training while depleted"
+        case .carbsTrainingDayRecovery:
+            return "Carbs on training days"
+        case .lateHardTrainingSleep:
+            return "Late hard training sleep"
         }
     }
 

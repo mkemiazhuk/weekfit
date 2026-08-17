@@ -8,12 +8,14 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.tabIsActive) private var tabIsActive
+    @Environment(\.weekFitPalette) private var palette
 
     @ObservedObject private var userSettings = WeekFitUserSettings.shared
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false
     @State private var didRecordCoachRecommendationOpen = false
+    @State private var discoverySpotlightDismissedLocally = false
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -67,12 +69,29 @@ struct ExpertCoachView: View {
             } content: {
                 coachContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .background(WeekFitTheme.appScreenBackground)
+                    .background {
+                        ZStack {
+                            WeekFitTheme.appScreenBackground
+                            if let liveZoneScreenColor {
+                                liveZoneScreenColor
+                                    .opacity(palette.isLight ? 0.16 : 0.24)
+                            }
+                        }
+                        .animation(
+                            .easeInOut(duration: 0.45),
+                            value: coachUIPresentation?.semanticColor
+                        )
+                    }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.coach")
         .weekFitSettingsSheet(isPresented: $showProfile)
+        .onChange(of: coachState.discoveryOffer?.id) { _, newID in
+            if newID != nil {
+                discoverySpotlightDismissedLocally = false
+            }
+        }
         #if DEBUG
         .overlay(alignment: .bottomTrailing) {
             Button {
@@ -189,6 +208,7 @@ struct ExpertCoachView: View {
 
                 if shouldSurfaceCoach {
                     coachCard
+                    discoverySpotlightSection
                     storySupportSection
                 } else if isRegistryGap || shouldShowCoachPreparingState {
                     registryGapSection
@@ -214,7 +234,7 @@ struct ExpertCoachView: View {
         return ZStack(alignment: .topTrailing) {
             Image(systemName: ui?.icon ?? "sparkles")
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(accent.opacity(0.058))
+                .foregroundStyle(accent.opacity(liveZoneScreenColor == nil ? 0.058 : 0.16))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
@@ -295,6 +315,37 @@ struct ExpertCoachView: View {
             accent: accent,
             featured: true
         )
+        .overlay {
+            if liveZoneScreenColor != nil {
+                RoundedRectangle(cornerRadius: WeekFitSurface.primaryRadius, style: .continuous)
+                    .strokeBorder(accent.opacity(palette.isLight ? 0.42 : 0.55), lineWidth: 1.6)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeInOut(duration: 0.45), value: coachUIPresentation?.semanticColor)
+    }
+
+    @ViewBuilder
+    private var discoverySpotlightSection: some View {
+        if let offer = coachState.discoveryOffer, !discoverySpotlightDismissedLocally {
+            CoachDiscoverySpotlightSection(offer: offer) {
+                discoverySpotlightDismissedLocally = true
+                CoachDiscoveryStore.markOfferDisplayed(offer)
+                coachCoordinator.forceRecompute(reason: "discoverySpotlightDismissed")
+            }
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                removal: .opacity.combined(with: .scale(scale: 0.98))
+            ))
+        }
+    }
+
+    private var liveZoneScreenColor: Color? {
+        guard let semantic = coachUIPresentation?.semanticColor,
+              HeartRateZones.isLiveZoneColor(semantic) else {
+            return nil
+        }
+        return coachUIPresentation?.accentColor
     }
 
     private var stateBadge: some View {
@@ -303,10 +354,9 @@ struct ExpertCoachView: View {
             ? textSecondary.opacity(0.72)
             : (coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
         let baseLabel = coachUIPresentation?.statusLabel ?? ""
-        let bpm = WeekFitActivityCoordinator.shared.liveHeartRateBPM
         let zone = WeekFitActivityCoordinator.shared.liveHeartRateZone
         let label: String = {
-            guard !isLimitedRecovery, let bpm, let zone else { return baseLabel }
+            guard !isLimitedRecovery, let zone else { return baseLabel }
             let isLiveChrome: Bool = {
                 switch coachUIPresentation?.semanticColor {
                 case .live, .liveZone1, .liveZone2, .liveZone3, .liveElevated, .liveCritical:
@@ -316,7 +366,7 @@ struct ExpertCoachView: View {
                 }
             }()
             guard isLiveChrome else { return baseLabel }
-            return HeartRateZones.badgeLabel(zone: zone, bpm: bpm)
+            return HeartRateZones.badgeLabel(zone: zone)
         }()
 
         return HStack(spacing: isLimitedRecovery ? 5 : 8) {

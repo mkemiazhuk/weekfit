@@ -59,6 +59,7 @@ enum DailyContextBuilder {
             stronglyRejectsWalk: input.stronglyRejectsWalk,
             softDismissCount: behavioral.softDismissCount,
             softNegativePenalty: ProposalBehavioralPreferences.softNegativePenalty(from: behavioral),
+            preferAvoidHardLoadOnLowRecovery: input.preferAvoidHardLoadOnLowRecovery,
             mealLibrary: input.mealLibrary,
             mealLibraryRevision: input.fingerprint.mealLibraryRevision,
             weatherRiskToken: input.weatherRiskToken,

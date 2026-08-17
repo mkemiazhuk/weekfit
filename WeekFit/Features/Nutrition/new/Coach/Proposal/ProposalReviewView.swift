@@ -130,7 +130,21 @@ struct ProposalReviewView: View {
                 }
 
                 if !dayChanges.isEmpty {
-                    dayTimelineSection(dayChanges, selectedCount: selectedMutationCount)
+                    let movement = dayChanges.filter { $0.kind != .createMealFromLibrary }
+                    let meals = dayChanges.filter { $0.kind == .createMealFromLibrary }
+                    if selectedMutationCount == 0 {
+                        Text(WeekFitLocalizedString("coach.proposal.review.selectHint"))
+                            .font(.caption.weight(.medium))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(WeekFitTheme.secondaryText)
+                            .padding(.leading, 2)
+                    }
+                    if !movement.isEmpty {
+                        dayTimelineSection(movement, titleKey: "coach.proposal.review.section.movement")
+                    }
+                    if !meals.isEmpty {
+                        dayTimelineSection(meals, titleKey: "coach.proposal.review.section.fuel")
+                    }
                 }
 
                 if !tips.isEmpty {
@@ -143,23 +157,18 @@ struct ProposalReviewView: View {
         }
     }
 
-    private func dayTimelineSection(_ changes: [CoachProposedChange], selectedCount: Int) -> some View {
+    private func dayTimelineSection(
+        _ changes: [CoachProposedChange],
+        titleKey: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(WeekFitLocalizedString("coach.proposal.review.section.day"))
+            Text(WeekFitLocalizedString(titleKey))
                 .font(.caption2.weight(.bold))
                 .fontDesign(.rounded)
                 .tracking(1.15)
                 .foregroundStyle(WeekFitTheme.secondaryText)
                 .textCase(.uppercase)
                 .padding(.leading, 2)
-
-            if selectedCount == 0 {
-                Text(WeekFitLocalizedString("coach.proposal.review.selectHint"))
-                    .font(.caption.weight(.medium))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(WeekFitTheme.secondaryText)
-                    .padding(.leading, 2)
-            }
 
             VStack(spacing: 0) {
                 ForEach(Array(changes.enumerated()), id: \.element.id) { index, change in
@@ -672,16 +681,15 @@ struct ProposalReviewView: View {
     }
 
     private func mealSlotTitle(for date: Date, calendar: Calendar = .current) -> String {
-        let hour = calendar.component(.hour, from: date)
         let key: String
-        switch hour {
-        case ..<11:
+        switch ProposalMealSlot.from(date: date, calendar: calendar) {
+        case .breakfast:
             key = "coach.proposal.change.addBreakfast"
-        case 11..<15:
+        case .lunch:
             key = "coach.proposal.change.addLunch"
-        case 15..<17:
+        case .snack:
             key = "coach.proposal.change.addSnack"
-        default:
+        case .dinner:
             key = "coach.proposal.change.addDinner"
         }
         return WeekFitLocalizedString(key)

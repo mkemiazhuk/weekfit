@@ -105,6 +105,7 @@ enum CoachUnderstandingStore {
         UserDefaults.standard.removeObject(forKey: storageKey)
         lock.unlock()
         CoachObservationStore.resetForTests()
+        CoachDiscoveryStore.resetForTests()
     }
 
     static func seedForTests(

@@ -5,5 +5,8 @@ enum ReflectionOfferDisplayTracker {
 
     static func markDisplayed(_ offer: ReflectionOffer) {
         CoachUnderstandingStore.markSpoken(offer.id)
+        if let raw = offer.beliefID, let beliefID = CoachBeliefID(rawValue: raw) {
+            CoachDiscoveryStore.markSeen(beliefID: beliefID)
+        }
     }
 }

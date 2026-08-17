@@ -177,7 +177,6 @@ enum DailyStateSnapshotBuilder {
         }
 
         let current = nutritionViewModel.currentMetrics
-        let coach = nutritionViewModel.coachMetricsSnapshot?.nutritionContext
         let metricsAreCurrent = healthManager.areDisplayMetricsLoaded(for: selectedDate)
 
         func healthKitValue(_ value: Double) -> Double {
@@ -202,17 +201,17 @@ enum DailyStateSnapshotBuilder {
             )
         }
 
-        func highest(_ healthKit: Double, _ viewModel: Double?, _ coachValue: Double?) -> Double {
-            max(healthKit, viewModel ?? 0, coachValue ?? 0)
-        }
-
+        // Food/water macros must come from HealthKit only here.
+        // Folding current/coach totals created a one-way ratchet: meal deletions could not
+        // shrink consumed %, because updateNutrition also max()s against this seed.
+        // Planned meal/drink logs are reapplied every pass in NutritionViewModel.updateNutrition.
         return DailyNutritionMetrics(
-            protein: highest(healthKitValue(healthManager.protein), current?.protein, coach?.proteinCurrent),
-            carbs: highest(healthKitValue(healthManager.carbs), current?.carbs, coach?.carbsCurrent),
-            fats: highest(healthKitValue(healthManager.fats), current?.fats, coach?.fatsCurrent),
-            fiber: highest(healthKitValue(healthManager.fiber), current?.fiber, nil),
-            calories: highest(healthKitValue(healthManager.calories), current?.calories, coach?.caloriesCurrent),
-            waterLiters: highest(healthKitValue(healthManager.waterLiters), current?.waterLiters, coach?.waterCurrent),
+            protein: healthKitValue(healthManager.protein),
+            carbs: healthKitValue(healthManager.carbs),
+            fats: healthKitValue(healthManager.fats),
+            fiber: healthKitValue(healthManager.fiber),
+            calories: healthKitValue(healthManager.calories),
+            waterLiters: healthKitValue(healthManager.waterLiters),
             activeCalories: metricsAreCurrent ? healthManager.activeCalories : 0,
             sleepHours: healthManager.sleepHours,
             weightKg: healthManager.weight

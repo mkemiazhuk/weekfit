@@ -30,7 +30,7 @@ enum UnderfuelingRecoveryBeliefEvaluator: CoachBeliefEvaluator {
 
     static func analyze(observations: [CoachDailyObservation]) -> UnderfuelingRecoveryEvaluation? {
         let eligible = observations
-            .filter(\.hasPopulatedNutritionFieldsResolved)
+            .filter(\.hasTrustworthyNutritionForBeliefs)
             .filter(\.hasRecoverySignal)
             .filter { $0.calorieDeficit != nil }
             .sorted { $0.dayKey < $1.dayKey }

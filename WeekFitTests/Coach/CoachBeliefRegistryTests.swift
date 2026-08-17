@@ -15,7 +15,7 @@ final class CoachBeliefRegistryTests: XCTestCase {
 
     func testRegistryEvaluatesAllRegisteredBeliefs() {
         let results = CoachBeliefRegistry.evaluateAll(observations: [])
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
         XCTAssertEqual(Set(results.map(\.beliefID)), Set([
             .sleepConsistencyRecovery,
             .sleepDurationRecovery,
@@ -24,6 +24,11 @@ final class CoachBeliefRegistryTests: XCTestCase {
             .recoveryAfterRestDay,
             .consecutiveHardDaysFatigue,
             .underfuelingRecovery,
+            .proteinTrainingDayRecovery,
+            .postWorkoutProteinRecovery,
+            .hardTrainingLowRecoveryCost,
+            .carbsTrainingDayRecovery,
+            .lateHardTrainingSleep,
         ]))
     }
 }

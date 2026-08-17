@@ -264,20 +264,23 @@ private extension HumanBrain {
         metrics: DailyNutritionMetrics,
         activities: [CoachPlannedActivitySnapshot]
     ) -> PastContext {
-        
-        let todayWorkouts = activities.filter {
-            $0.type.lowercased() == "workout"
+        let todayStart = calendar.startOfDay(for: now)
+        let priorDay = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+
+        // Past load is prior-day completed work — not "type == workout" only,
+        // so long hikes / walks count toward heavy yesterday.
+        let completedWorkouts = activities.filter {
+            calendar.isDate($0.date, inSameDayAs: priorDay)
+                && !$0.isSkipped
+                && ($0.isCompleted || ($0.actualDurationMinutes ?? 0) > 0 || $0.isPartialCompletion)
         }
-        
-        let completedWorkouts = todayWorkouts.filter {
-            $0.isCompleted
-        }
-        
+
         let lastCompletedWorkout = completedWorkouts
             .sorted { $0.date > $1.date }
             .first
         
         let missedItemsCount = activities.filter { activity in
+            guard calendar.isDate(activity.date, inSameDayAs: todayStart) else { return false }
             let eventEndDate = calendar.date(
                 byAdding: .minute,
                 value: activity.durationMinutes,
@@ -288,13 +291,28 @@ private extension HumanBrain {
             !activity.isSkipped &&
             now > eventEndDate
         }.count
+
+        let totalCompletedMinutes = completedWorkouts.reduce(0) {
+            $0 + max($1.actualDurationMinutes ?? 0, $1.durationMinutes, $1.effectiveDurationMinutes)
+        }
+        let hasLongSession = completedWorkouts.contains {
+            let minutes = max($0.actualDurationMinutes ?? 0, $0.durationMinutes, $0.effectiveDurationMinutes)
+            if minutes >= 150 { return true }
+            if CoachActivityClassification.isHikeLike($0), minutes >= 90 { return true }
+            return CoachActivityClassifier.isSeriousTraining($0) && minutes >= 75
+        }
         
         return PastContext(
             completedWorkouts: completedWorkouts,
             lastCompletedWorkout: lastCompletedWorkout,
             missedItemsCount: missedItemsCount,
             completedWorkoutsCount: completedWorkouts.count,
-            hasHighActivityLoad: metrics.activeCalories > 750.0 || completedWorkouts.count >= 2
+            // Prefer prior-day session evidence; today's active calories are a weak fallback
+            // when yesterday's plan wasn't mirrored into PlannedActivity.
+            hasHighActivityLoad: totalCompletedMinutes >= 180
+                || hasLongSession
+                || completedWorkouts.count >= 2
+                || metrics.activeCalories > 750.0
         )
     }
     

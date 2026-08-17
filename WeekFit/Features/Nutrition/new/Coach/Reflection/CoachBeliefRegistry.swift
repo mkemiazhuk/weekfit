@@ -10,6 +10,11 @@ enum CoachBeliefRegistry {
         RecoveryAfterRestDayBeliefEvaluator.self,
         ConsecutiveHardDaysFatigueBeliefEvaluator.self,
         UnderfuelingRecoveryBeliefEvaluator.self,
+        ProteinTrainingDayRecoveryBeliefEvaluator.self,
+        PostWorkoutProteinRecoveryBeliefEvaluator.self,
+        HardTrainingLowRecoveryCostBeliefEvaluator.self,
+        CarbsTrainingDayRecoveryBeliefEvaluator.self,
+        LateHardTrainingSleepBeliefEvaluator.self,
     ]
 
     static var registeredBeliefIDs: [CoachBeliefID] {

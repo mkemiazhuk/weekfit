@@ -187,7 +187,11 @@ enum CoachCopySubjectGuard {
         case .saunaPreparation, .saunaActive, .saunaRecovery:
             return ["sauna", "heat", "саун", "жар", "тепл"]
         case .walkLightDay:
-            return ["easy walk", "easy hike", "walk", "hike", "прогулк", "хайкинг", "поход", "лёгк"]
+            return [
+                "easy walk", "easy hike", "long hike", "hike day", "walk", "hike",
+                "прогулк", "хайкинг", "поход", "лёгк", "длинн", "вод", "перекус",
+                "water", "snack", "pack", "trail", "outing", "маршрут", "обув"
+            ]
         case .walkAfterHeavyLoad:
             return [
                 "recovery walk", "recovery hike", "walk", "hike", "прогулк", "хайкинг", "поход",

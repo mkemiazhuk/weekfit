@@ -502,6 +502,11 @@ enum CoachCopyRegistry {
     private static func supportingSignals(for input: CoachCopyBuildInput) -> CoachCopySection {
         var lines: [CoachBilingualText] = []
 
+        let hikePrep = CoachLongHikeCopy.supportingSignals(for: input)
+        for line in hikePrep where lines.count < 3 {
+            lines.append(line)
+        }
+
         if shouldSurfaceNutritionSignals(for: input) {
             let progress = RelativeProgressPolicy.evaluate(input: input)
 

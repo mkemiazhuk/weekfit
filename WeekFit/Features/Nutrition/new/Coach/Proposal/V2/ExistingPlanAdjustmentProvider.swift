@@ -197,7 +197,8 @@ enum ExistingPlanAdjustmentProvider {
     private static func shouldSkip(context: DailyContext, strategy: DailyStrategy) -> Bool {
         guard strategy == .recover else { return false }
         guard context.recoveryBand == .low else { return false }
-        if context.yesterdayHeavy || context.stackedLoad.isElevated || context.tomorrowDemand == .hard {
+        if context.yesterdayHeavy || context.stackedLoad.isElevated || context.tomorrowDemand == .hard
+            || context.preferAvoidHardLoadOnLowRecovery {
             return true
         }
         // Soft recovery with a longer bike / run / gym still on the plan.

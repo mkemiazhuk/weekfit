@@ -20,7 +20,8 @@ enum CandidateScorer {
         if candidate.kind == .createPlannedActivity,
            (strategy == .recover
             || strategy == .protectTomorrow
-            || context.recoveryBand == .low),
+            || context.recoveryBand == .low
+            || context.yesterdayHeavy),
            isElevatedLoad(candidate) {
             return nil
         }
@@ -122,8 +123,16 @@ enum CandidateScorer {
 
         let conflict: Int = candidate.conflicts.isEmpty ? 0 : -10
         let fatigue: Int = {
-            if context.yesterdayHeavy, isSerious(candidate) { return -8 }
-            return 0
+            var penalty = 0
+            if context.yesterdayHeavy, isSerious(candidate) {
+                penalty -= 8
+            }
+            if context.preferAvoidHardLoadOnLowRecovery,
+               candidate.kind == .createPlannedActivity,
+               isElevatedLoad(candidate) || isSerious(candidate) {
+                penalty -= 6
+            }
+            return max(penalty, -12)
         }()
 
         let breakdown = CandidateScoreBreakdown(
@@ -190,6 +199,10 @@ enum CandidateScorer {
                 && !context.stronglyRejectsWalk
         case .createPlannedActivity:
             // High-evidence habitual creates on train days start selected (user can deselect).
+            if context.preferAvoidHardLoadOnLowRecovery,
+               isElevatedLoad(candidate) || isSerious(candidate) {
+                return false
+            }
             return candidate.defaultSelectionEligibility == .eligible
                 && strategy == .train
                 && context.contextFreshness == .high

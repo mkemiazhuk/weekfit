@@ -146,6 +146,12 @@ enum BeliefEvaluationSupport {
         return Double(values.reduce(0, +)) / Double(values.count)
     }
 
+    static func median(_ values: [Int]) -> Int? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        return sorted[sorted.count / 2]
+    }
+
     static func confidence(
         effectSize: Double,
         emergedThreshold: Double,

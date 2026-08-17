@@ -15,10 +15,10 @@ final class CoachBeliefDebugInspectorTests: XCTestCase {
         super.tearDown()
     }
 
-    func testSnapshotListsAllSevenRegisteredBeliefs() {
+    func testSnapshotListsAllRegisteredBeliefs() {
         let snapshot = CoachBeliefDebugInspector.build(coachState: .unavailable(reason: "test"))
 
-        XCTAssertEqual(snapshot.beliefs.count, 7)
+        XCTAssertEqual(snapshot.beliefs.count, 12)
         XCTAssertEqual(
             Set(snapshot.beliefs.map(\.beliefID)),
             Set(CoachBeliefRegistry.registeredBeliefIDs)

@@ -17,6 +17,15 @@ enum RecoveryMovementProvider {
             return []
         }
 
+        let needsPostHardDayMovement = context.yesterdayHeavy
+            || strategy == .recover
+            || context.recoveryBand == .low
+
+        // After hard days, stretching is the fallback when walks are rejected.
+        if context.stronglyRejectsWalk, needsPostHardDayMovement {
+            return lightStretchCandidate(context: context)
+        }
+
         // Cold start: offer an optional Walk so the first morning isn't meals-only.
         // No Plan rhythm yet — keep it unselected and skip habit/weekday gates.
         if context.isColdStart {
@@ -55,10 +64,10 @@ enum RecoveryMovementProvider {
             break
         }
 
-        // Do not invent a speculative Walk on a weekday without walk history.
-        // Empty workday + low recovery → guidance only (habits come from history).
+        // Do not invent a speculative Walk on a weekday without walk history —
+        // unless yesterday was hard or today is a recover day.
         let hasWalkHabit = habitualWalkDate(context: context, calendar: .current) != nil
-        if isWeekdayWorkday(context.now), !hasWalkHabit {
+        if isWeekdayWorkday(context.now), !hasWalkHabit, !needsPostHardDayMovement {
             #if DEBUG
             MorningProposalDebugTrace.lastWalkDecision = .guidance
             MorningProposalDebugTrace.lastNoProposalReason = "no_weekday_walk_habit"
@@ -95,7 +104,7 @@ enum RecoveryMovementProvider {
                 confidence: selectedEligible ? 0.8 : 0.55,
                 burden: .low,
                 reasonCodes: [
-                    context.recoveryBand == .low || context.yesterdayHeavy
+                    context.yesterdayHeavy || context.recoveryBand == .low || strategy == .recover
                         ? .recoveryWalkSupport
                         : .openDayMovementSupport
                 ],
@@ -104,6 +113,51 @@ enum RecoveryMovementProvider {
                 sortTime: walkDate,
                 evidenceScenarioKey: context.scenarioKey?.rawValue,
                 identityKey: "walk:recovery"
+            )
+        ]
+    }
+
+    /// Easy stretch after hard days when walks are not wanted.
+    private static func lightStretchCandidate(context: DailyContext) -> [ProposalCandidate] {
+        guard context.generationMode == .compose || context.generationMode == .optimize else {
+            return []
+        }
+        guard !context.hasExistingMovement, !context.completedWalkToday else { return [] }
+        let proposedDate = recoveryWalkSlot(context: context)
+            ?? context.now.addingTimeInterval(60 * 60)
+        #if DEBUG
+        MorningProposalDebugTrace.lastWalkDecision = .unselected
+        MorningProposalDebugTrace.lastNoProposalReason = "post_hard_stretch"
+        #endif
+        return [
+            ProposalCandidate(
+                id: "stretch-recovery",
+                source: .recoveryMovement,
+                kind: .createPlannedActivity,
+                payload: .createPlannedActivity(
+                    CreatePlannedActivityPayload(
+                        proposedDate: proposedDate,
+                        durationMinutes: 12,
+                        title: "Stretch",
+                        activityType: "stretching",
+                        icon: "figure.flexibility",
+                        imageName: "",
+                        colorRed: 0.45,
+                        colorGreen: 0.72,
+                        colorBlue: 0.62,
+                        sourceTemplateDayKey: nil
+                    )
+                ),
+                compatibleStrategies: [.recover, .maintain, .protectTomorrow],
+                physiologicalFit: .strong,
+                confidence: 0.6,
+                burden: .low,
+                reasonCodes: [.recoveryStretchSupport],
+                conflicts: [],
+                defaultSelectionEligibility: .ineligible,
+                sortTime: proposedDate,
+                evidenceScenarioKey: context.scenarioKey?.rawValue,
+                identityKey: "stretch:recovery"
             )
         ]
     }
@@ -328,47 +382,92 @@ enum MealLibraryProvider {
         case .recover:
             preferredTypes = ["recovery", "sleepsupport", "highprotein", "balanced"]
         case .train, .maintain:
-            preferredTypes = ["preworkout", "balanced", "highprotein", "endurance"]
+            preferredTypes = context.yesterdayHeavy
+                ? ["recovery", "highprotein", "balanced", "preworkout"]
+                : ["preworkout", "balanced", "highprotein", "endurance"]
         case .protectTomorrow:
             preferredTypes = ["balanced", "recovery", "highprotein"]
         case .continueExistingPlan:
             preferredTypes = ["balanced"]
         }
 
-        let picks = pickMeals(from: context.mealLibrary, preferredTypes: preferredTypes, limit: 3)
-        let slots = defaultMealSlots(now: context.now, library: picks)
-        return picks.enumerated().map { index, meal in
-            let slot = slots[min(index, slots.count - 1)]
-            let highConfidence = context.contextFreshness == .high
-            return ProposalCandidate(
-                id: "meal-\(meal.id)",
-                source: .mealLibrary,
-                kind: .createMealFromLibrary,
-                payload: .createMealFromLibrary(
-                    CreateMealFromLibraryPayload(
-                        mealId: meal.id,
-                        title: meal.title,
-                        proposedDate: slot,
-                        durationMinutes: 15,
-                        calories: meal.calories,
-                        protein: meal.protein,
-                        carbs: meal.carbs,
-                        fats: meal.fats,
-                        fiber: meal.fiber,
-                        imageName: meal.imageName
-                    )
-                ),
-                compatibleStrategies: [.recover, .maintain, .train, .protectTomorrow],
-                physiologicalFit: highConfidence ? .moderate : .weak,
-                confidence: highConfidence ? 0.7 : 0.45,
-                burden: .low,
-                reasonCodes: [.libraryMealSupport],
-                conflicts: [],
-                defaultSelectionEligibility: highConfidence ? .eligible : .ineligible,
-                sortTime: slot,
-                evidenceScenarioKey: context.scenarioKey?.rawValue,
-                identityKey: "meal:\(meal.id)"
+        let excludedTitles = yesterdayMealTitles(context: context).union(todayMealTitles(context: context))
+        let includeSnack = strategy == .train || !context.todaySeriousOpen.isEmpty
+        let slots = remainingSlots(
+            now: context.now,
+            strategy: strategy,
+            includeSnack: includeSnack,
+            library: context.mealLibrary,
+            excludedTitles: excludedTitles
+        )
+        let highConfidence = context.contextFreshness == .high
+
+        var usedIds = Set<String>()
+        var result: [ProposalCandidate] = []
+        for slot in slots {
+            guard let meal = pickMeal(
+                for: slot,
+                from: context.mealLibrary,
+                preferredTypes: preferredTypes,
+                excludedTitles: excludedTitles,
+                usedIds: usedIds
+            ) else { continue }
+            usedIds.insert(meal.id)
+            let proposedDate = slotDate(slot, now: context.now, meal: meal)
+            result.append(
+                ProposalCandidate(
+                    id: "meal-\(slot.rawValue)-\(meal.id)",
+                    source: .mealLibrary,
+                    kind: .createMealFromLibrary,
+                    payload: .createMealFromLibrary(
+                        CreateMealFromLibraryPayload(
+                            mealId: meal.id,
+                            title: meal.title,
+                            proposedDate: proposedDate,
+                            durationMinutes: 15,
+                            calories: meal.calories,
+                            protein: meal.protein,
+                            carbs: meal.carbs,
+                            fats: meal.fats,
+                            fiber: meal.fiber,
+                            imageName: meal.imageName
+                        )
+                    ),
+                    compatibleStrategies: [.recover, .maintain, .train, .protectTomorrow],
+                    physiologicalFit: highConfidence ? .moderate : .weak,
+                    confidence: highConfidence ? 0.7 : 0.45,
+                    burden: .low,
+                    reasonCodes: [mealReason(
+                        slot: slot,
+                        strategy: strategy,
+                        yesterdayHeavy: context.yesterdayHeavy
+                    )],
+                    conflicts: [],
+                    defaultSelectionEligibility: highConfidence ? .eligible : .ineligible,
+                    sortTime: proposedDate,
+                    evidenceScenarioKey: context.scenarioKey?.rawValue,
+                    identityKey: "meal:\(slot.rawValue):\(meal.id)"
+                )
             )
+        }
+        return result
+    }
+
+    static func mealReason(
+        slot: ProposalMealSlot,
+        strategy: DailyStrategy,
+        yesterdayHeavy: Bool
+    ) -> CoachProposalReasonCode {
+        let rebuild = strategy == .recover || yesterdayHeavy
+        switch slot {
+        case .breakfast:
+            return rebuild ? .libraryMealRecoveryBreakfast : .libraryMealSteadyBreakfast
+        case .lunch:
+            return rebuild ? .libraryMealRecoveryLunch : .libraryMealSteadyLunch
+        case .dinner:
+            return rebuild ? .libraryMealRecoveryDinner : .libraryMealSteadyDinner
+        case .snack:
+            return .libraryMealSupport
         }
     }
 
@@ -401,42 +500,127 @@ enum MealLibraryProvider {
         return picks
     }
 
-    private static func defaultMealSlots(now: Date, library: [ProposalMealCandidate]) -> [Date] {
-        let calendar = Calendar.current
+    static func remainingSlots(
+        now: Date,
+        strategy: DailyStrategy,
+        includeSnack: Bool,
+        library: [ProposalMealCandidate] = [],
+        excludedTitles: Set<String> = [],
+        calendar: Calendar = .current
+    ) -> [ProposalMealSlot] {
+        let hour = calendar.component(.hour, from: now)
+        var ordered: [ProposalMealSlot] = []
+        if hour < 10 { ordered.append(.breakfast) }
+        if hour < 14 { ordered.append(.lunch) }
+        if hour < 21 { ordered.append(.dinner) }
+        if includeSnack, hour < 17 { ordered.append(.snack) }
+
+        let maxCount: Int
+        switch strategy {
+        case .continueExistingPlan:
+            maxCount = 0
+        default:
+            maxCount = 2
+        }
+
+        let matched = ordered.filter { slot in
+            library.contains { meal in
+                !excludedTitles.contains(normalizedTitle(meal.title))
+                    && ProposalMealSlot.from(suggestedTime: meal.suggestedTime) == slot
+            }
+        }
+        let source = matched.isEmpty ? ordered : matched
+        return Array(source.prefix(maxCount))
+    }
+
+    static func pickMeal(
+        for slot: ProposalMealSlot,
+        from library: [ProposalMealCandidate],
+        preferredTypes: [String],
+        excludedTitles: Set<String>,
+        usedIds: Set<String>
+    ) -> ProposalMealCandidate? {
+        func isAvailable(_ meal: ProposalMealCandidate) -> Bool {
+            !usedIds.contains(meal.id) && !excludedTitles.contains(normalizedTitle(meal.title))
+        }
+
+        let slotMeals = library.filter { meal in
+            isAvailable(meal) && (ProposalMealSlot.from(suggestedTime: meal.suggestedTime) == slot)
+        }
+        if let typed = firstPreferred(in: slotMeals, preferredTypes: preferredTypes) {
+            return typed
+        }
+        if let first = slotMeals.first {
+            return first
+        }
+        // Don't dump a dinner plate into breakfast just to fill the list.
+        return nil
+    }
+
+    private static func firstPreferred(
+        in meals: [ProposalMealCandidate],
+        preferredTypes: [String]
+    ) -> ProposalMealCandidate? {
+        for type in preferredTypes {
+            if let match = meals.first(where: { $0.mealsTypeRaw.lowercased().contains(type) }) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    private static func slotDate(
+        _ slot: ProposalMealSlot,
+        now: Date,
+        meal: ProposalMealCandidate,
+        calendar: Calendar = .current
+    ) -> Date {
         let base = calendar.startOfDay(for: now)
         let earliest = now.addingTimeInterval(25 * 60)
-
-        let parsed = library
-            .compactMap { parseSuggestedTime($0.suggestedTime, on: base, calendar: calendar) }
-            .filter { $0 >= earliest }
-            .sorted()
-        if parsed.count >= 2 {
-            return parsed
+        if let suggested = meal.suggestedTime,
+           ProposalMealSlot.from(suggestedTime: suggested) == slot,
+           let parsed = parseSuggestedTime(suggested, on: base, calendar: calendar) {
+            return max(parsed, earliest)
         }
+        let proposed = calendar.date(
+            bySettingHour: slot.defaultHour,
+            minute: slot.defaultMinute,
+            second: 0,
+            of: base
+        ) ?? now
+        return max(proposed, earliest)
+    }
 
-        // Full-day fuel: breakfast → lunch → dinner (skip slots already past).
-        let breakfast = calendar.date(bySettingHour: 8, minute: 30, second: 0, of: base) ?? now
-        let lunch = calendar.date(bySettingHour: 13, minute: 0, second: 0, of: base) ?? now
-        let dinner = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: base) ?? now
-
-        var slots = [breakfast, lunch, dinner]
-            .map { max($0, earliest) }
-            .filter { $0 >= earliest }
-
-        // De-dupe when early morning bumps multiple slots to the same window.
-        var unique: [Date] = []
-        for slot in slots {
-            if unique.contains(where: { abs($0.timeIntervalSince(slot)) < 40 * 60 }) { continue }
-            unique.append(slot)
+    private static func yesterdayMealTitles(
+        context: DailyContext,
+        calendar: Calendar = .current
+    ) -> Set<String> {
+        guard let yesterday = calendar.date(
+            byAdding: .day,
+            value: -1,
+            to: calendar.startOfDay(for: context.now)
+        ) else {
+            return []
         }
-        if unique.isEmpty {
-            unique = [earliest.addingTimeInterval(20 * 60)]
-        }
+        let key = ProposalInputFingerprintBuilder.dayKey(for: yesterday, calendar: calendar)
+        let activities = context.recentDayTemplates.first { $0.dayKey == key }?.activities ?? []
+        return Set(
+            activities
+                .filter { !$0.isSkipped && CoachCanonicalDayState.isNutritionLog($0) }
+                .map { normalizedTitle($0.title) }
+        )
+    }
 
-        if let first = parsed.first {
-            unique[0] = max(first, earliest)
-        }
-        return unique
+    private static func todayMealTitles(context: DailyContext) -> Set<String> {
+        Set(
+            context.todayActivities
+                .filter { !$0.isSkipped && CoachCanonicalDayState.isNutritionLog($0) }
+                .map { normalizedTitle($0.title) }
+        )
+    }
+
+    private static func normalizedTitle(_ title: String) -> String {
+        title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func parseSuggestedTime(
@@ -569,7 +753,7 @@ enum GuidanceCandidateProvider {
         context: DailyContext,
         strategy: DailyStrategy
     ) -> CoachGuidanceCode {
-        if context.recoveryBand == .low || strategy == .recover {
+        if context.recoveryBand == .low || strategy == .recover || context.yesterdayHeavy {
             return .morningFuelGentleRecovery
         }
         if strategy == .train || !context.todaySeriousOpen.isEmpty {

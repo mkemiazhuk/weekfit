@@ -144,9 +144,11 @@ enum CoachConversationEnergyPolicy {
     ) -> CoachSemanticColor {
         switch energy {
         case .low, .medium:
-            if base == .live
-                || base == .liveZone1 || base == .liveZone2 || base == .liveZone3
-                || base == .liveElevated || base == .liveCritical {
+            // Live HR zone chrome must keep its own color during a session.
+            if HeartRateZones.isLiveZoneColor(base) {
+                return base
+            }
+            if base == .live {
                 return .recovery
             }
             if base == .activity, isRecoveryFamily(scenario) {

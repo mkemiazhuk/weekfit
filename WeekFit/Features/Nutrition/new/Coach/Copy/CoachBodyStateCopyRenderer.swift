@@ -384,6 +384,32 @@ enum CoachBodyStateCopyRenderer {
     // MARK: - Walk
 
     private static func applyWalkLightDay(base: BasePack, bodyState: CoachBodyState) -> BasePack {
+        let assessmentEN = base.assessment.lines.map(\.english).joined(separator: " ").lowercased()
+        let isSubstantialHike =
+            assessmentEN.contains("on trail")
+            || assessmentEN.contains("hike —")
+            || assessmentEN.contains("hike day")
+            || assessmentEN.contains("long hike")
+            || assessmentEN.contains("full outing")
+            || assessmentEN.contains("protect the second half")
+
+        if isSubstantialHike {
+            switch bodyState {
+            case .fresh, .normal:
+                return base
+            case .fatigued, .veryFatigued:
+                return BasePack(
+                    assessment: base.assessment,
+                    recommendation: .single(.en(
+                        "Start even more conservatively — fatigue means packing and pacing matter more.",
+                        "Начните ещё консервативнее — при усталости подготовка и темп важнее обычного."
+                    )),
+                    avoid: base.avoid,
+                    nextAction: base.nextAction
+                )
+            }
+        }
+
         switch bodyState {
         case .fresh, .normal:
             return base

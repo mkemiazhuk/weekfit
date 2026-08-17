@@ -4,7 +4,8 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
 
     static let beliefID: CoachBeliefID = .sleepDurationRecovery
 
-    private static let sufficientSleepMinutes = 7 * 60
+    private static let minimumThresholdMinutes = 6 * 60
+    private static let maximumThresholdMinutes = Int(8.5 * 60) // 510
     private static let emergedRecoveryDelta = 8.0
     private static let establishedRecoveryDelta = 6.0
     private static let minimumEligibleDays = 8
@@ -34,9 +35,13 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
             .filter(\.hasRecoverySignal)
 
         guard eligible.count >= minimumEligibleDays else { return nil }
+        guard let rawMedian = BeliefEvaluationSupport.median(eligible.map(\.sleepMinutes)) else {
+            return nil
+        }
 
-        let sufficient = eligible.filter { $0.sleepMinutes >= sufficientSleepMinutes }
-        let insufficient = eligible.filter { $0.sleepMinutes < sufficientSleepMinutes }
+        let threshold = min(max(rawMedian, minimumThresholdMinutes), maximumThresholdMinutes)
+        let sufficient = eligible.filter { $0.sleepMinutes >= threshold }
+        let insufficient = eligible.filter { $0.sleepMinutes < threshold }
 
         guard sufficient.count >= minimumSufficientSampleCount,
               insufficient.count >= minimumInsufficientSampleCount else {
@@ -47,7 +52,8 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
             sufficientRecoveryAverage: BeliefEvaluationSupport.average(sufficient.map(\.recoveryPercent)),
             insufficientRecoveryAverage: BeliefEvaluationSupport.average(insufficient.map(\.recoveryPercent)),
             sufficientSampleCount: sufficient.count,
-            insufficientSampleCount: insufficient.count
+            insufficientSampleCount: insufficient.count,
+            sufficientSleepThresholdMinutes: threshold
         )
     }
 
@@ -58,7 +64,7 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
             comparisonGroupSampleCount: evaluation.insufficientSampleCount,
             primaryGroupAverage: evaluation.sufficientRecoveryAverage,
             comparisonGroupAverage: evaluation.insufficientRecoveryAverage,
-            notes: "sleep duration >= 7h vs shorter sleep"
+            notes: "sleep duration >= \(evaluation.sufficientSleepThresholdMinutes)m (learned threshold) vs shorter sleep"
         )
     }
 
@@ -80,8 +86,10 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
             )
         }
 
-        let sufficient = eligible.filter { $0.sleepMinutes >= sufficientSleepMinutes }
-        let insufficient = eligible.filter { $0.sleepMinutes < sufficientSleepMinutes }
+        let rawMedian = BeliefEvaluationSupport.median(eligible.map(\.sleepMinutes)) ?? (7 * 60)
+        let threshold = min(max(rawMedian, minimumThresholdMinutes), maximumThresholdMinutes)
+        let sufficient = eligible.filter { $0.sleepMinutes >= threshold }
+        let insufficient = eligible.filter { $0.sleepMinutes < threshold }
 
         return .insufficientGroupSamples(
             primaryRequired: minimumSufficientSampleCount,

@@ -1,6 +1,5 @@
 import Foundation
 import WeekFitPlanner
-import WeekFitPlanner
 
 enum CoachObservationAssembler {
 
@@ -40,12 +39,35 @@ enum CoachObservationAssembler {
                 for: date,
                 plannedActivities: plannedActivities,
                 healthSnapshot: healthNutritionSnapshot
-              ),
-              let nutrition = CoachDailyObservationNutritionBuilder.build(
-                totals: resolved.totals,
-                calorieTarget: calorieTarget,
-                nutritionDataAvailable: nutritionDataAvailable || resolved.isAvailable
               ) else {
+            return withTraining
+        }
+
+        let hasHealthKitSignal = healthNutritionSnapshot?.isResolved == true
+        let hasPlannedMealSignal =
+            resolved.totals.mealsLoggedCount > 0
+            || resolved.totals.caloriesEaten > 0
+            || resolved.totals.proteinGrams > 0
+        let source = CoachNutritionSourceClassifier.infer(
+            hasHealthKitSignal: hasHealthKitSignal,
+            hasPlannedMealSignal: hasPlannedMealSignal
+        )
+        let dayStart = Calendar.current.startOfDay(for: date)
+        let workoutEndMinutes = withTraining.hardestWorkoutEndMinutes
+            ?? CoachPostWorkoutNutritionObservation.hardestWorkoutEndMinutes(from: workouts)
+        let postWorkoutProtein = CoachPostWorkoutNutritionObservation.proteinGramsWithinWindow(
+            dayStart: dayStart,
+            workoutEndMinutes: workoutEndMinutes,
+            plannedActivities: plannedActivities
+        )
+
+        guard let nutrition = CoachDailyObservationNutritionBuilder.build(
+            totals: resolved.totals,
+            calorieTarget: calorieTarget,
+            nutritionDataAvailable: nutritionDataAvailable || resolved.isAvailable,
+            source: source,
+            proteinWithinPostWorkoutWindowGrams: postWorkoutProtein
+        ) else {
             return withTraining
         }
 

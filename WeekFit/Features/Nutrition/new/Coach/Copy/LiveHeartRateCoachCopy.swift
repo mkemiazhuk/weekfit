@@ -39,65 +39,50 @@ enum LiveHeartRateCoachCopy {
 
     static func assessment(for input: CoachCopyBuildInput) -> CoachBilingualText? {
         guard let zone = input.liveHeartRateZone else { return nil }
-        let bpmPartEN: String
-        let bpmPartRU: String
-        if let bpm = input.liveHeartRateBPM {
-            bpmPartEN = " at \(bpm) bpm"
-            bpmPartRU = " · \(bpm) уд/мин"
-        } else {
-            bpmPartEN = ""
-            bpmPartRU = ""
-        }
 
         switch zone {
         case 1:
             return .en(
-                "You're in Zone 1\(bpmPartEN) — recovery effort.",
-                "Вы в зоне 1\(bpmPartRU) — восстановительная нагрузка."
+                "You're in Zone 1 — recovery effort.",
+                "Вы в зоне 1 — восстановительная нагрузка."
             )
         case 2:
             return .en(
-                "You're in Zone 2\(bpmPartEN) — aerobic work.",
-                "Вы в зоне 2\(bpmPartRU) — аэробная работа."
+                "You're in Zone 2 — aerobic work.",
+                "Вы в зоне 2 — аэробная работа."
             )
         case 3:
             return .en(
-                "You're in Zone 3\(bpmPartEN) — tempo effort.",
-                "Вы в зоне 3\(bpmPartRU) — темповая нагрузка."
+                "You're in Zone 3 — tempo effort.",
+                "Вы в зоне 3 — темповая нагрузка."
             )
         case 4:
             return .en(
-                "You're in Zone 4\(bpmPartEN) — hard effort, stay controlled.",
-                "Вы в зоне 4\(bpmPartRU) — тяжёлая нагрузка, держите контроль."
+                "You're in Zone 4 — hard effort, stay controlled.",
+                "Вы в зоне 4 — тяжёлая нагрузка, держите контроль."
             )
         default:
             return .en(
-                "You're in Zone 5\(bpmPartEN) — max effort, protect the rest of this session.",
-                "Вы в зоне 5\(bpmPartRU) — максимум, берегите остаток тренировки."
+                "You're in Zone 5 — max effort, protect the rest of this session.",
+                "Вы в зоне 5 — максимум, берегите остаток тренировки."
             )
         }
     }
 
     static func teaser(for input: CoachCopyBuildInput) -> CoachBilingualText? {
         guard let zone = input.liveHeartRateZone else { return nil }
-        let bpmSuffix: String
-        if let bpm = input.liveHeartRateBPM {
-            bpmSuffix = " · \(bpm)"
-        } else {
-            bpmSuffix = ""
-        }
 
         switch zone {
         case 1:
-            return .en("Zone 1\(bpmSuffix) — easy.", "Зона 1\(bpmSuffix) — легко.")
+            return .en("Zone 1 — easy.", "Зона 1 — легко.")
         case 2:
-            return .en("Zone 2\(bpmSuffix) — aerobic.", "Зона 2\(bpmSuffix) — аэробная.")
+            return .en("Zone 2 — aerobic.", "Зона 2 — аэробная.")
         case 3:
-            return .en("Zone 3\(bpmSuffix) — tempo.", "Зона 3\(bpmSuffix) — темп.")
+            return .en("Zone 3 — tempo.", "Зона 3 — темп.")
         case 4:
-            return .en("Zone 4\(bpmSuffix) — hard, ease back.", "Зона 4\(bpmSuffix) — тяжело, сбавьте.")
+            return .en("Zone 4 — hard, ease back.", "Зона 4 — тяжело, сбавьте.")
         default:
-            return .en("Zone 5\(bpmSuffix) — max, ease off.", "Зона 5\(bpmSuffix) — максимум, сбросьте.")
+            return .en("Zone 5 — max, ease off.", "Зона 5 — максимум, сбросьте.")
         }
     }
 

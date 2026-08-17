@@ -44,7 +44,7 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
         XCTAssertEqual(activities.map(\.title), ["Earlier", "Later"])
     }
 
-    func testBuildPreservesHighestAvailableNutritionInputs() async {
+    func testBuildSeedsHealthKitNutritionWithoutCurrentMetricsRatchet() async {
         let today = CoachTestClock.reference
         let todayStart = Calendar.current.startOfDay(for: today)
         let healthManager = makeHealthManager(
@@ -87,14 +87,15 @@ final class DailyStateSnapshotBuilderXCTests: XCTestCase {
             healthManager: healthManager,
             nutritionViewModel: nutritionViewModel,
             now: today,
-            source: "test.preserveNutrition"
+            source: "test.healthKitSeedOnly"
         )
 
-        XCTAssertEqual(snapshot.nutritionMetrics.calories, 640)
+        // Prior view-model totals must not floor the seed above HealthKit.
+        XCTAssertEqual(snapshot.nutritionMetrics.calories, 300)
         XCTAssertEqual(snapshot.nutritionMetrics.protein, 42)
-        XCTAssertEqual(snapshot.nutritionMetrics.carbs, 81)
-        XCTAssertEqual(snapshot.nutritionMetrics.fats, 18)
-        XCTAssertEqual(snapshot.nutritionMetrics.fiber, 7)
+        XCTAssertEqual(snapshot.nutritionMetrics.carbs, 30)
+        XCTAssertEqual(snapshot.nutritionMetrics.fats, 10)
+        XCTAssertEqual(snapshot.nutritionMetrics.fiber, 4)
         XCTAssertEqual(snapshot.nutritionMetrics.waterLiters, 1.2)
     }
 

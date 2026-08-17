@@ -74,6 +74,56 @@ enum ReflectionCopy {
                 english: "I'm more confident about this now. When you finish days significantly underfueled, your recovery usually comes back weaker.",
                 russian: "Теперь я в этом увереннее: когда день заканчивается с заметным недобором энергии, восстановление обычно возвращается слабее."
             )
+        case (.proteinTrainingDayRecovery, .emerged, .emerging):
+            return CoachState.localized(
+                english: "I've noticed that on training days with higher protein, your recovery the next day tends to come back stronger.",
+                russian: "Я заметил: в тренировочные дни с более высоким белком восстановление на следующий день обычно возвращается сильнее."
+            )
+        case (.proteinTrainingDayRecovery, .emerged, .established), (.proteinTrainingDayRecovery, .strengthened, .established):
+            return CoachState.localized(
+                english: "I'm more confident about this now. Higher-protein training days tend to leave your next-day recovery stronger.",
+                russian: "Теперь я в этом увереннее: тренировочные дни с более высоким белком обычно оставляют восстановление на следующий день сильнее."
+            )
+        case (.postWorkoutProteinRecovery, .emerged, .emerging):
+            return CoachState.localized(
+                english: "I've noticed that when you get more protein soon after harder workouts, your recovery the next day tends to look better.",
+                russian: "Я заметил: когда после более тяжёлых тренировок вы быстрее набираете белок, восстановление на следующий день обычно выглядит лучше."
+            )
+        case (.postWorkoutProteinRecovery, .emerged, .established), (.postWorkoutProteinRecovery, .strengthened, .established):
+            return CoachState.localized(
+                english: "I'm more confident about this now. More protein soon after harder workouts tends to support stronger next-day recovery.",
+                russian: "Теперь я в этом увереннее: больше белка вскоре после тяжёлых тренировок обычно поддерживает более сильное восстановление на следующий день."
+            )
+        case (.hardTrainingLowRecoveryCost, .emerged, .emerging):
+            return CoachState.localized(
+                english: "I've noticed that when you push hard while still poorly recovered, the next day's recovery tends to take a bigger hit.",
+                russian: "Я заметил: когда вы нагружаетесь, будучи ещё плохо восстановленными, восстановление на следующий день обычно проседает сильнее."
+            )
+        case (.hardTrainingLowRecoveryCost, .emerged, .established), (.hardTrainingLowRecoveryCost, .strengthened, .established):
+            return CoachState.localized(
+                english: "I'm more confident about this now. Hard training while poorly recovered tends to cost more on the next day's recovery.",
+                russian: "Теперь я в этом увереннее: тяжёлая нагрузка при слабом восстановлении обычно сильнее бьёт по восстановлению на следующий день."
+            )
+        case (.carbsTrainingDayRecovery, .emerged, .emerging):
+            return CoachState.localized(
+                english: "I've noticed that on harder training days with higher carbs, your recovery the next day tends to come back stronger.",
+                russian: "Я заметил: в более тяжёлые тренировочные дни с более высоким углеводом восстановление на следующий день обычно возвращается сильнее."
+            )
+        case (.carbsTrainingDayRecovery, .emerged, .established), (.carbsTrainingDayRecovery, .strengthened, .established):
+            return CoachState.localized(
+                english: "I'm more confident about this now. Higher-carb harder training days tend to leave your next-day recovery stronger.",
+                russian: "Теперь я в этом увереннее: более тяжёлые тренировочные дни с более высоким углеводом обычно оставляют восстановление на следующий день сильнее."
+            )
+        case (.lateHardTrainingSleep, .emerged, .emerging):
+            return CoachState.localized(
+                english: "I've noticed that when harder sessions finish late, the following night's sleep tends to come in shorter.",
+                russian: "Я заметил: когда более тяжёлые тренировки заканчиваются поздно, сон следующей ночи обычно получается короче."
+            )
+        case (.lateHardTrainingSleep, .emerged, .established), (.lateHardTrainingSleep, .strengthened, .established):
+            return CoachState.localized(
+                english: "I'm more confident about this now. Late hard sessions tend to leave the following night's sleep shorter.",
+                russian: "Теперь я в этом увереннее: поздние тяжёлые тренировки обычно оставляют сон следующей ночи короче."
+            )
         default:
             return CoachState.localized(
                 english: "I've learned something new about how your body responds over time.",

@@ -15,6 +15,8 @@ enum CoachProposalReasonCopy {
             return "coach.proposal.reason.stackedDayRisk"
         case .recoveryWalkSupport:
             return "coach.proposal.reason.recoveryWalkSupport"
+        case .recoveryStretchSupport:
+            return "coach.proposal.reason.recoveryStretchSupport"
         case .insufficientConfidence:
             return "coach.proposal.reason.insufficientConfidence"
         case .planAlreadyAppropriate:
@@ -25,6 +27,18 @@ enum CoachProposalReasonCopy {
             return "coach.proposal.reason.similarDaySupport"
         case .libraryMealSupport:
             return "coach.proposal.reason.libraryMealSupport"
+        case .libraryMealRecoveryBreakfast:
+            return "coach.proposal.reason.libraryMealRecoveryBreakfast"
+        case .libraryMealRecoveryLunch:
+            return "coach.proposal.reason.libraryMealRecoveryLunch"
+        case .libraryMealRecoveryDinner:
+            return "coach.proposal.reason.libraryMealRecoveryDinner"
+        case .libraryMealSteadyBreakfast:
+            return "coach.proposal.reason.libraryMealSteadyBreakfast"
+        case .libraryMealSteadyLunch:
+            return "coach.proposal.reason.libraryMealSteadyLunch"
+        case .libraryMealSteadyDinner:
+            return "coach.proposal.reason.libraryMealSteadyDinner"
         case .weatherOutdoorConflict:
             return "coach.proposal.reason.weatherOutdoorConflict"
         case .weatherHeatLoad:
@@ -84,7 +98,9 @@ enum CoachProposalReasonCopy {
         case .stackedDayRisk:
             return "Today’s plan is stacked; reduce or redistribute load."
         case .recoveryWalkSupport:
-            return "A short walk supports recovery without adding strain."
+            return "A short easy walk after a hard day helps the legs without stacking more training."
+        case .recoveryStretchSupport:
+            return "Easy stretching after hard days helps the body settle without more training load."
         case .insufficientConfidence:
             return "Signals are incomplete — move carefully today."
         case .planAlreadyAppropriate:
@@ -94,7 +110,19 @@ enum CoachProposalReasonCopy {
         case .similarDaySupport:
             return "A similar past day with matching readiness suggests this shape."
         case .libraryMealSupport:
-            return "A meal from your library fits today’s timing and recovery."
+            return "This meal matches today’s timing and what you usually eat."
+        case .libraryMealRecoveryBreakfast:
+            return "A gentle protein breakfast gives recovery something to work with after yesterday."
+        case .libraryMealRecoveryLunch:
+            return "Yesterday was a hard load — lunch refills energy without another training session."
+        case .libraryMealRecoveryDinner:
+            return "Protein at dinner supports overnight repair after yesterday’s effort."
+        case .libraryMealSteadyBreakfast:
+            return "A steady breakfast keeps energy even before the day picks up."
+        case .libraryMealSteadyLunch:
+            return "Lunch holds energy through the afternoon without forcing a heavy session."
+        case .libraryMealSteadyDinner:
+            return "Dinner closes the day with enough protein so tomorrow doesn’t start depleted."
         case .weatherOutdoorConflict:
             return "Outdoor conditions look rough — shift or ease the outdoor session."
         case .weatherHeatLoad:

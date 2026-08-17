@@ -32,7 +32,8 @@ final class TodayCoachInsightResolverTests: XCTestCase {
             fingerprint: nil,
             coachUIPresentation: presentation,
             coachIntegrationDebug: nil,
-            reflectionOffer: nil
+            reflectionOffer: nil,
+            discoveryOffer: nil
         )
 
         let phase = TodayCoachInsightResolver.resolve(
@@ -130,7 +131,8 @@ final class TodayCoachInsightResolverTests: XCTestCase {
             fingerprint: nil,
             coachUIPresentation: presentation,
             coachIntegrationDebug: nil,
-            reflectionOffer: nil
+            reflectionOffer: nil,
+            discoveryOffer: nil
         )
     }
 

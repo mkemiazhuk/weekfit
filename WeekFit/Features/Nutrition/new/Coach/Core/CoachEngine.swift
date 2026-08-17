@@ -211,7 +211,8 @@ enum CoachEngine {
                 lastCompletedSeriousActivityType: lastCompletedSeriousType,
                 completedWalkToday: completedWalkToday,
                 completedHeatToday: completedHeatToday,
-                isFocusHikeLike: focus.type == .walk && CoachActivityClassification.isHikeLike(activity)
+                isFocusHikeLike: focus.type == .walk && CoachActivityClassification.isHikeLike(activity),
+                focusDurationMinutes: activity.effectiveDurationMinutes
             ),
             input: input
         )

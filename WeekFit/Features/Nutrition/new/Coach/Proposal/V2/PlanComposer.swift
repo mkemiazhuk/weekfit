@@ -42,6 +42,8 @@ enum PlanComposer {
         var addedCreates = 0
         var seriousCreates = 0
         var movementCreates = 0
+        var mealCreates = 0
+        var occupiedMealSlots: Set<ProposalMealSlot> = []
 
         for item in ranked {
             if selected.count >= maxItems {
@@ -69,6 +71,15 @@ enum PlanComposer {
             if isCreate && kind != .createMealFromLibrary {
                 if addedCreates >= maxAdditions {
                     dropped.append(item.id)
+                    continue
+                }
+            }
+
+            if kind == .createMealFromLibrary {
+                let slot = ProposalMealSlot.from(date: item.candidate.sortTime)
+                if occupiedMealSlots.contains(slot) || mealCreates >= 2 {
+                    dropped.append(item.id)
+                    notes.append("one_meal_slot:\(item.id)")
                     continue
                 }
             }
@@ -132,6 +143,10 @@ enum PlanComposer {
             if isCreate && kind != .createMealFromLibrary {
                 addedCreates += 1
             }
+            if kind == .createMealFromLibrary {
+                mealCreates += 1
+                occupiedMealSlots.insert(ProposalMealSlot.from(date: item.candidate.sortTime))
+            }
             if kind == .createPlannedActivity, isSerious(item.candidate) {
                 seriousCreates += 1
             }
@@ -167,6 +182,8 @@ enum PlanComposer {
         let type = payload.activityType.lowercased()
         let title = payload.title.lowercased()
         return type.contains("walk") || title.contains("walk") || type == "recovery"
+            || type.contains("stretch") || title.contains("stretch")
+            || type.contains("breath") || title.contains("breath")
             || isHabitualLightRecovery(candidate)
     }
 

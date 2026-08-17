@@ -43,8 +43,17 @@ struct CoachBeliefDebugView: View {
         nutritionCoverage: CoachBeliefDebugInspector.ObservationNutritionCoverage(
             populatedCount: 0,
             missingCount: 0,
+            completenessUnknownCount: 0,
+            completenessEmptyCount: 0,
+            completenessPartialCount: 0,
+            completenessCompleteCount: 0,
             latestDayKey: nil,
             latestNutritionStatus: "no observations"
+        ),
+        discoveryCoverage: CoachBeliefDebugInspector.DiscoveryCoverage(
+            totalCount: 0,
+            activeCount: 0,
+            pendingOfferCount: 0
         ),
         capturedAt: Date()
     )
@@ -267,8 +276,15 @@ struct CoachBeliefDebugView: View {
         Section("Data context") {
             LabeledContent("Observations", value: "\(snapshot.observationCount)")
             LabeledContent("Beliefs tracked", value: "\(snapshot.beliefs.count)")
+            LabeledContent("Discoveries", value: "\(snapshot.discoveryCoverage.totalCount)")
+            LabeledContent("Active discoveries", value: "\(snapshot.discoveryCoverage.activeCount)")
+            LabeledContent("Pending discovery offers", value: "\(snapshot.discoveryCoverage.pendingOfferCount)")
             LabeledContent("Nutrition populated", value: "\(snapshot.nutritionCoverage.populatedCount)")
             LabeledContent("Nutrition missing", value: "\(snapshot.nutritionCoverage.missingCount)")
+            LabeledContent(
+                "Completeness",
+                value: "u\(snapshot.nutritionCoverage.completenessUnknownCount) / e\(snapshot.nutritionCoverage.completenessEmptyCount) / p\(snapshot.nutritionCoverage.completenessPartialCount) / c\(snapshot.nutritionCoverage.completenessCompleteCount)"
+            )
             if let dayKey = snapshot.nutritionCoverage.latestDayKey {
                 LabeledContent("Latest day", value: dayKey)
             }

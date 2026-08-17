@@ -113,6 +113,30 @@ final class UnderfuelingRecoveryBeliefEvaluatorTests: XCTestCase {
         XCTAssertEqual(result.maturity, .watching)
         XCTAssertNil(result.event)
     }
+
+    func testEmptyNutritionDayIsExcludedEvenWithFakeDeficit() {
+        let observations = UnderfuelingRecoveryFixtures.observationsWithRecoveryDrop()
+            + [
+                CoachDailyObservation(
+                    dayKey: "2099-01-03",
+                    sleepMinutes: 450,
+                    recoveryPercent: 40,
+                    proteinGrams: 0,
+                    carbsGrams: 0,
+                    fatGrams: 0,
+                    caloriesEaten: 0,
+                    calorieDeficit: 2_200,
+                    mealsLoggedCount: 0,
+                    hasPopulatedNutritionFields: true,
+                    nutritionCompleteness: .empty,
+                    nutritionSource: .healthKit
+                )
+            ]
+
+        let evaluation = UnderfuelingRecoveryBeliefEvaluator.analyze(observations: observations)
+        XCTAssertNotNil(evaluation)
+        XCTAssertEqual(evaluation?.eligibleDayCount, 14)
+    }
 }
 
 enum UnderfuelingRecoveryFixtures {
@@ -204,7 +228,9 @@ enum UnderfuelingRecoveryFixtures {
             calorieDeficit: calorieDeficit,
             hydrationLiters: calorieDeficit >= 450 ? 1.8 : 2.4,
             mealsLoggedCount: 3,
-            hasPopulatedNutritionFields: true
+            hasPopulatedNutritionFields: true,
+            nutritionCompleteness: .complete,
+            nutritionSource: .plannedMeals
         )
     }
 }

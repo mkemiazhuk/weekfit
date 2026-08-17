@@ -56,11 +56,19 @@ enum CoachDayReadinessResolver {
     private static let goodRecoveryThreshold = 70
     private static let lowRecoveryThreshold = 55
     private static let lowSleepHours = 6.0
+    /// Single long session (e.g. multi-hour hike) counts as heavy prior load.
+    private static let longSessionMinutes = 150
+    /// Aggregate completed minutes across yesterday's plan.
+    private static let heavyDayTotalMinutes = 180
+    /// Hike-like sessions at this duration are already real load.
+    private static let longHikeMinutes = 90
 
-    static func resolve(from input: CoachInputSnapshot) -> CoachDayReadiness {
+    static func resolve(
+        from input: CoachInputSnapshot,
+        priorDayLoad: RecoveryPriorDayLoad? = nil
+    ) -> CoachDayReadiness {
         let recovery = input.recoveryContext
-        let hadHeavyYesterday = input.brain.past.hasHighActivityLoad
-            || input.brain.past.completedWorkoutsCount >= 2
+        let hadHeavyYesterday = resolveHadHeavyYesterday(from: input, priorDayLoad: priorDayLoad)
         let recoveryDataAvailable = recovery.recoveryPercent > 0 || recovery.sleepHours > 0
 
         guard recoveryDataAvailable else {
@@ -82,6 +90,68 @@ enum CoachDayReadinessResolver {
             sleepIsLow: recovery.sleepHours < lowSleepHours,
             recoveryDataAvailable: true
         )
+    }
+
+    /// Prior-day heavy when HealthKit exercise/calories spike, planned long sessions
+    /// (especially hikes), or the legacy brain calorie/workout-count signal fires.
+    static func resolveHadHeavyYesterday(
+        from input: CoachInputSnapshot,
+        priorDayLoad: RecoveryPriorDayLoad? = nil,
+        calendar: Calendar = .current
+    ) -> Bool {
+        if let priorDayLoad, isHeavyPriorDayLoad(priorDayLoad) {
+            return true
+        }
+        if input.brain.past.hasHighActivityLoad || input.brain.past.completedWorkoutsCount >= 2 {
+            return true
+        }
+        return yesterdayPlanWasHeavy(activities: input.plannedActivities, relativeTo: input.selectedDate, calendar: calendar)
+    }
+
+    static func isHeavyPriorDayLoad(_ load: RecoveryPriorDayLoad) -> Bool {
+        load.strainLevel == .heavy
+            || load.exerciseMinutes >= longSessionMinutes
+            || (load.workoutCount >= 1 && load.exerciseMinutes >= longHikeMinutes)
+    }
+
+    static func yesterdayPlanWasHeavy(
+        activities: [CoachPlannedActivitySnapshot],
+        relativeTo date: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let dayStart = calendar.startOfDay(for: date)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: dayStart) else {
+            return false
+        }
+        let yesterdayCompleted = activities.filter {
+            calendar.isDate($0.date, inSameDayAs: yesterday)
+                && !$0.isSkipped
+                && ($0.isCompleted || ($0.actualDurationMinutes ?? 0) > 0 || $0.isPartialCompletion)
+        }
+        guard !yesterdayCompleted.isEmpty else { return false }
+
+        let totalMinutes = yesterdayCompleted.reduce(0) { partial, activity in
+            partial + max(activity.actualDurationMinutes ?? 0, activity.durationMinutes, activity.effectiveDurationMinutes)
+        }
+        if totalMinutes >= heavyDayTotalMinutes { return true }
+
+        if yesterdayCompleted.contains(where: { activity in
+            let minutes = max(
+                activity.actualDurationMinutes ?? 0,
+                activity.durationMinutes,
+                activity.effectiveDurationMinutes
+            )
+            if minutes >= longSessionMinutes { return true }
+            if CoachActivityClassification.isHikeLike(activity), minutes >= longHikeMinutes {
+                return true
+            }
+            return CoachActivityClassifier.isSeriousTraining(activity) && minutes >= 75
+        }) {
+            return true
+        }
+
+        let elevatedCount = yesterdayCompleted.filter(CoachActivityClassifier.isElevatedTrainingLoad).count
+        return elevatedCount >= 2
     }
 
     private static func recoveryBand(for percent: Int) -> CoachRecoveryBand {

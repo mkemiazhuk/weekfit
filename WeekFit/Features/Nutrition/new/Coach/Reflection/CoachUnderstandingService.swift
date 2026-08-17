@@ -8,9 +8,9 @@ enum CoachUnderstandingService {
         through date: Date,
         plannedActivities: [PlannedActivity] = [],
         calorieTarget: Int? = nil,
-        backfillDays: Int = 21
+        backfillDays: Int = 42
     ) async {
-        CoachObservationStore.recordToday(
+        await CoachObservationStore.recordToday(
             from: healthManager,
             date: date,
             plannedActivities: plannedActivities,
@@ -28,9 +28,15 @@ enum CoachUnderstandingService {
 
     static func evaluateBeliefs() {
         let observations = CoachObservationStore.allObservations()
+        let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        for result in CoachBeliefRegistry.evaluateAll(observations: observations) {
+        for result in results {
             CoachUnderstandingStore.applyEvaluation(result)
         }
+
+        CoachDiscoveryProjector.project(
+            results: results,
+            spokenEventIDs: CoachUnderstandingStore.spokenEventIDsSnapshot()
+        )
     }
 }

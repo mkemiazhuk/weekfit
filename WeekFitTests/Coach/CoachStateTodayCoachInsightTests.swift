@@ -134,7 +134,8 @@ final class CoachStateTodayCoachInsightTests: XCTestCase {
                     usingCoach: true,
                     fallbackReason: nil
                 ),
-            reflectionOffer: nil
+            reflectionOffer: nil,
+            discoveryOffer: nil
         )
     }
 

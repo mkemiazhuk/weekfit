@@ -168,6 +168,66 @@ final class NutritionCoreEngineXCTests: XCTestCase {
         XCTAssertEqual(viewModel.currentMetrics?.protein, 0)
     }
 
+    func testNutritionViewModelDecreasesAfterPriorMealTotalsWereCached() async {
+        let viewModel = NutritionViewModel()
+        let profile = CoachMetricsBuilder.standardProfile()
+        let lunch = PlannedActivityBuilder.meal(
+            title: "Lunch",
+            calories: 520,
+            protein: 35,
+            carbs: 40,
+            fats: 18
+        )
+        let snack = PlannedActivityBuilder.meal(
+            title: "Snack",
+            calories: 180,
+            protein: 12,
+            carbs: 20,
+            fats: 6
+        )
+
+        viewModel.updateNutrition(
+            metrics: DailyNutritionMetrics(
+                protein: 0,
+                carbs: 0,
+                fats: 0,
+                fiber: 0,
+                calories: 0,
+                waterLiters: 0,
+                activeCalories: 0,
+                sleepHours: 0,
+                weightKg: 74
+            ),
+            profile: profile,
+            plannedActivities: [lunch, snack],
+            debugSource: "test.twoMealsLogged"
+        )
+
+        XCTAssertEqual(viewModel.currentMetrics?.calories, 700)
+
+        // Simulate a rebuild seed that only carries HealthKit (0) even though the
+        // view-model previously held the higher meal total.
+        viewModel.updateNutrition(
+            metrics: DailyNutritionMetrics(
+                protein: 0,
+                carbs: 0,
+                fats: 0,
+                fiber: 0,
+                calories: 0,
+                waterLiters: 0,
+                activeCalories: 0,
+                sleepHours: 0,
+                weightKg: 74
+            ),
+            profile: profile,
+            plannedActivities: [lunch],
+            debugSource: "test.oneMealRemoved"
+        )
+
+        XCTAssertEqual(viewModel.currentMetrics?.calories, 520)
+        XCTAssertEqual(viewModel.currentMetrics?.protein, 35)
+    }
+
     func testCoachInputProviderPreservesHealthKitNutritionWithoutMeals() async {
         let healthManager = HealthManager()
         healthManager.weight = 74

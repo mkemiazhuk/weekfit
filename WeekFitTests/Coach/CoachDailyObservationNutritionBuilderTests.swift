@@ -22,7 +22,7 @@ final class CoachDailyObservationNutritionBuilderTests: XCTestCase {
         XCTAssertNil(snapshot)
     }
 
-    func testAllZeroResolvedNutritionDayIsPopulated() {
+    func testAllZeroResolvedNutritionDayIsPopulatedAsEmptyWithoutDeficit() {
         let observation = CoachObservationAssembler.makeObservation(
             dayKey: "2026-03-10",
             sleepMinutes: 450,
@@ -46,16 +46,18 @@ final class CoachDailyObservationNutritionBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(observation.hasPopulatedNutritionFieldsResolved)
+        XCTAssertEqual(observation.nutritionCompleteness, .empty)
         XCTAssertEqual(observation.proteinGrams, 0)
         XCTAssertEqual(observation.carbsGrams, 0)
         XCTAssertEqual(observation.fatGrams, 0)
         XCTAssertEqual(observation.caloriesEaten, 0)
-        XCTAssertEqual(observation.calorieDeficit, 2_200)
+        XCTAssertNil(observation.calorieDeficit)
         XCTAssertEqual(observation.hydrationLiters, 0)
         XCTAssertEqual(observation.mealsLoggedCount, 0)
+        XCTAssertFalse(observation.hasTrustworthyNutritionForBeliefs)
     }
 
-    func testAssemblerMergesNutritionFromPlannedMeals() {
+    func testPlannedMealDayIsPartialAndKeepsDeficit() {
         let date = makeDate()
         let observation = CoachObservationAssembler.makeObservation(
             dayKey: CoachDailyObservation.dayKey(for: date),
@@ -71,13 +73,66 @@ final class CoachDailyObservationNutritionBuilderTests: XCTestCase {
             nutritionDataAvailable: true
         )
 
-        XCTAssertTrue(observation.hasPopulatedNutritionFieldsResolved)
-        XCTAssertEqual(observation.proteinGrams, 35)
-        XCTAssertEqual(observation.carbsGrams, 40)
-        XCTAssertEqual(observation.fatGrams, 12)
-        XCTAssertEqual(observation.caloriesEaten, 480)
+        XCTAssertEqual(observation.nutritionCompleteness, .partial)
+        XCTAssertEqual(observation.nutritionSource, .plannedMeals)
         XCTAssertEqual(observation.calorieDeficit, 1_920)
-        XCTAssertEqual(observation.mealsLoggedCount, 1)
+        XCTAssertTrue(observation.hasTrustworthyNutritionForBeliefs)
+    }
+
+    func testRepairingLegacyEmptyDayClearsFakeDeficit() {
+        let legacy = CoachDailyObservation(
+            dayKey: "2026-03-12",
+            sleepMinutes: 430,
+            recoveryPercent: 80,
+            proteinGrams: 0,
+            carbsGrams: 0,
+            fatGrams: 0,
+            caloriesEaten: 0,
+            calorieDeficit: 2_200,
+            hydrationLiters: 0,
+            mealsLoggedCount: 0,
+            hasPopulatedNutritionFields: true
+        )
+
+        let repaired = legacy.repairingNutritionMetadata(calorieTarget: 2_200)
+        XCTAssertEqual(repaired.nutritionCompleteness, .empty)
+        XCTAssertNil(repaired.calorieDeficit)
+        XCTAssertFalse(repaired.hasTrustworthyNutritionForBeliefs)
+    }
+
+    func testPostWorkoutProteinUsesConfiguredWindow() {
+        let dayStart = Calendar.current.startOfDay(for: makeDate())
+        let workoutEnd = Calendar.current.date(byAdding: .hour, value: 18, to: dayStart)!
+        let inWindowMeal = CoachPlannedActivitySnapshot(
+            date: Calendar.current.date(byAdding: .minute, value: 40, to: workoutEnd)!,
+            type: "meal",
+            title: "Post Workout",
+            durationMinutes: 20,
+            calories: 400,
+            protein: 40,
+            carbs: 30,
+            fats: 10,
+            isCompleted: true
+        )
+        let outsideMeal = CoachPlannedActivitySnapshot(
+            date: Calendar.current.date(byAdding: .minute, value: 200, to: workoutEnd)!,
+            type: "meal",
+            title: "Late Dinner",
+            durationMinutes: 20,
+            calories: 500,
+            protein: 25,
+            carbs: 40,
+            fats: 15,
+            isCompleted: true
+        )
+
+        let protein = CoachPostWorkoutNutritionObservation.proteinGramsWithinWindow(
+            dayStart: dayStart,
+            workoutEndMinutes: 18 * 60,
+            plannedActivities: [inWindowMeal, outsideMeal]
+        )
+
+        XCTAssertEqual(protein, 40)
     }
 
     func testAssemblerWithoutNutritionSourcePreservesSleepOnlyObservation() {
@@ -131,7 +186,7 @@ final class CoachDailyObservationNutritionBuilderTests: XCTestCase {
         CoachObservationStore.seedForTests(observations)
         CoachUnderstandingService.evaluateBeliefs()
 
-        XCTAssertEqual(CoachBeliefRegistry.registeredBeliefIDs.count, 7)
+        XCTAssertEqual(CoachBeliefRegistry.registeredBeliefIDs.count, 12)
         XCTAssertEqual(CoachUnderstandingStore.pendingEventsForTests().count, 3)
         XCTAssertEqual(Set(CoachUnderstandingStore.pendingEventsForTests().map(\.beliefID)), Set([
             .sleepConsistencyRecovery,

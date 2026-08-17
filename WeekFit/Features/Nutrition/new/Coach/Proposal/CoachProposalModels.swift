@@ -32,11 +32,18 @@ enum CoachProposalReasonCode: String, Codable, Sendable, Equatable {
     case tomorrowDemandProtection
     case stackedDayRisk
     case recoveryWalkSupport
+    case recoveryStretchSupport
     case insufficientConfidence
     case planAlreadyAppropriate
     case openDayMovementSupport
     case similarDaySupport
     case libraryMealSupport
+    case libraryMealRecoveryBreakfast
+    case libraryMealRecoveryLunch
+    case libraryMealRecoveryDinner
+    case libraryMealSteadyBreakfast
+    case libraryMealSteadyLunch
+    case libraryMealSteadyDinner
     case weatherOutdoorConflict
     case weatherHeatLoad
 }
@@ -93,6 +100,91 @@ struct ProposalMealCandidate: Sendable, Equatable, Identifiable {
     let fiber: Int
     let mealsTypeRaw: String
     let suggestedTime: String?
+}
+
+enum ProposalMealSlot: String, CaseIterable, Sendable {
+    case breakfast
+    case lunch
+    case snack
+    case dinner
+
+    static func from(date: Date, calendar: Calendar = .current) -> ProposalMealSlot {
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        return from(totalMinutes: hour * 60 + minute)
+    }
+
+    static func from(suggestedTime: String?) -> ProposalMealSlot? {
+        guard let suggestedTime, let parsed = parseClock(suggestedTime) else { return nil }
+        return from(totalMinutes: parsed.hour * 60 + parsed.minute)
+    }
+
+    static func from(totalMinutes: Int) -> ProposalMealSlot {
+        switch totalMinutes {
+        case 6 * 60...(10 * 60 + 30):
+            return .breakfast
+        case 11 * 60...(14 * 60 + 30):
+            return .lunch
+        case 15 * 60...(17 * 60 + 30):
+            return .snack
+        default:
+            return .dinner
+        }
+    }
+
+    var defaultHour: Int {
+        switch self {
+        case .breakfast: return 8
+        case .lunch: return 13
+        case .snack: return 16
+        case .dinner: return 19
+        }
+    }
+
+    var defaultMinute: Int {
+        switch self {
+        case .breakfast: return 30
+        case .lunch, .snack, .dinner: return 0
+        }
+    }
+
+    private static func parseClock(_ raw: String) -> (hour: Int, minute: Int)? {
+        let parts = raw.split(separator: ":")
+        guard parts.count >= 2, let hour = Int(parts[0]), let minute = Int(parts[1]) else { return nil }
+        return (hour, minute)
+    }
+}
+
+/// Caps and rounds invented historical sessions so they stay useful, not photocopies.
+enum ProposalInventedSessionPolicy {
+    static let hardCapMinutes = 60
+
+    static func durationMinutes(
+        raw: Int,
+        recoveryBand: ProposalRecoveryBandToken,
+        strategy: DailyStrategy
+    ) -> Int {
+        let cap: Int
+        if strategy == .recover || recoveryBand == .low {
+            cap = 45
+        } else if recoveryBand == .moderate {
+            cap = 45
+        } else {
+            cap = hardCapMinutes
+        }
+        let clamped = min(max(raw, 15), cap)
+        return max(15, Int((Double(clamped) / 5.0).rounded()) * 5)
+    }
+
+    static func roundedHalfHour(hour: Int, minute: Int) -> (hour: Int, minute: Int) {
+        if minute < 15 {
+            return (hour, 0)
+        }
+        if minute < 45 {
+            return (hour, 30)
+        }
+        return ((hour + 1) % 24, 0)
+    }
 }
 
 // MARK: - Fingerprint

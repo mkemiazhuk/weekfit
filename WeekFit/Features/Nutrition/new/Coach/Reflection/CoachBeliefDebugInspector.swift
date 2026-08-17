@@ -48,14 +48,25 @@ enum CoachBeliefDebugInspector {
         let understandingSummary: CoachBeliefSynthesisAudit.Result
         let observationCount: Int
         let nutritionCoverage: ObservationNutritionCoverage
+        let discoveryCoverage: DiscoveryCoverage
         let capturedAt: Date
     }
 
     struct ObservationNutritionCoverage: Equatable, Sendable {
         let populatedCount: Int
         let missingCount: Int
+        let completenessUnknownCount: Int
+        let completenessEmptyCount: Int
+        let completenessPartialCount: Int
+        let completenessCompleteCount: Int
         let latestDayKey: String?
         let latestNutritionStatus: String
+    }
+
+    struct DiscoveryCoverage: Equatable, Sendable {
+        let totalCount: Int
+        let activeCount: Int
+        let pendingOfferCount: Int
     }
 
     static func build(coachState: CoachState, capturedAt: Date = Date()) -> Snapshot {
@@ -98,7 +109,16 @@ enum CoachBeliefDebugInspector {
             understandingSummary: CoachBeliefSynthesisAudit.synthesize(evaluationResults: evaluations),
             observationCount: observations.count,
             nutritionCoverage: makeNutritionCoverage(observations: observations),
+            discoveryCoverage: makeDiscoveryCoverage(),
             capturedAt: capturedAt
+        )
+    }
+
+    private static func makeDiscoveryCoverage() -> DiscoveryCoverage {
+        DiscoveryCoverage(
+            totalCount: CoachDiscoveryStore.allDiscoveries().count,
+            activeCount: CoachDiscoveryStore.activeDiscoveries().count,
+            pendingOfferCount: CoachDiscoveryStore.pendingOffersSnapshot().count
         )
     }
 
@@ -107,10 +127,26 @@ enum CoachBeliefDebugInspector {
     ) -> ObservationNutritionCoverage {
         let populated = observations.filter(\.hasPopulatedNutritionFieldsResolved)
         let latest = observations.last
+        var unknown = 0
+        var empty = 0
+        var partial = 0
+        var complete = 0
+        for observation in observations {
+            switch observation.resolvedNutritionCompleteness {
+            case .unknown: unknown += 1
+            case .empty: empty += 1
+            case .partial: partial += 1
+            case .complete: complete += 1
+            }
+        }
 
         return ObservationNutritionCoverage(
             populatedCount: populated.count,
             missingCount: observations.count - populated.count,
+            completenessUnknownCount: unknown,
+            completenessEmptyCount: empty,
+            completenessPartialCount: partial,
+            completenessCompleteCount: complete,
             latestDayKey: latest?.dayKey,
             latestNutritionStatus: nutritionStatus(for: latest)
         )
@@ -302,7 +338,7 @@ enum CoachBeliefDebugInspector {
         switch beliefID {
         case .sleepConsistencyRecovery, .sleepDurationRecovery, .lateBedtimeRecovery:
             return observations.filter(\.hasSleepSignal).filter(\.hasRecoverySignal).count
-        case .heavyLoadRecoveryLag, .recoveryAfterRestDay, .consecutiveHardDaysFatigue:
+        case .heavyLoadRecoveryLag, .recoveryAfterRestDay, .consecutiveHardDaysFatigue, .hardTrainingLowRecoveryCost:
             return observations.filter(\.hasTrainingAndRecoverySignal).count
         case .underfuelingRecovery:
             return observations
@@ -310,6 +346,15 @@ enum CoachBeliefDebugInspector {
                 .filter(\.hasRecoverySignal)
                 .filter { $0.calorieDeficit != nil }
                 .count
+        case .proteinTrainingDayRecovery, .postWorkoutProteinRecovery, .carbsTrainingDayRecovery:
+            return observations
+                .filter(\.isModerateOrHardTrainingDay)
+                .filter(\.hasTrustworthyNutritionForBeliefs)
+                .count
+        case .lateHardTrainingSleep:
+            return observations.filter {
+                $0.isHardTrainingDay && $0.hardestWorkoutEndMinutes != nil
+            }.count
         }
     }
 }

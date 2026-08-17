@@ -41,7 +41,7 @@ final class ReflectionBeliefPipelineIntegrationTests: XCTestCase {
         let observations = SleepBeliefIntegrationFixtures.observationsSupportingAllThreeBeliefs()
         let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
 
         let sleepResults = results.filter {
             [.sleepConsistencyRecovery, .sleepDurationRecovery, .lateBedtimeRecovery].contains($0.beliefID)
@@ -103,7 +103,7 @@ final class ReflectionBeliefPipelineIntegrationTests: XCTestCase {
         let observations = HeavyLoadRecoveryLagFixtures.observationsWithRecoveryLag()
         let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
 
         let heavyLoad = results.first { $0.beliefID == .heavyLoadRecoveryLag }
         XCTAssertEqual(heavyLoad?.maturity, .emerging)
@@ -164,14 +164,14 @@ final class ReflectionBeliefPipelineIntegrationTests: XCTestCase {
         let observations = ConsecutiveHardDaysFatigueFixtures.observationsWithConsecutiveFatigue()
         let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
 
         let consecutiveFatigue = results.first { $0.beliefID == .consecutiveHardDaysFatigue }
         XCTAssertEqual(consecutiveFatigue?.maturity, .emerging)
         XCTAssertEqual(consecutiveFatigue?.event?.change, .emerged)
 
         let others = results.filter { $0.beliefID != .consecutiveHardDaysFatigue }
-        XCTAssertEqual(others.count, 6)
+        XCTAssertEqual(others.count, 11)
         XCTAssertTrue(others.allSatisfy { $0.maturity == .watching })
         XCTAssertTrue(others.allSatisfy { $0.event == nil })
     }
@@ -210,14 +210,14 @@ final class ReflectionBeliefPipelineIntegrationTests: XCTestCase {
         let observations = RecoveryAfterRestDayFixtures.observationsWithRecoveryRebound()
         let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
 
         let recoveryAfterRest = results.first { $0.beliefID == .recoveryAfterRestDay }
         XCTAssertEqual(recoveryAfterRest?.maturity, .emerging)
         XCTAssertEqual(recoveryAfterRest?.event?.change, .emerged)
 
         let others = results.filter { $0.beliefID != .recoveryAfterRestDay }
-        XCTAssertEqual(others.count, 6)
+        XCTAssertEqual(others.count, 11)
         XCTAssertTrue(others.allSatisfy { $0.maturity == .watching })
         XCTAssertTrue(others.allSatisfy { $0.event == nil })
     }
@@ -258,14 +258,14 @@ final class ReflectionBeliefPipelineIntegrationTests: XCTestCase {
         let observations = UnderfuelingRecoveryFixtures.observationsWithRecoveryDrop()
         let results = CoachBeliefRegistry.evaluateAll(observations: observations)
 
-        XCTAssertEqual(results.count, 7)
+        XCTAssertEqual(results.count, 12)
 
         let underfueling = results.first { $0.beliefID == .underfuelingRecovery }
         XCTAssertEqual(underfueling?.maturity, .emerging)
         XCTAssertEqual(underfueling?.event?.change, .emerged)
 
         let others = results.filter { $0.beliefID != .underfuelingRecovery }
-        XCTAssertEqual(others.count, 6)
+        XCTAssertEqual(others.count, 11)
         XCTAssertTrue(others.allSatisfy { $0.maturity == .watching })
         XCTAssertTrue(others.allSatisfy { $0.event == nil })
     }

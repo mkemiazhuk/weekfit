@@ -7,12 +7,55 @@ enum CoachWorkoutIntensityBand: String, Codable, Equatable, Sendable {
     case hard
 }
 
+/// How trustworthy a day's nutrition logging is for personal-learning beliefs.
+/// Missing data must never be treated as a true zero-intake day.
+enum CoachNutritionCompleteness: String, Codable, Equatable, Sendable {
+    case unknown
+    case empty
+    case partial
+    case complete
+
+    var isTrustworthyForBeliefs: Bool {
+        switch self {
+        case .complete, .partial:
+            return true
+        case .empty, .unknown:
+            return false
+        }
+    }
+}
+
+enum CoachNutritionSource: String, Codable, Equatable, Sendable {
+    case none
+    case healthKit
+    case plannedMeals
+    case mixed
+}
+
 struct CoachWorkoutObservationSample: Equatable, Sendable {
     let typeToken: String
     let durationMinutes: Int
     let activeCalories: Int
     let isHardTraining: Bool
     let isRecoveryActivity: Bool
+    /// Minutes from local midnight when the workout ended, if known.
+    let endMinutesFromMidnight: Int?
+
+    init(
+        typeToken: String,
+        durationMinutes: Int,
+        activeCalories: Int,
+        isHardTraining: Bool,
+        isRecoveryActivity: Bool,
+        endMinutesFromMidnight: Int? = nil
+    ) {
+        self.typeToken = typeToken
+        self.durationMinutes = durationMinutes
+        self.activeCalories = activeCalories
+        self.isHardTraining = isHardTraining
+        self.isRecoveryActivity = isRecoveryActivity
+        self.endMinutesFromMidnight = endMinutesFromMidnight
+    }
 }
 
 struct CoachDailyObservationTrainingSnapshot: Equatable, Sendable {
@@ -26,6 +69,7 @@ struct CoachDailyObservationTrainingSnapshot: Equatable, Sendable {
     let hadRecoveryActivity: Bool
     let hadRestDay: Bool
     let trainingLoadScore: Int
+    let hardestWorkoutEndMinutes: Int?
 }
 
 struct CoachDailyObservationNutritionSnapshot: Equatable, Sendable {
@@ -36,6 +80,9 @@ struct CoachDailyObservationNutritionSnapshot: Equatable, Sendable {
     let calorieDeficit: Int?
     let hydrationLiters: Double
     let mealsLoggedCount: Int
+    let nutritionCompleteness: CoachNutritionCompleteness
+    let nutritionSource: CoachNutritionSource
+    let proteinWithinPostWorkoutWindowGrams: Int?
 }
 
 struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
@@ -53,6 +100,7 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
     let hadRecoveryActivity: Bool?
     let hadRestDay: Bool?
     let trainingLoadScore: Int?
+    let hardestWorkoutEndMinutes: Int?
     let proteinGrams: Int?
     let carbsGrams: Int?
     let fatGrams: Int?
@@ -61,6 +109,9 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
     let hydrationLiters: Double?
     let mealsLoggedCount: Int?
     let hasPopulatedNutritionFields: Bool?
+    let nutritionCompleteness: CoachNutritionCompleteness?
+    let nutritionSource: CoachNutritionSource?
+    let proteinWithinPostWorkoutWindowGrams: Int?
 
     var id: String { dayKey }
 
@@ -72,12 +123,37 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
 
     var hasPopulatedNutritionFieldsResolved: Bool { hasPopulatedNutritionFields == true }
 
+    /// Migrates legacy rows that predate explicit completeness.
+    var resolvedNutritionCompleteness: CoachNutritionCompleteness {
+        if let nutritionCompleteness {
+            return nutritionCompleteness
+        }
+        guard hasPopulatedNutritionFieldsResolved else { return .unknown }
+        let meals = mealsLoggedCount ?? 0
+        let calories = caloriesEaten ?? 0
+        let protein = proteinGrams ?? 0
+        let carbs = carbsGrams ?? 0
+        let fats = fatGrams ?? 0
+        return CoachNutritionCompletenessClassifier.classify(
+            mealsLoggedCount: meals,
+            caloriesEaten: calories,
+            proteinGrams: protein,
+            carbsGrams: carbs,
+            fatGrams: fats,
+            hydrationLiters: hydrationLiters ?? 0
+        )
+    }
+
+    var hasTrustworthyNutritionForBeliefs: Bool {
+        resolvedNutritionCompleteness.isTrustworthyForBeliefs
+    }
+
     var hasTrainingAndRecoverySignal: Bool {
         hasPopulatedTrainingFields && hasRecoverySignal
     }
 
     var hasNutritionAndRecoverySignal: Bool {
-        hasPopulatedNutritionFieldsResolved && hasRecoverySignal
+        hasTrustworthyNutritionForBeliefs && hasRecoverySignal
     }
 
     var isHardTrainingDay: Bool {
@@ -123,6 +199,7 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
         hadRecoveryActivity: Bool? = nil,
         hadRestDay: Bool? = nil,
         trainingLoadScore: Int? = nil,
+        hardestWorkoutEndMinutes: Int? = nil,
         proteinGrams: Int? = nil,
         carbsGrams: Int? = nil,
         fatGrams: Int? = nil,
@@ -130,7 +207,10 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
         calorieDeficit: Int? = nil,
         hydrationLiters: Double? = nil,
         mealsLoggedCount: Int? = nil,
-        hasPopulatedNutritionFields: Bool? = nil
+        hasPopulatedNutritionFields: Bool? = nil,
+        nutritionCompleteness: CoachNutritionCompleteness? = nil,
+        nutritionSource: CoachNutritionSource? = nil,
+        proteinWithinPostWorkoutWindowGrams: Int? = nil
     ) {
         self.dayKey = dayKey
         self.sleepMinutes = sleepMinutes
@@ -146,6 +226,7 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
         self.hadRecoveryActivity = hadRecoveryActivity
         self.hadRestDay = hadRestDay
         self.trainingLoadScore = trainingLoadScore
+        self.hardestWorkoutEndMinutes = hardestWorkoutEndMinutes
         self.proteinGrams = proteinGrams
         self.carbsGrams = carbsGrams
         self.fatGrams = fatGrams
@@ -154,6 +235,9 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
         self.hydrationLiters = hydrationLiters
         self.mealsLoggedCount = mealsLoggedCount
         self.hasPopulatedNutritionFields = hasPopulatedNutritionFields
+        self.nutritionCompleteness = nutritionCompleteness
+        self.nutritionSource = nutritionSource
+        self.proteinWithinPostWorkoutWindowGrams = proteinWithinPostWorkoutWindowGrams
     }
 
     func mergingTraining(_ training: CoachDailyObservationTrainingSnapshot) -> CoachDailyObservation {
@@ -172,6 +256,7 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
             hadRecoveryActivity: training.hadRecoveryActivity,
             hadRestDay: training.hadRestDay,
             trainingLoadScore: training.trainingLoadScore,
+            hardestWorkoutEndMinutes: training.hardestWorkoutEndMinutes,
             proteinGrams: proteinGrams,
             carbsGrams: carbsGrams,
             fatGrams: fatGrams,
@@ -179,7 +264,10 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
             calorieDeficit: calorieDeficit,
             hydrationLiters: hydrationLiters,
             mealsLoggedCount: mealsLoggedCount,
-            hasPopulatedNutritionFields: hasPopulatedNutritionFields
+            hasPopulatedNutritionFields: hasPopulatedNutritionFields,
+            nutritionCompleteness: nutritionCompleteness,
+            nutritionSource: nutritionSource,
+            proteinWithinPostWorkoutWindowGrams: proteinWithinPostWorkoutWindowGrams
         )
     }
 
@@ -199,6 +287,7 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
             hadRecoveryActivity: hadRecoveryActivity,
             hadRestDay: hadRestDay,
             trainingLoadScore: trainingLoadScore,
+            hardestWorkoutEndMinutes: hardestWorkoutEndMinutes,
             proteinGrams: nutrition.proteinGrams,
             carbsGrams: nutrition.carbsGrams,
             fatGrams: nutrition.fatGrams,
@@ -206,8 +295,84 @@ struct CoachDailyObservation: Codable, Equatable, Identifiable, Sendable {
             calorieDeficit: nutrition.calorieDeficit,
             hydrationLiters: nutrition.hydrationLiters,
             mealsLoggedCount: nutrition.mealsLoggedCount,
-            hasPopulatedNutritionFields: true
+            hasPopulatedNutritionFields: true,
+            nutritionCompleteness: nutrition.nutritionCompleteness,
+            nutritionSource: nutrition.nutritionSource,
+            proteinWithinPostWorkoutWindowGrams: nutrition.proteinWithinPostWorkoutWindowGrams
+                ?? proteinWithinPostWorkoutWindowGrams
         )
+    }
+
+    /// Recompute completeness + deficit from already-stored macros without reloading HealthKit.
+    func repairingNutritionMetadata(calorieTarget: Int?) -> CoachDailyObservation {
+        guard hasPopulatedNutritionFieldsResolved else { return self }
+
+        let meals = mealsLoggedCount ?? 0
+        let calories = caloriesEaten ?? 0
+        let protein = proteinGrams ?? 0
+        let carbs = carbsGrams ?? 0
+        let fats = fatGrams ?? 0
+        let hydration = hydrationLiters ?? 0
+        let completeness = CoachNutritionCompletenessClassifier.classify(
+            mealsLoggedCount: meals,
+            caloriesEaten: calories,
+            proteinGrams: protein,
+            carbsGrams: carbs,
+            fatGrams: fats,
+            hydrationLiters: hydration
+        )
+        let source = nutritionSource
+            ?? CoachNutritionSourceClassifier.infer(
+                hasHealthKitSignal: false,
+                hasPlannedMealSignal: meals > 0 || calories > 0 || protein > 0
+            )
+        let deficit = CoachDailyObservationNutritionBuilder.calorieDeficit(
+            caloriesEaten: calories,
+            calorieTarget: calorieTarget,
+            completeness: completeness
+        )
+
+        return CoachDailyObservation(
+            dayKey: dayKey,
+            sleepMinutes: sleepMinutes,
+            recoveryPercent: recoveryPercent,
+            bedStartNormalizedMinutes: bedStartNormalizedMinutes,
+            exerciseMinutes: exerciseMinutes,
+            activeCalories: activeCalories,
+            workoutCount: workoutCount,
+            workoutTypes: workoutTypes,
+            hardWorkoutCount: hardWorkoutCount,
+            workoutIntensityBand: workoutIntensityBand,
+            hadHardTraining: hadHardTraining,
+            hadRecoveryActivity: hadRecoveryActivity,
+            hadRestDay: hadRestDay,
+            trainingLoadScore: trainingLoadScore,
+            hardestWorkoutEndMinutes: hardestWorkoutEndMinutes,
+            proteinGrams: proteinGrams,
+            carbsGrams: carbsGrams,
+            fatGrams: fatGrams,
+            caloriesEaten: caloriesEaten,
+            calorieDeficit: deficit,
+            hydrationLiters: hydrationLiters,
+            mealsLoggedCount: mealsLoggedCount,
+            hasPopulatedNutritionFields: true,
+            nutritionCompleteness: completeness,
+            nutritionSource: source,
+            proteinWithinPostWorkoutWindowGrams: proteinWithinPostWorkoutWindowGrams
+        )
+    }
+
+    func needsNutritionMetadataRepair(calorieTarget: Int?) -> Bool {
+        guard hasPopulatedNutritionFieldsResolved else { return false }
+        if nutritionCompleteness == nil { return true }
+        if resolvedNutritionCompleteness == .empty, calorieDeficit != nil { return true }
+        if resolvedNutritionCompleteness.isTrustworthyForBeliefs,
+           calorieDeficit == nil,
+           let calorieTarget,
+           calorieTarget > 0 {
+            return true
+        }
+        return false
     }
 
     static func dayKey(for date: Date, calendar: Calendar = .current) -> String {
@@ -244,6 +409,11 @@ enum CoachBeliefID: String, Codable, CaseIterable, Sendable {
     case recoveryAfterRestDay
     case consecutiveHardDaysFatigue
     case underfuelingRecovery
+    case proteinTrainingDayRecovery
+    case postWorkoutProteinRecovery
+    case hardTrainingLowRecoveryCost
+    case carbsTrainingDayRecovery
+    case lateHardTrainingSleep
 }
 
 enum CoachBeliefMaturity: String, Codable, Sendable, Comparable {
@@ -450,6 +620,7 @@ struct SleepDurationEvaluation: Equatable, Sendable {
     let insufficientRecoveryAverage: Double
     let sufficientSampleCount: Int
     let insufficientSampleCount: Int
+    let sufficientSleepThresholdMinutes: Int
 
     var recoveryDelta: Double {
         sufficientRecoveryAverage - insufficientRecoveryAverage
@@ -461,6 +632,132 @@ struct SleepDurationEvaluation: Equatable, Sendable {
 
     var hasEstablishedSamples: Bool {
         sufficientSampleCount + insufficientSampleCount >= 12
+    }
+}
+
+struct ProteinTrainingDayRecoveryEvaluation: Equatable, Sendable {
+    let highProteinRecoveryAverage: Double
+    let lowProteinRecoveryAverage: Double
+    let highProteinSampleCount: Int
+    let lowProteinSampleCount: Int
+    let eligibleAnchorCount: Int
+    let highProteinMedianGrams: Int
+    let lowProteinMedianGrams: Int
+
+    var recoveryDelta: Double {
+        highProteinRecoveryAverage - lowProteinRecoveryAverage
+    }
+
+    var hasMinimumSamples: Bool {
+        eligibleAnchorCount >= 8
+            && highProteinSampleCount >= 3
+            && lowProteinSampleCount >= 3
+    }
+
+    var hasEstablishedSamples: Bool {
+        eligibleAnchorCount >= 12
+            && highProteinSampleCount >= 5
+            && lowProteinSampleCount >= 5
+    }
+}
+
+struct PostWorkoutProteinRecoveryEvaluation: Equatable, Sendable {
+    let higherWindowProteinRecoveryAverage: Double
+    let lowerWindowProteinRecoveryAverage: Double
+    let higherWindowSampleCount: Int
+    let lowerWindowSampleCount: Int
+    let eligibleAnchorCount: Int
+    let splitThresholdGrams: Int
+
+    var recoveryDelta: Double {
+        higherWindowProteinRecoveryAverage - lowerWindowProteinRecoveryAverage
+    }
+
+    var hasMinimumSamples: Bool {
+        eligibleAnchorCount >= 8
+            && higherWindowSampleCount >= 3
+            && lowerWindowSampleCount >= 3
+    }
+
+    var hasEstablishedSamples: Bool {
+        eligibleAnchorCount >= 12
+            && higherWindowSampleCount >= 5
+            && lowerWindowSampleCount >= 5
+    }
+}
+
+struct HardTrainingLowRecoveryCostEvaluation: Equatable, Sendable {
+    let goodRecoveryHardNextDayAverage: Double
+    let lowRecoveryHardNextDayAverage: Double
+    let goodRecoveryHardAnchorCount: Int
+    let lowRecoveryHardAnchorCount: Int
+    let eligibleDayCount: Int
+
+    var recoveryCost: Double {
+        goodRecoveryHardNextDayAverage - lowRecoveryHardNextDayAverage
+    }
+
+    var hasMinimumSamples: Bool {
+        eligibleDayCount >= 12
+            && goodRecoveryHardAnchorCount >= 3
+            && lowRecoveryHardAnchorCount >= 3
+    }
+
+    var hasEstablishedSamples: Bool {
+        eligibleDayCount >= 18
+            && goodRecoveryHardAnchorCount >= 5
+            && lowRecoveryHardAnchorCount >= 5
+    }
+}
+
+struct CarbsTrainingDayRecoveryEvaluation: Equatable, Sendable {
+    let highCarbsRecoveryAverage: Double
+    let lowCarbsRecoveryAverage: Double
+    let highCarbsSampleCount: Int
+    let lowCarbsSampleCount: Int
+    let eligibleAnchorCount: Int
+    let highCarbsMedianGrams: Int
+    let lowCarbsMedianGrams: Int
+
+    var recoveryDelta: Double {
+        highCarbsRecoveryAverage - lowCarbsRecoveryAverage
+    }
+
+    var hasMinimumSamples: Bool {
+        eligibleAnchorCount >= 8
+            && highCarbsSampleCount >= 3
+            && lowCarbsSampleCount >= 3
+    }
+
+    var hasEstablishedSamples: Bool {
+        eligibleAnchorCount >= 12
+            && highCarbsSampleCount >= 5
+            && lowCarbsSampleCount >= 5
+    }
+}
+
+struct LateHardTrainingSleepEvaluation: Equatable, Sendable {
+    let earlierHardSleepAverageMinutes: Double
+    let lateHardSleepAverageMinutes: Double
+    let earlierHardSampleCount: Int
+    let lateHardSampleCount: Int
+    let eligibleAnchorCount: Int
+    let lateThresholdMinutes: Int
+
+    var sleepDropMinutes: Double {
+        earlierHardSleepAverageMinutes - lateHardSleepAverageMinutes
+    }
+
+    var hasMinimumSamples: Bool {
+        eligibleAnchorCount >= 8
+            && earlierHardSampleCount >= 3
+            && lateHardSampleCount >= 3
+    }
+
+    var hasEstablishedSamples: Bool {
+        eligibleAnchorCount >= 12
+            && earlierHardSampleCount >= 5
+            && lateHardSampleCount >= 5
     }
 }
 

@@ -32,13 +32,35 @@ enum PlanValidator {
             notes.append("drop_extra_serious")
         }
 
-        // protectTomorrow / recover / low recovery + elevated create (bike, run, gym…)
+        // protectTomorrow / recover / low recovery / heavy yesterday + elevated create
         if composed.strategy == .protectTomorrow
             || composed.strategy == .recover
-            || context.recoveryBand == .low {
+            || context.recoveryBand == .low
+            || context.yesterdayHeavy {
             let before = kept.count
             kept.removeAll { isElevatedCreate($0.candidate) || isSeriousCreate($0.candidate) }
             if kept.count != before { notes.append("drop_elevated_for_strategy") }
+        }
+
+        // Invented sessions never exceed an hour.
+        kept.removeAll { item in
+            guard case .createPlannedActivity(let payload) = item.candidate.payload else { return false }
+            let overCap = payload.durationMinutes > ProposalInventedSessionPolicy.hardCapMinutes
+            if overCap { notes.append("drop_over_hour:\(item.id)") }
+            return overCap
+        }
+
+        // One meal per slot
+        var seenMealSlots: Set<ProposalMealSlot> = []
+        kept = kept.filter { item in
+            guard item.candidate.kind == .createMealFromLibrary else { return true }
+            let slot = ProposalMealSlot.from(date: item.candidate.sortTime)
+            if seenMealSlots.contains(slot) {
+                notes.append("drop_duplicate_meal_slot:\(item.id)")
+                return false
+            }
+            seenMealSlots.insert(slot)
+            return true
         }
 
         // Temporal overlaps among creates

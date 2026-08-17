@@ -618,11 +618,31 @@ enum CoachTeaserCopy {
     private static func walkLightDayTitle(result: CoachEngine.Result) -> CoachBilingualText {
         let walkPhase = walkLightDayPhase(from: result)
         let isHike = result.context.isFocusHikeLike
+        let minutes = CoachCopyBuildInput.from(result: result).focusDurationMinutes
+        let substantial = minutes >= 60
+            || result.context.durationBand == .long
+            || result.context.durationBand == .extended
         switch walkPhase {
         case .upcoming:
-            return isHike
-                ? bi("Easy hike", "Лёгкий хайкинг")
-                : bi("Easy walk", "Лёгкая прогулка")
+            if isHike {
+                if minutes >= 300 {
+                    return bi("All-day hike", "Целый день в хайкинге")
+                }
+                if minutes >= 180 || result.context.durationBand == .extended {
+                    return bi("Long hike", "Длинный хайкинг")
+                }
+                if substantial {
+                    return bi("Hike prep", "Подготовка к хайкингу")
+                }
+                return bi("Easy hike", "Лёгкий хайкинг")
+            }
+            if result.context.durationBand == .extended {
+                return bi("Long walk", "Длинная прогулка")
+            }
+            if substantial {
+                return bi("Walk", "Прогулка")
+            }
+            return bi("Easy walk", "Лёгкая прогулка")
         case .live, .completed:
             return bi(
                 CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, isHike: isHike, russian: false),
@@ -633,8 +653,27 @@ enum CoachTeaserCopy {
 
     private static func walkLightDayMessage(result: CoachEngine.Result) -> CoachBilingualText {
         let walkPhase = walkLightDayPhase(from: result)
+        let input = CoachCopyBuildInput.from(result: result)
+        let minutes = CoachLongHikeCopy.resolvedMinutes(input)
+        let substantialHike = input.isFocusHikeLike && (
+            minutes >= 60
+                || result.context.durationBand == .long
+                || result.context.durationBand == .extended
+        )
         switch walkPhase {
         case .upcoming:
+            if substantialHike {
+                if minutes >= 300 {
+                    return bi(
+                        "Pack water, snacks, and layers before you go.",
+                        "Перед выходом соберите воду, перекусы и слои."
+                    )
+                }
+                return bi(
+                    "Prep water and a snack — this outing deserves it.",
+                    "Подготовьте воду и перекус — этой вылазке это нужно."
+                )
+            }
             return bi("Easy pace — no goal to hit.", "Лёгкий темп — без цели.")
         case .live, .completed:
             return bi(

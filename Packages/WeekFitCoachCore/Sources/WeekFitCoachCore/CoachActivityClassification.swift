@@ -54,7 +54,9 @@ public enum CoachActivityClassification {
         let tokens = tokenText(for: activity)
         return tokens.contains("hike") ||
             tokens.contains("hiking") ||
-            tokens.contains("поход")
+            tokens.contains("figure.hiking") ||
+            tokens.contains("поход") ||
+            tokens.contains("хайкинг")
     }
 
     public static func isSignificantWorkout(_ activity: CoachActivityDescriptor) -> Bool {

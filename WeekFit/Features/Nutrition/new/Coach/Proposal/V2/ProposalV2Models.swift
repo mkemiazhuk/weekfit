@@ -94,6 +94,8 @@ struct DailyContext: Sendable, Equatable {
     let softDismissCount: Int
     /// Soft confidence drag from dismiss / empty Apply; never overrides safety dial-backs.
     let softNegativePenalty: Int
+    /// Soft learned preference: avoid inventing/keeping hard load when recovery is still low.
+    let preferAvoidHardLoadOnLowRecovery: Bool
 
     // Meals
     let mealLibrary: [ProposalMealCandidate]

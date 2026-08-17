@@ -25,13 +25,30 @@ enum CoachObservationStore {
         lock.unlock()
     }
 
+    /// Repairs completeness / calorie deficit on already-stored rows when a target becomes known.
+    static func repairNutritionMetadata(calorieTarget: Int?) {
+        guard let calorieTarget, calorieTarget > 0 else { return }
+
+        lock.lock()
+        var stored = loadUnsafe()
+        var changed = false
+        for (dayKey, observation) in stored where observation.needsNutritionMetadataRepair(calorieTarget: calorieTarget) {
+            stored[dayKey] = observation.repairingNutritionMetadata(calorieTarget: calorieTarget)
+            changed = true
+        }
+        if changed {
+            saveUnsafe(stored)
+        }
+        lock.unlock()
+    }
+
     @MainActor
     static func recordToday(
         from healthManager: HealthManager,
         date: Date,
         plannedActivities: [PlannedActivity] = [],
         calorieTarget: Int? = nil
-    ) {
+    ) async {
         guard healthManager.isHealthAccessRequested else { return }
 
         let sleepMinutes = healthManager.sleepMinutes
@@ -62,6 +79,15 @@ enum CoachObservationStore {
             )
         }()
 
+        let workouts: [CoachWorkoutObservationSample]
+        if healthManager.isHealthAccessGranted {
+            workouts = CoachWorkoutObservationMapper.samples(
+                from: await healthManager.loadWorkoutSamples(for: date)
+            )
+        } else {
+            workouts = []
+        }
+
         upsert(
             CoachObservationAssembler.makeObservation(
                 dayKey: CoachDailyObservation.dayKey(for: date),
@@ -69,7 +95,7 @@ enum CoachObservationStore {
                 recoveryPercent: recoveryPercent,
                 bedStartNormalizedMinutes: bedStartMinutes,
                 metrics: healthManager.cachedCoachActivityMetricsSnapshot,
-                workouts: [],
+                workouts: workouts,
                 trainingDataAvailable: true,
                 healthNutritionSnapshot: healthSnapshot,
                 plannedActivities: dayActivities.coachSnapshots(),
@@ -85,9 +111,11 @@ enum CoachObservationStore {
         through endDate: Date,
         plannedActivities: [PlannedActivity] = [],
         calorieTarget: Int? = nil,
-        dayCount: Int = 21
+        dayCount: Int = 42
     ) async {
         guard healthManager.isHealthAccessRequested else { return }
+
+        repairNutritionMetadata(calorieTarget: calorieTarget)
 
         let calendar = Calendar.current
         for offset in 0..<dayCount {
@@ -102,7 +130,17 @@ enum CoachObservationStore {
             if let existing,
                existing.hasSleepSignal,
                existing.hasPopulatedTrainingFields,
-               existing.hasPopulatedNutritionFieldsResolved {
+               existing.hasPopulatedNutritionFieldsResolved,
+               !existing.needsNutritionMetadataRepair(calorieTarget: calorieTarget) {
+                continue
+            }
+
+            if let existing,
+               existing.hasSleepSignal,
+               existing.hasPopulatedTrainingFields,
+               existing.hasPopulatedNutritionFieldsResolved,
+               existing.needsNutritionMetadataRepair(calorieTarget: calorieTarget) {
+                upsert(existing.repairingNutritionMetadata(calorieTarget: calorieTarget))
                 continue
             }
 

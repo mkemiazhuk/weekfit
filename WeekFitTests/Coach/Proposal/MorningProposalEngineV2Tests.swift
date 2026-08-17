@@ -24,6 +24,89 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         XCTAssertEqual(DailyStrategyResolver.resolve(context: context), .recover)
     }
 
+    func testStrategyGoodHeavyYesterdayIsRecover() {
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: true,
+            tomorrowDemand: .none,
+            openCount: 0,
+            sleepPresence: .present,
+            freshness: .high
+        )
+        XCTAssertEqual(DailyStrategyResolver.resolve(context: context), .recover)
+    }
+
+    func testStrategyGoodHeavyYesterdayBeatsHabitualTrainPath() {
+        let templates = [
+            SimilarDayTemplate(
+                dayKey: "2026-07-01",
+                recoveryBand: .good,
+                observationAvailable: true,
+                sleepPresence: .present,
+                activities: [
+                    snap("a1", day: 1, title: "Tempo Run", duration: 80, completed: true),
+                    snap("a2", day: 8, title: "Tempo Run", duration: 80, completed: true)
+                ]
+            ),
+            SimilarDayTemplate(
+                dayKey: "2026-07-08",
+                recoveryBand: .good,
+                observationAvailable: true,
+                sleepPresence: .present,
+                activities: [snap("b1", day: 8, title: "Tempo Run", duration: 80, completed: true)]
+            )
+        ]
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: true,
+            tomorrowDemand: .none,
+            openCount: 0,
+            sleepPresence: .present,
+            freshness: .high,
+            templates: templates
+        )
+        XCTAssertEqual(DailyStrategyResolver.resolve(context: context), .recover)
+    }
+
+    func testHistoricalProviderSkipsElevatedAfterHeavyYesterday() {
+        let templates = [
+            SimilarDayTemplate(
+                dayKey: "2026-07-01",
+                recoveryBand: .good,
+                observationAvailable: true,
+                sleepPresence: .present,
+                activities: [snap("w1", day: 1, hour: 18, title: "Workout", duration: 15, completed: true)]
+            ),
+            SimilarDayTemplate(
+                dayKey: "2026-07-08",
+                recoveryBand: .good,
+                observationAvailable: true,
+                sleepPresence: .present,
+                activities: [snap("w2", day: 8, hour: 18, title: "Workout", duration: 15, completed: true)]
+            )
+        ]
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: true,
+            tomorrowDemand: .none,
+            openCount: 0,
+            sleepPresence: .present,
+            freshness: .high,
+            templates: templates
+        )
+        let strategy = DailyStrategyResolver.resolve(context: context)
+        XCTAssertEqual(strategy, .recover)
+        let historical = HistoricalActivityProvider.generate(context: context, strategy: strategy)
+        XCTAssertFalse(
+            historical.contains { candidate in
+                if case .createPlannedActivity(let payload) = candidate.payload {
+                    return payload.title == "Workout"
+                }
+                return false
+            }
+        )
+    }
+
     func testStrategyGoodHardTomorrowIsProtectTomorrow() {
         let context = makeContext(
             recoveryBand: .good,
@@ -151,6 +234,59 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             identityKey: "hist:intervals"
         )
         XCTAssertNil(CandidateScorer.score(candidate, context: context, strategy: .recover))
+    }
+
+    func testScorerAppliesLearnedSoftPenaltyForHardCreateWhenPreferAvoid() {
+        let baseline = makeContext(
+            recoveryBand: .moderate,
+            yesterdayHeavy: false,
+            tomorrowDemand: .none,
+            openCount: 0,
+            preferAvoidHardLoadOnLowRecovery: false
+        )
+        let learned = makeContext(
+            recoveryBand: .moderate,
+            yesterdayHeavy: false,
+            tomorrowDemand: .none,
+            openCount: 0,
+            preferAvoidHardLoadOnLowRecovery: true
+        )
+        let candidate = ProposalCandidate(
+            id: "serious",
+            source: .historicalActivity,
+            kind: .createPlannedActivity,
+            payload: .createPlannedActivity(
+                CreatePlannedActivityPayload(
+                    proposedDate: Date(),
+                    durationMinutes: 60,
+                    title: "Intervals",
+                    activityType: "workout",
+                    icon: "figure.run",
+                    imageName: "",
+                    colorRed: 0, colorGreen: 0, colorBlue: 0,
+                    sourceTemplateDayKey: nil
+                )
+            ),
+            compatibleStrategies: [.maintain, .train],
+            physiologicalFit: .strong,
+            confidence: 0.9,
+            burden: .high,
+            reasonCodes: [.similarDaySupport],
+            conflicts: [],
+            defaultSelectionEligibility: .eligible,
+            sortTime: Date(),
+            evidenceScenarioKey: nil,
+            identityKey: "hist:intervals"
+        )
+
+        let baselineScored = CandidateScorer.score(candidate, context: baseline, strategy: .maintain)
+        let learnedScored = CandidateScorer.score(candidate, context: learned, strategy: .maintain)
+        XCTAssertNotNil(baselineScored)
+        XCTAssertNotNil(learnedScored)
+        XCTAssertEqual(learnedScored?.breakdown.fatiguePenalty, -6)
+        XCTAssertEqual(baselineScored?.breakdown.fatiguePenalty, 0)
+        XCTAssertLessThan(learnedScored?.score ?? 0, baselineScored?.score ?? 0)
+        XCTAssertFalse(CandidateScorer.shouldDefaultSelect(learnedScored!, context: learned, strategy: .train))
     }
 
     func testComposerProtectBlocksCreates() {
@@ -640,6 +776,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             stronglyRejectsWalk: context.stronglyRejectsWalk,
             softDismissCount: 6,
             softNegativePenalty: 6,
+            preferAvoidHardLoadOnLowRecovery: false,
             mealLibrary: context.mealLibrary,
             mealLibraryRevision: context.mealLibraryRevision,
             weatherRiskToken: context.weatherRiskToken,
@@ -759,6 +896,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             stronglyRejectsWalk: false,
             softDismissCount: 0,
             softNegativePenalty: 0,
+            preferAvoidHardLoadOnLowRecovery: false,
             mealLibrary: [],
             mealLibraryRevision: "0",
             weatherRiskToken: .unavailable,
@@ -909,6 +1047,44 @@ final class MorningProposalEngineV2Tests: XCTestCase {
                 templates: [mealOnlyTemplate]
             )
         )
+        XCTAssertTrue(
+            proposal.changes.contains { $0.kind == .createRecoveryWalk },
+            "After a hard day, a weekday without walk habit should still offer an easy recovery walk"
+        )
+    }
+
+    func testWeekdayWithoutHeavyYesterdayDoesNotInventEveningWalk() {
+        let now = date(2026, 7, 31, 8, 0) // Friday
+        let mealOnlyTemplate = SimilarDayTemplate(
+            dayKey: "2026-07-24",
+            recoveryBand: .good,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "meal-hist",
+                    date: date(2026, 7, 24, 12, 0),
+                    type: "meal",
+                    title: "Lunch",
+                    durationMinutes: 20,
+                    icon: "fork.knife",
+                    imageName: "",
+                    isCompleted: true,
+                    isSkipped: false,
+                    source: "planner"
+                )
+            ]
+        )
+        let proposal = MorningProposalEngine.generate(
+            input: makeEngineInput(
+                now: now,
+                recoveryBand: .good,
+                yesterdayHeavy: false,
+                tomorrowDemand: .none,
+                today: [],
+                templates: [mealOnlyTemplate]
+            )
+        )
         XCTAssertFalse(
             proposal.changes.contains { $0.kind == .createRecoveryWalk },
             "Non-cold-start weekday without walk habit must not invent Walk@18"
@@ -995,7 +1171,8 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         freshness: ProposalContextConfidence = .high,
         canMutate: Bool = true,
         mode: MorningProposalGenerationMode? = nil,
-        templates: [SimilarDayTemplate] = []
+        templates: [SimilarDayTemplate] = [],
+        preferAvoidHardLoadOnLowRecovery: Bool = false
     ) -> DailyContext {
         let opens = (0..<openCount).map { snap("open-\($0)", day: 29, hour: 10 + $0, title: "Session \($0)", completed: false) }
         let resolvedMode = mode ?? MorningProposalGenerationModeResolver.resolve(
@@ -1043,6 +1220,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             stronglyRejectsWalk: false,
             softDismissCount: 0,
             softNegativePenalty: 0,
+            preferAvoidHardLoadOnLowRecovery: preferAvoidHardLoadOnLowRecovery,
             mealLibrary: [],
             mealLibraryRevision: "0",
             weatherRiskToken: .unavailable,

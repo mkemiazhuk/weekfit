@@ -233,7 +233,7 @@ enum MorningProposalReasonCategory: String, Sendable {
             self = .loadProtection
         case .tomorrowDemandProtection:
             self = .tomorrowProtection
-        case .recoveryWalkSupport:
+        case .recoveryWalkSupport, .recoveryStretchSupport:
             self = .recoverySupport
         case .insufficientConfidence:
             self = .confidence
@@ -243,7 +243,13 @@ enum MorningProposalReasonCategory: String, Sendable {
             self = .recoverySupport
         case .similarDaySupport:
             self = .planAppropriate
-        case .libraryMealSupport:
+        case .libraryMealSupport,
+             .libraryMealRecoveryBreakfast,
+             .libraryMealRecoveryLunch,
+             .libraryMealRecoveryDinner,
+             .libraryMealSteadyBreakfast,
+             .libraryMealSteadyLunch,
+             .libraryMealSteadyDinner:
             self = .planAppropriate
         case .weatherOutdoorConflict, .weatherHeatLoad:
             self = .loadProtection
