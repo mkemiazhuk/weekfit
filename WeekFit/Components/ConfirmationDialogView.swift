@@ -16,6 +16,7 @@ struct ConfirmationDialogView: View {
     @Environment(\.weekFitPalette) private var palette
 
     private let destructiveRed = Color(red: 255/255, green: 83/255, blue: 88/255)
+    private let buttonMinHeight: CGFloat = 48
 
     init(
         icon: String,
@@ -49,27 +50,33 @@ struct ConfirmationDialogView: View {
             } label: {
                 Color.black.opacity(palette.isLight ? 0.22 : 0.58)
                     .ignoresSafeArea()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
             dialogCard
-                .padding(.horizontal, 24)
-                .transition(.scale(scale: 0.94).combined(with: .opacity))
+                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                .frame(maxWidth: .infinity)
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .transition(.opacity)
         .zIndex(20)
     }
 
     private var dialogCard: some View {
-        VStack(spacing: 18) {
+        VStack(alignment: .center, spacing: 18) {
             iconView
+                .frame(maxWidth: .infinity)
 
-            VStack(spacing: 9) {
+            VStack(alignment: .center, spacing: 9) {
                 Text(title)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .tracking(-0.25)
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
 
                 Text(message)
                     .font(.system(size: 13.4, weight: .medium, design: .rounded))
@@ -77,7 +84,9 @@ struct ConfirmationDialogView: View {
                     .foregroundStyle(WeekFitTheme.secondaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
 
             actionRow
                 .padding(.top, 4)
@@ -85,6 +94,7 @@ struct ConfirmationDialogView: View {
         .padding(.horizontal, 20)
         .padding(.top, 22)
         .padding(.bottom, 18)
+        .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.ultraThinMaterial.opacity(palette.isLight ? 0.88 : 0.62))
@@ -157,18 +167,26 @@ struct ConfirmationDialogView: View {
                 .font(.system(size: 22, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(iconTint.opacity(0.96))
+                // Optical center for triangle glyphs (SF Symbol sits slightly high/left).
+                .offset(x: 0.5, y: 0.5)
         }
+        .frame(width: 58, height: 58)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
     private var actionRow: some View {
         if let secondaryTitle {
-            HStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 dialogButton(
                     title: secondaryTitle,
                     foreground: WeekFitTheme.primaryText.opacity(0.82),
-                    background: WeekFitTheme.whiteOpacity(0.065),
-                    border: WeekFitTheme.whiteOpacity(0.060),
+                    background: palette.isLight
+                        ? Color.black.opacity(0.06)
+                        : WeekFitTheme.whiteOpacity(0.065),
+                    border: palette.isLight
+                        ? Color.black.opacity(0.04)
+                        : WeekFitTheme.whiteOpacity(0.060),
                     action: { onSecondary?() }
                 )
 
@@ -180,6 +198,9 @@ struct ConfirmationDialogView: View {
                     action: onPrimary
                 )
             }
+            .frame(maxWidth: .infinity)
+            // Match heights when the primary title wraps to two lines.
+            .fixedSize(horizontal: false, vertical: true)
         } else {
             dialogButton(
                 title: primaryTitle,
@@ -209,8 +230,12 @@ struct ConfirmationDialogView: View {
             Text(title)
                 .font(.system(size: 14.2, weight: .bold, design: .rounded))
                 .foregroundStyle(foreground)
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.82)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(background)
@@ -221,6 +246,7 @@ struct ConfirmationDialogView: View {
                 }
         }
         .buttonStyle(WeekFitDialogButtonStyle())
+        .frame(maxWidth: .infinity, minHeight: buttonMinHeight, maxHeight: .infinity)
     }
 }
 

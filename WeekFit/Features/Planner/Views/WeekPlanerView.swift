@@ -215,25 +215,27 @@ private struct WeekPlannerLiveQueryView: View {
                 .presentationDragIndicator(.visible)
                 .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
-        .confirmationDialog(
-            WeekFitLocalizedString("planner.delete.title"),
-            isPresented: Binding(
-                get: { timelineItemPendingDelete != nil },
-                set: { if !$0 { timelineItemPendingDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button(WeekFitLocalizedString("planner.delete"), role: .destructive) {
-                if let item = timelineItemPendingDelete {
-                    performDeleteTimelineItem(item)
-                    timelineItemPendingDelete = nil
-                }
+        .overlay {
+            if timelineItemPendingDelete != nil {
+                ConfirmationDialogView(
+                    icon: "trash.fill",
+                    iconTint: Color(red: 255/255, green: 83/255, blue: 88/255),
+                    title: WeekFitLocalizedString("planner.delete.title"),
+                    message: deleteConfirmationMessage(for: timelineItemPendingDelete),
+                    secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
+                    primaryTitle: WeekFitLocalizedString("planner.delete"),
+                    isPrimaryDestructive: true,
+                    onSecondary: {
+                        timelineItemPendingDelete = nil
+                    },
+                    onPrimary: {
+                        if let item = timelineItemPendingDelete {
+                            performDeleteTimelineItem(item)
+                        }
+                        timelineItemPendingDelete = nil
+                    }
+                )
             }
-            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) {
-                timelineItemPendingDelete = nil
-            }
-        } message: {
-            Text(deleteConfirmationMessage(for: timelineItemPendingDelete))
         }
         .onAppear {
             viewModel.syncCustomMeals(

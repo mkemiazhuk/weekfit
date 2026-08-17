@@ -74,6 +74,9 @@ struct PlanAddActivitySheet: View {
     private let addSheetMealCardHeight: CGFloat = 104
     private let addSheetMealImageWidth: CGFloat = 104
     private let addSheetMealImageHeight: CGFloat = 48
+    /// Taller well so workout / recovery / habit people photos are not sliced into a thin strip.
+    private let addSheetActivityCardHeight: CGFloat = 128
+    private let addSheetActivityImageHeight: CGFloat = 72
 
     private let timelineStartHour = 5
     private let timelineEndHour = 24
@@ -85,7 +88,9 @@ struct PlanAddActivitySheet: View {
     private var availableMeals: [Meals] { viewModel.availableMeals }
     private var currentOptions: [PlannerOption] { viewModel.currentOptions }
     private var showsMealEmptyState: Bool { viewModel.selectedType == .meal && availableMeals.isEmpty }
-    private var mealPickerSectionHeight: CGFloat { addSheetMealCardHeight + 8 }
+    private var mealPickerSectionHeight: CGFloat {
+        (viewModel.selectedType == .meal ? addSheetMealCardHeight : addSheetActivityCardHeight) + 8
+    }
 
     
 
@@ -580,7 +585,8 @@ private extension PlanAddActivitySheet {
             VStack(alignment: .leading, spacing: 5) {
                 ZStack(alignment: .topTrailing) {
                     optionImage(option)
-                        .frame(width: addSheetMealImageWidth, height: addSheetMealImageHeight)
+                        .frame(width: addSheetMealImageWidth, height: addSheetActivityImageHeight)
+                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
 
                     if active {
@@ -609,7 +615,7 @@ private extension PlanAddActivitySheet {
             .padding(.horizontal, 6)
             .padding(.top, 6)
             .padding(.bottom, 7)
-            .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
+            .frame(width: addSheetMealCardWidth, height: addSheetActivityCardHeight, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
@@ -660,6 +666,7 @@ private extension PlanAddActivitySheet {
                 ZStack(alignment: .topTrailing) {
                     mealPreview(meal)
                         .frame(width: addSheetMealImageWidth, height: addSheetMealImageHeight)
+                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                         .opacity(active ? 1.0 : 0.90)
 
@@ -1273,15 +1280,16 @@ private extension PlanAddActivitySheet {
     }
 
     func addSheetCoverImage(named imageName: String) -> some View {
-        Image(imageName)
-            .resizable()
-            .scaledToFill()
-            .background(
-                PlanAddSheetPalette.imageWellFill(
-                    for: viewModel.selectedType,
-                    isLight: palette.isLight
-                )
-            )
+        PlanAddSheetPalette.imageWellFill(
+            for: viewModel.selectedType,
+            isLight: palette.isLight
+        )
+        .overlay {
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
+        }
+        .clipped()
     }
 
 }
