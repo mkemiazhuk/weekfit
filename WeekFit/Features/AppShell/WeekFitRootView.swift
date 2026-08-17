@@ -169,9 +169,31 @@ struct WeekFitRootView: View {
             .onChange(of: todaySelectedDate) { _, _ in
                 syncCoachRefreshInputs()
             }
-            .onChange(of: plannedActivities) { _, _ in
+            .onChange(of: plannedActivities) { _, newActivities in
                 refreshPlannedActivitiesSignature(warmPlannerCaches: mountedTabs.contains(.calendar))
                 syncNotifications(source: "root.plannedActivities", includeActivities: true, includeWellness: true)
+                // Today can be Equatable-frozen while Meals/Planner is active; reconcile
+                // nutrition here so meal add/delete still updates consumed %.
+                let selectedDate = todaySelectedDate
+                let dayActivities = DailyStateSnapshotBuilder.activities(
+                    on: selectedDate,
+                    from: newActivities
+                )
+                Task { @MainActor in
+                    await healthManager.loadNutritionMetrics(
+                        for: selectedDate,
+                        plannedActivities: dayActivities
+                    )
+                    coachInputProvider.refreshFromCurrentState(
+                        selectedDate: selectedDate,
+                        dayActivities: dayActivities,
+                        allPlannedActivities: newActivities,
+                        healthManager: healthManager,
+                        nutritionViewModel: nutritionViewModel,
+                        coachCoordinator: coachCoordinator,
+                        source: "root.plannedActivitiesChanged"
+                    )
+                }
             }
     }
 
@@ -656,6 +678,13 @@ struct WeekFitRootView: View {
             source: source,
             refreshHealth: refreshHealth
         )
+
+        WidgetSnapshotPublisher.publishFromLiveState(
+            healthManager: healthManager,
+            nutritionViewModel: nutritionViewModel,
+            coachCoordinator: coachCoordinator,
+            plannedActivities: plannedActivities
+        )
     }
 
     private var coachRefreshDate: Date {
@@ -913,11 +942,17 @@ struct WeekFitRootView: View {
         let coachState = coachCoordinator.state
         let readiness: CoachDayReadiness = {
             if let input = coachState.input {
-                return CoachDayReadinessResolver.resolve(from: input)
+                return CoachDayReadinessResolver.resolve(
+                    from: input,
+                    priorDayLoad: healthManager.recoveryPriorDayLoad
+                )
             }
             return MorningProposalEvaluator.readinessFallback(
                 readyScore: healthManager.readyScore,
-                sleepHours: sleepHours
+                sleepHours: sleepHours,
+                hadHeavyYesterday: CoachDayReadinessResolver.isHeavyPriorDayLoad(
+                    healthManager.recoveryPriorDayLoad
+                )
             )
         }()
         let meals = MorningProposalEvaluator.mealLibrary(from: WeekFitUserSettings.shared)

@@ -13,6 +13,9 @@
 		5552A8C92FE4968100A4172D /* WeekFitHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000082FB2403E006A4D26 /* WeekFitHealthKit */; };
 		F10000042FB2403E006A4D33 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F10000022FB2403E006A4D31 /* FirebaseAnalyticsCore */; };
 		F10000052FB2403E006A4D34 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F10000032FB2403E006A4D32 /* FirebaseCrashlytics */; };
+		W10000012FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */ = {isa = PBXBuildFile; productRef = W100000A2FB2403E006A4D40 /* WeekFitWidgetShared */; };
+		W10000022FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */ = {isa = PBXBuildFile; productRef = W100000B2FB2403E006A4D40 /* WeekFitWidgetShared */; };
+		W10000032FB2403E006A4D40 /* WeekFitWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = W10000102FB2403E006A4D40 /* WeekFitWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,12 +33,34 @@
 			remoteGlobalIDString = 55E7BBE42FB2403E006A4D20;
 			remoteInfo = WeekFit;
 		};
+		W10000202FB2403E006A4D40 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 55E7BBDD2FB2403E006A4D20 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = W10000302FB2403E006A4D40;
+			remoteInfo = WeekFitWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		W10000402FB2403E006A4D40 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				W10000032FB2403E006A4D40 /* WeekFitWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		55E7BBE52FB2403E006A4D20 /* WeekFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WeekFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		55E7BBF22FB24040006A4D20 /* WeekFitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WeekFitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		55E7BBFC2FB24040006A4D20 /* WeekFitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WeekFitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		W10000102FB2403E006A4D40 /* WeekFitWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WeekFitWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -53,6 +78,13 @@
 				Info.plist,
 			);
 			target = 55E7BBE42FB2403E006A4D20 /* WeekFit */;
+		};
+		W10000502FB2403E006A4D40 /* Exceptions for "WeekFitWidget" folder in "WeekFitWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = W10000302FB2403E006A4D40 /* WeekFitWidget */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -75,6 +107,14 @@
 			path = WeekFitUITests;
 			sourceTree = "<group>";
 		};
+		W10000602FB2403E006A4D40 /* WeekFitWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				W10000502FB2403E006A4D40 /* Exceptions for "WeekFitWidget" folder in "WeekFitWidget" target */,
+			);
+			path = WeekFitWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +126,7 @@
 				5552A8C72FE4968100A4172B /* WeekFitCoachCore in Frameworks */,
 				5552A8C82FE4968100A4172C /* WeekFitPlanner in Frameworks */,
 				5552A8C92FE4968100A4172D /* WeekFitHealthKit in Frameworks */,
+				W10000012FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */,
 				F10000042FB2403E006A4D33 /* FirebaseAnalyticsCore in Frameworks */,
 				F10000052FB2403E006A4D34 /* FirebaseCrashlytics in Frameworks */,
 			);
@@ -105,6 +146,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W10000702FB2403E006A4D40 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				W10000022FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -112,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				55E7BBE72FB2403E006A4D20 /* WeekFit */,
+				W10000602FB2403E006A4D40 /* WeekFitWidget */,
 				55E7BBF52FB24040006A4D20 /* WeekFitTests */,
 				55E7BBFF2FB24040006A4D20 /* WeekFitUITests */,
 				55E7BBE62FB2403E006A4D20 /* Products */,
@@ -122,6 +172,7 @@
 			isa = PBXGroup;
 			children = (
 				55E7BBE52FB2403E006A4D20 /* WeekFit.app */,
+				W10000102FB2403E006A4D40 /* WeekFitWidget.appex */,
 				55E7BBF22FB24040006A4D20 /* WeekFitTests.xctest */,
 				55E7BBFC2FB24040006A4D20 /* WeekFitUITests.xctest */,
 			);
@@ -138,11 +189,13 @@
 				55E7BBE12FB2403E006A4D20 /* Sources */,
 				55E7BBE22FB2403E006A4D20 /* Frameworks */,
 				55E7BBE32FB2403E006A4D20 /* Resources */,
+				W10000402FB2403E006A4D40 /* Embed Foundation Extensions */,
 				F10000062FB2403E006A4D35 /* Upload Crashlytics dSYM */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				W10000802FB2403E006A4D40 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				55E7BBE72FB2403E006A4D20 /* WeekFit */,
@@ -153,6 +206,7 @@
 				A10000042FB2403E006A4D22 /* WeekFitCoachCore */,
 				A10000062FB2403E006A4D24 /* WeekFitPlanner */,
 				A10000082FB2403E006A4D26 /* WeekFitHealthKit */,
+				W100000A2FB2403E006A4D40 /* WeekFitWidgetShared */,
 				F10000022FB2403E006A4D31 /* FirebaseAnalyticsCore */,
 				F10000032FB2403E006A4D32 /* FirebaseCrashlytics */,
 			);
@@ -206,6 +260,29 @@
 			productReference = 55E7BBFC2FB24040006A4D20 /* WeekFitUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		W10000302FB2403E006A4D40 /* WeekFitWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = W10000902FB2403E006A4D40 /* Build configuration list for PBXNativeTarget "WeekFitWidget" */;
+			buildPhases = (
+				W10000A02FB2403E006A4D40 /* Sources */,
+				W10000702FB2403E006A4D40 /* Frameworks */,
+				W10000B02FB2403E006A4D40 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				W10000602FB2403E006A4D40 /* WeekFitWidget */,
+			);
+			name = WeekFitWidget;
+			packageProductDependencies = (
+				W100000B2FB2403E006A4D40 /* WeekFitWidgetShared */,
+			);
+			productName = WeekFitWidget;
+			productReference = W10000102FB2403E006A4D40 /* WeekFitWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -227,6 +304,9 @@
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = 55E7BBE42FB2403E006A4D20;
 					};
+					W10000302FB2403E006A4D40 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
 				};
 			};
 			buildConfigurationList = 55E7BBE02FB2403E006A4D20 /* Build configuration list for PBXProject "WeekFit" */;
@@ -244,6 +324,7 @@
 				A10000032FB2403E006A4D21 /* XCLocalSwiftPackageReference "Packages/WeekFitCoachCore" */,
 				A10000052FB2403E006A4D23 /* XCLocalSwiftPackageReference "Packages/WeekFitPlanner" */,
 				A10000072FB2403E006A4D25 /* XCLocalSwiftPackageReference "Packages/WeekFitHealthKit" */,
+				W10000092FB2403E006A4D40 /* XCLocalSwiftPackageReference "Packages/WeekFitWidgetShared" */,
 				F10000012FB2403E006A4D30 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -252,6 +333,7 @@
 			projectRoot = "";
 			targets = (
 				55E7BBE42FB2403E006A4D20 /* WeekFit */,
+				W10000302FB2403E006A4D40 /* WeekFitWidget */,
 				55E7BBF12FB24040006A4D20 /* WeekFitTests */,
 				55E7BBFB2FB24040006A4D20 /* WeekFitUITests */,
 			);
@@ -274,6 +356,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		55E7BBFA2FB24040006A4D20 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		W10000B02FB2403E006A4D40 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -332,6 +421,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W10000A02FB2403E006A4D40 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -344,6 +440,11 @@
 			isa = PBXTargetDependency;
 			target = 55E7BBE42FB2403E006A4D20 /* WeekFit */;
 			targetProxy = 55E7BBFD2FB24040006A4D20 /* PBXContainerItemProxy */;
+		};
+		W10000802FB2403E006A4D40 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = W10000302FB2403E006A4D40 /* WeekFitWidget */;
+			targetProxy = W10000202FB2403E006A4D40 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -657,6 +758,70 @@
 			};
 			name = Release;
 		};
+		W10000C02FB2403E006A4D40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 19;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFitWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WeekFit;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		W10000D02FB2403E006A4D40 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 19;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFitWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WeekFit;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -696,6 +861,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		W10000902FB2403E006A4D40 /* Build configuration list for PBXNativeTarget "WeekFitWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				W10000C02FB2403E006A4D40 /* Debug */,
+				W10000D02FB2403E006A4D40 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -714,6 +888,10 @@
 		A10000072FB2403E006A4D25 /* XCLocalSwiftPackageReference "Packages/WeekFitHealthKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/WeekFitHealthKit;
+		};
+		W10000092FB2403E006A4D40 /* XCLocalSwiftPackageReference "Packages/WeekFitWidgetShared" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WeekFitWidgetShared;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -758,6 +936,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F10000012FB2403E006A4D30 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCrashlytics;
+		};
+		W100000A2FB2403E006A4D40 /* WeekFitWidgetShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = W10000092FB2403E006A4D40 /* XCLocalSwiftPackageReference "Packages/WeekFitWidgetShared" */;
+			productName = WeekFitWidgetShared;
+		};
+		W100000B2FB2403E006A4D40 /* WeekFitWidgetShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = W10000092FB2403E006A4D40 /* XCLocalSwiftPackageReference "Packages/WeekFitWidgetShared" */;
+			productName = WeekFitWidgetShared;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

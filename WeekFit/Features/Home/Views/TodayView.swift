@@ -522,6 +522,14 @@ struct TodayView: View {
                     on: selectedDate,
                     from: newActivities
                 )
+                // Reload HealthKit-published macros first, then refresh coach/nutrition so
+                // meal add/delete can move consumed % without a stale seed.
+                await todayViewModel.reconcileNutritionAfterPlannedActivitiesChange(
+                    selectedDate: selectedDate,
+                    plannedActivities: newActivities,
+                    healthManager: healthManager,
+                    nutritionViewModel: nutritionViewModel
+                )
                 coachInputProvider.refreshFromCurrentState(
                     selectedDate: selectedDate,
                     dayActivities: dayActivities,
@@ -530,12 +538,6 @@ struct TodayView: View {
                     nutritionViewModel: nutritionViewModel,
                     coachCoordinator: coachCoordinator,
                     source: "TodayView.plannedActivitiesChanged"
-                )
-                await todayViewModel.reconcileNutritionAfterPlannedActivitiesChange(
-                    selectedDate: selectedDate,
-                    plannedActivities: newActivities,
-                    healthManager: healthManager,
-                    nutritionViewModel: nutritionViewModel
                 )
             }
 
@@ -2974,11 +2976,17 @@ struct TodayView: View {
         let sleepHours = Double(healthManager.sleepMinutes) / 60.0
         let readiness: CoachDayReadiness = {
             if let input = coachState.input {
-                return CoachDayReadinessResolver.resolve(from: input)
+                return CoachDayReadinessResolver.resolve(
+                    from: input,
+                    priorDayLoad: healthManager.recoveryPriorDayLoad
+                )
             }
             return MorningProposalEvaluator.readinessFallback(
                 readyScore: healthManager.readyScore,
-                sleepHours: sleepHours
+                sleepHours: sleepHours,
+                hadHeavyYesterday: CoachDayReadinessResolver.isHeavyPriorDayLoad(
+                    healthManager.recoveryPriorDayLoad
+                )
             )
         }()
         let meals = MorningProposalEvaluator.mealLibrary(from: userSettings)

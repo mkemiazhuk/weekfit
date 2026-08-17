@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import WeekFitWidgetShared
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -130,7 +131,16 @@ struct WeekFitApp: App {
                     healthManager.prepareForAccountDeletion()
                     nightComfortLocationService?.stopAndClearForAccountDeletion()
                 }
+                .onOpenURL { url in
+                    handleOpenURL(url)
+                }
         }
+    }
+
+    private func handleOpenURL(_ url: URL) {
+        guard WeekFitWidgetDeepLink.isTodayURL(url) else { return }
+        appSession.requestRootTab(.today)
+        appSession.triggerReturnToToday()
     }
 
     private func handleScenePhaseChange() {

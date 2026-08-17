@@ -59,6 +59,11 @@ final class AppSessionState: ObservableObject {
         isPresentingHealthAccess = false
     }
 
+    /// Opens a root tab from an external entry point (widget deep link, etc.).
+    func requestRootTab(_ tab: WeekFitTab) {
+        pendingRootTab = tab
+    }
+
     func consumePendingRootTab() -> WeekFitTab? {
         let tab = pendingRootTab
         pendingRootTab = nil
