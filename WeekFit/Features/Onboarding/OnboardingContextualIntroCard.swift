@@ -18,7 +18,7 @@ struct OnboardingContextualIntroCard: View {
 
                     Text(message)
                         .font(.system(size: 13.5, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
+                        .foregroundStyle(WeekFitTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

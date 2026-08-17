@@ -19,6 +19,12 @@ import SwiftUI
         .background(WeekFitTheme.ambientCanvasBackground)
 }
 
+#Preview("Adaptation") {
+    OnboardingAdaptationStage()
+        .padding()
+        .background(WeekFitTheme.ambientCanvasBackground)
+}
+
 #Preview("Health") {
     OnboardingHealthSignalsStage()
         .padding()

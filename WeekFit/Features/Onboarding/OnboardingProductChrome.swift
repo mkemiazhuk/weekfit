@@ -171,31 +171,14 @@ struct OnboardingPromiseMark: View {
 
     private var copyBlock: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(WeekFitLocalizedString("onboarding.v11.splash.headline"))
-                    .font(.system(size: headlineSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(headlineInk)
-                    .tracking(-0.8)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.78)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                palette.isLight ? WeekFitLightTokens.brandGold : gold,
-                                WeekFitTheme.brandGoldDeep
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 7, height: 7)
-                    .offset(x: 2, y: -6)
-                    .accessibilityHidden(true)
-            }
-            .accessibilityAddTraits(.isHeader)
+            Text(WeekFitLocalizedString("onboarding.v11.splash.headline"))
+                .font(.system(size: headlineSize, weight: .bold, design: .rounded))
+                .foregroundStyle(headlineInk)
+                .tracking(-0.8)
+                .lineLimit(2)
+                .minimumScaleFactor(0.78)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
             (
                 Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis"))
@@ -632,7 +615,7 @@ struct OnboardingLiveChangeStage: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(WeekFitLocalizedString("onboarding.v10.live.afternoon.recovery"))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                    .foregroundStyle(WeekFitTheme.primaryText)
                 HStack(spacing: 10) {
                     recoveryBadge(afternoonRecovery)
                     Text(
@@ -671,7 +654,7 @@ struct OnboardingLiveChangeStage: View {
 
                 Text(WeekFitLocalizedString("onboarding.v10.live.update.move"))
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
             }
         }
     }
@@ -679,7 +662,7 @@ struct OnboardingLiveChangeStage: View {
     private var connector: some View {
         Image(systemName: "arrow.down")
             .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+            .foregroundStyle(WeekFitTheme.tertiaryText)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 2)
     }
@@ -693,7 +676,7 @@ struct OnboardingLiveChangeStage: View {
             if let time {
                 Text(time)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
                     .monospacedDigit()
                     .frame(width: 44, alignment: .leading)
                     .padding(.top, 14)
@@ -730,7 +713,7 @@ struct OnboardingLiveChangeStage: View {
                 .foregroundStyle(WeekFitTheme.coachAccent)
             Text(text)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.70))
+                .foregroundStyle(WeekFitTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -892,7 +875,7 @@ struct OnboardingTodayExperience: View {
                 .font(.caption2.weight(.semibold))
                 .fontDesign(.rounded)
                 .tracking(1.2)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
 
             HStack(spacing: 8) {
                 ForEach(RingKind.allCases, id: \.rawValue) { kind in
@@ -957,7 +940,7 @@ struct OnboardingTodayExperience: View {
 
                 Text(WeekFitLocalizedString(kind.titleKey))
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isSelected ? kind.color : WeekFitTheme.whiteOpacity(0.42))
+                    .foregroundStyle(isSelected ? kind.color : WeekFitTheme.tertiaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
@@ -973,7 +956,7 @@ struct OnboardingTodayExperience: View {
             Text(WeekFitLocalizedString("onboarding.v10.today.actionsTitle").uppercased())
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(1.2)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
 
             HStack(spacing: 8) {
                 ForEach(QuickAction.allCases, id: \.rawValue) { action in
@@ -983,7 +966,7 @@ struct OnboardingTodayExperience: View {
 
             Text(WeekFitLocalizedString("onboarding.v10.today.actionHint"))
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
@@ -1015,7 +998,7 @@ struct OnboardingTodayExperience: View {
 
                 Text(WeekFitLocalizedString(action.labelKey))
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(highlighted ? WeekFitTheme.primaryText : WeekFitTheme.whiteOpacity(0.68))
+                    .foregroundStyle(highlighted ? WeekFitTheme.primaryText : WeekFitTheme.secondaryText)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
@@ -1106,7 +1089,7 @@ struct OnboardingCoachHero: View {
                     .font(.system(size: 13, weight: .medium))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
+            .foregroundStyle(WeekFitTheme.secondaryText)
             .padding(.top, 18)
         }
         .padding(20)
@@ -1149,10 +1132,10 @@ struct OnboardingCoachHero: View {
             Text(label.uppercased())
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(0.9)
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.36))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
             Text(text)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.88))
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -1189,7 +1172,7 @@ struct OnboardingAheadComposition: View {
                 .padding(.top, 1)
             Text(WeekFitLocalizedString("onboarding.v10.ahead.tip"))
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
+                .foregroundStyle(WeekFitTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
@@ -1234,7 +1217,7 @@ struct OnboardingAheadComposition: View {
                 chip(WeekFitLocalizedString("onboarding.v7.meals.ing.rice"))
                 Image(systemName: "arrow.right")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.28))
+                    .foregroundStyle(WeekFitTheme.tertiaryText)
                 Text(
                     String(
                         format: WeekFitLocalizedString("onboarding.v10.ahead.kcalFormat"),
@@ -1247,7 +1230,7 @@ struct OnboardingAheadComposition: View {
 
             Text(WeekFitLocalizedString("onboarding.v10.ahead.mealsLine"))
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
+                .foregroundStyle(WeekFitTheme.secondaryText)
         }
         .padding(14)
         .weekFitPremiumCard(accent: WeekFitTheme.meal, cornerRadius: 20, featured: true)
@@ -1263,7 +1246,7 @@ struct OnboardingAheadComposition: View {
         HStack(spacing: 12) {
             Text(time)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
                 .monospacedDigit()
                 .frame(width: 42, alignment: .leading)
 
@@ -1279,7 +1262,7 @@ struct OnboardingAheadComposition: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                 Text(detail)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.45))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
             }
             Spacer(minLength: 0)
         }
@@ -1307,7 +1290,7 @@ struct OnboardingAheadComposition: View {
     }
 }
 
-// MARK: - Ready climax (coach voice, not dashboard)
+// MARK: - Ready climax (payoff, not further education)
 
 struct OnboardingReadyClimax: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1317,34 +1300,13 @@ struct OnboardingReadyClimax: View {
     let activityPercent: Int?
     let nutritionPercent: Int?
     let greetingTitle: String
-    let greetingSubtitle: String
-    let mirrorLine: String
+    let reasoningLine: String
     let trainLine: String
     let mealLine: String
     let recoveryLine: String
-    let bodyLine: String
+    let footerLine: String
 
     @State private var visible = false
-    @ScaledMetric(relativeTo: .title) private var titleSize: CGFloat = 30
-    @ScaledMetric(relativeTo: .callout) private var bodySize: CGFloat = 16
-
-    private let gold = WeekFitTheme.brandGold
-
-    private var cardPrimaryInk: Color {
-        palette.isLight ? WeekFitLightTokens.textPrimary : Color.white
-    }
-
-    private var cardFill: Color {
-        palette.isLight ? WeekFitLightTokens.surfacePrimary : Color.black
-    }
-
-    private var mirrorInk: Color {
-        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold.opacity(0.92)
-    }
-
-    private var planLabelInk: Color {
-        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold.opacity(0.85)
-    }
 
     private var recovery: Int {
         recoveryPercent ?? OnboardingSampleData.morningRecoveryPercent
@@ -1360,56 +1322,37 @@ struct OnboardingReadyClimax: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(greetingTitle)
-                .font(.system(size: titleSize, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .tracking(-0.4)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+            OnboardingTitle(text: greetingTitle)
                 .opacity(visible ? 1 : 0)
-                .offset(y: visible ? 0 : 10)
+                .offset(y: visible ? 0 : 8)
 
-            Text(greetingSubtitle)
-                .font(.system(size: bodySize, weight: .medium, design: .rounded))
-                .foregroundStyle(
-                    palette.isLight
-                        ? WeekFitLightTokens.textSecondary
-                        : WeekFitTheme.whiteOpacity(0.72)
-                )
+            OnboardingSubtitle(text: WeekFitLocalizedString("onboarding.v12.ready.subtitle.planReady"))
+                .padding(.top, OnboardingLayout.titleToSubtitle)
+                .opacity(visible ? 1 : 0)
+
+            Text(reasoningLine)
+                .font(.system(size: OnboardingLayout.CardSecondary.size, weight: .medium))
+                .foregroundStyle(WeekFitTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
-                .fixedSize(horizontal: false, vertical: true)
-                .opacity(visible ? 1 : 0)
-
-            Text(mirrorLine)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(mirrorInk)
-                .padding(.top, 14)
-                .fixedSize(horizontal: false, vertical: true)
                 .opacity(visible ? 1 : 0)
 
             coachCard
-                .padding(.top, 18)
+                .padding(.top, OnboardingLayout.subtitleToContent)
                 .opacity(visible ? 1 : 0)
-                .offset(y: visible ? 0 : 14)
+                .offset(y: visible ? 0 : 10)
 
-            Text(bodyLine)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(
-                    palette.isLight
-                        ? WeekFitLightTokens.textTertiary
-                        : WeekFitTheme.whiteOpacity(0.46)
-                )
-                .padding(.top, 16)
-                .fixedSize(horizontal: false, vertical: true)
+            OnboardingHelper(text: footerLine)
+                .padding(.top, OnboardingLayout.contentToHelper)
                 .opacity(visible ? 1 : 0)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: OnboardingLayout.minBreathingRoom)
         }
         .onAppear {
             if reduceMotion {
                 visible = true
             } else {
-                withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                withAnimation(.easeOut(duration: 0.4)) {
                     visible = true
                 }
             }
@@ -1419,9 +1362,9 @@ struct OnboardingReadyClimax: View {
     private var coachCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(WeekFitLocalizedString("onboarding.v12.ready.planLabel").uppercased())
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .tracking(1.3)
-                .foregroundStyle(planLabelInk)
+                .font(.system(size: OnboardingLayout.Eyebrow.size, weight: .bold, design: .rounded))
+                .tracking(OnboardingLayout.Eyebrow.tracking)
+                .foregroundStyle(WeekFitTheme.coachAccent)
 
             VStack(alignment: .leading, spacing: 12) {
                 coachRow(icon: "figure.run", color: WeekFitProgressRingColor.activity, text: trainLine)
@@ -1449,46 +1392,21 @@ struct OnboardingReadyClimax: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
         }
-        .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(cardFill)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: palette.isLight
-                                    ? [
-                                        Color.white.opacity(0.95),
-                                        WeekFitLightTokens.cardBorder.opacity(0.08),
-                                        WeekFitLightTokens.brandGold.opacity(0.28)
-                                    ]
-                                    : [
-                                        gold.opacity(0.85),
-                                        WeekFitTheme.brandGoldDeep.opacity(0.35),
-                                        gold.opacity(0.55)
-                                    ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: palette.isLight ? 1.0 : 1.4
-                        )
-                }
-                .shadow(
-                    color: palette.isLight
-                        ? Color.black.opacity(0.06)
-                        : gold.opacity(0.28),
-                    radius: palette.isLight ? 8 : 26,
-                    y: palette.isLight ? 4 : 10
-                )
-                .shadow(
-                    color: palette.isLight
-                        ? Color.black.opacity(0.04)
-                        : Color.clear,
-                    radius: palette.isLight ? 20 : 0,
-                    y: palette.isLight ? 12 : 0
-                )
-        }
+        .padding(OnboardingLayout.cardRowHorizontal)
+        .weekFitPremiumCard(
+            accent: WeekFitTheme.coachAccent,
+            cornerRadius: OnboardingLayout.cardCornerRadius,
+            featured: true
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            [
+                WeekFitLocalizedString("onboarding.v12.ready.planLabel"),
+                trainLine,
+                mealLine,
+                recoveryLine
+            ].joined(separator: ". ")
+        )
     }
 
     private func coachRow(icon: String, color: Color, text: String) -> some View {
@@ -1498,16 +1416,12 @@ struct OnboardingReadyClimax: View {
                 .foregroundStyle(color)
                 .frame(width: 30, height: 30)
                 .background {
-                    Circle().fill(
-                        palette.isLight
-                            ? color.opacity(0.12)
-                            : color.opacity(0.14)
-                    )
+                    Circle().fill(color.opacity(palette.isLight ? 0.12 : 0.14))
                 }
 
             Text(text)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(cardPrimaryInk)
+                .font(.system(size: OnboardingLayout.CardTitle.size, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1522,7 +1436,7 @@ struct OnboardingReadyClimax: View {
         ) {
             Text(label)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(cardPrimaryInk)
+                .foregroundStyle(WeekFitTheme.primaryText)
                 .monospacedDigit()
                 .minimumScaleFactor(0.7)
         }

@@ -1,8 +1,8 @@
 import SwiftUI
 import HealthKit
 
-/// Guided product experience — promise → aim → trust → proof → coach.
-/// Flow v14: promise → goal → units → health → understanding → ready.
+/// Guided product experience — promise → goal → units → health → understanding → ready.
+/// Flow: Goal → Context → Adaptive Coach → Today's Plan.
 struct FirstRunOnboardingView: View {
 
     @EnvironmentObject private var appSession: AppSessionState
@@ -11,17 +11,12 @@ struct FirstRunOnboardingView: View {
     @State private var pendingUnitSystem: WeekFitResolvedUnitSystem = WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
     @State private var didPersistUnitsSelection = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.weekFitPalette) private var palette
-
-    @ScaledMetric(relativeTo: .title2) private var editorialTitleSize: CGFloat = 28
-    @ScaledMetric(relativeTo: .body) private var editorialBodySize: CGFloat = 15
 
     @State private var step: Step
     @State private var selectedGoal: NutritionGoal
     @State private var contentVisible = false
     @State private var isRequestingHealth = false
-    @State private var primaryPressed = false
     @State private var didPersistGoal = false
     @State private var didUserChangeGoal = false
     @State private var advanceLocked = false
@@ -92,10 +87,14 @@ struct FirstRunOnboardingView: View {
             background
 
             VStack(spacing: 0) {
-                progressHeader
-                    .padding(.horizontal, 28)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
+                OnboardingNavBar(
+                    progress: navProgress,
+                    progressAccessibilityLabel: navProgressAccessibilityLabel,
+                    showsBack: canGoBack,
+                    showsSkip: canSkip,
+                    onBack: goBack,
+                    onSkip: skipOnboarding
+                )
 
                 ZStack {
                     stepContent
@@ -120,9 +119,9 @@ struct FirstRunOnboardingView: View {
                 }
 
                 bottomBar
-                    .padding(.horizontal, 28)
-                    .padding(.top, 10)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                    .padding(.top, OnboardingLayout.ctaTopPadding)
+                    .padding(.bottom, OnboardingLayout.ctaBottomPadding)
             }
             .opacity(contentVisible ? 1 : 0)
         }
@@ -181,6 +180,21 @@ struct FirstRunOnboardingView: View {
     /// Skip exits the whole flow (not just the Health step's "Not now").
     private var canSkip: Bool {
         step != .ready && !isRequestingHealth && !advanceLocked
+    }
+
+    private var navProgress: CGFloat? {
+        guard step != .promise else { return nil }
+        let functionalIndex = max(step.rawValue, 1)
+        return CGFloat(functionalIndex) / CGFloat(Step.allCases.count - 1)
+    }
+
+    private var navProgressAccessibilityLabel: String {
+        guard step != .promise else { return "" }
+        return String(
+            format: WeekFitLocalizedString("onboarding.progress.format"),
+            step.rawValue,
+            Step.allCases.count - 1
+        )
     }
 
     private var backEdgeSwipeGesture: some Gesture {
@@ -245,16 +259,6 @@ struct FirstRunOnboardingView: View {
         }
     }
 
-    private var needsScroll: Bool {
-        dynamicTypeSize.isAccessibilitySize
-            || step == .promise
-            || step == .understanding
-            || step == .goal
-            || step == .units
-            || step == .ready
-            || step == .health
-    }
-
     private func applySuggestedGoalIfNeeded() {
         guard !didUserChangeGoal, !didPersistGoal else { return }
         guard let suggested = suggestedGoal else { return }
@@ -267,108 +271,68 @@ struct FirstRunOnboardingView: View {
 private extension FirstRunOnboardingView {
 
     var promiseStep: some View {
-        page {
+        OnboardingPage {
             OnboardingPromiseMark()
-                .padding(.top, 4)
         }
     }
 
     var goalStep: some View {
-        page {
-            VStack(alignment: .leading, spacing: 0) {
-                editorialTitle(WeekFitLocalizedString("onboarding.v11.goal.title"))
-                editorialBody(WeekFitLocalizedString("onboarding.v11.goal.body"))
-                    .padding(.top, 8)
-
-                BodyGoalPickerSection(
-                    selectedGoal: $selectedGoal,
-                    hasHealthBiometrics: hasHealthBiometrics,
-                    suggestedGoal: suggestedGoal == selectedGoal ? nil : suggestedGoal,
-                    showsMissingHealthNote: false,
-                    footerOverride: WeekFitLocalizedString("onboarding.v11.goal.footer")
-                )
-                .padding(.top, 22)
-                .onChange(of: selectedGoal) { _, _ in
-                    didPersistGoal = false
-                    didUserChangeGoal = true
-                    #if !targetEnvironment(simulator)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    #endif
-                }
-
-                Spacer(minLength: 12)
+        OnboardingPage(
+            title: WeekFitLocalizedString("onboarding.v11.goal.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v11.goal.body"),
+            helper: WeekFitLocalizedString("onboarding.v11.goal.footer")
+        ) {
+            BodyGoalPickerSection(
+                selectedGoal: $selectedGoal,
+                hasHealthBiometrics: hasHealthBiometrics,
+                suggestedGoal: suggestedGoal == selectedGoal ? nil : suggestedGoal,
+                showsMissingHealthNote: false,
+                showsSectionTitle: false,
+                showsFooter: false
+            )
+            .onChange(of: selectedGoal) { _, _ in
+                didPersistGoal = false
+                didUserChangeGoal = true
+                #if !targetEnvironment(simulator)
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                #endif
             }
         }
     }
 
     var unitsStep: some View {
-        page {
-            VStack(alignment: .leading, spacing: 0) {
-                editorialTitle(WeekFitUsesRussianLanguage() ? "Выберите единицы" : "Choose your units")
-                editorialBody(
-                    WeekFitUsesRussianLanguage()
-                        ? "WeekFit выбрал рекомендуемый формат для вашего устройства. Вы можете изменить это в любое время в Настройках."
-                        : "WeekFit has selected the recommended format for your device. You can change it anytime in Settings."
-                )
-                .padding(.top, 8)
+        OnboardingPage(
+            title: WeekFitLocalizedString("onboarding.v11.units.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v11.units.body")
+        ) {
+            VStack(spacing: 0) {
+                ForEach(WeekFitResolvedUnitSystem.allCases, id: \.self) { system in
+                    OnboardingChoiceRow(
+                        title: optionTitle(for: system),
+                        subtitle: optionSubtitle(for: system),
+                        badge: system == recommendedUnitSystem
+                            ? WeekFitLocalizedString("settings.units.recommended")
+                            : nil,
+                        accessibilityText: optionA11yLabel(for: system),
+                        isSelected: pendingUnitSystem == system
+                    ) {
+                        pendingUnitSystem = system
+                        #if !targetEnvironment(simulator)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        #endif
+                    }
 
-                VStack(spacing: 0) {
-                    unitsOptionRow(system: .metric)
-                    unitsDivider
-                    unitsOptionRow(system: .uk)
-                    unitsDivider
-                    unitsOptionRow(system: .us)
+                    if system != WeekFitResolvedUnitSystem.allCases.last {
+                        OnboardingChoiceDivider()
+                    }
                 }
-                .profilePremiumCard(cornerRadius: 20)
-                .padding(.top, 22)
-
-                Spacer(minLength: 8)
             }
+            .profilePremiumCard(cornerRadius: OnboardingLayout.cardCornerRadius)
         }
     }
 
-    private func unitsOptionRow(system: WeekFitResolvedUnitSystem) -> some View {
-        Button {
-            pendingUnitSystem = system
-        } label: {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(optionTitle(for: system))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.primaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(optionSubtitle(for: system))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.54))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: pendingUnitSystem == system ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(
-                        pendingUnitSystem == system
-                            ? Color(red: 170/255, green: 255/255, blue: 70/255)
-                            : WeekFitTheme.whiteOpacity(0.35)
-                    )
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(optionA11yLabel(for: system)))
-        .accessibilityAddTraits(pendingUnitSystem == system ? .isSelected : [])
-    }
-
-    private var unitsDivider: some View {
-        Rectangle()
-            .fill(WeekFitTheme.whiteOpacity(0.06))
-            .frame(height: 1)
-            .padding(.leading, 16)
-            .padding(.trailing, 16)
+    private var recommendedUnitSystem: WeekFitResolvedUnitSystem {
+        WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
     }
 
     private func optionTitle(for system: WeekFitResolvedUnitSystem) -> String {
@@ -403,52 +367,45 @@ private extension FirstRunOnboardingView {
     }
 
     var understandingStep: some View {
-        page {
-            VStack(alignment: .leading, spacing: 0) {
-                editorialTitle(WeekFitLocalizedString("onboarding.v12.understanding.title"))
-                editorialBody(understandingBody)
-                    .padding(.top, 10)
-
-                OnboardingLiveChangeStage()
-                    .padding(.top, 16)
-
-                Spacer(minLength: 8)
-            }
+        OnboardingPage(
+            title: WeekFitLocalizedString("onboarding.v12.understanding.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v12.understanding.body")
+        ) {
+            OnboardingAdaptationStage()
         }
     }
 
     var healthStep: some View {
-        page {
-            VStack(alignment: .leading, spacing: 0) {
-                editorialTitle(WeekFitLocalizedString("onboarding.v10.health.title"))
-                editorialBody(WeekFitLocalizedString("onboarding.v12.health.body"))
-                    .padding(.top, 8)
-
-                Spacer(minLength: 20)
-
-                OnboardingHealthSignalsStage()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-                Spacer(minLength: 8)
-            }
+        OnboardingPage(
+            title: WeekFitLocalizedString("onboarding.v10.health.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v12.health.body"),
+            helper: healthHelperCopy
+        ) {
+            OnboardingHealthSignalsStage()
+                .frame(maxWidth: .infinity)
         }
     }
 
+    private var healthHelperCopy: String {
+        [
+            WeekFitLocalizedString("onboarding.v10.health.watchLine"),
+            WeekFitLocalizedString("onboarding.v10.health.privacy")
+        ].joined(separator: "\n")
+    }
+
     var readyStep: some View {
-        page {
+        OnboardingPage {
             OnboardingReadyClimax(
                 recoveryPercent: readyRecoveryPercent,
                 activityPercent: readyActivityPercent,
                 nutritionPercent: readyNutritionPercent,
                 greetingTitle: readyGreetingTitle,
-                greetingSubtitle: readyCoachPreview.supportingMessage,
-                mirrorLine: readyCoachPreview.mirrorLine,
+                reasoningLine: readyCoachPreview.mirrorLine,
                 trainLine: readyCoachPreview.primaryAction,
                 mealLine: readyCoachPreview.secondaryAction,
                 recoveryLine: readyCoachPreview.recoveryAction,
-                bodyLine: readyCoachPreview.footer
+                footerLine: readyCoachPreview.footer
             )
-            .padding(.top, 4)
         }
     }
 
@@ -472,117 +429,28 @@ private extension FirstRunOnboardingView {
             first
         )
     }
-
-    var understandingBody: String {
-        switch selectedGoal {
-        case .fatLoss:
-            return WeekFitLocalizedString("onboarding.v12.understanding.body.fatLoss")
-        case .maintenance:
-            return WeekFitLocalizedString("onboarding.v12.understanding.body.maintenance")
-        case .muscleGain:
-            return WeekFitLocalizedString("onboarding.v12.understanding.body.muscleGain")
-        }
-    }
-
-    func page<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        let body = content()
-            .padding(.horizontal, 28)
-
-        return Group {
-            if needsScroll {
-                ScrollView(showsIndicators: false) { body }
-            } else {
-                body
-            }
-        }
-    }
 }
 
 // MARK: - Chrome
 
 private extension FirstRunOnboardingView {
 
-    var progressHeader: some View {
-        HStack(spacing: 12) {
-            if canGoBack {
-                Button {
-                    goBack()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.55))
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(WeekFitLocalizedString("onboarding.v12.nav.back"))
-            } else {
-                Color.clear.frame(width: 32, height: 32)
-            }
-
-            if step == .promise {
-                Spacer(minLength: 0)
-            } else {
-                GeometryReader { geo in
-                    let functionalIndex = max(step.rawValue, 1)
-                    let progress = CGFloat(functionalIndex) / CGFloat(Step.allCases.count - 1)
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(WeekFitTheme.whiteOpacity(0.07))
-                            .frame(height: 3.5)
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [WeekFitTheme.brandGold, WeekFitTheme.brandGoldDeep],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: max(16, geo.size.width * progress), height: 3.5)
-                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.32), value: step)
-                    }
-                    .frame(maxHeight: .infinity, alignment: .center)
-                }
-                .frame(height: 14)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(
-                    Text(
-                        String(
-                            format: WeekFitLocalizedString("onboarding.progress.format"),
-                            step.rawValue,
-                            Step.allCases.count - 1
-                        )
-                    )
-                )
-            }
-
-            if canSkip {
-                Button {
-                    skipOnboarding()
-                } label: {
-                    Text(WeekFitLocalizedString("onboarding.v12.nav.skip"))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.68))
-                        .padding(.horizontal, 10)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(WeekFitLocalizedString("onboarding.v12.nav.skip"))
-            } else {
-                Color.clear.frame(width: 32, height: 32)
-            }
-        }
-        .frame(height: 32)
-    }
-
     var bottomBar: some View {
-        VStack(spacing: 8) {
-            primaryButton
+        VStack(spacing: OnboardingLayout.ctaSecondarySpacing) {
+            OnboardingPrimaryButton(
+                title: primaryTitle,
+                isLoading: isRequestingHealth,
+                isEnabled: !advanceLocked && !isRequestingHealth
+            ) {
+                guard !advanceLocked, !isRequestingHealth else { return }
+                #if !targetEnvironment(simulator)
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                #endif
+                handlePrimary()
+            }
 
             if step == .health, !healthManager.isHealthAccessGranted {
-                Button {
+                OnboardingTextButton(title: WeekFitLocalizedString("onboarding.health.notNow")) {
                     guard !advanceLocked else { return }
                     #if !targetEnvironment(simulator)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -590,74 +458,9 @@ private extension FirstRunOnboardingView {
                     OnboardingAnalytics.healthSkipped()
                     OnboardingFunnelAnalytics.shared.trackHealthConnectionDeclined()
                     advance(to: .understanding)
-                } label: {
-                    Text(WeekFitLocalizedString("onboarding.health.notNow"))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.42))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
         }
-    }
-
-    var primaryButton: some View {
-        Button {
-            guard !advanceLocked, !isRequestingHealth else { return }
-            #if !targetEnvironment(simulator)
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-            #endif
-            handlePrimary()
-        } label: {
-            HStack(spacing: 8) {
-                if isRequestingHealth {
-                    ProgressView()
-                        .tint(Color.black.opacity(0.7))
-                }
-                Text(primaryTitle)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-            }
-            .foregroundStyle(Color.black.opacity(0.82))
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [WeekFitTheme.brandGold, WeekFitTheme.brandGoldDeep.opacity(0.92)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .scaleEffect(primaryPressed ? 0.985 : 1)
-        }
-        .buttonStyle(.plain)
-        .disabled(isRequestingHealth || advanceLocked)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in primaryPressed = true }
-                .onEnded { _ in primaryPressed = false }
-        )
-    }
-
-    func editorialTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: editorialTitleSize, weight: .bold, design: .rounded))
-            .foregroundStyle(WeekFitTheme.primaryText)
-            .tracking(-0.35)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    func editorialBody(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: editorialBodySize, weight: .medium))
-            .foregroundStyle(WeekFitTheme.whiteOpacity(0.50))
-            .fixedSize(horizontal: false, vertical: true)
-            .lineSpacing(3)
     }
 }
 
@@ -743,10 +546,10 @@ private extension FirstRunOnboardingView {
         case .goal:
             return WeekFitLocalizedString("onboarding.v12.cta.createPlan")
         case .units:
-            return WeekFitUsesRussianLanguage() ? "Продолжить" : "Continue"
+            return WeekFitLocalizedString("onboarding.action.continue")
         case .health:
             return healthManager.isHealthAccessGranted
-                ? WeekFitLocalizedString("onboarding.v12.cta.seeItLive")
+                ? WeekFitLocalizedString("onboarding.action.continue")
                 : WeekFitLocalizedString("onboarding.v10.health.connect")
         case .understanding:
             return WeekFitLocalizedString("onboarding.v12.cta.meetCoach")

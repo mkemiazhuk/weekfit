@@ -8,19 +8,22 @@ struct BodyGoalPickerSection: View {
     let suggestedGoal: NutritionGoal?
     /// When false, hides the apologetic missing-biometrics note (onboarding uses softer framing).
     var showsMissingHealthNote: Bool = true
+    /// When false, the editorial screen title already covers this (first-run onboarding).
+    var showsSectionTitle: Bool = true
+    var showsFooter: Bool = true
     /// Optional footer override (e.g. onboarding confidence copy).
     var footerOverride: String? = nil
 
-    private var textPrimary: Color { WeekFitTheme.primaryText }
     private var textSecondary: Color { WeekFitTheme.secondaryText }
-    private var accentGreen: Color { WeekFitTheme.settingsAccent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(WeekFitLocalizedString("settings.profile.bodyGoal.title"))
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if showsSectionTitle {
+                Text(WeekFitLocalizedString("settings.profile.bodyGoal.title"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if showsMissingHealthNote, !hasHealthBiometrics {
                 Text(WeekFitLocalizedString("settings.profile.bodyGoal.missingHealthNote"))
@@ -31,14 +34,20 @@ struct BodyGoalPickerSection: View {
 
             VStack(spacing: 0) {
                 ForEach(NutritionGoal.allCases) { goal in
-                    goalRow(goal)
+                    OnboardingChoiceRow(
+                        title: NutritionGoalDisplay.title(for: goal),
+                        subtitle: NutritionGoalDisplay.subtitle(for: goal),
+                        isSelected: selectedGoal == goal
+                    ) {
+                        selectedGoal = goal
+                    }
 
                     if goal.id != NutritionGoal.allCases.last?.id {
-                        softDivider
+                        OnboardingChoiceDivider()
                     }
                 }
             }
-            .profilePremiumCard(cornerRadius: 20)
+            .profilePremiumCard(cornerRadius: OnboardingLayout.cardCornerRadius)
 
             if let suggestedGoal, suggestedGoal != selectedGoal {
                 Text(
@@ -52,10 +61,12 @@ struct BodyGoalPickerSection: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text(footerText)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(textSecondary.opacity(0.82))
-                .fixedSize(horizontal: false, vertical: true)
+            if showsFooter {
+                Text(footerText)
+                    .font(.system(size: OnboardingLayout.Helper.size, weight: .medium))
+                    .foregroundStyle(textSecondary.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -66,39 +77,4 @@ struct BodyGoalPickerSection: View {
             : WeekFitLocalizedString("settings.profile.bodyGoal.footerWithoutHealth")
     }
 
-    private func goalRow(_ goal: NutritionGoal) -> some View {
-        Button {
-            selectedGoal = goal
-        } label: {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(NutritionGoalDisplay.title(for: goal))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(NutritionGoalDisplay.subtitle(for: goal))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: selectedGoal == goal ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(selectedGoal == goal ? accentGreen : textSecondary.opacity(0.35))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var softDivider: some View {
-        Rectangle()
-            .fill(WeekFitTheme.borderSoft.opacity(0.55))
-            .frame(height: 0.5)
-            .padding(.leading, 16)
-    }
 }
