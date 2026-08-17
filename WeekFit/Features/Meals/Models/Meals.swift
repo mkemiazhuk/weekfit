@@ -412,6 +412,20 @@ extension Meals {
         }
     }
 
+    /// Breakfast / lunch / dinner bucket for the View All Meals sheet.
+    var libraryPeriod: MealLibraryPeriod {
+        if DefaultMealLibrarySeeder.breakfastIDs.contains(id) { return .breakfast }
+        if DefaultMealLibrarySeeder.lunchIDs.contains(id) { return .lunch }
+        if DefaultMealLibrarySeeder.dinnerIDs.contains(id) { return .dinner }
+
+        return MealLibraryPeriod.period(at: libraryHour(from: displayTime))
+    }
+
+    private func libraryHour(from time: String) -> Int {
+        let hourPart = time.split(separator: ":", maxSplits: 1).first.map(String.init) ?? time
+        return Int(hourPart) ?? 12
+    }
+
     var slotTitle: String {
         slot.title
     }

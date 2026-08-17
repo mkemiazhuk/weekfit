@@ -283,10 +283,10 @@ struct PremiumActivityStartSheet: View {
                     .lineLimit(1)
                     .padding(.top, 2)
 
-                Spacer(minLength: 8)
+                Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
 
-                HStack(alignment: .center, spacing: 6) {
-                    HStack(spacing: 4) {
+                QuickRecommendedMetaActionRow {
+                    HStack(alignment: .center, spacing: QuickActionSheetDesign.RecommendedCard.metaSpacing) {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(accent)
@@ -296,22 +296,13 @@ struct PremiumActivityStartSheet: View {
                             .lineLimit(1)
                     }
                     .fixedSize()
-
-                    Spacer(minLength: 2)
-
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .offset(x: 0.5)
-                        .frame(width: 36, height: 36)
-                        .background {
-                            Circle().fill(accent)
-                        }
-                        .shadow(
-                            color: palette.isLight ? accent.opacity(0.28) : .clear,
-                            radius: 6,
-                            y: 2
-                        )
+                } action: {
+                    QuickRecommendedCardCircleAction(
+                        systemName: "play.fill",
+                        fill: accent,
+                        isLight: palette.isLight,
+                        opticalGlyphOffset: CGSize(width: 0.5, height: 0)
+                    )
                 }
             }
             .padding(12)

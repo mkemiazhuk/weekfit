@@ -7,12 +7,49 @@ enum QuickAddChrome {
     case softOutline
 }
 
+enum QuickAddQuantityDensity {
+    /// Full stepper for list rows.
+    case regular
+    /// Narrow stepper that fits frequent / recommended cards.
+    case compact
+
+    var expandedWidth: CGFloat {
+        switch self {
+        case .regular: return QuickActionSheetDesign.Row.actionExpandedWidth
+        case .compact: return 74
+        }
+    }
+
+    var stepperSize: CGFloat {
+        switch self {
+        case .regular: return 26
+        case .compact: return 22
+        }
+    }
+
+    var quantityFontSize: CGFloat {
+        switch self {
+        case .regular: return 13.5
+        case .compact: return 12.5
+        }
+    }
+
+    var quantityMinWidth: CGFloat {
+        switch self {
+        case .regular: return 24
+        case .compact: return 18
+        }
+    }
+}
+
 struct QuickAddQuantityControl: View {
     let quantity: Double
     let isExpanded: Bool
     let isSelected: Bool
     let accentColor: Color
     var chrome: QuickAddChrome = .solidFilled
+    var density: QuickAddQuantityDensity = .regular
+    var collapsedVisualSize: CGFloat? = nil
     let onPlusTap: () -> Void
     let onIncrement: () -> Void
     let onDecrement: () -> Void
@@ -20,7 +57,9 @@ struct QuickAddQuantityControl: View {
     @Environment(\.weekFitPalette) private var palette
 
     private let collapsedSize: CGFloat = QuickActionSheetDesign.Row.actionButtonSize
-    private let expandedWidth: CGFloat = QuickActionSheetDesign.Row.actionExpandedWidth
+    private var visualSize: CGFloat { collapsedVisualSize ?? collapsedSize }
+    private var visualScale: CGFloat { visualSize / collapsedSize }
+    private var expandedWidth: CGFloat { density.expandedWidth }
 
     var body: some View {
         ZStack {
@@ -33,7 +72,7 @@ struct QuickAddQuantityControl: View {
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isExpanded)
-        .frame(width: isExpanded ? expandedWidth : collapsedSize, height: collapsedSize, alignment: .trailing)
+        .frame(width: isExpanded ? expandedWidth : collapsedSize, height: collapsedSize, alignment: .center)
     }
 
     private var collapsedButton: some View {
@@ -44,7 +83,7 @@ struct QuickAddQuantityControl: View {
             ZStack(alignment: .topTrailing) {
                 Circle()
                     .fill(collapsedFill)
-                    .frame(width: collapsedSize, height: collapsedSize)
+                    .frame(width: visualSize, height: visualSize)
                     .overlay {
                         Circle()
                             .stroke(collapsedStroke, lineWidth: chrome == .softOutline ? 1.4 : 0.8)
@@ -53,14 +92,14 @@ struct QuickAddQuantityControl: View {
                         color: palette.isLight && chrome == .solidFilled
                             ? accentColor.opacity(0.22)
                             : .clear,
-                        radius: 4,
-                        y: 2
+                        radius: 4 * visualScale,
+                        y: 2 * visualScale
                     )
 
                 Image(systemName: isSelected ? "checkmark" : "plus")
-                    .font(.system(size: isSelected ? 11.5 : 15, weight: .semibold))
+                    .font(.system(size: (isSelected ? 11.5 : 15) * visualScale, weight: .semibold))
                     .foregroundStyle(collapsedForeground)
-                    .frame(width: collapsedSize, height: collapsedSize)
+                    .frame(width: visualSize, height: visualSize)
 
                 if let badge = badgeText {
                     Text(badge)
@@ -74,6 +113,9 @@ struct QuickAddQuantityControl: View {
                         .offset(x: 4, y: -3)
                 }
             }
+            .frame(width: visualSize, height: visualSize)
+            .frame(width: collapsedSize, height: collapsedSize, alignment: .center)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }
@@ -132,10 +174,10 @@ struct QuickAddQuantityControl: View {
             stepperButton(systemName: "minus", action: onDecrement)
 
             Text(QuickLogServingMath.formattedQuantity(max(quantity, 1)))
-                .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                .font(.system(size: density.quantityFontSize, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText)
                 .monospacedDigit()
-                .frame(minWidth: 24)
+                .frame(minWidth: density.quantityMinWidth)
 
             stepperButton(systemName: "plus", action: onIncrement)
         }
@@ -164,9 +206,9 @@ struct QuickAddQuantityControl: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: density == .compact ? 11 : 12, weight: .semibold))
                 .foregroundStyle(accentColor)
-                .frame(width: 26, height: 26)
+                .frame(width: density.stepperSize, height: density.stepperSize)
                 .background {
                     Circle()
                         .fill(accentColor.opacity(0.14))

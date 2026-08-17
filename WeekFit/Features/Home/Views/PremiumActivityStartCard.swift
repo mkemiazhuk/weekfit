@@ -85,9 +85,9 @@ struct PremiumActivityStartCard: View {
         )
     }
 
-    /// Light keeps mock rainbow; Dark uses the tab accent only.
+    /// Category hue stays distinct in both appearances (cardio / strength / …).
     private var categoryForeground: Color {
-        palette.isLight ? category.color : accentColor
+        category.color
     }
 
     private var imageBlock: some View {
@@ -147,7 +147,7 @@ struct PremiumActivityStartCard: View {
     }
 
     private var chipIconColor: Color {
-        palette.isLight ? category.color : accentColor
+        category.color
     }
 
     private var startControl: some View {

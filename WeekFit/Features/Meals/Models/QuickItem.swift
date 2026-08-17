@@ -208,7 +208,13 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "cookies": "Печенье",
         "croissant": "Круассан",
         "muffin": "Маффин",
-        "toast": "Тост"
+        "toast": "Тост",
+        "cola": "Кола",
+        "pepsi": "Пепси",
+        "fanta": "Фанта",
+        "beer": "Пиво",
+        "white wine": "Белое вино",
+        "red wine": "Красное вино"
     ]
 
     private static let englishTitlesByRussianTitle: [String: String] = {
@@ -248,7 +254,12 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "classic frozen treat": "Классическое мороженое",
         "sweet baked snack": "Сладкая выпечка",
         "buttery bakery snack": "Масляная выпечка",
-        "soft sweet treat": "Мягкий сладкий перекус"
+        "soft sweet treat": "Мягкий сладкий перекус",
+        "classic cola soda": "Классическая кола",
+        "orange soda": "Апельсиновая газировка",
+        "lager beer": "Светлое пиво",
+        "dry white wine": "Сухое белое вино",
+        "dry red wine": "Сухое красное вино"
     ]
 }
 

@@ -469,6 +469,62 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(thumbnail.scale, 1)
     }
 
+    func testLibraryPeriodUsesStarterIDsThenSuggestedTime() {
+        XCTAssertEqual(
+            timedMeal(id: DefaultMealLibrarySeeder.breakfastIDs[0], time: "19:00").libraryPeriod,
+            .breakfast
+        )
+        XCTAssertEqual(
+            timedMeal(id: DefaultMealLibrarySeeder.lunchIDs[0], time: "08:30").libraryPeriod,
+            .lunch
+        )
+        XCTAssertEqual(
+            timedMeal(id: DefaultMealLibrarySeeder.dinnerIDs[0], time: "08:30").libraryPeriod,
+            .dinner
+        )
+
+        XCTAssertEqual(timedMeal(id: "custom-morning", time: "08:30").libraryPeriod, .breakfast)
+        XCTAssertEqual(timedMeal(id: "custom-noon", time: "13:00").libraryPeriod, .lunch)
+        XCTAssertEqual(timedMeal(id: "custom-evening", time: "19:00").libraryPeriod, .dinner)
+        XCTAssertEqual(MealLibraryPeriod.period(at: 8), .breakfast)
+        XCTAssertEqual(MealLibraryPeriod.period(at: 13), .lunch)
+        XCTAssertEqual(MealLibraryPeriod.period(at: 19), .dinner)
+        XCTAssertEqual(timedMeal(id: "custom-default", time: nil).libraryPeriod, .lunch)
+    }
+
+    func testLibraryPeriodGroupsViewAllMealsIntoBreakfastLunchDinner() {
+        let meals = [
+            timedMeal(id: "a", time: "19:00"),
+            timedMeal(id: "b", time: "08:30"),
+            timedMeal(id: "c", time: "13:00"),
+            timedMeal(id: "d", time: "09:15"),
+        ]
+        let sections = MealLibraryPeriod.groupedSections(from: meals)
+
+        XCTAssertEqual(sections.map(\.period), [.breakfast, .lunch, .dinner])
+        XCTAssertEqual(sections[0].meals.map(\.id), ["b", "d"])
+        XCTAssertEqual(sections[1].meals.map(\.id), ["c"])
+        XCTAssertEqual(sections[2].meals.map(\.id), ["a"])
+    }
+
+    private func timedMeal(id: String, time: String?) -> Meals {
+        Meals(
+            id: id,
+            title: id,
+            subtitle: "",
+            imageName: "",
+            type: .balanced,
+            calories: 400,
+            protein: 20,
+            carbs: 40,
+            fats: 10,
+            fiber: 4,
+            benefits: [],
+            ingredients: [],
+            suggestedTime: time
+        )
+    }
+
     private func manualMeal(
         from input: CustomMealFormInput,
         photoFilename: String? = nil,

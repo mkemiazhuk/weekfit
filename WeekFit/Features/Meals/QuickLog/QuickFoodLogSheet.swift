@@ -3,55 +3,37 @@ import SwiftUI
 // MARK: - Accent
 
 enum QuickFoodAccent {
-    /// Light mock palette — purple / orange / green / pink / blue / burgundy.
-    /// Dark stays monochrome-premium: one soft lavender + quiet meta.
-    static let purple = Color(red: 0.55, green: 0.42, blue: 0.82)
     static let orange = Color(red: 0.92, green: 0.55, blue: 0.32)
-    /// Former drinks CTA gold — now used on Food + circles.
+    /// Former drinks CTA gold — now used on Food + circles and kcal chips.
     static let actionOrange = Color(red: 0.78, green: 0.58, blue: 0.28)
     static let green = Color(red: 0.38, green: 0.70, blue: 0.48)
-    static let pink = Color(red: 0.90, green: 0.42, blue: 0.50)
-    static let blue = Color(red: 0.35, green: 0.58, blue: 0.88)
-    static let burgundy = Color(red: 0.70, green: 0.28, blue: 0.34)
-
-    /// Soft muted orange for Dark CTAs (same family as Light action).
-    static let darkAction = Color(red: 0.82, green: 0.62, blue: 0.34)
-
-    private static let lightPalette: [Color] = [orange, green, pink, blue, burgundy, actionOrange]
 
     /// Food + circles — always the former drinks gold/orange.
     static func action(isLight _: Bool) -> Color {
         actionOrange
     }
 
-    static func color(for id: String, isLight: Bool) -> Color {
-        guard isLight else { return darkAction }
-        let hash = abs(id.utf8.reduce(0) { ($0 &* 31) &+ Int($1) })
-        return lightPalette[hash % lightPalette.count]
+    /// Card wash only — CTA circles and kcal chips use `actionOrange`, not this.
+    static func frequentColor(at index: Int, isLight _: Bool) -> Color {
+        index == 0 ? orange : green
     }
 
-    /// Card wash only — CTA circles use `actionOrange`, not this.
-    static func frequentColor(at index: Int, isLight: Bool) -> Color {
-        guard isLight else { return darkAction }
-        return index == 0 ? orange : green
+    /// kcal + flame chip — same gold as Food + / «add one», no per-item rainbow.
+    static func meta(for _: String, isLight _: Bool) -> Color {
+        actionOrange
     }
 
-    /// kcal chips: colorful on Light, quiet stone on Dark.
-    static func meta(for id: String, isLight: Bool) -> Color {
-        isLight ? color(for: id, isLight: true) : QuickSheetChrome.meta
-    }
-
-    static func frequentMeta(at index: Int, isLight: Bool) -> Color {
-        isLight ? frequentColor(at: index, isLight: true) : QuickSheetChrome.meta
+    static func frequentMeta(at _: Int, isLight _: Bool) -> Color {
+        actionOrange
     }
 
     static func cardTop(for accent: Color, isLight: Bool) -> Color {
-        guard isLight else { return WeekFitTheme.whiteOpacity(0.06) }
+        guard isLight else { return accent.opacity(0.14) }
         return accent.opacity(0.12)
     }
 
     static func cardBottom(for accent: Color, isLight: Bool) -> Color {
-        guard isLight else { return WeekFitTheme.whiteOpacity(0.02) }
+        guard isLight else { return accent.opacity(0.05) }
         return accent.opacity(0.04)
     }
 }
@@ -219,6 +201,7 @@ struct QuickFoodLogSheet: View {
                             ) {
                                 QuickFoodCircularMealThumb(row: frequent.row, size: 108)
                             }
+                            .zIndex(selection.isExpanded ? 1 : 0)
                         }
                     }
                     .padding(.vertical, 14)
@@ -270,6 +253,7 @@ struct QuickFoodLogSheet: View {
                             ) {
                                 QuickFoodCircularSnackThumb(row: frequent.row, size: 108)
                             }
+                            .zIndex(selection.isExpanded ? 1 : 0)
                         }
                     }
                     .padding(.vertical, 14)
@@ -514,27 +498,30 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                     .padding(.top, 2)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
 
-            HStack(alignment: .center, spacing: 6) {
+            QuickRecommendedMetaActionRow {
                 QuickFoodCaloriePill(calories: calories, accent: metaAccent, style: .frequent)
-                    .fixedSize()
-
-                Spacer(minLength: 2)
-
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .opacity(selection.isExpanded ? 0 : 1)
+                    .accessibilityHidden(selection.isExpanded)
+            } action: {
                 QuickAddQuantityControl(
                     quantity: displayQuantity,
                     isExpanded: selection.isExpanded,
                     isSelected: selection.isSelected,
                     accentColor: QuickFoodAccent.actionOrange,
                     chrome: .solidFilled,
+                    density: .compact,
+                    collapsedVisualSize: QuickActionSheetDesign.RecommendedCard.actionVisualSize,
                     onPlusTap: onPlusTap,
                     onIncrement: onIncrement,
                     onDecrement: onDecrement
                 )
             }
         }
-        .padding(14)
+        .padding(QuickActionSheetDesign.RecommendedCard.padding)
         .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .background {
@@ -554,7 +541,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
         .overlay(alignment: .topTrailing) {
             Text(badgeText)
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.isLight ? accent : WeekFitTheme.secondaryText.opacity(0.88))
+                .foregroundStyle(accent)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .background {
@@ -562,7 +549,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                         .fill(
                             palette.isLight
                                 ? Color.white
-                                : WeekFitTheme.whiteOpacity(0.08)
+                                : accent.opacity(0.16)
                         )
                         .shadow(
                             color: palette.isLight ? Color.black.opacity(0.06) : .clear,
@@ -572,9 +559,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                 }
                 .overlay {
                     Capsule().strokeBorder(
-                        palette.isLight
-                            ? accent.opacity(0.32)
-                            : WeekFitTheme.whiteOpacity(0.10),
+                        accent.opacity(palette.isLight ? 0.32 : 0.28),
                         lineWidth: 0.8
                     )
                 }
@@ -604,22 +589,14 @@ private struct QuickFoodCaloriePill: View {
 
             Text(QuickLogLocalizedNutrition.calories(calories))
                 .font(.system(size: style == .frequent ? 12 : 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(
-                    style == .frequent
-                        ? WeekFitTheme.secondaryText.opacity(0.78)
-                        : (palette.isLight ? WeekFitTheme.secondaryText.opacity(0.78) : accent)
-                )
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
         }
         .padding(.horizontal, style == .list ? 8 : 0)
         .padding(.vertical, style == .list ? 4 : 0)
         .background {
             if style == .list {
                 Capsule()
-                    .fill(
-                        palette.isLight
-                            ? WeekFitLightTokens.internalTile
-                            : WeekFitTheme.whiteOpacity(0.08)
-                    )
+                    .fill(QuickSheetChrome.metaBadgeFill(isLight: palette.isLight))
             }
         }
     }

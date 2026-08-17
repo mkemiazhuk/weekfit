@@ -55,20 +55,25 @@ enum QuickItemUsageStore {
         entries.mapValues(\.count)
     }
 
-    /// Recent: latest distinct items, excluding Frequent picks.
-    /// All: full library A–Z by localized title.
-    /// Frequently Used is composed separately via `QuickDrinkFrequentComposer`.
+    /// Recent: distinct drinks logged in the last 7 days, newest first,
+    /// excluding Frequent picks. Not an all-time history strip.
+    static let recentWindow: TimeInterval = 7 * 24 * 60 * 60
+    static let defaultRecentLimit = 6
+
     static func partition(
         drinks: [QuickItem],
         usage: [String: Entry],
         excludingFromRecent frequentIDs: Set<String> = [],
-        recentLimit: Int = 8
+        recentLimit: Int = defaultRecentLimit,
+        now: Date = Date()
     ) -> Partition {
         let drinkByID = Dictionary(uniqueKeysWithValues: drinks.map { ($0.id, $0) })
+        let oldestRecent = now.addingTimeInterval(-recentWindow)
 
         let recentIDs = usage
             .filter {
-                $0.value.lastUsedAt > .distantPast
+                $0.value.lastUsedAt > oldestRecent
+                    && $0.value.lastUsedAt > .distantPast
                     && drinkByID[$0.key] != nil
                     && !frequentIDs.contains($0.key)
             }

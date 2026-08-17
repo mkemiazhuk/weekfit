@@ -9,6 +9,12 @@ enum QuickDrinkAccent {
     static let cocoa = Color(red: 0.62, green: 0.38, blue: 0.24)
     static let juice = Color(red: 0.92, green: 0.58, blue: 0.28)
     static let milk = Color(red: 0.64, green: 0.66, blue: 0.76)
+    static let cola = Color(red: 0.55, green: 0.28, blue: 0.18)
+    static let pepsi = Color(red: 0.28, green: 0.45, blue: 0.82)
+    static let fanta = Color(red: 0.96, green: 0.55, blue: 0.18)
+    static let beer = Color(red: 0.90, green: 0.68, blue: 0.22)
+    static let whiteWine = Color(red: 0.78, green: 0.74, blue: 0.42)
+    static let redWine = Color(red: 0.72, green: 0.22, blue: 0.32)
     /// List / CTA circles — cool hydration blue (matches drop icon family).
     static let listAction = hydration
 
@@ -22,6 +28,12 @@ enum QuickDrinkAccent {
         if id.contains("tea") {
             return isLight ? tea : Color(red: 0.78, green: 0.62, blue: 0.42)
         }
+        if id.contains("cola") { return cola }
+        if id.contains("pepsi") { return pepsi }
+        if id.contains("fanta") { return fanta }
+        if id.contains("beer") { return beer }
+        if id.contains("white_wine") || id.contains("whitewine") { return whiteWine }
+        if id.contains("red_wine") || id.contains("redwine") { return redWine }
         if id.contains("juice") { return juice }
         if id.contains("milk") || id.contains("kefir") || id.contains("shake") { return milk }
         return hydration
@@ -33,7 +45,7 @@ enum QuickDrinkAccent {
     }
 
     static func meta(for item: QuickItem, isLight: Bool) -> Color {
-        isLight ? color(for: item, isLight: true) : QuickSheetChrome.meta
+        color(for: item, isLight: isLight)
     }
 
     static func metaSymbol(for item: QuickItem) -> String {
@@ -41,7 +53,10 @@ enum QuickDrinkAccent {
         if id.contains("water") { return "drop.fill" }
         if id.contains("cocoa") || id.contains("chocolate") { return "cup.and.saucer.fill" }
         if id.contains("tea") { return "leaf.fill" }
-        if id.contains("juice") { return "sun.max.fill" }
+        if id.contains("juice") || id.contains("fanta") { return "sun.max.fill" }
+        if id.contains("cola") || id.contains("pepsi") { return "flame.fill" }
+        if id.contains("beer") { return "mug.fill" }
+        if id.contains("wine") { return "wineglass.fill" }
         if id.contains("milk") || id.contains("kefir") { return "cup.and.saucer.fill" }
         return "flame.fill"
     }
@@ -67,10 +82,11 @@ enum QuickDrinkLogDesign {
         static let recommendedCardWidth: CGFloat = 172
         static let recommendedCardHeight: CGFloat = 228
         static let recommendedCardRadius: CGFloat = 26
+        static let recommendedCardPadding: CGFloat = QuickActionSheetDesign.RecommendedCard.padding
         static let recentItemWidth: CGFloat = 74
         static let listCardRadius: CGFloat = 22
         static let listRowMinHeight: CGFloat = 92
-        static let addButtonSize: CGFloat = 36
+        static let addButtonSize: CGFloat = QuickActionSheetDesign.RecommendedCard.actionHitSize
         static let greetingRadius: CGFloat = 22
     }
 
@@ -298,14 +314,22 @@ struct QuickDrinkLogSheet: View {
 
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: QuickDrinkLogDesign.Layout.sectionTitleBottom) {
-            sectionTitle(WeekFitLocalizedString("today.quickLog.section.recentlyAdded"))
+            sectionTitle(WeekFitLocalizedString("today.quickLog.section.recent"))
                 .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(recentRows) { row in
-                        QuickDrinkRecentCircleItem(row: row) {
-                            onPlusTap(row.item)
+                        let selection = session.selection(for: row.id)
+                        QuickDrinkRecentCircleItem(
+                            row: row,
+                            selection: selection
+                        ) {
+                            if selection.isSelected {
+                                onIncrement(row.item)
+                            } else {
+                                onPlusTap(row.item)
+                            }
                         }
                     }
                 }
@@ -538,6 +562,37 @@ private struct QuickDrinkRecommendedCard: View {
     private var tint: Color { QuickDrinkAccent.color(for: row.item, isLight: palette.isLight) }
     private var action: Color { QuickDrinkAccent.listAction }
 
+    private var recommendedMetaRow: some View {
+        QuickRecommendedMetaActionRow {
+            HStack(alignment: .center, spacing: QuickActionSheetDesign.RecommendedCard.metaSpacing) {
+                Image(systemName: QuickDrinkAccent.metaSymbol(for: row.item))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(tint)
+
+                Text(QuickLogLocalizedNutrition.calories(row.item.calories))
+                    .font(QuickDrinkLogDesign.Typography.recommendedCalories)
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            .opacity(selection.isExpanded ? 0 : 1)
+            .accessibilityHidden(selection.isExpanded)
+        } action: {
+            QuickAddQuantityControl(
+                quantity: displayQuantity,
+                isExpanded: selection.isExpanded,
+                isSelected: selection.isSelected,
+                accentColor: action,
+                chrome: .solidFilled,
+                density: .compact,
+                collapsedVisualSize: QuickActionSheetDesign.RecommendedCard.actionVisualSize,
+                onPlusTap: onPlusTap,
+                onIncrement: onIncrement,
+                onDecrement: onDecrement
+            )
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             QuickDrinkPhoto(
@@ -559,33 +614,11 @@ private struct QuickDrinkRecommendedCard: View {
                 .lineLimit(1)
                 .padding(.top, 2)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
 
-            HStack(alignment: .center, spacing: 6) {
-                Image(systemName: QuickDrinkAccent.metaSymbol(for: row.item))
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(tint)
-
-                Text(QuickLogLocalizedNutrition.calories(row.item.calories))
-                    .font(QuickDrinkLogDesign.Typography.recommendedCalories)
-                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
-                    .lineLimit(1)
-
-                Spacer(minLength: 2)
-
-                QuickAddQuantityControl(
-                    quantity: displayQuantity,
-                    isExpanded: selection.isExpanded,
-                    isSelected: selection.isSelected,
-                    accentColor: action,
-                    chrome: .solidFilled,
-                    onPlusTap: onPlusTap,
-                    onIncrement: onIncrement,
-                    onDecrement: onDecrement
-                )
-            }
+            recommendedMetaRow
         }
-        .padding(14)
+        .padding(QuickDrinkLogDesign.Layout.recommendedCardPadding)
         .frame(
             width: QuickDrinkLogDesign.Layout.recommendedCardWidth,
             height: QuickDrinkLogDesign.Layout.recommendedCardHeight,
@@ -655,20 +688,43 @@ private struct QuickDrinkRecommendedCard: View {
 
 private struct QuickDrinkRecentCircleItem: View {
     let row: QuickItemDisplayRow
+    let selection: QuickLogSelection
     let onTap: () -> Void
 
     @Environment(\.weekFitPalette) private var palette
 
     private var accent: Color { QuickDrinkAccent.color(for: row.item, isLight: palette.isLight) }
+    private var action: Color { QuickDrinkAccent.listAction }
+    private var isLogged: Bool { selection.isSelected }
+    private var loggedCount: Int {
+        max(1, Int(selection.portions.rounded()))
+    }
 
     var body: some View {
-        Button(action: onTap) {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onTap()
+        } label: {
             VStack(spacing: 8) {
-                QuickDrinkPhoto(
-                    row: row,
-                    role: .recent,
-                    accent: accent
-                )
+                ZStack(alignment: .bottomTrailing) {
+                    QuickDrinkPhoto(
+                        row: row,
+                        role: .recent,
+                        accent: accent
+                    )
+                    .overlay {
+                        Circle()
+                            .strokeBorder(
+                                isLogged ? action : Color.clear,
+                                lineWidth: 2
+                            )
+                    }
+                    .scaleEffect(isLogged ? 1.04 : 1)
+
+                    if isLogged {
+                        loggedBadge
+                    }
+                }
 
                 VStack(spacing: 2) {
                     Text(row.item.localizedTitle)
@@ -679,7 +735,9 @@ private struct QuickDrinkRecentCircleItem: View {
 
                     Text(row.item.localizedServingSizeDescription)
                         .font(QuickDrinkLogDesign.Typography.recentCalories)
-                        .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
+                        .foregroundStyle(
+                            WeekFitTheme.secondaryText.opacity(isLogged ? 0.72 : 0.58)
+                        )
                         .lineLimit(1)
                 }
             }
@@ -687,6 +745,35 @@ private struct QuickDrinkRecentCircleItem: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isLogged ? [.isSelected] : [])
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: selection)
+    }
+
+    private var loggedBadge: some View {
+        ZStack {
+            Circle()
+                .fill(action)
+                .frame(width: 20, height: 20)
+                .overlay {
+                    Circle()
+                        .stroke(
+                            palette.isLight ? Color.white : WeekFitTheme.cardBackground,
+                            lineWidth: 1.5
+                        )
+                }
+
+            if loggedCount > 1 {
+                Text("\(loggedCount)")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.white)
+            } else {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(Color.white)
+            }
+        }
+        .offset(x: 2, y: 2)
+        .accessibilityHidden(true)
     }
 }
 

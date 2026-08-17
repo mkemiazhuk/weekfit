@@ -67,6 +67,15 @@ enum QuickActionSheetDesign {
         static let contentSpacing: CGFloat = 12
     }
 
+    /// Shared recommended-card action treatment (Drinks / Food / Start Activity).
+    enum RecommendedCard {
+        static let padding: CGFloat = 14
+        static let actionInset: CGFloat = 4
+        static let actionVisualSize: CGFloat = 30
+        static var actionHitSize: CGFloat { Row.actionButtonSize }
+        static let metaSpacing: CGFloat = 6
+    }
+
     enum Typography {
         static let headerTitle = Font.system(size: 17, weight: .semibold, design: .rounded)
         static let headerSubtitle = Font.system(size: 12, weight: .medium, design: .rounded)
@@ -164,8 +173,9 @@ enum QuickSheetChrome {
                                 Color.white.opacity(0)
                             ]
                             : [
-                                WeekFitTheme.whiteOpacity(0.08),
-                                WeekFitTheme.whiteOpacity(0.02)
+                                accent.opacity(0.16),
+                                accent.opacity(0.05),
+                                WeekFitTheme.whiteOpacity(0)
                             ],
                         startPoint: .topLeading,
                         endPoint: UnitPoint(x: 0.92, y: 0.82)
@@ -229,6 +239,63 @@ extension View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(stroke, lineWidth: 0.75)
             }
+    }
+}
+
+/// Bottom metadata + action row for recommended cards.
+/// Metadata stays leading; the action is optically centered on that row and inset from the corner.
+struct QuickRecommendedMetaActionRow<Meta: View, Action: View>: View {
+    @ViewBuilder var meta: () -> Meta
+    @ViewBuilder var action: () -> Action
+
+    var body: some View {
+        HStack(alignment: .center, spacing: QuickActionSheetDesign.Row.contentSpacing) {
+            meta()
+
+            Spacer(minLength: 0)
+
+            Color.clear
+                .frame(
+                    width: QuickActionSheetDesign.RecommendedCard.actionHitSize,
+                    height: QuickActionSheetDesign.RecommendedCard.actionHitSize
+                )
+                .accessibilityHidden(true)
+        }
+        .overlay(alignment: .trailing) {
+            action()
+        }
+        .padding(.trailing, QuickActionSheetDesign.RecommendedCard.actionInset)
+    }
+}
+
+/// Circular glyph action (e.g. Start Activity play) matching recommended `+` visual weight.
+struct QuickRecommendedCardCircleAction: View {
+    let systemName: String
+    let fill: Color
+    var isLight: Bool
+    var symbolSize: CGFloat = 12
+    var opticalGlyphOffset: CGSize = .zero
+
+    var body: some View {
+        let visual = QuickActionSheetDesign.RecommendedCard.actionVisualSize
+        let hit = QuickActionSheetDesign.RecommendedCard.actionHitSize
+        let scale = visual / hit
+
+        Image(systemName: systemName)
+            .font(.system(size: symbolSize * scale, weight: .bold))
+            .foregroundStyle(Color.white)
+            .offset(opticalGlyphOffset)
+            .frame(width: visual, height: visual)
+            .background {
+                Circle().fill(fill)
+            }
+            .shadow(
+                color: isLight ? fill.opacity(0.22) : .clear,
+                radius: 4 * scale,
+                y: 2 * scale
+            )
+            .frame(width: hit, height: hit)
+            .contentShape(Circle())
     }
 }
 

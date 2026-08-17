@@ -52,6 +52,28 @@ final class QuickItemUsageStoreTests: XCTestCase {
         XCTAssertFalse(partition.recent.contains(where: { $0.id == "drink_water" }))
     }
 
+    func testPartitionRecentKeepsOnlyLogsFromTheLastWeek() {
+        let drinks = [
+            makeDrink(id: "drink_water", title: "Water"),
+            makeDrink(id: "drink_tea", title: "Tea"),
+            makeDrink(id: "drink_cola", title: "Cola")
+        ]
+        let now = Date()
+        let usage: [String: QuickItemUsageStore.Entry] = [
+            "drink_tea": .init(count: 1, lastUsedAt: now.addingTimeInterval(-2 * 24 * 60 * 60)),
+            "drink_cola": .init(count: 2, lastUsedAt: now.addingTimeInterval(-8 * 24 * 60 * 60))
+        ]
+
+        let partition = QuickItemUsageStore.partition(
+            drinks: drinks,
+            usage: usage,
+            now: now
+        )
+
+        XCTAssertEqual(partition.recent.map(\.id), ["drink_tea"])
+        XCTAssertFalse(partition.recent.contains(where: { $0.id == "drink_cola" }))
+    }
+
     func testLegacyMigrationPreservesCounts() {
         UserDefaults.standard.set(["drink_water": 4, "drink_coffee": 2], forKey: legacyKey)
         let loaded = QuickItemUsageStore.load()

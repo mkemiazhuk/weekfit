@@ -41,14 +41,38 @@ enum MealLibraryCardMetrics {
     static let thumbSize: CGFloat = 104
     /// Uniform grid tile height so every card matches.
     static let cardHeight: CGFloat = 236
+    /// Two lines of 15pt rounded title — exact height so kcal/macros share a row.
     static let titleBlockHeight: CGFloat = 38
+    static let kcalRowHeight: CGFloat = 16
+    static let macroBlockHeight: CGFloat = 32
     static let horizontalPadding: CGFloat = 14
     static let verticalPadding: CGFloat = 14
     static let menuSize: CGFloat = 28
+    static let periodMarkSize: CGFloat = 22
     static let kcalSize: CGFloat = 13
     static let macroSize: CGFloat = 11
     static let titleSize: CGFloat = 15
     static let previewLimit: Int = 4
+
+    static let thumbTopInset: CGFloat = 2
+    static let thumbToTextSpacing: CGFloat = 8
+    static let textBlockSpacing: CGFloat = 3
+    static let macroBlockTopSpacing: CGFloat = 2
+
+    enum ExpandSheet {
+        static let sheetTopPadding: CGFloat = 18
+        static let titleToSearch: CGFloat = 10
+        /// Search field → first section header.
+        static let searchToContent: CGFloat = 8
+        static let headerMinHeight: CGFloat = 36
+        static let headerTopPadding: CGFloat = 6
+        static let headerBottomPadding: CGFloat = 4
+        /// Section header → first card row.
+        static let headerToCards: CGFloat = 6
+        /// After a section's last card row, before the next header.
+        static let sectionBottom: CGFloat = 8
+        static let scrollBottom: CGFloat = 28
+    }
 }
 
 // MARK: - Shared thumbnail
@@ -224,6 +248,8 @@ struct MealLibraryGridCard: View {
     let meal: Meals
     var kind: MealLibraryRowKind = .meal
     var isHighlighted: Bool = false
+    var showsPeriodMark: Bool = false
+    var onLog: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
 
     @Environment(\.weekFitPalette) private var palette
@@ -236,8 +262,12 @@ struct MealLibraryGridCard: View {
     /// Calories stay quiet metadata — green is fiber (К) / meal chrome; orange is carbs (У).
     private var kcalColor: Color { textSecondary }
 
+    private var showsOverflowMenu: Bool {
+        onLog != nil || onDelete != nil
+    }
+
     var body: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: MealLibraryCardMetrics.thumbToTextSpacing) {
             ZStack(alignment: .topTrailing) {
                 MealLibraryThumbnail(
                     meal: meal,
@@ -245,12 +275,29 @@ struct MealLibraryGridCard: View {
                     isCircle: true
                 )
                 .frame(maxWidth: .infinity)
-                .padding(.top, 2)
+                .padding(.top, MealLibraryCardMetrics.thumbTopInset)
 
-                if let onDelete {
+                if showsPeriodMark, kind == .meal {
+                    periodMark
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .allowsHitTesting(false)
+                }
+
+                if showsOverflowMenu {
                     Menu {
-                        Button(role: .destructive, action: onDelete) {
-                            Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
+                        if let onLog {
+                            Button(action: onLog) {
+                                Label(
+                                    WeekFitLocalizedString("meals.library.action.logEaten"),
+                                    systemImage: "checkmark.circle.fill"
+                                )
+                            }
+                        }
+
+                        if let onDelete {
+                            Button(role: .destructive, action: onDelete) {
+                                Label(WeekFitLocalizedString("common.action.delete"), systemImage: "trash.fill")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -274,7 +321,7 @@ struct MealLibraryGridCard: View {
                 }
             }
 
-            VStack(alignment: .center, spacing: 3) {
+            VStack(alignment: .center, spacing: MealLibraryCardMetrics.textBlockSpacing) {
                 Text(meal.localizedDisplayTitle)
                     .font(.system(size: MealLibraryCardMetrics.titleSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
@@ -282,12 +329,8 @@ struct MealLibraryGridCard: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: MealLibraryCardMetrics.titleBlockHeight,
-                        maxHeight: MealLibraryCardMetrics.titleBlockHeight,
-                        alignment: .center
-                    )
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .frame(height: MealLibraryCardMetrics.titleBlockHeight, alignment: .top)
 
                 Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
                     .font(.system(size: MealLibraryCardMetrics.kcalSize, weight: .semibold, design: .rounded))
@@ -295,9 +338,10 @@ struct MealLibraryGridCard: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
+                    .frame(height: MealLibraryCardMetrics.kcalRowHeight)
 
                 macroGrid
-                    .padding(.top, 2)
+                    .padding(.top, MealLibraryCardMetrics.macroBlockTopSpacing)
             }
 
             Spacer(minLength: 0)
@@ -337,11 +381,37 @@ struct MealLibraryGridCard: View {
     }
 
     private var rowAccessibilityLabel: String {
-        String(
+        if showsPeriodMark, kind == .meal {
+            return "\(meal.libraryPeriod.title). " + String(
+                format: WeekFitLocalizedString("meals.library.rowAccessibilityFormat"),
+                meal.localizedDisplayTitle,
+                meal.calories
+            )
+        }
+        return String(
             format: WeekFitLocalizedString("meals.library.rowAccessibilityFormat"),
             meal.localizedDisplayTitle,
             meal.calories
         )
+    }
+
+    private var periodMark: some View {
+        Image(systemName: meal.libraryPeriod.icon)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(textSecondary)
+            .frame(
+                width: MealLibraryCardMetrics.periodMarkSize,
+                height: MealLibraryCardMetrics.periodMarkSize
+            )
+            .background {
+                Circle()
+                    .fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.surfaceTertiary
+                            : WeekFitTheme.whiteOpacity(0.08)
+                    )
+            }
+            .accessibilityHidden(true)
     }
 
     /// Fixed 2×2 macro block — matches the Saved Meals reference layout.
@@ -373,7 +443,7 @@ struct MealLibraryGridCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 32, alignment: .top)
+        .frame(height: MealLibraryCardMetrics.macroBlockHeight, alignment: .top)
     }
 
     private func macroCell(label: String, value: Int, tint: Color) -> some View {
