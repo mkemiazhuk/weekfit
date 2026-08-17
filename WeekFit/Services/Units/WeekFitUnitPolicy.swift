@@ -196,6 +196,10 @@ enum WeekFitUnitPolicy {
     }
 
     /// Canonical pace is minutes per kilometre.
+    static func paceUnitLabel(for system: WeekFitResolvedUnitSystem) -> String {
+        "/\(distanceUnitLabel(for: system))"
+    }
+
     static func formatPace(minutesPerKilometer: Double, system: WeekFitResolvedUnitSystem) -> String {
         let minutesPerUnit: Double
         let unitLabel: String

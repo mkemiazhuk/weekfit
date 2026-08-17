@@ -21,7 +21,7 @@ final class HealthConnectTests: XCTestCase {
             XCTAssertFalse(authTypes.contains(biologicalSex))
         }
         if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
-            XCTAssertFalse(authTypes.contains(dateOfBirth))
+            XCTAssertTrue(authTypes.contains(dateOfBirth))
         }
     }
 

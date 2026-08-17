@@ -39,6 +39,7 @@ struct ActivitySessionDetailSnapshot: Hashable {
     let elevationGain: Double?
     let steps: Int?
     let cadence: Double?
+    var activeHeartRateIntervals: [DateInterval] = []
 
     var averageSpeedKmh: Double? {
         guard let distanceKm, distanceKm > 0, workoutDurationSeconds > 0 else {
@@ -56,6 +57,15 @@ struct ActivitySessionDetailSnapshot: Hashable {
         return (workoutDurationSeconds / 60.0) / distanceKm
     }
 
+    var shouldShowPace: Bool {
+        switch activityType {
+        case .hiking, .walking, .running:
+            return true
+        default:
+            return false
+        }
+    }
+
     var shouldShowElapsedTime: Bool {
         elapsedDurationSeconds > workoutDurationSeconds + 60
     }
@@ -65,6 +75,67 @@ struct ActivitySessionDetailSnapshot: Hashable {
             activityType: activityType,
             title: title,
             icon: icon
+        )
+    }
+
+    func merging(_ supplemental: WorkoutHealthDetailSnapshot) -> ActivitySessionDetailSnapshot {
+        ActivitySessionDetailSnapshot(
+            title: title,
+            activityType: activityType,
+            startDate: startDate,
+            endDate: endDate,
+            durationMinutes: durationMinutes,
+            workoutDurationSeconds: workoutDurationSeconds,
+            elapsedDurationSeconds: elapsedDurationSeconds,
+            source: supplemental.source ?? source,
+            icon: icon,
+            color: color,
+            activeCalories: supplemental.activeCalories ?? activeCalories,
+            distanceKm: supplemental.distanceKm ?? distanceKm,
+            averageHeartRate: supplemental.averageHeartRate ?? averageHeartRate,
+            maxHeartRate: supplemental.maxHeartRate ?? maxHeartRate,
+            heartRateSamples: supplemental.heartRateSamples.isEmpty
+                ? heartRateSamples
+                : supplemental.heartRateSamples,
+            routePoints: supplemental.routePoints.isEmpty
+                ? routePoints
+                : supplemental.routePoints,
+            elevationGain: supplemental.elevationGain ?? elevationGain,
+            steps: supplemental.steps ?? steps,
+            cadence: supplemental.cadence ?? cadence,
+            activeHeartRateIntervals: supplemental.activeHeartRateIntervals.isEmpty
+                ? activeHeartRateIntervals
+                : supplemental.activeHeartRateIntervals
+        )
+    }
+
+    /// Prefer non-empty collections and filled optionals from either side.
+    func mergingCached(_ other: ActivitySessionDetailSnapshot) -> ActivitySessionDetailSnapshot {
+        ActivitySessionDetailSnapshot(
+            title: title,
+            activityType: activityType,
+            startDate: startDate,
+            endDate: endDate,
+            durationMinutes: durationMinutes,
+            workoutDurationSeconds: workoutDurationSeconds,
+            elapsedDurationSeconds: elapsedDurationSeconds,
+            source: source ?? other.source,
+            icon: icon,
+            color: color,
+            activeCalories: activeCalories ?? other.activeCalories,
+            distanceKm: distanceKm ?? other.distanceKm,
+            averageHeartRate: averageHeartRate ?? other.averageHeartRate,
+            maxHeartRate: maxHeartRate ?? other.maxHeartRate,
+            heartRateSamples: heartRateSamples.isEmpty ? other.heartRateSamples : heartRateSamples,
+            routePoints: routePoints.count > 1
+                ? routePoints
+                : (other.routePoints.count > 1 ? other.routePoints : routePoints),
+            elevationGain: elevationGain ?? other.elevationGain,
+            steps: steps ?? other.steps,
+            cadence: cadence ?? other.cadence,
+            activeHeartRateIntervals: activeHeartRateIntervals.isEmpty
+                ? other.activeHeartRateIntervals
+                : activeHeartRateIntervals
         )
     }
 }
@@ -1304,39 +1375,24 @@ struct ActivitySessionDetailView: View {
         return lower...upper
     }
 
+    private var heartRateZoneProfile: HeartRateZones.Profile {
+        HeartRateZones.Profile.apple(
+            age: healthManager.age,
+            restingHeartRate: healthManager.restingHeartRate
+        )
+    }
+
     private var heartRateZoneDefinitions: [HeartRateZoneDefinition] {
-        [
+        HeartRateZones.definitions(for: heartRateZoneProfile).map { definition in
             HeartRateZoneDefinition(
-                title: WeekFitLocalizedString("activity.heartRate.zone1"),
-                lowerBound: 40,
-                upperBound: 120,
-                color: ActivityStyle.blue
-            ),
-            HeartRateZoneDefinition(
-                title: WeekFitLocalizedString("activity.heartRate.zone2"),
-                lowerBound: 120,
-                upperBound: 140,
-                color: ActivityStyle.green
-            ),
-            HeartRateZoneDefinition(
-                title: WeekFitLocalizedString("activity.heartRate.zone3"),
-                lowerBound: 140,
-                upperBound: 160,
-                color: ActivityStyle.yellow
-            ),
-            HeartRateZoneDefinition(
-                title: WeekFitLocalizedString("activity.heartRate.zone4"),
-                lowerBound: 160,
-                upperBound: 180,
-                color: ActivityStyle.orange
-            ),
-            HeartRateZoneDefinition(
-                title: WeekFitLocalizedString("activity.heartRate.zone5"),
-                lowerBound: 180,
-                upperBound: 220,
-                color: ActivityStyle.red
+                title: "activity.heartRate.zone\(definition.number)",
+                number: definition.number,
+                lowerBound: definition.lowerBound,
+                upperBound: definition.upperBound,
+                range: definition.bpmRangeLabel,
+                color: HeartRateZones.color(for: definition.number)
             )
-        ]
+        }
     }
 
     private var allHeartRateThresholds: [Double] {
@@ -1453,6 +1509,8 @@ struct ActivitySessionDetailView: View {
             isRouteMapPresented = false
         }
         .task(id: session.id) {
+            // Run before route auth so HealthKit permission sheets do not stack.
+            await healthManager.ensureHeartRateZonePhysiology()
             await loadSupplementalDetails()
         }
     }
@@ -1601,6 +1659,13 @@ struct ActivitySessionDetailView: View {
                 SessionDetailSkeletonLine(color: ActivityStyle.red)
                     .frame(height: 118)
                     .innerActivityCard(cornerRadius: 15)
+
+                VStack(spacing: 8) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        SessionDetailSkeletonLine(color: ActivityStyle.red.opacity(0.45))
+                            .frame(height: 14)
+                    }
+                }
             } else {
                 Chart {
                     ForEach(heartRateThresholds, id: \.self) { threshold in
@@ -1651,11 +1716,14 @@ struct ActivitySessionDetailView: View {
                 .transaction {
                     $0.animation = nil
                 }
-            }
 
-            VStack(spacing: 7) {
-                ForEach(heartRateZones) { zone in
-                    HeartRateZoneLegendRow(zone: zone)
+                VStack(spacing: 8) {
+                    ForEach(heartRateZones) { zone in
+                        HeartRateZoneLegendRow(
+                            zone: zone,
+                            maxSeconds: heartRateZoneMaxSeconds
+                        )
+                    }
                 }
             }
         }
@@ -1777,7 +1845,7 @@ struct ActivitySessionDetailView: View {
                                 .fill(zone.color)
                                 .frame(width: 8, height: 8)
 
-                            Text(zone.title)
+                            Text(WeekFitLocalizedString(zone.title))
                                 .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
                                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.72))
                                 .frame(width: 42, alignment: .leading)
@@ -1836,7 +1904,7 @@ struct ActivitySessionDetailView: View {
                 title: detail?.shouldShowElapsedTime == true
                     ? "activity.metric.workoutTime"
                     : "activity.metric.duration",
-                value: MetricFormatter.compactDashboardDuration(sessionDurationSeconds),
+                value: WorkoutHeartRateAnalytics.durationLabel(seconds: sessionDurationSeconds),
                 unit: "",
                 icon: "clock",
                 color: ActivityStyle.activityColor
@@ -1847,7 +1915,7 @@ struct ActivitySessionDetailView: View {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.elapsedTime",
-                    value: MetricFormatter.compactDashboardDuration(detail.elapsedDurationSeconds),
+                    value: WorkoutHeartRateAnalytics.durationLabel(seconds: detail.elapsedDurationSeconds),
                     unit: "",
                     icon: "timer",
                     color: ActivityStyle.teal
@@ -1891,19 +1959,31 @@ struct ActivitySessionDetailView: View {
             )
         }
 
-        if let detail, detail.shouldShowDistanceMetrics, let speed = detail.averageSpeedKmh {
-            items.append(
-                SessionMetricItem(
-                    title: "activity.metric.avgSpeed",
-                    value: MetricFormatter.compactSpeed(speed, system: system),
-                    unit: WeekFitUnitPolicy.speedUnitLabel(for: system),
-                    icon: "speedometer",
-                    color: ActivityStyle.green
+        if let detail, detail.shouldShowDistanceMetrics {
+            if detail.shouldShowPace, let pace = detail.averagePaceMinutesPerKm {
+                items.append(
+                    SessionMetricItem(
+                        title: "activity.metric.avgPace",
+                        value: MetricFormatter.compactPace(pace, system: system),
+                        unit: WeekFitUnitPolicy.paceUnitLabel(for: system),
+                        icon: "speedometer",
+                        color: ActivityStyle.green
+                    )
                 )
-            )
+            } else if let speed = detail.averageSpeedKmh {
+                items.append(
+                    SessionMetricItem(
+                        title: "activity.metric.avgSpeed",
+                        value: MetricFormatter.compactSpeed(speed, system: system),
+                        unit: WeekFitUnitPolicy.speedUnitLabel(for: system),
+                        icon: "speedometer",
+                        color: ActivityStyle.green
+                    )
+                )
+            }
         }
 
-        if detail?.shouldShowDistanceMetrics == true, let maxSpeedKmh {
+        if let detail, detail.shouldShowDistanceMetrics, !detail.shouldShowPace, let maxSpeedKmh {
             items.append(
                 SessionMetricItem(
                     title: "activity.metric.maxSpeed",
@@ -2022,43 +2102,37 @@ struct ActivitySessionDetailView: View {
     }
 
     private var heartRateZones: [HeartRateZoneSummary] {
+        let startDate = detail?.startDate ?? session.startDate
+        let endDate = detail?.endDate ?? session.endDate
+        let intervals = {
+            let stored = detail?.activeHeartRateIntervals ?? []
+            if stored.isEmpty {
+                return [DateInterval(start: startDate, end: endDate)]
+            }
+            return stored
+        }()
         let zoneSeconds = heartRateZoneDefinitions.map { definition in
-            (definition, secondsInZone { definition.contains($0) })
+            (definition, WorkoutHeartRateAnalytics.secondsInZone(
+                samples: heartRateSamples,
+                activeIntervals: intervals,
+                contains: { definition.contains($0) }
+            ))
         }
-        let rawTotalSeconds = zoneSeconds.map(\.1).reduce(0, +)
-        let scale = rawTotalSeconds > sessionDurationSeconds && rawTotalSeconds > 0
-            ? sessionDurationSeconds / rawTotalSeconds
-            : 1
         let durationForPercentage = max(sessionDurationSeconds, 1)
 
         return zoneSeconds.map { definition, seconds in
-            let cappedSeconds = seconds * scale
-
-            return HeartRateZoneSummary(
+            HeartRateZoneSummary(
                 title: definition.title,
                 range: definition.range,
                 color: definition.color,
-                minutes: Int(cappedSeconds / 60.0),
-                percentage: min(100, Int((cappedSeconds / durationForPercentage * 100.0).rounded()))
+                seconds: seconds,
+                percentage: min(100, Int((seconds / durationForPercentage * 100.0).rounded()))
             )
         }
     }
 
-    private func secondsInZone(_ contains: (Double) -> Bool) -> TimeInterval {
-        guard heartRateSamples.count > 1 else { return 0 }
-
-        let startDate = detail?.startDate ?? session.startDate
-        let endDate = detail?.endDate ?? session.endDate
-
-        return zip(heartRateSamples, heartRateSamples.dropFirst()).reduce(0.0) { total, pair in
-            guard contains(pair.0.beatsPerMinute) else { return total }
-
-            let intervalStart = max(pair.0.timestamp, startDate)
-            let intervalEnd = min(pair.1.timestamp, endDate)
-            let interval = intervalEnd.timeIntervalSince(intervalStart)
-
-            return total + max(0, min(interval, 60))
-        }
+    private var heartRateZoneMaxSeconds: TimeInterval {
+        max(heartRateZones.map(\.seconds).max() ?? 1, 1)
     }
 
     private func applyPreloadedDemoDetailIfAvailable() {
@@ -2094,10 +2168,61 @@ struct ActivitySessionDetailView: View {
         ) {
             loadedDetail = cached
             supplementalMetricsSettled = true
-            routeLoadingSettled = true
-            isHeartRateLoading = false
-            isRouteLoading = false
+            let needsHeartRate = cached.heartRateSamples.isEmpty
+                && !ActivitySessionDetailCache.heartRateIsResolved(workoutID)
+            isHeartRateLoading = needsHeartRate
             isRoutePreviewEnabled = cached.routePoints.count > 1
+
+            let needsRoute = expectsRoute
+                && cached.routePoints.count <= 1
+                && !ActivitySessionDetailCache.routeIsResolved(workoutID)
+            isRouteLoading = needsRoute
+            routeLoadingSettled = !needsRoute
+
+            if !needsHeartRate && !needsRoute {
+                return
+            }
+
+            if needsHeartRate {
+                remainingSupplementalLoads = 1
+            }
+
+            async let heartRate: WorkoutHealthDetailSnapshot? = {
+                guard needsHeartRate else { return nil }
+                return await healthManager.loadWorkoutHeartRateDetails(
+                    for: workoutID,
+                    start: start,
+                    end: end
+                )
+            }()
+
+            if needsRoute {
+                async let routeLoad: Void = loadRouteDetailsWithRetry(
+                    workoutID: workoutID,
+                    start: start,
+                    end: end
+                )
+
+                if needsHeartRate, let heartRate = await heartRate {
+                    guard !Task.isCancelled else { return }
+                    isHeartRateLoading = false
+                    if !heartRate.heartRateSamples.isEmpty || heartRate.averageHeartRate != nil {
+                        mergeSupplementalDetails(heartRate)
+                    }
+                    ActivitySessionDetailCache.markHeartRateResolved(workoutID)
+                    finishMetricsSupplementalLoad(for: workoutID)
+                }
+
+                await routeLoad
+            } else if needsHeartRate, let heartRate = await heartRate {
+                guard !Task.isCancelled else { return }
+                isHeartRateLoading = false
+                if !heartRate.heartRateSamples.isEmpty || heartRate.averageHeartRate != nil {
+                    mergeSupplementalDetails(heartRate)
+                }
+                ActivitySessionDetailCache.markHeartRateResolved(workoutID)
+                finishMetricsSupplementalLoad(for: workoutID)
+            }
             return
         }
 
@@ -2107,49 +2232,42 @@ struct ActivitySessionDetailView: View {
         isRouteLoading = expectsRoute
         remainingSupplementalLoads = 2
 
-        Task {
-            let metrics = await healthManager.loadWorkoutSupplementalMetrics(
-                for: workoutID,
-                start: start,
-                end: end,
-                activityType: activityType
-            )
-
-            await MainActor.run {
-                if let metrics {
-                    mergeSupplementalDetails(metrics)
-                }
-
-                finishMetricsSupplementalLoad(for: workoutID)
-            }
-        }
-
-        Task {
-            let heartRate = await healthManager.loadWorkoutHeartRateDetails(
+        async let metrics = healthManager.loadWorkoutSupplementalMetrics(
+            for: workoutID,
+            start: start,
+            end: end,
+            activityType: activityType
+        )
+        async let heartRate = healthManager.loadWorkoutHeartRateDetails(
+            for: workoutID,
+            start: start,
+            end: end
+        )
+        async let routeLoad: Void = {
+            guard expectsRoute else { return }
+            await loadRouteDetailsWithRetry(
+                workoutID: workoutID,
                 start: start,
                 end: end
             )
+        }()
 
-            await MainActor.run {
-                isHeartRateLoading = false
-
-                if !heartRate.heartRateSamples.isEmpty {
-                    mergeSupplementalDetails(heartRate)
-                }
-
-                finishMetricsSupplementalLoad(for: workoutID)
-            }
+        if let metrics = await metrics {
+            guard !Task.isCancelled else { return }
+            mergeSupplementalDetails(metrics)
         }
+        finishMetricsSupplementalLoad(for: workoutID)
 
-        if expectsRoute {
-            Task {
-                await loadRouteDetailsWithRetry(
-                    workoutID: workoutID,
-                    start: start,
-                    end: end
-                )
-            }
+        let loadedHeartRate = await heartRate
+        guard !Task.isCancelled else { return }
+        isHeartRateLoading = false
+        if !loadedHeartRate.heartRateSamples.isEmpty || loadedHeartRate.averageHeartRate != nil {
+            mergeSupplementalDetails(loadedHeartRate)
         }
+        ActivitySessionDetailCache.markHeartRateResolved(workoutID)
+        finishMetricsSupplementalLoad(for: workoutID)
+
+        await routeLoad
     }
 
     private func loadRouteDetailsWithRetry(
@@ -2157,10 +2275,20 @@ struct ActivitySessionDetailView: View {
         start: Date,
         end: Date
     ) async {
-        // Always attempt a non-blocking route-auth check, then load.
-        // HealthKit does not reliably expose READ grant status via authorizationStatus.
+        if let route = await healthManager.loadWorkoutRouteDetails(
+            for: workoutID,
+            start: start,
+            end: end
+        ), route.routePoints.count > 1 {
+            await applyLoadedRoute(route, workoutID: workoutID)
+            return
+        }
+
+        if Task.isCancelled { return }
+
         _ = await healthManager.ensureWorkoutRouteAuthorization(presentationDelay: 0)
 
+        // Allow HealthKit a few seconds after the user grants workout routes.
         let retryDelaysSeconds: [TimeInterval] = [0, 0.25, 0.75, 1.5, 3.0]
         let retryStart = Date()
 
@@ -2180,31 +2308,33 @@ struct ActivitySessionDetailView: View {
                 start: start,
                 end: end
             )
-
             let loadedRoute = (route?.routePoints.count ?? 0) > 1
 
-            await MainActor.run {
-                if let route, loadedRoute {
-                    mergeSupplementalDetails(route)
-                    isRoutePreviewEnabled = true
-                    isRouteLoading = false
-                    routeLoadingSettled = true
-                    cacheDetailIfReady(for: workoutID)
-                } else {
-                    let isLastAttempt = attemptIndex == retryDelaysSeconds.count - 1
-                    if isLastAttempt {
-                        isRouteLoading = false
-                        routeLoadingSettled = true
-                        isRoutePreviewEnabled = false
-                        cacheDetailIfReady(for: workoutID)
-                    }
-                }
-            }
-
-            if loadedRoute {
+            if let route, loadedRoute {
+                await applyLoadedRoute(route, workoutID: workoutID)
                 return
             }
+
+            if attemptIndex == retryDelaysSeconds.count - 1 {
+                await MainActor.run {
+                    isRouteLoading = false
+                    routeLoadingSettled = true
+                    isRoutePreviewEnabled = false
+                    ActivitySessionDetailCache.markRouteResolved(workoutID)
+                    cacheDetailIfReady(for: workoutID)
+                }
+            }
         }
+    }
+
+    @MainActor
+    private func applyLoadedRoute(_ route: WorkoutHealthDetailSnapshot, workoutID: UUID) {
+        mergeSupplementalDetails(route)
+        isRoutePreviewEnabled = true
+        isRouteLoading = false
+        routeLoadingSettled = true
+        ActivitySessionDetailCache.markRouteResolved(workoutID)
+        cacheDetailIfReady(for: workoutID)
     }
 
     private func finishMetricsSupplementalLoad(for workoutID: UUID) {
@@ -2217,38 +2347,35 @@ struct ActivitySessionDetailView: View {
     }
 
     private func cacheDetailIfReady(for workoutID: UUID) {
-        guard supplementalMetricsSettled, routeLoadingSettled, let loadedDetail else { return }
+        guard supplementalMetricsSettled, let loadedDetail else { return }
         ActivitySessionDetailCache.store(loadedDetail, for: workoutID)
     }
 
     private func mergeSupplementalDetails(_ supplemental: WorkoutHealthDetailSnapshot) {
-        let base = detail
-
-        loadedDetail = ActivitySessionDetailSnapshot(
-            title: base?.title ?? session.title,
-            activityType: base?.activityType ?? .other,
-            startDate: base?.startDate ?? session.startDate,
-            endDate: base?.endDate ?? session.endDate,
-            durationMinutes: base?.durationMinutes ?? session.durationMinutes,
-            workoutDurationSeconds: base?.workoutDurationSeconds ?? Double(session.durationMinutes * 60),
-            elapsedDurationSeconds: base?.elapsedDurationSeconds ?? session.endDate.timeIntervalSince(session.startDate),
-            source: supplemental.source ?? base?.source,
-            icon: base?.icon ?? session.icon,
-            color: base?.color ?? session.color,
-            activeCalories: supplemental.activeCalories ?? base?.activeCalories,
-            distanceKm: supplemental.distanceKm ?? base?.distanceKm,
-            averageHeartRate: supplemental.averageHeartRate ?? base?.averageHeartRate,
-            maxHeartRate: supplemental.maxHeartRate ?? base?.maxHeartRate,
-            heartRateSamples: supplemental.heartRateSamples.isEmpty
-                ? (base?.heartRateSamples ?? [])
-                : supplemental.heartRateSamples,
-            routePoints: supplemental.routePoints.isEmpty
-                ? (base?.routePoints ?? [])
-                : supplemental.routePoints,
-            elevationGain: supplemental.elevationGain ?? base?.elevationGain,
-            steps: supplemental.steps ?? base?.steps,
-            cadence: supplemental.cadence ?? base?.cadence
+        let base = detail ?? ActivitySessionDetailSnapshot(
+            title: session.title,
+            activityType: .other,
+            startDate: session.startDate,
+            endDate: session.endDate,
+            durationMinutes: session.durationMinutes,
+            workoutDurationSeconds: Double(session.durationMinutes * 60),
+            elapsedDurationSeconds: session.endDate.timeIntervalSince(session.startDate),
+            source: nil,
+            icon: session.icon,
+            color: session.color,
+            activeCalories: nil,
+            distanceKm: nil,
+            averageHeartRate: nil,
+            maxHeartRate: nil,
+            heartRateSamples: [],
+            routePoints: [],
+            elevationGain: nil,
+            steps: nil,
+            cadence: nil,
+            activeHeartRateIntervals: []
         )
+
+        loadedDetail = base.merging(supplemental)
 
         if supplemental.routePoints.count > 1 {
             isRoutePreviewEnabled = true
@@ -2260,21 +2387,11 @@ private struct HeartRateZoneDefinition: Identifiable, Hashable {
     var id: String { title }
 
     let title: String
+    let number: Int
     let lowerBound: Double
     let upperBound: Double
+    let range: String
     let color: Color
-
-    var range: String {
-        if lowerBound <= 40 {
-            return String(format: WeekFitLocalizedString("common.unit.bpmLessThanFormat"), Int(upperBound))
-        }
-
-        if upperBound >= 220 {
-            return String(format: WeekFitLocalizedString("common.unit.bpmPlusFormat"), Int(lowerBound))
-        }
-
-        return String(format: WeekFitLocalizedString("common.unit.bpmRangeFormat"), Int(lowerBound), Int(upperBound - 1))
-    }
 
     func contains(_ beatsPerMinute: Double) -> Bool {
         beatsPerMinute >= lowerBound && beatsPerMinute < upperBound
@@ -2332,7 +2449,7 @@ private enum ActivityDistanceMetricsExpectation {
 }
 
 @MainActor
-private enum ActivityRouteExpectation {
+enum ActivityRouteExpectation {
     static func expectsRoute(for activityType: HKWorkoutActivityType) -> Bool {
         switch activityType {
         case .running, .walking, .hiking, .cycling,
@@ -2347,25 +2464,225 @@ private enum ActivityRouteExpectation {
 }
 
 @MainActor
-private enum ActivitySessionDetailCache {
+enum ActivitySessionDetailCache {
     private static var details: [UUID: ActivitySessionDetailSnapshot] = [:]
+    private static var heartRateResolvedIDs: Set<UUID> = []
+    private static var routeResolvedIDs: Set<UUID> = []
 
     static func detail(
         for workoutID: UUID,
-        activityType: HKWorkoutActivityType
+        activityType _: HKWorkoutActivityType
     ) -> ActivitySessionDetailSnapshot? {
         guard let cached = details[workoutID] else { return nil }
-
-        if ActivityRouteExpectation.expectsRoute(for: activityType),
-           cached.routePoints.count <= 1 {
-            return nil
-        }
-
         return cached
     }
 
+    /// Monotonic merge: never drop a richer HR/route/metrics entry.
     static func store(_ detail: ActivitySessionDetailSnapshot, for workoutID: UUID) {
-        details[workoutID] = detail
+        if let existing = details[workoutID] {
+            details[workoutID] = detail.mergingCached(existing)
+        } else {
+            details[workoutID] = detail
+        }
+
+        if let stored = details[workoutID] {
+            if !stored.heartRateSamples.isEmpty {
+                heartRateResolvedIDs.insert(workoutID)
+            }
+            if stored.routePoints.count > 1 {
+                routeResolvedIDs.insert(workoutID)
+            }
+        }
+    }
+
+    static func markHeartRateResolved(_ workoutID: UUID) {
+        heartRateResolvedIDs.insert(workoutID)
+    }
+
+    static func markRouteResolved(_ workoutID: UUID) {
+        routeResolvedIDs.insert(workoutID)
+    }
+
+    static func heartRateIsResolved(_ workoutID: UUID) -> Bool {
+        heartRateResolvedIDs.contains(workoutID)
+    }
+
+    static func routeIsResolved(_ workoutID: UUID) -> Bool {
+        routeResolvedIDs.contains(workoutID)
+    }
+
+    static func needsPrefetch(
+        for workoutID: UUID,
+        activityType: HKWorkoutActivityType
+    ) -> Bool {
+        let cached = details[workoutID]
+        let needsHeartRate = (cached?.heartRateSamples.isEmpty ?? true)
+            && !heartRateResolvedIDs.contains(workoutID)
+
+        let needsRoute = ActivityRouteExpectation.expectsRoute(for: activityType)
+            && (cached?.routePoints.count ?? 0) <= 1
+            && !routeResolvedIDs.contains(workoutID)
+
+        return needsHeartRate || needsRoute
+    }
+}
+
+/// Warms `ActivitySessionDetailCache` for a day's sessions so opening a workout
+/// can show heart rate / route without waiting on HealthKit.
+@MainActor
+enum ActivitySessionDetailPrefetcher {
+    private static let maxConcurrentPrefetches = 2
+
+    static func prefetch(
+        sessions: [ActivitySessionSnapshot],
+        healthManager: HealthManager
+    ) async {
+        guard !healthManager.isAppReviewDemoActive else { return }
+
+        // Newest first — users usually open the latest session of the day.
+        let candidates: [(workoutID: UUID, detail: ActivitySessionDetailSnapshot)] = sessions
+            .sorted { $0.startDate > $1.startDate }
+            .compactMap { session in
+                guard let workoutID = session.workoutID,
+                      let detail = session.detail,
+                      ActivitySessionDetailCache.needsPrefetch(
+                        for: workoutID,
+                        activityType: detail.activityType
+                      )
+                else {
+                    return nil
+                }
+
+                return (workoutID, detail)
+            }
+
+        guard !candidates.isEmpty else { return }
+
+        await withTaskGroup(of: Void.self) { group in
+            var iterator = candidates.makeIterator()
+            let initialCount = min(maxConcurrentPrefetches, candidates.count)
+
+            for _ in 0..<initialCount {
+                guard let next = iterator.next() else { break }
+                group.addTask {
+                    await prefetchSession(
+                        workoutID: next.workoutID,
+                        base: next.detail,
+                        healthManager: healthManager
+                    )
+                }
+            }
+
+            while await group.next() != nil {
+                guard !Task.isCancelled else {
+                    group.cancelAll()
+                    break
+                }
+
+                guard let next = iterator.next() else { continue }
+                group.addTask {
+                    await prefetchSession(
+                        workoutID: next.workoutID,
+                        base: next.detail,
+                        healthManager: healthManager
+                    )
+                }
+            }
+        }
+    }
+
+    private static func prefetchSession(
+        workoutID: UUID,
+        base: ActivitySessionDetailSnapshot,
+        healthManager: HealthManager
+    ) async {
+        guard !Task.isCancelled else { return }
+
+        let cached = ActivitySessionDetailCache.detail(
+            for: workoutID,
+            activityType: base.activityType
+        )
+        let current = cached ?? base
+
+        let expectsRoute = ActivityRouteExpectation.expectsRoute(for: base.activityType)
+        let needsHeartRateLoad = current.heartRateSamples.isEmpty
+            && !ActivitySessionDetailCache.heartRateIsResolved(workoutID)
+        let needsRouteLoad = expectsRoute
+            && current.routePoints.count <= 1
+            && !ActivitySessionDetailCache.routeIsResolved(workoutID)
+
+        guard needsHeartRateLoad || needsRouteLoad else { return }
+
+        async let heartRate = loadHeartRateIfNeeded(
+            needsHeartRate: needsHeartRateLoad,
+            workoutID: workoutID,
+            base: base,
+            healthManager: healthManager
+        )
+        // Query only — never prompt for route authorization during prefetch.
+        async let route = loadRouteIfNeeded(
+            needsRoute: needsRouteLoad,
+            workoutID: workoutID,
+            base: base,
+            healthManager: healthManager
+        )
+
+        let loadedHeartRate = await heartRate
+        if needsHeartRateLoad {
+            guard !Task.isCancelled else { return }
+            if let loadedHeartRate,
+               !loadedHeartRate.heartRateSamples.isEmpty || loadedHeartRate.averageHeartRate != nil {
+                let baseForMerge = ActivitySessionDetailCache.detail(
+                    for: workoutID,
+                    activityType: base.activityType
+                ) ?? current
+                ActivitySessionDetailCache.store(baseForMerge.merging(loadedHeartRate), for: workoutID)
+            }
+            ActivitySessionDetailCache.markHeartRateResolved(workoutID)
+        }
+
+        let loadedRoute = await route
+        if needsRouteLoad {
+            guard !Task.isCancelled else { return }
+            if let loadedRoute, loadedRoute.routePoints.count > 1 {
+                let baseForMerge = ActivitySessionDetailCache.detail(
+                    for: workoutID,
+                    activityType: base.activityType
+                ) ?? current
+                ActivitySessionDetailCache.store(baseForMerge.merging(loadedRoute), for: workoutID)
+                // Only mark resolved when we actually have a route. Empty during
+                // prefetch may just mean route auth has not been granted yet.
+                ActivitySessionDetailCache.markRouteResolved(workoutID)
+            }
+        }
+    }
+
+    private static func loadHeartRateIfNeeded(
+        needsHeartRate: Bool,
+        workoutID: UUID,
+        base: ActivitySessionDetailSnapshot,
+        healthManager: HealthManager
+    ) async -> WorkoutHealthDetailSnapshot? {
+        guard needsHeartRate else { return nil }
+        return await healthManager.loadWorkoutHeartRateDetails(
+            for: workoutID,
+            start: base.startDate,
+            end: base.endDate
+        )
+    }
+
+    private static func loadRouteIfNeeded(
+        needsRoute: Bool,
+        workoutID: UUID,
+        base: ActivitySessionDetailSnapshot,
+        healthManager: HealthManager
+    ) async -> WorkoutHealthDetailSnapshot? {
+        guard needsRoute else { return nil }
+        return await healthManager.loadWorkoutRouteDetails(
+            for: workoutID,
+            start: base.startDate,
+            end: base.endDate
+        )
     }
 }
 
@@ -2375,63 +2692,63 @@ private struct HeartRateZoneSummary: Identifiable {
     let title: String
     let range: String
     let color: Color
-    let minutes: Int
+    let seconds: TimeInterval
     let percentage: Int
+
+    var minutes: Int {
+        Int((seconds / 60.0).rounded(.towardZero))
+    }
+
+    var durationLabel: String {
+        WorkoutHeartRateAnalytics.durationLabel(seconds: seconds)
+    }
 }
 
 private struct HeartRateZoneLegendRow: View {
     let zone: HeartRateZoneSummary
+    let maxSeconds: TimeInterval
 
     private var isActive: Bool {
-        zone.minutes > 0 || zone.percentage > 0
+        zone.seconds >= 0.5 || zone.percentage > 0
+    }
+
+    private var barFraction: CGFloat {
+        guard maxSeconds > 0 else { return 0 }
+        return CGFloat(min(max(zone.seconds / maxSeconds, 0), 1))
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(zone.color)
-                .frame(width: 8, height: 8)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(WeekFitLocalizedString(zone.title))
-                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.74 : 0.44))
-                    .lineLimit(1)
-
-                Text(zone.range)
-                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.42 : 0.28))
-                    .lineLimit(1)
-            }
-            .frame(width: 70, alignment: .leading)
+        HStack(spacing: 10) {
+            Text(WeekFitLocalizedString(zone.title))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(zone.color)
+                .lineLimit(1)
+                .frame(width: 58, alignment: .leading)
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(WeekFitTheme.whiteOpacity(0.055))
+                        .fill(WeekFitTheme.whiteOpacity(0.08))
 
                     Capsule()
-                        .fill(zone.color.opacity(isActive ? 0.95 : 0.20))
-                        .frame(width: proxy.size.width * CGFloat(zone.percentage) / 100.0)
+                        .fill(zone.color.opacity(isActive ? 1 : 0.22))
+                        .frame(width: max(proxy.size.width * barFraction, isActive ? 4 : 0))
                 }
             }
-            .frame(height: 7)
+            .frame(height: 10)
 
-            Text(String(format: WeekFitLocalizedString("common.unit.minuteFormat"), zone.minutes))
-                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.70 : 0.40))
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+            Text(zone.durationLabel)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.92 : 0.42))
+                .monospacedDigit()
                 .frame(width: 58, alignment: .trailing)
-                .monospacedDigit()
 
-            Text(String(format: WeekFitLocalizedString("activity.percentFormat"), zone.percentage))
-                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.48 : 0.34))
+            Text(zone.range)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(WeekFitTheme.whiteOpacity(isActive ? 0.48 : 0.30))
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(width: 34, alignment: .trailing)
-                .monospacedDigit()
+                .minimumScaleFactor(0.78)
+                .frame(width: 92, alignment: .trailing)
         }
         .frame(height: 22)
     }
@@ -3163,6 +3480,19 @@ private enum MetricFormatter {
 
     static func compactSpeed(_ kilometersPerHour: Double, system: WeekFitResolvedUnitSystem) -> String {
         WeekFitUnitPolicy.formatCompactSpeed(kilometersPerHour: kilometersPerHour, system: system)
+    }
+
+    static func compactPace(_ minutesPerKilometer: Double, system: WeekFitResolvedUnitSystem) -> String {
+        let minutesPerUnit: Double
+        switch system {
+        case .metric:
+            minutesPerUnit = minutesPerKilometer
+        case .uk, .us:
+            minutesPerUnit = minutesPerKilometer * 1.60934
+        }
+
+        let totalSeconds = Int((minutesPerUnit * 60).rounded())
+        return String(format: "%d'%02d\"", totalSeconds / 60, totalSeconds % 60)
     }
 
     static func elevation(_ meters: Double, system: WeekFitResolvedUnitSystem) -> String {

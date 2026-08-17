@@ -16,6 +16,7 @@ final class ActivityIntelligenceViewModel: ObservableObject {
     private let provider = ActivityIntelligenceSnapshotProvider()
     private var selectionToken = UUID()
     private var loadToken = UUID()
+    private var sessionDetailPrefetchTask: Task<Void, Never>?
 
     func load(
         selectedDate: Date,
@@ -24,6 +25,7 @@ final class ActivityIntelligenceViewModel: ObservableObject {
     ) async {
         let token = UUID()
         loadToken = token
+        sessionDetailPrefetchTask?.cancel()
 
         let calendar = Self.mondayFirstCalendar
 
@@ -56,6 +58,9 @@ final class ActivityIntelligenceViewModel: ObservableObject {
             weekSnapshots[index] = selected
         }
 
+        // Warm HR/route cache while the rest of the week loads.
+        prefetchSessionDetails(for: selected, healthManager: healthManager)
+
         let snapshots = await provider.buildWeekSnapshots(
             endingAt: selectedDate,
             healthManager: healthManager,
@@ -84,6 +89,7 @@ final class ActivityIntelligenceViewModel: ObservableObject {
         let calendar = Self.mondayFirstCalendar
         let token = UUID()
         selectionToken = token
+        sessionDetailPrefetchTask?.cancel()
 
         withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
             selectedDate = snapshot.date
@@ -91,6 +97,7 @@ final class ActivityIntelligenceViewModel: ObservableObject {
         }
 
         isRefreshingSelectedDay = true
+        prefetchSessionDetails(for: snapshot, healthManager: healthManager)
 
         let refreshed = await provider.buildSnapshot(
             for: snapshot.date,
@@ -118,7 +125,22 @@ final class ActivityIntelligenceViewModel: ObservableObject {
             weekSnapshots[index] = refreshed
         }
 
+        prefetchSessionDetails(for: refreshed, healthManager: healthManager)
         isRefreshingSelectedDay = false
+    }
+
+    private func prefetchSessionDetails(
+        for snapshot: ActivityDaySnapshot,
+        healthManager: HealthManager
+    ) {
+        sessionDetailPrefetchTask?.cancel()
+        let sessions = snapshot.sessions
+        sessionDetailPrefetchTask = Task {
+            await ActivitySessionDetailPrefetcher.prefetch(
+                sessions: sessions,
+                healthManager: healthManager
+            )
+        }
     }
 
     private func makePlaceholderWeekSnapshots(containing date: Date) -> [ActivityDaySnapshot] {

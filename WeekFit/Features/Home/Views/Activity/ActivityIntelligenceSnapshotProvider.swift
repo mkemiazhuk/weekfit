@@ -1,6 +1,7 @@
 import SwiftUI
 import HealthKit
 import WeekFitPlanner
+import WeekFitWorkoutMetrics
 
 final class ActivityIntelligenceSnapshotProvider {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
@@ -121,6 +122,7 @@ final class ActivityIntelligenceSnapshotProvider {
         let durationMinutes = max(1, Int(workout.duration / 60.0))
         let icon = ActivityReconciler.icon(for: workout.workoutActivityType)
         let color = workoutColor(for: workout.workoutActivityType)
+        let heartRate = WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout)
         let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let distanceKm = workout.totalDistance.map { $0.doubleValue(for: .meter()) / 1000.0 }
 
@@ -144,13 +146,14 @@ final class ActivityIntelligenceSnapshotProvider {
                 color: color,
                 activeCalories: activeCalories,
                 distanceKm: distanceKm,
-                averageHeartRate: nil,
-                maxHeartRate: nil,
+                averageHeartRate: heartRate.average,
+                maxHeartRate: heartRate.maximum,
                 heartRateSamples: [],
                 routePoints: [],
-                elevationGain: nil,
+                elevationGain: WorkoutElevationGainResolver.fromWorkoutMetadata(workout.metadata),
                 steps: nil,
-                cadence: nil
+                cadence: nil,
+                activeHeartRateIntervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
             )
         )
     }

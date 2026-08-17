@@ -138,7 +138,8 @@ final class NutritionViewModel: ObservableObject {
         } else {
             let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
 
-            // Planned logs reconcile every pass so deletions shrink totals.
+            // Incoming metrics are HealthKit-only dietary intake. Planned meal/drink logs are
+            // recomputed every pass so add/delete moves consumed totals in both directions.
             updatedMetrics.calories = max(metrics.calories, mealCalories)
             updatedMetrics.protein = max(metrics.protein, mealProtein)
             updatedMetrics.carbs = max(metrics.carbs, mealCarbs)

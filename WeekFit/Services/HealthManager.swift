@@ -23,6 +23,33 @@ struct WorkoutHealthDetailSnapshot: Hashable {
     let elevationGain: Double?
     let steps: Int?
     let cadence: Double?
+    let activeHeartRateIntervals: [DateInterval]
+
+    init(
+        source: String?,
+        activeCalories: Double?,
+        distanceKm: Double?,
+        averageHeartRate: Double?,
+        maxHeartRate: Double?,
+        heartRateSamples: [WorkoutHeartRateSample],
+        routePoints: [WorkoutRoutePoint],
+        elevationGain: Double?,
+        steps: Int?,
+        cadence: Double?,
+        activeHeartRateIntervals: [DateInterval] = []
+    ) {
+        self.source = source
+        self.activeCalories = activeCalories
+        self.distanceKm = distanceKm
+        self.averageHeartRate = averageHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.heartRateSamples = heartRateSamples
+        self.routePoints = routePoints
+        self.elevationGain = elevationGain
+        self.steps = steps
+        self.cadence = cadence
+        self.activeHeartRateIntervals = activeHeartRateIntervals
+    }
 }
 
 struct ActivityMetricsSnapshot: Hashable {
@@ -266,6 +293,7 @@ final class HealthManager: ObservableObject {
     @Published private(set) var isLoadingDisplayDayMetrics = false
 
     private var loadedMetricsDayStart: Date?
+    private var workoutLookupCache: [UUID: HKWorkout] = [:]
 
     @Published var weight: Double = 0
     @Published var heightCm: Double = 0
@@ -277,6 +305,7 @@ final class HealthManager: ObservableObject {
     private let healthStore = HKHealthStore()
     private let recoveryScoreProvider = RecoveryHealthKitProvider()
     private let healthAccessRequestedKey = "weekfit.healthAccessRequested"
+    private let cachedAgeYearsKey = "weekfit.health.cachedAgeYears"
     private(set) var appReviewDemoProvider: AppReviewDemoHealthDataProvider?
     private static let logger = Logger(subsystem: "WeekFit", category: "HealthManager")
     private var inFlightHealthLoad: Task<Void, Never>?
@@ -547,15 +576,13 @@ final class HealthManager: ObservableObject {
     private var pendingWorkoutRouteAuthorization = false
 
     /// Types requested in the system authorization sheet. Excludes route series, which can block the prompt on some OS versions.
+    /// Date of birth stays in the sheet so heart-rate zones can match Apple Fitness (`220 − age`).
     func buildAuthorizationReadTypes() -> Set<HKObjectType> {
         var types = buildReadTypes()
         types.remove(HKSeriesType.workoutRoute())
 
         if let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
             types.remove(biologicalSex)
-        }
-        if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
-            types.remove(dateOfBirth)
         }
 
         return types
@@ -1371,6 +1398,7 @@ final class HealthManager: ObservableObject {
             weight = profile.weightKg
             age = profile.age
             biologicalSex = profile.biologicalSex
+            syncHeartRateZonePhysiology()
             return
         }
 
@@ -1387,8 +1415,9 @@ final class HealthManager: ObservableObject {
 
         heightCm = loadedHeight
         weight = loadedWeight
-        age = readAge()
         biologicalSex = readBiologicalSex()
+        applyResolvedAge()
+        syncHeartRateZonePhysiology()
     }
 
     func loadHeaderMetrics(for date: Date = Date()) async {
@@ -1520,16 +1549,16 @@ final class HealthManager: ObservableObject {
         plannedActivities: [PlannedActivity] = []
     ) async {
         if isAppReviewDemoActive, let provider = appReviewDemoProvider {
-            let planned = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
-            let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
+            // Publish demo/HK dietary intake only. Planned meal/drink logs are merged in
+            // NutritionViewModel so deletions can shrink consumed totals.
             let demo = provider.nutritionSnapshot(for: date)
 
-            protein = max(demo?.protein ?? 0, planned.protein)
-            carbs = max(demo?.carbs ?? 0, planned.carbs)
-            fats = max(demo?.fats ?? 0, planned.fats)
-            fiber = planned.fiber
-            calories = max(demo?.calories ?? 0, planned.calories)
-            waterLiters = max(demo?.waterLiters ?? 0, plannedWaterLiters)
+            protein = demo?.protein ?? 0
+            carbs = demo?.carbs ?? 0
+            fats = demo?.fats ?? 0
+            fiber = 0
+            calories = demo?.calories ?? 0
+            waterLiters = demo?.waterLiters ?? 0
             sleepHours = Double(sleepMinutes) / 60.0
             loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
             markDisplayMetricsSettled(for: date)
@@ -1537,13 +1566,14 @@ final class HealthManager: ObservableObject {
         }
 
         guard isHealthAccessGranted else {
-            let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
-            protein = fallback.protein
-            carbs = fallback.carbs
-            fats = fallback.fats
-            fiber = fallback.fiber
-            calories = fallback.calories
-            waterLiters = plannedWaterIntake(from: plannedActivities, for: date)
+            // No HealthKit food channel — keep published macros at zero and let
+            // NutritionViewModel apply planned meal/drink logs each pass.
+            protein = 0
+            carbs = 0
+            fats = 0
+            fiber = 0
+            calories = 0
+            waterLiters = 0
             sleepHours = 0
             loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
             return
@@ -1564,29 +1594,18 @@ final class HealthManager: ObservableObject {
         let hkWaterLiters = await healthWaterMl / 1000.0
 
         let hasHealthFood = hkProtein > 0 || hkCarbs > 0 || hkFats > 0 || hkFiber > 0 || hkCalories > 0
-        let fallback = calculateNutritionFromPlannedMeals(plannedActivities, for: date)
 
-        if hasHealthFood {
-            protein = max(hkProtein, fallback.protein)
-            carbs = max(hkCarbs, fallback.carbs)
-            fats = max(hkFats, fallback.fats)
-            fiber = max(hkFiber, fallback.fiber)
-            calories = max(hkCalories, fallback.calories)
-        } else {
-            protein = fallback.protein
-            carbs = fallback.carbs
-            fats = fallback.fats
-            fiber = fallback.fiber
-            calories = fallback.calories
-        }
-
-        let plannedWaterLiters = plannedWaterIntake(from: plannedActivities, for: date)
-        waterLiters = max(hkWaterLiters, plannedWaterLiters)
+        protein = hkProtein
+        carbs = hkCarbs
+        fats = hkFats
+        fiber = hkFiber
+        calories = hkCalories
+        waterLiters = hkWaterLiters
         sleepHours = Double(sleepMinutes) / 60.0
         loadedMetricsDayStart = Calendar.current.startOfDay(for: date)
         #if DEBUG
         if CoachDebugSettings.todayDataAuditEnabled {
-            Self.logger.debug("loadNutritionMetrics date=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) hasHealthFood=\(hasHealthFood, privacy: .public) hkCalories=\(hkCalories, privacy: .public) hkProtein=\(hkProtein, privacy: .public) hkCarbs=\(hkCarbs, privacy: .public) hkWater=\(hkWaterLiters, privacy: .public) plannedWater=\(plannedWaterLiters, privacy: .public) publishedCalories=\(self.calories, privacy: .public) publishedProtein=\(self.protein, privacy: .public) publishedCarbs=\(self.carbs, privacy: .public) publishedWater=\(self.waterLiters, privacy: .public)")
+            Self.logger.debug("loadNutritionMetrics date=\(date, privacy: .public) plannedActivities=\(plannedActivities.count, privacy: .public) hasHealthFood=\(hasHealthFood, privacy: .public) hkCalories=\(hkCalories, privacy: .public) hkProtein=\(hkProtein, privacy: .public) hkCarbs=\(hkCarbs, privacy: .public) hkWater=\(hkWaterLiters, privacy: .public) publishedCalories=\(self.calories, privacy: .public) publishedProtein=\(self.protein, privacy: .public) publishedCarbs=\(self.carbs, privacy: .public) publishedWater=\(self.waterLiters, privacy: .public)")
         }
         #endif
     }
@@ -1809,6 +1828,7 @@ final class HealthManager: ObservableObject {
         heightCm = 0
         age = 0
         biologicalSex = .unknown
+        syncHeartRateZonePhysiology()
     }
 
     private func resetHeaderValues() {
@@ -1900,6 +1920,56 @@ final class HealthManager: ObservableObject {
             return Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 0
         } catch {
             return 0
+        }
+    }
+
+    /// Reads HealthKit date of birth (requesting it if needed) so zone bands match Fitness.
+    func ensureHeartRateZonePhysiology() async {
+        applyResolvedAge()
+        if age > 0 {
+            syncHeartRateZonePhysiology()
+            return
+        }
+
+        guard let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) else {
+            syncHeartRateZonePhysiology()
+            return
+        }
+
+        let status = await authorizationRequestStatus(for: [dateOfBirth])
+        if status == .shouldRequest {
+            _ = await requestReadAuthorization(for: [dateOfBirth])
+            applyResolvedAge()
+        }
+
+        syncHeartRateZonePhysiology()
+    }
+
+    private func applyResolvedAge() {
+        let liveAge = readAge()
+        if liveAge > 0 {
+            age = liveAge
+            UserDefaults.standard.set(liveAge, forKey: cachedAgeYearsKey)
+            return
+        }
+
+        let cachedAge = UserDefaults.standard.integer(forKey: cachedAgeYearsKey)
+        age = cachedAge > 0 ? cachedAge : 0
+    }
+
+    private func authorizationRequestStatus(for types: Set<HKObjectType>) async -> HKAuthorizationRequestStatus {
+        await withCheckedContinuation { continuation in
+            healthStore.getRequestStatusForAuthorization(toShare: [], read: types) { status, _ in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+
+    private func requestReadAuthorization(for types: Set<HKObjectType>) async -> Bool {
+        await withCheckedContinuation { continuation in
+            healthStore.requestAuthorization(toShare: [], read: types) { success, error in
+                continuation.resume(returning: success && error == nil)
+            }
         }
     }
 
@@ -2437,6 +2507,12 @@ final class HealthManager: ObservableObject {
         } else {
             recoveryStatus = "—"
         }
+
+        syncHeartRateZonePhysiology()
+    }
+
+    private func syncHeartRateZonePhysiology() {
+        HeartRateZones.updatePhysiology(age: age, restingHeartRate: restingHeartRate)
     }
     
     var recoveryPercent: Int {
@@ -2457,9 +2533,22 @@ final class HealthManager: ObservableObject {
         near date: Date,
         calendar: Calendar = .current
     ) async -> HKWorkout? {
+        if let cached = workoutLookupCache[id] {
+            return cached
+        }
+
+        if let workout = await loadWorkoutSample(predicate: HKQuery.predicateForObject(with: id)) {
+            workoutLookupCache[id] = workout
+            return workout
+        }
+
         let start = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date)) ?? date
         let end = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: date)) ?? date
-        return await loadWorkoutSample(id: id, start: start, end: end)
+        let workout = await loadWorkoutSample(id: id, start: start, end: end)
+        if let workout {
+            workoutLookupCache[id] = workout
+        }
+        return workout
     }
 
     func loadWorkoutSamples(for date: Date) async -> [HKWorkout] {
@@ -2527,28 +2616,27 @@ final class HealthManager: ObservableObject {
         let summedDistanceMeters = await distanceMeters
         let loadedActiveCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? summedActiveCalories
         let loadedDistanceMeters = workout.totalDistance?.doubleValue(for: .meter()) ?? summedDistanceMeters
-
-        let heartRates = loadedHeartRateSamples.map(\.beatsPerMinute)
-        let averageHeartRate = heartRates.isEmpty
-            ? nil
-            : heartRates.reduce(0, +) / Double(heartRates.count)
-
-        let maxHeartRate = heartRates.max()
+        let heartRateSnapshot = makeHeartRateSnapshot(
+            from: loadedHeartRateSamples,
+            statistics: WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout),
+            intervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
+        )
 
         return WorkoutHealthDetailSnapshot(
             source: workout.sourceRevision.source.name,
             activeCalories: loadedActiveCalories > 0 ? loadedActiveCalories : nil,
             distanceKm: loadedDistanceMeters > 0 ? loadedDistanceMeters / 1000.0 : nil,
-            averageHeartRate: averageHeartRate,
-            maxHeartRate: maxHeartRate,
-            heartRateSamples: loadedHeartRateSamples,
+            averageHeartRate: heartRateSnapshot.averageHeartRate,
+            maxHeartRate: heartRateSnapshot.maxHeartRate,
+            heartRateSamples: heartRateSnapshot.heartRateSamples,
             routePoints: loadedRoutePoints,
             elevationGain: WorkoutElevationGainResolver.resolve(
                 from: workout,
                 routePoints: loadedRoutePoints
             ),
             steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
-            cadence: nil
+            cadence: nil,
+            activeHeartRateIntervals: heartRateSnapshot.activeHeartRateIntervals
         )
     }
 
@@ -2570,7 +2658,7 @@ final class HealthManager: ObservableObject {
             for: workout,
             activityType: activityType
         )
-        async let heartRate = loadWorkoutHeartRateDetails(start: start, end: end)
+        async let heartRate = loadWorkoutHeartRateDetails(for: workout)
         async let route = loadWorkoutRouteDetails(for: workout)
 
         let loadedMetrics = await metrics
@@ -2611,24 +2699,60 @@ final class HealthManager: ObservableObject {
     }
 
     func loadWorkoutHeartRateDetails(
+        for workoutID: UUID,
         start: Date,
         end: Date
     ) async -> WorkoutHealthDetailSnapshot {
-        let samples = await loadHeartRateSamples(start: start, end: end)
-        let values = samples.map(\.beatsPerMinute)
-        let average = values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+        if let workout = await loadWorkout(id: workoutID, near: start) {
+            return await loadWorkoutHeartRateDetails(for: workout)
+        }
+
+        return await loadWorkoutHeartRateDetails(start: start, end: end)
+    }
+
+    func loadWorkoutHeartRateDetails(
+        start: Date,
+        end: Date
+    ) async -> WorkoutHealthDetailSnapshot {
+        makeHeartRateSnapshot(
+            from: await loadHeartRateSamples(start: start, end: end),
+            statistics: (nil, nil),
+            intervals: [DateInterval(start: start, end: end)]
+        )
+    }
+
+    private func loadWorkoutHeartRateDetails(
+        for workout: HKWorkout
+    ) async -> WorkoutHealthDetailSnapshot {
+        let samples = await loadHeartRateSamples(for: workout)
+        return makeHeartRateSnapshot(
+            from: samples,
+            statistics: WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout),
+            intervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
+        )
+    }
+
+    private func makeHeartRateSnapshot(
+        from samples: [WorkoutHeartRateSample],
+        statistics: (average: Double?, maximum: Double?) = (nil, nil),
+        intervals: [DateInterval] = []
+    ) -> WorkoutHealthDetailSnapshot {
+        let activeSamples = WorkoutHeartRateAnalytics.samples(samples, in: intervals)
+        let values = activeSamples.map(\.beatsPerMinute)
 
         return WorkoutHealthDetailSnapshot(
             source: nil,
             activeCalories: nil,
             distanceKm: nil,
-            averageHeartRate: average,
-            maxHeartRate: values.max(),
-            heartRateSamples: samples,
+            averageHeartRate: statistics.average
+                ?? WorkoutHeartRateAnalytics.timeWeightedAverage(samples: activeSamples),
+            maxHeartRate: statistics.maximum ?? values.max(),
+            heartRateSamples: activeSamples,
             routePoints: [],
             elevationGain: nil,
             steps: nil,
-            cadence: nil
+            cadence: nil,
+            activeHeartRateIntervals: intervals
         )
     }
 
@@ -2723,6 +2847,21 @@ final class HealthManager: ObservableObject {
             steps: nil,
             cadence: nil
         )
+    }
+
+    private func loadWorkoutSample(predicate: NSPredicate) async -> HKWorkout? {
+        await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                continuation.resume(returning: samples?.first as? HKWorkout)
+            }
+
+            self.healthStore.execute(query)
+        }
     }
 
     private func loadWorkoutSample(
@@ -2830,19 +2969,35 @@ final class HealthManager: ObservableObject {
     }
 
     private func loadWorkoutHeartRateSamples(for workout: HKWorkout) async -> [WorkoutHeartRateSample] {
-        await loadHeartRateSamples(start: workout.startDate, end: workout.endDate)
+        await loadHeartRateSamples(for: workout)
+    }
+
+    private func loadHeartRateSamples(for workout: HKWorkout) async -> [WorkoutHeartRateSample] {
+        let associated = await loadHeartRateSamples(
+            predicate: HKQuery.predicateForObjects(from: workout)
+        )
+        if !associated.isEmpty {
+            return associated
+        }
+
+        return await loadHeartRateSamples(start: workout.startDate, end: workout.endDate)
     }
 
     private func loadHeartRateSamples(start: Date, end: Date) async -> [WorkoutHeartRateSample] {
+        await loadHeartRateSamples(
+            predicate: HKQuery.predicateForSamples(
+                withStart: start,
+                end: end,
+                options: []
+            )
+        )
+    }
+
+    private func loadHeartRateSamples(predicate: NSPredicate) async -> [WorkoutHeartRateSample] {
         guard let type = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             return []
         }
 
-        let predicate = HKQuery.predicateForSamples(
-            withStart: start,
-            end: end,
-            options: .strictStartDate
-        )
         let sort = NSSortDescriptor(
             key: HKSampleSortIdentifierStartDate,
             ascending: true
