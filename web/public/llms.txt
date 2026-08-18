@@ -6,7 +6,7 @@
 
 - Product: WeekFit
 - Developer: WeekFit
-- Platform: iPhone (iOS)
+- Platform: iPhone (iOS 18+)
 - Category: AI fitness coach
 - Data source: Apple Health
 - Price: Free
@@ -15,7 +15,9 @@
 ## Capabilities
 
 - Recovery score from sleep, HRV and resting heart rate
-- Activity and workouts synced from Apple Health
+- Activity and workouts synced from Apple Health (they update the matching Plan slot)
+- Home Screen widgets for Today: Move, Fuel, Ready, and what's next
+- Morning plan proposals from recovery and weather
 - Nutrition and macro tracking in daily context
 - AI Coach: daily guidance from combined health signals
 - Weekly workout planning

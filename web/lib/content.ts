@@ -69,8 +69,9 @@ export const support: Record<
         color: pillars.activity,
         title: "Getting Started",
         faqs: [
-          { q: "Do I need an account to use WeekFit?", a: "No. Tap Open WeekFit on the login screen and start right away — WeekFit 1.0 works fully on-device, no account required." },
+          { q: "Do I need an account to use WeekFit?", a: "No. Tap Open WeekFit on the login screen and start right away — WeekFit works fully on-device, no account required." },
           { q: "What are the main tabs?", a: "Today shows your daily read and rings, Coach explains what matters, Meals logs nutrition, and Plan holds your week." },
+          { q: "Does WeekFit have Home Screen widgets?", a: "Yes. Add WeekFit Today to see Move, Fuel, Ready, and what's next without opening the app. The widget stays on your iPhone — it is not a cloud feed." },
         ],
       },
       {
@@ -105,7 +106,7 @@ export const support: Record<
         color: pillars.activity,
         title: "Activities",
         faqs: [
-          { q: "How do workouts get added?", a: "Completed workouts sync automatically from Apple Health. They may take a moment to show in Plan and your Activity score." },
+          { q: "How do workouts get added?", a: "Completed workouts sync from Apple Health and Apple Fitness. They update the matching slot in Plan — even when you went longer than planned — and may take a moment to appear." },
           { q: "Can I plan a workout ahead?", a: "Yes — add planned activities in Plan and Coach will arrange fuel, timing and recovery around them." },
         ],
       },
@@ -133,7 +134,7 @@ export const support: Record<
         title: "Troubleshooting",
         faqs: [
           { q: "The app isn't showing new data.", a: "Confirm Apple Health permissions are on, then reopen WeekFit. Health metrics can lag briefly after syncing." },
-          { q: "How do I delete all my data?", a: "WeekFit 1.0 stores data on-device, so deleting the app removes all local plans, preferences and settings. Apple Health data stays in the Health app." },
+          { q: "How do I delete all my data?", a: "WeekFit stores data on-device, so deleting the app removes all local plans, preferences and settings. Apple Health data stays in the Health app." },
         ],
       },
     ],
@@ -154,8 +155,9 @@ export const support: Record<
         color: pillars.activity,
         title: "Быстрый старт",
         faqs: [
-          { q: "Нужен ли аккаунт?", a: "Нет. Нажмите «Открыть WeekFit» на экране входа и начинайте — версия 1.0 работает полностью на устройстве, без аккаунта." },
+          { q: "Нужен ли аккаунт?", a: "Нет. Нажмите «Открыть WeekFit» на экране входа и начинайте — приложение работает полностью на устройстве, без аккаунта." },
           { q: "Какие есть вкладки?", a: "«Сегодня» — сводка дня и кольца, «Коуч» — что важно прямо сейчас, «Питание» — учёт еды, «План» — ваша неделя." },
+          { q: "Есть ли виджеты?", a: "Да. Виджет «WeekFit Сегодня» показывает нагрузку, еду, форму и что дальше — не открывая приложение. Снимок остаётся на iPhone, это не облачная лента." },
         ],
       },
       {
@@ -190,7 +192,7 @@ export const support: Record<
         color: pillars.activity,
         title: "Активности",
         faqs: [
-          { q: "Как добавляются тренировки?", a: "Завершённые тренировки подтягиваются из Apple Health автоматически. Иногда они появляются с небольшой задержкой." },
+          { q: "Как добавляются тренировки?", a: "Завершённые тренировки подтягиваются из Apple Health и приложения «Фитнес». Они обновляют нужный слот в Плане — даже если вышли длиннее, чем планировали — и иногда появляются с небольшой задержкой." },
           { q: "Можно ли запланировать тренировку заранее?", a: "Да — добавьте активность в «План», и Коуч заранее подстроит под неё питание, тайминг и восстановление." },
         ],
       },
@@ -218,7 +220,7 @@ export const support: Record<
         title: "Устранение неполадок",
         faqs: [
           { q: "Приложение не показывает новые данные.", a: "Проверьте разрешения Apple Health и перезапустите WeekFit. Метрики могут появляться с задержкой после синхронизации." },
-          { q: "Как удалить все данные?", a: "WeekFit 1.0 хранит данные на устройстве, поэтому удаление приложения стирает все локальные данные — план, настройки и предпочтения. Данные из Apple Health остаются в приложении «Здоровье»." },
+          { q: "Как удалить все данные?", a: "WeekFit хранит данные на устройстве, поэтому удаление приложения стирает все локальные данные — план, настройки и предпочтения. Данные из Apple Health остаются в приложении «Здоровье»." },
         ],
       },
     ],
@@ -245,11 +247,11 @@ export const privacy: Record<
     kicker: "Privacy",
     title: "Your health stays yours.",
     lead: "WeekFit is a local-first app. Here's exactly what it accesses, and what it never does.",
-    updated: "Last updated: July 28, 2026",
+    updated: "Last updated: August 18, 2026",
     flowTitle: "How your data flows",
     flow: {
       from: "Apple Health — sleep, heart rate, workouts, energy, nutrition",
-      on: "Interpreted on your device to personalize Coach, Today and Plan",
+      on: "Interpreted on your device to personalize Coach, Today, Plan and Home Screen widgets",
       never: "Health data never uploaded · never sold · never used for ads",
     },
     tocTitle: "On this page",
@@ -267,14 +269,14 @@ export const privacy: Record<
         h: "Data the app accesses",
         blocks: [
           { t: "h3", v: "Apple Health (optional but recommended)" },
-          { t: "p", v: "With your permission, WeekFit reads health and activity data such as sleep, heart rate, workouts, steps, active energy, and nutrition metrics to personalize Coach, Today, and Plan. WeekFit may write workout-related records to Apple Health to keep your fitness history consistent." },
+          { t: "p", v: "With your permission, WeekFit reads health and activity data such as sleep, heart rate, workouts, steps, active energy, and nutrition metrics to personalize Coach, Today, Plan, and Home Screen widgets. WeekFit does not write workouts back to Apple Health." },
           { t: "p", v: "In line with Apple's HealthKit requirements, data obtained through HealthKit is used only to provide features inside WeekFit. It is never used for advertising or marketing, and is never sold or shared with third parties or data brokers." },
           { t: "h3", v: "Camera (optional)" },
           { t: "p", v: "Used only when you add photos to custom foods." },
           { t: "h3", v: "Location (optional)" },
           { t: "p", v: "Approximate location may be used to adjust the Night Comfort theme at local sunset. Location is not stored on a server." },
           { t: "h3", v: "On-device storage" },
-          { t: "p", v: "The app stores planned activities, meal preferences, profile settings, and similar app data locally using iOS storage (including UserDefaults and SwiftData)." },
+          { t: "p", v: "The app stores planned activities, meal preferences, profile settings, and a Home Screen widget snapshot locally on your iPhone (including UserDefaults and SwiftData). Widget data never leaves the device." },
           { t: "h3", v: "Product analytics and crash diagnostics" },
           { t: "p", v: "WeekFit uses Firebase Analytics and Firebase Crashlytics to understand feature usage (for example screens opened and funnel steps) and to diagnose crashes. Events are not linked to your name or email. We do not send HealthKit sample values, calories, macros, meal titles, coach message text, or other personal health content in analytics events." },
           { t: "h3", v: "Optional feedback" },
@@ -330,11 +332,11 @@ export const privacy: Record<
     kicker: "Приватность",
     title: "Ваше здоровье — ваше.",
     lead: "WeekFit — локальное приложение. Вот что именно оно использует и чего никогда не делает.",
-    updated: "Обновлено: 28 июля 2026",
+    updated: "Обновлено: 18 августа 2026",
     flowTitle: "Как движутся ваши данные",
     flow: {
       from: "Apple Health — сон, пульс, тренировки, энергия, питание",
-      on: "Обрабатываются на устройстве для персонализации Коуча, Сегодня и Плана",
+      on: "Обрабатываются на устройстве для персонализации Коуча, Сегодня, Плана и виджетов",
       never: "Health-данные не выгружаются · не продаются · не для рекламы",
     },
     tocTitle: "На этой странице",
@@ -352,14 +354,14 @@ export const privacy: Record<
         h: "Какие данные использует приложение",
         blocks: [
           { t: "h3", v: "Apple Health (по желанию, рекомендуется)" },
-          { t: "p", v: "С вашего разрешения WeekFit читает сон, пульс, тренировки, шаги, активную энергию и питание для персонализации Коуча, Сегодня и Плана. Приложение может записывать тренировки в Apple Health для согласованности истории." },
+          { t: "p", v: "С вашего разрешения WeekFit читает сон, пульс, тренировки, шаги, активную энергию и питание для персонализации Коуча, Сегодня, Плана и виджетов. Приложение не записывает тренировки обратно в Apple Health." },
           { t: "p", v: "В соответствии с требованиями Apple HealthKit данные из HealthKit используются только для работы функций WeekFit. Они никогда не применяются для рекламы или маркетинга, не продаются и не передаются третьим лицам или брокерам данных." },
           { t: "h3", v: "Камера (по желанию)" },
           { t: "p", v: "Только для фото пользовательских продуктов." },
           { t: "h3", v: "Геолокация (по желанию)" },
           { t: "p", v: "Примерное местоположение может использоваться для темы Night Comfort по местному закату. На сервер не передаётся." },
           { t: "h3", v: "Локальное хранение" },
-          { t: "p", v: "План, предпочтения питания, профиль и другие данные хранятся на устройстве (UserDefaults, SwiftData)." },
+          { t: "p", v: "План, предпочтения питания, профиль и снимок для виджета хранятся на устройстве. Виджет читает только этот локальный снимок." },
           { t: "h3", v: "Продуктовая аналитика и диагностика сбоев" },
           { t: "p", v: "WeekFit использует Firebase Analytics и Firebase Crashlytics, чтобы понимать использование функций (экраны, шаги воронок) и диагностировать сбои. События не связываются с вашим именем или email. Мы не отправляем значения HealthKit, калории, макросы, названия блюд, текст коуча или другой персональный health-контент в аналитике." },
           { t: "h3", v: "Обратная связь (по желанию)" },
@@ -480,16 +482,19 @@ export const changelog: Record<
     releases: [
       {
         version: "1.3",
-        date: "Aug 18, 2026",
+        date: "Aug 18, 2026 at 8:35 PM",
         tag: "Update",
         added: [
           "Home Screen widgets for Today — Move, Fuel, Ready, and what's next",
           "Morning plan proposals that adapt to recovery and weather",
         ],
         improved: [
-          "Apple Health workouts now update the matching Plan slot, even when you go longer than planned",
-          "Clearer Coach guidance during a session",
+          "Apple Health and Fitness workouts update the matching Plan slot, even when you go longer than planned",
+          "Clearer Coach guidance during a live session",
           "Meals, drinks, Light theme, and onboarding polish",
+        ],
+        fixed: [
+          "A longer Watch or Fitness workout no longer leaves the planned Plan card unfinished",
         ],
       },
       {
@@ -531,16 +536,19 @@ export const changelog: Record<
     releases: [
       {
         version: "1.3",
-        date: "18 августа 2026",
+        date: "18 августа 2026 в 20:35",
         tag: "Обновление",
         added: [
           "Виджеты на экране «Домой» — нагрузка, еда, форма и что дальше",
           "Утренние предложения по плану с учётом восстановления и погоды",
         ],
         improved: [
-          "Тренировки из Apple Health обновляют слот в Плане, даже если вышли длиннее плана",
+          "Тренировки из Apple Health и «Фитнес» обновляют слот в Плане, даже если вышли длиннее плана",
           "Понятнее подсказки Коуча во время сессии",
           "Питание, напитки, светлая тема и онбординг",
+        ],
+        fixed: [
+          "Длинная тренировка из Watch или «Фитнес» больше не оставляет карточку в Плане незакрытой",
         ],
       },
       {
@@ -609,15 +617,15 @@ export const press: Record<
     facts: [
       { label: "Name", value: "WeekFit" },
       { label: "Category", value: "Health & Fitness" },
-      { label: "Platform", value: "iOS (iPhone)" },
+      { label: "Platform", value: "iOS 18+ (iPhone)" },
       { label: "Price", value: "Free" },
       { label: "Launch", value: "2026" },
       { label: "Website", value: "weekfit.app" },
     ],
     boilerTitle: "Boilerplate",
     boilerShort:
-      "WeekFit is your AI coach, powered by Apple Health. One clear call for today — what to do now, why it matters, and how to adjust. Private on your iPhone.",
-    boilerLong: "WeekFit is your AI coach for iOS, powered by Apple Health. Instead of another dashboard of numbers, it turns sleep, activity, nutrition and recovery into one clear call for today — what to do now, why it matters, and how to adjust. Private by design, WeekFit requires no account and never uses your health data for advertising.",
+      "WeekFit is your AI coach, powered by Apple Health. One clear call for today — what to do now, why it matters, and how to adjust. Home Screen widgets keep Move, Fuel, Ready, and what's next in view. Private on your iPhone.",
+    boilerLong: "WeekFit is your AI coach for iOS, powered by Apple Health. Instead of another dashboard of numbers, it turns sleep, activity, nutrition and recovery into one clear call for today — what to do now, why it matters, and how to adjust. Home Screen widgets show Move, Fuel, Ready, and what's next. Completed workouts from Apple Health update the matching Plan slot, even when you go longer than planned. Private by design, WeekFit requires no account and never uses your health data for advertising.",
     colorsTitle: "Brand colors",
     assetsTitle: "Downloadable assets",
     assetsNote: "App icon and product screenshots. For anything else, get in touch.",
@@ -639,15 +647,15 @@ export const press: Record<
     facts: [
       { label: "Название", value: "WeekFit" },
       { label: "Категория", value: "Здоровье и фитнес" },
-      { label: "Платформа", value: "iOS (iPhone)" },
+      { label: "Платформа", value: "iOS 18+ (iPhone)" },
       { label: "Цена", value: "Бесплатно" },
       { label: "Запуск", value: "2026" },
       { label: "Сайт", value: "weekfit.app" },
     ],
     boilerTitle: "Описание",
     boilerShort:
-      "WeekFit — ваш AI-коуч на основе Apple Health. Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться. Приватно на iPhone.",
-    boilerLong: "WeekFit — спокойный AI-коуч для iOS. Вместо очередной панели с цифрами он видит связи между сном, активностью, питанием и восстановлением — на основе Apple Health и с обработкой прямо на устройстве — и объясняет, что важно сегодня и как к этому подготовиться. Приватность заложена в основу: без аккаунта, и данные о здоровье никогда не используются для рекламы.",
+      "WeekFit — ваш AI-коуч на основе Apple Health. Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться. Виджеты показывают нагрузку, еду, форму и что дальше. Приватно на iPhone.",
+    boilerLong: "WeekFit — спокойный AI-коуч для iOS. Вместо очередной панели с цифрами он видит связи между сном, активностью, питанием и восстановлением — на основе Apple Health и с обработкой прямо на устройстве — и объясняет, что важно сегодня и как к этому подготовиться. Виджеты на экране «Домой» показывают нагрузку, еду, форму и что дальше. Тренировки из Apple Health обновляют слот в Плане, даже если вышли длиннее плана. Приватность заложена в основу: без аккаунта, и данные о здоровье никогда не используются для рекламы.",
     colorsTitle: "Цвета бренда",
     assetsTitle: "Материалы для загрузки",
     assetsNote: "Иконка приложения и скриншоты. За остальным — напишите нам.",
@@ -706,7 +714,7 @@ export const download: Record<
     reqTitle: "Requirements",
     requirements: [
       { label: "Platform", value: "iPhone" },
-      { label: "iOS", value: "iOS 17 or later" },
+      { label: "iOS", value: "iOS 18 or later" },
       { label: "Apple Health", value: "Recommended" },
       { label: "Price", value: "Free" },
     ],
@@ -719,7 +727,7 @@ export const download: Record<
     reqTitle: "Требования",
     requirements: [
       { label: "Платформа", value: "iPhone" },
-      { label: "iOS", value: "iOS 17 или новее" },
+      { label: "iOS", value: "iOS 18 или новее" },
       { label: "Apple Health", value: "Рекомендуется" },
       { label: "Цена", value: "Бесплатно" },
     ],

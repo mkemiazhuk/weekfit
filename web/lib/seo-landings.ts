@@ -100,6 +100,10 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
           q: "Can I plan recovery activities too?",
           a: "Yes — recovery blocks (walks, mobility, etc.) are part of the week, not an afterthought.",
         },
+        {
+          q: "Do Apple Fitness workouts update the plan?",
+          a: "Yes. A completed workout from Apple Health updates the matching Plan slot — even if you went longer than planned.",
+        },
       ],
     },
     ru: {
@@ -128,6 +132,10 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
           q: "Можно планировать восстановление?",
           a: "Да — восстановление (прогулки, мобилити и т. п.) — часть недели, а не пункт «если успею».",
         },
+        {
+          q: "Тренировки из «Фитнес» попадают в план?",
+          a: "Да. Завершённая тренировка из Apple Health обновляет нужный слот в Плане — даже если вышли длиннее, чем планировали.",
+        },
       ],
     },
   },
@@ -139,7 +147,8 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
       highlightsTitle: "Built around Apple Health",
       highlights: [
         "Recovery and readiness from sleep, HRV and resting heart rate.",
-        "Workouts and activity context from Apple Watch / Health.",
+        "Workouts and activity context from Apple Watch / Health — they update the matching Plan slot.",
+        "Home Screen widgets for Today: Move, Fuel, Ready, and what's next.",
         "Private by design: on-device first, no third-party ad tracking.",
       ],
       whoTitle: "Good fit if you…",
@@ -167,7 +176,8 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
       highlightsTitle: "Основа — Apple Health",
       highlights: [
         "Готовность и восстановление: сон, ВСР и пульс покоя.",
-        "Контекст нагрузки: тренировки и активность из Apple Watch / Health.",
+        "Тренировки из Apple Health обновляют нужный слот в Плане.",
+        "Виджеты на экране «Домой»: нагрузка, еда, форма и что дальше.",
         "Приватность: всё в первую очередь на устройстве, без рекламного трекинга.",
       ],
       whoTitle: "Подойдёт, если вы…",

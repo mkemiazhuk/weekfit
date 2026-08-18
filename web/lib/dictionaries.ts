@@ -26,7 +26,7 @@ export const en = {
     ariaLabel: "Product highlights",
     items: [
       "Free on the App Store",
-      "iOS 17+",
+      "iOS 18+",
       "Apple Health",
       "Never leaves your iPhone",
     ],
@@ -192,7 +192,7 @@ export const en = {
   morning: {
     kicker: "Morning",
     title: "Wake up knowing.",
-    body: "Sleep, HRV and yesterday's load — one read before you start your day.",
+    body: "Sleep, HRV and yesterday's load — plus a morning plan check when the day needs a small shift.",
     ringLabel: "Recovery",
     coach: {
       signal: "Recovery ready — balanced start",
@@ -213,7 +213,7 @@ export const en = {
   workout: {
     kicker: "Training",
     title: "Train in sync.",
-    body: "Workouts from Apple Health update your day the moment you finish.",
+    body: "Workouts from Apple Health update the matching Plan slot — even when you go longer than planned.",
     coach: {
       signal: "Green readiness",
       tip: "Run the planned main set while your legs are still fresh.",
@@ -272,7 +272,7 @@ export const en = {
       "Sleep & readiness",
       "Nutrition balance",
       "Weekly planning",
-      "Apple Health sync",
+      "Home Screen widgets",
       "On-device privacy",
     ],
   },
@@ -421,7 +421,7 @@ export const ru: Dict = {
     ariaLabel: "О продукте",
     items: [
       "Бесплатно в App Store",
-      "iOS 17+",
+      "iOS 18+",
       "Apple Health",
       "Данные только на iPhone",
     ],
@@ -587,7 +587,7 @@ export const ru: Dict = {
   morning: {
     kicker: "Утро",
     title: "Просыпайтесь, зная.",
-    body: "Сон, ВСР и вчерашняя нагрузка — один вывод, прежде чем начать день.",
+    body: "Сон, ВСР и вчерашняя нагрузка — плюс утренняя проверка плана, если день просит сдвиг.",
     ringLabel: "Восстановление",
     coach: {
       signal: "Восстановление в норме — ровный старт",
@@ -608,7 +608,7 @@ export const ru: Dict = {
   workout: {
     kicker: "Тренировка",
     title: "Тренируйтесь, когда организм готов.",
-    body: "Тренировки из Apple Health обновляют день сразу после.",
+    body: "Тренировки из Apple Health обновляют слот в Плане — даже если вышли длиннее плана.",
     coach: {
       signal: "Готовность зелёная",
       tip: "Сделайте запланированный основной блок, пока ноги свежие.",
@@ -667,7 +667,7 @@ export const ru: Dict = {
       "Сон и готовность",
       "Питание",
       "План на неделю",
-      "Apple Health",
+      "Виджеты на экране Домой",
       "Приватность",
     ],
   },

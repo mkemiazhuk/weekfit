@@ -11,7 +11,7 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
   en: {
     title: "WeekFit — What is today for?",
     description:
-      "One clear call for today — what to do now, why it matters, and how to adjust. Private on your iPhone.",
+      "One clear call for today — what to do now, why it matters, and how to adjust. Home Screen widgets for Move, Fuel and Ready. Private on your iPhone.",
     socialTitle: "WeekFit — Your AI coach, powered by Apple Health",
     keywords: [
       "WeekFit",
@@ -20,12 +20,13 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
       "Apple Health",
       "recovery score",
       "iPhone fitness app",
+      "Home Screen widgets",
     ],
   },
   ru: {
     title: "WeekFit — Что важно сегодня?",
     description:
-      "Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться. Приватно на iPhone.",
+      "Один понятный вывод на сегодня — что делать сейчас, почему это важно и как подстроиться. Виджеты: нагрузка, еда и форма. Приватно на iPhone.",
     socialTitle: "WeekFit — Ваш AI-коуч на основе Apple Health",
     keywords: [
       "WeekFit",
@@ -34,6 +35,7 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
       "Apple Health",
       "показатель восстановления",
       "фитнес-приложение iPhone",
+      "виджеты",
     ],
   },
 };
