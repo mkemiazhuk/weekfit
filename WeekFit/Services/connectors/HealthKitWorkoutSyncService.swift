@@ -17,7 +17,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
 
     private let healthStore = HKHealthStore()
     private var anchor: HKQueryAnchor?
-    private var seenWorkoutIDs = Set<UUID>()
+    private var seenWorkoutFingerprints: [UUID: String] = [:]
     
     private let syncStartDateKey = "healthkit.workout.syncStartDate"
 
@@ -35,6 +35,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     private var observerQuery: HKObserverQuery?
     private var anchoredQuery: HKAnchoredObjectQuery?
     private var isFetchInFlight = false
+    private var pendingForceRefresh = false
 
     private init() {}
 
@@ -106,6 +107,11 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     }
 
     func forceRefresh() {
+        guard isActive else { return }
+        if isFetchInFlight {
+            pendingForceRefresh = true
+            return
+        }
         fetchUpdates()
     }
 
@@ -137,7 +143,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
             limit: HKObjectQueryNoLimit
         ) { [weak self] _, samples, _, newAnchor, error in
             Task { @MainActor in
-                defer { self?.isFetchInFlight = false }
+                defer { self?.finishFetch() }
                 guard error == nil else { return }
                 self?.anchor = newAnchor
                 self?.consume(samples)
@@ -173,7 +179,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
         let candidates = workouts
             .filter { workout in
                 workout.endDate >= freshnessCutoff &&
-                !seenWorkoutIDs.contains(workout.uuid)
+                shouldEmit(workout)
             }
             .sorted { $0.endDate > $1.endDate }
 
@@ -198,7 +204,7 @@ final class HealthKitWorkoutSyncService: ObservableObject {
         }
 
         candidates.forEach { workout in
-            seenWorkoutIDs.insert(workout.uuid)
+            seenWorkoutFingerprints[workout.uuid] = fingerprint(workout)
         }
 
         completedWorkoutsBatch = candidates
@@ -212,10 +218,31 @@ final class HealthKitWorkoutSyncService: ObservableObject {
     }
 
     func resetSyncState() {
-        seenWorkoutIDs.removeAll()
+        seenWorkoutFingerprints.removeAll()
+        pendingForceRefresh = false
         anchor = nil
         latestCompletedWorkout = nil
         clearCompletedWorkoutsBatch()
+    }
+
+    private func finishFetch() {
+        isFetchInFlight = false
+        guard isActive, pendingForceRefresh else {
+            pendingForceRefresh = false
+            return
+        }
+        pendingForceRefresh = false
+        fetchUpdates()
+    }
+
+    /// HealthKit reuses the same UUID from in-progress → completed. Re-emit
+    /// when end date or duration changes so Watch completion can land.
+    private func shouldEmit(_ workout: HKWorkout) -> Bool {
+        seenWorkoutFingerprints[workout.uuid] != fingerprint(workout)
+    }
+
+    private func fingerprint(_ workout: HKWorkout) -> String {
+        "\(workout.endDate.timeIntervalSince1970)|\(workout.duration)"
     }
     
     private func fetchRecentCompletedWorkoutsFallback() {

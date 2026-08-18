@@ -15,6 +15,18 @@ final class WidgetSnapshotStoreFileTests: XCTestCase {
         XCTAssertEqual(decoded.schemaVersion, WeekFitWidgetSnapshot.currentSchemaVersion)
     }
 
+    func testYesterdaySnapshotIsNotUsedForTodayTimeline() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let yesterday = calendar.date(from: DateComponents(year: 2026, month: 8, day: 17, hour: 21))!
+        let today = calendar.date(from: DateComponents(year: 2026, month: 8, day: 18, hour: 8))!
+        let loaded = WeekFitWidgetSnapshot.placeholderEmpty(now: yesterday)
+        let resolved = WeekFitWidgetTimelineResolver.snapshot(loaded: loaded, now: today, calendar: calendar)
+        XCTAssertEqual(resolved.dateKey, "2026-08-18")
+        XCTAssertEqual(resolved.dayMode, .empty)
+        XCTAssertTrue(resolved.dayGuidance.isEmpty)
+    }
+
     func testDayKeyFormat() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

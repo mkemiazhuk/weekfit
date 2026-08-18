@@ -114,7 +114,7 @@ enum CoachCopyRegistry {
             guard let draft = CoachCopyRegistryScenarios.draft(for: scenario, input: input) else {
                 return nil
             }
-            return basePack(from: LiveHeartRateCoachCopy.apply(to: draft, input: input))
+            return basePack(from: LiveSessionCoachCopy.apply(to: draft, input: input))
         }
     }
 
@@ -209,30 +209,23 @@ enum CoachCopyRegistry {
             )
         }
 
-        let hrAssessment = LiveHeartRateCoachCopy.assessment(for: input)
-        let hrRecommendation = LiveHeartRateCoachCopy.recommendation(for: input)
-
         let recommendation: CoachBilingualText
-        if let hrRecommendation {
-            recommendation = hrRecommendation
-        } else {
-            switch input.durationBand {
-            case .extended, .long:
-                recommendation = .en(
-                    "Patience in the middle miles — consistency beats spikes.",
-                    "В середине главное — терпение, не рывки."
-                )
-            default:
-                recommendation = .en(
-                    "Hold effort flat — speed up only when breathing stays easy.",
-                    "Держите темп ровным — ускоряйтесь, только если дышится легко."
-                )
-            }
+        switch input.durationBand {
+        case .extended, .long:
+            recommendation = .en(
+                "Patience in the middle miles — consistency beats spikes.",
+                "В середине главное — терпение, не рывки."
+            )
+        default:
+            recommendation = .en(
+                "Hold effort flat — speed up only when breathing stays easy.",
+                "Держите темп ровным — ускоряйтесь, только если дышится легко."
+            )
         }
 
-        let applied = LiveHeartRateCoachCopy.apply(
+        let applied = LiveSessionCoachCopy.apply(
             to: CoachCopyRegistryScenarios.Draft(
-                assessment: hrAssessment ?? assessment,
+                assessment: assessment,
                 recommendation: recommendation,
                 avoid: .en(
                     "No early surges you'll regret later.",
@@ -255,7 +248,7 @@ enum CoachCopyRegistry {
     }
 
     private static func walkAfterHeavyLoadPack(input: CoachCopyBuildInput) -> BasePack {
-        let draft = LiveHeartRateCoachCopy.apply(
+        let draft = LiveSessionCoachCopy.apply(
             to: CoachWalkAfterHeavyLoadCopy.draft(for: input),
             input: input
         )
@@ -507,7 +500,11 @@ enum CoachCopyRegistry {
             lines.append(line)
         }
 
-        if shouldSurfaceNutritionSignals(for: input) {
+        if LiveSessionCoachCopy.isLiveSession(input) {
+            for line in LiveSessionCoachCopy.whyLines(for: input) where lines.count < 3 {
+                lines.append(line)
+            }
+        } else if shouldSurfaceNutritionSignals(for: input) {
             let progress = RelativeProgressPolicy.evaluate(input: input)
 
             if progress.shouldSurfaceHydrationWhyRow,
@@ -585,7 +582,9 @@ enum CoachCopyRegistry {
             ))
         }
 
-        if shouldMentionLowRecoveryLiveSignal(input), lines.count < 3 {
+        if shouldMentionLowRecoveryLiveSignal(input),
+           !LiveSessionCoachCopy.isLiveSession(input),
+           lines.count < 3 {
             lines.append(.en(
                 "Recovery is low — keep effort honest, not heroic.",
                 "Восстановление низкое — работайте честно, без геройства."

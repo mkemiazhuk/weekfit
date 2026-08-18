@@ -8,6 +8,7 @@ struct WeekFitWidgetEntryView: View {
     let entry: WeekFitWidgetEntry
 
     var body: some View {
+        let _ = WeekFitWidgetCopy.applyLanguage(entry.snapshot.languageCode)
         Group {
             switch family {
             case .systemMedium:
@@ -48,7 +49,7 @@ struct WeekFitSmallWidgetView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
                 WeekFitMetricBlock(
-                    title: "Move",
+                    title: WeekFitWidgetCopy.metricMoveTitle(),
                     value: WeekFitWidgetCopy.percentLabel(snapshot.activityProgress, enabled: snapshot.hasActivitySignal),
                     progress: snapshot.activityProgress,
                     color: WeekFitWidgetPalette.activity,
@@ -61,7 +62,7 @@ struct WeekFitSmallWidgetView: View {
                     style: .progress
                 )
                 WeekFitMetricBlock(
-                    title: "Fuel",
+                    title: WeekFitWidgetCopy.metricFuelTitle(),
                     value: WeekFitWidgetCopy.percentLabel(snapshot.nutritionProgress, enabled: snapshot.hasNutritionSignal),
                     progress: snapshot.nutritionProgress,
                     color: WeekFitWidgetPalette.nutrition,
@@ -74,7 +75,7 @@ struct WeekFitSmallWidgetView: View {
                     style: .progress
                 )
                 WeekFitMetricBlock(
-                    title: "Ready",
+                    title: WeekFitWidgetCopy.metricReadyTitle(),
                     value: snapshot.hasRecoverySignal
                         ? "\(WeekFitWidgetCopy.recoveryDisplay(score: snapshot.recoveryScore))%"
                         : "—",
@@ -191,7 +192,7 @@ struct WeekFitMediumWidgetView: View {
 
             HStack(spacing: 0) {
                 WeekFitMetricBlock(
-                    title: "Move",
+                    title: WeekFitWidgetCopy.metricMoveTitle(),
                     value: WeekFitWidgetCopy.percentLabel(snapshot.activityProgress, enabled: snapshot.hasActivitySignal),
                     progress: snapshot.activityProgress,
                     color: WeekFitWidgetPalette.activity,
@@ -199,7 +200,7 @@ struct WeekFitMediumWidgetView: View {
                     colorScheme: colorScheme
                 )
                 WeekFitMetricBlock(
-                    title: "Fuel",
+                    title: WeekFitWidgetCopy.metricFuelTitle(),
                     value: WeekFitWidgetCopy.percentLabel(snapshot.nutritionProgress, enabled: snapshot.hasNutritionSignal),
                     progress: snapshot.nutritionProgress,
                     color: WeekFitWidgetPalette.nutrition,
@@ -207,7 +208,7 @@ struct WeekFitMediumWidgetView: View {
                     colorScheme: colorScheme
                 )
                 WeekFitMetricBlock(
-                    title: "Ready",
+                    title: WeekFitWidgetCopy.metricReadyTitle(),
                     value: snapshot.hasRecoverySignal
                         ? "\(WeekFitWidgetCopy.recoveryDisplay(score: snapshot.recoveryScore))%"
                         : "—",

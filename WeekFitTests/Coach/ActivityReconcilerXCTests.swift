@@ -12,6 +12,303 @@ final class ActivityReconcilerXCTests: XCTestCase {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
     }
 
+    func testInProgressShortWalkMatchesOverlappingPlannedWalk() {
+        let now = time(hour: 13, minute: 4)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let synced = workout(from: time(hour: 12, minute: 50), to: now, type: .walking)
+
+        let match = ActivityReconciler.bestMatch(
+            for: synced,
+            in: [planned],
+            calendar: calendar,
+            now: now,
+            liveSessionActive: true
+        )
+
+        XCTAssertEqual(match?.id, planned.id)
+        XCTAssertFalse(planned.isCompleted)
+    }
+
+    func testJustFinishedWalkIsNotTreatedAsInProgressWithoutLiveSession() {
+        let now = time(hour: 13, minute: 20)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let synced = workout(from: time(hour: 12, minute: 50), to: now, type: .walking)
+
+        XCTAssertFalse(
+            ActivityReconciler.isLikelyInProgress(synced, now: now, liveSessionActive: false)
+        )
+
+        let match = ActivityReconciler.bestMatch(
+            for: synced,
+            in: [planned],
+            calendar: calendar,
+            now: now
+        )
+
+        XCTAssertEqual(match?.id, planned.id)
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.durationMinutes, 30)
+    }
+
+    func testShortInProgressWalkDoesNotMatchWithoutLiveSession() {
+        let now = time(hour: 12, minute: 57)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let synced = workout(from: time(hour: 12, minute: 50), to: now, type: .walking)
+
+        let match = ActivityReconciler.bestMatch(
+            for: synced,
+            in: [planned],
+            calendar: calendar,
+            now: now
+        )
+
+        XCTAssertNil(match)
+        XCTAssertFalse(planned.isCompleted)
+    }
+
+    func testApplyLiveWorkoutDoesNotCompletePlannedSlot() {
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let synced = workout(from: time(hour: 12, minute: 50), to: time(hour: 13, minute: 4), type: .walking)
+
+        ActivityReconciler.applyLiveWorkout(synced, to: planned)
+
+        XCTAssertFalse(planned.isCompleted)
+        XCTAssertEqual(planned.date, synced.startDate)
+        XCTAssertEqual(planned.durationMinutes, 30)
+        XCTAssertEqual(planned.actualDurationMinutes, 14)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+        XCTAssertEqual(planned.title, "Walk")
+    }
+
+    @MainActor
+    func testCoordinatorMergesInProgressImportIntoPlannedWalk() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let now = time(hour: 12, minute: 57)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        context.insert(planned)
+
+        let synced = workout(from: time(hour: 12, minute: 50), to: now, type: .walking)
+        let imported = ActivityReconciler.importedLiveActivity(for: synced)
+        context.insert(imported)
+        try context.save()
+
+        let coordinator = WeekFitActivityCoordinator.shared
+        coordinator.resetReconciliationState()
+        coordinator.replaceLiveWorkoutForTesting(
+            WeekFitLiveWorkout(
+                id: UUID(),
+                workoutType: .walking,
+                startedAt: synced.startDate,
+                endedAt: nil,
+                state: .active,
+                source: .appleWatch
+            )
+        )
+        defer { coordinator.replaceLiveWorkoutForTesting(nil) }
+
+        coordinator.reconcileCompletedAppleWorkout(
+            synced,
+            with: [planned, imported],
+            modelContext: context,
+            now: now
+        )
+        try context.save()
+
+        let remaining = try context.fetch(FetchDescriptor<PlannedActivity>())
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.id, planned.id)
+        XCTAssertEqual(remaining.first?.healthKitWorkoutUUID, synced.uuid.uuidString)
+        XCTAssertFalse(remaining.first?.isCompleted ?? true)
+        XCTAssertEqual(remaining.first?.date, synced.startDate)
+    }
+
+    @MainActor
+    func testLiveApplyDoesNotBlockLaterWatchCompletion() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let liveNow = time(hour: 13, minute: 4)
+        let finishedAt = time(hour: 13, minute: 20)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        context.insert(planned)
+        try context.save()
+
+        let liveSample = workout(from: time(hour: 12, minute: 50), to: liveNow, type: .walking)
+        let coordinator = WeekFitActivityCoordinator.shared
+        coordinator.resetReconciliationState()
+        coordinator.replaceLiveWorkoutForTesting(
+            WeekFitLiveWorkout(
+                id: UUID(),
+                workoutType: .walking,
+                startedAt: liveSample.startDate,
+                endedAt: nil,
+                state: .active,
+                source: .appleWatch
+            )
+        )
+
+        coordinator.reconcileCompletedAppleWorkout(
+            liveSample,
+            with: [planned],
+            modelContext: context,
+            now: liveNow
+        )
+        try context.save()
+        XCTAssertFalse(planned.isCompleted)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, liveSample.uuid.uuidString)
+
+        coordinator.replaceLiveWorkoutForTesting(nil)
+
+        coordinator.reconcileCompletedAppleWorkout(
+            liveSample,
+            with: [planned],
+            modelContext: context,
+            now: finishedAt
+        )
+        try context.save()
+
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.actualDurationMinutes, 14)
+    }
+
+    @MainActor
+    func testJustFinishedWatchWalkCompletesPlannedSlot() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let now = time(hour: 13, minute: 20)
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        context.insert(planned)
+        try context.save()
+
+        let synced = workout(from: time(hour: 12, minute: 50), to: now, type: .walking)
+        let coordinator = WeekFitActivityCoordinator.shared
+        coordinator.resetReconciliationState()
+        coordinator.replaceLiveWorkoutForTesting(nil)
+
+        coordinator.reconcileCompletedAppleWorkout(
+            synced,
+            with: [planned],
+            modelContext: context,
+            now: now
+        )
+        try context.save()
+
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+        XCTAssertEqual(planned.durationMinutes, 30)
+    }
+
+    func testCompletedImportStaysVisibleWhenPlannedWalkDidNotComplete() {
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let imported = ActivityReconciler.importedActivity(
+            for: workout(from: time(hour: 12, minute: 43), to: time(hour: 14, minute: 27), type: .walking)
+        )
+
+        let visible = PlanTimelineItemGrouper.collapseOverlappingSessionDuplicates([planned, imported])
+
+        XCTAssertEqual(Set(visible.map(\.id)), Set([planned.id, imported.id]))
+    }
+
+    func testCompletedImportStaysVisibleEvenIfPlannedWalkWasTappedComplete() {
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        planned.isCompleted = true
+        let imported = ActivityReconciler.importedActivity(
+            for: workout(from: time(hour: 12, minute: 43), to: time(hour: 14, minute: 27), type: .walking)
+        )
+
+        let visible = PlanTimelineItemGrouper.collapseOverlappingSessionDuplicates([planned, imported])
+
+        XCTAssertEqual(Set(visible.map(\.id)), Set([planned.id, imported.id]))
+    }
+
+    func testLiveImportHidesBehindOverlappingPlannedWalk() {
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let imported = ActivityReconciler.importedLiveActivity(
+            for: workout(from: time(hour: 12, minute: 50), to: time(hour: 13, minute: 4), type: .walking)
+        )
+
+        let visible = PlanTimelineItemGrouper.collapseOverlappingSessionDuplicates([planned, imported])
+
+        XCTAssertEqual(visible.map(\.id), [planned.id])
+    }
+
+    @MainActor
+    func testCoordinatorMergesLongWatchWalkIntoShortPlannedSlot() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        context.insert(planned)
+        try context.save()
+
+        let synced = workout(from: time(hour: 12, minute: 43), to: time(hour: 14, minute: 27), type: .walking)
+        let coordinator = WeekFitActivityCoordinator.shared
+        coordinator.resetReconciliationState()
+        coordinator.replaceLiveWorkoutForTesting(nil)
+
+        coordinator.reconcileCompletedAppleWorkout(
+            synced,
+            with: [planned],
+            modelContext: context,
+            now: time(hour: 15, minute: 59)
+        )
+        try context.save()
+
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.date, synced.startDate)
+        XCTAssertEqual(planned.durationMinutes, 104)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+    }
+
+    @MainActor
+    func testCoordinatorMergesExistingLongImportIntoShortPlannedWalk() throws {
+        let container = try ModelContainer(
+            for: PlannedActivity.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        planned.isCompleted = true
+        context.insert(planned)
+
+        let synced = workout(from: time(hour: 12, minute: 43), to: time(hour: 14, minute: 27), type: .walking)
+        let imported = ActivityReconciler.importedActivity(for: synced)
+        context.insert(imported)
+        try context.save()
+
+        let coordinator = WeekFitActivityCoordinator.shared
+        coordinator.resetReconciliationState()
+        coordinator.replaceLiveWorkoutForTesting(nil)
+
+        coordinator.reconcileCompletedAppleWorkout(
+            synced,
+            with: [planned, imported],
+            modelContext: context,
+            now: time(hour: 15, minute: 59)
+        )
+        try context.save()
+
+        let remaining = try context.fetch(FetchDescriptor<PlannedActivity>())
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.id, planned.id)
+        XCTAssertEqual(remaining.first?.date, synced.startDate)
+        XCTAssertEqual(remaining.first?.durationMinutes, 104)
+        XCTAssertEqual(remaining.first?.healthKitWorkoutUUID, synced.uuid.uuidString)
+        XCTAssertTrue(remaining.first?.isCompleted ?? false)
+    }
+
     func testFuturePlannedWalkMustNotAutoComplete() {
         let planned = walk(at: time(hour: 9, minute: 45))
         let synced = workout(from: time(hour: 8, minute: 13), to: time(hour: 8, minute: 45), type: .walking)
@@ -35,6 +332,21 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertEqual(match?.id, planned.id)
     }
 
+    func testLongerWatchWalkMergesIntoShorterPlannedWalk() {
+        // Real Watch outdoor walk 12:43–14:27 vs a 13:00 30-min planned slot.
+        let planned = walk(at: time(hour: 13, minute: 0), durationMinutes: 30)
+        let synced = workout(from: time(hour: 12, minute: 43), to: time(hour: 14, minute: 27), type: .walking)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+        XCTAssertEqual(match?.id, planned.id)
+
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.date, synced.startDate)
+        XCTAssertEqual(planned.durationMinutes, 104)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+    }
+
     func testShortAutoDetectedWalkDoesNotCompleteLongPlannedWalk() {
         // Adversarial: 10-minute walk within 30 minutes of a 90-minute planned walk.
         let planned = walk(at: time(hour: 8, minute: 0), durationMinutes: 90)
@@ -46,9 +358,20 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertFalse(planned.isCompleted)
     }
 
-    func testCompletedPlannedWalkIsNotMatchedAgain() {
+    func testCompletedPlannedWalkWithoutHealthKitCanStillSyncFromWatch() {
         let planned = walk(at: time(hour: 8, minute: 0), durationMinutes: 30)
         planned.isCompleted = true
+        let synced = workout(from: time(hour: 8, minute: 5), to: time(hour: 8, minute: 35), type: .walking)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+
+        XCTAssertEqual(match?.id, planned.id)
+    }
+
+    func testPlannedWalkAlreadyLinkedToHealthKitIsNotMatchedAgain() {
+        let planned = walk(at: time(hour: 8, minute: 0), durationMinutes: 30)
+        planned.isCompleted = true
+        planned.healthKitWorkoutUUID = UUID().uuidString
         let synced = workout(from: time(hour: 8, minute: 5), to: time(hour: 8, minute: 35), type: .walking)
 
         let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)

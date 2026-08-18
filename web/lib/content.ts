@@ -479,6 +479,20 @@ export const changelog: Record<
     roadmap: "More on the way — cloud sync, deeper insights, and Apple Watch are on the roadmap.",
     releases: [
       {
+        version: "1.3",
+        date: "Aug 18, 2026",
+        tag: "Update",
+        added: [
+          "Home Screen widgets for Today — Move, Fuel, Ready, and what's next",
+          "Morning plan proposals that adapt to recovery and weather",
+        ],
+        improved: [
+          "Apple Health workouts now update the matching Plan slot, even when you go longer than planned",
+          "Clearer Coach guidance during a session",
+          "Meals, drinks, Light theme, and onboarding polish",
+        ],
+      },
+      {
         version: "1.1",
         date: "Jul 23, 2026 at 11:45 PM",
         tag: "Update",
@@ -515,6 +529,20 @@ export const changelog: Record<
     labels: { added: "Добавлено", improved: "Улучшено", fixed: "Исправлено" },
     roadmap: "Дальше — больше: облачная синхронизация, детальная аналитика и Apple Watch уже в планах.",
     releases: [
+      {
+        version: "1.3",
+        date: "18 августа 2026",
+        tag: "Обновление",
+        added: [
+          "Виджеты на экране «Домой» — нагрузка, еда, форма и что дальше",
+          "Утренние предложения по плану с учётом восстановления и погоды",
+        ],
+        improved: [
+          "Тренировки из Apple Health обновляют слот в Плане, даже если вышли длиннее плана",
+          "Понятнее подсказки Коуча во время сессии",
+          "Питание, напитки, светлая тема и онбординг",
+        ],
+      },
       {
         version: "1.1",
         date: "23 июля 2026 в 23:45",

@@ -579,7 +579,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -589,7 +589,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit writes workouts and activity records to Apple Health so your fitness history remains accurate and synchronized across apps and devices.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit reads workouts and activity from Apple Health to keep your plan accurate. It does not write workouts to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "WeekFit uses your approximate location to show local weather and adjust Night Comfort to local sunset.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -602,7 +602,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -630,7 +630,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -640,7 +640,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit writes workouts and activity records to Apple Health so your fitness history remains accurate and synchronized across apps and devices.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit reads workouts and activity from Apple Health to keep your plan accurate. It does not write workouts to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "WeekFit uses your approximate location to show local weather and adjust Night Comfort to local sunset.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -653,7 +653,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -763,7 +763,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeekFitWidget/Info.plist;
@@ -775,7 +775,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -795,7 +795,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeekFitWidget/Info.plist;
@@ -807,7 +807,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

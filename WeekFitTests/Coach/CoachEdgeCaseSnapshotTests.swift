@@ -1284,7 +1284,7 @@ final class CoachEdgeCaseSnapshotTests: XCTestCase {
                 storyOwner: "session.activity",
                 scenario: .walkRecoveryAction,
                 badge: "СЕЙЧАС ВАЖНО",
-                todayTitle: "Прогулка для ног",
+                todayTitle: "Разгрузить ноги",
                 stackedDayActiveRisk: false,
                 conflictNote: "walk after serious work — single recovery story, not strength post"
             ),

@@ -13,6 +13,7 @@ enum WidgetSnapshotBuilder {
         plannedActivities: [PlannedActivity]
     ) -> WeekFitWidgetSnapshot {
         let dateKey = WeekFitWidgetSnapshot.dayKey(for: now, calendar: calendar)
+        WeekFitWidgetCopy.applyLanguage(WeekFitUsesRussianLanguage() ? "ru" : "en")
         let activityGoal = max(1, Int(automatedActivityGoal(from: healthManager).rounded()))
         let activityCalories = Int(healthManager.activeCalories.rounded())
         let activityProgress = Double(activityCalories) / Double(activityGoal)
@@ -76,7 +77,8 @@ enum WidgetSnapshotBuilder {
             nextActionPhase: next.phase,
             completedItems: completedItems,
             totalItems: totalItems,
-            updatedAt: now
+            updatedAt: now,
+            languageCode: WeekFitUsesRussianLanguage() ? "ru" : "en"
         )
     }
 
@@ -102,12 +104,7 @@ enum WidgetSnapshotBuilder {
 
     private static func recoveryLabel(for score: Int?) -> String? {
         guard let score else { return nil }
-        switch score {
-        case 70...: return "Ready"
-        case 55..<70: return "Steady"
-        case 40..<55: return "Protect"
-        default: return "Recover"
-        }
+        return WeekFitWidgetCopy.recoveryScoreLabel(for: score)
     }
 
     private static func dayMode(recoveryScore: Int?, hasAnySignal: Bool) -> WeekFitWidgetSnapshot.DayMode {
@@ -132,15 +129,15 @@ enum WidgetSnapshotBuilder {
     ) -> (stateLabel: String, hero: String, support: String) {
         if mode == .empty {
             return (
-                hasNext ? WeekFitWidgetCopy.dayModeTitle(.empty) : "All clear",
-                hasNext ? "Open WeekFit" : "Nothing urgent now",
+                hasNext ? WeekFitWidgetCopy.dayModeTitle(.empty) : WeekFitWidgetCopy.allClearLabel(),
+                hasNext ? WeekFitWidgetCopy.openWeekFitLabel() : WeekFitWidgetCopy.smallHeroFallback(for: .empty, hasNext: false),
                 ""
             )
         }
 
         if !hasNext {
             return (
-                mode == .goodToGo || mode == .maintain ? "All clear" : WeekFitWidgetCopy.dayModeTitle(mode),
+                mode == .goodToGo || mode == .maintain ? WeekFitWidgetCopy.allClearLabel() : WeekFitWidgetCopy.dayModeTitle(mode),
                 WeekFitWidgetCopy.smallHeroFallback(for: mode, hasNext: false),
                 ""
             )
@@ -153,7 +150,7 @@ enum WidgetSnapshotBuilder {
 
         let eventContextualState: String? = {
             if nextPhase == .inProgress {
-                let during = "During \(nextTitle)"
+                let during = WeekFitWidgetCopy.duringLabel(eventTitle: nextTitle)
                 return WeekFitWidgetCopy.compactPhrase(
                     during,
                     limit: WeekFitWidgetCopy.SmallBudget.state,
@@ -167,15 +164,17 @@ enum WidgetSnapshotBuilder {
                 return WeekFitWidgetCopy.compactPhrase(
                     todayTitle,
                     limit: WeekFitWidgetCopy.SmallBudget.state,
-                    fallback: "Before \(WeekFitWidgetCopy.smallNextTitle(raw: nextTitle, kind: nextKind))"
+                    fallback: WeekFitWidgetCopy.beforeLabel(
+                        eventTitle: WeekFitWidgetCopy.smallNextTitle(raw: nextTitle, kind: nextKind)
+                    )
                 )
             }
-            if todayTitle.lowercased().contains("before"),
+            if todayTitle.lowercased().contains("before") || todayTitle.lowercased().contains("перед"),
                todayTitle.lowercased().contains(nextTitle.lowercased()) {
                 return WeekFitWidgetCopy.compactPhrase(
                     todayTitle,
                     limit: WeekFitWidgetCopy.SmallBudget.state,
-                    fallback: "Before \(nextTitle)"
+                    fallback: WeekFitWidgetCopy.beforeLabel(eventTitle: nextTitle)
                 )
             }
             return nil
@@ -297,20 +296,25 @@ enum WidgetSnapshotBuilder {
         title: String
     ) -> WeekFitWidgetSnapshot.NextActionKind {
         let haystack = "\(type) \(imageName) \(title)".lowercased()
-        if haystack.contains("sauna") { return .sauna }
-        if haystack.contains("walk") || haystack.contains("hike") { return .walk }
-        if haystack.contains("strength") || haystack.contains("gym") || haystack.contains("lift") { return .strength }
-        if haystack.contains("recover") || haystack.contains("mobility") || haystack.contains("stretch") { return .recovery }
+        if haystack.contains("sauna") || haystack.contains("бан") || haystack.contains("саун") { return .sauna }
+        if haystack.contains("cycle") || haystack.contains("bike") || haystack.contains("ride") || haystack.contains("вело") { return .cycling }
+        if haystack.contains("run") || haystack.contains("бег") { return .running }
+        if haystack.contains("swim") || haystack.contains("плав") { return .swimming }
+        if haystack.contains("yoga") || haystack.contains("йога") { return .yoga }
+        if haystack.contains("tennis") || haystack.contains("squash") || haystack.contains("теннис") || haystack.contains("сквош") { return .racket }
+        if haystack.contains("walk") || haystack.contains("hike") || haystack.contains("ходь") || haystack.contains("прогул") { return .walk }
+        if haystack.contains("strength") || haystack.contains("gym") || haystack.contains("lift") || haystack.contains("сил") { return .strength }
+        if haystack.contains("recover") || haystack.contains("mobility") || haystack.contains("stretch") || haystack.contains("восстанов") { return .recovery }
         if haystack.contains("meal") || haystack.contains("food") || haystack.contains("eat") { return .meal }
         if haystack.contains("water") || haystack.contains("hydrat") || haystack.contains("drink") { return .hydration }
         if haystack.contains("rest") || haystack.contains("sleep") || haystack.contains("nap") { return .rest }
-        return .walk
+        return .strength
     }
 
     private static func timeString(_ date: Date, calendar: Calendar) -> String {
         let formatter = DateFormatter()
         formatter.calendar = calendar
-        formatter.locale = .current
+        formatter.locale = WeekFitCurrentLocale()
         formatter.timeStyle = .short
         formatter.dateStyle = .none
         return formatter.string(from: date)

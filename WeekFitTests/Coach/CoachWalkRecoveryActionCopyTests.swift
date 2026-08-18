@@ -33,8 +33,10 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(makeInput(sessionPhase: .during, focusSource: .active)))
         let russian = joinedRussian(pack)
 
-        XCTAssertTrue(russian.contains("держите легко"))
-        XCTAssertTrue(russian.contains("разговаривать"))
+        XCTAssertTrue(russian.contains("легко"), russian)
+        XCTAssertTrue(russian.contains("прогулк") || russian.contains("восстанов"), russian)
+        XCTAssertFalse(russian.contains("зона 1"))
+        XCTAssertFalse(russian.contains("восстановительная нагрузка"))
         XCTAssertFalse(russian.contains("прогулка завершена"))
         XCTAssertFalse(russian.contains("прогулка уже"))
     }

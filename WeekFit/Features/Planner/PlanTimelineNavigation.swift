@@ -59,6 +59,15 @@ struct PlannedActivitySessionResolver {
 
         return snapshotProvider.makePlannedActivitySnapshot(activity)
     }
+
+    /// Cheap snapshots for warming HR/route cache while Plan is visible.
+    func snapshotsForDetailPrefetch(_ activities: [PlannedActivity]) -> [ActivitySessionSnapshot] {
+        activities.compactMap { activity in
+            guard PlanTimelineRouter.shouldOpenActivityDetail(for: activity) else { return nil }
+            guard activity.healthKitWorkoutUUID != nil else { return nil }
+            return snapshotProvider.makePlannedActivitySnapshot(activity)
+        }
+    }
 }
 
 extension Meals {

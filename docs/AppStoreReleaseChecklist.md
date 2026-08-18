@@ -2,10 +2,10 @@
 
 > **Purpose:** Gate for promoting a TestFlight build to App Store production.  
 > **App:** WeekFit · `com.weekfit.app` · Team `7R6347XPK2`  
-> **Target:** iOS 18+ (deployment) · v1.1  
+> **Target:** iOS 18+ (deployment) · v1.3  
 > **Owner:** Engineering + QA + Product
 
-**Release:** 1.2 (build 17)  
+**Release:** 1.3 (build 20)  
 **Build:** archive with `Scripts/archive_for_app_store.sh`  
 **Sign-off:** Engineering [ ] · QA [ ] · Product [ ]
 
@@ -15,14 +15,14 @@
 
 | Area | Status |
 |------|--------|
-| Firebase Analytics Core + Crashlytics | In tree — **ship** |
-| Review prompts + Help WeekFit / feedback (mailto) | In tree — **ship** |
-| Privacy policy updated for analytics/crash/feedback | Prepared — **deploy before submit** |
-| Meals empty states + library sync + barcode polish | In tree — **ship** |
-| Swimming / Hiking workouts + coach coverage | In tree — **ship** |
-| Profile avatar discoverability | In tree — **ship** |
-| App size / asset compression | Deferred — not in this release |
+| Home Screen widgets (Today) | In tree — **ship** |
+| Morning Coach proposals | In tree — **ship** |
+| HealthKit Plan merge (longer-than-planned Watch/Fitness workouts) | In tree — **ship** |
+| Live-session Coach copy | In tree — **ship** |
+| Premium Light + onboarding | In tree — **ship** |
+| Meals / drinks / barcode polish | In tree — **ship** |
 | Insights / Highlights tabs | Still unshipped |
+| Apple Watch companion app | Not in this release — HealthKit only |
 
 ---
 
@@ -30,7 +30,7 @@
 
 | # | Check | How | Pass |
 |---|-------|-----|------|
-| 1.1 | Versioning | `MARKETING_VERSION` = `1.2`; `CURRENT_PROJECT_VERSION` = **17** | [x] 2026-07-28 |
+| 1.1 | Versioning | `MARKETING_VERSION` = `1.3`; `CURRENT_PROJECT_VERSION` = **20** | [x] 2026-08-18 |
 | 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` declares Product Interaction; Crashlytics via SDK | [x] |
 | 1.3 | Export compliance | `ITSAppUsesNonExemptEncryption = NO` in Release build settings | [x] |
 | 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [x] |
@@ -57,7 +57,7 @@
 | 2.7 | Age rating | Health & Fitness, no medical diagnosis | [ ] |
 | 2.8 | Pricing | Free (no IAP) | [ ] |
 | 2.9 | Review notes + demo | Health path — `docs/AppStoreListing.md` | [ ] |
-| 2.10 | What's New | 1.1 EN + RU from `docs/AppStoreListing.md` | [ ] |
+| 2.10 | What's New | 1.3 EN + RU from `docs/AppStoreListing.md` | [ ] |
 | 2.11 | Phased release | Enable 10% → 50% → 100% | [ ] |
 
 ---
@@ -79,7 +79,7 @@ xcodebuild test -scheme WeekFit \
 
 | Gate | Pass |
 |------|------|
-| P0 automated suites | [x] 2026-07-28 · iPhone 16 · **TEST SUCCEEDED** (+ classifier parity) |
+| P0 automated suites | [ ] 2026-08-18 · re-run after live Coach copy |
 | P1 / screenshots | [ ] if Coach copy changed |
 
 ---
@@ -97,9 +97,9 @@ xcodebuild test -scheme WeekFit \
 | Suite | Pass |
 |-------|------|
 | Analytics + Review focused | [x] 2026-07-28 |
-| Full `WeekFitTests` | [x] 2026-07-28 · re-run after 1.2 delta · **TEST SUCCEEDED** |
-| Localization parity + language-mix | [x] 2026-07-28 |
-| Release configuration archive | [x] `build/WeekFit.xcarchive` · **1.2 (17)** · 2026-07-28 |
+| Full `WeekFitTests` | [ ] 2026-08-18 · re-run for 1.3 |
+| Localization parity + language-mix | [ ] 2026-08-18 |
+| Release configuration archive | [ ] `1.3 (20)` |
 
 ### 4.2 Manual smoke (1.1-specific)
 
@@ -119,10 +119,10 @@ xcodebuild test -scheme WeekFit \
 
 | Step | Pass |
 |------|------|
-| `Scripts/archive_for_app_store.sh` | [x] 2026-07-28 · **1.2 (17)** |
+| `Scripts/archive_for_app_store.sh` | [ ] `1.3 (20)` |
 | Validate App (Organizer) | [ ] |
 | Distribute → App Store Connect | [ ] |
-| Select build on version **1.2** | [ ] |
+| Select build on version **1.3** | [ ] |
 | Privacy policy live + ASC Nutrition Label updated | [x] policy live · [ ] ASC label |
 | Submit for Review | [ ] |
 

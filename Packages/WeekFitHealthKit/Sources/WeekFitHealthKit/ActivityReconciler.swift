@@ -8,10 +8,34 @@ public enum ActivityReconciler {
     /// Prefer leaving unresolved over auto-completing a distant planned slot.
     public static let startProximityWindow: TimeInterval = 30 * 60
 
+    /// Only an explicitly live Watch session may treat a HealthKit sample as
+    /// still in progress. A workout whose `endDate` is "now" is the normal
+    /// completion event from Apple Watch — treating that as live left the
+    /// planned slot unfinished and blocked later sync.
+    public static func isLikelyInProgress(
+        _ workout: HKWorkout,
+        now: Date = Date(),
+        liveSessionActive: Bool = false
+    ) -> Bool {
+        guard liveSessionActive else { return false }
+        return now.timeIntervalSince(workout.endDate) <= 90
+            && workout.endDate >= workout.startDate
+    }
+
+    public static func sameFamily(_ lhs: PlannedActivity, _ rhs: PlannedActivity) -> Bool {
+        guard let left = normalizedFamily(for: lhs),
+              let right = normalizedFamily(for: rhs) else {
+            return false
+        }
+        return familiesAreCompatible(left, right)
+    }
+
     public static func bestMatch(
         for workout: HKWorkout,
         in activities: [PlannedActivity],
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        now: Date = Date(),
+        liveSessionActive: Bool = false
     ) -> PlannedActivity? {
         let workoutTitle = title(for: workout.workoutActivityType)
         let workoutStart = workout.startDate
@@ -19,7 +43,6 @@ public enum ActivityReconciler {
         let allPlanned = activities.filter { activity in
             samePlannedWorkoutDay(activity.date, workout: workout, calendar: calendar) &&
             !activity.isSkipped &&
-            !activity.isCompleted &&
             activity.healthKitWorkoutUUID == nil
         }
 
@@ -31,7 +54,12 @@ public enum ActivityReconciler {
                 return nil
             }
 
-            guard durationIsCompatible(activity: activity, workout: workout) else {
+            guard durationIsCompatible(
+                activity: activity,
+                workout: workout,
+                now: now,
+                liveSessionActive: liveSessionActive
+            ) else {
                 return nil
             }
 
@@ -83,6 +111,22 @@ public enum ActivityReconciler {
         imported.actualDurationMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
         imported.id = workout.uuid.uuidString
         return imported
+    }
+
+    public static func importedLiveActivity(for workout: HKWorkout) -> PlannedActivity {
+        let imported = importedActivity(for: workout)
+        imported.isCompleted = false
+        return imported
+    }
+
+    /// Attach a still-running workout to a planned slot without completing it.
+    public static func applyLiveWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
+        let elapsedMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
+        activity.date = workout.startDate
+        activity.actualDurationMinutes = elapsedMinutes
+        activity.isCompleted = false
+        activity.isSkipped = false
+        activity.healthKitWorkoutUUID = workout.uuid.uuidString
     }
 
     public static func applySyncedWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
@@ -152,12 +196,27 @@ public enum ActivityReconciler {
         return familiesAreCompatible(activityFamily, workoutFamily)
     }
 
-    private static func durationIsCompatible(activity: PlannedActivity, workout: HKWorkout) -> Bool {
+    private static func durationIsCompatible(
+        activity: PlannedActivity,
+        workout: HKWorkout,
+        now: Date,
+        liveSessionActive: Bool
+    ) -> Bool {
+        if isLikelyInProgress(workout, now: now, liveSessionActive: liveSessionActive) {
+            return true
+        }
+
         let plannedMinutes = max(activity.durationMinutes, 1)
         let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
-        let tolerance = max(20, plannedMinutes / 2)
 
-        return abs(plannedMinutes - actualMinutes) <= tolerance
+        // Short auto-detected strolls must not close a much longer planned slot.
+        // Going longer than planned is the normal Watch case ("I kept walking").
+        if actualMinutes < plannedMinutes {
+            let shortTolerance = max(20, plannedMinutes / 2)
+            return (plannedMinutes - actualMinutes) <= shortTolerance
+        }
+
+        return true
     }
 
     private struct MatchCandidate {
@@ -223,8 +282,9 @@ public enum ActivityReconciler {
         timing: TimingMatch
     ) -> Double {
         let overlapBonus = min(timing.overlapSeconds / 60, 60)
+        let completedPenalty = activity.isCompleted ? 40.0 : 0
         // Duration is a hard gate in bestMatch; score is timing-only.
-        return (timing.startDeltaSeconds / 60) - overlapBonus
+        return (timing.startDeltaSeconds / 60) - overlapBonus + completedPenalty
     }
 
     private static func familiesAreCompatible(

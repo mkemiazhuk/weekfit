@@ -106,6 +106,32 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
+## What's New (1.3)
+
+**EN:**
+```
+WeekFit 1.3
+
+• Home Screen widgets for Today — Move, Fuel, Ready, and what's next
+• Morning plan proposals that adapt to recovery and weather
+• Apple Health workouts now update the matching Plan slot, even when you go longer than planned
+• Clearer Coach guidance during a session
+• Meals, drinks, Light theme, and onboarding polish
+```
+
+**RU:**
+```
+WeekFit 1.3
+
+• Виджеты на экране «Домой» — нагрузка, еда, форма и что дальше
+• Утренние предложения по плану с учётом восстановления и погоды
+• Тренировки из Apple Health обновляют слот в Плане, даже если вышли длиннее, чем планировали
+• Понятнее подсказки Коуча во время сессии
+• Питание, напитки, светлая тема и онбординг
+```
+
+---
+
 ## What's New (1.1)
 
 **EN:**

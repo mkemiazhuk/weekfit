@@ -71,8 +71,8 @@ enum CoachWalkRecoveryActionPresentation {
     ) -> String {
         switch phase {
         case .upcoming:
-            if isHike { return russian ? "Лёгкий хайкинг" : "Easy hike" }
-            return russian ? "Прогулка для ног" : "Leg flush walk"
+            if isHike { return russian ? "Держите легко" : "Keep it easy" }
+            return russian ? "Разгрузить ноги" : "Ease the legs"
         case .live:
             if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"

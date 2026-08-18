@@ -87,23 +87,7 @@ enum LiveHeartRateCoachCopy {
     }
 
     static func apply(to draft: CoachCopyRegistryScenarios.Draft, input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
-        guard input.liveHeartRateZone != nil else { return draft }
-        return CoachCopyRegistryScenarios.Draft(
-            assessment: assessment(for: input) ?? draft.assessment,
-            recommendation: recommendation(for: input) ?? draft.recommendation,
-            avoid: HeartRateZones.isElevated(input.liveHeartRateZone ?? 0)
-                ? .en(
-                    "Don't push into a higher zone while heart rate is already here.",
-                    "Не давите в более высокую зону при таком пульсе."
-                )
-                : draft.avoid,
-            nextAction: HeartRateZones.isCritical(input.liveHeartRateZone ?? 0)
-                ? .en(
-                    "Drop to Zone 3 or easier for one minute, then reassess.",
-                    "Минуту в зоне 3 или ниже — потом оцените самочувствие."
-                )
-                : draft.nextAction
-        )
+        LiveSessionCoachCopy.apply(to: draft, input: input)
     }
 
     private static func effortEnglish(for zone: Int) -> String {

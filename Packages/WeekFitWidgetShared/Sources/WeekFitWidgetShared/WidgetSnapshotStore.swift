@@ -54,3 +54,17 @@ public enum WidgetSnapshotStore {
         case appGroupUnavailable
     }
 }
+
+/// Resolves the Home Screen payload for a timeline tick.
+public enum WeekFitWidgetTimelineResolver {
+    public static func snapshot(
+        loaded: WeekFitWidgetSnapshot?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> WeekFitWidgetSnapshot {
+        guard let loaded, loaded.isFromCalendarDay(now, calendar: calendar) else {
+            return .placeholderEmpty(now: now)
+        }
+        return loaded
+    }
+}

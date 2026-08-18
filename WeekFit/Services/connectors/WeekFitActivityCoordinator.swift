@@ -148,9 +148,12 @@ final class WeekFitActivityCoordinator: ObservableObject {
                     live.heartRateZone = liveHeartRateZone
                     next = live
                 }
+                let previous = self.liveWorkout
                 self.liveWorkout = next
                 if let live = next, live.isLive {
                     setHeartRateMonitoringEnabled(true, sessionStartedAt: live.startedAt)
+                } else if previous?.isLive == true || previous?.state == .ended {
+                    healthSync.forceRefresh()
                 }
             }
             .store(in: &cancellables)
@@ -180,24 +183,80 @@ final class WeekFitActivityCoordinator: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func isLiveMatch(for activity: PlannedActivity) -> Bool {
-        guard let liveWorkout, liveWorkout.isLive else { return false }
-
-        let timeDistance = abs(activity.date.timeIntervalSince(liveWorkout.startedAt))
-        guard timeDistance <= 2 * 60 * 60 else { return false }
-
-        return ActivityReconciler.matches(activity: activity, workoutType: liveWorkout.workoutType)
+    func isLiveMatch(for activity: PlannedActivity, among activities: [PlannedActivity] = []) -> Bool {
+        guard let best = bestLiveMatch(in: activities.isEmpty ? [activity] : activities) else {
+            return false
+        }
+        return best.id == activity.id
     }
 
     func resolvedStatus(
         for activity: PlannedActivity,
+        among activities: [PlannedActivity] = [],
         baseStatus: PlanActivityStatus
     ) -> PlanActivityStatus {
-        if isLiveMatch(for: activity) {
+        if isLiveMatch(for: activity, among: activities) {
             return .live
         }
 
         return baseStatus
+    }
+
+    func bestLiveMatch(in activities: [PlannedActivity]) -> PlannedActivity? {
+        guard let liveWorkout, liveWorkout.isLive else { return nil }
+
+        let candidates = activities.filter { activity in
+            guard !activity.isSkipped else { return false }
+            let timeDistance = abs(activity.date.timeIntervalSince(liveWorkout.startedAt))
+            guard timeDistance <= 2 * 60 * 60 else { return false }
+            return ActivityReconciler.matches(activity: activity, workoutType: liveWorkout.workoutType)
+        }
+
+        return candidates.min { lhs, rhs in
+            liveMatchScore(lhs, startedAt: liveWorkout.startedAt) < liveMatchScore(rhs, startedAt: liveWorkout.startedAt)
+        }
+    }
+
+    /// Link an in-progress Watch/HealthKit session to the overlapping planned slot
+    /// and hide the imported duplicate if both exist.
+    func reconcileLiveWorkout(
+        with activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) {
+        guard AccountSessionController.shared.mode != .reviewDemo else { return }
+        guard let liveWorkout, liveWorkout.isLive else { return }
+        guard let planned = bestLiveMatch(in: activities.filter { $0.healthKitWorkoutUUID == nil && !$0.isCompleted })
+                ?? bestLiveMatch(in: activities.filter { !$0.isCompleted }) else {
+            return
+        }
+
+        var didMutate = false
+        if planned.date > liveWorkout.startedAt {
+            planned.date = liveWorkout.startedAt
+            planned.isSkipped = false
+            didMutate = true
+        }
+
+        let duplicates = activities.filter { activity in
+            activity.id != planned.id
+                && !activity.isSkipped
+                && ActivityReconciler.matches(activity: activity, workoutType: liveWorkout.workoutType)
+                && sessionsOverlap(activity, planned)
+                && isImportedSessionStub(activity)
+                && !activity.isCompleted
+        }
+
+        if !duplicates.isEmpty {
+            notifyPlannedActivityMutation()
+            for duplicate in duplicates {
+                modelContext.delete(duplicate)
+            }
+            didMutate = true
+        }
+
+        if didMutate {
+            try? modelContext.save()
+        }
     }
 
     func reconcileCompletedWorkouts(
@@ -274,12 +333,31 @@ final class WeekFitActivityCoordinator: ObservableObject {
         _ workout: HKWorkout,
         with activities: [PlannedActivity],
         modelContext: ModelContext,
-        forceRetry: Bool = false
+        forceRetry: Bool = false,
+        now: Date = Date()
     ) {
         let workoutUUID = workout.uuid.uuidString
+        let liveSessionActive = isMatchingLiveWatchSession(workout)
+        let inProgress = ActivityReconciler.isLikelyInProgress(
+            workout,
+            now: now,
+            liveSessionActive: liveSessionActive
+        )
 
         if DismissedHealthKitWorkoutStore.isDismissed(workoutUUID) {
             reconciledWorkoutUUIDs.insert(workoutUUID)
+            return
+        }
+
+        if mergeStandaloneImportIfNeeded(
+            workout,
+            with: activities,
+            modelContext: modelContext,
+            inProgress: inProgress,
+            liveSessionActive: liveSessionActive,
+            now: now
+        ) {
+            markReconciledIfFinished(workoutUUID, inProgress: inProgress)
             return
         }
 
@@ -290,16 +368,16 @@ final class WeekFitActivityCoordinator: ObservableObject {
            !activities.contains(where: {
                $0.id == persisted.id || $0.healthKitWorkoutUUID == workoutUUID
            }) {
-            ActivityReconciler.applySyncedWorkout(workout, to: persisted)
-            reconciledWorkoutUUIDs.insert(workoutUUID)
+            applyWorkout(workout, to: persisted, inProgress: inProgress)
+            markReconciledIfFinished(workoutUUID, inProgress: inProgress)
             return
         }
 
         if let linkedPlanned = activities.first(where: {
             $0.healthKitWorkoutUUID == workoutUUID && $0.id != workoutUUID
         }) {
-            ActivityReconciler.applySyncedWorkout(workout, to: linkedPlanned)
-            reconciledWorkoutUUIDs.insert(workoutUUID)
+            applyWorkout(workout, to: linkedPlanned, inProgress: inProgress)
+            markReconciledIfFinished(workoutUUID, inProgress: inProgress)
             return
         }
 
@@ -308,16 +386,18 @@ final class WeekFitActivityCoordinator: ObservableObject {
         }) {
             if let planned = ActivityReconciler.bestMatch(
                 for: workout,
-                in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID }
+                in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID },
+                now: now,
+                liveSessionActive: liveSessionActive
             ) {
                 notifyPlannedActivityMutation()
                 modelContext.delete(standalone)
-                ActivityReconciler.applySyncedWorkout(workout, to: planned)
+                applyWorkout(workout, to: planned, inProgress: inProgress)
             } else {
-                ActivityReconciler.applySyncedWorkout(workout, to: standalone)
+                applyWorkout(workout, to: standalone, inProgress: inProgress)
             }
 
-            reconciledWorkoutUUIDs.insert(workoutUUID)
+            markReconciledIfFinished(workoutUUID, inProgress: inProgress)
             return
         }
 
@@ -329,22 +409,109 @@ final class WeekFitActivityCoordinator: ObservableObject {
             uuid: workoutUUID,
             modelContext: modelContext
         ) {
-            ActivityReconciler.applySyncedWorkout(workout, to: persisted)
-            reconciledWorkoutUUIDs.insert(workoutUUID)
+            applyWorkout(workout, to: persisted, inProgress: inProgress)
+            markReconciledIfFinished(workoutUUID, inProgress: inProgress)
             return
         }
 
         if let activity = ActivityReconciler.bestMatch(
             for: workout,
-            in: activities
+            in: activities,
+            now: now,
+            liveSessionActive: liveSessionActive
         ) {
-            ActivityReconciler.applySyncedWorkout(workout, to: activity)
+            applyWorkout(workout, to: activity, inProgress: inProgress)
         } else {
-            let imported = ActivityReconciler.importedActivity(for: workout)
+            let imported = inProgress
+                ? ActivityReconciler.importedLiveActivity(for: workout)
+                : ActivityReconciler.importedActivity(for: workout)
             modelContext.insert(imported)
         }
 
+        markReconciledIfFinished(workoutUUID, inProgress: inProgress)
+    }
+
+    private func mergeStandaloneImportIfNeeded(
+        _ workout: HKWorkout,
+        with activities: [PlannedActivity],
+        modelContext: ModelContext,
+        inProgress: Bool,
+        liveSessionActive: Bool,
+        now: Date
+    ) -> Bool {
+        let workoutUUID = workout.uuid.uuidString
+        guard let standalone = activities.first(where: {
+            $0.id == workoutUUID || ($0.healthKitWorkoutUUID == workoutUUID && $0.source == "appleWorkout")
+        }) else {
+            return false
+        }
+
+        guard let planned = ActivityReconciler.bestMatch(
+            for: workout,
+            in: activities.filter { $0.healthKitWorkoutUUID == nil && $0.id != workoutUUID },
+            now: now,
+            liveSessionActive: liveSessionActive
+        ) else {
+            return false
+        }
+
+        notifyPlannedActivityMutation()
+        modelContext.delete(standalone)
+        applyWorkout(workout, to: planned, inProgress: inProgress)
+        return true
+    }
+
+    private func applyWorkout(
+        _ workout: HKWorkout,
+        to activity: PlannedActivity,
+        inProgress: Bool
+    ) {
+        if inProgress {
+            ActivityReconciler.applyLiveWorkout(workout, to: activity)
+        } else {
+            ActivityReconciler.applySyncedWorkout(workout, to: activity)
+        }
+    }
+
+    /// A just-finished Watch workout has `endDate ≈ now`. Treat it as live only
+    /// while Watch Connectivity still reports an active matching session.
+    private func isMatchingLiveWatchSession(_ workout: HKWorkout) -> Bool {
+        guard let liveWorkout, liveWorkout.isLive else { return false }
+        guard liveWorkout.workoutType == workout.workoutActivityType else { return false }
+        return abs(liveWorkout.startedAt.timeIntervalSince(workout.startDate)) <= 15 * 60
+    }
+
+    /// Live HealthKit samples keep the same UUID when they complete. Do not
+    /// freeze that UUID until the finished sample has been applied.
+    private func markReconciledIfFinished(_ workoutUUID: String, inProgress: Bool) {
+        guard !inProgress else { return }
         reconciledWorkoutUUIDs.insert(workoutUUID)
+    }
+
+#if DEBUG
+    func replaceLiveWorkoutForTesting(_ workout: WeekFitLiveWorkout?) {
+        liveWorkout = workout
+    }
+#endif
+
+    private func liveMatchScore(_ activity: PlannedActivity, startedAt: Date) -> Double {
+        let startDelta = abs(activity.date.timeIntervalSince(startedAt)) / 60
+        let importedPenalty = isImportedSessionStub(activity) ? 20.0 : 0
+        let completedPenalty = activity.isCompleted ? 40.0 : 0
+        return startDelta + importedPenalty + completedPenalty
+    }
+
+    private func isImportedSessionStub(_ activity: PlannedActivity) -> Bool {
+        let source = activity.source.lowercased()
+        return source == "appleworkout"
+            || source == "healthkit"
+            || source == "applewatch"
+    }
+
+    private func sessionsOverlap(_ lhs: PlannedActivity, _ rhs: PlannedActivity) -> Bool {
+        let leftEnd = lhs.date.addingTimeInterval(TimeInterval(max(lhs.effectiveDurationMinutes, lhs.durationMinutes, 1) * 60))
+        let rightEnd = rhs.date.addingTimeInterval(TimeInterval(max(rhs.effectiveDurationMinutes, rhs.durationMinutes, 1) * 60))
+        return lhs.date < rightEnd && rhs.date < leftEnd
     }
 
     private func notifyPlannedActivityMutation() {

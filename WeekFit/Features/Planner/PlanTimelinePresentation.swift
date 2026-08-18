@@ -316,7 +316,7 @@ enum PlanTimelineItem: Identifiable {
 enum PlanTimelineItemGrouper {
 
     static func makeItems(from activities: [PlannedActivity]) -> [PlanTimelineItem] {
-        let sorted = activities.sorted { $0.date < $1.date }
+        let sorted = collapseOverlappingSessionDuplicates(activities).sorted { $0.date < $1.date }
 
         var result: [PlanTimelineItem] = []
         var waterBuffer: [PlannedActivity] = []
@@ -348,6 +348,69 @@ enum PlanTimelineItemGrouper {
 
         flushWater()
         return result
+    }
+
+    /// Hide a HealthKit import that is the live/started copy of an overlapping planned session.
+    static func collapseOverlappingSessionDuplicates(_ activities: [PlannedActivity]) -> [PlannedActivity] {
+        let sorted = activities.sorted { $0.date < $1.date }
+        var hidden = Set<String>()
+
+        for index in sorted.indices {
+            let activity = sorted[index]
+            guard !hidden.contains(activity.id) else { continue }
+
+            for otherIndex in (index + 1)..<sorted.count {
+                let other = sorted[otherIndex]
+                guard !hidden.contains(other.id) else { continue }
+                guard shouldCollapseLiveDuplicate(activity, other) else { continue }
+                hidden.insert(idToHideForLiveDuplicate(activity, other))
+            }
+        }
+
+        return sorted.filter { !hidden.contains($0.id) }
+    }
+
+    private static func shouldCollapseLiveDuplicate(
+        _ lhs: PlannedActivity,
+        _ rhs: PlannedActivity
+    ) -> Bool {
+        guard ActivityReconciler.sameFamily(lhs, rhs) else { return false }
+        guard sessionsOverlap(lhs, rhs) else { return false }
+        guard isImportedSessionStub(lhs) != isImportedSessionStub(rhs) else { return false }
+
+        let imported = isImportedSessionStub(lhs) ? lhs : rhs
+        let planned = isImportedSessionStub(lhs) ? rhs : lhs
+        // Never hide a finished Watch import behind a planned slot that
+        // doesn't already own that workout. Merge should attach it instead.
+        if imported.isCompleted,
+           planned.healthKitWorkoutUUID != imported.healthKitWorkoutUUID {
+            return false
+        }
+        return true
+    }
+
+    private static func idToHideForLiveDuplicate(
+        _ lhs: PlannedActivity,
+        _ rhs: PlannedActivity
+    ) -> String {
+        isImportedSessionStub(lhs) ? lhs.id : rhs.id
+    }
+
+    private static func isImportedSessionStub(_ activity: PlannedActivity) -> Bool {
+        let source = activity.source.lowercased()
+        return source == "appleworkout"
+            || source == "healthkit"
+            || source == "applewatch"
+    }
+
+    private static func sessionsOverlap(_ lhs: PlannedActivity, _ rhs: PlannedActivity) -> Bool {
+        let leftEnd = lhs.date.addingTimeInterval(
+            TimeInterval(max(lhs.effectiveDurationMinutes, lhs.durationMinutes, 1) * 60)
+        )
+        let rightEnd = rhs.date.addingTimeInterval(
+            TimeInterval(max(rhs.effectiveDurationMinutes, rhs.durationMinutes, 1) * 60)
+        )
+        return lhs.date < rightEnd && rhs.date < leftEnd
     }
 
     static func showsTimeLabel<Item>(

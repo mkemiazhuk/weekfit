@@ -9,8 +9,8 @@ struct WeekFitHomeWidget: Widget {
         StaticConfiguration(kind: kind, provider: WeekFitWidgetTimelineProvider()) { entry in
             WeekFitWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("WeekFit Today")
-        .description("See how your day is going and what to do next.")
+        .configurationDisplayName(String(localized: "WeekFit Today"))
+        .description(String(localized: "See how your day is going and what to do next."))
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
@@ -177,7 +177,9 @@ struct WeekFitWidgetTimelineProvider: TimelineProvider {
     }
 
     private func makeEntry(now: Date) -> WeekFitWidgetEntry {
-        let snapshot = (try? WidgetSnapshotStore.load()) ?? .placeholderEmpty(now: now)
+        let loaded = try? WidgetSnapshotStore.load()
+        let snapshot = WeekFitWidgetTimelineResolver.snapshot(loaded: loaded, now: now)
+        WeekFitWidgetCopy.applyLanguage(snapshot.languageCode)
         return WeekFitWidgetEntry(date: now, snapshot: snapshot)
     }
 }

@@ -152,9 +152,7 @@ enum CoachTeaserCopy {
         case .walkLightDay:
             return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
-            return result.context.isFocusHikeLike
-                ? bi("Evening hike", "Вечерний хайкинг")
-                : bi("Evening walk", "Вечерняя прогулка")
+            return bi("Wind down", "Сбавьте обороты")
         case .walkRecoveryAction:
             let walkPhase = CoachWalkRecoveryActionPresentation.phase(for: result.context)
             return bi(
@@ -209,8 +207,8 @@ enum CoachTeaserCopy {
     ) -> CoachBilingualText {
         let buildInput = CoachCopyBuildInput.from(result: result)
         if result.context.sessionPhase == .during,
-           let hrTeaser = LiveHeartRateCoachCopy.teaser(for: buildInput) {
-            return hrTeaser
+           let liveTeaser = LiveSessionCoachCopy.teaser(for: buildInput) {
+            return liveTeaser
         }
 
         switch scenario {
@@ -288,7 +286,7 @@ enum CoachTeaserCopy {
                 "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
             )
         case .duringEndurance:
-            if let teaser = LiveHeartRateCoachCopy.teaser(for: CoachCopyBuildInput.from(result: result)) {
+            if let teaser = LiveSessionCoachCopy.teaser(for: CoachCopyBuildInput.from(result: result)) {
                 return bi(teaser.english, teaser.russian)
             }
             return bi("Hold effort flat.", "Держите темп ровным.")
@@ -530,9 +528,7 @@ enum CoachTeaserCopy {
         case .walkLightDay:
             return walkLightDayTitle(result: result)
         case .walkEveningWindDown:
-            return context.isFocusHikeLike
-                ? bi("Evening hike", "Вечерний хайкинг")
-                : bi("Evening walk", "Вечерняя прогулка")
+            return bi("Wind down", "Сбавьте обороты")
         case .walkRecoveryAction:
             let walkPhase = CoachWalkRecoveryActionPresentation.phase(for: context)
             return bi(
@@ -626,23 +622,17 @@ enum CoachTeaserCopy {
         case .upcoming:
             if isHike {
                 if minutes >= 300 {
-                    return bi("All-day hike", "Целый день в хайкинге")
+                    return bi("Pace the day", "Весь день ровно")
                 }
                 if minutes >= 180 || result.context.durationBand == .extended {
-                    return bi("Long hike", "Длинный хайкинг")
+                    return bi("Pace the outing", "Ровный темп")
                 }
                 if substantial {
-                    return bi("Hike prep", "Подготовка к хайкингу")
+                    return bi("Fuel the outing", "Заправьтесь")
                 }
-                return bi("Easy hike", "Лёгкий хайкинг")
+                return bi("Keep it easy", "Держите легко")
             }
-            if result.context.durationBand == .extended {
-                return bi("Long walk", "Длинная прогулка")
-            }
-            if substantial {
-                return bi("Walk", "Прогулка")
-            }
-            return bi("Easy walk", "Лёгкая прогулка")
+            return bi("Keep it light", "Держите легко")
         case .live, .completed:
             return bi(
                 CoachWalkRecoveryActionPresentation.todayTitle(for: walkPhase, isHike: isHike, russian: false),
@@ -674,7 +664,10 @@ enum CoachTeaserCopy {
                     "Подготовьте воду и перекус — этой вылазке это нужно."
                 )
             }
-            return bi("Easy pace — no goal to hit.", "Лёгкий темп — без цели.")
+            return bi(
+                "No scoreboard today — easy pace is enough.",
+                "Сегодня без задачи — лёгкого темпа достаточно."
+            )
         case .live, .completed:
             return bi(
                 CoachWalkRecoveryActionPresentation.teaserMessage(

@@ -19,19 +19,48 @@ public enum WeekFitWidgetCopy {
         public static let nextHeader = WeekFitWidgetTextFitting.Slot.smallNextHeader.limit
     }
 
+    /// Snapshot language (`ru` vs `en`). Widget chrome follows this, not the system locale.
+    public static var usesRussian = false
+
+    public static func applyLanguage(_ code: String) {
+        usesRussian = code.lowercased().hasPrefix("ru")
+    }
+
+    private static func t(_ en: String, _ ru: String) -> String {
+        usesRussian ? ru : en
+    }
+
+    public static func metricMoveTitle() -> String { t("Move", "Акт.") }
+    public static func metricFuelTitle() -> String { t("Fuel", "Еда") }
+    public static func metricReadyTitle() -> String { t("Ready", "Форма") }
+
     public static func recoveryDisplay(score: Int?) -> String {
         guard let score else { return "—" }
         return "\(score)"
     }
 
+    public static func recoveryScoreLabel(for score: Int) -> String {
+        switch score {
+        case 70...: return t("Ready", "Готов")
+        case 55..<70: return t("Steady", "Ровно")
+        case 40..<55: return t("Protect", "Беречь")
+        default: return t("Recover", "Восст.")
+        }
+    }
+
     public static func recoveryCaption(label: String?, hasSignal: Bool) -> String {
         if let label, !label.isEmpty { return label }
-        return hasSignal ? "Ready" : "Recovery"
+        return hasSignal ? t("Ready", "Готов") : t("Recovery", "Восст.")
     }
 
     public static func nextActionIcon(for kind: WeekFitWidgetSnapshot.NextActionKind) -> String {
         switch kind {
         case .walk: return "figure.walk"
+        case .cycling: return "figure.outdoor.cycle"
+        case .running: return "figure.run"
+        case .swimming: return "figure.pool.swim"
+        case .yoga: return "figure.yoga"
+        case .racket: return "figure.tennis"
         case .strength: return "dumbbell.fill"
         case .recovery: return "heart.fill"
         case .sauna: return "flame.fill"
@@ -44,62 +73,88 @@ public enum WeekFitWidgetCopy {
 
     public static func dayModeTitle(_ mode: WeekFitWidgetSnapshot.DayMode) -> String {
         switch mode {
-        case .goodToGo: return "Good to go"
-        case .takeItEasy: return "Take it easy"
-        case .recoveryFocus: return "Recovery focus"
-        case .maintain: return "Steady day"
+        case .goodToGo: return t("Good to go", "Можно тренироваться")
+        case .takeItEasy: return t("Take it easy", "Сегодня легче")
+        case .recoveryFocus: return t("Recovery focus", "Фокус на восстановлении")
+        case .maintain: return t("Steady day", "Спокойный день")
         case .empty: return "WeekFit"
         }
     }
 
     public static func shortKindLabel(_ kind: WeekFitWidgetSnapshot.NextActionKind) -> String {
         switch kind {
-        case .walk: return "Walk"
-        case .strength: return "Strength"
-        case .recovery: return "Recovery"
-        case .sauna: return "Sauna"
-        case .meal: return "Meal"
-        case .hydration: return "Hydrate"
-        case .rest: return "Rest"
-        case .none: return "Open"
+        case .walk: return t("Walk", "Прогулка")
+        case .cycling: return t("Ride", "Вело")
+        case .running: return t("Run", "Бег")
+        case .swimming: return t("Swim", "Плавание")
+        case .yoga: return t("Yoga", "Йога")
+        case .racket: return t("Match", "Матч")
+        case .strength: return t("Strength", "Сила")
+        case .recovery: return t("Recovery", "Восстановление")
+        case .sauna: return t("Sauna", "Сауна")
+        case .meal: return t("Meal", "Еда")
+        case .hydration: return t("Hydrate", "Вода")
+        case .rest: return t("Rest", "Отдых")
+        case .none: return t("Open", "Открыть")
         }
     }
 
     /// Widget-native next label when app copy is too long for the card.
     public static func widgetNextLabel(for kind: WeekFitWidgetSnapshot.NextActionKind) -> String {
         switch kind {
-        case .walk: return "Easy walk"
-        case .strength: return "Strength"
-        case .recovery: return "Quiet pause"
-        case .sauna: return "Sauna"
-        case .meal: return "Fuel up"
-        case .hydration: return "Hydrate"
-        case .rest: return "Rest"
-        case .none: return "Open app"
+        case .walk: return t("Easy walk", "Лёгкая прогулка")
+        case .cycling: return t("Easy ride", "Лёгкая поездка")
+        case .running: return t("Easy run", "Лёгкий бег")
+        case .swimming: return t("Swim", "Плавание")
+        case .yoga: return t("Yoga", "Йога")
+        case .racket: return t("Match", "Матч")
+        case .strength: return t("Strength", "Сила")
+        case .recovery: return t("Quiet pause", "Тихая пауза")
+        case .sauna: return t("Sauna", "Сауна")
+        case .meal: return t("Fuel up", "Подкрепиться")
+        case .hydration: return t("Hydrate", "Вода")
+        case .rest: return t("Rest", "Отдых")
+        case .none: return t("Open app", "Открыть приложение")
         }
     }
 
     public static func mediumDetailFallback(for mode: WeekFitWidgetSnapshot.DayMode) -> String {
         switch mode {
-        case .goodToGo: return "Train as planned."
-        case .maintain: return "Keep the day steady."
-        case .takeItEasy: return "Ease intensity today."
-        case .recoveryFocus: return "Protect sleep and load."
-        case .empty: return "Prepare your day."
+        case .goodToGo: return t("Train as planned.", "Тренируйтесь по плану.")
+        case .maintain: return t("Keep the day steady.", "Держите день ровным.")
+        case .takeItEasy: return t("Ease intensity today.", "Сегодня без лишней интенсивности.")
+        case .recoveryFocus: return t("Protect sleep and load.", "Берегите сон и нагрузку.")
+        case .empty: return t("Prepare your day.", "Соберите день.")
         }
     }
 
     public static func smallHeroFallback(for mode: WeekFitWidgetSnapshot.DayMode, hasNext: Bool) -> String {
         switch mode {
         case .goodToGo, .maintain:
-            return hasNext ? "You're on track" : "Nothing urgent now"
+            return hasNext
+                ? t("You're on track", "Вы в ритме")
+                : t("Nothing urgent now", "Сейчас ничего срочного")
         case .takeItEasy:
-            return "Keep today light"
+            return t("Keep today light", "Сегодня легче")
         case .recoveryFocus:
-            return "Protect recovery"
+            return t("Protect recovery", "Берегите восстановление")
         case .empty:
-            return hasNext ? "Open WeekFit" : "Nothing urgent now"
+            return hasNext
+                ? t("Open WeekFit", "Откройте WeekFit")
+                : t("Nothing urgent now", "Сейчас ничего срочного")
         }
+    }
+
+    public static func allClearLabel() -> String { t("All clear", "Всё спокойно") }
+    public static func openWeekFitLabel() -> String { t("Open WeekFit", "Откройте WeekFit") }
+    public static func prepareDayLabel() -> String { t("Prepare your day.", "Соберите день.") }
+
+    public static func duringLabel(eventTitle: String) -> String {
+        t("During \(eventTitle)", "Сейчас: \(eventTitle)")
+    }
+
+    public static func beforeLabel(eventTitle: String) -> String {
+        t("Before \(eventTitle)", "Перед: \(eventTitle)")
     }
 
     /// Text-agnostic fit into a character budget. Prefer `fit(_:to:fallback:)` / slots.
@@ -111,7 +166,7 @@ public enum WeekFitWidgetCopy {
         raw: String,
         mode: WeekFitWidgetSnapshot.DayMode
     ) -> String {
-        if mode == .empty { return "Open WeekFit" }
+        if mode == .empty { return openWeekFitLabel() }
         return WeekFitWidgetTextFitting.fit(
             raw,
             to: .mediumHeadline,
@@ -123,7 +178,7 @@ public enum WeekFitWidgetCopy {
         raw: String,
         mode: WeekFitWidgetSnapshot.DayMode
     ) -> String {
-        if mode == .empty { return "Prepare your day." }
+        if mode == .empty { return prepareDayLabel() }
         return WeekFitWidgetTextFitting.fit(
             raw,
             to: .mediumDetail,
@@ -145,7 +200,7 @@ public enum WeekFitWidgetCopy {
             return WeekFitWidgetTextFitting.fit(explicit, to: .smallState, fallback: modeFallback)
         }
         if !snapshot.hasNextAction, snapshot.dayMode == .goodToGo || snapshot.dayMode == .maintain || snapshot.dayMode == .empty {
-            return WeekFitWidgetTextFitting.fit("All clear", to: .smallState, fallback: modeFallback)
+            return WeekFitWidgetTextFitting.fit(allClearLabel(), to: .smallState, fallback: modeFallback)
         }
         return WeekFitWidgetTextFitting.fit(modeFallback, to: .smallState, fallback: "WeekFit")
     }
@@ -175,7 +230,7 @@ public enum WeekFitWidgetCopy {
         raw: String,
         mode: WeekFitWidgetSnapshot.DayMode
     ) -> String {
-        if mode == .empty { return "Open WeekFit" }
+        if mode == .empty { return openWeekFitLabel() }
         return WeekFitWidgetTextFitting.fit(raw, to: .smallHero, fallback: dayModeTitle(mode))
     }
 
@@ -205,17 +260,17 @@ public enum WeekFitWidgetCopy {
         phase: WeekFitWidgetSnapshot.NextActionPhase
     ) -> String {
         switch phase {
-        case .inProgress: return "Now"
-        case .due: return "Due"
-        case .upcoming, .none: return "Up next"
+        case .inProgress: return t("Now", "Сейчас")
+        case .due: return t("Due", "Пора")
+        case .upcoming, .none: return t("Up next", "Дальше")
         }
     }
 
     public static func nextPhaseLabel(_ phase: WeekFitWidgetSnapshot.NextActionPhase) -> String {
         switch phase {
-        case .inProgress: return "Now"
-        case .due: return "Due"
-        case .upcoming, .none: return "Next"
+        case .inProgress: return t("Now", "Сейчас")
+        case .due: return t("Due", "Пора")
+        case .upcoming, .none: return t("Next", "Дальше")
         }
     }
 
@@ -248,6 +303,9 @@ public enum WeekFitWidgetCopy {
         if hay == "before \(next)" { return true }
         if hay.hasPrefix("before \(next)") { return true }
         if hay.hasPrefix("after \(next)") { return true }
+        if hay.hasPrefix("перед: \(next)") { return true }
+        if hay.hasPrefix("перед \(next)") { return true }
+        if hay.hasPrefix("после \(next)") { return true }
         return false
     }
 

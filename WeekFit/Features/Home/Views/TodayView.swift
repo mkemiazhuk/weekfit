@@ -2189,25 +2189,24 @@ struct TodayView: View {
                                             .foregroundStyle(textTertiary)
                                             .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
                                             .fixedSize(horizontal: false, vertical: true)
-
-                                        if let kind = coachProvenanceKind(for: activity) {
-                                            CoachProvenanceBadge(kind: kind, showsLabel: true, compact: true)
-                                                .padding(.top, 2)
-                                        }
                                     }
                                     .layoutPriority(1)
 
                                     if !shouldRelocateUpNextTime {
                                         Spacer(minLength: 8)
 
-                                        upNextTimePill(
-                                            text: upNextTimeText(for: activity, selectedDate: selectedDate)
+                                        upNextTrailingMeta(
+                                            timeText: upNextTimeText(for: activity, selectedDate: selectedDate),
+                                            provenance: coachProvenanceKind(for: activity)
                                         )
                                     }
                                 }
 
                                 if shouldRelocateUpNextTime {
-                                    HStack {
+                                    HStack(spacing: 8) {
+                                        if let kind = coachProvenanceKind(for: activity) {
+                                            CoachProvenanceBadge(kind: kind, showsLabel: true, compact: true)
+                                        }
                                         Spacer(minLength: 0)
                                         upNextTimePill(
                                             text: upNextTimeText(for: activity, selectedDate: selectedDate)
@@ -2285,6 +2284,16 @@ struct TodayView: View {
             )
             .offset(x: shouldRelocateUpNextTime ? 0 : -2, y: shouldRelocateUpNextTime ? 0 : 1)
             .fixedSize(horizontal: true, vertical: false)
+    }
+
+    @ViewBuilder
+    private func upNextTrailingMeta(timeText: String, provenance: CoachChangeKind?) -> some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            upNextTimePill(text: timeText)
+            if let provenance {
+                CoachProvenanceBadge(kind: provenance, showsLabel: true, compact: true)
+            }
+        }
     }
 
     private func upNextAccent(for activity: PlannedActivity) -> Color {
@@ -2415,12 +2424,20 @@ struct TodayView: View {
     }
 
     private func coachInsightCard(presentation: CoachUIPresentation) -> some View {
+        let now = Date()
+        let nextActivity = currentLiveUpNextActivity(now: now)
+            ?? nextUpcomingPlannedActivity(now: now)
+        let nextTitle = nextActivity.map {
+            shortDisplayTitle(activityDisplayTitle($0))
+        }
+        let display = CoachTodayCardCopy.display(
+            from: presentation,
+            nextActivityTitle: nextTitle
+        )
         let insightColor = presentation.accentColor
-        let insightTitle = presentation.todayTitle
+        let insightTitle = display.title
         let insightIcon = presentation.icon
-        let insightMessage = presentation.showsLimitedConfidenceBadge
-            ? presentation.recommendation
-            : presentation.todayMessage
+        let insightMessage = display.message
 
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()

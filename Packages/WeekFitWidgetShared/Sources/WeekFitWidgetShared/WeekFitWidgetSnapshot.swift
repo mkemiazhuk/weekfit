@@ -12,6 +12,11 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
 
     public enum NextActionKind: String, Codable, Sendable {
         case walk
+        case cycling
+        case running
+        case swimming
+        case yoga
+        case racket
         case strength
         case recovery
         case sauna
@@ -65,8 +70,10 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
 
     public var updatedAt: Date
     public var schemaVersion: Int
+    /// App language used when the snapshot was published (`en` or `ru`).
+    public var languageCode: String
 
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
 
     public init(
         dateKey: String,
@@ -94,7 +101,8 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         completedItems: Int,
         totalItems: Int,
         updatedAt: Date,
-        schemaVersion: Int = WeekFitWidgetSnapshot.currentSchemaVersion
+        schemaVersion: Int = WeekFitWidgetSnapshot.currentSchemaVersion,
+        languageCode: String = "en"
     ) {
         self.dateKey = dateKey
         self.activityProgress = Self.clamp01(activityProgress)
@@ -122,10 +130,19 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         self.totalItems = max(0, totalItems)
         self.updatedAt = updatedAt
         self.schemaVersion = schemaVersion
+        self.languageCode = languageCode.isEmpty ? "en" : languageCode
     }
 
     public var hasNextAction: Bool {
         nextActionKind != .none && !nextActionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    public var isFromToday: Bool {
+        isFromCalendarDay(Date())
+    }
+
+    public func isFromCalendarDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        dateKey == Self.dayKey(for: date, calendar: calendar)
     }
 
     public var isStale: Bool {
@@ -152,8 +169,8 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
             recoveryLabel: nil,
             hasRecoverySignal: false,
             dayMode: .empty,
-            dayStateLabel: "All clear",
-            dayGuidance: "Nothing urgent now",
+            dayStateLabel: "",
+            dayGuidance: "",
             dayGuidanceDetail: "",
             nextActionTitle: "",
             nextActionSubtitle: "",
@@ -162,7 +179,8 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
             nextActionPhase: .none,
             completedItems: 0,
             totalItems: 0,
-            updatedAt: now
+            updatedAt: now,
+            languageCode: Locale.current.language.languageCode?.identifier == "ru" ? "ru" : "en"
         )
     }
 
@@ -181,7 +199,7 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         case recoveryScore, sleepHours, recoveryLabel, hasRecoverySignal
         case dayMode, dayStateLabel, dayGuidance, dayGuidanceDetail
         case nextActionTitle, nextActionSubtitle, nextActionTime, nextActionKind, nextActionPhase
-        case completedItems, totalItems, updatedAt, schemaVersion
+        case completedItems, totalItems, updatedAt, schemaVersion, languageCode
     }
 
     public init(from decoder: Decoder) throws {
@@ -206,7 +224,12 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         nextActionTitle = try c.decode(String.self, forKey: .nextActionTitle)
         nextActionSubtitle = try c.decode(String.self, forKey: .nextActionSubtitle)
         nextActionTime = try c.decodeIfPresent(String.self, forKey: .nextActionTime)
-        nextActionKind = try c.decode(NextActionKind.self, forKey: .nextActionKind)
+        if let rawKind = try c.decodeIfPresent(String.self, forKey: .nextActionKind),
+           let kind = NextActionKind(rawValue: rawKind) {
+            nextActionKind = kind
+        } else {
+            nextActionKind = .none
+        }
         if let phase = try c.decodeIfPresent(NextActionPhase.self, forKey: .nextActionPhase) {
             nextActionPhase = phase
         } else if nextActionKind != .none {
@@ -218,5 +241,6 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         totalItems = try c.decode(Int.self, forKey: .totalItems)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
         schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        languageCode = try c.decodeIfPresent(String.self, forKey: .languageCode) ?? "en"
     }
 }

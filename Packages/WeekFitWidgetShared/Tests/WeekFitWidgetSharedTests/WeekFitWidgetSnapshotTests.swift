@@ -45,7 +45,7 @@ final class WeekFitWidgetSnapshotTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(WeekFitWidgetSnapshot.self, from: data)
         XCTAssertEqual(decoded.dayMode, .empty)
-        XCTAssertEqual(decoded.dayStateLabel, "All clear")
+        XCTAssertEqual(decoded.dayStateLabel, "")
         XCTAssertEqual(decoded.schemaVersion, WeekFitWidgetSnapshot.currentSchemaVersion)
     }
 

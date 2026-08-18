@@ -60,6 +60,15 @@ private struct WeekPlannerLiveQueryView: View {
     private let sessionResolver = PlannedActivitySessionResolver()
 
     private let calendar = Calendar.current
+
+    private var sessionDetailPrefetchKey: String {
+        let day = Int(calendar.startOfDay(for: viewModel.selectedDate).timeIntervalSince1970)
+        let workoutIDs = viewModel.selectedDayActivities(from: plannedActivities)
+            .compactMap(\.healthKitWorkoutUUID)
+            .sorted()
+            .joined(separator: ",")
+        return "\(day)|\(workoutIDs)"
+    }
     
     @AppStorage(NotificationPreferenceKey.activityReminders)
     private var activityRemindersEnabled = false
@@ -207,6 +216,27 @@ private struct WeekPlannerLiveQueryView: View {
             ActivitySessionDetailView(
                 session: session,
                 healthManager: healthManager
+            )
+        }
+        .task(id: sessionDetailPrefetchKey) {
+            let sessions = sessionResolver.snapshotsForDetailPrefetch(
+                viewModel.selectedDayActivities(from: plannedActivities)
+            )
+            await ActivitySessionDetailPrefetcher.prefetch(
+                sessions: sessions,
+                healthManager: healthManager
+            )
+        }
+        .onChange(of: activityCoordinator.liveWorkout?.id) { _, _ in
+            activityCoordinator.reconcileLiveWorkout(
+                with: Array(plannedActivities),
+                modelContext: modelContext
+            )
+        }
+        .onAppear {
+            activityCoordinator.reconcileLiveWorkout(
+                with: Array(plannedActivities),
+                modelContext: modelContext
             )
         }
         .sheet(item: $activityToConfirm) { activity in
@@ -912,6 +942,7 @@ private extension WeekPlannerLiveQueryView {
     func resolvedActivityStatus(for item: PlannedActivity) -> PlanActivityStatus {
         activityCoordinator.resolvedStatus(
             for: item,
+            among: selectedDayActivities,
             baseStatus: activityStatus(for: item)
         )
     }

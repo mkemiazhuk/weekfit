@@ -1120,7 +1120,7 @@ enum CoachCopyRegistryScenarios {
     // MARK: - Helpers
 
     private static func applyLiveHeartRate(_ draft: Draft, input: CoachCopyBuildInput) -> Draft {
-        LiveHeartRateCoachCopy.apply(to: draft, input: input)
+        LiveSessionCoachCopy.apply(to: draft, input: input)
     }
 
     private static func catchUpNextAction(

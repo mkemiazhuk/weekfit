@@ -108,7 +108,9 @@ struct PlanAddActivitySheet: View {
             return allSlots
         }
 
-        return allSlots.filter { $0 >= Date() }
+        return allSlots.filter { slot in
+            slot >= Date() || isEditingOriginalSlot(slot)
+        }
     }
 
     private var addSheetPresentationDetents: Set<PresentationDetent> {
@@ -322,11 +324,20 @@ private extension PlanAddActivitySheet {
     }
 
     func isPastSlot(_ slot: Date) -> Bool {
+        if isEditingOriginalSlot(slot) {
+            return false
+        }
+
         if !calendar.isDate(slot, inSameDayAs: Date()) {
             return false
         }
 
         return slot < Date()
+    }
+
+    func isEditingOriginalSlot(_ slot: Date) -> Bool {
+        guard let editingDate = viewModel.editingActivity?.date else { return false }
+        return calendar.isDate(slot, equalTo: editingDate, toGranularity: .minute)
     }
 }
 
