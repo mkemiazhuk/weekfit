@@ -1,0 +1,103 @@
+{
+  "identifier" : "WeekFitSubscriptions",
+  "nonRenewableSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6776311371",
+    "_developerTeamID" : "7R6347XPK2",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21451820",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "WeekFit Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "WeekFit Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "34.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "21451821",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "21451823",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "AI coaching, workouts, recovery and nutrition insights",
+              "displayName" : "WeekFit Annual",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "Персональные рекомендации, тренировки, восстановление и питание",
+              "displayName" : "WeekFit на год",
+              "locale" : "ru"
+            }
+          ],
+          "productID" : "com.weekfit.subscription.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "WeekFit Annual",
+          "subscriptionGroupID" : "21451820",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "21451822",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "AI coaching, workouts, recovery and nutrition insights",
+              "displayName" : "WeekFit Monthly",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "Персональные рекомендации, тренировки, восстановление и питание",
+              "displayName" : "WeekFit на месяц",
+              "locale" : "ru"
+            }
+          ],
+          "productID" : "com.weekfit.subscription.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "WeekFit Monthly",
+          "subscriptionGroupID" : "21451820",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

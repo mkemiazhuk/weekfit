@@ -19,6 +19,7 @@ struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var reviewManager: ReviewPromptManager
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
@@ -27,6 +28,7 @@ struct ProfileView: View {
     @State private var resetFailureMessage = ""
     @State private var isResettingLocalData = false
     @State private var showVersionCopiedToast = false
+    @State private var showWeekFitAccessPaywall = false
     @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     private var background: Color { WeekFitTheme.backgroundColor }
@@ -62,6 +64,17 @@ struct ProfileView: View {
             }
         }
         .weekFitTabSwitchModalOverlay()
+        .fullScreenCover(isPresented: $showWeekFitAccessPaywall) {
+            Group {
+                if subscriptionManager.hasResolved && subscriptionManager.hasFullAccess {
+                    WeekFitAccessStatusView()
+                } else {
+                    WeekFitPaywallView(source: .settings, allowsDismiss: true)
+                }
+            }
+            .environmentObject(subscriptionManager)
+            .environment(\.weekFitPalette, palette)
+        }
         .task {
             await refreshHealthPermissionState()
         }
@@ -455,6 +468,49 @@ private extension ProfileView {
                     SettingsGroupDivider()
                 }
             }
+
+            if !legalItems.isEmpty {
+                SettingsGroupDivider()
+            }
+
+            Button {
+                showWeekFitAccessPaywall = true
+            } label: {
+                profileActionRow(
+                    icon: "creditcard.fill",
+                    iconColor: textPrimary,
+                    iconBackground: palette.isLight
+                        ? WeekFitLightTokens.internalTile
+                        : WeekFitTheme.whiteOpacity(0.10),
+                    title: AppText.Paywall.accessTitle,
+                    titleColor: textPrimary
+                )
+            }
+            .buttonStyle(PressableScaleButtonStyle())
+            .accessibilityIdentifier("settings.weekFitAccess")
+            .accessibilityLabel(WeekFitLocalizedString("settings.weekFitAccess.title"))
+            .accessibilityHint(WeekFitLocalizedString("settings.weekFitAccess.a11yHint"))
+
+            SettingsGroupDivider()
+
+            Button {
+                Task { await subscriptionManager.restorePurchases() }
+            } label: {
+                profileActionRow(
+                    icon: "arrow.clockwise",
+                    iconColor: textPrimary,
+                    iconBackground: palette.isLight
+                        ? WeekFitLightTokens.internalTile
+                        : WeekFitTheme.whiteOpacity(0.10),
+                    title: LocalizedStringResource("paywall.restore"),
+                    titleColor: textPrimary
+                )
+            }
+            .buttonStyle(PressableScaleButtonStyle())
+            .disabled(subscriptionManager.isRestoreInFlight)
+            .opacity(subscriptionManager.isRestoreInFlight ? 0.72 : 1)
+            .accessibilityIdentifier("settings.restorePurchases")
+            .accessibilityLabel(WeekFitLocalizedString("paywall.restore"))
         }
     }
 

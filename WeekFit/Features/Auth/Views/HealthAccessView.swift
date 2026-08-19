@@ -156,11 +156,12 @@ struct HealthAccessView: View {
             didAppear = true
 
             refreshStateWithoutAnimation()
-            await refreshReadiness()
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                 contentVisible = true
             }
+
+            await refreshReadiness()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
@@ -1038,17 +1039,14 @@ private extension HealthAccessView {
             source: "healthAccess.primaryButton",
             includeSupplementaryPermissions: true
         ) {
-            Task {
-                await refreshReadiness()
+            Task { @MainActor in
+                await finalizeHealthAccessRequestUI()
             }
         }
 
         switch action {
         case .startedAuthorizationPrompt:
             accessState = .requesting
-            Task {
-                await finalizeHealthAccessRequestUI()
-            }
         case .unavailable:
             accessState = .unavailable
         case .blockedByDemoMode:
@@ -1057,14 +1055,11 @@ private extension HealthAccessView {
     }
 
     func finalizeHealthAccessRequestUI() async {
-        let isRealGranted = await healthManager.checkReadAuthorizationStatus()
+        let isRealGranted = healthManager.isHealthAccessGranted
 
-        await MainActor.run {
-            healthAccessRequested = healthManager.isHealthAccessRequested
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                healthManager.isHealthAccessGranted = isRealGranted
-                accessState = isRealGranted ? .connected : .needsSettings
-            }
+        healthAccessRequested = healthManager.isHealthAccessRequested
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+            accessState = isRealGranted ? .connected : .needsSettings
         }
 
         await refreshReadiness()

@@ -89,6 +89,10 @@ final class LocalDataResetService {
     }
 
     private func clearUserDefaults() {
+        // App Store entitlement is not workspace data. Preserve the last
+        // StoreKit-verified fallback across local reset / account switch.
+        let preservedVerifiedEntitlement = defaults.string(forKey: WeekFitEntitlementFallbackStore.key)
+
         if let bundleIdentifier = Bundle.main.bundleIdentifier {
             defaults.removePersistentDomain(forName: bundleIdentifier)
             debugLog("Cleared UserDefaults persistent domain: \(bundleIdentifier)")
@@ -138,6 +142,10 @@ final class LocalDataResetService {
 
             knownKeys.forEach(defaults.removeObject(forKey:))
             debugLog("Cleared known UserDefaults keys: \(knownKeys.count)")
+        }
+
+        if let preservedVerifiedEntitlement {
+            defaults.set(preservedVerifiedEntitlement, forKey: WeekFitEntitlementFallbackStore.key)
         }
 
         defaults.synchronize()

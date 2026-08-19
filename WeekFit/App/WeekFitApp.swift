@@ -24,6 +24,7 @@ struct WeekFitApp: App {
     @StateObject private var appearance = WeekFitAppearanceController()
     @StateObject private var reviewPromptManager = ReviewPromptManager()
     @StateObject private var unitsStore = WeekFitUnitsStore.shared
+    @StateObject private var subscriptionManager = SubscriptionManager()
     @State private var nightComfortLocationService: NightComfortLocationService?
 
     @State private var backgroundEnteredAt: Date?
@@ -59,6 +60,7 @@ struct WeekFitApp: App {
                 .environmentObject(appearance)
                 .environmentObject(reviewPromptManager)
                 .environmentObject(unitsStore)
+                .environmentObject(subscriptionManager)
                 .environment(\.locale, languageManager.locale)
                 .preferredColorScheme(appearance.colorSchemeOverride)
                 .modifier(WeekFitPaletteEnvironmentSync(
@@ -92,6 +94,9 @@ struct WeekFitApp: App {
                         "root view created",
                         detail: "ContentView appeared; lastStep=\(StartupDiagnostics.lastCompletedStep)"
                     )
+                }
+                .task {
+                    await subscriptionManager.start()
                 }
                 .onChange(of: languageManager.selectedLanguage) { _, language in
                     // Locale/cache already updated in AppLanguageManager.didSet.
@@ -152,6 +157,7 @@ struct WeekFitApp: App {
         case .active:
             activityCoordinator.refresh()
             nightComfort.handleSceneBecameActive()
+            Task { await subscriptionManager.refreshOnForeground() }
             // Palette store is owned solely by `WeekFitPaletteEnvironmentSync`.
             // Do not write it here from `UITraitCollection` — that races SwiftUI's
             // `colorScheme` and leaves env Light + WeekFitTheme Dark (or vice versa).

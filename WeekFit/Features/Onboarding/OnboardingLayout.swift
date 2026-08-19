@@ -71,12 +71,13 @@ enum OnboardingLayout {
 
 struct OnboardingTitle: View {
     let text: String
+    @Environment(\.weekFitPalette) private var palette
     @ScaledMetric(relativeTo: .title2) private var size: CGFloat = OnboardingLayout.Title.size
 
     var body: some View {
         Text(text)
             .font(.system(size: size, weight: .bold, design: .rounded))
-            .foregroundStyle(WeekFitTheme.primaryText)
+            .foregroundStyle(palette.textPrimary)
             .tracking(OnboardingLayout.Title.tracking)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,12 +87,13 @@ struct OnboardingTitle: View {
 
 struct OnboardingSubtitle: View {
     let text: String
+    @Environment(\.weekFitPalette) private var palette
     @ScaledMetric(relativeTo: .body) private var size: CGFloat = OnboardingLayout.Subtitle.size
 
     var body: some View {
         Text(text)
             .font(.system(size: size, weight: .medium))
-            .foregroundStyle(WeekFitTheme.secondaryText)
+            .foregroundStyle(palette.textSecondary)
             .lineSpacing(OnboardingLayout.Subtitle.lineSpacing)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)

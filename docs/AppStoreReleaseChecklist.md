@@ -41,6 +41,7 @@
 | 1.9 | Localization | `Scripts/check_localization_parity.py` + language-mix | [x] 2026-07-28 |
 | 1.10 | Focused unit tests | Analytics + Review + Settings IA | [x] 2026-07-28 · iPhone 16 / iOS 18.5 |
 | 1.11 | Full `WeekFitTests` | Unit suite only (UITests flaky / separate) | [x] 2026-07-28 · **TEST SUCCEEDED** |
+| 1.12 | Monetization cutoff | Confirm `WeekFitReleaseConfiguration.Monetization.cutoffDate` is the actual public IAP launch instant (UTC). Flip `cutoffConfirmedForAppStoreSubmission` to `true` **immediately before** submitting 1.3. Keep it `false` until then. Product rule unchanged: original App Store download strictly before that instant → lifetime legacy access. | [ ] |
 
 ---
 
@@ -55,8 +56,8 @@
 | 2.5 | Screenshots | iPhone 6.7" + 6.1" | [ ] |
 | 2.6 | App Privacy questionnaire | See `docs/AppStorePrivacyDisclosures.md` — Product Interaction + Crash Data; **Tracking = No** | [ ] update ASC |
 | 2.7 | Age rating | Health & Fitness, no medical diagnosis | [ ] |
-| 2.8 | Pricing | Free (no IAP) | [ ] |
-| 2.9 | Review notes + demo | Health path — `docs/AppStoreListing.md` | [ ] |
+| 2.8 | Pricing | Free to download; auto-renewable subscriptions (monthly + annual) | [ ] |
+| 2.9 | Review notes + demo | Paywall + optional demo dataset — paste Review Notes from `docs/AppStoreListing.md` | [ ] |
 | 2.10 | What's New | 1.3 EN + RU from `docs/AppStoreListing.md` | [ ] |
 | 2.11 | Phased release | Enable 10% → 50% → 100% | [ ] |
 
@@ -144,7 +145,7 @@ xcodebuild test -scheme WeekFit \
 | Item | Status |
 |------|--------|
 | No cloud account / sync | By design — local-first |
-| No subscriptions | Free app |
+| Subscriptions | Monthly + annual auto-renewable. Legacy = original App Store download before paid 1.3 IAP goes live (cutoff unconfirmed until 1.12). |
 | No Apple Watch app | Phone + HealthKit sync only |
 | Insights / Highlights | Not in navigation |
 | Sign in with Apple | Wired but not required |

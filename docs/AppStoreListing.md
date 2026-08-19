@@ -209,25 +209,44 @@ Welcome to WeekFit 1.0.
 ```
 WeekFit is a local-first fitness planner with a daily Coach powered by Apple Health.
 
-TEST PATH (no account required):
-1. Launch app → complete first-run onboarding (or skip where offered) → reach Today.
-2. When prompted, grant Apple Health read access (sleep, workouts, activity, heart rate, nutrition).
-3. Explore tabs: Today, Coach, Meals, Plan.
-4. Optional: add a planned workout in Plan, complete a workout in Apple Health or Fitness app, return to WeekFit to see sync.
+PRIMARY TEST PATH (no account required — use this to review subscriptions):
+1. Launch WeekFit.
+2. Complete first-run onboarding (or skip where offered).
+3. The subscription paywall is presented. It is not bypassed for App Review.
+4. Confirm Monthly and Annual products are visible with StoreKit localized prices.
+5. Annual shows the introductory free trial when StoreKit returns one (7-day trial configured in App Store Connect).
+6. Purchase can be tested with the sandbox Apple ID.
+7. Restore Purchases is on the paywall and also in Settings.
+8. After subscribe (or Restore), Today / Coach / Meals / Plan are available.
+9. Data is kept if a subscription later expires; the paywall returns, content is not wiped.
+
+OPTIONAL SAMPLE DATASET (after the paywall has been reviewed):
+1. From the welcome screen, long-press “Open WeekFit”.
+2. Choose Sign In.
+3. Email: review@weekfit.app
+4. Password: review_passw0rd
+5. If this sandbox Apple ID is not subscribed, the real paywall is shown first (same Monthly / Annual / trial / Restore flow). Subscribe or Restore to continue.
+6. After entitlement, sample Today / Coach / Meals / Plan data loads.
+7. To reopen the real subscription screen from the demo: Settings → WeekFit Access.
+   Restore Purchases is the row directly below WeekFit Access.
 
 PERMISSIONS:
 • HealthKit — core feature; personalizes Coach and syncs completed workouts.
 • Camera — optional; custom food photos only.
 • Location (When In Use) — optional; Night Comfort theme at local sunset.
 
-NOT INCLUDED IN 1.0.1:
-• No subscriptions or in-app purchases.
+NOT INCLUDED IN 1.3:
 • No cloud account (Sign in with Apple is not required).
 • No Apple Watch companion app (completed workouts sync via HealthKit).
 
+SUBSCRIPTIONS:
+• Product IDs: com.weekfit.subscription.monthly and com.weekfit.subscription.annual.
+• Yearly includes a 7-day introductory free trial in App Store Connect; the app displays the trial only when StoreKit returns it.
+• Anyone whose original App Store download is before paid 1.3 in-app purchases go live remains a legacy user with lifetime access. That cutoff is confirmed in code immediately before this version is submitted; do not treat a calendar placeholder as the launch instant.
+
 WeekFit does not provide medical advice.
 
-Demo account: not required.
+Demo account is optional (sample dataset only). The paywall is available without it.
 Support: support@weekfit.app
 ```
 

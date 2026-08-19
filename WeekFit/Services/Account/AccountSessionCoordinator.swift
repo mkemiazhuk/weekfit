@@ -155,6 +155,10 @@ enum AccountSessionCoordinator {
         appSession.triggerHealthRefresh(source: "accountSession.reviewDemo")
         appSession.triggerCoachRefresh(source: "accountSession.reviewDemo")
 
+        // Demo skips first-run onboarding so reviewers reach Today sample data
+        // after StoreKit — and the paywall when they are not entitled.
+        OnboardingStore.markCompleted()
+
         AccountSessionDiagnostics.log(
             "Entered review demo mode",
             mode: .reviewDemo,
@@ -435,6 +439,10 @@ enum AccountSessionCoordinator {
         )
         appSession.triggerHealthRefresh(source: "accountSession.reviewDemoRefresh")
         appSession.triggerCoachRefresh(source: "accountSession.reviewDemoRefresh")
+
+        // Keep the real paywall reachable after relaunch (root gate requires
+        // completed onboarding). Review demo never auto-bypasses StoreKit.
+        OnboardingStore.markCompleted()
     }
 
     private static func tearDownReviewDemo(

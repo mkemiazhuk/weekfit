@@ -724,7 +724,7 @@ final class HealthManager: ObservableObject {
         return HealthAuthorizationRequestContext(readTypes: readTypes)
     }
 
-    /// Native HealthKit boundary — preflight status, then callback API (no async/await wrapper).
+    /// Native HealthKit boundary — present the system sheet immediately on user-initiated connect.
     private func invokeNativeHealthKitAuthorizationRequest(
         source: String,
         typesToRead: Set<HKObjectType>,
@@ -742,47 +742,13 @@ final class HealthManager: ObservableObject {
             """
         )
 
-        Self.logger.debug(
-            "NATIVE preflight started source=\(source, privacy: .public) mainThread=\(Thread.isMainThread, privacy: .public)"
+        invokeNativeAuthorizationRequest(
+            toShare: typesToShare,
+            read: typesToRead,
+            source: source,
+            for: date,
+            plannedActivities: plannedActivities
         )
-
-        healthStore.getRequestStatusForAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] status, error in
-            let statusName: String = {
-                switch status {
-                case .shouldRequest:
-                    return "shouldRequest"
-                case .unnecessary:
-                    return "unnecessary"
-                case .unknown:
-                    return "unknown"
-                @unknown default:
-                    return "future(\(status.rawValue))"
-                }
-            }()
-
-            Self.logger.debug(
-                """
-                NATIVE preflight completed status=\(statusName, privacy: .public) \
-                rawValue=\(status.rawValue, privacy: .public) \
-                error=\(String(describing: error), privacy: .public)
-                """
-            )
-
-            Task { @MainActor [weak self] in
-                guard let self else {
-                    Self.logger.error("HealthManager released before preflight completion")
-                    return
-                }
-
-                self.invokeNativeAuthorizationRequest(
-                    toShare: typesToShare,
-                    read: typesToRead,
-                    source: source,
-                    for: date,
-                    plannedActivities: plannedActivities
-                )
-            }
-        }
     }
 
     private func invokeNativeAuthorizationRequest(
@@ -830,10 +796,6 @@ final class HealthManager: ObservableObject {
         for date: Date,
         plannedActivities: [PlannedActivity]
     ) async {
-        defer {
-            isHealthAuthorizationInFlight = false
-        }
-
         UserDefaults.standard.set(true, forKey: healthAccessRequestedKey)
 
         lastHealthAuthorizationHadError = (error != nil)
@@ -848,16 +810,26 @@ final class HealthManager: ObservableObject {
             accessGrantedAfterProbe: granted
         )
 
+        NotificationCenter.default.post(name: .healthAccessDidChange, object: nil)
+
+        let handlers = authorizationCompletionHandlers
+        authorizationCompletionHandlers.removeAll()
+        isHealthAuthorizationInFlight = false
+        handlers.forEach { $0() }
+
         if granted {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            await loadHealthData(for: date, plannedActivities: plannedActivities)
-            WeekFitActivityCoordinator.shared.activateHealthKitSync()
-            HealthConnectDiagnostics.logInitialSync(
-                source: source,
-                started: true,
-                reason: "authorizationGranted"
-            )
-            scheduleDeferredWorkoutRouteAuthorization()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                await self.loadHealthData(for: date, plannedActivities: plannedActivities)
+                WeekFitActivityCoordinator.shared.activateHealthKitSync()
+                HealthConnectDiagnostics.logInitialSync(
+                    source: source,
+                    started: true,
+                    reason: "authorizationGranted"
+                )
+                self.scheduleDeferredWorkoutRouteAuthorization()
+            }
         } else {
             resetHealthDependentValues()
             HealthConnectDiagnostics.logInitialSync(
@@ -866,12 +838,6 @@ final class HealthManager: ObservableObject {
                 reason: error == nil ? "authorizationDeniedOrUnavailable" : "authorizationError"
             )
         }
-
-        NotificationCenter.default.post(name: .healthAccessDidChange, object: nil)
-
-        let handlers = authorizationCompletionHandlers
-        authorizationCompletionHandlers.removeAll()
-        handlers.forEach { $0() }
     }
 
     /// Workout routes, location, and notifications are requested after the main HealthKit sheet dismisses.

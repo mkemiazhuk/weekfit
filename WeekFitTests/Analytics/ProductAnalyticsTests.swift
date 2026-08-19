@@ -25,7 +25,7 @@ final class ProductAnalyticsTests: XCTestCase {
         let expected: Set<String> = [
             "today", "coach", "meals", "plan", "settings", "onboarding",
             "recovery_details", "activity_details", "nutrition_details",
-            "meal_builder", "help_weekfit", "feedback_form"
+            "meal_builder", "help_weekfit", "feedback_form", "paywall"
         ]
         XCTAssertEqual(Set(AnalyticsScreen.allCases.map(\.rawValue)), expected)
     }

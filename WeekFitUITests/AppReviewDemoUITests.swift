@@ -12,9 +12,16 @@ final class AppReviewDemoUITests: XCTestCase {
     @MainActor
     private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = extraArguments
+        app.launchArguments = ["-ui-testing"] + extraArguments
         app.launch()
         return app
+    }
+
+    @MainActor
+    private func launchDemoDatasetApp() -> XCUIApplication {
+        // Demo-dataset tests are not the subscription review path. Skip the
+        // paywall with an explicit launch argument only.
+        launchApp(extraArguments: ["-weekfit-force-legacy-user"])
     }
 
     @MainActor
@@ -47,7 +54,7 @@ final class AppReviewDemoUITests: XCTestCase {
 
     @MainActor
     func testReviewerCredentialLoginPopulatesApp() throws {
-        let app = launchApp()
+        let app = launchDemoDatasetApp()
 
         XCTAssertTrue(app.buttons["login.openWeekFit"].waitForExistence(timeout: 8))
         signInAsReviewer(in: app)
@@ -69,12 +76,24 @@ final class AppReviewDemoUITests: XCTestCase {
 
     @MainActor
     func testReviewerDemoPersistsAcrossRelaunch() throws {
-        let app = launchApp()
+        let app = launchDemoDatasetApp()
         signInAsReviewer(in: app)
         XCTAssertTrue(app.otherElements["screen.today"].waitForExistence(timeout: 12))
 
         app.terminate()
-        let relaunched = launchApp()
+        let relaunched = launchDemoDatasetApp()
         XCTAssertTrue(relaunched.otherElements["screen.today"].waitForExistence(timeout: 8))
+    }
+
+    @MainActor
+    func testReviewerWithoutEntitlementReachesRealPaywall() throws {
+        let app = launchApp(extraArguments: ["-weekfit-force-new-user"])
+        signInAsReviewer(in: app)
+
+        XCTAssertTrue(app.buttons["paywall.cta"].waitForExistence(timeout: 12))
+        XCTAssertTrue(app.buttons["paywall.plan.yearly"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["paywall.plan.monthly"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["paywall.restore"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.buttons["paywall.close"].exists)
     }
 }

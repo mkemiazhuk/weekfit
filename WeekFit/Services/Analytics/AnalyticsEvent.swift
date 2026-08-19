@@ -111,4 +111,13 @@ enum AnalyticsEvent: String, Sendable {
     // Recovery Stress Index — UI interactions only (no score, category, or health values).
     case stressIndexViewed = "stress_index_viewed"
     case stressIndexDetailsOpened = "stress_index_details_opened"
+
+    // Subscription / paywall — product ids only; never prices, HealthKit, or identity.
+    case paywallViewed = "paywall_viewed"
+    case subscriptionOptionSelected = "subscription_option_selected"
+    case subscriptionPurchaseStarted = "subscription_purchase_started"
+    case subscriptionPurchaseSuccess = "subscription_purchase_success"
+    case subscriptionPurchaseCancelled = "subscription_purchase_cancelled"
+    case subscriptionRestoreStarted = "subscription_restore_started"
+    case subscriptionRestoreSuccess = "subscription_restore_success"
 }

@@ -657,12 +657,10 @@ private extension FirstRunOnboardingView {
         ) {
             Task { @MainActor in
                 isRequestingHealth = false
-                let granted = await healthManager.checkReadAuthorizationStatus()
-                healthManager.isHealthAccessGranted = granted
+                let granted = healthManager.isHealthAccessGranted
                 OnboardingAnalytics.healthAuthorization(result: granted ? "granted" : "denied")
                 if granted {
                     OnboardingFunnelAnalytics.shared.trackHealthConnectionCompleted()
-                    await healthManager.loadHealthData()
                     appSession.triggerHealthRefresh(source: "onboarding.health.connected")
                     appSession.triggerCoachRefresh(source: "onboarding.health.connected")
                 } else if healthManager.lastHealthAuthorizationHadError {

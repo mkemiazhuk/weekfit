@@ -56,6 +56,46 @@ final class LocalizationRegressionTests: XCTestCase {
             WeekFitLocalizedString("onboarding.v10.promise.title", locale: Locale(identifier: "en")),
             "Stop guessing."
         )
+        XCTAssertEqual(
+            WeekFitLocalizedString("paywall.title", locale: Locale(identifier: "en")),
+            "Your day, adapted to you."
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("paywall.title", locale: Locale(identifier: "ru")),
+            "День, который подстраивается под вас."
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("paywall.restore", locale: Locale(identifier: "en")),
+            "Restore Purchases"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("paywall.restore", locale: Locale(identifier: "ru")),
+            "Восстановить покупки"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.weekFitAccess.title", locale: Locale(identifier: "en")),
+            "WeekFit Access"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.weekFitAccess.title", locale: Locale(identifier: "ru")),
+            "Доступ к WeekFit"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.weekFitAccess.a11yHint", locale: Locale(identifier: "en")),
+            "Opens the WeekFit subscription screen."
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.weekFitAccess.a11yHint", locale: Locale(identifier: "ru")),
+            "Открывает экран подписки WeekFit."
+        )
+        XCTAssertFalse(
+            WeekFitLocalizedString("settings.weekFitAccess.title", locale: Locale(identifier: "ru"))
+                .localizedCaseInsensitiveContains("ты")
+        )
+        XCTAssertFalse(
+            WeekFitLocalizedString("settings.weekFitAccess.a11yHint", locale: Locale(identifier: "ru"))
+                .localizedCaseInsensitiveContains("ты")
+        )
     }
 
     func testMissingLocalizationFallsBackToKey() {

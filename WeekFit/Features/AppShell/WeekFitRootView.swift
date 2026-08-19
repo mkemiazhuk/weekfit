@@ -33,6 +33,7 @@ struct WeekFitRootView: View {
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var reviewManager: ReviewPromptManager
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.weekFitPalette) private var palette
@@ -53,6 +54,7 @@ struct WeekFitRootView: View {
     /// Tab activation alone must not reload until this matches or data goes stale.
     @State private var acknowledgedHealthRefreshToken: UUID?
     @State private var cachedPlannedActivitiesSignature = ""
+    @State private var showLegacyAccessThanks = false
 
     /// Joins overlapping workout reconcile requests (appear + onChange can race).
     private static var reconcileInFlight: Task<Void, Never>?
@@ -211,6 +213,21 @@ struct WeekFitRootView: View {
                 }
                 .environmentObject(healthManager)
             }
+            .fullScreenCover(isPresented: paywallPresented) {
+                WeekFitPaywallView(source: .root, allowsDismiss: false)
+                    .environmentObject(subscriptionManager)
+                    .environment(\.weekFitPalette, palette)
+            }
+            .sheet(isPresented: $showLegacyAccessThanks) {
+                LegacyAccessThanksSheet {
+                    LegacyAccessThanksStore.hasShown = true
+                    showLegacyAccessThanks = false
+                }
+                .environment(\.weekFitPalette, palette)
+            }
+            .onChange(of: subscriptionManager.accessState) { _, _ in
+                presentLegacyThanksIfNeeded()
+            }
             .onAppear(perform: handleRootAppear)
             .onChange(of: appSession.pendingRootTab) { _, tab in
                 guard tab != nil, let destination = appSession.consumePendingRootTab() else { return }
@@ -235,6 +252,25 @@ struct WeekFitRootView: View {
                 guard shouldOpen else { return }
                 returnToToday()
             }
+    }
+
+    private var paywallPresented: Binding<Bool> {
+        Binding(
+            get: {
+                subscriptionManager.shouldBlockAccess
+                    && OnboardingStore.hasCompletedOnboarding
+                    && !appSession.isPresentingOnboarding
+            },
+            set: { _ in }
+        )
+    }
+
+    private func presentLegacyThanksIfNeeded() {
+        guard subscriptionManager.accessState == .legacy else { return }
+        guard OnboardingStore.hasCompletedOnboarding else { return }
+        guard !LegacyAccessThanksStore.hasShown else { return }
+        guard !WeekFitUITestSupport.isActive else { return }
+        showLegacyAccessThanks = true
     }
 
     private var rootShell: some View {
@@ -288,6 +324,7 @@ struct WeekFitRootView: View {
             showContent = true
         }
         ProductAnalytics.trackTab(selectedTab)
+        presentLegacyThanksIfNeeded()
         planViewModel.beforePlannedActivityDeleted = {
             CoachStateStabilizer.markRealityChange(source: "plannerActivityDelete")
             CoachSnapshotInvalidator.invalidate(

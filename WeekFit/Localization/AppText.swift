@@ -600,6 +600,18 @@ enum AppText {
         }
     }
 
+    enum Paywall {
+        static let title: LocalizedStringResource = "paywall.title"
+        static let subtitle: LocalizedStringResource = "paywall.subtitle"
+        static let restore: LocalizedStringResource = "paywall.restore"
+        static let continueAction: LocalizedStringResource = "paywall.cta.continue"
+        static let terms: LocalizedStringResource = "paywall.legal.terms"
+        static let privacy: LocalizedStringResource = "paywall.legal.privacy"
+        static let legalSeparator: LocalizedStringResource = "paywall.legal.separator"
+        static let accessTitle: LocalizedStringResource = "settings.weekFitAccess.title"
+        static let accessHint: LocalizedStringResource = "settings.weekFitAccess.a11yHint"
+    }
+
     enum Errors {}
 }
 

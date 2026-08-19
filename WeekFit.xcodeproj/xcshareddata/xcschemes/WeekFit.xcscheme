@@ -75,6 +75,15 @@
             ReferencedContainer = "container:WeekFit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "-weekfit-force-new-user"
+            isEnabled = "NO">
+         </CommandLineArgument>
+      </CommandLineArguments>
+      <StoreKitConfigurationFileReference
+         identifier = "../../WeekFit/Configuration/WeekFit.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

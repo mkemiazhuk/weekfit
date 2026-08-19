@@ -42,6 +42,7 @@ App Store Connect questionnaire notes: `docs/AppStorePrivacyDisclosures.md`.
 | `meal_builder` | Meal Builder appear | Creation surface |
 | `onboarding` | Reserved (first-run flow) | Activation |
 | `help_weekfit` / `feedback_form` | Settings help destinations | Support |
+| `paywall` | Subscription paywall | Monetization |
 
 **Automatic Firebase screen reporting is disabled** via `FirebaseAutomaticScreenReportingEnabled = NO` in `Info.plist`. Only manual `trackScreen` / `screen_view` events from `ProductScreenTracker` are used.
 
@@ -270,6 +271,25 @@ iOS does not confirm whether the user submitted a rating after `native_review_re
 Eligibility counters are sent as coarse buckets (`0_2`, `3_4`, `5_plus`), never exact dates or raw high-cardinality integers.
 
 DEBUG-only OSLog for review events; production does not spam.
+
+---
+
+## Subscription / paywall
+
+Product ids only (`com.weekfit.subscription.monthly` / `annual`, else `unknown`).
+Never send prices, trial length, HealthKit, nutrition, recovery, or account identity.
+
+| Event | Trigger | Parameters |
+|-------|---------|------------|
+| `paywall_viewed` | Paywall appear | `source` = `onboarding` \| `root` \| `settings` \| `other` |
+| `subscription_option_selected` | Monthly / annual selected | `product_id` |
+| `subscription_purchase_started` | Purchase CTA | `product_id` |
+| `subscription_purchase_success` | Verified entitlement after purchase | `product_id` |
+| `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id` |
+| `subscription_restore_started` | Restore Purchases | — |
+| `subscription_restore_success` | Restore found an active entitlement | — |
+
+Screen: `paywall` via `ProductScreenTracker` on paywall appear.
 
 ---
 

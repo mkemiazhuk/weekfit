@@ -29,6 +29,7 @@ final class AccountSessionTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: scenarioKey)
         UserDefaults.standard.removeObject(forKey: sessionKey)
         UserDefaults.standard.removeObject(forKey: "weekfit.healthAccessRequested")
+        UserDefaults.standard.removeObject(forKey: OnboardingStore.Keys.completed)
         CoachObservationStore.clearAll()
     }
 
@@ -64,6 +65,10 @@ final class AccountSessionTests: XCTestCase {
         XCTAssertEqual(AccountSessionController.shared.mode, .reviewDemo)
         XCTAssertTrue(healthManager.isAppReviewDemoActive)
         XCTAssertEqual(AccountSessionController.shared.containerIdentity, "swiftdata-review-demo")
+        XCTAssertTrue(
+            OnboardingStore.hasCompletedOnboarding,
+            "Review demo must complete onboarding so a non-subscriber sees the real paywall"
+        )
 
         let productionCount = try? WeekFitModelContainer.productionContext().fetchCount(
             FetchDescriptor<PlannedActivity>()

@@ -21,6 +21,7 @@ enum AnalyticsParameterKey {
     static let appliedCountBucket = "applied_count_bucket"
     static let resultType = "result_type"
     static let surface = "surface"
+    static let productID = "product_id"
     /// Release channel: `testflight` | `appstore` (set as default event parameter).
     static let distribution = "distribution"
 }

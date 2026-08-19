@@ -84,6 +84,10 @@ final class LocalAuthSemanticsTests: XCTestCase {
         AuthSessionStore.markWeekFitEntered()
         WorkspaceOwnerStore.ownerID = WorkspaceOwnerStore.localOwnerID
         insertProductionActivity(title: "To Reset")
+        UserDefaults.standard.set(
+            WeekFitVerifiedEntitlement.unsubscribed.rawValue,
+            forKey: WeekFitEntitlementFallbackStore.key
+        )
 
         let resetService = LocalDataResetService(
             modelContext: WeekFitModelContainer.productionContext()
@@ -99,6 +103,12 @@ final class LocalAuthSemanticsTests: XCTestCase {
         XCTAssertTrue(AuthSessionStore.hasEnteredWeekFit)
         XCTAssertNil(AuthSessionStore.appleUserID)
         XCTAssertEqual(WorkspaceOwnerStore.ownerID, WorkspaceOwnerStore.localOwnerID)
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: WeekFitEntitlementFallbackStore.key),
+            WeekFitVerifiedEntitlement.unsubscribed.rawValue,
+            "Local reset must not erase StoreKit entitlement fallback"
+        )
+        UserDefaults.standard.removeObject(forKey: WeekFitEntitlementFallbackStore.key)
     }
 
     // 7. Authenticated Reset → empty workspace, auth remains
