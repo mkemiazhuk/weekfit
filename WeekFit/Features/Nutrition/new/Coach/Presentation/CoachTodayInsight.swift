@@ -24,6 +24,12 @@ enum CoachSemanticColor: String, Equatable, Sendable {
     case risk
 }
 
+extension CoachSemanticColor {
+    var isLiveSessionChrome: Bool {
+        HeartRateZones.isLiveZoneColor(self) || self == .live
+    }
+}
+
 /// Risk signal layered **on top of** the story — independent from `semanticColor`.
 enum CoachAlertSeverity: String, Equatable, Sendable {
     case none

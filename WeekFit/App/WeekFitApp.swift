@@ -78,6 +78,9 @@ struct WeekFitApp: App {
                 .onAppear {
                     StartupDiagnostics.step(6, "HealthKit service created", detail: "WindowGroup.onAppear")
                     activityCoordinator.prepareLaunchServices()
+                    activityCoordinator.ensureHeartRateZonePhysiology = { [healthManager] in
+                        await healthManager.ensureHeartRateZonePhysiology()
+                    }
                     activityCoordinator.beforePlannedActivityMutation = {
                         CoachSnapshotInvalidator.invalidate(
                             coordinator: coachCoordinator,

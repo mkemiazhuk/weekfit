@@ -126,12 +126,388 @@ final class RecoveryScoreEngineXCTests: XCTestCase {
             makeInput(deepSleepMinutes: 20, remSleepMinutes: 30)
         )
 
-        XCTAssertGreaterThan(strongArchitecture.sleepArchitecture, weakArchitecture.sleepArchitecture)
-        XCTAssertLessThanOrEqual(strongArchitecture.sleepArchitecture, RecoveryScoreBreakdown.maxSleepArchitectureContribution)
+        XCTAssertGreaterThan(
+            strongArchitecture.sleepArchitectureGrade ?? -1,
+            weakArchitecture.sleepArchitectureGrade ?? -1
+        )
+        XCTAssertGreaterThan(
+            strongArchitecture.sleepArchitectureQuality ?? -1,
+            weakArchitecture.sleepArchitectureQuality ?? -1
+        )
+        XCTAssertLessThanOrEqual(
+            strongArchitecture.sleepArchitectureGrade ?? 99,
+            RecoveryScoreBreakdown.maxQualityGrade
+        )
         XCTAssertLessThan(
             strongArchitecture.total - weakArchitecture.total,
             12
         )
+    }
+
+    func testLongSleepLowDeepArchitectureGradeReflectsQualityNotContribution() {
+        // Aug 23–equivalent: long night, low Deep %, strong REM.
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 571,
+                timeInBedMinutes: 600,
+                awakeMinutes: 29,
+                awakeningsCount: 2,
+                deepSleepMinutes: 36,
+                remSleepMinutes: 159,
+                hrvSDNN: 42,
+                restingHeartRate: 52,
+                bedtimeDeviationMinutes: 0
+            )
+        )
+
+        XCTAssertEqual(breakdown.sleepArchitectureQuality ?? -1, 67.5, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepArchitectureGrade, 7)
+        XCTAssertEqual(
+            breakdown.sleepArchitectureGrade,
+            RecoveryScoreBreakdown.grade(fromQuality: breakdown.sleepArchitectureQuality ?? 0)
+        )
+        XCTAssertEqual(breakdown.componentSum, breakdown.total)
+    }
+
+    func testShortSleepStrongArchitectureGradeNotCompressedByRecoveryCap() {
+        // Aug 25–equivalent: short night with strong Deep/REM ratios.
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 239,
+                timeInBedMinutes: 250,
+                awakeMinutes: 11,
+                awakeningsCount: 1,
+                deepSleepMinutes: 50,
+                remSleepMinutes: 45,
+                hrvSDNN: 42,
+                restingHeartRate: 52,
+                bedtimeDeviationMinutes: 0
+            )
+        )
+
+        XCTAssertEqual(breakdown.sleepArchitectureQuality ?? -1, 92.8, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepArchitectureGrade, 9)
+        XCTAssertLessThanOrEqual(breakdown.total, 65)
+        // Contribution may be compressed by the short-sleep total cap; grade must not.
+        XCTAssertNotEqual(breakdown.sleepArchitecture, breakdown.sleepArchitectureGrade)
+        XCTAssertLessThan(breakdown.sleepArchitecture, breakdown.sleepArchitectureGrade ?? 0)
+        XCTAssertEqual(breakdown.componentSum, breakdown.total)
+    }
+
+    func testArchitectureGradeIndependentOfPhysiologyDrivenTotalChanges() {
+        let stages = (
+            sleep: 571,
+            deep: 36,
+            rem: 159
+        )
+        let strongPhysio = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: stages.sleep,
+                timeInBedMinutes: 600,
+                awakeMinutes: 29,
+                awakeningsCount: 2,
+                deepSleepMinutes: stages.deep,
+                remSleepMinutes: stages.rem,
+                hrvSDNN: 50,
+                restingHeartRate: 48,
+                bedtimeDeviationMinutes: 0,
+                baseline: makeBaseline(hrv: 42, rhr: 52)
+            )
+        )
+        let weakPhysio = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: stages.sleep,
+                timeInBedMinutes: 600,
+                awakeMinutes: 29,
+                awakeningsCount: 2,
+                deepSleepMinutes: stages.deep,
+                remSleepMinutes: stages.rem,
+                hrvSDNN: 28,
+                restingHeartRate: 60,
+                bedtimeDeviationMinutes: 0,
+                baseline: makeBaseline(hrv: 42, rhr: 52)
+            )
+        )
+
+        XCTAssertEqual(
+            strongPhysio.sleepArchitectureQuality ?? -1,
+            weakPhysio.sleepArchitectureQuality ?? -1,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(strongPhysio.sleepArchitectureGrade, weakPhysio.sleepArchitectureGrade)
+        XCTAssertNotEqual(strongPhysio.total, weakPhysio.total)
+    }
+
+    func testArchitectureGradeIgnoresContributionRedistribution() {
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 239,
+                timeInBedMinutes: 250,
+                awakeMinutes: 11,
+                awakeningsCount: 1,
+                deepSleepMinutes: 50,
+                remSleepMinutes: 45
+            )
+        )
+
+        let expectedGrade = RecoveryScoreBreakdown.grade(
+            fromQuality: breakdown.sleepArchitectureQuality ?? 0
+        )
+        XCTAssertEqual(breakdown.sleepArchitectureGrade, expectedGrade)
+        XCTAssertEqual(
+            expectedGrade,
+            RecoveryScoreBreakdown.grade(fromQuality: 92.79193609737543)
+        )
+    }
+
+    func testQualityGradeRoundingRule() {
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 67.5), 7)
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 92.8), 9)
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 43.3), 4)
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 0), 0)
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 100), 10)
+        XCTAssertEqual(RecoveryScoreBreakdown.grade(fromQuality: 70), 7)
+    }
+
+    func testQualityGradesIndependentOfShortSleepCap() {
+        let shortCapped = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 239,
+                timeInBedMinutes: 250,
+                awakeMinutes: 11,
+                awakeningsCount: 1,
+                deepSleepMinutes: 50,
+                remSleepMinutes: 45,
+                hrvSDNN: 50,
+                restingHeartRate: 48,
+                bedtimeDeviationMinutes: 30,
+                baseline: makeBaseline(hrv: 42, rhr: 52)
+            )
+        )
+        // Same stages/physiology qualities with a long sleep so no short-sleep cap —
+        // duration quality differs, but HRV/RHR/architecture grades for identical
+        // stage ratios need a same-signal comparison via missing-signal test below.
+        XCTAssertLessThanOrEqual(shortCapped.total, 65)
+        XCTAssertEqual(shortCapped.sleepArchitectureGrade, 9)
+        XCTAssertEqual(shortCapped.hrvGrade, 10)
+        XCTAssertEqual(shortCapped.restingHeartRateGrade, 10)
+    }
+
+    func testMissingHRVDoesNotChangeOtherQualityGrades() {
+        let withHRV = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 480,
+                timeInBedMinutes: 520,
+                awakeningsCount: 2,
+                deepSleepMinutes: 80,
+                remSleepMinutes: 100,
+                hrvSDNN: 42,
+                restingHeartRate: 52,
+                bedtimeDeviationMinutes: 20
+            )
+        )
+        let withoutHRV = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 480,
+                timeInBedMinutes: 520,
+                awakeningsCount: 2,
+                deepSleepMinutes: 80,
+                remSleepMinutes: 100,
+                hrvSDNN: nil,
+                restingHeartRate: 52,
+                bedtimeDeviationMinutes: 20
+            )
+        )
+
+        XCTAssertNil(withoutHRV.hrvGrade)
+        XCTAssertNil(withoutHRV.hrvQuality)
+        XCTAssertEqual(withHRV.sleepDurationGrade, withoutHRV.sleepDurationGrade)
+        XCTAssertEqual(withHRV.sleepConsistencyGrade, withoutHRV.sleepConsistencyGrade)
+        XCTAssertEqual(withHRV.sleepContinuityGrade, withoutHRV.sleepContinuityGrade)
+        XCTAssertEqual(withHRV.sleepArchitectureGrade, withoutHRV.sleepArchitectureGrade)
+        XCTAssertEqual(withHRV.restingHeartRateGrade, withoutHRV.restingHeartRateGrade)
+        XCTAssertNotEqual(withHRV.total, withoutHRV.total)
+        XCTAssertEqual(withoutHRV.componentSum, withoutHRV.total)
+        XCTAssertEqual(withHRV.componentSum, withHRV.total)
+    }
+
+    func testAug23QualityDashboardGrades() {
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 571,
+                timeInBedMinutes: 585,
+                awakeMinutes: 14,
+                awakeningsCount: 4,
+                deepSleepMinutes: 36,
+                remSleepMinutes: 159,
+                hrvSDNN: 42,
+                restingHeartRate: 49,
+                bedtimeDeviationMinutes: 89,
+                baseline: makeBaseline(hrv: 42, rhr: 52)
+            )
+        )
+
+        XCTAssertEqual(breakdown.sleepDurationQuality, 100, accuracy: 0.01)
+        XCTAssertEqual(breakdown.sleepDurationGrade, 10)
+        XCTAssertEqual(breakdown.sleepConsistencyQuality ?? -1, 50.56, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepConsistencyGrade, 5)
+        XCTAssertEqual(breakdown.sleepContinuityQuality ?? -1, 95.0, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepContinuityGrade, 10)
+        XCTAssertEqual(breakdown.sleepArchitectureQuality ?? -1, 67.5, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepArchitectureGrade, 7)
+        XCTAssertEqual(breakdown.hrvQuality ?? -1, 85, accuracy: 0.1)
+        XCTAssertEqual(breakdown.hrvGrade, 9)
+        XCTAssertEqual(breakdown.restingHeartRateQuality ?? -1, 96, accuracy: 0.1)
+        XCTAssertEqual(breakdown.restingHeartRateGrade, 10)
+        XCTAssertEqual(breakdown.componentSum, breakdown.total)
+    }
+
+    func testAug25QualityDashboardGradesRemainDespiteCap() {
+        let heavyLoad = RecoveryPriorDayLoad(exerciseMinutes: 95, activeCalories: 900, workoutCount: 1)
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 239,
+                timeInBedMinutes: 239,
+                awakeMinutes: 0,
+                awakeningsCount: 5,
+                deepSleepMinutes: 50,
+                remSleepMinutes: 45,
+                hrvSDNN: 50,
+                restingHeartRate: 48,
+                bedtimeDeviationMinutes: 94,
+                baseline: makeBaseline(hrv: 42, rhr: 52),
+                priorDayLoad: heavyLoad
+            )
+        )
+
+        XCTAssertEqual(breakdown.sleepDurationQuality, 43.3, accuracy: 0.2)
+        XCTAssertEqual(breakdown.sleepDurationGrade, 4)
+        XCTAssertEqual(breakdown.sleepConsistencyGrade, 5)
+        XCTAssertEqual(breakdown.sleepContinuityGrade, 9)
+        XCTAssertEqual(breakdown.sleepArchitectureQuality ?? -1, 92.8, accuracy: 0.1)
+        XCTAssertEqual(breakdown.sleepArchitectureGrade, 9)
+        XCTAssertEqual(breakdown.hrvGrade, 10)
+        XCTAssertEqual(breakdown.restingHeartRateGrade, 10)
+        XCTAssertEqual(breakdown.trainingLoadModifier, -3)
+        XCTAssertEqual(breakdown.total, 62)
+        XCTAssertEqual(breakdown.componentSum, breakdown.total)
+        // Contribution points remain on the Recovery point scale; grades stay on /10.
+        XCTAssertNotEqual(breakdown.hrv, breakdown.hrvGrade)
+        XCTAssertEqual(breakdown.hrvGrade, 10)
+        // Load modifier stays internal — quality dashboard rows exclude it.
+        XCTAssertEqual(
+            RecoveryBreakdownSignal.displayedQualitySignals,
+            [
+                .sleepDuration,
+                .sleepConsistency,
+                .sleepContinuity,
+                .sleepArchitecture,
+                .hrv,
+                .restingHeartRate
+            ]
+        )
+    }
+
+    func testTrainingLoadModifierAffectsRecoveryWithoutChangingQualityGrades() {
+        let base = makeInput(
+            sleepMinutes: 239,
+            timeInBedMinutes: 239,
+            awakeMinutes: 0,
+            awakeningsCount: 5,
+            deepSleepMinutes: 50,
+            remSleepMinutes: 45,
+            hrvSDNN: 50,
+            restingHeartRate: 48,
+            bedtimeDeviationMinutes: 94,
+            baseline: makeBaseline(hrv: 42, rhr: 52),
+            priorDayLoad: .empty
+        )
+        let heavy = makeInput(
+            sleepMinutes: 239,
+            timeInBedMinutes: 239,
+            awakeMinutes: 0,
+            awakeningsCount: 5,
+            deepSleepMinutes: 50,
+            remSleepMinutes: 45,
+            hrvSDNN: 50,
+            restingHeartRate: 48,
+            bedtimeDeviationMinutes: 94,
+            baseline: makeBaseline(hrv: 42, rhr: 52),
+            priorDayLoad: RecoveryPriorDayLoad(exerciseMinutes: 95, activeCalories: 900, workoutCount: 1)
+        )
+
+        let withoutLoad = RecoveryScoreEngine.calculate(base)
+        let withLoad = RecoveryScoreEngine.calculate(heavy)
+
+        XCTAssertEqual(withoutLoad.trainingLoadModifier, 0)
+        XCTAssertEqual(withLoad.trainingLoadModifier, -3)
+        XCTAssertEqual(withLoad.total, withoutLoad.total - 3)
+        XCTAssertEqual(withLoad.total, 62)
+
+        XCTAssertEqual(withoutLoad.sleepDurationGrade, withLoad.sleepDurationGrade)
+        XCTAssertEqual(withoutLoad.sleepConsistencyGrade, withLoad.sleepConsistencyGrade)
+        XCTAssertEqual(withoutLoad.sleepContinuityGrade, withLoad.sleepContinuityGrade)
+        XCTAssertEqual(withoutLoad.sleepArchitectureGrade, withLoad.sleepArchitectureGrade)
+        XCTAssertEqual(withoutLoad.hrvGrade, withLoad.hrvGrade)
+        XCTAssertEqual(withoutLoad.restingHeartRateGrade, withLoad.restingHeartRateGrade)
+        XCTAssertEqual(withoutLoad.componentSum, withoutLoad.total)
+        XCTAssertEqual(withLoad.componentSum, withLoad.total)
+    }
+
+    func testFallbackQualitiesAreNotPresentedAsMeasuredGrades() {
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 480,
+                timeInBedMinutes: 0,
+                awakeningsCount: 0,
+                deepSleepMinutes: 0,
+                remSleepMinutes: 0,
+                hrvSDNN: nil,
+                restingHeartRate: nil,
+                bedtimeDeviationMinutes: nil
+            )
+        )
+
+        XCTAssertNil(breakdown.sleepConsistencyGrade)
+        XCTAssertNil(breakdown.sleepConsistencyQuality)
+        XCTAssertNil(breakdown.sleepContinuityGrade)
+        XCTAssertNil(breakdown.sleepContinuityQuality)
+        XCTAssertNil(breakdown.sleepArchitectureGrade)
+        XCTAssertNil(breakdown.sleepArchitectureQuality)
+        XCTAssertNil(breakdown.hrvGrade)
+        XCTAssertNil(breakdown.restingHeartRateGrade)
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.bedtimeConsistency))
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.sleepContinuity))
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.deepSleep))
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.remSleep))
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.hrv))
+        XCTAssertTrue(breakdown.unavailableSignals.contains(.restingHeartRate))
+        // Duration remains measured from sleep minutes.
+        XCTAssertEqual(breakdown.sleepDurationGrade, 10)
+        XCTAssertEqual(breakdown.componentSum, breakdown.total)
+    }
+
+    func testStrongestMeasuredSignalUsesRawQualityNotContribution() {
+        let breakdown = RecoveryScoreEngine.calculate(
+            makeInput(
+                sleepMinutes: 239,
+                timeInBedMinutes: 250,
+                awakeningsCount: 1,
+                deepSleepMinutes: 50,
+                remSleepMinutes: 45,
+                hrvSDNN: 50,
+                restingHeartRate: 58,
+                bedtimeDeviationMinutes: 90,
+                baseline: makeBaseline(hrv: 42, rhr: 52)
+            )
+        )
+
+        // Architecture ~92.8 and HRV 100 — HRV wins on raw quality.
+        XCTAssertEqual(breakdown.strongestMeasuredSignal, .hrv)
+        XCTAssertEqual(breakdown.hrvQuality ?? -1, 100, accuracy: 0.1)
+        XCTAssertGreaterThan(breakdown.hrvQuality ?? 0, breakdown.sleepArchitectureQuality ?? 0)
+        // Contribution for architecture may be compressed; strongest ignores that.
+        XCTAssertLessThan(breakdown.sleepArchitecture, 10)
     }
 
     func testHeavyPriorDayTrainingLoadOnlyReducesScoreWhenPhysiologyStressed() {

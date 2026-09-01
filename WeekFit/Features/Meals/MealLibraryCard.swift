@@ -155,11 +155,6 @@ struct MealLibraryThumbnail: View {
                             )
                         }
                     }
-                } else if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
-                    Image(meal.imageName)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFill()
                 } else {
                     Image(systemName: meal.isFoodProduct ? "carrot.fill" : "fork.knife")
                         .font(.system(size: size * 0.34, weight: .semibold))

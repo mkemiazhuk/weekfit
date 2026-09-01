@@ -57,9 +57,21 @@ enum PlanComposer {
                 || kind == .createMealFromLibrary
 
             if ProposalRepetitionGuard.shouldSuppress(item.candidate, context: context) {
-                dropped.append(item.id)
-                notes.append("repeat_cooloff:\(item.id)")
-                continue
+                // Soft cooloff: suppress only when another recovery-light movement remains.
+                let isRecoveryLight = item.candidate.source == .recoveryMovement
+                    || item.candidate.kind == .createRecoveryWalk
+                let otherRecoveryLight = ranked.contains { other in
+                    other.id != item.id
+                        && (other.candidate.source == .recoveryMovement
+                            || other.candidate.kind == .createRecoveryWalk)
+                        && !ProposalRepetitionGuard.shouldSuppress(other.candidate, context: context)
+                }
+                if !isRecoveryLight || otherRecoveryLight {
+                    dropped.append(item.id)
+                    notes.append("repeat_cooloff:\(item.id)")
+                    continue
+                }
+                notes.append("repeat_cooloff_soft_override:\(item.id)")
             }
 
             if context.generationMode == .protect, isCreate, kind != .createMealFromLibrary {
@@ -129,8 +141,10 @@ enum PlanComposer {
             }
 
             // Prefer existing adjustments over speculative creates when both exist.
+            // Recovery-invented light movement is exempt: recover days may need ADD after dialing back hard sessions.
             if isCreate,
                kind != .createMealFromLibrary,
+               item.candidate.source != .recoveryMovement,
                !selected.filter({ isAdjustment($0.candidate.kind) }).isEmpty,
                strategy == .recover || strategy == .protectTomorrow,
                item.score < 70 {
@@ -184,6 +198,8 @@ enum PlanComposer {
         return type.contains("walk") || title.contains("walk") || type == "recovery"
             || type.contains("stretch") || title.contains("stretch")
             || type.contains("breath") || title.contains("breath")
+            || type.contains("yoga") || title.contains("yoga")
+            || title.contains("easy run")
             || isHabitualLightRecovery(candidate)
     }
 

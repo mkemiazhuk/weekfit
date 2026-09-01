@@ -3,13 +3,22 @@
 Product analytics go through `AppAnalytics` / `ProductAnalytics` / `OnboardingFunnelAnalytics` /
 `ReviewAnalytics` (review funnel bridge). Feature code must not import Firebase.
 
+**Classification:** Firebase Analytics is **product interaction telemetry only**.
+It must not receive HealthKit values, derived health/recovery/sleep/readiness state,
+nutrition quantities, workout metrics, or free-form health content.
+
+**Consent:** `ProductAnalyticsConsent` — Analytics collection is **OFF** until the user
+enables Share Product Analytics in Settings. Crashlytics is independent (see
+`FirebaseEnvironment`). DEBUG builds keep Analytics and Crashlytics OFF.
+
 **Ownership:** Every new event must answer a concrete product question, use a typed
 `AnalyticsEvent` case + bounded parameters, and be documented here before shipping.
 Prefer extending parameters over inventing near-duplicate event names.
 
-**Privacy rules:** never send HealthKit values, free-form text, names, emails, barcodes,
-food names, macros, notification copy, recommendation / coach message text,
-`localizedDescription`, user IDs, or exact high-cardinality timestamps.
+**Privacy rules:** never send HealthKit values, derived recovery/sleep/readiness bands or
+booleans, free-form text, names, emails, barcodes, food names, macros, notification copy,
+recommendation / coach message text, health topic categories, `localizedDescription`,
+user IDs, or exact high-cardinality timestamps. Enforced by `AnalyticsPrivacyContract`.
 
 App Store Connect questionnaire notes: `docs/AppStorePrivacyDisclosures.md`.
 
@@ -36,7 +45,7 @@ App Store Connect questionnaire notes: `docs/AppStorePrivacyDisclosures.md`.
 | `meals` | Tab change to Meals | Primary destination |
 | `plan` | Tab change to Plan (`WeekFitTab.calendar`) | Primary destination |
 | `settings` | Settings sheet appear | Profile / settings host |
-| `recovery_details` | Today recovery ring open | Detail destination |
+| `recovery_details` | Today recovery ring open | Detail destination (navigation id only) |
 | `activity_details` | Today activity ring / intelligence open | Detail destination |
 | `nutrition_details` | Today nutrition ring open | Detail destination (includes hydration UI) |
 | `meal_builder` | Meal Builder appear | Creation surface |
@@ -60,8 +69,16 @@ Same-tab re-taps are ignored by bottom bar / `selectTab`.
 | `onboarding_started` | First genuine onboarding presentation | — | Once per lifecycle (`OnboardingFunnelAnalytics`) |
 | `onboarding_step_viewed` | Step becomes active | `step` | Once per step id per lifecycle |
 | `onboarding_completed` | After `OnboardingStore.markCompleted()` persists | — | Once after successful persistence |
-| `health_connection_*` | Onboarding Health connect / skip / fail | `reason` on fail | See onboarding docs in code comments |
+| `health_connection_*` | Onboarding Health connect / skip / fail | `reason` on fail (technical only) | See onboarding docs in code comments |
 | `notification_permission_responded` | System notification dialog result | `status` | Only when dialog was shown |
+| `today_first_view` | First Today tab exposure this workspace | `source=today` | Once per workspace lifecycle (`ActivationAnalytics`) |
+| `recovery_available` | First time recovery **module** has usable inputs for the local day | `source=today` only | Once per `dayKey` |
+
+**`today_first_view` scope:** install/workspace UserDefaults. Cleared on local data reset / account wipe (same as onboarding funnel keys). Not once-per-calendar-day.
+
+**`recovery_available`:** product-module milestone only. Deduped per local day. **No** recovery band, sleep presence, source_state, or other health parameters.
+
+**Not invented:** `primary_action_completed` — no single domain lifecycle covers food / hydration / activity / proposal apply. Use existing completion events separately.
 
 ---
 
@@ -78,19 +95,54 @@ Same-tab re-taps are ignored by bottom bar / `selectTab`.
 
 ## Morning Proposal (Phase 1)
 
-Privacy: coarse `change_kind`, `reason_category`, count buckets, `result_type`, `surface` only.
-Never log Recovery/HRV/sleep values, titles, HealthKit samples, or localized Coach copy.
+Privacy: interaction telemetry only — coarse `change_kind` (`modify`/`move`/`skip`/`create`/`guidance`),
+count buckets, `result_type`, `surface`, optional plan `mode` (`generation` density).
+Never log Recovery/HRV/sleep, strategy, context confidence, reason categories, titles, or HealthKit.
+
+### Classification
+
+| Kind | Events |
+|------|--------|
+| **Diagnostic / system state** (not engagement) | `morning_proposal_generated`, `morning_proposal_unavailable`, `morning_proposal_no_changes`, `morning_proposal_stale` |
+| **User engagement** | `morning_proposal_viewed`, review / select / apply / dismiss, adjusted-item interactions, notification opened |
+
+Do **not** treat diagnostic counts as user-engagement metrics.
+
+### Diagnostic idempotency
+
+| Event | Dedupe key | Persistence |
+|-------|------------|-------------|
+| `morning_proposal_unavailable` | `dayKey` + canonical `reason` | UserDefaults (`weekfit.analytics.mp.unavailable.emitted`) |
+| `morning_proposal_no_changes` | `dayKey` | UserDefaults (`weekfit.analytics.mp.noChanges.emitted`) |
+| `morning_proposal_viewed` | proposal id (in-memory) | Process lifetime |
+
+Engine/gate re-evaluation is unchanged — only analytics emissions are deduped.
+
+### Unavailable reasons (canonical)
+
+Gate aliases are mapped before emit:
+
+| Domain / gate string | Analytics `reason` |
+|----------------------|--------------------|
+| `outside_window` | `outside_morning_window` |
+| `outside_morning_window` | `outside_morning_window` |
+| `day_started` | `day_started` |
+| `day_expired` / `expired` | `day_expired` |
+| `health_access_denied` | `other` (no health permission state in Firebase) |
+| `timeout` | `timeout` |
+| `missing_inputs` | `missing_inputs` |
+| anything else | `other` |
 
 | Event | When | Params |
 |-------|------|--------|
-| `morning_proposal_generated` | Engine produces ready proposal | `selected_count_bucket`, `source` |
-| `morning_proposal_unavailable` | Gate/engine unavailable | `reason`, `source` |
-| `morning_proposal_no_changes` | No mutating/guidance changes | `source` |
+| `morning_proposal_generated` | Engine produces ready proposal | `selected_count_bucket`, `source`, optional `mode` (plan density) |
+| `morning_proposal_unavailable` | Gate unavailable (once / day+reason) | `reason`, `source` |
+| `morning_proposal_no_changes` | No mutating/guidance changes (once / day) | `source` |
 | `morning_proposal_viewed` | Today ready card shown (once/proposal id) | `selected_count_bucket`, `surface` |
 | `morning_proposal_review_opened` | Review sheet appear | `selected_count_bucket`, `surface` |
-| `morning_proposal_recommendation_selected` | Toggle on | `change_kind`, `reason_category` |
-| `morning_proposal_recommendation_deselected` | Toggle off | `change_kind`, `reason_category` |
-| `morning_proposal_reason_expanded` | Why expanded | `change_kind`, `reason_category` |
+| `morning_proposal_recommendation_selected` | Toggle on | `change_kind` (`modify`/`move`/`skip`/`create`/`guidance`) |
+| `morning_proposal_recommendation_deselected` | Toggle off | `change_kind` |
+| `morning_proposal_reason_expanded` | Why expanded | `change_kind` |
 | `morning_proposal_apply_started` | Apply tapped | `selected_count_bucket` |
 | `morning_proposal_apply_succeeded` | All selected applied | `applied_count_bucket`, `result_type` |
 | `morning_proposal_apply_partial` | Some applied, some failed | `applied_count_bucket`, `selected_count_bucket`, `result_type` |
@@ -110,22 +162,11 @@ Helper: `MorningProposalAnalytics` / `ProductAnalytics` wrappers.
 
 | Event | Trigger | Parameters |
 |-------|---------|------------|
-| `coach_recommendation_viewed` | Recommendation text actually appears | `category`, `source=coach` |
+| `coach_recommendation_viewed` | Recommendation text actually appears | `source=coach` only |
 
-### Category mapping (`CoachRecommendationCategory`)
+**Omitted:** health topic categories (`sleep` / `recovery` / `nutrition` / …), scenario keys, copy, HealthKit.
 
-Mapped from `CoachScenarioKey` (+ optional `CoachSafetyAlert`), never from copy or HealthKit:
-
-| Category | When |
-|----------|------|
-| `hydration` | `warningAlert == .hydrationCritical` |
-| `nutrition` | `warningAlert == .fuelCritical` |
-| `sleep` | `morningReadiness` |
-| `activity` | Endurance / racket / strength scenario families |
-| `recovery` | Day-protection / heavy-yesterday / walk / recovery / sauna families |
-| `general` | `stableDay` (fallback when no deterministic family) |
-
-**Omitted:** `coach_action_tapped` / `completed` / `dismissed` — product UI has no reliable action handlers.
+**Omitted events:** `coach_action_tapped` / `completed` / `dismissed` — product UI has no reliable action handlers.
 
 **View semantics:** Fired once per Coach view lifetime when recommendation content appears (`didRecordCoachRecommendationOpen` guard). Not fired on in-memory recompute alone.
 
@@ -203,6 +244,8 @@ Never send barcode digits or product names.
 | `activity_completed` | Live stop or plan/notification complete | Session finished |
 | `activity_cancelled` | Start Activity sheet dismissed before start/complete/fail | Sheet abandon |
 | `activity_logging_failed` | Save failure on start | Persistence error |
+
+Parameters: `source` (+ `reason` on failure). **No** activity type/category, duration, intensity, or titles.
 
 **Cancel (wired):** Today workout sheet dismiss before `activity_started` / `activity_completed` / `activity_logging_failed`.
 
@@ -346,10 +389,25 @@ Do **not** cohort on health state, scores, or medical inferences.
 
 ---
 
+## Distribution / environment policy
+
+| Environment | Analytics | Crashlytics | `distribution` param |
+|-------------|-----------|-------------|----------------------|
+| DEBUG / Xcode | OFF | OFF | — |
+| TestFlight (Release) | ON | ON | `testflight` |
+| App Store | ON | ON | `appstore` |
+| XCTest | No production Firebase bootstrap | — | — |
+
+**Product analysis must filter `distribution = appstore`** unless TestFlight is intentionally included.
+`AppDistribution` + `FirebaseEnvironment.configureTelemetry()` attach `distribution` as a user property and default event parameter for TestFlight / App Store.
+
+---
+
 ## Architecture notes
 
 - Mapping layer: `AnalyticsEvent`, `AnalyticsScreen`, `AnalyticsParameters`, `ProductAnalytics`,
-  `ProductAnalyticsFlowTracker`, `OnboardingFunnelAnalytics`, `ReviewAnalytics`.
+  `ProductAnalyticsFlowTracker`, `OnboardingFunnelAnalytics`, `ActivationAnalytics`,
+  `MorningProposalAnalytics`, `ReviewAnalytics`.
 - Backend: `FirebaseAnalyticsService` (DEBUG logs + Firebase) or `LoggingAnalyticsService`.
 - Tests: `RecordingAnalyticsService` — no network dependency.
 - Firebase init order: `FirebaseBootstrap.configureIfNeeded()` before `AnalyticsBootstrap`; never probe `FirebaseApp.app()` before configure.

@@ -84,12 +84,22 @@ final class MorningProposalEngineTests: XCTestCase {
             )
         )
 
-        // Empty Plan alone must not force a selected Walk; a proposalReady Walk (unselected)
-        // or noChangesNeeded (omit / guidance suppressed) are both valid production outcomes.
-        let walks = proposal.changes.filter { $0.kind == .createRecoveryWalk }
+        // Empty Plan alone must not force a selected Walk; a proposalReady light-movement
+        // create (walk / stretch / yoga / breathing / easy run) or noChangesNeeded are both valid.
+        let lightMovement = proposal.changes.filter { change in
+            if change.kind == .createRecoveryWalk { return true }
+            if case .createPlannedActivity(let payload) = change.payload {
+                let type = payload.activityType.lowercased()
+                let title = payload.title.lowercased()
+                return type.contains("stretch") || type.contains("yoga") || type.contains("breath")
+                    || title.contains("stretch") || title.contains("yoga") || title.contains("breath")
+                    || title.contains("easy run") || type == "recovery"
+            }
+            return false
+        }
         if proposal.status == .proposalReady {
-            XCTAssertFalse(walks.isEmpty, "proposalReady without a Walk create is unexpected for empty good day")
-            XCTAssertTrue(walks.allSatisfy { !$0.defaultSelected })
+            XCTAssertFalse(lightMovement.isEmpty, "proposalReady without light movement is unexpected for empty good day")
+            XCTAssertTrue(lightMovement.allSatisfy { !$0.defaultSelected })
             XCTAssertTrue(proposal.changes.contains { $0.kind != .guidanceOnly })
         } else {
             XCTAssertEqual(proposal.status, .noChangesNeeded)

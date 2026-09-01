@@ -18,6 +18,7 @@ enum MorningProposalEvaluator {
         var mealLibrary: [ProposalMealCandidate]
         var mealLibraryRevision: String
         var weatherRiskToken: ProposalWeatherRiskToken
+        var outdoorSuitability: OutdoorSuitability = .acceptable
         var forceRegenerate: Bool = false
     }
 
@@ -125,6 +126,19 @@ enum MorningProposalEvaluator {
         )
         MorningProposalService.markStaleIfNeeded(dayKey: dayKey, liveFingerprint: liveFingerprint)
 
+        MorningAdjustmentHistoryReconciler.reconcileRecentCompletions(
+            activities: input.plannedActivities,
+            referenceDate: input.now,
+            calendar: calendar
+        )
+
+        ActivationAnalytics.trackRecoveryAvailableIfNeeded(
+            dayKey: dayKey,
+            recoveryDataAvailable: input.readiness.recoveryDataAvailable,
+            hasSettledMetrics: input.hasSettledMetrics,
+            hasRecoverySignals: input.hasRecoverySignals
+        )
+
         return MorningProposalService.evaluateAndPersist(
             context: .init(
                 now: input.now,
@@ -150,7 +164,8 @@ enum MorningProposalEvaluator {
                 behavioralGeneration: ProposalBehavioralPreferences.generation,
                 walkRejectPenalty: ProposalBehavioralPreferences.walkRejectPenalty(from: behavioralSnapshot),
                 stronglyRejectsWalk: ProposalBehavioralPreferences.stronglyRejectsWalk(from: behavioralSnapshot),
-                weatherRiskToken: input.weatherRiskToken
+                weatherRiskToken: input.weatherRiskToken,
+                outdoorSuitability: input.outdoorSuitability
             )
         )
     }

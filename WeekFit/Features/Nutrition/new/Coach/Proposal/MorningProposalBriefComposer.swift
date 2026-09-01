@@ -31,6 +31,12 @@ enum MorningProposalBriefComposer {
             .filter { $0.kind != .guidanceOnly }
             .sorted { lhs, rhs in
                 if lhs.isSelected != rhs.isSelected { return lhs.isSelected && !rhs.isSelected }
+                // Recover: movement leads the hero ahead of fuel when both are selected.
+                if proposal.strategy == .recover {
+                    let lm = isMovementMutation(lhs)
+                    let rm = isMovementMutation(rhs)
+                    if lm != rm { return lm && !rm }
+                }
                 if (lhs.scoreTotal ?? 0) != (rhs.scoreTotal ?? 0) {
                     return (lhs.scoreTotal ?? 0) > (rhs.scoreTotal ?? 0)
                 }
@@ -176,6 +182,16 @@ enum MorningProposalBriefComposer {
     }
 
     /// Adverse / actionable weather line for the brief meta row (nil when calm).
+    
+    private static func isMovementMutation(_ change: CoachProposedChange) -> Bool {
+        switch change.kind {
+        case .createRecoveryWalk, .createPlannedActivity, .modifyDuration, .moveActivity, .skipActivity:
+            return true
+        case .createMealFromLibrary, .guidanceOnly:
+            return false
+        }
+    }
+
     static func weatherMetaLine(from summary: WeekFitWeatherSummary?) -> String? {
         switch ProposalWeatherRisk.resolve(from: summary) {
         case .precip, .storm:
@@ -255,7 +271,11 @@ enum MorningProposalBriefComposer {
         case .moveActivity: return "arrow.right.circle"
         case .skipActivity: return "minus.circle"
         case .createRecoveryWalk: return "figure.walk"
-        case .createPlannedActivity: return "figure.run"
+        case .createPlannedActivity:
+            if case .createPlannedActivity(let payload) = change.payload, !payload.icon.isEmpty {
+                return payload.icon
+            }
+            return "figure.run"
         case .createMealFromLibrary: return "fork.knife"
         case .guidanceOnly: return "lightbulb.fill"
         }

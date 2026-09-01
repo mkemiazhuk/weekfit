@@ -28,6 +28,9 @@ final class WeekFitActivityCoordinator: ObservableObject {
     private var hasActivatedHealthSync = false
     private var heartRateMonitoringEnabled = false
 
+    /// Syncs age/RHR into `HeartRateZones` before live zone mapping (set from app root).
+    var ensureHeartRateZonePhysiology: (() async -> Void)?
+
     /// Called before deleting or merging SwiftData `PlannedActivity` rows during HealthKit reconciliation.
     var beforePlannedActivityMutation: (() -> Void)?
 
@@ -100,6 +103,11 @@ final class WeekFitActivityCoordinator: ObservableObject {
         heartRateMonitoringEnabled = enabled
         if enabled {
             heartRateMonitor.start(sessionStartedAt: sessionStartedAt)
+            Task {
+                await ensureHeartRateZonePhysiology?()
+                guard heartRateMonitoringEnabled else { return }
+                heartRateMonitor.refreshNow()
+            }
         } else {
             heartRateMonitor.stop()
             liveHeartRateBPM = nil
@@ -113,6 +121,10 @@ final class WeekFitActivityCoordinator: ObservableObject {
     }
 
     /// Convenience: enable monitoring when any of today's activities is currently active.
+    func refreshLiveHeartRate() {
+        heartRateMonitor.refreshNow()
+    }
+
     func syncHeartRateMonitoring(with activities: [PlannedActivity], now: Date = Date()) {
         let active = activities.first { activity in
             guard !activity.isSkipped else { return false }
@@ -163,12 +175,32 @@ final class WeekFitActivityCoordinator: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] bpm, zone in
                 guard let self else { return }
+                let previousZone = self.liveHeartRateZone
+                let previousBPM = self.liveHeartRateBPM
                 self.liveHeartRateBPM = bpm
                 self.liveHeartRateZone = zone
                 if var liveWorkout, liveWorkout.isLive {
                     liveWorkout.currentHeartRateBPM = bpm
                     liveWorkout.heartRateZone = zone
                     self.liveWorkout = liveWorkout
+                }
+
+                // Publish only after coordinator values are current so Coach enrich
+                // sees the same zone the badge / Fitness-style chrome uses.
+                let zoneChanged = previousZone != zone
+                let bpmMoved = abs((previousBPM ?? bpm ?? 0) - (bpm ?? 0)) >= 2
+                let firstSample = previousBPM == nil && bpm != nil
+                let enteredElevated = HeartRateZones.isElevated(zone ?? 0)
+                    && (previousZone == nil || !HeartRateZones.isElevated(previousZone ?? 0))
+                if firstSample || zoneChanged || enteredElevated || bpmMoved {
+                    var userInfo: [AnyHashable: Any] = [:]
+                    if let bpm { userInfo["bpm"] = bpm }
+                    if let zone { userInfo["zone"] = zone }
+                    NotificationCenter.default.post(
+                        name: .weekFitLiveHeartRateZoneDidChange,
+                        object: nil,
+                        userInfo: userInfo.isEmpty ? nil : userInfo
+                    )
                 }
             }
             .store(in: &cancellables)
@@ -308,7 +340,7 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
         let workouts = await healthManager.loadWorkoutSamples(for: date)
         guard !workouts.isEmpty else {
-            StartupDiagnostics.taskSuccess(taskName, detail: "no workouts")
+            StartupDiagnostics.taskSuccess(taskName, detail: "workouts_empty")
             return
         }
 
@@ -323,9 +355,9 @@ final class WeekFitActivityCoordinator: ObservableObject {
 
         do {
             try modelContext.save()
-            StartupDiagnostics.taskSuccess(taskName, detail: "workouts=\(workouts.count) saved")
+            StartupDiagnostics.taskSuccess(taskName, detail: "workouts_reconciled")
         } catch {
-            StartupDiagnostics.taskError(taskName, error: error, detail: "workouts=\(workouts.count)")
+            StartupDiagnostics.taskError(taskName, error: error, diagnosticCode: "health_sync_failed")
         }
     }
 

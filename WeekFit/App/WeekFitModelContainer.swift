@@ -61,7 +61,8 @@ enum WeekFitModelContainer {
                     code: 1,
                     userInfo: [NSLocalizedDescriptionKey: failure.message]
                 ),
-                step: 2
+                step: 2,
+                diagnosticCode: "application_support_unavailable"
             )
             return makeInMemoryFallback(reason: failure.message)
         }
@@ -73,7 +74,7 @@ enum WeekFitModelContainer {
         StartupDiagnostics.step(
             2,
             "persistence init",
-            detail: "url=\(storeURL.path) existed=\(storeExisted) bytes=\(storeByteCount.map(String.init) ?? "unknown")"
+            detail: "store_probe existed=\(storeExisted) size_known=\(storeByteCount != nil)"
         )
 
         do {
@@ -106,11 +107,10 @@ enum WeekFitModelContainer {
                 operation: "createProductionModelContainer",
                 error: error,
                 step: 2,
+                diagnosticCode: "model_container_initialization_failed",
                 extras: [
-                    "storeURL": storeURL.path,
-                    "storeExisted": String(storeExisted),
-                    "storeBytes": storeByteCount.map(String.init) ?? "unknown",
-                    "note": "on-disk store was NOT deleted; using in-memory fallback for diagnostics only"
+                    "store_existed": storeExisted ? "true" : "false",
+                    "fallback": "in_memory"
                 ]
             )
             return makeInMemoryFallback(reason: failure.errorDescription)
@@ -128,7 +128,8 @@ enum WeekFitModelContainer {
             StartupDiagnostics.failed(
                 operation: "createReviewDemoModelContainer",
                 error: error,
-                step: 2
+                step: 2,
+                diagnosticCode: "review_demo_container_failed"
             )
             return makeInMemoryFallback(reason: "review demo ModelContainer failed: \(error)")
         }
@@ -149,7 +150,8 @@ enum WeekFitModelContainer {
             StartupDiagnostics.failed(
                 operation: "createInMemoryFallbackModelContainer",
                 error: error,
-                step: 2
+                step: 2,
+                diagnosticCode: "in_memory_container_failed"
             )
             // If even in-memory fails, the process cannot continue meaningfully.
             preconditionFailure(

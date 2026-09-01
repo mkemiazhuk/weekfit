@@ -12,6 +12,12 @@ import Foundation
 /// TestFlight build of 1.3 may be classified as a new user and see the paywall.
 /// Verify grandfathering on a production App Store build.
 ///
+/// In the **Sandbox** environment Apple always returns
+/// `AppTransaction.originalPurchaseDate` = 2013-08-01 (PDT sentinel). That date
+/// is before any realistic monetization cutoff, so Sandbox installs look
+/// `legacy` unless a DEBUG-only force-non-legacy override is used. Production
+/// and App Store builds never apply that override.
+///
 /// ## Unavailable StoreKit
 /// If a previous **verified** resolution exists on this install, keep it:
 /// expired / unsubscribed stay gated; legacy / trial / subscribed keep access.
@@ -49,7 +55,8 @@ enum WeekFitEntitlementPolicy {
         now: Date = Date(),
         cutoff: Date = WeekFitMonetizationCutoff.date,
         forceNewUser: Bool = false,
-        forceLegacyUser: Bool = false
+        forceLegacyUser: Bool = false,
+        forceNonLegacyAppTransaction: Bool = false
     ) -> WeekFitEntitlementDecision {
         if bypass.grantsAccess || forceLegacyUser {
             return WeekFitEntitlementDecision(state: .legacy, shouldPersistVerifiedEntitlement: false)
@@ -74,7 +81,8 @@ enum WeekFitEntitlementPolicy {
             if isLegacyFromVerifiedAppTransaction(
                 originalPurchaseDate: date,
                 environment: environment,
-                cutoff: cutoff
+                cutoff: cutoff,
+                forceNonLegacyAppTransaction: forceNonLegacyAppTransaction
             ) {
                 return WeekFitEntitlementDecision(state: .legacy, shouldPersistVerifiedEntitlement: true)
             }
@@ -144,15 +152,25 @@ enum WeekFitEntitlementPolicy {
     /// Production / Sandbox / TestFlight environments use the real App Store date.
     /// DEBUG Xcode StoreKit may return artificial dates such as 1970-01-01; those
     /// must not grandfather local test installs.
+    ///
+    /// `forceNonLegacyAppTransaction` is DEBUG-only wiring from launch args; Release
+    /// callers always pass `false`, so Production / TestFlight / App Store cutoff
+    /// behavior is unchanged.
     private static func isLegacyFromVerifiedAppTransaction(
         originalPurchaseDate: Date,
         environment: String,
-        cutoff: Date
+        cutoff: Date,
+        forceNonLegacyAppTransaction: Bool = false
     ) -> Bool {
         #if DEBUG
         if environment == "Xcode" {
             return false
         }
+        if forceNonLegacyAppTransaction {
+            return false
+        }
+        #else
+        _ = forceNonLegacyAppTransaction
         #endif
         return isLegacy(originalPurchaseDate: originalPurchaseDate, cutoff: cutoff)
     }

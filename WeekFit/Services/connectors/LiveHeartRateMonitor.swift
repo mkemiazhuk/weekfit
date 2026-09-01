@@ -7,7 +7,11 @@ internal import Combine
 /// Relies on Watch / chest strap writing HR samples into HealthKit — no Watch app required.
 @MainActor
 final class LiveHeartRateMonitor: ObservableObject {
-    nonisolated deinit {}
+    nonisolated deinit {
+        if let physiologyObserver {
+            NotificationCenter.default.removeObserver(physiologyObserver)
+        }
+    }
 
     static let shared = LiveHeartRateMonitor()
 
@@ -22,11 +26,25 @@ final class LiveHeartRateMonitor: ObservableObject {
     private var sessionStartedAt: Date?
     private var protectedDataObservers: [NSObjectProtocol] = []
 
-    /// Prefer samples from this window; workout HR can lag a bit behind the Watch UI.
-    private let freshnessWindow: TimeInterval = 180
-    private let pollIntervalNanoseconds: UInt64 = 3_000_000_000
+    /// Drop samples older than this — Apple Fitness zone follows current HR, not a session peak.
+    private let liveWindow: TimeInterval = 20
+    /// Soft fallback when Watch has not written a sample for a few seconds.
+    private let freshnessWindow: TimeInterval = 90
+    /// Match Fitness cadence: zone should flip within ~1–2s of a new HealthKit sample.
+    private let pollIntervalNanoseconds: UInt64 = 1_500_000_000
+    private var physiologyObserver: NSObjectProtocol?
 
-    private init() {}
+    private init() {
+        physiologyObserver = NotificationCenter.default.addObserver(
+            forName: .weekFitHeartRateZonePhysiologyDidUpdate,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.recalculateZoneFromCurrentBPM()
+            }
+        }
+    }
 
     func start(sessionStartedAt: Date = Date()) {
         guard HKHealthStore.isHealthDataAvailable() else { return }
@@ -157,6 +175,19 @@ final class LiveHeartRateMonitor: ObservableObject {
         }
     }
 
+    /// Force an immediate HealthKit read — e.g. when opening the Coach tab mid-session.
+    func refreshNow() {
+        fetchLatest()
+    }
+
+    /// Re-map the last BPM when age/resting HR bands change (e.g. after HealthKit DOB sync).
+    private func recalculateZoneFromCurrentBPM() {
+        guard isMonitoring, let bpm = currentBPM else { return }
+        let zone = HeartRateZones.zone(forBPM: bpm)
+        guard zone != currentZone else { return }
+        currentZone = zone
+    }
+
     private func fetchLatest() {
         guard isMonitoring else { return }
         guard let type = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
@@ -194,20 +225,32 @@ final class LiveHeartRateMonitor: ObservableObject {
 
             let quantitySamples = (samples as? [HKQuantitySample]) ?? []
             let unit = HKUnit.count().unitDivided(by: .minute())
-            let freshness = self?.freshnessWindow ?? 180
+            let liveSeconds = self?.liveWindow ?? 20
+            let freshness = self?.freshnessWindow ?? 90
+            let liveCutoff = now.addingTimeInterval(-liveSeconds)
             let freshCutoff = now.addingTimeInterval(-freshness)
 
-            let freshSamples = quantitySamples.filter { $0.endDate >= freshCutoff }
-            let candidateSamples = freshSamples.isEmpty ? Array(quantitySamples.prefix(3)) : freshSamples
+            // Apple Fitness: zone tracks the *current* HR reading.
+            // Prefer the newest sample in the live window; never hold a peak.
+            let sortedByRecency = quantitySamples.sorted { $0.endDate > $1.endDate }
+            let liveSamples = sortedByRecency.filter { $0.endDate >= liveCutoff }
+            let freshSamples = sortedByRecency.filter { $0.endDate >= freshCutoff }
+            let candidateSamples = liveSamples.isEmpty
+                ? (freshSamples.isEmpty ? Array(sortedByRecency.prefix(1)) : freshSamples)
+                : liveSamples
 
-            let bpms: [Int] = candidateSamples.compactMap { sample in
+            var newestBPM: Int?
+            var newestEnd: Date?
+            for sample in candidateSamples {
                 let value = Int(sample.quantity.doubleValue(for: unit).rounded())
-                guard value > 30, value < 250 else { return nil }
-                return value
+                if value > 30, value < 250 {
+                    newestBPM = value
+                    newestEnd = sample.endDate
+                    break
+                }
             }
 
-            // Peak in the fresh window — Watch UI often shows a spike before the "current" sample settles.
-            guard let bpm = bpms.max() else {
+            guard let bpm = newestBPM else {
                 Task { @MainActor in
                     guard let self else { return }
                     if let updatedAt = self.updatedAt,
@@ -220,28 +263,15 @@ final class LiveHeartRateMonitor: ObservableObject {
             }
 
             let zone = HeartRateZones.zone(forBPM: bpm)
-            let newestEnd = candidateSamples.map(\.endDate).max() ?? now
+            let sampleEnd = newestEnd ?? now
 
             Task { @MainActor in
                 guard let self, self.isMonitoring else { return }
-                let previousZone = self.currentZone
-                let previousBPM = self.currentBPM
                 self.currentBPM = bpm
                 self.currentZone = zone
-                self.updatedAt = newestEnd
-
-                let zoneChanged = previousZone != zone
-                let firstSample = previousBPM == nil
-                let enteredElevated = HeartRateZones.isElevated(zone)
-                    && (previousZone == nil || !HeartRateZones.isElevated(previousZone ?? 0))
-
-                if firstSample || zoneChanged || enteredElevated {
-                    NotificationCenter.default.post(
-                        name: .weekFitLiveHeartRateZoneDidChange,
-                        object: nil,
-                        userInfo: ["bpm": bpm, "zone": zone]
-                    )
-                }
+                self.updatedAt = sampleEnd
+                // Zone/BPM change notification is posted by WeekFitActivityCoordinator
+                // after it applies these values — avoids stale enrich on Coach recompute.
             }
         }
 

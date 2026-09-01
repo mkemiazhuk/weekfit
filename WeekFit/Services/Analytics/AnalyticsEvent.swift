@@ -21,7 +21,9 @@ enum AnalyticsEvent: String, Sendable {
     case notificationPermissionResponded = "notification_permission_responded"
     case notificationOpened = "notification_opened"
 
-    // Today.
+    // Today / activation milestones.
+    case todayFirstView = "today_first_view"
+    case recoveryAvailable = "recovery_available"
     case todayPrimaryActionTapped = "today_primary_action_tapped"
     case todaySectionOpened = "today_section_opened"
     case quickLogOpened = "quick_log_opened"

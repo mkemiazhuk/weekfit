@@ -54,6 +54,11 @@ enum CandidateScorer {
                 // Meals lack historical components; without a floor they often miss inclusion.
                 return 12
             case .createPlannedActivity:
+                // Invented recovery light (stretch/yoga/breathing) shares the walk inclusion floor.
+                if candidate.source == .recoveryMovement,
+                   strategy == .recover || strategy == .maintain || strategy == .protectTomorrow {
+                    return 16
+                }
                 // Habitual light recovery (yoga/stretch) needs room to outrank generic Walk.
                 if candidate.source == .historicalActivity,
                    strategy == .recover || strategy == .maintain {
@@ -135,6 +140,16 @@ enum CandidateScorer {
             return max(penalty, -12)
         }()
 
+        let affinityBonus: Int = {
+            guard candidate.source == .recoveryMovement || candidate.source == .historicalActivity else {
+                return 0
+            }
+            guard let family = RecoveryMovementFamilyResolver.family(for: candidate),
+                  family != .otherTraining else { return 0 }
+            let affinities = SimilarDayAffinityScorer.affinities(for: context, strategy: strategy)
+            return SimilarDayAffinityScorer.bonus(for: family, affinities: affinities)
+        }()
+
         let breakdown = CandidateScoreBreakdown(
             physiologicalFit: phys + safetyFloor,
             strategyFit: strategyFit,
@@ -145,7 +160,8 @@ enum CandidateScorer {
             rejectionPenalty: rejection,
             confidencePenalty: confidencePenalty,
             conflictPenalty: conflict,
-            fatiguePenalty: fatigue
+            fatiguePenalty: fatigue,
+            similarDayAffinity: affinityBonus
         )
 
         // Guidance always survives scoring for assembly (overlay suppressed if no mutations).
@@ -198,6 +214,13 @@ enum CandidateScorer {
                 && candidate.confidence >= defaultSelectionConfidenceThreshold
                 && !context.stronglyRejectsWalk
         case .createPlannedActivity:
+            // Recover-day invented light movement should start selected when eligible.
+            if candidate.source == .recoveryMovement,
+               strategy == .recover,
+               candidate.defaultSelectionEligibility == .eligible {
+                return scored.score >= defaultSelectionScoreThreshold
+                    && candidate.confidence >= defaultSelectionConfidenceThreshold
+            }
             // High-evidence habitual creates on train days start selected (user can deselect).
             if context.preferAvoidHardLoadOnLowRecovery,
                isElevatedLoad(candidate) || isSerious(candidate) {

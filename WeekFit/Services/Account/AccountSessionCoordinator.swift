@@ -215,7 +215,8 @@ enum AccountSessionCoordinator {
             StartupDiagnostics.failed(
                 operation: "DemoDataMigration.cleanupLegacyDemoRecordsIfNeeded",
                 error: error,
-                step: 3
+                step: 3,
+                diagnosticCode: "demo_migration_failed"
             )
         }
 

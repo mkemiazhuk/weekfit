@@ -7,11 +7,13 @@ import OSLog
 @MainActor
 protocol WeekFitStoreKitServicing: AnyObject {
     func loadAppTransaction() async -> WeekFitAppTransactionStatus
-    func loadProducts() async throws -> [WeekFitProductSnapshot]
+    func loadProducts() async throws -> WeekFitProductsLoadResult
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot?
     func purchase(productID: String) async -> WeekFitPurchaseOutcome
     func restorePurchases() async throws
     func startTransactionUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
+    /// Observes StoreKit storefront changes so paywall prices can refresh with the catalog.
+    func startStorefrontUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
 }
 
 @MainActor
@@ -50,13 +52,19 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         }
     }
 
-    func loadProducts() async throws -> [WeekFitProductSnapshot] {
+    func loadProducts() async throws -> WeekFitProductsLoadResult {
         let requestedIDs = WeekFitSubscriptionProductID.allRawValues
         #if DEBUG
         await WeekFitStoreKitDebug.logProductLoadStart(requestedIDs: requestedIDs)
         #endif
         do {
+            await WeekFitStoreKitTimelineDiagnostics.shared.recordProductLoadBefore()
+            let storefront = await Self.currentStorefrontSnapshot()
             let storeProducts = try await Product.products(for: requestedIDs)
+            await WeekFitStoreKitTimelineDiagnostics.shared.recordProductLoadAfter(
+                returnedCount: storeProducts.count
+            )
+            WeekFitStoreKitTimelineDiagnostics.shared.recordProductsReturned(storeProducts)
             var mapped: [String: Product] = [:]
             for product in storeProducts {
                 mapped[product.id] = product
@@ -70,7 +78,11 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 snapshots: snapshots
             )
             #endif
-            return snapshots
+            return WeekFitProductsLoadResult(
+                products: snapshots,
+                rawReturnedCount: storeProducts.count,
+                storefront: storefront
+            )
         } catch {
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadFailure(requestedIDs: requestedIDs, error: error)
@@ -132,24 +144,31 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         }
 
         do {
+            await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseBefore(product: product)
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
                 switch verification {
                 case .verified(let transaction):
                     await transaction.finish()
+                    await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "success")
                     return .success
                 case .unverified:
+                    await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "failedVerification")
                     return .failedVerification
                 }
             case .userCancelled:
+                await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "userCancelled")
                 return .cancelled
             case .pending:
+                await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "pending")
                 return .pending
             @unknown default:
+                await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "failed")
                 return .failed
             }
         } catch {
+            await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "threw")
             return .failed
         }
     }
@@ -179,6 +198,29 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 }
             }
         }
+    }
+
+    func startStorefrontUpdates(
+        _ onChange: @escaping @Sendable () async -> Void
+    ) -> Task<Void, Never> {
+        Task.detached {
+            for await storefront in Storefront.updates {
+                await MainActor.run {
+                    WeekFitStoreKitTimelineDiagnostics.shared.recordStorefrontUpdate(storefront)
+                }
+                await onChange()
+            }
+        }
+    }
+
+    private static func currentStorefrontSnapshot() async -> WeekFitStorefrontSnapshot {
+        guard let storefront = await Storefront.current else {
+            return .unknown
+        }
+        return WeekFitStorefrontSnapshot(
+            countryCode: storefront.countryCode,
+            id: storefront.id
+        )
     }
 
     private func subscriptionStatusSnapshot() async -> WeekFitSubscriptionSnapshot? {
@@ -262,6 +304,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             displayPrice: product.displayPrice,
             price: product.price,
             periodUnit: mapPeriodUnit(period.unit),
+            periodValue: period.value,
+            currencyCode: product.priceFormatStyle.currencyCode,
             monthlyEquivalentDisplay: period.unit == .year
                 ? product.priceFormatStyle.format(product.price / 12)
                 : nil,

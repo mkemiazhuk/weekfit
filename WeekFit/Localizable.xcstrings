@@ -1246,23 +1246,6 @@
         }
       }
     },
-    "activity.metric.avgSpeed" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Avg Speed"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Средняя скорость"
-          }
-        }
-      }
-    },
     "activity.metric.avgPace" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1276,6 +1259,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Средний темп"
+          }
+        }
+      }
+    },
+    "activity.metric.avgSpeed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avg Speed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя скорость"
           }
         }
       }
@@ -1361,6 +1361,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Набор высоты"
+          }
+        }
+      }
+    },
+    "activity.metric.maxHeartRate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max Heart Rate"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Макс. пульс"
           }
         }
       }
@@ -29830,23 +29847,6 @@
         }
       }
     },
-    "coach.proposal.reason.libraryMealSupport" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This meal matches today’s timing and what you usually eat."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Это блюдо совпадает с привычным временем и тем, что вы обычно едите."
-          }
-        }
-      }
-    },
     "coach.proposal.reason.libraryMealRecoveryBreakfast" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -29860,23 +29860,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лёгкий белковый завтрак даёт восстановлению материал после вчерашней нагрузки."
-          }
-        }
-      }
-    },
-    "coach.proposal.reason.libraryMealRecoveryLunch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yesterday was a hard load — lunch refills energy without another training session."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вчера была тяжёлая нагрузка — обед восполняет энергию без новой тренировки."
           }
         }
       }
@@ -29898,6 +29881,23 @@
         }
       }
     },
+    "coach.proposal.reason.libraryMealRecoveryLunch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday was a hard load — lunch refills energy without another training session."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вчера была тяжёлая нагрузка — обед восполняет энергию без новой тренировки."
+          }
+        }
+      }
+    },
     "coach.proposal.reason.libraryMealSteadyBreakfast" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -29911,6 +29911,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спокойный завтрак держит энергию ровной, пока день не набрал ход."
+          }
+        }
+      }
+    },
+    "coach.proposal.reason.libraryMealSteadyDinner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dinner closes the day with enough protein so tomorrow doesn’t start depleted."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ужин закрывает день белком, чтобы завтра не начать на пустом баке."
           }
         }
       }
@@ -29932,19 +29949,19 @@
         }
       }
     },
-    "coach.proposal.reason.libraryMealSteadyDinner" : {
-      "extractionState" : "manual",
+    "coach.proposal.reason.libraryMealSupport" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dinner closes the day with enough protein so tomorrow doesn’t start depleted."
+            "value" : "This meal matches today’s timing and what you usually eat."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ужин закрывает день белком, чтобы завтра не начать на пустом баке."
+            "value" : "Это блюдо совпадает с привычным временем и тем, что вы обычно едите."
           }
         }
       }
@@ -30000,23 +30017,6 @@
         }
       }
     },
-    "coach.proposal.reason.recoveryWalkSupport" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A short easy walk after a hard day helps the legs without stacking more training."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "После тяжёлого дня лёгкая ходьба помогает ногам и не наслаивает новую тренировку."
-          }
-        }
-      }
-    },
     "coach.proposal.reason.recoveryStretchSupport" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -30030,6 +30030,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лёгкая растяжка после тяжёлых дней помогает телу успокоиться без новой нагрузки."
+          }
+        }
+      }
+    },
+    "coach.proposal.reason.recoveryWalkSupport" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A short easy walk after a hard day helps the legs without stacking more training."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После тяжёлого дня лёгкая ходьба помогает ногам и не наслаивает новую тренировку."
           }
         }
       }
@@ -30391,23 +30408,6 @@
         }
       }
     },
-    "coach.proposal.review.section.movement" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Movement"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Движение"
-          }
-        }
-      }
-    },
     "coach.proposal.review.section.fuel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -30421,6 +30421,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Питание"
+          }
+        }
+      }
+    },
+    "coach.proposal.review.section.movement" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение"
           }
         }
       }
@@ -62051,6 +62068,91 @@
         }
       }
     },
+    "meals.starter.chickenRamen.step1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simmer chicken in broth with soy sauce until cooked through, then slice."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отварите курицу в бульоне с соевым соусом до готовности, затем нарежьте."
+          }
+        }
+      }
+    },
+    "meals.starter.chickenRamen.step2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cook the noodles separately until just tender."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отварите лапшу отдельно до мягкости."
+          }
+        }
+      }
+    },
+    "meals.starter.chickenRamen.step3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soft-boil the eggs, then halve them."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сварите яйца всмятку и разрежьте пополам."
+          }
+        }
+      }
+    },
+    "meals.starter.chickenRamen.step4" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assemble bowls with noodles, hot broth, chicken, bok choy, and egg."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Соберите тарелки: лапша, горячий бульон, курица, бок-чой и яйцо."
+          }
+        }
+      }
+    },
+    "meals.starter.chickenRamen.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chicken Ramen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамен с курицей"
+          }
+        }
+      }
+    },
     "meals.starter.chickenRice.step1" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -62510,6 +62612,91 @@
         }
       }
     },
+    "meals.starter.salmonNigiri.step1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cook sushi rice until tender, then season lightly with rice vinegar and a pinch of salt."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отварите рис для суши до готовности и слегка заправьте рисовым уксусом с щепоткой соли."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonNigiri.step2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slice the salmon into thin pieces about the width of two fingers."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нарежьте лосось тонкими ломтиками шириной примерно с два пальца."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonNigiri.step3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shape the rice into small ovals and top each piece with salmon."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сформируйте рис в небольшие овалы и накрой каждый кусочек лососем."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonNigiri.step4" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serve with soy sauce and pickled ginger on the side."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подавайте с соевым соусом и маринованным имбирём."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonNigiri.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salmon Nigiri"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нигири с лососем"
+          }
+        }
+      }
+    },
     "meals.starter.salmonQuinoa.step1" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -62574,6 +62761,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подавайте лосось на киноа со шпинатом сбоку."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonRoll.step1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lay a sheet of nori on a bamboo mat and spread an even layer of seasoned rice."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положите лист нори на коврик и равномерно распределите приправленный рис."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonRoll.step2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add strips of salmon and avocado along the center line."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выложите полоски лосося и авокадо по центру."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonRoll.step3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Roll tightly, then slice into bite-size pieces with a sharp wet knife."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плотно сверните ролл и нарежьте на кусочки острым смоченным ножом."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonRoll.step4" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serve immediately with soy sauce."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подавайте сразу с соевым соусом."
+          }
+        }
+      }
+    },
+    "meals.starter.salmonRoll.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salmon Avocado Roll"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ролл с лососем и авокадо"
           }
         }
       }
@@ -62659,6 +62931,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Шакшука"
+          }
+        }
+      }
+    },
+    "meals.starter.shoyuRamen.step1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build a light shoyu broth with soy sauce, garlic, and mushroom aroma."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сварите лёгкий соевый бульон с чесноком и ароматом грибов."
+          }
+        }
+      }
+    },
+    "meals.starter.shoyuRamen.step2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cook noodles until springy, then drain."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отварите лапшу до упругости и слейте воду."
+          }
+        }
+      }
+    },
+    "meals.starter.shoyuRamen.step3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pan-sear the pork briefly and slice the soft-boiled egg."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слегка обжарьте свинину и нарежьте яйцо всмятку."
+          }
+        }
+      }
+    },
+    "meals.starter.shoyuRamen.step4" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ladle broth over noodles and top with pork, egg, and mushrooms."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Залейте лапшу бульоном и выложите сверху свинину, яйцо и грибы."
+          }
+        }
+      }
+    },
+    "meals.starter.shoyuRamen.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shoyu Ramen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамен с соевым бульоном"
           }
         }
       }
@@ -62795,6 +63152,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выложите рис с тофу и пак-чой, сверху полейте соевым соусом."
+          }
+        }
+      }
+    },
+    "meals.starter.tunaRoll.step1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mix the tuna with a little mayo and chili sauce until evenly coated."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смешайте тунец с небольшим количеством майонеза и соуса чили до равномерного покрытия."
+          }
+        }
+      }
+    },
+    "meals.starter.tunaRoll.step2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spread rice over nori and add cucumber strips plus the spicy tuna filling."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Распределите рис по нори, добавьте полоски огурца и начинку из острого тунца."
+          }
+        }
+      }
+    },
+    "meals.starter.tunaRoll.step3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Roll firmly and slice into even pieces."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плотно сверните и нарежьте на ровные кусочки."
+          }
+        }
+      }
+    },
+    "meals.starter.tunaRoll.step4" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Top with sesame if you like and serve with soy sauce."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При желании посыпьте кунжутом и подавайте с соевым соусом."
+          }
+        }
+      }
+    },
+    "meals.starter.tunaRoll.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spicy Tuna Roll"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Острый ролл с тунцом"
           }
         }
       }
@@ -67229,6 +67671,91 @@
         }
       }
     },
+    "onboarding.understanding.demo.adjusted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coach adjusted your day"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренер скорректировал ваш день"
+          }
+        }
+      }
+    },
+    "onboarding.understanding.demo.calories" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calories → Adjusted"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Калории → Скорректированы"
+          }
+        }
+      }
+    },
+    "onboarding.understanding.demo.lunch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lunch → More protein"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обед → Больше белка"
+          }
+        }
+      }
+    },
+    "onboarding.understanding.demo.recovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановление"
+          }
+        }
+      }
+    },
+    "onboarding.understanding.demo.strength" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strength → Tomorrow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сила → Завтра"
+          }
+        }
+      }
+    },
     "onboarding.v2.begin.body" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -70612,91 +71139,6 @@
         }
       }
     },
-    "onboarding.understanding.demo.adjusted" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coach adjusted your day"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тренер скорректировал ваш день"
-          }
-        }
-      }
-    },
-    "onboarding.understanding.demo.calories" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Calories → Adjusted"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Калории → Скорректированы"
-          }
-        }
-      }
-    },
-    "onboarding.understanding.demo.lunch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lunch → More protein"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Обед → Больше белка"
-          }
-        }
-      }
-    },
-    "onboarding.understanding.demo.recovery" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recovery"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Восстановление"
-          }
-        }
-      }
-    },
-    "onboarding.understanding.demo.strength" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Strength → Tomorrow"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сила → Завтра"
-          }
-        }
-      }
-    },
     "onboarding.v10.ahead.body" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -72975,23 +73417,6 @@
         }
       }
     },
-    "onboarding.v12.ready.subtitle.planReady" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your first plan is ready."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ваш первый план готов."
-          }
-        }
-      }
-    },
     "onboarding.v12.ready.subtitle.evening.fatLoss" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -73090,6 +73515,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сегодня не день пустой нагрузки. Заправьтесь — завтрашние подходы будут важнее."
+          }
+        }
+      }
+    },
+    "onboarding.v12.ready.subtitle.planReady" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your first plan is ready."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш первый план готов."
           }
         }
       }
@@ -73421,223 +73863,19 @@
       "comment" : "A hint that describes the action of tapping the weather badge.",
       "isCommentAutoGenerated" : true
     },
-    "Personalization" : {
+    "paywall.access.badge.active" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Personalization"
+            "value" : "Active"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Персонализация"
-          }
-        }
-      }
-    },
-    "Personalize your experience." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personalize your experience."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Настройте приложение под себя."
-          }
-        }
-      }
-    },
-    "paywall.cta.continue" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Продолжить"
-          }
-        }
-      }
-    },
-    "paywall.cta.startTrialFormat" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start %d-Day Free Trial"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Начать %d-дневный пробный период"
-          }
-        }
-      }
-    },
-    "paywall.error.failed" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t complete the purchase. Try again."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось оформить покупку. Попробуйте ещё раз."
-          }
-        }
-      }
-    },
-    "paywall.error.pending" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This purchase is pending approval. WeekFit will unlock after it completes."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Покупка ожидает подтверждения. WeekFit откроется, когда она завершится."
-          }
-        }
-      }
-    },
-    "paywall.error.products" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prices aren’t available right now. Check your connection and try again."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сейчас не удалось загрузить цены. Проверьте соединение и попробуйте снова."
-          }
-        }
-      }
-    },
-    "paywall.error.verification" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t verify this purchase. Try Restore Purchases."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось подтвердить покупку. Попробуйте восстановить покупки."
-          }
-        }
-      }
-    },
-    "paywall.legal.privacy" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy Policy"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Политика конфиденциальности"
-          }
-        }
-      }
-    },
-    "paywall.legal.separator" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "·"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "·"
-          }
-        }
-      }
-    },
-    "paywall.legal.terms" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terms of Use"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Условия использования"
-          }
-        }
-      }
-    },
-    "paywall.legacy.body" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WeekFit is becoming a subscription app, but your access stays enabled."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WeekFit переходит на подписку, но ваш доступ остаётся активным."
-          }
-        }
-      }
-    },
-    "paywall.legacy.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thanks for being here early."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Спасибо, что вы с нами с самого начала."
+            "value" : "Активна"
           }
         }
       }
@@ -73655,91 +73893,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отменена"
-          }
-        }
-      }
-    },
-    "paywall.access.cancelled.bodyFallback" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renewal is cancelled. You keep full access until the current period ends."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Продление отменено. Полный доступ сохранится до конца текущего периода."
-          }
-        }
-      }
-    },
-    "paywall.access.cancelled.bodyFormat" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renewal is cancelled. Full access continues until %@."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Продление отменено. Полный доступ сохранится до %@."
-          }
-        }
-      }
-    },
-    "paywall.access.subscribed.cancelled.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscription ending"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Подписка скоро закончится"
-          }
-        }
-      }
-    },
-    "paywall.access.trial.cancelled.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trial ending"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пробный период заканчивается"
-          }
-        }
-      }
-    },
-    "paywall.access.badge.active" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Активна"
           }
         }
       }
@@ -73774,6 +73927,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пробный период"
+          }
+        }
+      }
+    },
+    "paywall.access.cancelled.bodyFallback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renewal is cancelled. You keep full access until the current period ends."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продление отменено. Полный доступ сохранится до конца текущего периода."
+          }
+        }
+      }
+    },
+    "paywall.access.cancelled.bodyFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renewal is cancelled. Full access continues until %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продление отменено. Полный доступ сохранится до %@."
           }
         }
       }
@@ -73880,6 +74067,23 @@
         }
       }
     },
+    "paywall.access.subscribed.cancelled.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription ending"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подписка скоро закончится"
+          }
+        }
+      }
+    },
     "paywall.access.subscribed.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -73914,6 +74118,23 @@
         }
       }
     },
+    "paywall.access.trial.cancelled.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trial ending"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пробный период заканчивается"
+          }
+        }
+      }
+    },
     "paywall.access.trial.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -73927,6 +74148,193 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пробный период активен"
+          }
+        }
+      }
+    },
+    "paywall.cta.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        }
+      }
+    },
+    "paywall.cta.startTrialFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start %d-Day Free Trial"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начать %d-дневный пробный период"
+          }
+        }
+      }
+    },
+    "paywall.error.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t complete the purchase. Try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось оформить покупку. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "paywall.error.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This purchase is pending approval. WeekFit will unlock after it completes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покупка ожидает подтверждения. WeekFit откроется, когда она завершится."
+          }
+        }
+      }
+    },
+    "paywall.error.products" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prices aren’t available right now. Check your connection and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас не удалось загрузить цены. Проверьте соединение и попробуйте снова."
+          }
+        }
+      }
+    },
+    "paywall.error.verification" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t verify this purchase. Try Restore Purchases."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось подтвердить покупку. Попробуйте восстановить покупки."
+          }
+        }
+      }
+    },
+    "paywall.legacy.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WeekFit is becoming a subscription app, but your access stays enabled."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WeekFit переходит на подписку, но ваш доступ остаётся активным."
+          }
+        }
+      }
+    },
+    "paywall.legacy.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thanks for being here early."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спасибо, что вы с нами с самого начала."
+          }
+        }
+      }
+    },
+    "paywall.legal.privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Политика конфиденциальности"
+          }
+        }
+      }
+    },
+    "paywall.legal.separator" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "·"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "·"
+          }
+        }
+      }
+    },
+    "paywall.legal.terms" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Use"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия использования"
           }
         }
       }
@@ -74254,7 +74662,41 @@
         }
       }
     },
-        "planner.1Hour" : {
+    "Personalization" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalization"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Персонализация"
+          }
+        }
+      }
+    },
+    "Personalize your experience." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalize your experience."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройте приложение под себя."
+          }
+        }
+      }
+    },
+    "planner.1Hour" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -80684,6 +81126,23 @@
         }
       }
     },
+    "recovery.details.metricUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет данных"
+          }
+        }
+      }
+    },
     "recovery.details.mostPointsFormat" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -81377,6 +81836,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Хорошо восстановлены"
+          }
+        }
+      }
+    },
+    "recovery.details.strongestSignalFormat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strongest signal: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Самый сильный сигнал: %@."
           }
         }
       }
@@ -87850,6 +88326,40 @@
         }
       }
     },
+    "settings.profile.shareProductAnalytics.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage data only. Health data is never included."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данные об использовании без данных о здоровье."
+          }
+        }
+      }
+    },
+    "settings.profile.shareProductAnalytics.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help Improve WeekFit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помогать улучшать WeekFit"
+          }
+        }
+      }
+    },
     "settings.profile.signal.adaptive" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -88421,6 +88931,10 @@
     },
     "store: %@" : {
       "comment" : "A label showing the URL of the on-disk store.",
+      "isCommentAutoGenerated" : true
+    },
+    "StoreKit Diagnostics" : {
+      "comment" : "A label displayed above the StoreKit diagnostics.",
       "isCommentAutoGenerated" : true
     },
     "support.back" : {

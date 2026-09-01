@@ -28,6 +28,7 @@ enum DailyContextBuilder {
         )
 
         let behavioral = ProposalBehavioralPreferences.load()
+        let observation = CoachObservationStore.observation(for: input.dayKey)
 
         return DailyContext(
             now: input.now,
@@ -37,7 +38,7 @@ enum DailyContextBuilder {
             generationMode: input.generationMode,
             contextFreshness: freshness,
             recoveryBand: input.recoveryBand,
-            recoveryPercent: nil,
+            recoveryPercent: observation?.recoveryPercent,
             recoveryAvailable: recoveryAvailable,
             sleepPresence: input.sleepPresence,
             sleepHours: nil,
@@ -63,6 +64,11 @@ enum DailyContextBuilder {
             mealLibrary: input.mealLibrary,
             mealLibraryRevision: input.fingerprint.mealLibraryRevision,
             weatherRiskToken: input.weatherRiskToken,
+            outdoorSuitability: input.outdoorSuitability,
+            existingPlanMovementSuitability: ExistingPlanMovementSuitabilityClassifier.classify(
+                todayOpen: todayOpen,
+                strategy: .recover
+            ),
             canMutate: input.canMutate && input.generationMode != .closed,
             fingerprint: input.fingerprint
         )

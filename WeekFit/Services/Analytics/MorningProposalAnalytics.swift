@@ -1,50 +1,84 @@
 import Foundation
 
 /// Privacy-preserving Morning Proposal analytics helpers.
-/// Never logs Recovery/HRV/sleep values, activity titles, HealthKit samples, or localized copy.
+/// Product-interaction only: surfaces, count buckets, apply results, coarse change kinds.
+/// Never logs Recovery/HRV/sleep, strategy/confidence, reason categories, titles, or HealthKit.
+///
+/// Diagnostic outcomes (`unavailable` / `no_changes` / `generated` / `stale`) are
+/// system-state events — not engagement. Exposure / apply / review events are engagement.
 enum MorningProposalAnalytics {
 
-    private static var analytics: AnalyticsTracking { AppAnalytics.shared }
+    enum Keys {
+        static let unavailableEmitted = "weekfit.analytics.mp.unavailable.emitted"
+        static let noChangesEmitted = "weekfit.analytics.mp.noChanges.emitted"
+    }
+
+    static var allKnownKeys: [String] {
+        [Keys.unavailableEmitted, Keys.noChangesEmitted]
+    }
+
+    private static var analytics: AnalyticsTracking { analyticsProvider() }
 
     private static let lock = NSLock()
+    private static var defaults: UserDefaults = .standard
+    private static var analyticsProvider: () -> AnalyticsTracking = { AppAnalytics.shared }
     private static var viewedProposalIds = Set<String>()
     private static var acknowledgmentViewedDayKeys = Set<String>()
+    private static let maxStoredKeys = 48
 
     static func proposalGenerated(
         changeCount: Int,
         guidanceCount: Int,
-        strategy: DailyStrategy? = nil,
-        generationMode: MorningProposalGenerationMode? = nil,
-        contextConfidence: ProposalContextConfidence? = nil
+        generationMode: MorningProposalGenerationMode? = nil
     ) {
-        // Coarse fields only — never recovery/HRV/sleep values or titles.
+        // Interaction telemetry only — no strategy, confidence, or health context.
         var parameters: [String: String] = [
             AnalyticsParameterKey.selectedCountBucket: MorningProposalCountBucket(count: changeCount + guidanceCount).rawValue,
             AnalyticsParameterKey.source: AnalyticsSource.today.rawValue
         ]
-        if let strategy {
-            parameters["proposal_strategy"] = strategy.rawValue
-        }
         if let generationMode {
-            parameters["generation_mode"] = generationMode.rawValue
-        }
-        if let contextConfidence {
-            parameters["context_confidence"] = contextConfidence.rawValue
+            parameters[AnalyticsParameterKey.mode] = generationMode.rawValue
         }
         analytics.track(.morningProposalGenerated, parameters: parameters)
     }
 
-    static func proposalUnavailable(reason: String) {
+    /// Emits at most once per local `dayKey` + canonical unavailable reason.
+    /// Engine re-evaluation is unchanged — only analytics are deduped.
+    static func proposalUnavailable(dayKey: String, reason: String) {
+        let mapped = MorningProposalUnavailableAnalyticsReason.fromDomainReason(reason)
+        let dedupeKey = "\(dayKey)|\(mapped.rawValue)"
+
+        lock.lock()
+        var emitted = Set(defaults.stringArray(forKey: Keys.unavailableEmitted) ?? [])
+        let inserted = emitted.insert(dedupeKey).inserted
+        if inserted {
+            let trimmed = Array(emitted).sorted().suffix(maxStoredKeys)
+            defaults.set(Array(trimmed), forKey: Keys.unavailableEmitted)
+        }
+        lock.unlock()
+        guard inserted else { return }
+
         analytics.track(
             .morningProposalUnavailable,
             parameters: [
-                AnalyticsParameterKey.reason: sanitizeUnavailableReason(reason),
+                AnalyticsParameterKey.reason: mapped.rawValue,
                 AnalyticsParameterKey.source: AnalyticsSource.today.rawValue
             ]
         )
     }
 
-    static func proposalNoChanges() {
+    /// Emits at most once per local `dayKey` for a no-change engine outcome.
+    static func proposalNoChanges(dayKey: String) {
+        lock.lock()
+        var emitted = Set(defaults.stringArray(forKey: Keys.noChangesEmitted) ?? [])
+        let inserted = emitted.insert(dayKey).inserted
+        if inserted {
+            let trimmed = Array(emitted).sorted().suffix(maxStoredKeys)
+            defaults.set(Array(trimmed), forKey: Keys.noChangesEmitted)
+        }
+        lock.unlock()
+        guard inserted else { return }
+
         analytics.track(
             .morningProposalNoChanges,
             parameters: [AnalyticsParameterKey.source: AnalyticsSource.today.rawValue]
@@ -75,32 +109,29 @@ enum MorningProposalAnalytics {
         )
     }
 
-    static func recommendationSelected(kind: CoachChangeKind, reason: CoachProposalReasonCode) {
+    static func recommendationSelected(kind: CoachChangeKind) {
         analytics.track(
             .morningProposalRecommendationSelected,
             parameters: [
-                AnalyticsParameterKey.changeKind: kind.analyticsRawValue,
-                AnalyticsParameterKey.reasonCategory: MorningProposalReasonCategory(reason).rawValue
+                AnalyticsParameterKey.changeKind: kind.analyticsInteractionKind
             ]
         )
     }
 
-    static func recommendationDeselected(kind: CoachChangeKind, reason: CoachProposalReasonCode) {
+    static func recommendationDeselected(kind: CoachChangeKind) {
         analytics.track(
             .morningProposalRecommendationDeselected,
             parameters: [
-                AnalyticsParameterKey.changeKind: kind.analyticsRawValue,
-                AnalyticsParameterKey.reasonCategory: MorningProposalReasonCategory(reason).rawValue
+                AnalyticsParameterKey.changeKind: kind.analyticsInteractionKind
             ]
         )
     }
 
-    static func reasonExpanded(kind: CoachChangeKind, reason: CoachProposalReasonCode) {
+    static func reasonExpanded(kind: CoachChangeKind) {
         analytics.track(
             .morningProposalReasonExpanded,
             parameters: [
-                AnalyticsParameterKey.changeKind: kind.analyticsRawValue,
-                AnalyticsParameterKey.reasonCategory: MorningProposalReasonCategory(reason).rawValue
+                AnalyticsParameterKey.changeKind: kind.analyticsInteractionKind
             ]
         )
     }
@@ -185,7 +216,7 @@ enum MorningProposalAnalytics {
             AnalyticsParameterKey.surface: source.rawValue
         ]
         if let changeKind {
-            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsRawValue
+            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsInteractionKind
         }
         analytics.track(.morningProposalAdjustedItemViewed, parameters: params)
     }
@@ -195,7 +226,7 @@ enum MorningProposalAnalytics {
             AnalyticsParameterKey.surface: MorningProposalAnalyticsSurface.plan.rawValue
         ]
         if let changeKind {
-            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsRawValue
+            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsInteractionKind
         }
         analytics.track(.morningProposalAdjustedItemManuallyEdited, parameters: params)
     }
@@ -203,7 +234,7 @@ enum MorningProposalAnalytics {
     static func adjustedItemCompleted(changeKind: CoachChangeKind?) {
         var params: [String: String] = [:]
         if let changeKind {
-            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsRawValue
+            params[AnalyticsParameterKey.changeKind] = changeKind.analyticsInteractionKind
         }
         analytics.track(.morningProposalAdjustedItemCompleted, parameters: params)
     }
@@ -222,22 +253,28 @@ enum MorningProposalAnalytics {
     }
 
     #if DEBUG
+    static func setDefaultsForTests(_ defaults: UserDefaults) {
+        lock.lock()
+        self.defaults = defaults
+        lock.unlock()
+    }
+
+    static func setAnalyticsForTests(_ provider: @escaping () -> AnalyticsTracking) {
+        lock.lock()
+        analyticsProvider = provider
+        lock.unlock()
+    }
+
     static func resetAllForTests() {
         lock.lock()
         viewedProposalIds.removeAll()
         acknowledgmentViewedDayKeys.removeAll()
+        allKnownKeys.forEach { defaults.removeObject(forKey: $0) }
+        defaults = .standard
+        analyticsProvider = { AppAnalytics.shared }
         lock.unlock()
     }
     #endif
-
-    private static func sanitizeUnavailableReason(_ reason: String) -> String {
-        switch reason {
-        case "health_access_denied", "outside_morning_window", "timeout", "missing_inputs", "day_expired":
-            return reason
-        default:
-            return "other"
-        }
-    }
 }
 
 extension ProductAnalytics {

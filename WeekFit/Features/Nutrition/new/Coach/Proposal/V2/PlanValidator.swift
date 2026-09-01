@@ -18,10 +18,16 @@ enum PlanValidator {
             kept.removeAll { drop.contains($0.id) }
             notes.append("drop_duplicate_walk")
         }
-        if context.hasExistingMovement || context.completedWalkToday {
+        // Only suppress invent when suitable light already exists (or walk already done).
+        // Inappropriate hard sessions must not block recovery light invent.
+        if context.existingPlanMovementSuitability == .suitableLight || context.completedWalkToday {
             let before = kept.count
-            kept.removeAll { $0.candidate.kind == .createRecoveryWalk || isWalkCreate($0.candidate) }
-            if kept.count != before { notes.append("drop_walk_existing_movement") }
+            kept.removeAll {
+                $0.candidate.kind == .createRecoveryWalk
+                    || isWalkCreate($0.candidate)
+                    || ($0.candidate.source == .recoveryMovement && $0.candidate.kind == .createPlannedActivity)
+            }
+            if kept.count != before { notes.append("drop_invent_suitable_light_exists") }
         }
 
         // Two serious creates
@@ -65,6 +71,9 @@ enum PlanValidator {
 
         // Temporal overlaps among creates
         kept = resolveTimeConflicts(kept, notes: &notes)
+
+        // Drop invents that still overlap today's existing plan (duration-aware).
+        kept = resolveConflictsAgainstTodayPlan(kept, context: context, notes: &notes)
 
         // Meal without supporting strategy / workout coherence
         kept = validateMeals(kept, strategy: composed.strategy, notes: &notes)
@@ -145,6 +154,41 @@ enum PlanValidator {
             result.append(item)
         }
         return result
+    }
+
+    private static func resolveConflictsAgainstTodayPlan(
+        _ candidates: [ScoredCandidate],
+        context: DailyContext,
+        notes: inout [String]
+    ) -> [ScoredCandidate] {
+        candidates.filter { item in
+            guard let interval = proposedInterval(item.candidate) else { return true }
+            let conflicts = ProposalPlanScheduleResolver.hasIntervalConflict(
+                proposed: interval.start,
+                durationMinutes: interval.durationMinutes,
+                with: ProposalPlanScheduleResolver.blockingActivities(from: context.todayActivities)
+            )
+            if conflicts {
+                notes.append("drop_today_plan_overlap:\(item.id)")
+                return false
+            }
+            return true
+        }
+    }
+
+    private static func proposedInterval(
+        _ candidate: ProposalCandidate
+    ) -> (start: Date, durationMinutes: Int)? {
+        switch candidate.payload {
+        case .createRecoveryWalk(let p):
+            return (p.proposedDate, p.durationMinutes)
+        case .createPlannedActivity(let p):
+            return (p.proposedDate, p.durationMinutes)
+        case .createMealFromLibrary(let p):
+            return (p.proposedDate, max(p.durationMinutes, 20))
+        case .moveActivity, .modifyDuration, .skipActivity, .guidanceOnly:
+            return nil
+        }
     }
 
     private static func createsOrMovesTime(_ candidate: ProposalCandidate) -> Bool {

@@ -61,6 +61,19 @@ final class CoachCopyQualityTests: XCTestCase {
         let pack = try resolveBaseline(.protectTomorrowFresh)
         XCTAssertTrue(pack.assessment.lines.first?.english.contains("Long Run") == true)
         XCTAssertTrue(pack.assessment.lines.first?.english.contains("7:00") == false)
+        let russian = pack.assessment.lines.first?.russian ?? ""
+        XCTAssertTrue(
+            russian.lowercased().contains("длинный бег"),
+            "Expected localized Long Run in RU, got: \(russian)"
+        )
+        XCTAssertFalse(russian.contains("long Бег") || russian.contains("long бег"))
+    }
+
+    func testPostStrengthImmediateAssessmentIsNaturalRussian() throws {
+        let pack = try resolveBaseline(.postStrengthImmediate)
+        let russian = pack.assessment.lines.map(\.russian).joined(separator: " ")
+        XCTAssertFalse(russian.contains("завершён сделан"), russian)
+        XCTAssertTrue(russian.contains("сделан") || russian.contains("завершён"), russian)
     }
 
     // MARK: - Modifier guards

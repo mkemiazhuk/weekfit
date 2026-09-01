@@ -27,7 +27,7 @@ enum CoachLongHikeCopy {
         case .live:
             return liveDraft(minutes: minutes, hoursEN: hoursEN, hoursRU: hoursRU)
         case .completed:
-            return completedDraft(hoursEN: hoursEN, hoursRU: hoursRU)
+            return completedDraft(hoursEN: hoursEN, hoursRU: hoursRU, input: input)
         }
     }
 
@@ -95,8 +95,8 @@ enum CoachLongHikeCopy {
         case .completed:
             return [
                 .en(
-                    "Refill fluids and get a real meal soon.",
-                    "Восполните жидкость и скоро съешьте нормальный приём пищи."
+                    "Drink more water and get a real meal soon.",
+                    "Допейте воды и скоро съешьте нормальный приём пищи."
                 )
             ]
         }
@@ -116,8 +116,8 @@ enum CoachLongHikeCopy {
                     "Около \(hoursRU) на маршруте — это полноценный выход, не прогулка."
                 ),
                 recommendation: .en(
-                    "Pack water, salty snacks, and a light layer. Eat and drink before the first hard climb.",
-                    "Возьмите воду, солёный перекус и лёгкий слой. Ешьте и пейте до первого серьёзного подъёма."
+                    "Pack water, salty snacks, and a light layer before the first hard climb.",
+                    "Возьмите воду, солёный перекус и лёгкий слой до первого серьёзного подъёма."
                 ),
                 avoid: .en(
                     "Don't leave hungry, under-watered, or without a turnaround plan.",
@@ -137,8 +137,8 @@ enum CoachLongHikeCopy {
                     "Хайкинг около \(hoursRU) — много времени на ногах, подготовка важна."
                 ),
                 recommendation: .en(
-                    "Bring water, a snack, and something for blisters. Start easier than the trail invites.",
-                    "Возьмите воду, перекус и защиту от мозолей. Начните легче, чем провоцирует тропа."
+                    "Bring water, a snack, and blister care, and start easier than the trail invites.",
+                    "Возьмите воду, перекус и защиту от мозолей и начните легче, чем провоцирует тропа."
                 ),
                 avoid: .en(
                     "Don't race the first climb or save all food for the end.",
@@ -219,17 +219,29 @@ enum CoachLongHikeCopy {
 
     private static func completedDraft(
         hoursEN: String,
-        hoursRU: String
+        hoursRU: String,
+        input: CoachCopyBuildInput
     ) -> CoachCopyRegistryScenarios.Draft {
-        CoachCopyRegistryScenarios.Draft(
+        let keepLegsLightEN: String
+        let keepLegsLightRU: String
+        if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay)
+            || CoachCopyClosureTiming.allowsDayClosurePhrasing(
+                timeOfDay: input.timeOfDay,
+                conversationPhase: input.conversationPhase
+            ) {
+            keepLegsLightEN = "Drink more water, eat a real meal, and keep the rest of the day light on the legs."
+            keepLegsLightRU = "Допейте воды, съешьте нормальную еду и остаток дня берегите ноги."
+        } else {
+            keepLegsLightEN = "Drink more water, eat a real meal, and keep the legs easy from here."
+            keepLegsLightRU = "Допейте воды, съешьте нормальную еду и дальше берегите ноги."
+        }
+
+        return CoachCopyRegistryScenarios.Draft(
             assessment: .en(
                 "Long hike done — the body still needs a soft landing.",
                 "Длинный хайкинг позади — телу ещё нужна мягкая посадка."
             ),
-            recommendation: .en(
-                "Refill fluids, eat a real meal, and keep the rest of the day light on the legs.",
-                "Восполните жидкость, съешьте нормальную еду и остаток дня берегите ноги."
-            ),
+            recommendation: .en(keepLegsLightEN, keepLegsLightRU),
             avoid: .en(
                 "Don't stack more hard work or skip food after the effort.",
                 "Не наслаивайте новую жёсткую нагрузку и не пропускайте еду после выхода."

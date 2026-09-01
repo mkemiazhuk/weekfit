@@ -370,13 +370,13 @@ enum LiveSessionCoachCopy {
         decision: Decision,
         fallback: CoachBilingualText
     ) -> CoachBilingualText {
-        let minutes = max(input.focusDurationMinutes, 0)
+        let remaining = remainingSessionMinutes(for: input)
         switch (intent, decision) {
         case (.recoveryEasy, _):
-            if minutes > 0 {
+            if remaining > 0 {
                 return .en(
-                    "Another \(minutesPhrase(minutes)) easy minutes is enough.",
-                    "Ещё \(minutes) лёгких минут достаточно."
+                    "Another \(minutesPhrase(remaining)) easy minutes is enough.",
+                    "Ещё \(remaining) лёгких минут достаточно."
                 )
             }
             return .en(
@@ -448,11 +448,25 @@ enum LiveSessionCoachCopy {
     // MARK: - Subject helpers (quality audit tokens)
 
     private static func recoveryOnTrackAssessment(_ input: CoachCopyBuildInput) -> CoachBilingualText {
+        let quarter = max(0, input.focusSessionElapsedMinutes / 15)
         if input.isFocusHikeLike {
-            return .en(
-                "Keep this hike easy — today it counts as recovery.",
-                "Держите хайкинг легко — сегодня это восстановление."
-            )
+            switch quarter % 3 {
+            case 1:
+                return .en(
+                    "You're partway through — keep this hike easy.",
+                    "Вы уже в середине — держите хайкинг легко."
+                )
+            case 2:
+                return .en(
+                    "Past halfway — easy effort still counts as recovery.",
+                    "Больше половины позади — лёгкий темп всё ещё восстановление."
+                )
+            default:
+                return .en(
+                    "Keep this hike easy — today it counts as recovery.",
+                    "Держите хайкинг легко — сегодня это восстановление."
+                )
+            }
         }
         switch input.activityType {
         case .yoga:
@@ -516,6 +530,12 @@ enum LiveSessionCoachCopy {
             || input.scenario == .walkAfterHeavyLoad
             || input.scenario == .walkLightDay
             || input.scenario == .walkEveningWindDown
+    }
+
+    private static func remainingSessionMinutes(for input: CoachCopyBuildInput) -> Int {
+        let planned = max(input.focusDurationMinutes, 0)
+        guard planned > 0 else { return 0 }
+        return max(0, planned - max(input.focusSessionElapsedMinutes, 0))
     }
 
     private static func enduranceSubject(

@@ -71,6 +71,10 @@ final class CoachInputProvider: ObservableObject {
         let task = Task { @MainActor in
             let dayActivities = DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
 
+            if dayActivities.contains(where: { !$0.isSkipped && $0.isActive(at: Date()) }) {
+                await healthManager.ensureHeartRateZonePhysiology()
+            }
+
             if refreshHealth {
                 await healthManager.loadHealthData(
                     for: selectedDate,

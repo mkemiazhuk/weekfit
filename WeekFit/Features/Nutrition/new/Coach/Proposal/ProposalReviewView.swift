@@ -539,9 +539,9 @@ struct ProposalReviewView: View {
         )
         proposal = MorningProposalStore.proposal(for: dayKey)
         if next {
-            MorningProposalAnalytics.recommendationSelected(kind: change.kind, reason: change.reasonCode)
+            MorningProposalAnalytics.recommendationSelected(kind: change.kind)
         } else {
-            MorningProposalAnalytics.recommendationDeselected(kind: change.kind, reason: change.reasonCode)
+            MorningProposalAnalytics.recommendationDeselected(kind: change.kind)
         }
     }
 
@@ -550,7 +550,7 @@ struct ProposalReviewView: View {
             expandedReasonIds.remove(change.id)
         } else {
             expandedReasonIds.insert(change.id)
-            MorningProposalAnalytics.reasonExpanded(kind: change.kind, reason: change.reasonCode)
+            MorningProposalAnalytics.reasonExpanded(kind: change.kind)
         }
     }
 

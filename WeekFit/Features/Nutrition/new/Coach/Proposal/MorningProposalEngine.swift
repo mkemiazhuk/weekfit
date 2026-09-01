@@ -21,6 +21,7 @@ struct MorningProposalEngineInput: Sendable, Equatable {
     let walkRejectPenalty: Int
     let stronglyRejectsWalk: Bool
     var weatherRiskToken: ProposalWeatherRiskToken = .unavailable
+    var outdoorSuitability: OutdoorSuitability = .acceptable
     var preferAvoidHardLoadOnLowRecovery: Bool = false
 }
 

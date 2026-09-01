@@ -1,5 +1,14 @@
 # WeekFit Privacy Manifest Inspection (Firebase 12.16.0)
 
+## Verification notes (2026-08-25 privacy hardening)
+
+- Product Analytics is **opt-in** (`ProductAnalyticsConsent`); missing choice → OFF.
+- Crashlytics remains ON for TestFlight/App Store; custom logs use bounded diagnostic codes only.
+- No health-derived Analytics parameters (`recovery_band`, sleep presence, strategy, reason categories, coach health topics).
+- No `Analytics.setUserID` / Crashlytics user ID APIs in WeekFit sources.
+- Firebase Analytics / GoogleAppMeasurement 12.16.0: **no** shipped `PrivacyInfo.xcprivacy` → app must declare ProductInteraction.
+- Purposes: ProductInteraction → Analytics only; CrashData → App Functionality (via Crashlytics).
+
 ## Verdict: GoogleAppMeasurement / FirebaseAnalytics
 
 **GoogleAppMeasurement 12.16.0 does NOT ship a `PrivacyInfo.xcprivacy`.** FirebaseAnalytics binary/Core wrappers also do not. `ProductInteraction` is declared only by the app manifest.

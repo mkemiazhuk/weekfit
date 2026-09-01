@@ -1407,12 +1407,40 @@ struct ActivitySessionDetailView: View {
     }
 
     private var heartRateYAxisValues: [Double] {
-        let values = heartRateThresholds + [
-            heartRateVisibleDomain.lowerBound,
-            heartRateVisibleDomain.upperBound
-        ]
+        let lower = heartRateVisibleDomain.lowerBound
+        let upper = heartRateVisibleDomain.upperBound
+        let span = max(upper - lower, 1)
 
-        return Array(Set(values.map { ($0 / 10).rounded() * 10 })).sorted()
+        // Prefer ~5 labeled marks so large Zone-1 gaps (e.g. 60…130) get intermediate lines.
+        let step: Double = {
+            switch span {
+            case ...40: return 10
+            case ...70: return 15
+            case ...110: return 20
+            case ...160: return 25
+            default: return 30
+            }
+        }()
+
+        var values: [Double] = [lower, upper]
+        var tick = (ceil(lower / step) * step)
+        if abs(tick - lower) < 0.5 {
+            tick += step
+        }
+        while tick < upper - 0.5 {
+            values.append(tick)
+            tick += step
+        }
+
+        for threshold in heartRateThresholds {
+            values.append(threshold)
+        }
+
+        return Array(
+            Set(values.map { ($0 / 10).rounded() * 10 })
+        )
+        .filter { heartRateVisibleDomain.contains($0) || abs($0 - lower) < 0.5 || abs($0 - upper) < 0.5 }
+        .sorted()
     }
 
     private var heartRateLineSegments: [HeartRateLineSegment] {
@@ -1641,18 +1669,17 @@ struct ActivitySessionDetailView: View {
 
                 Spacer()
 
-                HStack(spacing: 10) {
-                    if let averageHeartRate = detail?.averageHeartRate {
-                        Text(String(format: WeekFitLocalizedString("activity.heartRate.averageFormat"), Int(averageHeartRate.rounded())))
-                    }
-
-                    if let maxHeartRate = detail?.maxHeartRate {
-                        Text(String(format: WeekFitLocalizedString("activity.heartRate.maxFormat"), Int(maxHeartRate.rounded())))
-                    }
+                if let maxHeartRate = detail?.maxHeartRate {
+                    Text(
+                        String(
+                            format: WeekFitLocalizedString("activity.heartRate.maxFormat"),
+                            Int(maxHeartRate.rounded())
+                        )
+                    )
+                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
+                    .monospacedDigit()
                 }
-                .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.52))
-                .monospacedDigit()
             }
 
             if isHeartRateLoading && heartRateSamples.isEmpty {

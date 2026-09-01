@@ -91,9 +91,9 @@ enum ProposalOfferHistoryStore {
 
     private static func isOptionalCreate(_ kind: CoachChangeKind) -> Bool {
         switch kind {
-        case .createPlannedActivity, .createRecoveryWalk:
+        case .createPlannedActivity, .createRecoveryWalk, .createMealFromLibrary:
             return true
-        case .createMealFromLibrary, .modifyDuration, .moveActivity, .skipActivity, .guidanceOnly:
+        case .modifyDuration, .moveActivity, .skipActivity, .guidanceOnly:
             return false
         }
     }

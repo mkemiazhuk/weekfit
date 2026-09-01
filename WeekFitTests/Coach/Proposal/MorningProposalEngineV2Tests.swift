@@ -394,7 +394,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 22, strategyFit: 18, historicalSuccess: 14,
                 behavioralLikelihood: 10, tomorrowProtection: 0, usualTimeFit: 6,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
         XCTAssertFalse(CandidateScorer.shouldDefaultSelect(scored, context: context, strategy: .train))
@@ -429,7 +429,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 22, strategyFit: 18, historicalSuccess: 14,
                 behavioralLikelihood: 10, tomorrowProtection: 0, usualTimeFit: 6,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
         XCTAssertTrue(CandidateScorer.shouldDefaultSelect(scored, context: context, strategy: .train))
@@ -480,7 +480,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 42, strategyFit: 18, historicalSuccess: 14,
                 behavioralLikelihood: 10, tomorrowProtection: 0, usualTimeFit: 6,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
 
@@ -697,7 +697,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 40, strategyFit: 18, historicalSuccess: 0,
                 behavioralLikelihood: 0, tomorrowProtection: 0, usualTimeFit: 0,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
         let walk = ScoredCandidate(
@@ -727,7 +727,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 38, strategyFit: 18, historicalSuccess: 0,
                 behavioralLikelihood: 8, tomorrowProtection: 0, usualTimeFit: 0,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
         let validated = PlanValidator.validate(
@@ -780,6 +780,8 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             mealLibrary: context.mealLibrary,
             mealLibraryRevision: context.mealLibraryRevision,
             weatherRiskToken: context.weatherRiskToken,
+            outdoorSuitability: .acceptable,
+            existingPlanMovementSuitability: .none,
             canMutate: context.canMutate,
             fingerprint: context.fingerprint
         )
@@ -843,7 +845,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 24, strategyFit: 18, historicalSuccess: 8,
                 behavioralLikelihood: 6, tomorrowProtection: 0, usualTimeFit: 6,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
         let walk = scoredWalk(id: "walk")
@@ -900,6 +902,8 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             mealLibrary: [],
             mealLibraryRevision: "0",
             weatherRiskToken: .unavailable,
+            outdoorSuitability: .acceptable,
+            existingPlanMovementSuitability: .none,
             canMutate: true,
             fingerprint: context.fingerprint
         )
@@ -908,6 +912,107 @@ final class MorningProposalEngineV2Tests: XCTestCase {
         XCTAssertNotNil(slot)
         let hour = Calendar.current.component(.hour, from: slot!)
         XCTAssertEqual(hour, 18, "Weekday walk should default to evening, not 12:30")
+    }
+
+    func testHabitualStretchingDoesNotOverlapExistingBikeSession() {
+        // Thursday: bike 10:00–12:30 already on plan; habit wants Stretching at 11:00.
+        let now = date(2026, 7, 30, 8, 0) // Thursday
+        let stretchTemplate = SimilarDayTemplate(
+            dayKey: "2026-07-23", // previous Thursday
+            recoveryBand: .low,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "stretch-hist",
+                    date: date(2026, 7, 23, 11, 0),
+                    type: "recovery",
+                    title: "Stretching",
+                    durationMinutes: 55,
+                    icon: "figure.flexibility",
+                    imageName: "",
+                    isCompleted: true,
+                    isSkipped: false,
+                    source: "planner"
+                )
+            ]
+        )
+        let bikeToday = CoachPlannedActivitySnapshot(
+            id: "bike-today",
+            date: date(2026, 7, 30, 10, 0),
+            type: "workout",
+            title: "Велосессия",
+            durationMinutes: 150,
+            icon: "figure.outdoor.cycle",
+            imageName: "workout-cycling",
+            isCompleted: false,
+            isSkipped: false,
+            source: "planner"
+        )
+        let proposal = MorningProposalEngine.generate(
+            input: makeEngineInput(
+                now: now,
+                recoveryBand: .low,
+                yesterdayHeavy: true,
+                tomorrowDemand: .none,
+                today: [bikeToday],
+                templates: [stretchTemplate]
+            )
+        )
+        let stretchCreates = proposal.changes.compactMap { change -> CreatePlannedActivityPayload? in
+            guard case .createPlannedActivity(let p) = change.payload else { return nil }
+            guard p.title.lowercased().contains("stretch") else { return nil }
+            return p
+        }
+        for payload in stretchCreates {
+            let overlaps = ProposalPlanScheduleResolver.hasIntervalConflict(
+                proposed: payload.proposedDate,
+                durationMinutes: payload.durationMinutes,
+                with: [bikeToday]
+            )
+            XCTAssertFalse(
+                overlaps,
+                "Stretching must not overlap the existing 10:00–12:30 bike (got \(payload.proposedDate))"
+            )
+            let hour = Calendar.current.component(.hour, from: payload.proposedDate)
+            XCTAssertGreaterThanOrEqual(hour, 12, "If offered, Stretching should start after the bike")
+        }
+    }
+
+    func testPlanScheduleResolverSlidesAfterLongBlocker() {
+        let bike = CoachPlannedActivitySnapshot(
+            id: "bike",
+            date: date(2026, 7, 30, 10, 0),
+            type: "workout",
+            title: "Bike",
+            durationMinutes: 150,
+            icon: "figure.outdoor.cycle",
+            imageName: "",
+            isCompleted: false,
+            isSkipped: false,
+            source: "planner"
+        )
+        let preferred = date(2026, 7, 30, 11, 0)
+        let now = date(2026, 7, 30, 8, 0)
+        let resolved = ProposalPlanScheduleResolver.resolveCreateStart(
+            preferred: preferred,
+            durationMinutes: 55,
+            against: [bike],
+            now: now,
+            maxSlideFromPreferredMinutes: 120
+        )
+        XCTAssertNotNil(resolved)
+        guard let resolved else { return }
+        XCTAssertFalse(
+            ProposalPlanScheduleResolver.hasIntervalConflict(
+                proposed: resolved,
+                durationMinutes: 55,
+                with: [bike]
+            )
+        )
+        // Bike ends 12:30 → +15 → 12:45 → round up to 13:00
+        XCTAssertEqual(Calendar.current.component(.hour, from: resolved), 13)
+        XCTAssertEqual(Calendar.current.component(.minute, from: resolved), 0)
     }
 
     func testHabitualYogaOnWeekdaySuppressesGenericWalk() {
@@ -1048,8 +1153,15 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             )
         )
         XCTAssertTrue(
-            proposal.changes.contains { $0.kind == .createRecoveryWalk },
-            "After a hard day, a weekday without walk habit should still offer an easy recovery walk"
+            proposal.changes.contains { $0.kind == .createRecoveryWalk }
+                || proposal.changes.contains { change in
+                    if case .createPlannedActivity(let payload) = change.payload {
+                        let type = payload.activityType.lowercased()
+                        return type == "stretching" || type == "yoga" || type == "breathing"
+                    }
+                    return false
+                },
+            "After a hard day, a weekday without walk habit should still offer light recovery movement"
         )
     }
 
@@ -1129,8 +1241,16 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             )
         )
         XCTAssertTrue(
-            proposal.changes.contains { $0.kind == .createRecoveryWalk },
-            "Cold start should still surface an optional Walk"
+            proposal.changes.contains { $0.kind == .createRecoveryWalk }
+                || proposal.changes.contains { change in
+                    if case .createPlannedActivity(let payload) = change.payload {
+                        let type = payload.activityType.lowercased()
+                        return type == "stretching" || type == "yoga" || type == "breathing"
+                            || payload.title.lowercased().contains("easy run")
+                    }
+                    return false
+                },
+            "Cold start should still surface optional light recovery movement"
         )
 
         // Soft body tips must not become Review inventory on cold start.
@@ -1224,6 +1344,8 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             mealLibrary: [],
             mealLibraryRevision: "0",
             weatherRiskToken: .unavailable,
+            outdoorSuitability: .acceptable,
+            existingPlanMovementSuitability: .none,
             canMutate: canMutate,
             fingerprint: fingerprint
         )
@@ -1300,7 +1422,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             breakdown: CandidateScoreBreakdown(
                 physiologicalFit: 22, strategyFit: 18, historicalSuccess: 0,
                 behavioralLikelihood: 8, tomorrowProtection: 0, usualTimeFit: 0,
-                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0
+                rejectionPenalty: 0, confidencePenalty: 0, conflictPenalty: 0, fatiguePenalty: 0, similarDayAffinity: 0
             )
         )
     }

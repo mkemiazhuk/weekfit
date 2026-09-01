@@ -90,7 +90,18 @@ enum HistoricalActivityProvider {
                 continue
             }
 
-            guard let proposedDate = remapHabitualTime(aggregate: aggregate, context: context, calendar: calendar) else {
+            guard let habitual = remapHabitualTime(aggregate: aggregate, context: context, calendar: calendar) else {
+                continue
+            }
+            // Respect today's plan — don't invent Stretching/Yoga inside an existing bike/run block.
+            guard let proposedDate = ProposalPlanScheduleResolver.resolveCreateStart(
+                preferred: habitual,
+                durationMinutes: shapedDuration,
+                against: context.todayActivities,
+                now: context.now,
+                maxSlideFromPreferredMinutes: 120,
+                calendar: calendar
+            ) else {
                 continue
             }
             let fit: CandidateFit = {

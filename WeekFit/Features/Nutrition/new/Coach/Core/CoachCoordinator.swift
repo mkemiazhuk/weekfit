@@ -27,9 +27,15 @@ final class CoachCoordinator: ObservableObject {
             forName: .weekFitLiveHeartRateZoneDidChange,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] note in
             Task { @MainActor in
-                _ = self?.forceRecompute(reason: "liveHeartRate.zone")
+                let bpm = note.userInfo?["bpm"] as? Int
+                let zone = note.userInfo?["zone"] as? Int
+                _ = self?.forceRecomputeLiveHeartRate(
+                    reason: "liveHeartRate.zone",
+                    bpm: bpm,
+                    zone: zone
+                )
             }
         }
     }
@@ -86,6 +92,18 @@ final class CoachCoordinator: ObservableObject {
         return recomputeIfNeeded(reason: reason)
     }
 
+    /// Rebuilds Coach after a live HR update using the published BPM/zone from the notification.
+    @discardableResult
+    func forceRecomputeLiveHeartRate(reason: String, bpm: Int?, zone: Int?) -> CoachState {
+        guard let base = latestInput ?? state.input else {
+            return forceRecompute(reason: reason)
+        }
+        let enriched = base.enrichingLiveHeartRate(bpm: bpm, zone: zone)
+        latestInput = enriched
+        lastResolvedFingerprint = nil
+        return recomputeIfNeeded(input: enriched, reason: reason)
+    }
+
     @discardableResult
     func forceRecomputeForLanguageChange(reason: String) -> CoachState {
         // Prefer live cache; fall back to the input baked into visible state when
@@ -131,7 +149,14 @@ final class CoachCoordinator: ObservableObject {
         input: CoachInputSnapshot,
         reason: String
     ) -> CoachState {
-        let enriched = enrichWithLiveHeartRate(input)
+        // Live HR notifications already stamp bpm/zone on the snapshot. Re-reading
+        // the coordinator can race and keep the previous zone in copy.
+        let enriched: CoachInputSnapshot
+        if Self.isLiveHeartRateReason(reason) {
+            enriched = input
+        } else {
+            enriched = enrichWithLiveHeartRate(input)
+        }
         latestInput = enriched
         let fingerprint = CoachInputFingerprint(snapshot: enriched)
         let isLanguageChange = reason.lowercased().contains("languagechange")
@@ -203,6 +228,15 @@ final class CoachCoordinator: ObservableObject {
             bpm: coordinator.liveHeartRateBPM,
             zone: coordinator.liveHeartRateZone
         )
+    }
+
+    private static func isLiveHeartRateReason(_ reason: String) -> Bool {
+        // Only skip re-enrich when the snapshot was already stamped with the
+        // zone/BPM that triggered this rebuild. Generic Coach-tab refreshes
+        // still need coordinator enrich.
+        reason == "liveHeartRate.zone"
+            || reason == "coachTab.liveHeartRateZone"
+            || reason.hasPrefix("liveHeartRate.zone.")
     }
 
     private func persistTodayInsightIfNeeded(from state: CoachState) {

@@ -232,6 +232,206 @@ final class CoachBodyStateCopyTests: XCTestCase {
         )
     }
 
+    func testCompletedWalkLightDayFatiguedKeepsCompletedCopyNotPreWalkGuidance() throws {
+        let readiness = screenshotFatiguedReadiness()
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .walkLightDay,
+                dayReadiness: readiness,
+                activityType: .walk,
+                sessionPhase: .immediatePost,
+                activityState: .justFinished
+            )
+        ))
+
+        let russian = [
+            joinedRussian(pack.assessment),
+            joinedRussian(pack.recommendation),
+            joinedRussian(pack.avoid),
+            joinedRussian(pack.nextAction)
+        ].joined(separator: " ").lowercased()
+
+        XCTAssertTrue(russian.contains("прогулка уже"), "Expected completed-walk language, got: \(russian)")
+        XCTAssertFalse(russian.contains("разговорным"))
+        XCTAssertFalse(russian.contains("двадцать минут"))
+        XCTAssertFalse(russian.contains("быстрый марш"))
+        XCTAssertFalse(russian.contains("мягкий вход"))
+    }
+
+    func testLiveWalkLightDayFatiguedKeepsLiveCopyNotPreWalkGuidance() throws {
+        let readiness = screenshotFatiguedReadiness()
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .walkLightDay,
+                dayReadiness: readiness,
+                activityType: .walk,
+                sessionPhase: .during,
+                activityState: .active
+            )
+        ))
+
+        let russian = [
+            joinedRussian(pack.assessment),
+            joinedRussian(pack.recommendation),
+            joinedRussian(pack.avoid),
+            joinedRussian(pack.nextAction)
+        ].joined(separator: " ").lowercased()
+        let english = [
+            joinedEnglish(pack.assessment),
+            joinedEnglish(pack.recommendation),
+            joinedEnglish(pack.avoid),
+            joinedEnglish(pack.nextAction)
+        ].joined(separator: " ").lowercased()
+
+        // Pre-walk fatigued overlay must not win over LiveSession.
+        XCTAssertFalse(russian.contains("мягкий вход"))
+        XCTAssertFalse(russian.contains("разговорным"))
+        XCTAssertFalse(russian.contains("двадцать минут"))
+        XCTAssertFalse(russian.contains("быстрый марш"))
+        XCTAssertFalse(english.contains("soft start"))
+        XCTAssertFalse(english.contains("twenty easy minutes"))
+        XCTAssertFalse(english.contains("fast march"))
+
+        // Live recovery-easy walk language should remain.
+        XCTAssertTrue(
+            russian.contains("прогулк") || russian.contains("восстанов"),
+            "Expected live walk language, got: \(russian)"
+        )
+    }
+
+    func testLiveWalkEveningWindDownFatiguedKeepsLiveBaseNotPreOverlay() throws {
+        let readiness = screenshotFatiguedReadiness()
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .walkEveningWindDown,
+                dayReadiness: readiness,
+                activityType: .walk,
+                timeOfDay: .evening,
+                sessionPhase: .during,
+                activityState: .active
+            )
+        ))
+
+        let english = [
+            joinedEnglish(pack.assessment),
+            joinedEnglish(pack.recommendation),
+            joinedEnglish(pack.nextAction)
+        ].joined(separator: " ").lowercased()
+
+        XCTAssertFalse(english.contains("one short loop"))
+        XCTAssertFalse(english.contains("soft start after short sleep"))
+    }
+
+    // MARK: - Swim / tennis / hike completed + fatigued
+
+    func testCompletedSwimFatiguedKeepsPostCopyNotAheadGuidance() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .postEnduranceImmediate,
+                dayReadiness: screenshotFatiguedReadiness(),
+                activityType: .swimming,
+                sessionPhase: .immediatePost,
+                activityState: .justFinished
+            )
+        ))
+
+        let english = joinedPackEnglish(pack).lowercased()
+        let russian = joinedPackRussian(pack).lowercased()
+
+        XCTAssertTrue(english.contains("swim is done") || russian.contains("заплыв позади"))
+        XCTAssertFalse(english.contains("swim is ahead"))
+        XCTAssertFalse(russian.contains("заплыв впереди"))
+        XCTAssertFalse(english.contains("ease in"))
+        // Fatigued post overlay may extend cooldown, but must stay post-session.
+        XCTAssertTrue(
+            english.contains("cooldown")
+                || english.contains("fifteen easy")
+                || english.contains("walk five")
+                || russian.contains("заминк")
+                || russian.contains("пятнадцать")
+        )
+    }
+
+    func testCompletedTennisFatiguedKeepsMatchOverCopyNotPreMatchGuidance() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .postRacketImmediate,
+                dayReadiness: screenshotFatiguedReadiness(),
+                activityType: .tennis,
+                sessionPhase: .immediatePost,
+                activityState: .justFinished
+            )
+        ))
+
+        let english = joinedPackEnglish(pack).lowercased()
+        let russian = joinedPackRussian(pack).lowercased()
+
+        XCTAssertTrue(english.contains("match over") || russian.contains("игра позади"))
+        XCTAssertFalse(english.contains("match is close"))
+        XCTAssertFalse(russian.contains("игра скоро"))
+        XCTAssertFalse(english.contains("first games at half speed"))
+        XCTAssertFalse(english.contains("extra five minutes warm-up"))
+        XCTAssertFalse(russian.contains("разминк"))
+    }
+
+    func testCompletedSubstantialHikeFatiguedKeepsCompletedCopyNotPrepGuidance() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .walkLightDay,
+                dayReadiness: screenshotFatiguedReadiness(),
+                activityType: .walk,
+                sessionPhase: .immediatePost,
+                activityState: .justFinished,
+                durationBand: .extended,
+                isFocusHikeLike: true,
+                focusDurationMinutes: 180
+            )
+        ))
+
+        let english = joinedPackEnglish(pack).lowercased()
+        let russian = joinedPackRussian(pack).lowercased()
+
+        XCTAssertTrue(
+            english.contains("long hike done") || russian.contains("хайкинг позади"),
+            "Expected completed hike language, got EN=\(english) RU=\(russian)"
+        )
+        XCTAssertFalse(english.contains("start even more conservatively"))
+        XCTAssertFalse(english.contains("soft start"))
+        XCTAssertFalse(english.contains("twenty easy minutes"))
+        XCTAssertFalse(english.contains("protect the second half"))
+        XCTAssertFalse(russian.contains("начните ещё консервативнее"))
+        XCTAssertFalse(russian.contains("мягкий вход"))
+        XCTAssertFalse(russian.contains("берегите вторую половину"))
+    }
+
+    func testLiveSubstantialHikeFatiguedKeepsOnTrailCopyNotPrepGuidance() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeCopyInput(
+                scenario: .walkLightDay,
+                dayReadiness: screenshotFatiguedReadiness(),
+                activityType: .walk,
+                sessionPhase: .during,
+                activityState: .active,
+                durationBand: .extended,
+                isFocusHikeLike: true,
+                focusDurationMinutes: 180
+            )
+        ))
+
+        let english = joinedPackEnglish(pack).lowercased()
+        let russian = joinedPackRussian(pack).lowercased()
+
+        XCTAssertTrue(
+            english.contains("hike") || russian.contains("хайкинг"),
+            "Expected live hike language, got EN=\(english) RU=\(russian)"
+        )
+        XCTAssertFalse(english.contains("start even more conservatively"))
+        XCTAssertFalse(english.contains("soft start after short sleep"))
+        XCTAssertFalse(english.contains("twenty easy minutes"))
+        XCTAssertFalse(russian.contains("начните ещё консервативнее"))
+        XCTAssertFalse(russian.contains("мягкий вход"))
+    }
+
     func testWalkLightDayFatiguedKeepsWalkAsSubject() throws {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
             makeCopyInput(
@@ -556,7 +756,11 @@ final class CoachBodyStateCopyTests: XCTestCase {
         activityType: CoachActivityType,
         timeOfDay: CoachTimeOfDay = .morning,
         sessionPhase: CoachSessionPhase = .idle,
-        completedSeriousActivities: CoachCompletedSeriousActivities = .none
+        completedSeriousActivities: CoachCompletedSeriousActivities = .none,
+        activityState: CoachActivityState = .none,
+        durationBand: CoachDurationBand = .short,
+        isFocusHikeLike: Bool = false,
+        focusDurationMinutes: Int = 0
     ) -> CoachCopyBuildInput {
         CoachCopyBuildInput(
             scenario: scenario,
@@ -566,7 +770,7 @@ final class CoachBodyStateCopyTests: XCTestCase {
                 hydrationBehind: false,
                 tomorrowDemand: .none,
                 activityType: activityType,
-                durationBand: .short,
+                durationBand: durationBand,
                 completedSeriousActivities: completedSeriousActivities,
                 timeOfDay: timeOfDay,
                 stackedDayActiveRisk: false,
@@ -581,10 +785,31 @@ final class CoachBodyStateCopyTests: XCTestCase {
             tomorrowWorkout: nil,
             dayReadiness: dayReadiness,
             sessionPhase: sessionPhase,
+            activityState: activityState,
             morningBriefFacts: scenario == .morningReadiness
                 ? CoachMorningBriefFactsBuilder.synthetic(dayReadiness: dayReadiness)
-                : nil
+                : nil,
+            isFocusHikeLike: isFocusHikeLike,
+            focusDurationMinutes: focusDurationMinutes
         )
+    }
+
+    private func joinedPackEnglish(_ pack: CoachCopyPack) -> String {
+        [
+            joinedEnglish(pack.assessment),
+            joinedEnglish(pack.recommendation),
+            joinedEnglish(pack.avoid),
+            joinedEnglish(pack.nextAction)
+        ].joined(separator: " ")
+    }
+
+    private func joinedPackRussian(_ pack: CoachCopyPack) -> String {
+        [
+            joinedRussian(pack.assessment),
+            joinedRussian(pack.recommendation),
+            joinedRussian(pack.avoid),
+            joinedRussian(pack.nextAction)
+        ].joined(separator: " ")
     }
 
     private var defaultNutrition: CoachNutritionContext {

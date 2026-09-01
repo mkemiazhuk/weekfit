@@ -137,14 +137,15 @@ final class ProductAnalyticsTests: XCTestCase {
 
     func testCoachRecommendationViewNotDuplicatedByHelperSemantics() {
         // Mirrors ExpertCoachView's once-guard: callers must not re-fire without reset.
-        ProductAnalytics.coachRecommendationViewed(category: .recovery)
-        ProductAnalytics.coachRecommendationViewed(category: .recovery)
+        ProductAnalytics.coachRecommendationViewed()
+        ProductAnalytics.coachRecommendationViewed()
         // Helper itself does not dedupe — view guard is required.
         XCTAssertEqual(recording.events(named: .coachRecommendationViewed).count, 2)
 
         for event in recording.events(named: .coachRecommendationViewed) {
             XCTAssertNil(event.parameters["text"])
-            XCTAssertEqual(event.parameters[AnalyticsParameterKey.category], "recovery")
+            XCTAssertNil(event.parameters[AnalyticsParameterKey.category])
+            XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "coach")
         }
     }
 
@@ -167,10 +168,10 @@ final class ProductAnalyticsTests: XCTestCase {
     }
 
     func testActivityEventsContainNoHealthKitValues() {
-        ProductAnalytics.activityStarted(category: .running, source: .today)
-        ProductAnalytics.activityCompleted(category: .running, source: .today)
+        ProductAnalytics.activityStarted(source: .today)
+        ProductAnalytics.activityCompleted(source: .today)
 
-        let banned = ["hrv", "heart", "calorie", "distance", "pace", "route", "hkworkout", "bpm"]
+        let banned = ["hrv", "heart", "calorie", "distance", "pace", "route", "hkworkout", "bpm", "recovery", "sleep"]
         for event in recording.recordedEvents {
             for (key, value) in event.parameters {
                 let haystack = "\(key)=\(value)".lowercased()
@@ -178,6 +179,7 @@ final class ProductAnalyticsTests: XCTestCase {
                     XCTAssertFalse(haystack.contains(token), "Found \(token) in \(haystack)")
                 }
             }
+            XCTAssertNil(event.parameters[AnalyticsParameterKey.category])
         }
     }
 

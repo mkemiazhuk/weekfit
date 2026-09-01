@@ -1,9 +1,10 @@
 import XCTest
 @testable import WeekFit
 
+/// Mapping helpers remain for local product logic; Firebase no longer receives health topic categories.
 final class CoachRecommendationCategoryMappingTests: XCTestCase {
 
-    func testSleepScenarioMapsToSleep() {
+    func testSleepScenarioMapsToSleepLocally() {
         XCTAssertEqual(
             CoachRecommendationCategory.from(scenario: .morningReadiness),
             .sleep
@@ -35,7 +36,7 @@ final class CoachRecommendationCategoryMappingTests: XCTestCase {
         }
     }
 
-    func testRecoveryFamiliesMapToRecovery() {
+    func testRecoveryFamiliesMapToRecoveryLocally() {
         let recoveryScenarios: [CoachScenarioKey] = [
             .tomorrowProtection, .protectTomorrowFresh,
             .recoveryAfterHeavyYesterday, .lowRecoveryPrep,
@@ -53,7 +54,7 @@ final class CoachRecommendationCategoryMappingTests: XCTestCase {
         }
     }
 
-    func testSafetyAlertsOverrideScenarioCategory() {
+    func testSafetyAlertsOverrideScenarioCategoryLocally() {
         XCTAssertEqual(
             CoachRecommendationCategory.from(scenario: .duringEndurance, warningAlert: .hydrationCritical),
             .hydration
@@ -64,30 +65,19 @@ final class CoachRecommendationCategoryMappingTests: XCTestCase {
         )
     }
 
-    func testAllScenariosMapWithoutSendingScenarioRawValue() throws {
+    func testProductAnalyticsDoesNotSendCoachHealthCategories() throws {
         let recording = RecordingAnalyticsService()
         AppAnalytics.setSharedForTests(recording)
         defer { AppAnalytics.resetSharedForTests() }
 
         for scenario in CoachScenarioKey.allCases {
-            let category = CoachRecommendationCategory.from(scenario: scenario)
-            ProductAnalytics.coachRecommendationViewed(category: category)
+            ProductAnalytics.coachRecommendationViewed(scenario: scenario)
             let event = try XCTUnwrap(recording.events(named: .coachRecommendationViewed).last)
-            XCTAssertEqual(event.parameters[AnalyticsParameterKey.category], category.rawValue)
+            XCTAssertNil(event.parameters[AnalyticsParameterKey.category])
             XCTAssertNil(event.parameters["scenario"])
+            XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "coach")
+            XCTAssertTrue(AnalyticsPrivacyContract.violations(in: event.parameters).isEmpty)
             XCTAssertFalse(event.parameters.values.contains(scenario.rawValue))
         }
-    }
-
-    func testProductAnalyticsScenarioHelperUsesMapping() {
-        let recording = RecordingAnalyticsService()
-        AppAnalytics.setSharedForTests(recording)
-        defer { AppAnalytics.resetSharedForTests() }
-
-        ProductAnalytics.coachRecommendationViewed(scenario: .duringStrength)
-        XCTAssertEqual(
-            recording.parameterValues(for: .coachRecommendationViewed, key: AnalyticsParameterKey.category),
-            ["activity"]
-        )
     }
 }

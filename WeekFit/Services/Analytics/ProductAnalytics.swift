@@ -60,7 +60,9 @@ enum ProductAnalytics {
 
     static func trackTab(_ tab: WeekFitTab) {
         switch tab {
-        case .today: trackScreen(.today)
+        case .today:
+            trackScreen(.today)
+            ActivationAnalytics.trackTodayFirstViewIfNeeded()
         case .coach: trackScreen(.coach)
         case .meals: trackScreen(.meals)
         case .calendar: trackScreen(.plan)
@@ -97,24 +99,23 @@ enum ProductAnalytics {
         )
     }
 
-    static func coachRecommendationViewed(category: CoachRecommendationCategory = .general) {
+    static func coachRecommendationViewed() {
         analytics.track(
             .coachRecommendationViewed,
             parameters: [
-                AnalyticsParameterKey.category: category.rawValue,
                 AnalyticsParameterKey.source: AnalyticsSource.coach.rawValue
             ]
         )
     }
 
-    /// Maps scenario → bounded category; never sends copy or HealthKit values.
+    /// Viewed Coach recommendation content. Scenario is used locally only — not sent to Firebase.
     static func coachRecommendationViewed(
         scenario: CoachScenarioKey,
         warningAlert: CoachSafetyAlert? = nil
     ) {
-        coachRecommendationViewed(
-            category: .from(scenario: scenario, warningAlert: warningAlert)
-        )
+        _ = scenario
+        _ = warningAlert
+        coachRecommendationViewed()
     }
 
     static func foodLoggingStarted(method: FoodLoggingMethod, source: AnalyticsSource) {
@@ -298,23 +299,21 @@ enum ProductAnalytics {
         )
     }
 
-    static func activityStarted(category: ActivityAnalyticsCategory, source: AnalyticsSource) {
+    static func activityStarted(source: AnalyticsSource) {
         ProductAnalyticsFlowTracker.shared.noteActivityLoggingTerminal()
         analytics.track(
             .activityStarted,
             parameters: [
-                AnalyticsParameterKey.category: category.rawValue,
                 AnalyticsParameterKey.source: source.rawValue
             ]
         )
     }
 
-    static func activityCompleted(category: ActivityAnalyticsCategory, source: AnalyticsSource) {
+    static func activityCompleted(source: AnalyticsSource) {
         ProductAnalyticsFlowTracker.shared.noteActivityLoggingTerminal()
         analytics.track(
             .activityCompleted,
             parameters: [
-                AnalyticsParameterKey.category: category.rawValue,
                 AnalyticsParameterKey.source: source.rawValue
             ]
         )

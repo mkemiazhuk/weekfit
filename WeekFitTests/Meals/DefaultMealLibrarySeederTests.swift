@@ -29,10 +29,10 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
 
         XCTAssertTrue(meals.allSatisfy { $0.libraryKind == .meal })
         XCTAssertTrue(meals.allSatisfy { $0.creationMode == .ingredients })
-        XCTAssertTrue(meals.allSatisfy { $0.imageName == "plate-dark" })
         XCTAssertTrue(meals.allSatisfy { ($0.builderImageItems?.isEmpty == false) })
         XCTAssertTrue(meals.allSatisfy { !$0.ingredients.isEmpty })
         XCTAssertTrue(meals.allSatisfy { $0.calories > 0 })
+        XCTAssertTrue(meals.allSatisfy { $0.imageName == "plate-dark" })
         XCTAssertFalse(meals.allSatisfy { $0.type == .balanced }, "Starters should vary meal types for coach strategy")
         XCTAssertTrue(meals.contains { $0.type == .recovery })
         XCTAssertTrue(meals.contains { $0.type == .preWorkout })
@@ -61,6 +61,18 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
                 XCTAssertGreaterThan(item.grams, 0)
             }
         }
+    }
+
+    func testQuickMealDisplayRow_usesBuilderPlateForStarterMeals() {
+        let shakshuka = DefaultMealLibrarySeeder.buildStarterMeals()
+            .first { $0.id == "custom_meal_starter_shakshuka" }
+
+        XCTAssertNotNil(shakshuka)
+
+        let row = QuickMealDisplayRow.make(from: shakshuka!)
+        XCTAssertFalse(row.usesAssetImage)
+        XCTAssertFalse(row.sortedBuilderImageItems.isEmpty)
+        XCTAssertEqual(shakshuka?.imageName, "plate-dark")
     }
 
     func testStarterMeals_haveUniquePreparationSteps() {
@@ -162,13 +174,17 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         let settings = WeekFitUserSettings.shared
         settings.replaceCustomMealsCatalog(v3Meals)
 
-        // First seed after upgrade: append world breakfasts + set v4.
+        // First seed after upgrade: append world breakfasts only.
         XCTAssertTrue(
             DefaultMealLibrarySeeder.seedIfNeeded(settings: settings, defaults: defaults)
         )
         XCTAssertTrue(defaults.bool(forKey: DefaultMealLibrarySeeder.seededKey))
         let afterUpgrade = settings.customMealsCatalog
         XCTAssertEqual(afterUpgrade.count, 14)
+        XCTAssertEqual(
+            afterUpgrade.first { $0.id == "custom_meal_starter_shakshuka" }?.imageName,
+            "plate-dark"
+        )
 
         // User deletes a world breakfast.
         let pruned = afterUpgrade.filter { $0.id != "custom_meal_starter_shakshuka" }
@@ -181,6 +197,57 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         )
         XCTAssertFalse(settings.customMealsCatalog.contains { $0.id == "custom_meal_starter_shakshuka" })
         XCTAssertEqual(settings.customMealsCatalog.count, 13)
+    }
+
+    @MainActor
+    func testV6ToV7Migration_removesJapaneseMealsAndHeroPhotosOnce() {
+        let suiteName = "weekfit.tests.meals.seed.v7.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let v6Meals = DefaultMealLibrarySeeder.buildStarterMeals()
+        var upgraded = v6Meals
+        upgraded.append(
+            Meals(
+                id: "custom_meal_starter_salmon_nigiri",
+                title: "Salmon Nigiri",
+                subtitle: "",
+                imageName: "meal-salmon-nigiri",
+                type: .balanced,
+                calories: 425,
+                protein: 30,
+                carbs: 36,
+                fats: 16,
+                fiber: 0,
+                benefits: [],
+                ingredients: [],
+                suggestedTime: "13:00",
+                libraryKind: .meal,
+                creationMode: .ingredients
+            )
+        )
+        var shakshuka = upgraded.first { $0.id == "custom_meal_starter_shakshuka" }!
+        shakshuka.imageName = "meal-shakshuka"
+        upgraded = upgraded.map { $0.id == shakshuka.id ? shakshuka : $0 }
+
+        defaults.set(true, forKey: DefaultMealLibrarySeeder.v6SeededKey)
+        defaults.set(false, forKey: DefaultMealLibrarySeeder.seededKey)
+
+        let settings = WeekFitUserSettings.shared
+        settings.replaceCustomMealsCatalog(upgraded)
+
+        XCTAssertTrue(
+            DefaultMealLibrarySeeder.seedIfNeeded(settings: settings, defaults: defaults)
+        )
+        XCTAssertTrue(defaults.bool(forKey: DefaultMealLibrarySeeder.seededKey))
+        XCTAssertEqual(settings.customMealsCatalog.count, 14)
+        XCTAssertFalse(
+            settings.customMealsCatalog.contains { $0.id == "custom_meal_starter_salmon_nigiri" }
+        )
+        XCTAssertEqual(
+            settings.customMealsCatalog.first { $0.id == "custom_meal_starter_shakshuka" }?.imageName,
+            "plate-dark"
+        )
     }
 
     func testCurrentStarterCatalog_isNotTreatedAsReplaceableLegacy() {

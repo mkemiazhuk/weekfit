@@ -2,34 +2,50 @@ import Foundation
 
 enum RecoveryMovementProvider {
 
+    /// Invented light-movement catalog for morning adjustments (Planner recovery + easy run).
+    enum LightOption: String, CaseIterable, Equatable {
+        case walk
+        case stretch
+        case yoga
+        case breathing
+        case easyRun
+    }
+
     static func generate(context: DailyContext, strategy: DailyStrategy) -> [ProposalCandidate] {
         guard context.canMutate else { return [] }
         guard strategy == .recover || strategy == .maintain || strategy == .protectTomorrow else {
             return []
         }
 
-        // Prefer the person's habitual yoga / stretch over inventing a Walk.
-        if HabitualLightRecoveryDetector.hasWeekdayHabit(in: context) {
+        let planSuitability = ExistingPlanMovementSuitabilityClassifier.classify(
+            todayOpen: context.todayOpen,
+            strategy: strategy
+        )
+        // Suitable light already planned → never invent a duplicate.
+        if planSuitability == .suitableLight {
             #if DEBUG
             MorningProposalDebugTrace.lastWalkDecision = .omit
-            MorningProposalDebugTrace.lastNoProposalReason = "prefer_habitual_light_recovery"
+            MorningProposalDebugTrace.lastNoProposalReason = "suitable_light_already_planned"
+            #endif
+            return []
+        }
+        if context.completedWalkToday {
+            #if DEBUG
+            MorningProposalDebugTrace.lastWalkDecision = .omit
+            MorningProposalDebugTrace.lastNoProposalReason = "walk_already_completed"
             #endif
             return []
         }
 
-        let needsPostHardDayMovement = context.yesterdayHeavy
+        let needsRecoveryMovement = context.yesterdayHeavy
             || strategy == .recover
             || context.recoveryBand == .low
 
-        // After hard days, stretching is the fallback when walks are rejected.
-        if context.stronglyRejectsWalk, needsPostHardDayMovement {
-            return lightStretchCandidate(context: context)
-        }
+        // Habit is a ranking boost only — never an early empty return.
+        let hasLightHabit = HabitualLightRecoveryDetector.hasWeekdayHabit(in: context)
 
-        // Cold start: offer an optional Walk so the first morning isn't meals-only.
-        // No Plan rhythm yet — keep it unselected and skip habit/weekday gates.
         if context.isColdStart {
-            return coldStartOptionalWalk(context: context)
+            return coldStartOptionalMovement(context: context, strategy: strategy)
         }
 
         let decision = MorningProposalWalkPolicy.decide(
@@ -48,10 +64,19 @@ enum RecoveryMovementProvider {
         MorningProposalDebugTrace.lastWalkDecision = decision
         #endif
 
-        switch decision {
-        case .omit:
-            return []
-        case .guidance:
+        // Walk-policy omit is hard only for sleep/mode safety — not for inappropriate hard plans.
+        if decision == .omit {
+            let omitForSafety = context.sleepPresence != .present
+                || (context.generationMode != .compose && context.generationMode != .optimize)
+            if omitForSafety {
+                return []
+            }
+            if !needsRecoveryMovement && planSuitability != .none {
+                return []
+            }
+        }
+
+        if decision == .guidance, !needsRecoveryMovement, !context.stronglyRejectsWalk {
             return [
                 GuidanceCandidateProvider.make(
                     code: .hydrateThroughMorning,
@@ -60,41 +85,428 @@ enum RecoveryMovementProvider {
                     context: context
                 )
             ]
-        case .selected, .unselected:
-            break
         }
 
-        // Do not invent a speculative Walk on a weekday without walk history —
-        // unless yesterday was hard or today is a recover day.
         let hasWalkHabit = habitualWalkDate(context: context, calendar: .current) != nil
-        if isWeekdayWorkday(context.now), !hasWalkHabit, !needsPostHardDayMovement {
-            #if DEBUG
-            MorningProposalDebugTrace.lastWalkDecision = .guidance
-            MorningProposalDebugTrace.lastNoProposalReason = "no_weekday_walk_habit"
-            #endif
-            return [
-                GuidanceCandidateProvider.make(
-                    code: .easeIntoFirstEffort,
-                    reason: .openDayMovementSupport,
-                    at: context.now.addingTimeInterval(75),
-                    context: context
-                )
-            ]
+        var allowWalk = !(isWeekdayWorkday(context.now) && !hasWalkHabit && !needsRecoveryMovement)
+        allowWalk = allowWalk && !context.stronglyRejectsWalk
+        if !context.outdoorSuitability.allowsOutdoorCreate {
+            allowWalk = false
         }
 
-        guard let walkDate = recoveryWalkSlot(context: context) else { return [] }
-        // On weekday workdays, never auto-select a speculative Walk — leave it optional.
-        let selectedEligible = decision == .selected && !isWeekdayWorkday(context.now)
+        let selectedEligible = (decision == .selected || strategy == .recover)
+            && needsRecoveryMovement
+            && !context.stronglyRejectsWalk
 
-        return [
-            ProposalCandidate(
+        return inventLightMovement(
+            context: context,
+            strategy: strategy,
+            allowWalk: allowWalk,
+            selectedEligible: selectedEligible,
+            preferHabitFamily: hasLightHabit,
+            debugReason: "catalog_pick"
+        )
+    }
+
+    /// Builds one invented light-movement candidate from the recovery catalog.
+    static func inventLightMovement(
+        context: DailyContext,
+        strategy: DailyStrategy,
+        allowWalk: Bool,
+        selectedEligible: Bool,
+        preferHabitFamily: Bool = false,
+        debugReason: String
+    ) -> [ProposalCandidate] {
+        guard context.generationMode == .compose || context.generationMode == .optimize else {
+            return []
+        }
+        let planSuitability = ExistingPlanMovementSuitabilityClassifier.classify(
+            todayOpen: context.todayOpen,
+            strategy: strategy
+        )
+        guard planSuitability != .suitableLight, !context.completedWalkToday else { return [] }
+        let preferredDate = recoveryWalkSlot(context: context)
+            ?? context.now.addingTimeInterval(60 * 60)
+
+        let eligible = eligibleOptions(
+            context: context,
+            strategy: strategy,
+            allowWalk: allowWalk
+        )
+        guard let option = pickOption(
+            eligible,
+            dayKey: context.dayKey,
+            context: context,
+            strategy: strategy,
+            preferHabitFamily: preferHabitFamily
+        ) else {
+            return []
+        }
+
+        let duration = durationMinutes(for: option, recoveryBand: context.recoveryBand)
+        guard let proposedDate = ProposalPlanScheduleResolver.resolveCreateStart(
+            preferred: preferredDate,
+            durationMinutes: duration,
+            against: context.todayActivities,
+            now: context.now,
+            maxSlideFromPreferredMinutes: 180,
+            calendar: .current
+        ) else {
+            return []
+        }
+
+        #if DEBUG
+        MorningProposalDebugTrace.lastWalkDecision = selectedEligible ? .selected : .unselected
+        MorningProposalDebugTrace.lastNoProposalReason = "\(debugReason):\(option.rawValue)"
+        #endif
+
+        // On recover, default-select movement so it leads the hero over meals.
+        let select = selectedEligible || strategy == .recover
+        return [makeCandidate(
+            option: option,
+            proposedDate: proposedDate,
+            context: context,
+            strategy: strategy,
+            selectedEligible: select
+        )]
+    }
+
+    static func eligibleOptions(
+        context: DailyContext,
+        strategy: DailyStrategy,
+        allowWalk: Bool
+    ) -> [LightOption] {
+        var options: [LightOption] = [.stretch, .yoga, .breathing]
+        let outdoorOK = allowWalk && context.outdoorSuitability.allowsOutdoorCreate
+        if outdoorOK {
+            options.insert(.walk, at: 0)
+        }
+        if strategy == .maintain,
+           context.recoveryBand == .good,
+           !context.yesterdayHeavy,
+           outdoorOK {
+            options.append(.easyRun)
+        }
+        return options
+    }
+
+    static func pickOption(
+        _ eligible: [LightOption],
+        dayKey: String,
+        context: DailyContext,
+        strategy: DailyStrategy,
+        preferHabitFamily: Bool = false
+    ) -> LightOption? {
+        guard !eligible.isEmpty else { return nil }
+
+        var ranked = eligible
+        #if DEBUG
+        let initialEligible = eligible
+        var walkRejectFiltered = Set<LightOption>()
+        var weatherFiltered = Set<LightOption>()
+        var lowRecoveryFiltered = Set<LightOption>()
+        var cooloffFiltered = Set<LightOption>()
+        #endif
+
+        if context.stronglyRejectsWalk || context.walkRejectPenalty >= 4 {
+            let indoor = ranked.filter { $0 != .walk && $0 != .easyRun }
+            #if DEBUG
+            walkRejectFiltered = Set(ranked.filter { $0 == .walk || $0 == .easyRun })
+            #endif
+            if !indoor.isEmpty { ranked = indoor }
+        }
+
+        if context.outdoorSuitability == .adverse || context.outdoorSuitability == .unsafe {
+            let indoor = ranked.filter { $0 != .walk && $0 != .easyRun }
+            #if DEBUG
+            weatherFiltered = Set(ranked.filter { $0 == .walk || $0 == .easyRun })
+            #endif
+            if !indoor.isEmpty { ranked = indoor }
+        }
+
+        if context.recoveryBand == .low {
+            let gentle = ranked.filter { $0 == .breathing || $0 == .stretch || $0 == .yoga }
+            #if DEBUG
+            lowRecoveryFiltered = Set(ranked.filter { !gentle.contains($0) })
+            #endif
+            if !gentle.isEmpty { ranked = gentle }
+        }
+
+        let notRecentlyOffered = ranked.filter { option in
+            let changeId = option == .walk ? "walk-recovery" : "\(option.rawValue)-recovery"
+            return !ProposalOfferHistoryStore.wasRecentlyOffered(
+                changeId: changeId,
+                excludingDayKey: context.dayKey,
+                lookingBackDays: ProposalRepetitionGuard.cooloffDays,
+                referenceDate: context.now
+            )
+        }
+        if !notRecentlyOffered.isEmpty {
+            #if DEBUG
+            cooloffFiltered = Set(ranked.filter { !notRecentlyOffered.contains($0) })
+            #endif
+            ranked = notRecentlyOffered
+        }
+
+        let rankedBeforeAffinity = ranked
+        let affinities = SimilarDayAffinityScorer.affinities(for: context, strategy: strategy)
+        ranked = SimilarDayAffinityScorer.rankedOptions(ranked, affinities: affinities)
+        let rankedAfterAffinity = ranked
+
+        if preferHabitFamily {
+            let habitPrefs: [LightOption] = HabitualLightRecoveryDetector.candidates(in: context).compactMap { aggregate in
+                let blob = "\(aggregate.title) \(aggregate.activityType)".lowercased()
+                if blob.contains("yoga") { return .yoga }
+                if blob.contains("stretch") { return .stretch }
+                if blob.contains("breath") { return .breathing }
+                return nil
+            }
+            if let preferred = habitPrefs.first(where: { ranked.contains($0) }) {
+                #if DEBUG
+                recordMovementDecisionTrace(
+                    context: context,
+                    strategy: strategy,
+                    state: .init(
+                        initialEligible: initialEligible,
+                        ranked: ranked,
+                        walkRejectFiltered: walkRejectFiltered,
+                        weatherFiltered: weatherFiltered,
+                        lowRecoveryFiltered: lowRecoveryFiltered,
+                        cooloffFiltered: cooloffFiltered,
+                        rankedBeforeAffinity: rankedBeforeAffinity,
+                        rankedAfterAffinity: rankedAfterAffinity,
+                        affinities: affinities,
+                        similarDays: SimilarDayAffinityScorer.diagnostics(for: context, strategy: strategy),
+                        preferHabitFamily: preferHabitFamily,
+                        habitWinner: preferred,
+                        phaseAWinner: RecoveryMovementProvider.finishPick(
+                            ranked: rankedBeforeAffinity,
+                            dayKey: dayKey,
+                            context: context,
+                            preferHabitFamily: false
+                        ),
+                        finalWinner: preferred
+                    )
+                )
+                #endif
+                return preferred
+            }
+        }
+
+        if ranked.contains(.walk),
+           (context.outdoorSuitability == .good || context.outdoorSuitability == .acceptable),
+           context.recoveryBand != .low,
+           (context.isColdStart || context.yesterdayHeavy) {
+            if !context.isColdStart, dayBucket(dayKey) % 4 == 0 {
+                let indoor = ranked.filter { $0 == .stretch || $0 == .yoga || $0 == .breathing }
+                if let pick = rotate(indoor, dayKey: dayKey) {
+                    #if DEBUG
+                    recordMovementDecisionTrace(
+                        context: context,
+                        strategy: strategy,
+                        state: movementPickTraceState(
+                            initialEligible: initialEligible,
+                            ranked: ranked,
+                            walkRejectFiltered: walkRejectFiltered,
+                            weatherFiltered: weatherFiltered,
+                            lowRecoveryFiltered: lowRecoveryFiltered,
+                            cooloffFiltered: cooloffFiltered,
+                            rankedBeforeAffinity: rankedBeforeAffinity,
+                            rankedAfterAffinity: rankedAfterAffinity,
+                            affinities: affinities,
+                            context: context,
+                            strategy: strategy,
+                            preferHabitFamily: preferHabitFamily,
+                            habitWinner: nil,
+                            phaseAWinner: RecoveryMovementProvider.finishPick(
+                                ranked: rankedBeforeAffinity,
+                                dayKey: dayKey,
+                                context: context,
+                                preferHabitFamily: false
+                            ),
+                            finalWinner: pick
+                        )
+                    )
+                    #endif
+                    return pick
+                }
+            }
+            #if DEBUG
+            recordMovementDecisionTrace(
+                context: context,
+                strategy: strategy,
+                state: movementPickTraceState(
+                    initialEligible: initialEligible,
+                    ranked: ranked,
+                    walkRejectFiltered: walkRejectFiltered,
+                    weatherFiltered: weatherFiltered,
+                    lowRecoveryFiltered: lowRecoveryFiltered,
+                    cooloffFiltered: cooloffFiltered,
+                    rankedBeforeAffinity: rankedBeforeAffinity,
+                    rankedAfterAffinity: rankedAfterAffinity,
+                    affinities: affinities,
+                    context: context,
+                    strategy: strategy,
+                    preferHabitFamily: preferHabitFamily,
+                    habitWinner: nil,
+                    phaseAWinner: RecoveryMovementProvider.finishPick(
+                        ranked: rankedBeforeAffinity,
+                        dayKey: dayKey,
+                        context: context,
+                        preferHabitFamily: false
+                    ),
+                    finalWinner: .walk
+                )
+            )
+            #endif
+            return .walk
+        }
+
+        let rotated = rotate(ranked, dayKey: dayKey)
+        #if DEBUG
+        recordMovementDecisionTrace(
+            context: context,
+            strategy: strategy,
+            state: movementPickTraceState(
+                initialEligible: initialEligible,
+                ranked: ranked,
+                walkRejectFiltered: walkRejectFiltered,
+                weatherFiltered: weatherFiltered,
+                lowRecoveryFiltered: lowRecoveryFiltered,
+                cooloffFiltered: cooloffFiltered,
+                rankedBeforeAffinity: rankedBeforeAffinity,
+                rankedAfterAffinity: rankedAfterAffinity,
+                affinities: affinities,
+                context: context,
+                strategy: strategy,
+                preferHabitFamily: preferHabitFamily,
+                habitWinner: nil,
+                phaseAWinner: RecoveryMovementProvider.finishPick(
+                    ranked: rankedBeforeAffinity,
+                    dayKey: dayKey,
+                    context: context,
+                    preferHabitFamily: false
+                ),
+                finalWinner: rotated
+            )
+        )
+        #endif
+        return rotated
+    }
+
+    /// Shared Phase A finish path (habit → walk preference → rotation).
+    static func finishPick(
+        ranked: [LightOption],
+        dayKey: String,
+        context: DailyContext,
+        preferHabitFamily: Bool
+    ) -> LightOption? {
+        if preferHabitFamily {
+            let habitPrefs: [LightOption] = HabitualLightRecoveryDetector.candidates(in: context).compactMap { aggregate in
+                let blob = "\(aggregate.title) \(aggregate.activityType)".lowercased()
+                if blob.contains("yoga") { return .yoga }
+                if blob.contains("stretch") { return .stretch }
+                if blob.contains("breath") { return .breathing }
+                return nil
+            }
+            if let preferred = habitPrefs.first(where: { ranked.contains($0) }) {
+                return preferred
+            }
+        }
+
+        if ranked.contains(.walk),
+           (context.outdoorSuitability == .good || context.outdoorSuitability == .acceptable),
+           context.recoveryBand != .low,
+           (context.isColdStart || context.yesterdayHeavy) {
+            if !context.isColdStart, dayBucket(dayKey) % 4 == 0 {
+                let indoor = ranked.filter { $0 == .stretch || $0 == .yoga || $0 == .breathing }
+                if let pick = rotate(indoor, dayKey: dayKey) { return pick }
+            }
+            return .walk
+        }
+
+        return rotate(ranked, dayKey: dayKey)
+    }
+
+    #if DEBUG
+    private static func recordMovementDecisionTrace(
+        context: DailyContext,
+        strategy: DailyStrategy,
+        state: MorningMovementDecisionTracer.PickState
+    ) {
+        MorningMovementDecisionTracer.record(context: context, strategy: strategy, state: state)
+    }
+
+    private static func movementPickTraceState(
+        initialEligible: [LightOption],
+        ranked: [LightOption],
+        walkRejectFiltered: Set<LightOption>,
+        weatherFiltered: Set<LightOption>,
+        lowRecoveryFiltered: Set<LightOption>,
+        cooloffFiltered: Set<LightOption>,
+        rankedBeforeAffinity: [LightOption],
+        rankedAfterAffinity: [LightOption],
+        affinities: [RecoveryMovementFamilyAffinity],
+        context: DailyContext,
+        strategy: DailyStrategy,
+        preferHabitFamily: Bool,
+        habitWinner: LightOption?,
+        phaseAWinner: LightOption?,
+        finalWinner: LightOption?
+    ) -> MorningMovementDecisionTracer.PickState {
+        MorningMovementDecisionTracer.PickState(
+            initialEligible: initialEligible,
+            ranked: ranked,
+            walkRejectFiltered: walkRejectFiltered,
+            weatherFiltered: weatherFiltered,
+            lowRecoveryFiltered: lowRecoveryFiltered,
+            cooloffFiltered: cooloffFiltered,
+            rankedBeforeAffinity: rankedBeforeAffinity,
+            rankedAfterAffinity: rankedAfterAffinity,
+            affinities: affinities,
+            similarDays: SimilarDayAffinityScorer.diagnostics(for: context, strategy: strategy),
+            preferHabitFamily: preferHabitFamily,
+            habitWinner: habitWinner,
+            phaseAWinner: phaseAWinner,
+            finalWinner: finalWinner
+        )
+    }
+    #endif
+
+
+    private static func rotate(_ options: [LightOption], dayKey: String) -> LightOption? {
+        guard !options.isEmpty else { return nil }
+        return options[dayBucket(dayKey) % options.count]
+    }
+
+    private static func dayBucket(_ dayKey: String) -> Int {
+        abs(dayKey.utf8.reduce(0) { partial, byte in
+            Int(truncatingIfNeeded: (UInt64(partial) &* 31) &+ UInt64(byte))
+        })
+    }
+
+    private static func makeCandidate(
+        option: LightOption,
+        proposedDate: Date,
+        context: DailyContext,
+        strategy: DailyStrategy,
+        selectedEligible: Bool
+    ) -> ProposalCandidate {
+        let duration = durationMinutes(for: option, recoveryBand: context.recoveryBand)
+        let recoverySupport = context.yesterdayHeavy
+            || context.recoveryBand == .low
+            || strategy == .recover
+
+        switch option {
+        case .walk:
+            return ProposalCandidate(
                 id: "walk-recovery",
                 source: .recoveryMovement,
                 kind: .createRecoveryWalk,
                 payload: .createRecoveryWalk(
                     CreateRecoveryWalkPayload(
-                        proposedDate: walkDate,
-                        durationMinutes: context.recoveryBand == .low ? 20 : 25,
+                        proposedDate: proposedDate,
+                        durationMinutes: duration,
                         title: "Walk",
                         activityType: "recovery"
                     )
@@ -103,45 +515,38 @@ enum RecoveryMovementProvider {
                 physiologicalFit: context.recoveryBand == .low ? .strong : .moderate,
                 confidence: selectedEligible ? 0.8 : 0.55,
                 burden: .low,
-                reasonCodes: [
-                    context.yesterdayHeavy || context.recoveryBand == .low || strategy == .recover
-                        ? .recoveryWalkSupport
-                        : .openDayMovementSupport
-                ],
+                reasonCodes: [recoverySupport ? .recoveryWalkSupport : .openDayMovementSupport],
                 conflicts: [],
                 defaultSelectionEligibility: selectedEligible ? .eligible : .ineligible,
-                sortTime: walkDate,
+                sortTime: proposedDate,
                 evidenceScenarioKey: context.scenarioKey?.rawValue,
                 identityKey: "walk:recovery"
             )
-        ]
-    }
 
-    /// Easy stretch after hard days when walks are not wanted.
-    private static func lightStretchCandidate(context: DailyContext) -> [ProposalCandidate] {
-        guard context.generationMode == .compose || context.generationMode == .optimize else {
-            return []
-        }
-        guard !context.hasExistingMovement, !context.completedWalkToday else { return [] }
-        let proposedDate = recoveryWalkSlot(context: context)
-            ?? context.now.addingTimeInterval(60 * 60)
-        #if DEBUG
-        MorningProposalDebugTrace.lastWalkDecision = .unselected
-        MorningProposalDebugTrace.lastNoProposalReason = "post_hard_stretch"
-        #endif
-        return [
-            ProposalCandidate(
-                id: "stretch-recovery",
+        case .stretch, .yoga, .breathing, .easyRun:
+            let spec = plannedSpec(for: option)
+            let reason: CoachProposalReasonCode = {
+                switch option {
+                case .stretch, .yoga, .breathing:
+                    return .recoveryStretchSupport
+                case .easyRun:
+                    return .openDayMovementSupport
+                case .walk:
+                    return .recoveryWalkSupport
+                }
+            }()
+            return ProposalCandidate(
+                id: "\(option.rawValue)-recovery",
                 source: .recoveryMovement,
                 kind: .createPlannedActivity,
                 payload: .createPlannedActivity(
                     CreatePlannedActivityPayload(
                         proposedDate: proposedDate,
-                        durationMinutes: 12,
-                        title: "Stretch",
-                        activityType: "stretching",
-                        icon: "figure.flexibility",
-                        imageName: "",
+                        durationMinutes: duration,
+                        title: spec.title,
+                        activityType: spec.activityType,
+                        icon: spec.icon,
+                        imageName: spec.imageName,
                         colorRed: 0.45,
                         colorGreen: 0.72,
                         colorBlue: 0.62,
@@ -149,17 +554,52 @@ enum RecoveryMovementProvider {
                     )
                 ),
                 compatibleStrategies: [.recover, .maintain, .protectTomorrow],
-                physiologicalFit: .strong,
-                confidence: 0.6,
+                physiologicalFit: option == .easyRun ? .moderate : .strong,
+                confidence: selectedEligible ? 0.72 : 0.58,
                 burden: .low,
-                reasonCodes: [.recoveryStretchSupport],
+                reasonCodes: [reason],
                 conflicts: [],
-                defaultSelectionEligibility: .ineligible,
+                defaultSelectionEligibility: selectedEligible ? .eligible : .ineligible,
                 sortTime: proposedDate,
                 evidenceScenarioKey: context.scenarioKey?.rawValue,
-                identityKey: "stretch:recovery"
+                identityKey: "\(option.rawValue):recovery"
             )
-        ]
+        }
+    }
+
+    private static func plannedSpec(
+        for option: LightOption
+    ) -> (title: String, activityType: String, icon: String, imageName: String) {
+        switch option {
+        case .walk:
+            return ("Walk", "recovery", "figure.walk", "recovery-walk")
+        case .stretch:
+            return ("Stretch", "stretching", "figure.cooldown", "recovery-stretch")
+        case .yoga:
+            return ("Yoga", "yoga", "figure.yoga", "recovery-yoga")
+        case .breathing:
+            return ("Breathing", "breathing", "wind", "recovery-breathing")
+        case .easyRun:
+            return ("Easy Run", "running", "figure.run", "workout-running")
+        }
+    }
+
+    private static func durationMinutes(
+        for option: LightOption,
+        recoveryBand: ProposalRecoveryBandToken
+    ) -> Int {
+        switch option {
+        case .walk:
+            return recoveryBand == .low ? 20 : 25
+        case .stretch:
+            return 12
+        case .yoga:
+            return 20
+        case .breathing:
+            return 10
+        case .easyRun:
+            return recoveryBand == .good ? 25 : 20
+        }
     }
 
     private static func mapConfidence(
@@ -172,8 +612,11 @@ enum RecoveryMovementProvider {
         }
     }
 
-    /// First morning with no Plan history: suggest a gentle Walk the user can opt into.
-    private static func coldStartOptionalWalk(context: DailyContext) -> [ProposalCandidate] {
+    /// First morning with no Plan history: optional light movement from the catalog.
+    private static func coldStartOptionalMovement(
+        context: DailyContext,
+        strategy: DailyStrategy
+    ) -> [ProposalCandidate] {
         guard context.generationMode == .compose || context.generationMode == .optimize else {
             #if DEBUG
             MorningProposalDebugTrace.lastWalkDecision = .omit
@@ -198,58 +641,25 @@ enum RecoveryMovementProvider {
             #endif
             return []
         }
-        guard !context.completedWalkToday, !context.hasExistingMovement else {
+        guard !context.completedWalkToday,
+              ExistingPlanMovementSuitabilityClassifier.classify(
+                todayOpen: context.todayOpen,
+                strategy: strategy
+              ) != .suitableLight else {
             #if DEBUG
             MorningProposalDebugTrace.lastWalkDecision = .omit
             MorningProposalDebugTrace.lastNoProposalReason = "cold_start_movement_exists"
             #endif
             return []
         }
-        if context.stronglyRejectsWalk {
-            #if DEBUG
-            MorningProposalDebugTrace.lastWalkDecision = .omit
-            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_rejects_walk"
-            #endif
-            return []
-        }
-        guard let walkDate = recoveryWalkSlot(context: context) else {
-            #if DEBUG
-            MorningProposalDebugTrace.lastWalkDecision = .omit
-            MorningProposalDebugTrace.lastNoProposalReason = "cold_start_no_slot"
-            #endif
-            return []
-        }
 
-        #if DEBUG
-        MorningProposalDebugTrace.lastWalkDecision = .unselected
-        MorningProposalDebugTrace.lastNoProposalReason = "cold_start_optional_walk"
-        #endif
-
-        return [
-            ProposalCandidate(
-                id: "walk-recovery",
-                source: .recoveryMovement,
-                kind: .createRecoveryWalk,
-                payload: .createRecoveryWalk(
-                    CreateRecoveryWalkPayload(
-                        proposedDate: walkDate,
-                        durationMinutes: context.recoveryBand == .low ? 20 : 25,
-                        title: "Walk",
-                        activityType: "recovery"
-                    )
-                ),
-                compatibleStrategies: [.recover, .maintain, .protectTomorrow],
-                physiologicalFit: context.recoveryBand == .low ? .strong : .moderate,
-                confidence: 0.55,
-                burden: .low,
-                reasonCodes: [.openDayMovementSupport],
-                conflicts: [],
-                defaultSelectionEligibility: .ineligible,
-                sortTime: walkDate,
-                evidenceScenarioKey: context.scenarioKey?.rawValue,
-                identityKey: "walk:recovery"
-            )
-        ]
+        return inventLightMovement(
+            context: context,
+            strategy: strategy,
+            allowWalk: !context.stronglyRejectsWalk,
+            selectedEligible: false,
+            debugReason: "cold_start_optional"
+        )
     }
 
     /// Workday-aware slot: prefer habitual walk time from history; otherwise
@@ -391,14 +801,18 @@ enum MealLibraryProvider {
             preferredTypes = ["balanced"]
         }
 
-        let excludedTitles = yesterdayMealTitles(context: context).union(todayMealTitles(context: context))
+        let excludedTitles = yesterdayMealTitles(context: context)
+            .union(todayMealTitles(context: context))
+            .union(recentlyOfferedMealTitles(context: context))
         let includeSnack = strategy == .train || !context.todaySeriousOpen.isEmpty
         let slots = remainingSlots(
             now: context.now,
             strategy: strategy,
             includeSnack: includeSnack,
             library: context.mealLibrary,
-            excludedTitles: excludedTitles
+            excludedTitles: excludedTitles,
+            hasLoggedMealToday: hasLoggedMealToday(context: context),
+            occupiedSlots: occupiedMealSlots(context: context)
         )
         let highConfidence = context.contextFreshness == .high
 
@@ -506,14 +920,19 @@ enum MealLibraryProvider {
         includeSnack: Bool,
         library: [ProposalMealCandidate] = [],
         excludedTitles: Set<String> = [],
+        hasLoggedMealToday: Bool = false,
+        occupiedSlots: Set<ProposalMealSlot> = [],
         calendar: Calendar = .current
     ) -> [ProposalMealSlot] {
         let hour = calendar.component(.hour, from: now)
         var ordered: [ProposalMealSlot] = []
-        if hour < 10 { ordered.append(.breakfast) }
+        // Don't invent breakfast before the user has eaten anything today.
+        if hour < 10, hasLoggedMealToday { ordered.append(.breakfast) }
         if hour < 14 { ordered.append(.lunch) }
         if hour < 21 { ordered.append(.dinner) }
         if includeSnack, hour < 17 { ordered.append(.snack) }
+
+        ordered = ordered.filter { !occupiedSlots.contains($0) }
 
         let maxCount: Int
         switch strategy {
@@ -617,6 +1036,51 @@ enum MealLibraryProvider {
                 .filter { !$0.isSkipped && CoachCanonicalDayState.isNutritionLog($0) }
                 .map { normalizedTitle($0.title) }
         )
+    }
+
+    private static func hasLoggedMealToday(context: DailyContext) -> Bool {
+        context.todayActivities.contains { activity in
+            guard !activity.isSkipped, CoachCanonicalDayState.isNutritionLog(activity) else {
+                return false
+            }
+            return activity.isCompleted
+                || activity.isPartialCompletion
+                || activity.calories > 0
+        }
+    }
+
+    private static func occupiedMealSlots(
+        context: DailyContext,
+        calendar: Calendar = .current
+    ) -> Set<ProposalMealSlot> {
+        Set(
+            context.todayActivities.compactMap { activity -> ProposalMealSlot? in
+                guard !activity.isSkipped, CoachCanonicalDayState.isNutritionLog(activity) else {
+                    return nil
+                }
+                let hour = calendar.component(.hour, from: activity.date)
+                let minute = calendar.component(.minute, from: activity.date)
+                return ProposalMealSlot.from(totalMinutes: hour * 60 + minute)
+            }
+        )
+    }
+
+    private static func recentlyOfferedMealTitles(context: DailyContext) -> Set<String> {
+        var titles: Set<String> = []
+        for meal in context.mealLibrary {
+            let offered = ProposalMealSlot.allCases.contains { slot in
+                ProposalOfferHistoryStore.wasRecentlyOffered(
+                    changeId: "meal-\(slot.rawValue)-\(meal.id)",
+                    excludingDayKey: context.dayKey,
+                    lookingBackDays: 2,
+                    referenceDate: context.now
+                )
+            }
+            if offered {
+                titles.insert(normalizedTitle(meal.title))
+            }
+        }
+        return titles
     }
 
     private static func normalizedTitle(_ title: String) -> String {

@@ -3,9 +3,19 @@ import Foundation
 enum WeekFitUITestSupport {
     static let launchArgument = "-ui-testing"
     /// Debug-only: treat StoreKit AppTransaction as a new user (paywall path).
+    ///
+    /// Skips both legacy AppTransaction *and* active-subscription checks.
+    /// Prefer ``forceNonLegacyLaunchArgument`` when testing the real purchase flow.
     static let forceNewUserLaunchArgument = "-weekfit-force-new-user"
     /// Debug-only: treat the install as grandfathered (no paywall).
     static let forceLegacyUserLaunchArgument = "-weekfit-force-legacy-user"
+    /// Debug-only: ignore AppTransaction legacy grandfathering only.
+    ///
+    /// Use for Sandbox / local paywall + StoreKit purchase testing when Apple
+    /// returns the Sandbox sentinel `originalPurchaseDate` (2013-08-01).
+    /// Does **not** require `-ui-testing`, does **not** skip active subscriptions,
+    /// and is compiled out of Release.
+    static let forceNonLegacyLaunchArgument = "-weekfit-force-non-legacy"
     /// Debug-only: entitlement state override for UI tests.
     ///
     /// Allowed values:
@@ -19,6 +29,16 @@ enum WeekFitUITestSupport {
     static var isActive: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains(launchArgument)
+        #else
+        false
+        #endif
+    }
+
+    /// DEBUG-only: force AppTransaction legacy check to non-legacy.
+    /// Available for manual Sandbox runs without `-ui-testing`.
+    static var shouldForceNonLegacyAppTransaction: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains(forceNonLegacyLaunchArgument)
         #else
         false
         #endif

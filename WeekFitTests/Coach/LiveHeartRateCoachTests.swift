@@ -11,6 +11,7 @@ final class LiveHeartRateCoachTests: XCTestCase {
         XCTAssertEqual(HeartRateZones.zone(forBPM: 133, profile: profile), 2)
         XCTAssertEqual(HeartRateZones.zone(forBPM: 144, profile: profile), 2)
         XCTAssertEqual(HeartRateZones.zone(forBPM: 145, profile: profile), 3)
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 148, profile: profile), 3)
         XCTAssertEqual(HeartRateZones.zone(forBPM: 155, profile: profile), 3)
         XCTAssertEqual(HeartRateZones.zone(forBPM: 156, profile: profile), 4)
         XCTAssertEqual(HeartRateZones.zone(forBPM: 167, profile: profile), 4)
@@ -93,6 +94,8 @@ final class LiveHeartRateCoachTests: XCTestCase {
         let zone1 = HeartRateZones.definition(for: 1, profile: profile)
         XCTAssertEqual(Int(zone1.upperBound), 139)
         XCTAssertTrue(HeartRateZones.bpmRangeLabel(for: 1, profile: profile).contains("138"))
+        // Fallback bands lag Apple Fitness — 148 stays Zone 2 until DOB syncs.
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 148, profile: profile), 2)
     }
 
     func testEachZoneHasADistinctColor() {
@@ -112,5 +115,16 @@ final class LiveHeartRateCoachTests: XCTestCase {
         let label = HeartRateZones.badgeLabel(zone: 4)
         XCTAssertEqual(label, HeartRateZones.localizedTitle(for: 4))
         XCTAssertFalse(label.contains("162"))
+    }
+
+    /// Zone boundaries must flip on the current BPM — same cutovers as Fitness labels.
+    func testZoneTracksCurrentBPMAcrossBoundaries() {
+        let profile = HeartRateZones.Profile.apple(age: 40, restingHeartRate: 60)
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 144, profile: profile), 2)
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 145, profile: profile), 3)
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 155, profile: profile), 3)
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 156, profile: profile), 4)
+        // Dropping back below the cutover must leave Zone 3 immediately (no peak hold).
+        XCTAssertEqual(HeartRateZones.zone(forBPM: 144, profile: profile), 2)
     }
 }

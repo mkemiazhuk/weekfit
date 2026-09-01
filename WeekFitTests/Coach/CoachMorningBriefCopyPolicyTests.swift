@@ -29,6 +29,54 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
         )
     }
 
+    func testHeavyYesterdayAssessmentInterpolatesRussianSleepAndRecovery() {
+        let facts = CoachMorningBriefFacts(
+            recoveryDataAvailable: true,
+            sleepHours: 6.0,
+            recoveryPercent: 58,
+            recoveryBand: .moderate,
+            sleepIsLow: false,
+            hadHeavyYesterday: true,
+            nextActivity: nil,
+            todayActivityCount: 0,
+            seriousActivityCount: 0,
+            tomorrowWorkout: nil,
+            minutesUntilNextActivity: nil
+        )
+        let text = CoachMorningBriefCopyPolicy.recoveryAfterHeavyYesterdayAssessment(for: facts)
+        XCTAssertFalse(text.russian.contains("\\("), text.russian)
+        XCTAssertTrue(text.russian.contains("58"), text.russian)
+        XCTAssertTrue(text.russian.contains("сон"), text.russian)
+    }
+
+    func testProtectTomorrowFreshLocalizesLongRunTitleInRussian() {
+        let facts = CoachMorningBriefFacts(
+            recoveryDataAvailable: true,
+            sleepHours: 8.0,
+            recoveryPercent: 90,
+            recoveryBand: .good,
+            sleepIsLow: false,
+            hadHeavyYesterday: false,
+            nextActivity: nil,
+            todayActivityCount: 0,
+            seriousActivityCount: 0,
+            tomorrowWorkout: CoachTomorrowWorkout(
+                title: "Long Run",
+                startHour: 7,
+                startMinute: 0,
+                durationMinutes: 90
+            ),
+            minutesUntilNextActivity: nil
+        )
+        let text = CoachMorningBriefCopyPolicy.protectTomorrowFreshAssessment(
+            facts: facts,
+            tomorrowWorkout: facts.tomorrowWorkout
+        )
+        XCTAssertTrue(text.english.contains("Long Run"), text.english)
+        XCTAssertTrue(text.russian.lowercased().contains("длинный бег"), text.russian)
+        XCTAssertFalse(text.russian.lowercased().contains("long"), text.russian)
+    }
+
     func testMorningReadinessWithPlannedRideGivesConcreteNextAction() {
         let facts = CoachMorningBriefFacts(
             recoveryDataAvailable: true,

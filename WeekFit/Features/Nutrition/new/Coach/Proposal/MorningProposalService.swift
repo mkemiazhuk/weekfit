@@ -30,6 +30,7 @@ enum MorningProposalService {
         let walkRejectPenalty: Int
         let stronglyRejectsWalk: Bool
         let weatherRiskToken: ProposalWeatherRiskToken
+        let outdoorSuitability: OutdoorSuitability
     }
 
     @discardableResult
@@ -40,6 +41,7 @@ enum MorningProposalService {
         CoachAdjustmentProvenanceStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
         CoachDecisionHistoryStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
         ProposalOfferHistoryStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
+        MorningAdjustmentDayHistoryStore.purgeOlderThan(referenceDate: context.now, calendar: calendar)
 
         var existing = MorningProposalStore.proposal(for: dayKey)
         // Non-destructive expire of incompatible drafts (schema < current).
@@ -109,7 +111,7 @@ enum MorningProposalService {
                 schemaVersion: MorningPlanProposal.currentSchemaVersion
             )
             MorningProposalStore.upsert(unavailable)
-            MorningProposalAnalytics.proposalUnavailable(reason: reason)
+            MorningProposalAnalytics.proposalUnavailable(dayKey: dayKey, reason: reason)
             return unavailable
 
         case .keepExisting(let status):
@@ -190,6 +192,7 @@ enum MorningProposalService {
             walkRejectPenalty: context.walkRejectPenalty,
             stronglyRejectsWalk: context.stronglyRejectsWalk,
             weatherRiskToken: context.weatherRiskToken,
+            outdoorSuitability: context.outdoorSuitability,
             preferAvoidHardLoadOnLowRecovery: CoachLearnedContextBuilder.preferAvoidHardLoadOnLowRecovery(
                 recoveryPercent: context.readiness.recoveryPercent
             )
@@ -204,17 +207,25 @@ enum MorningProposalService {
                 changes: proposal.changes,
                 now: context.now
             )
+            let captureContext = MorningAdjustmentDayHistoryCapture.makeContext(
+                from: context,
+                todayOpen: context.todayActivities.filter {
+                    !$0.isCompleted && !$0.isSkipped && CoachActivityClassifier.type(for: $0) != .none
+                }
+            )
+            MorningAdjustmentDayHistoryCapture.captureProposalReady(
+                proposal: proposal,
+                context: captureContext
+            )
             let mutating = proposal.changes.filter { $0.kind != CoachChangeKind.guidanceOnly }.count
             let guidance = proposal.changes.filter { $0.kind == CoachChangeKind.guidanceOnly }.count
             MorningProposalAnalytics.proposalGenerated(
                 changeCount: mutating,
                 guidanceCount: guidance,
-                strategy: proposal.strategy,
-                generationMode: generationMode,
-                contextConfidence: proposal.contextConfidence
+                generationMode: generationMode
             )
         case .noChangesNeeded:
-            MorningProposalAnalytics.proposalNoChanges()
+            MorningProposalAnalytics.proposalNoChanges(dayKey: dayKey)
         default:
             break
         }
@@ -241,6 +252,7 @@ enum MorningProposalService {
             proposal.status = .dismissed
             proposal.dismissedAt = Date()
         }
+        // OFFERED-only snapshot was captured at proposalReady; dismiss is not rejection.
         ProposalBehavioralPreferences.recordSoftDismiss()
         MorningProposalAnalytics.proposalDismissed()
         MorningProposalNotificationService.shared.cancel(dayKey: dayKey)

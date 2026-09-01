@@ -25,6 +25,11 @@ enum StarterMealPreparation {
         "custom_meal_starter_huevos_rancheros": "meals.starter.huevosRancheros.title",
         "custom_meal_starter_english_breakfast": "meals.starter.englishBreakfast.title",
         "custom_meal_starter_japanese_breakfast": "meals.starter.japaneseBreakfast.title",
+        "custom_meal_starter_salmon_nigiri": "meals.starter.salmonNigiri.title",
+        "custom_meal_starter_salmon_roll": "meals.starter.salmonRoll.title",
+        "custom_meal_starter_tuna_roll": "meals.starter.tunaRoll.title",
+        "custom_meal_starter_chicken_ramen": "meals.starter.chickenRamen.title",
+        "custom_meal_starter_shoyu_ramen": "meals.starter.shoyuRamen.title",
     ]
 
     private static let storedEnglishTitles: [String: String] = [
@@ -33,6 +38,11 @@ enum StarterMealPreparation {
         "custom_meal_starter_huevos_rancheros": "Huevos Rancheros",
         "custom_meal_starter_english_breakfast": "English Breakfast",
         "custom_meal_starter_japanese_breakfast": "Japanese Breakfast",
+        "custom_meal_starter_salmon_nigiri": "Salmon Nigiri",
+        "custom_meal_starter_salmon_roll": "Salmon Avocado Roll",
+        "custom_meal_starter_tuna_roll": "Spicy Tuna Roll",
+        "custom_meal_starter_chicken_ramen": "Chicken Ramen",
+        "custom_meal_starter_shoyu_ramen": "Shoyu Ramen",
     ]
 
     private static let stepKeys: [String: [String]] = [
@@ -119,6 +129,36 @@ enum StarterMealPreparation {
             "meals.starter.tofuBrownRice.step2",
             "meals.starter.tofuBrownRice.step3",
             "meals.starter.tofuBrownRice.step4",
+        ],
+        "custom_meal_starter_salmon_nigiri": [
+            "meals.starter.salmonNigiri.step1",
+            "meals.starter.salmonNigiri.step2",
+            "meals.starter.salmonNigiri.step3",
+            "meals.starter.salmonNigiri.step4",
+        ],
+        "custom_meal_starter_salmon_roll": [
+            "meals.starter.salmonRoll.step1",
+            "meals.starter.salmonRoll.step2",
+            "meals.starter.salmonRoll.step3",
+            "meals.starter.salmonRoll.step4",
+        ],
+        "custom_meal_starter_tuna_roll": [
+            "meals.starter.tunaRoll.step1",
+            "meals.starter.tunaRoll.step2",
+            "meals.starter.tunaRoll.step3",
+            "meals.starter.tunaRoll.step4",
+        ],
+        "custom_meal_starter_chicken_ramen": [
+            "meals.starter.chickenRamen.step1",
+            "meals.starter.chickenRamen.step2",
+            "meals.starter.chickenRamen.step3",
+            "meals.starter.chickenRamen.step4",
+        ],
+        "custom_meal_starter_shoyu_ramen": [
+            "meals.starter.shoyuRamen.step1",
+            "meals.starter.shoyuRamen.step2",
+            "meals.starter.shoyuRamen.step3",
+            "meals.starter.shoyuRamen.step4",
         ],
     ]
 }

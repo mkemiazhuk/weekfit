@@ -154,6 +154,31 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         XCTAssertEqual(slots, [.lunch, .dinner])
     }
 
+    func testRemainingSlotsSkipBreakfastBeforeFirstMeal() {
+        let library = [
+            meal("b", "Breakfast", time: "08:30", type: "balanced"),
+            meal("l", "Lunch", time: "13:00", type: "balanced"),
+            meal("d", "Dinner", time: "19:00", type: "balanced")
+        ]
+        let fastingMorning = MealLibraryProvider.remainingSlots(
+            now: date(2026, 7, 29, 8, 19),
+            strategy: .recover,
+            includeSnack: false,
+            library: library,
+            hasLoggedMealToday: false
+        )
+        XCTAssertEqual(fastingMorning, [.lunch, .dinner])
+
+        let afterBreakfast = MealLibraryProvider.remainingSlots(
+            now: date(2026, 7, 29, 8, 19),
+            strategy: .recover,
+            includeSnack: false,
+            library: library,
+            hasLoggedMealToday: true
+        )
+        XCTAssertEqual(afterBreakfast, [.breakfast, .lunch])
+    }
+
     func testMealWhyDiffersBySlotAfterHardDay() {
         XCTAssertEqual(
             MealLibraryProvider.mealReason(slot: .lunch, strategy: .recover, yesterdayHeavy: true),
@@ -197,15 +222,70 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         XCTAssertTrue(
             movement.contains { candidate in
                 if case .createPlannedActivity(let payload) = candidate.payload {
-                    return payload.activityType == "stretching"
+                    let type = payload.activityType.lowercased()
+                    return type == "stretching" || type == "yoga" || type == "breathing"
                 }
                 return false
-            }
+            },
+            "Expected indoor light recovery when walks are rejected"
         )
+        XCTAssertFalse(movement.contains { $0.kind == .createRecoveryWalk })
         XCTAssertEqual(
             CoachProposalReasonCopy.localizedReason(.recoveryStretchSupport).contains("stretch"),
             true
         )
+    }
+
+    func testRecoveryCatalogCanOfferStretchYogaBreathingAndEasyRun() {
+        let stretchYogaBreathing = RecoveryMovementProvider.eligibleOptions(
+            context: makeContext(recoveryBand: .moderate, yesterdayHeavy: false, templates: []),
+            strategy: .recover,
+            allowWalk: true
+        )
+        XCTAssertEqual(
+            Set(stretchYogaBreathing.map(\.rawValue)),
+            Set(["walk", "stretch", "yoga", "breathing"])
+        )
+
+        let withEasyRun = RecoveryMovementProvider.eligibleOptions(
+            context: makeContext(recoveryBand: .good, yesterdayHeavy: false, templates: []),
+            strategy: .maintain,
+            allowWalk: true
+        )
+        XCTAssertTrue(withEasyRun.contains(.easyRun))
+
+        let indoorOnly = RecoveryMovementProvider.eligibleOptions(
+            context: makeContext(
+                recoveryBand: .low,
+                yesterdayHeavy: true,
+                templates: [],
+                stronglyRejectsWalk: true
+            ),
+            strategy: .recover,
+            allowWalk: false
+        )
+        XCTAssertEqual(Set(indoorOnly), Set([.stretch, .yoga, .breathing]))
+    }
+
+    func testRejectedWalkPrefersIndoorCatalogRotation() {
+        let context = makeContext(
+            recoveryBand: .low,
+            yesterdayHeavy: true,
+            templates: [],
+            stronglyRejectsWalk: true
+        )
+        let picks = (0..<9).compactMap { offset -> RecoveryMovementProvider.LightOption? in
+            let dayKey = String(format: "2026-08-%02d", offset + 1)
+            return RecoveryMovementProvider.pickOption(
+                [.walk, .stretch, .yoga, .breathing],
+                dayKey: dayKey,
+                context: context,
+                strategy: .recover
+            )
+        }
+        XCTAssertFalse(picks.contains(.walk))
+        XCTAssertTrue(Set(picks).isSubset(of: [.stretch, .yoga, .breathing]))
+        XCTAssertGreaterThan(Set(picks).count, 1, "Indoor options should rotate across days")
     }
 
     // MARK: - Helpers
@@ -297,6 +377,8 @@ final class MorningProposalUsefulnessTests: XCTestCase {
             mealLibrary: mealLibrary,
             mealLibraryRevision: "1",
             weatherRiskToken: .unavailable,
+            outdoorSuitability: .acceptable,
+            existingPlanMovementSuitability: .none,
             canMutate: true,
             fingerprint: fingerprint
         )

@@ -69,6 +69,8 @@ struct CoachCopyBuildInput: Equatable, Sendable {
     let isFocusHikeLike: Bool
     /// Planned focus duration in minutes (0 when idle / unknown).
     let focusDurationMinutes: Int
+    /// Minutes elapsed since the focused live session started.
+    let focusSessionElapsedMinutes: Int
     /// Presentation-only — false when user is still in a normal fasting / pre-first-meal window.
     let mealWindowOpen: Bool
     /// Presentation-only — heat, long activity, or critical dehydration risk.
@@ -124,6 +126,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
             focusActivity: focusActivity,
             isFocusHikeLike: context.isFocusHikeLike,
             focusDurationMinutes: context.focusDurationMinutes,
+            focusSessionElapsedMinutes: context.focusSessionElapsedMinutes,
             mealWindowOpen: CoachCopyMealWindowPolicy.isOpen(
                 context: context,
                 fuelState: context.fuelState
@@ -185,6 +188,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         focusActivity: CoachPlannedActivitySummary? = nil,
         isFocusHikeLike: Bool = false,
         focusDurationMinutes: Int = 0,
+        focusSessionElapsedMinutes: Int = 0,
         mealWindowOpen: Bool = true,
         dehydrationRisk: Bool = false,
         liveHeartRateBPM: Int? = nil,
@@ -210,6 +214,7 @@ struct CoachCopyBuildInput: Equatable, Sendable {
         self.focusActivity = focusActivity
         self.isFocusHikeLike = isFocusHikeLike
         self.focusDurationMinutes = max(0, focusDurationMinutes)
+        self.focusSessionElapsedMinutes = max(0, focusSessionElapsedMinutes)
         self.mealWindowOpen = mealWindowOpen
         self.dehydrationRisk = dehydrationRisk
         self.liveHeartRateBPM = liveHeartRateBPM

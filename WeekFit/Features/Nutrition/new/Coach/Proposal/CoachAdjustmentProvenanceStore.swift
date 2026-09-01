@@ -3,7 +3,7 @@ import Foundation
 enum CoachAdjustmentProvenanceStore {
 
     private static let storageKey = "coach.appliedAdjustments.v1"
-    private static let retentionDays = 14
+    private static let retentionDays = 90
     private static let lock = NSLock()
 
     static func adjustments(forDayKey dayKey: String) -> [AppliedCoachAdjustment] {

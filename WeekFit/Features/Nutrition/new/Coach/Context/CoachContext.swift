@@ -202,6 +202,8 @@ struct CoachContext: Equatable, Sendable {
     let isFocusHikeLike: Bool
     /// Planned duration of the focused activity in minutes (0 when idle / unknown).
     let focusDurationMinutes: Int
+    /// Minutes elapsed since the focused session started (0 when idle / pre-session).
+    let focusSessionElapsedMinutes: Int
     /// True when at least one meal has been logged today (calories or mealsCount).
     let hasLoggedMealToday: Bool
     /// Conversational frame — PR1 debug context only; does not route scenarios.
@@ -236,6 +238,7 @@ struct CoachContext: Equatable, Sendable {
         completedHeatToday: Bool = false,
         isFocusHikeLike: Bool = false,
         focusDurationMinutes: Int = 0,
+        focusSessionElapsedMinutes: Int = 0,
         hasLoggedMealToday: Bool = false,
         conversationPhase: CoachConversationPhase = .steady,
         conversationPhaseReason: String = CoachConversationPhase.defaultReason,
@@ -264,6 +267,7 @@ struct CoachContext: Equatable, Sendable {
         self.completedHeatToday = completedHeatToday
         self.isFocusHikeLike = isFocusHikeLike
         self.focusDurationMinutes = max(0, focusDurationMinutes)
+        self.focusSessionElapsedMinutes = max(0, focusSessionElapsedMinutes)
         self.hasLoggedMealToday = hasLoggedMealToday
         self.conversationPhase = conversationPhase
         self.conversationPhaseReason = conversationPhaseReason

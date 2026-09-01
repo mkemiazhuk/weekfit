@@ -1069,21 +1069,7 @@ struct TodayView: View {
     }
 
     private func makeQuickMealRows(_ meals: [Meals]) -> [QuickMealDisplayRow] {
-        return meals.map { meal in
-            let isFoodProduct = meal.isFoodProduct
-            let builderImageItems = isFoodProduct
-                ? []
-                : (meal.builderImageItems ?? []).sorted { $0.zIndex < $1.zIndex }
-
-            return QuickMealDisplayRow(
-                meal: meal,
-                usesAssetImage: !isFoodProduct && !meal.imageName.isEmpty && UIImage(named: meal.imageName) != nil,
-                sortedBuilderImageItems: builderImageItems,
-                localPhotoFilename: quickMealPhotoFilename(for: meal),
-                isFoodProduct: isFoodProduct,
-                placeholderInitial: meal.placeholderInitial
-            )
-        }
+        meals.map { QuickMealDisplayRow.make(from: $0) }
     }
 
     private func quickMealPhotoFilename(for meal: Meals) -> String? {
@@ -3007,7 +2993,9 @@ struct TodayView: View {
             )
         }()
         let meals = MorningProposalEvaluator.mealLibrary(from: userSettings)
-        let weatherRiskToken = ProposalWeatherRisk.resolve(from: morningWeatherSummary)
+        let weatherAssessment = OutdoorSuitabilityResolver.assess(from: morningWeatherSummary)
+        let weatherRiskToken = weatherAssessment.riskToken
+        let outdoorSuitability = weatherAssessment.suitability
 
         morningProposal = MorningProposalEvaluator.evaluate(
             .init(
@@ -3022,6 +3010,7 @@ struct TodayView: View {
                 mealLibrary: meals.candidates,
                 mealLibraryRevision: meals.revision,
                 weatherRiskToken: weatherRiskToken,
+                outdoorSuitability: outdoorSuitability,
                 forceRegenerate: forceRegenerate
             )
         )

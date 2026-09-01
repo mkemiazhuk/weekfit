@@ -53,8 +53,8 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         let russian = joinedRussian(pack)
 
         XCTAssertTrue(russian.contains("прогулка уже"))
-        XCTAssertTrue(russian.contains("остаток дня"))
-        XCTAssertTrue(russian.contains("отдых"))
+        XCTAssertFalse(russian.contains("остаток дня"), "Afternoon post-walk must not close the day")
+        XCTAssertTrue(russian.contains("спокойн") || russian.contains("ритм"), russian)
         XCTAssertFalse(russian.contains("10–20 минут спокойно"))
         XCTAssertFalse(russian.lowercased().contains("идите"))
     }
@@ -105,10 +105,24 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         }
 
         XCTAssertTrue(russian.contains("прогулка уже"))
-        XCTAssertTrue(russian.contains("остаток дня"))
-        XCTAssertTrue(russian.contains("отдых"))
+        XCTAssertFalse(russian.contains("остаток дня"), russian)
         XCTAssertEqual(bridge.todayTitle, "Прогулка завершена")
         XCTAssertEqual(bridge.coachTitle, "Прогулка завершена")
+    }
+
+    func testCompletedEveningWalkMayUseRestOfDayPhrasing() throws {
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(
+            makeInput(
+                sessionPhase: .immediatePost,
+                focusSource: .recentCompleted,
+                activityState: .justFinished,
+                minutesSinceEnd: 51,
+                timeOfDay: .evening
+            )
+        ))
+        let russian = joinedRussian(pack)
+        XCTAssertTrue(russian.contains("прогулка уже"))
+        XCTAssertTrue(russian.contains("остаток дня"), russian)
     }
 
     // MARK: - Helpers
@@ -119,7 +133,8 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
         activityState: CoachActivityState = .upcoming,
         minutesSinceEnd: Int? = nil,
         dayReadiness: CoachDayReadiness? = nil,
-        scenario: CoachScenarioKey = .walkRecoveryAction
+        scenario: CoachScenarioKey = .walkRecoveryAction,
+        timeOfDay: CoachTimeOfDay = .afternoon
     ) -> CoachCopyBuildInput {
         let readiness = dayReadiness ?? CoachDayReadiness(
             recoveryPercent: 82,
@@ -138,7 +153,7 @@ final class CoachWalkRecoveryActionCopyTests: XCTestCase {
                 activityType: .walk,
                 durationBand: .short,
                 completedSeriousActivities: .one,
-                timeOfDay: .afternoon,
+                timeOfDay: timeOfDay,
                 stackedDayActiveRisk: false,
                 lastCompletedActivityType: .fullBody
             ),

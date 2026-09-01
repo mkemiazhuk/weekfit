@@ -178,9 +178,6 @@ private extension CoachWalkRecoveryActionCopy {
     }
 
     static func completedDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
-        if input.sessionPhase == .immediatePost {
-            return completedClosureDraft(input: input)
-        }
         if CoachCopyClosureTiming.allowsDayClosurePhrasing(
             timeOfDay: input.timeOfDay,
             conversationPhase: input.conversationPhase

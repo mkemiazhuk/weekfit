@@ -46,6 +46,50 @@ final class LiveSessionCoachCopyTests: XCTestCase {
         XCTAssertFalse(english.contains("recovery effort"))
     }
 
+    func testAerobicCopyChangesWhenZoneMovesFromTwoToThree() throws {
+        let zone2 = makeInput(
+            scenario: .duringEndurance,
+            activityType: .running,
+            zone: 2,
+            sessionPhase: .during,
+            activityState: .active
+        )
+        let zone3 = makeInput(
+            scenario: .duringEndurance,
+            activityType: .running,
+            zone: 3,
+            sessionPhase: .during,
+            activityState: .active
+        )
+
+        let pack2 = try XCTUnwrap(CoachCopyRegistry.resolve(zone2))
+        let pack3 = try XCTUnwrap(CoachCopyRegistry.resolve(zone3))
+        let english2 = joinedEnglish(pack2).lowercased()
+        let english3 = joinedEnglish(pack3).lowercased()
+
+        XCTAssertTrue(english2.contains("where you should be") || english2.contains("conversational"))
+        XCTAssertTrue(english3.contains("hold") || english3.contains("work"))
+        XCTAssertNotEqual(english2, english3)
+
+        let teaser2 = try XCTUnwrap(LiveSessionCoachCopy.teaser(for: zone2)?.english.lowercased())
+        let teaser3 = try XCTUnwrap(LiveSessionCoachCopy.teaser(for: zone3)?.english.lowercased())
+        XCTAssertEqual(teaser2, "you're right where you should be.")
+        XCTAssertEqual(teaser3, "hold this effort.")
+    }
+
+    func testRecoveryWalkEaseOffCopyWhenZoneThree() throws {
+        let easy = makeWalkInput(zone: 2)
+        let high = makeWalkInput(zone: 3)
+        let packEasy = try XCTUnwrap(CoachCopyRegistry.resolve(easy))
+        let packHigh = try XCTUnwrap(CoachCopyRegistry.resolve(high))
+        let teaserEasy = try XCTUnwrap(LiveSessionCoachCopy.teaser(for: easy)?.english.lowercased())
+        let teaserHigh = try XCTUnwrap(LiveSessionCoachCopy.teaser(for: high)?.english.lowercased())
+
+        XCTAssertEqual(teaserEasy, "keep this one easy.")
+        XCTAssertEqual(teaserHigh, "ease back a little.")
+        XCTAssertNotEqual(joinedEnglish(packEasy), joinedEnglish(packHigh))
+    }
+
     func testHIITAllowsHighHeartRate() throws {
         let input = makeInput(
             scenario: .duringEndurance,

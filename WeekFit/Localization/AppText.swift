@@ -485,6 +485,8 @@ enum AppText {
             static let helpSupportTitle: LocalizedStringResource = "settings.profile.item.helpSupport"
             static let termsPrivacyTitle: LocalizedStringResource = "settings.profile.item.termsPrivacy"
             static let bodyGoalTitle: LocalizedStringResource = "settings.profile.bodyGoal.title"
+            static let shareProductAnalyticsTitle: LocalizedStringResource = "settings.profile.shareProductAnalytics.title"
+            static let shareProductAnalyticsSubtitle: LocalizedStringResource = "settings.profile.shareProductAnalytics.subtitle"
         }
 
         enum Account {
@@ -677,11 +679,11 @@ func WeekFitDisplayString(_ value: String) -> String {
     return localized == value ? value : localized
 }
 
-func WeekFitCoachRuntimeLocalizedString(_ value: String) -> String {
+func WeekFitCoachRuntimeLocalizedString(_ value: String, russian: Bool? = nil) -> String {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return value }
 
-    let isRussian = WeekFitUsesRussianLanguage()
+    let isRussian = russian ?? WeekFitUsesRussianLanguage()
     if let pair = WeekFitCoachRuntimeCopy[trimmed] {
         return WeekFitCoachHumanizedText(isRussian ? WeekFitRussianCoachText(pair.ru) : pair.en)
     }
@@ -693,6 +695,26 @@ func WeekFitCoachRuntimeLocalizedString(_ value: String) -> String {
 
 private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
     let copies: [(en: String, ru: String, aliases: [String])] = [
+        (
+            "Long Run",
+            "Длинный бег",
+            ["long run"]
+        ),
+        (
+            "Easy Run",
+            "Лёгкий бег",
+            ["easy run"]
+        ),
+        (
+            "Tempo Run",
+            "Темповый бег",
+            ["tempo run"]
+        ),
+        (
+            "Recovery Run",
+            "Восстановительный бег",
+            ["recovery run"]
+        ),
         (
             "My Assessment",
             "Моя оценка",
@@ -1169,7 +1191,16 @@ private let WeekFitCoachRuntimeCopy: [String: (en: String, ru: String)] = {
 
 private func WeekFitRussianCoachText(_ text: String) -> String {
     var result = text
+    // Longer phrases first — word-level Run/Walk must not leave "long Бег".
     let replacements: [(String, String)] = [
+        ("Long Run", "Длинный бег"),
+        ("long run", "длинный бег"),
+        ("Easy Run", "Лёгкий бег"),
+        ("easy run", "лёгкий бег"),
+        ("Tempo Run", "Темповый бег"),
+        ("tempo run", "темповый бег"),
+        ("Recovery Run", "Восстановительный бег"),
+        ("recovery run", "восстановительный бег"),
         ("Cycling", "Велосессия"),
         ("cycling", "велосессия"),
         ("Ride", "Велосессия"),

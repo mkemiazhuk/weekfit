@@ -472,10 +472,7 @@ struct PremiumActivityStartSheet: View {
             try modelContext.save()
             QuickActivityUsageStore.record(imageName: option.imageName)
             usageEntries = QuickActivityUsageStore.load()
-            ProductAnalytics.activityStarted(
-                category: ProductAnalytics.activityCategory(forType: newActivity.type),
-                source: .today
-            )
+            ProductAnalytics.activityStarted(source: .today)
         } catch {
             modelContext.delete(newActivity)
             ProductAnalytics.activityLoggingFailed(source: .today, reason: .saveFailed)
@@ -634,10 +631,7 @@ struct PremiumActivityStartSheet: View {
             try? modelContext.save()
 
             ReviewEngagement.record(.activityLoggedOrCompleted)
-            ProductAnalytics.activityCompleted(
-                category: ProductAnalytics.activityCategory(forType: activity.type),
-                source: .today
-            )
+            ProductAnalytics.activityCompleted(source: .today)
 
             refreshID = UUID()
             isPresented = false

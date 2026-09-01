@@ -8,8 +8,11 @@ import Foundation
 /// bundled `meals.json` hero assets.
 enum DefaultMealLibrarySeeder {
     /// Bumped when starter recipe shape changes (v1 = meals.json, v2 = builder balanced,
-    /// v3 = 9 builder meals, v4 = +world breakfasts).
-    static let seededKey = "weekfit.defaultMealLibrary.seeded.v4"
+    /// v3 = 9 builder meals, v4 = +world breakfasts, v7 = revert Japanese meals + hero photos).
+    static let seededKey = "weekfit.defaultMealLibrary.seeded.v7"
+    static let v6SeededKey = "weekfit.defaultMealLibrary.seeded.v6"
+    static let v5SeededKey = "weekfit.defaultMealLibrary.seeded.v5"
+    static let v4SeededKey = "weekfit.defaultMealLibrary.seeded.v4"
     static let v3SeededKey = "weekfit.defaultMealLibrary.seeded.v3"
 
     /// Previous seeder copied these catalog IDs; replace them with builder meals.
@@ -29,6 +32,19 @@ enum DefaultMealLibrarySeeder {
         "weekfit.defaultMealLibrary.seeded.v1",
         "weekfit.defaultMealLibrary.seeded.v2",
         v3SeededKey,
+        v4SeededKey,
+        v5SeededKey,
+        v6SeededKey,
+    ]
+
+    /// Hero assets briefly used for v5/v6 — reset to builder plates in v7.
+    private static let revertedHeroAssetNames: Set<String> = [
+        "meal-shakshuka",
+        "meal-salmon-nigiri",
+        "meal-salmon-roll",
+        "meal-tuna-roll",
+        "meal-chicken-ramen",
+        "meal-shoyu-ramen",
     ]
 
     /// Starter IDs that existed before the v4 world-breakfast expansion.
@@ -51,6 +67,15 @@ enum DefaultMealLibrarySeeder {
         "custom_meal_starter_huevos_rancheros",
         "custom_meal_starter_english_breakfast",
         "custom_meal_starter_japanese_breakfast",
+    ]
+
+    /// One-time content introduced by the v4 → v5 migration.
+    static let japaneseMealIDsIntroducedInV5: Set<String> = [
+        "custom_meal_starter_salmon_nigiri",
+        "custom_meal_starter_salmon_roll",
+        "custom_meal_starter_tuna_roll",
+        "custom_meal_starter_chicken_ramen",
+        "custom_meal_starter_shoyu_ramen",
     ]
 
     /// Stable starter IDs (look like builder saves, but deterministic).
@@ -303,6 +328,8 @@ enum DefaultMealLibrarySeeder {
         let isCurrentStarterCatalog = isCurrentStarterCatalogOnly(existing)
         let shouldReplace = existing.isEmpty || isLegacyCatalogOnly(existing)
 
+        var didMigrate = false
+
         if migrateV3ToV4WorldBreakfastsIfNeeded(
             into: existing,
             settings: settings,
@@ -310,6 +337,20 @@ enum DefaultMealLibrarySeeder {
             run: run,
             accountMode: accountMode
         ) {
+            didMigrate = true
+        }
+
+        if migrateV6ToV7RevertJapaneseAndHeroPhotosIfNeeded(
+            into: settings.customMealsCatalog,
+            settings: settings,
+            defaults: defaults,
+            run: run,
+            accountMode: accountMode
+        ) {
+            didMigrate = true
+        }
+
+        if didMigrate {
             return true
         }
 
@@ -398,7 +439,7 @@ enum DefaultMealLibrarySeeder {
         accountMode: String
     ) -> Bool {
         // v4 marker already set — migration finished; never re-insert missing starters.
-        if defaults.bool(forKey: seededKey) {
+        if defaults.bool(forKey: v4SeededKey) || defaults.bool(forKey: seededKey) {
             return false
         }
 
@@ -414,8 +455,7 @@ enum DefaultMealLibrarySeeder {
         }
 
         if missingWorldBreakfasts.isEmpty {
-            defaults.set(true, forKey: seededKey)
-            clearPreviousSeededKeys(in: defaults)
+            defaults.set(true, forKey: v4SeededKey)
             MealsSeedDiagnostics.skipped(
                 run: run,
                 reason: "v3ToV4AlreadyComplete",
@@ -435,6 +475,53 @@ enum DefaultMealLibrarySeeder {
             settings: settings,
             defaults: defaults,
             run: run,
+            accountMode: accountMode,
+            completionKey: v4SeededKey
+        )
+    }
+
+    /// One-time v6 → v7 rollback: drop Japanese starters and restore builder plate previews.
+    @MainActor
+    private static func migrateV6ToV7RevertJapaneseAndHeroPhotosIfNeeded(
+        into existing: [Meals],
+        settings: WeekFitUserSettings,
+        defaults: UserDefaults,
+        run: UUID,
+        accountMode: String
+    ) -> Bool {
+        if defaults.bool(forKey: seededKey) {
+            return false
+        }
+
+        guard !existing.isEmpty, !isLegacyCatalogOnly(existing) else { return false }
+
+        let hasJapaneseMeals = existing.contains { japaneseMealIDsIntroducedInV5.contains($0.id) }
+        let hasHeroPhotos = existing.contains { revertedHeroAssetNames.contains($0.imageName) }
+        guard hasJapaneseMeals || hasHeroPhotos else {
+            defaults.set(true, forKey: seededKey)
+            clearPreviousSeededKeys(in: defaults)
+            return false
+        }
+
+        MealsSeedDiagnostics.info(
+            "MEALS SEED v6→v7 revertJapanese=\(hasJapaneseMeals) revertHero=\(hasHeroPhotos) account=\(accountMode)",
+            run: run
+        )
+
+        let cleaned = existing
+            .filter { !japaneseMealIDsIntroducedInV5.contains($0.id) }
+            .map { meal in
+                guard revertedHeroAssetNames.contains(meal.imageName) else { return meal }
+                var updated = meal
+                updated.imageName = "plate-dark"
+                return updated
+            }
+
+        return persistCatalog(
+            cleaned,
+            settings: settings,
+            defaults: defaults,
+            run: run,
             accountMode: accountMode
         )
     }
@@ -445,7 +532,8 @@ enum DefaultMealLibrarySeeder {
         settings: WeekFitUserSettings,
         defaults: UserDefaults,
         run: UUID,
-        accountMode: String
+        accountMode: String,
+        completionKey: String = seededKey
     ) -> Bool {
         MealsSeedDiagnostics.info("MEALS SEED save BEGIN", run: run)
         let encoded = CustomMealStore.encode(meals)
@@ -475,8 +563,10 @@ enum DefaultMealLibrarySeeder {
             return false
         }
 
-        defaults.set(true, forKey: seededKey)
-        clearPreviousSeededKeys(in: defaults)
+        defaults.set(true, forKey: completionKey)
+        if completionKey == seededKey {
+            clearPreviousSeededKeys(in: defaults)
+        }
         MealsSeedDiagnostics.info("MEALS SEED save SUCCESS", run: run)
         MealsSeedDiagnostics.info("MEALS SEED account=\(accountMode)", run: run)
         MealsSeedDiagnostics.complete(

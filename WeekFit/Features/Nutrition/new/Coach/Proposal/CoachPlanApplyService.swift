@@ -257,6 +257,18 @@ enum CoachPlanApplyService {
         proposal.appliedAt = Date()
         proposal.lastErrorCode = nil
         MorningProposalStore.upsert(proposal)
+
+        let todaySnapshots = activities.map(CoachPlannedActivitySnapshot.init(from:))
+        MorningAdjustmentDayHistoryCapture.captureApply(
+            proposal: proposal,
+            context: MorningAdjustmentDayHistoryCapture.makeContextFromProposal(
+                proposal: proposal,
+                todayActivities: todaySnapshots
+            ),
+            appliedOutcomes: outcomes,
+            provenance: provenance
+        )
+
         MorningProposalNotificationService.shared.cancel(dayKey: proposal.dayKey)
         MorningProposalNotificationService.shared.markHandled(dayKey: proposal.dayKey)
 
@@ -440,14 +452,15 @@ enum CoachPlanApplyService {
             return (.skippedAlreadyMatched, duplicate.id)
         }
 
-        var slot = payload.proposedDate
-        for _ in 0..<4 {
-            let conflict = activities.contains { activity in
-                guard !activity.isSkipped else { return false }
-                return abs(activity.date.timeIntervalSince(slot)) < 30 * 60
-            }
-            if !conflict { break }
-            slot = slot.addingTimeInterval(15 * 60)
+        let snapshots = activities.map { CoachPlannedActivitySnapshot(from: $0) }
+        guard let slot = ProposalPlanScheduleResolver.resolveCreateStart(
+            preferred: payload.proposedDate,
+            durationMinutes: payload.durationMinutes,
+            against: snapshots,
+            now: Date(),
+            maxSlideFromPreferredMinutes: 90
+        ) else {
+            return (.failedValidation, nil)
         }
 
         let icon = WeekFitActivityIconResolver.preferredIcon(
@@ -518,14 +531,15 @@ enum CoachPlanApplyService {
             return (.skippedAlreadyMatched, duplicate.id)
         }
 
-        var slot = payload.proposedDate
-        for _ in 0..<4 {
-            let conflict = activities.contains { activity in
-                guard !activity.isSkipped else { return false }
-                return abs(activity.date.timeIntervalSince(slot)) < 25 * 60
-            }
-            if !conflict { break }
-            slot = slot.addingTimeInterval(15 * 60)
+        let snapshots = activities.map { CoachPlannedActivitySnapshot(from: $0) }
+        guard let slot = ProposalPlanScheduleResolver.resolveCreateStart(
+            preferred: payload.proposedDate,
+            durationMinutes: payload.durationMinutes,
+            against: snapshots,
+            now: Date(),
+            maxSlideFromPreferredMinutes: 90
+        ) else {
+            return (.failedValidation, nil)
         }
 
         let icon = WeekFitActivityIconResolver.preferredIcon(

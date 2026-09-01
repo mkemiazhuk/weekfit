@@ -74,7 +74,9 @@ enum MorningProposalAssembler {
         // Soft cold-start body tips stay out of Review even when Walk/meals mutate.
         if mutating.isEmpty {
             var guidanceOnly: [CoachProposedChange] = []
-            if context.mealLibrary.isEmpty {
+            // Fuel tips are optional chrome — never when the day cannot mutate
+            // (unavailable Recovery / locked mode).
+            if context.mealLibrary.isEmpty, context.canMutate {
                 guidanceOnly.append(contentsOf: fuelGuidance)
             }
             for tip in weatherGuidance where !guidanceOnly.contains(where: { $0.id == tip.id }) {

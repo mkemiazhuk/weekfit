@@ -16,7 +16,6 @@ enum AnalyticsParameterKey {
     static let itemType = "item_type"
     static let language = "language"
     static let changeKind = "change_kind"
-    static let reasonCategory = "reason_category"
     static let selectedCountBucket = "selected_count_bucket"
     static let appliedCountBucket = "applied_count_bucket"
     static let resultType = "result_type"
@@ -217,47 +216,6 @@ enum MorningProposalAnalyticsSurface: String, Sendable {
     case other
 }
 
-enum MorningProposalReasonCategory: String, Sendable {
-    case recoveryProtection = "recovery_protection"
-    case loadProtection = "load_protection"
-    case tomorrowProtection = "tomorrow_protection"
-    case recoverySupport = "recovery_support"
-    case confidence
-    case planAppropriate = "plan_appropriate"
-    case other
-
-    init(_ code: CoachProposalReasonCode) {
-        switch code {
-        case .lowRecoveryLoadProtection:
-            self = .recoveryProtection
-        case .heavyYesterdayProtection, .stackedDayRisk:
-            self = .loadProtection
-        case .tomorrowDemandProtection:
-            self = .tomorrowProtection
-        case .recoveryWalkSupport, .recoveryStretchSupport:
-            self = .recoverySupport
-        case .insufficientConfidence:
-            self = .confidence
-        case .planAlreadyAppropriate:
-            self = .planAppropriate
-        case .openDayMovementSupport:
-            self = .recoverySupport
-        case .similarDaySupport:
-            self = .planAppropriate
-        case .libraryMealSupport,
-             .libraryMealRecoveryBreakfast,
-             .libraryMealRecoveryLunch,
-             .libraryMealRecoveryDinner,
-             .libraryMealSteadyBreakfast,
-             .libraryMealSteadyLunch,
-             .libraryMealSteadyDinner:
-            self = .planAppropriate
-        case .weatherOutdoorConflict, .weatherHeatLoad:
-            self = .loadProtection
-        }
-    }
-}
-
 enum MorningProposalApplyResultType: String, Sendable {
     case succeeded
     case partial
@@ -283,8 +241,4 @@ enum MorningProposalCountBucket: String, Sendable {
         default: self = .fivePlus
         }
     }
-}
-
-extension CoachChangeKind {
-    var analyticsRawValue: String { rawValue }
 }

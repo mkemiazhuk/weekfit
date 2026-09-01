@@ -1008,7 +1008,8 @@ struct WeekFitRootView: View {
                     scenarioKey: coachState.coachIntegrationDebug?.scenario,
                     mealLibrary: meals.candidates,
                     mealLibraryRevision: meals.revision,
-                    weatherRiskToken: ProposalWeatherRisk.resolve(from: weather)
+                    weatherRiskToken: OutdoorSuitabilityResolver.assess(from: weather).riskToken,
+                    outdoorSuitability: OutdoorSuitabilityResolver.assess(from: weather).suitability
                 )
             )
 

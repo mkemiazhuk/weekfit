@@ -69,13 +69,6 @@ struct QuickLogMealRow: View {
                 layoutMode: .compactPreview
             )
             .frame(width: imageContentSize, height: imageContentSize)
-        } else if row.usesAssetImage {
-            PremiumAssetImage(
-                imageName: row.meal.imageName,
-                style: .quickLogThumbnail,
-                accentColor: WeekFitTheme.tertiaryText,
-                fallbackSystemName: "fork.knife"
-            )
         } else {
             Image(systemName: "fork.knife")
                 .font(.system(size: 20))
@@ -173,6 +166,32 @@ struct QuickMealDisplayRow: Identifiable, Equatable {
     let placeholderInitial: String
 
     var id: String { meal.id }
+
+    static func make(from meal: Meals) -> QuickMealDisplayRow {
+        let isFoodProduct = meal.isFoodProduct
+        let builderImageItems = isFoodProduct
+            ? []
+            : (meal.builderImageItems ?? []).sorted { $0.zIndex < $1.zIndex }
+
+        let photoFilename = [
+            meal.localPhotoThumbnailFilename,
+            meal.localPhotoFilename,
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty }
+
+        return QuickMealDisplayRow(
+            meal: meal,
+            usesAssetImage: !isFoodProduct
+                && builderImageItems.isEmpty
+                && !meal.imageName.isEmpty
+                && UIImage(named: meal.imageName) != nil,
+            sortedBuilderImageItems: builderImageItems,
+            localPhotoFilename: photoFilename,
+            isFoodProduct: isFoodProduct,
+            placeholderInitial: meal.placeholderInitial
+        )
+    }
 }
 
 struct QuickItemDisplayRow: Identifiable, Equatable {

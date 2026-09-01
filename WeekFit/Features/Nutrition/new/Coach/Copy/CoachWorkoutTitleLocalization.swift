@@ -5,13 +5,18 @@ enum CoachWorkoutTitleLocalization {
     static func displayTitle(_ rawTitle: String, russian: Bool) -> String {
         let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return trimmed }
-        return russian ? WeekFitCoachRuntimeLocalizedString(trimmed) : trimmed
+        return russian
+            ? WeekFitCoachRuntimeLocalizedString(trimmed, russian: true)
+            : trimmed
     }
 
     static func bilingual(_ rawTitle: String) -> (english: String, russian: String) {
         let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return (trimmed, trimmed) }
-        return (trimmed, WeekFitCoachRuntimeLocalizedString(trimmed))
+        return (
+            trimmed,
+            WeekFitCoachRuntimeLocalizedString(trimmed, russian: true)
+        )
     }
 
     /// Lowercase activity label for mid-sentence Russian copy.

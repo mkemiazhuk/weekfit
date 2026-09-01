@@ -5,18 +5,24 @@ import XCTest
 final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var appTransaction: WeekFitAppTransactionStatus = .unavailable
     var products: [WeekFitProductSnapshot] = []
+    var storefront = WeekFitStorefrontSnapshot(countryCode: "POL", id: "143478")
     var subscription: WeekFitSubscriptionSnapshot?
     var purchaseOutcome: WeekFitPurchaseOutcome = .success
     var restoreError: Error?
     var purchaseCalls: [String] = []
     var restoreCount = 0
     var loadProductsError: Error?
+    var storefrontUpdateHandler: (@Sendable () async -> Void)?
 
     func loadAppTransaction() async -> WeekFitAppTransactionStatus { appTransaction }
 
-    func loadProducts() async throws -> [WeekFitProductSnapshot] {
+    func loadProducts() async throws -> WeekFitProductsLoadResult {
         if let loadProductsError { throw loadProductsError }
-        return products
+        return WeekFitProductsLoadResult(
+            products: products,
+            rawReturnedCount: products.count,
+            storefront: storefront
+        )
     }
 
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot? { subscription }
@@ -52,6 +58,11 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     func startTransactionUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never> {
         Task { }
     }
+
+    func startStorefrontUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never> {
+        storefrontUpdateHandler = onChange
+        return Task { }
+    }
 }
 
 @MainActor
@@ -77,6 +88,8 @@ final class SubscriptionManagerTests: XCTestCase {
                 displayPrice: "€34.99",
                 price: Decimal(string: "34.99")!,
                 periodUnit: .year,
+                periodValue: 1,
+                currencyCode: "EUR",
                 monthlyEquivalentDisplay: "€2.92",
                 introductoryOffer: WeekFitIntroductoryOfferSnapshot(periodValue: 1, periodUnit: .week)
             ),
@@ -86,6 +99,8 @@ final class SubscriptionManagerTests: XCTestCase {
                 displayPrice: "€4.99",
                 price: Decimal(string: "4.99")!,
                 periodUnit: .month,
+                periodValue: 1,
+                currencyCode: "EUR",
                 monthlyEquivalentDisplay: nil,
                 introductoryOffer: nil
             )
@@ -289,6 +304,20 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(manager.accessState, .unsubscribed)
         XCTAssertFalse(manager.hasFullAccess)
         XCTAssertTrue(manager.shouldBlockAccess)
+    }
+
+    func testRefreshCapturesStorefrontFromSameProductLoad() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.storefront = WeekFitStorefrontSnapshot(countryCode: "USA", id: "143441")
+        await manager.start()
+        XCTAssertEqual(manager.storefrontCountryCode, "USA")
+        XCTAssertEqual(manager.storefrontID, "143441")
+        XCTAssertEqual(manager.lastStoreProductsReturnedCount, 2)
+        XCTAssertEqual(manager.annualProduct?.currencyCode, "EUR")
+        XCTAssertEqual(manager.annualProduct?.displayPrice, "€34.99")
     }
 
     func testLoadingFailOpenGateStaysGatedOnLaterRefresh() async {

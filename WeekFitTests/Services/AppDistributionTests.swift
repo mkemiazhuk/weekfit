@@ -39,6 +39,45 @@ final class AppDistributionTests: XCTestCase {
         XCTAssertEqual(distribution, .appStore)
     }
 
+    func testTemporaryStoreKitPaywallDiagnosticsHiddenOnAppStore() {
+        XCTAssertFalse(AppDistribution.appStore.showsTemporaryStoreKitPaywallDiagnostics)
+        XCTAssertTrue(AppDistribution.testFlight.showsTemporaryStoreKitPaywallDiagnostics)
+        XCTAssertTrue(AppDistribution.debug.showsTemporaryStoreKitPaywallDiagnostics)
+    }
+
+    func testDiagnosticsFormatterUsesPaywallSnapshotsNotFallbackPrices() {
+        let annual = WeekFitProductSnapshot(
+            id: WeekFitSubscriptionProductID.annual.rawValue,
+            displayName: "Annual",
+            displayPrice: "149,99 zł",
+            price: Decimal(string: "149.99")!,
+            periodUnit: .year,
+            periodValue: 1,
+            currencyCode: "PLN",
+            monthlyEquivalentDisplay: "12,50 zł",
+            introductoryOffer: nil
+        )
+        let text = WeekFitStoreKitPaywallDiagnosticsFormatter.text(
+            distribution: .testFlight,
+            appVersion: "1.3",
+            appBuild: "42",
+            storefrontCountryCode: "POL",
+            storefrontID: "143478",
+            rawReturnedCount: 2,
+            products: [annual],
+            productsFailedToLoad: false
+        )
+        XCTAssertTrue(text.contains("Country: POL"))
+        XCTAssertTrue(text.contains("ID: 143478"))
+        XCTAssertTrue(text.contains("Display price: 149,99 zł"))
+        XCTAssertTrue(text.contains("Currency: PLN"))
+        XCTAssertTrue(text.contains("Numeric price: 149.99"))
+        XCTAssertTrue(text.contains("Period: 1 year"))
+        XCTAssertTrue(text.contains("Price source: StoreKit Product snapshots"))
+        XCTAssertFalse(text.contains("$34.99"))
+        XCTAssertFalse(text.contains("4.99"))
+    }
+
     func testCurrentMatchesCompileConfiguration() {
         #if DEBUG
         XCTAssertEqual(AppDistribution.current, .debug)

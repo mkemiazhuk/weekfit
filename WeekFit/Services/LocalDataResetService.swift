@@ -92,6 +92,7 @@ final class LocalDataResetService {
         // App Store entitlement is not workspace data. Preserve the last
         // StoreKit-verified fallback across local reset / account switch.
         let preservedVerifiedEntitlement = defaults.string(forKey: WeekFitEntitlementFallbackStore.key)
+        let preservedAnalyticsConsent = ProductAnalyticsConsent.storedChoiceForPreservation()
 
         if let bundleIdentifier = Bundle.main.bundleIdentifier {
             defaults.removePersistentDomain(forName: bundleIdentifier)
@@ -117,6 +118,10 @@ final class LocalDataResetService {
                 OnboardingFunnelAnalytics.Keys.started,
                 OnboardingFunnelAnalytics.Keys.viewedSteps,
                 OnboardingFunnelAnalytics.Keys.completed,
+                ActivationAnalytics.Keys.todayFirstView,
+                ActivationAnalytics.Keys.recoveryAvailableDays,
+                MorningProposalAnalytics.Keys.unavailableEmitted,
+                MorningProposalAnalytics.Keys.noChangesEmitted,
                 CustomMealStore.storageKey,
                 DefaultMealLibrarySeeder.seededKey,
                 CustomIngredientStore.storageKey,
@@ -147,6 +152,7 @@ final class LocalDataResetService {
         if let preservedVerifiedEntitlement {
             defaults.set(preservedVerifiedEntitlement, forKey: WeekFitEntitlementFallbackStore.key)
         }
+        ProductAnalyticsConsent.restorePreservedChoice(preservedAnalyticsConsent)
 
         defaults.synchronize()
     }

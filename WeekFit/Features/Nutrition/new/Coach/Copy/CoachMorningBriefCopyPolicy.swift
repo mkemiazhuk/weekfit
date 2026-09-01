@@ -66,7 +66,7 @@ enum CoachMorningBriefCopyPolicy {
             let sleepRU = formatSleepHours(facts.sleepHours, russian: true)
             return .en(
                 "Morning — yesterday's load is still in the legs, sleep \(sleep), recovery \(facts.recoveryPercent)%.",
-                "Утро — вчера ещё в теле, сон \\(sleepRU), энергия \\(facts.recoveryPercent)%."
+                "Утро — вчера ещё в теле, сон \(sleepRU), энергия \(facts.recoveryPercent)%."
             )
         }
         return .en(
@@ -130,7 +130,7 @@ enum CoachMorningBriefCopyPolicy {
             opener,
             .en(
                 "\(facts.todayActivityCount) sessions planned today.",
-                "Сегодня в плане \\(facts.todayActivityCount) блоков."
+                "Сегодня в плане \(facts.todayActivityCount) блоков."
             )
         )
     }
@@ -170,7 +170,7 @@ enum CoachMorningBriefCopyPolicy {
         if facts.recoveryBand == .moderate {
             return .en(
                 "Morning — sleep \(sleepEN), recovery at \(recovery)% — not fully topped up.",
-                "Утро — сон \\(sleepRU), \\(recoveryLabelRU) \\(recovery)% — запас сил ещё не полный."
+                "Утро — сон \(sleepRU), \(recoveryLabelRU) \(recovery)% — запас сил ещё не полный."
             )
         }
 
@@ -189,7 +189,7 @@ enum CoachMorningBriefCopyPolicy {
             if facts.seriousActivityCount > 1 {
                 return .en(
                     "Lead with \(title) at \(activity.formattedStartTime) — \(duration) min, then hold the rest steady.",
-                    "Начните с \\(title) в \\(activity.formattedStartTime) — \\(duration) мин, а дальше держите ровный темп."
+                    "Начните с \(title) в \(activity.formattedStartTime) — \(duration) мин, а дальше держите ровный темп."
                 )
             }
             return .en(

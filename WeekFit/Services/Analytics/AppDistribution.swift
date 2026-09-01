@@ -13,6 +13,19 @@ enum AppDistribution: String, Sendable {
     /// Value for Analytics user property / Crashlytics custom key `distribution`.
     var analyticsValue: String { rawValue }
 
+    /// Temporary: StoreKit price diagnostics on the paywall.
+    ///
+    /// Visible in TestFlight (and DEBUG for local verification). **Never** App Store.
+    /// Remove once the Poland/USD pricing investigation is done.
+    var showsTemporaryStoreKitPaywallDiagnostics: Bool {
+        switch self {
+        case .testFlight, .debug:
+            return true
+        case .appStore:
+            return false
+        }
+    }
+
     /// Production resolution. Prefer `resolve(isDebugBuild:receiptURL:)` in tests.
     static var current: AppDistribution {
         #if DEBUG

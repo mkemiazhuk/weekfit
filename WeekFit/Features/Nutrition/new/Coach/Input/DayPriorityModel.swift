@@ -14,7 +14,7 @@ enum CoachDayStressLevel: String {
     case overload
 }
 
-enum CoachTomorrowDemand: String, Equatable, Sendable {
+enum CoachTomorrowDemand: String, Codable, Equatable, Sendable {
     case none
     case easy
     case moderate

@@ -7,6 +7,7 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @ObservedObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
 
@@ -46,6 +47,45 @@ struct ExpertCoachView: View {
         }
         .onAppear {
             keepCoachMounted = true
+            refreshLiveCoachSession()
+        }
+        .onChange(of: tabIsActive) { _, active in
+            if active {
+                refreshLiveCoachSession()
+            }
+        }
+        .onChange(of: activityCoordinator.liveHeartRateZone) { previous, zone in
+            guard tabIsActive, previous != zone else { return }
+            // Zone flips must rebuild live copy (assessment / recommendation / teaser), not just the badge.
+            coachCoordinator.forceRecomputeLiveHeartRate(
+                reason: "coachTab.liveHeartRateZone",
+                bpm: activityCoordinator.liveHeartRateBPM,
+                zone: zone
+            )
+        }
+        .task(id: liveCoachRefreshLoopID) {
+            guard liveCoachRefreshLoopID != nil else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                refreshLiveCoachSession(recompute: false)
+            }
+        }
+    }
+
+    private var liveCoachRefreshLoopID: String? {
+        guard tabIsActive else { return nil }
+        guard coachState.hasValidGuidance else { return nil }
+        guard coachUIPresentation?.semanticColor.isLiveSessionChrome == true else { return nil }
+        return coachState.fingerprint?.rawValue ?? "live"
+    }
+
+    private func refreshLiveCoachSession(recompute: Bool = true) {
+        Task {
+            await healthManager.ensureHeartRateZonePhysiology()
+            activityCoordinator.refreshLiveHeartRate()
+            if recompute {
+                coachCoordinator.forceRecompute(reason: "coachTab.liveHeartRateRefresh")
+            }
         }
     }
 
@@ -341,6 +381,10 @@ struct ExpertCoachView: View {
     }
 
     private var liveZoneScreenColor: Color? {
+        if let zone = activityCoordinator.liveHeartRateZone,
+           coachUIPresentation?.semanticColor.isLiveSessionChrome == true {
+            return HeartRateZones.color(for: zone)
+        }
         guard let semantic = coachUIPresentation?.semanticColor,
               HeartRateZones.isLiveZoneColor(semantic) else {
             return nil
@@ -350,22 +394,19 @@ struct ExpertCoachView: View {
 
     private var stateBadge: some View {
         let isLimitedRecovery = coachUIPresentation?.showsLimitedConfidenceBadge == true
-        let accent = isLimitedRecovery
-            ? textSecondary.opacity(0.72)
-            : (coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText)
+        let zone = activityCoordinator.liveHeartRateZone
+        let isLiveChrome = coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+        // Drive accent from live zone immediately (Fitness-style), not from last coach recompute.
+        let accent: Color = {
+            if isLimitedRecovery { return textSecondary.opacity(0.72) }
+            if isLiveChrome, let zone {
+                return HeartRateZones.color(for: zone)
+            }
+            return coachUIPresentation?.accentColor ?? WeekFitTheme.secondaryText
+        }()
         let baseLabel = coachUIPresentation?.statusLabel ?? ""
-        let zone = WeekFitActivityCoordinator.shared.liveHeartRateZone
         let label: String = {
-            guard !isLimitedRecovery, let zone else { return baseLabel }
-            let isLiveChrome: Bool = {
-                switch coachUIPresentation?.semanticColor {
-                case .live, .liveZone1, .liveZone2, .liveZone3, .liveElevated, .liveCritical:
-                    return true
-                default:
-                    return false
-                }
-            }()
-            guard isLiveChrome else { return baseLabel }
+            guard !isLimitedRecovery, let zone, isLiveChrome else { return baseLabel }
             return HeartRateZones.badgeLabel(zone: zone)
         }()
 
@@ -502,14 +543,13 @@ struct ExpertCoachView: View {
     }
 
     private func presentationWhySection(_ rows: [CoachPresentationWhyRow]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            supportGroupHeader(
-                title: WeekFitLocalizedString("coach.why"),
-                subtitle: WeekFitLocalizedString("coach.why.subtitle")
-            )
+        VStack(alignment: .leading, spacing: 6) {
+            Text(WeekFitLocalizedString("coach.why"))
+                .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.88))
 
-            VStack(spacing: 5) {
-                ForEach(Array(rows.prefix(3).enumerated()), id: \.offset) { _, row in
+            VStack(spacing: 4) {
+                ForEach(Array(rows.prefix(2).enumerated()), id: \.offset) { _, row in
                     coachDecisionRow(
                         row.title,
                         color: row.color,
@@ -543,28 +583,21 @@ struct ExpertCoachView: View {
         color: Color,
         icon: String
     ) -> some View {
-        HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: WeekFitSurface.iconWellRadius, style: .continuous)
-                    .fill(color.opacity(0.12))
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(color)
-            }
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(color.opacity(0.82))
+                .frame(width: 18)
 
             Text(text)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.92))
                 .lineLimit(2)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, WeekFitSurface.compactHorizontalPadding)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .weekFitCompactRowCard(accent: color)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
     }

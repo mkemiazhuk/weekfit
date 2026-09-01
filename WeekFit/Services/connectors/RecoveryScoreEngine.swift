@@ -65,6 +65,8 @@ enum RecoveryUnavailableSignal: String, Equatable, Hashable, CaseIterable {
     case deepSleep
     case remSleep
     case priorDayLoad
+    case bedtimeConsistency
+    case sleepContinuity
 }
 
 struct RecoveryBaselineContext: Equatable, Hashable {
@@ -100,11 +102,17 @@ struct RecoveryScoreInput: Equatable, Hashable {
 }
 
 struct RecoveryScoreBreakdown: Equatable, Hashable {
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let sleepDuration: Int
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let sleepConsistency: Int
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let sleepContinuity: Int
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let sleepArchitecture: Int
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let hrv: Int
+    /// Weighted contribution points toward `total` (may be redistributed under caps).
     let restingHeartRate: Int
     let trainingLoadModifier: Int
     let total: Int
@@ -112,6 +120,28 @@ struct RecoveryScoreBreakdown: Equatable, Hashable {
     let baselineContext: RecoveryBaselineContext
     let unavailableSignals: [RecoveryUnavailableSignal]
 
+    // MARK: Display qualities (0–100 / 0–10), independent of Recovery caps & redistribution
+
+    /// Measured sleep-duration quality (0–100). Always present when sleep > 0.
+    let sleepDurationQuality: Double
+    let sleepDurationGrade: Int
+    /// Measured bedtime-regularity quality, or `nil` when deviation is unavailable (fallback used internally).
+    let sleepConsistencyQuality: Double?
+    let sleepConsistencyGrade: Int?
+    /// Measured continuity quality, or `nil` when time-in-bed is unavailable.
+    let sleepContinuityQuality: Double?
+    let sleepContinuityGrade: Int?
+    /// Measured architecture quality, or `nil` when Deep and REM are both unavailable.
+    let sleepArchitectureQuality: Double?
+    let sleepArchitectureGrade: Int?
+    /// Measured HRV quality, or `nil` when HRV is unavailable.
+    let hrvQuality: Double?
+    let hrvGrade: Int?
+    /// Measured RHR quality, or `nil` when RHR is unavailable.
+    let restingHeartRateQuality: Double?
+    let restingHeartRateGrade: Int?
+
+    /// Max contribution points (internal Recovery accounting — not UI denominators).
     static let maxSleepDurationContribution = 26
     static let maxSleepConsistencyContribution = 13
     static let maxSleepContinuityContribution = 16
@@ -119,6 +149,23 @@ struct RecoveryScoreBreakdown: Equatable, Hashable {
     static let maxHRVContribution = 25
     static let maxRestingHeartRateContribution = 10
     static let maxTrainingLoadPenalty = 8
+
+    /// Shared UI quality scale for every physiological breakdown row.
+    static let maxQualityGrade = 10
+    /// Alias kept for existing call sites / tests.
+    static let maxSleepArchitectureGrade = maxQualityGrade
+
+    /// Converts 0–100 quality to a 0–10 display grade.
+    /// Rule: `(quality / 10).rounded(.toNearestOrAwayFromZero)`, clamped to 0...10.
+    static func grade(fromQuality quality: Double) -> Int {
+        let scaled = (quality / 10.0).rounded(.toNearestOrAwayFromZero)
+        return Int(min(Double(maxQualityGrade), max(0, scaled)))
+    }
+
+    /// - Important: Prefer `grade(fromQuality:)`. Kept for call-site compatibility.
+    static func grade(fromArchitectureQuality quality: Double) -> Int {
+        grade(fromQuality: quality)
+    }
 
     var componentSum: Int {
         sleepDuration
@@ -128,6 +175,33 @@ struct RecoveryScoreBreakdown: Equatable, Hashable {
             + hrv
             + restingHeartRate
             + trainingLoadModifier
+    }
+
+    /// Strongest measured signal by raw quality (not Recovery contribution).
+    var strongestMeasuredSignal: RecoveryBreakdownSignal? {
+        var candidates: [(RecoveryBreakdownSignal, Double)] = [
+            (.sleepDuration, sleepDurationQuality)
+        ]
+        if let sleepConsistencyQuality {
+            candidates.append((.sleepConsistency, sleepConsistencyQuality))
+        }
+        if let sleepContinuityQuality {
+            candidates.append((.sleepContinuity, sleepContinuityQuality))
+        }
+        if let sleepArchitectureQuality {
+            candidates.append((.sleepArchitecture, sleepArchitectureQuality))
+        }
+        if let hrvQuality {
+            candidates.append((.hrv, hrvQuality))
+        }
+        if let restingHeartRateQuality {
+            candidates.append((.restingHeartRate, restingHeartRateQuality))
+        }
+
+        return candidates.max { lhs, rhs in
+            if lhs.1 != rhs.1 { return lhs.1 < rhs.1 }
+            return lhs.0.sortIndex > rhs.0.sortIndex
+        }?.0
     }
 
     static let empty = RecoveryScoreBreakdown(
@@ -141,8 +215,52 @@ struct RecoveryScoreBreakdown: Equatable, Hashable {
         total: 0,
         confidence: .low,
         baselineContext: .empty,
-        unavailableSignals: RecoveryUnavailableSignal.allCases
+        unavailableSignals: RecoveryUnavailableSignal.allCases,
+        sleepDurationQuality: 0,
+        sleepDurationGrade: 0,
+        sleepConsistencyQuality: nil,
+        sleepConsistencyGrade: nil,
+        sleepContinuityQuality: nil,
+        sleepContinuityGrade: nil,
+        sleepArchitectureQuality: nil,
+        sleepArchitectureGrade: nil,
+        hrvQuality: nil,
+        hrvGrade: nil,
+        restingHeartRateQuality: nil,
+        restingHeartRateGrade: nil
     )
+}
+
+/// Measured breakdown signals used for quality-dashboard presentation.
+enum RecoveryBreakdownSignal: Equatable, Hashable {
+    case sleepDuration
+    case sleepConsistency
+    case sleepContinuity
+    case sleepArchitecture
+    case hrv
+    case restingHeartRate
+
+    /// Signals rendered as `/10` rows in `RecoveryBreakdownCard`.
+    /// Excludes `trainingLoadModifier`, which affects Recovery internally only.
+    static let displayedQualitySignals: [RecoveryBreakdownSignal] = [
+        .sleepDuration,
+        .sleepConsistency,
+        .sleepContinuity,
+        .sleepArchitecture,
+        .hrv,
+        .restingHeartRate
+    ]
+
+    var sortIndex: Int {
+        switch self {
+        case .sleepDuration: return 0
+        case .sleepConsistency: return 1
+        case .sleepContinuity: return 2
+        case .sleepArchitecture: return 3
+        case .hrv: return 4
+        case .restingHeartRate: return 5
+        }
+    }
 }
 
 enum RecoveryScoreEngine {
@@ -241,6 +359,17 @@ enum RecoveryScoreEngine {
             totalRecovery: clampedRecovery
         )
 
+        let durationQuality = sleepComponents.durationScore
+        let consistencyQuality = sleepComponents.consistencyIsMeasured
+            ? sleepComponents.consistencyScore
+            : nil
+        let continuityQuality = sleepComponents.continuityIsMeasured
+            ? sleepComponents.continuityScore
+            : nil
+        let architectureQuality = sleepComponents.architectureIsMeasured
+            ? sleepComponents.architectureScore
+            : nil
+
         return RecoveryScoreBreakdown(
             sleepDuration: breakdownRows.sleepDuration,
             sleepConsistency: breakdownRows.sleepConsistency,
@@ -252,7 +381,19 @@ enum RecoveryScoreEngine {
             total: clampedRecovery,
             confidence: confidence,
             baselineContext: baselineContext,
-            unavailableSignals: unavailableSignals
+            unavailableSignals: unavailableSignals,
+            sleepDurationQuality: durationQuality,
+            sleepDurationGrade: RecoveryScoreBreakdown.grade(fromQuality: durationQuality),
+            sleepConsistencyQuality: consistencyQuality,
+            sleepConsistencyGrade: consistencyQuality.map(RecoveryScoreBreakdown.grade(fromQuality:)),
+            sleepContinuityQuality: continuityQuality,
+            sleepContinuityGrade: continuityQuality.map(RecoveryScoreBreakdown.grade(fromQuality:)),
+            sleepArchitectureQuality: architectureQuality,
+            sleepArchitectureGrade: architectureQuality.map(RecoveryScoreBreakdown.grade(fromQuality:)),
+            hrvQuality: hrvScore,
+            hrvGrade: hrvScore.map(RecoveryScoreBreakdown.grade(fromQuality:)),
+            restingHeartRateQuality: rhrScore,
+            restingHeartRateGrade: rhrScore.map(RecoveryScoreBreakdown.grade(fromQuality:))
         )
     }
 
@@ -344,8 +485,11 @@ enum RecoveryScoreEngine {
     private struct SleepBlockComponents {
         let durationScore: Double
         let consistencyScore: Double
+        let consistencyIsMeasured: Bool
         let continuityScore: Double
+        let continuityIsMeasured: Bool
         let architectureScore: Double
+        let architectureIsMeasured: Bool
 
         var weightedScore: Double {
             durationScore * 0.40
@@ -360,12 +504,26 @@ enum RecoveryScoreEngine {
         unavailableSignals: inout [RecoveryUnavailableSignal]
     ) -> SleepBlockComponents {
         let duration = sleepDurationScore(input.sleepMinutes)
+
+        let consistencyIsMeasured = input.bedtimeDeviationMinutes != nil
         let consistency = bedtimeConsistencyScore(deviationMinutes: input.bedtimeDeviationMinutes)
+        if !consistencyIsMeasured {
+            unavailableSignals.append(.bedtimeConsistency)
+        }
+
+        let continuityIsMeasured = input.timeInBedMinutes > 0
         let continuity = sleepContinuityScore(
             sleepMinutes: input.sleepMinutes,
             timeInBedMinutes: input.timeInBedMinutes,
             awakeningsCount: input.awakeningsCount
         )
+        if !continuityIsMeasured {
+            unavailableSignals.append(.sleepContinuity)
+        }
+
+        let hasDeep = input.deepSleepMinutes > 0
+        let hasREM = input.remSleepMinutes > 0
+        let architectureIsMeasured = hasDeep || hasREM
         let architecture = sleepArchitectureScore(
             sleepMinutes: input.sleepMinutes,
             deepSleepMinutes: input.deepSleepMinutes,
@@ -376,8 +534,11 @@ enum RecoveryScoreEngine {
         return SleepBlockComponents(
             durationScore: duration,
             consistencyScore: consistency,
+            consistencyIsMeasured: consistencyIsMeasured,
             continuityScore: continuity,
-            architectureScore: architecture
+            continuityIsMeasured: continuityIsMeasured,
+            architectureScore: architecture,
+            architectureIsMeasured: architectureIsMeasured
         )
     }
 

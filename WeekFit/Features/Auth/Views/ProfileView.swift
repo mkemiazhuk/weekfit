@@ -29,6 +29,7 @@ struct ProfileView: View {
     @State private var isResettingLocalData = false
     @State private var showVersionCopiedToast = false
     @State private var showWeekFitAccessPaywall = false
+    @State private var shareProductAnalytics = ProductAnalyticsConsent.isSharingEnabled()
     @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     private var background: Color { WeekFitTheme.backgroundColor }
@@ -395,6 +396,12 @@ private extension ProfileView {
         let legalItems = viewModel.privacyLegalSettings
 
         return SettingsGroupedSection(title: AppText.Settings.Profile.privacyDataSection) {
+            shareProductAnalyticsRow
+
+            if showSignInWithApple || showReset || !legalItems.isEmpty {
+                SettingsGroupDivider()
+            }
+
             if showSignInWithApple {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -512,6 +519,63 @@ private extension ProfileView {
             .accessibilityIdentifier("settings.restorePurchases")
             .accessibilityLabel(WeekFitLocalizedString("paywall.restore"))
         }
+    }
+
+    private var shareProductAnalyticsRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.internalTile
+                            : WeekFitTheme.whiteOpacity(0.10)
+                    )
+                Image(systemName: "chart.bar.doc.horizontal")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(textPrimary)
+            }
+            .frame(width: 40, height: 40)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppText.Settings.Profile.shareProductAnalyticsTitle)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(AppText.Settings.Profile.shareProductAnalyticsSubtitle)
+                    .font(.system(size: 13.2, weight: .medium))
+                    .foregroundStyle(textSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { shareProductAnalytics },
+                    set: { newValue in
+                        shareProductAnalytics = newValue
+                        ProductAnalyticsConsent.setSharingEnabled(newValue)
+                    }
+                )
+            )
+            .labelsHidden()
+            .tint(accentGreen.opacity(0.92))
+            .scaleEffect(0.86)
+            .fixedSize()
+            .layoutPriority(0)
+            .accessibilityIdentifier("settings.shareProductAnalytics")
+            .accessibilityLabel(Text(AppText.Settings.Profile.shareProductAnalyticsTitle))
+            .accessibilityHint(Text(AppText.Settings.Profile.shareProductAnalyticsSubtitle))
+        }
+        .padding(.horizontal, 17)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 
     private func profileActionRow(

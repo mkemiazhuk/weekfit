@@ -65,8 +65,13 @@ enum HeartRateZones {
     static func updatePhysiology(age: Int, restingHeartRate: Double) {
         let profile = Profile.apple(age: age, restingHeartRate: restingHeartRate)
         lock.lock()
+        let didChange = storedProfile != profile
         storedProfile = profile
         lock.unlock()
+        guard didChange else { return }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .weekFitHeartRateZonePhysiologyDidUpdate, object: nil)
+        }
     }
 
     static var definitions: [Definition] {
@@ -171,6 +176,15 @@ enum HeartRateZones {
         (profile.restingHeartRate + profile.reserve * fraction).rounded()
     }
 
+}
+
+extension Notification.Name {
+    static let weekFitHeartRateZonePhysiologyDidUpdate = Notification.Name(
+        "weekFitHeartRateZonePhysiologyDidUpdate"
+    )
+}
+
+extension HeartRateZones {
     private static func bpmRangeLabel(
         for zone: Int,
         lowerBound: Double,

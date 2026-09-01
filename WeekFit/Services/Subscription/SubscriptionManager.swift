@@ -15,11 +15,16 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var lastOutcome: WeekFitPurchaseOutcome?
     @Published private(set) var productsFailedToLoad = false
     @Published private(set) var activeSubscription: WeekFitSubscriptionSnapshot?
+    /// Temporary StoreKit diagnostics — same load as paywall prices.
+    @Published private(set) var storefrontCountryCode: String?
+    @Published private(set) var storefrontID: String?
+    @Published private(set) var lastStoreProductsReturnedCount: Int = 0
 
     private let store: WeekFitStoreKitServicing
     private let bypassProvider: (() -> WeekFitEntitlementBypass)?
     private var fallbackStore: WeekFitEntitlementFallbackStore
     private var updatesTask: Task<Void, Never>?
+    private var storefrontUpdatesTask: Task<Void, Never>?
     private var hasStarted = false
     /// Prevent indefinite fail-open when StoreKit never becomes available.
     private var failOpenTimeoutTask: Task<Void, Never>?
@@ -73,6 +78,9 @@ final class SubscriptionManager: ObservableObject {
         }
         hasStarted = true
         updatesTask = store.startTransactionUpdates { [weak self] in
+            await self?.refresh()
+        }
+        storefrontUpdatesTask = store.startStorefrontUpdates { [weak self] in
             await self?.refresh()
         }
         await refresh()
@@ -177,14 +185,17 @@ final class SubscriptionManager: ObservableObject {
     func refresh() async {
         let bypass = currentBypass()
         #if DEBUG
-        // Only UI tests should honor forced entitlement paths.
-        // Manual/local StoreKit runs (Xcode environment) must not be accidentally gated.
+        // UI-test force new/legacy still require `-ui-testing`.
+        // Force-non-legacy is intentionally available for manual Sandbox runs
+        // without `-ui-testing` so paywall + purchase can be exercised.
         let uiTesting = WeekFitUITestSupport.isActive
         let forceLegacy = uiTesting && ProcessInfo.processInfo.arguments.contains(WeekFitUITestSupport.forceLegacyUserLaunchArgument)
         let forceNew = uiTesting && ProcessInfo.processInfo.arguments.contains(WeekFitUITestSupport.forceNewUserLaunchArgument)
+        let forceNonLegacy = WeekFitUITestSupport.shouldForceNonLegacyAppTransaction
         #else
         let forceLegacy = false
         let forceNew = false
+        let forceNonLegacy = false
         #endif
 
         // DEBUG/UI-test deterministic overrides (impossible in Release).
@@ -198,7 +209,10 @@ final class SubscriptionManager: ObservableObject {
 
         do {
             let loaded = try await store.loadProducts()
-            products = Self.sortedProducts(loaded)
+            products = Self.sortedProducts(loaded.products)
+            lastStoreProductsReturnedCount = loaded.rawReturnedCount
+            storefrontCountryCode = loaded.storefront.countryCode
+            storefrontID = loaded.storefront.id
             productsFailedToLoad = products.isEmpty
             if products.contains(where: { $0.id == selectedProductID }) == false {
                 selectedProductID = annualProduct?.id ?? monthlyProduct?.id ?? selectedProductID
@@ -241,7 +255,8 @@ final class SubscriptionManager: ObservableObject {
             lastVerified: fallbackStore.lastVerified,
             bypass: bypass,
             forceNewUser: forceNew,
-            forceLegacyUser: forceLegacy
+            forceLegacyUser: forceLegacy,
+            forceNonLegacyAppTransaction: forceNonLegacy
         )
         if decision.shouldPersistVerifiedEntitlement,
            let record = WeekFitVerifiedEntitlement(accessState: decision.state) {
@@ -263,9 +278,13 @@ final class SubscriptionManager: ObservableObject {
             bypass: bypass,
             forceNewUser: forceNew,
             forceLegacyUser: forceLegacy,
+            forceNonLegacyAppTransaction: forceNonLegacy,
             transactionStatus: transactionStatus,
             subscription: currentSubscription,
-            legacyResult: legacyResult(from: transactionStatus),
+            legacyResult: legacyResult(
+                from: transactionStatus,
+                forceNonLegacyAppTransaction: forceNonLegacy
+            ),
             resolvedAccessState: accessState,
             hasFullAccess: hasFullAccess
         )
@@ -329,14 +348,18 @@ final class SubscriptionManager: ObservableObject {
     }
 
     #if DEBUG
-    private func legacyResult(from status: WeekFitAppTransactionStatus) -> String? {
+    private func legacyResult(
+        from status: WeekFitAppTransactionStatus,
+        forceNonLegacyAppTransaction: Bool
+    ) -> String? {
         switch status {
         case .verified(let date, let environment):
-            #if DEBUG
             if environment == "Xcode" {
                 return "ignoredXcodeEnvironment"
             }
-            #endif
+            if forceNonLegacyAppTransaction {
+                return "forcedNonLegacy"
+            }
             return WeekFitEntitlementPolicy.isLegacy(originalPurchaseDate: date) ? "legacy" : "nonLegacy"
         case .unverified(_):
             return nil
@@ -349,6 +372,7 @@ final class SubscriptionManager: ObservableObject {
         bypass: WeekFitEntitlementBypass,
         forceNewUser: Bool,
         forceLegacyUser: Bool,
+        forceNonLegacyAppTransaction: Bool,
         transactionStatus: WeekFitAppTransactionStatus,
         subscription: WeekFitSubscriptionSnapshot?,
         legacyResult: String?,
@@ -405,6 +429,9 @@ final class SubscriptionManager: ObservableObject {
             case .loading:
                 return "appTransactionLoading"
             case .verified:
+                if forceNonLegacyAppTransaction {
+                    return "forceNonLegacyAppTransaction"
+                }
                 if legacyResult == "legacy" { return "legacyOriginalPurchaseDate" }
                 return "verifiedAppTransaction"
             case .unverified(_), .unavailable:

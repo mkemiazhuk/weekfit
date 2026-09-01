@@ -62,7 +62,19 @@ final class HealthManagerIntegrationTests: XCTestCase {
             total: 73,
             confidence: .medium,
             baselineContext: .empty,
-            unavailableSignals: []
+            unavailableSignals: [],
+            sleepDurationQuality: 80,
+            sleepDurationGrade: 8,
+            sleepConsistencyQuality: 70,
+            sleepConsistencyGrade: 7,
+            sleepContinuityQuality: 90,
+            sleepContinuityGrade: 9,
+            sleepArchitectureQuality: 80,
+            sleepArchitectureGrade: 8,
+            hrvQuality: 85,
+            hrvGrade: 9,
+            restingHeartRateQuality: 88,
+            restingHeartRateGrade: 9
         )
         manager.hrvSDNN = 62
         manager.restingHeartRate = 54

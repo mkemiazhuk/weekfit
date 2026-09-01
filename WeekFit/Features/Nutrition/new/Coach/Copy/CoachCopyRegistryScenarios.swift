@@ -607,7 +607,7 @@ enum CoachCopyRegistryScenarios {
         Draft(
             assessment: .en(
                 "Last set done — muscles are still loaded and warm.",
-                "Последний подход завершён сделан — мышцы ещё горячие."
+                "Последний подход сделан — мышцы ещё горячие."
             ),
             recommendation: .en(
                 "Walk five minutes — let blood flow settle.",

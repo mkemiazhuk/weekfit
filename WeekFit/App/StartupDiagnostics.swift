@@ -47,25 +47,22 @@ enum StartupDiagnostics {
         operation: String,
         error: Error,
         step: Int? = nil,
+        diagnosticCode: String,
         extras: [String: String] = [:]
     ) {
         let nsError = error as NSError
         var parts: [String] = [
-            "operation=\(operation)",
+            "code=\(Self.boundedToken(diagnosticCode))",
+            "operation=\(Self.boundedToken(operation))",
             "errorType=\(String(describing: type(of: error)))",
-            "domain=\(nsError.domain)",
-            "code=\(nsError.code)",
-            "localizedDescription=\(nsError.localizedDescription)"
+            "domain=\(Self.boundedToken(nsError.domain))",
+            "errno=\(nsError.code)"
         ]
 
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
-            parts.append(
-                "underlying=\(underlying.domain)/\(underlying.code): \(underlying.localizedDescription)"
-            )
-        }
-
+        // Only allow pre-approved, non-sensitive diagnostic tokens — never paths,
+        // localizedDescription, HealthKit payloads, or free-form text.
         for (key, value) in extras.sorted(by: { $0.key < $1.key }) {
-            parts.append("\(key)=\(value)")
+            parts.append("\(Self.boundedToken(key))=\(Self.boundedToken(value))")
         }
 
         let prefix: String
@@ -90,29 +87,31 @@ enum StartupDiagnostics {
         taskPhase("SUCCESS", name: name, detail: detail)
     }
 
-    static func taskError(_ name: String, error: Error, detail: String? = nil) {
+    static func taskError(_ name: String, error: Error, diagnosticCode: String = "task_failed") {
         // Always keep task failures visible — useful in Release Crashlytics too.
+        // Never include localizedDescription, paths, counts, or HealthKit context.
         let nsError = error as NSError
-        var parts = [
+        let parts = [
+            "code=\(Self.boundedToken(diagnosticCode))",
             "errorType=\(String(describing: type(of: error)))",
-            "domain=\(nsError.domain)",
-            "code=\(nsError.code)",
-            "localizedDescription=\(nsError.localizedDescription)"
+            "domain=\(Self.boundedToken(nsError.domain))",
+            "errno=\(nsError.code)"
         ]
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
-            parts.append(
-                "underlying=\(underlying.domain)/\(underlying.code): \(underlying.localizedDescription)"
-            )
-        }
-        if let detail, !detail.isEmpty {
-            parts.insert(detail, at: 0)
-        }
         taskPhase("ERROR", name: name, detail: parts.joined(separator: " | "))
     }
 
     static func taskCancelled(_ name: String, detail: String? = nil) {
         guard loggingEnabled else { return }
-        taskPhase("CANCELLED", name: name, detail: detail)
+        taskPhase("CANCELLED", name: name, detail: detail.map { Self.boundedToken($0) })
+    }
+
+    /// Sanitizes diagnostic tokens for Crashlytics (alphanumeric + underscore only).
+    static func boundedToken(_ raw: String, maxLength: Int = 64) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+        let filtered = raw.unicodeScalars.map { allowed.contains($0) ? Character($0) : "_" }
+        let joined = String(filtered)
+        if joined.count <= maxLength { return joined }
+        return String(joined.prefix(maxLength))
     }
 
     private static func taskPhase(_ phase: String, name: String, detail: String?) {

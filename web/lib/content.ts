@@ -261,7 +261,7 @@ export const privacy: Record<
         h: "Summary",
         blocks: [
           { t: "p", v: "WeekFit (\u201cwe\u201d, \u201cthe app\u201d) is a local-first fitness planner for iOS. This policy explains what data the app accesses and how it is used." },
-          { t: "ul", v: ["Your plan and preferences stay on your device.", "We do not operate cloud sync or required user accounts.", "We do not sell your data or use cross-app tracking for advertising.", "Optional product analytics and crash diagnostics help us improve the app — without HealthKit sample values or personal identity."] },
+          { t: "ul", v: ["Your plan and preferences stay on your device.", "We do not operate cloud sync or required user accounts.", "We do not sell your data or use cross-app tracking for advertising.", "Product analytics (opt-in in Settings) and crash diagnostics help us improve the app — without HealthKit samples, derived health/recovery data, or personal identity."] },
         ],
       },
       {
@@ -278,7 +278,7 @@ export const privacy: Record<
           { t: "h3", v: "On-device storage" },
           { t: "p", v: "The app stores planned activities, meal preferences, profile settings, and a Home Screen widget snapshot locally on your iPhone (including UserDefaults and SwiftData). Widget data never leaves the device." },
           { t: "h3", v: "Product analytics and crash diagnostics" },
-          { t: "p", v: "WeekFit uses Firebase Analytics and Firebase Crashlytics to understand feature usage (for example screens opened and funnel steps) and to diagnose crashes. Events are not linked to your name or email. We do not send HealthKit sample values, calories, macros, meal titles, coach message text, or other personal health content in analytics events." },
+          { t: "p", v: "WeekFit uses Firebase Analytics for product usage measurement when you enable Share Product Analytics in Settings (off by default). Firebase Crashlytics is used for crash diagnostics and may collect crash reports independently of the analytics preference. Events are not linked to your name or email. We do not send raw HealthKit values, derived health or recovery information, calories, macros, meal titles, barcodes, coach message text, or other personal health content to Firebase." },
           { t: "h3", v: "Optional feedback" },
           { t: "p", v: "If you choose Help WeekFit or send feedback, your message is prepared as an email to support@weekfit.app (mailto). You control whether to send it. Feedback is not used for advertising." },
         ],
@@ -294,7 +294,7 @@ export const privacy: Record<
         id: "retention",
         h: "Data retention and deletion",
         blocks: [
-          { t: "p", v: "Plan, meal preferences, and profile settings live on your device. To erase that app data, delete WeekFit from your device. Data you granted from Apple Health stays in the Health app under your control. Analytics and crash reports retained by Firebase follow Google’s retention practices for those services; they do not include your HealthKit samples." },
+          { t: "p", v: "Plan, meal preferences, and profile settings live on your device. To erase that app data, delete WeekFit from your device. Data you granted from Apple Health stays in the Health app under your control. Analytics and crash reports retained by Firebase follow Google’s retention practices for those services; they do not include your HealthKit samples or derived health/recovery information. You can change product analytics anytime in WeekFit Settings → Privacy & Data → Share Product Analytics." },
         ],
       },
       {
@@ -363,7 +363,7 @@ export const privacy: Record<
           { t: "h3", v: "Локальное хранение" },
           { t: "p", v: "План, предпочтения питания, профиль и снимок для виджета хранятся на устройстве. Виджет читает только этот локальный снимок." },
           { t: "h3", v: "Продуктовая аналитика и диагностика сбоев" },
-          { t: "p", v: "WeekFit использует Firebase Analytics и Firebase Crashlytics, чтобы понимать использование функций (экраны, шаги воронок) и диагностировать сбои. События не связываются с вашим именем или email. Мы не отправляем значения HealthKit, калории, макросы, названия блюд, текст коуча или другой персональный health-контент в аналитике." },
+          { t: "p", v: "WeekFit использует Firebase Analytics для измерения использования продукта, если вы включите «Делиться продуктовой аналитикой» в настройках (по умолчанию выключено). Firebase Crashlytics используется для диагностики сбоев и может собирать отчёты независимо от настройки аналитики. События не связываются с именем или email. Мы не отправляем в Firebase сырые значения HealthKit, производные сведения о здоровье/восстановлении, калории, макросы, названия блюд, штрихкоды, текст коуча или другой персональный health-контент." },
           { t: "h3", v: "Обратная связь (по желанию)" },
           { t: "p", v: "Если вы выбираете «Помочь WeekFit» или отправляете отзыв, сообщение готовится как письмо на support@weekfit.app (mailto). Отправку контролируете вы. Обратная связь не используется для рекламы." },
         ],

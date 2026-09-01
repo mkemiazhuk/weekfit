@@ -142,7 +142,7 @@ enum CoachTeaserCopy {
         case .postRacketImmediate:
             return bi("Match done", "Игра позади")
         case .postStrengthImmediate:
-            return bi("Last set done", "Последний подход завершён завершён")
+            return bi("Last set done", "Последний подход завершён")
         case .postRecoveryImmediate:
             return bi("Nice work", "Хорошая работа")
         case .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled:

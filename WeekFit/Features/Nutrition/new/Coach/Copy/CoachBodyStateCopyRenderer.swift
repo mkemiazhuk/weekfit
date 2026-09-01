@@ -74,19 +74,28 @@ enum CoachBodyStateCopyRenderer {
         case .duringRacket:
             return applyDuringRacket(base: base, bodyState: bodyState)
         case .walkLightDay:
-            return applyWalkLightDay(base: base, bodyState: bodyState)
+            // Fatigued overlays are pre-walk guidance only. LiveSession and
+            // completed drafts already own during / post copy.
+            switch sessionPhase {
+            case .pre, .idle:
+                return applyWalkLightDay(base: base, bodyState: bodyState)
+            default:
+                return base
+            }
         case .walkAfterHeavyLoad:
             if sessionPhase == .during {
                 return applyWalkAfterHeavyLoadLive(base: base, bodyState: bodyState)
             }
             return base
         case .walkEveningWindDown:
-            return applyWalkEveningWindDown(base: base, bodyState: bodyState)
-        case .walkRecoveryAction:
-            if sessionPhase == .immediatePost {
+            switch sessionPhase {
+            case .pre, .idle:
+                return applyWalkEveningWindDown(base: base, bodyState: bodyState)
+            default:
                 return base
             }
-            if sessionPhase == .pre {
+        case .walkRecoveryAction:
+            if sessionPhase == .pre || isCompletedWalkSession(sessionPhase) {
                 return base
             }
             return applyWalkRecoveryActionLive(base: base, bodyState: bodyState)
@@ -782,6 +791,17 @@ enum CoachBodyStateCopyRenderer {
                     "На следующей паузе — восстановите дыхание."
                 ))
             )
+        }
+    }
+
+    /// Post-walk session phases already have a completed draft; body-state
+    /// overlays would replace it with upcoming/live guidance.
+    private static func isCompletedWalkSession(_ sessionPhase: CoachSessionPhase) -> Bool {
+        switch sessionPhase {
+        case .immediatePost, .settledPost, .evening:
+            return true
+        default:
+            return false
         }
     }
 }

@@ -53,6 +53,10 @@ struct PremiumAssetImage: View {
         }
     }
 
+    private var usesEdgeToEdgeFill: Bool {
+        style == .activityThumbnail
+    }
+
     var body: some View {
         Group {
             switch style {
@@ -115,17 +119,15 @@ struct PremiumAssetImage: View {
     @ViewBuilder
     private var assetOrFallback: some View {
         if isDisplayable {
-            switch style {
-            case .activityThumbnail:
-                // Opaque workout/recovery photos: edge-to-edge so Light sheets
-                // aren't dominated by empty pearl margins around landscape crops.
+            if usesEdgeToEdgeFill {
+                // Transparent hero cutouts + opaque scene crops: no empty margins.
                 Image(imageName)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFill()
                     .frame(width: frameSize, height: frameSize)
                     .clipped()
-            default:
+            } else {
                 Image(imageName)
                     .resizable()
                     .interpolation(.high)

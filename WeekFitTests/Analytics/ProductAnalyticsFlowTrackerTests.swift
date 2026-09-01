@@ -76,7 +76,7 @@ final class ProductAnalyticsFlowTrackerTests: XCTestCase {
 
     func testActivitySheetCancelNotEmittedAfterStart() {
         ProductAnalytics.activityLoggingStarted(source: .today)
-        ProductAnalytics.activityStarted(category: .running, source: .today)
+        ProductAnalytics.activityStarted(source: .today)
         XCTAssertFalse(ProductAnalytics.activityLoggingCancelIfNeeded())
         XCTAssertTrue(recording.events(named: .activityCancelled).isEmpty)
     }

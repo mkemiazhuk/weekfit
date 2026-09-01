@@ -166,12 +166,6 @@ struct MealDetailsView: View {
         ZStack {
             if let items = meal.builderImageItems, !items.isEmpty {
                 builtMealPreview(items)
-            } else if !meal.imageName.isEmpty, UIImage(named: meal.imageName) != nil {
-                Image(meal.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220, height: 220)
-                    .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
             } else {
                 emptyPlateState
             }

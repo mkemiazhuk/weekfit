@@ -212,10 +212,24 @@ enum CoachEngine {
                 completedWalkToday: completedWalkToday,
                 completedHeatToday: completedHeatToday,
                 isFocusHikeLike: focus.type == .walk && CoachActivityClassification.isHikeLike(activity),
-                focusDurationMinutes: activity.effectiveDurationMinutes
+                focusDurationMinutes: activity.effectiveDurationMinutes,
+                focusSessionElapsedMinutes: sessionElapsedMinutes(
+                    for: activity,
+                    phase: focus.phase,
+                    now: input.now
+                )
             ),
             input: input
         )
+    }
+
+    private static func sessionElapsedMinutes(
+        for activity: CoachPlannedActivitySnapshot,
+        phase: CoachSessionPhase,
+        now: Date
+    ) -> Int {
+        guard phase == .during else { return 0 }
+        return max(0, Int(now.timeIntervalSince(activity.date) / 60))
     }
 
     private static func finalizeContext(

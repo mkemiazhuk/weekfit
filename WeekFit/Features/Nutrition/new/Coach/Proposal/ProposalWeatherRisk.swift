@@ -23,28 +23,13 @@ enum ProposalWeatherRiskToken: String, Codable, Sendable, Equatable {
 enum ProposalWeatherRisk {
 
     static func resolve(from summary: WeekFitWeatherSummary?) -> ProposalWeatherRiskToken {
-        guard let summary else { return .unavailable }
+        // Keep risk tokens and OutdoorSuitability on one assessment so UI "Windy"
+        // cannot resolve as calm for Morning Adjustments.
+        OutdoorSuitabilityResolver.assess(from: summary).riskToken
+    }
 
-        let precip = summary.precipitationChance ?? 0
-        let tempC = summary.temperature.value
-        let windKmh = summary.windSpeed.value
-
-        if summary.condition == .storm || precip >= 70 {
-            return .storm
-        }
-        if precip >= 55 {
-            return .precip
-        }
-        if tempC > 33 {
-            return .heat
-        }
-        if windKmh > 40 {
-            return .wind
-        }
-        if tempC < 0 {
-            return .cold
-        }
-        return .calm
+    static func outdoorSuitability(from summary: WeekFitWeatherSummary?) -> OutdoorSuitability {
+        OutdoorSuitabilityResolver.assess(from: summary).suitability
     }
 }
 

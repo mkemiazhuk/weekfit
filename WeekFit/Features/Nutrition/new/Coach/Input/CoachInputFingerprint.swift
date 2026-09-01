@@ -91,8 +91,10 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
             "nutritionWaterGoal=\(Self.rounded(nutrition?.waterGoal ?? -1))",
             "nutritionMeals=\(nutrition?.mealsCount ?? -1)",
             "nutritionLastMeal=\(nutrition?.lastMealTime.map { Int($0.timeIntervalSince1970 / 60) } ?? -1)",
-            "liveHR=\(snapshot.liveHeartRateBPM ?? -1)",
             "liveHRZone=\(snapshot.liveHeartRateZone ?? -1)",
+            // Bucket BPM so tiny sample noise does not thrash copy; zone flips still rebuild.
+            "liveHRQ=\(Self.liveHeartRateBucket(snapshot.liveHeartRateBPM))",
+            "liveElapsedQ=\(Self.liveSessionElapsedQuarter(from: snapshot) ?? -1)",
             "activities=\(activities)"
         ].joined(separator: "#")
     }
@@ -111,5 +113,21 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
         default:
             return "evening"
         }
+    }
+
+    /// 15-minute live-session copy bucket — rotates coach guidance during long activities.
+    private static func liveSessionElapsedQuarter(from snapshot: CoachInputSnapshot) -> Int? {
+        guard let active = snapshot.plannedActivities.first(where: { $0.isActive(at: snapshot.now) }) else {
+            return nil
+        }
+        let elapsed = snapshot.now.timeIntervalSince(active.date)
+        guard elapsed >= 0 else { return nil }
+        return Int(elapsed / (15 * 60))
+    }
+
+    /// Coarse BPM bucket so zone-driven copy rebuilds without flickering on ±1 sample noise.
+    private static func liveHeartRateBucket(_ bpm: Int?) -> Int {
+        guard let bpm else { return -1 }
+        return bpm / 5
     }
 }

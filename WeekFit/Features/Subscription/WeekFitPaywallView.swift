@@ -69,6 +69,10 @@ struct WeekFitPaywallView: View {
                     .padding(.top, Layout.heroToBenefits)
                 planOptions
                     .padding(.top, Layout.benefitsToPlans)
+                if AppDistribution.current.showsTemporaryStoreKitPaywallDiagnostics {
+                    WeekFitStoreKitPaywallDiagnosticsView()
+                        .padding(.top, 12)
+                }
                 if let message = statusMessage {
                     Text(message)
                         .font(.system(size: 13, weight: .medium))

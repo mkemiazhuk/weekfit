@@ -103,6 +103,10 @@ struct DailyContext: Sendable, Equatable {
 
     // Weather (coarse)
     let weatherRiskToken: ProposalWeatherRiskToken
+    /// Normalized outdoor suitability shared with Weather UI semantics.
+    let outdoorSuitability: OutdoorSuitability
+    /// Plan suitability for recovery invent (not the same as hasExistingMovement).
+    let existingPlanMovementSuitability: ExistingPlanMovementSuitability
 
     // Derived
     let canMutate: Bool
@@ -161,6 +165,7 @@ struct CandidateScoreBreakdown: Sendable, Equatable {
     let confidencePenalty: Int
     let conflictPenalty: Int
     let fatiguePenalty: Int
+    let similarDayAffinity: Int
 
     var total: Int {
         max(0, min(100,
@@ -174,6 +179,7 @@ struct CandidateScoreBreakdown: Sendable, Equatable {
                 + confidencePenalty
                 + conflictPenalty
                 + fatiguePenalty
+                + similarDayAffinity
         ))
     }
 }
@@ -210,5 +216,6 @@ enum MorningProposalDebugTrace {
     static var lastNoProposalReason: String?
     static var lastConfidence: ProposalContextConfidence?
     static var lastCandidateScores: [CandidateScoreBreakdown] = []
+    static var lastMovementDecision: MorningMovementDecisionTrace?
 }
 #endif
