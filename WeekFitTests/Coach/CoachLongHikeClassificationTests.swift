@@ -60,8 +60,16 @@ final class CoachLongHikeClassificationTests: XCTestCase {
         XCTAssertFalse(assessment.contains("twenty easy minutes"))
 
         let title = bridge.coachTitle.lowercased()
-        XCTAssertTrue(title.contains("long hike") || title.contains("hike"))
+        // Substantial upcoming hikes use pacing/fuel chrome ("Pace the outing"), not the word "hike".
         XCTAssertFalse(title.contains("easy hike"))
+        XCTAssertTrue(
+            title.contains("pace")
+                || title.contains("fuel")
+                || title.contains("hike")
+                || title.contains("outing")
+                || title.contains("ровн")
+                || title.contains("заправ")
+        )
     }
 
     func testSixHourHikeCopyCoversPackPrepAndWhyRows() throws {

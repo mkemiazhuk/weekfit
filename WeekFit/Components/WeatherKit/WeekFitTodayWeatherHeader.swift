@@ -66,6 +66,7 @@ struct WeekFitTodayWeatherHeader: View {
             didStart = true
 
             Task {
+                WeekFitWeatherAttributionStore.shared.ensureLoaded()
                 let provider = WeekFitWeatherProvider.shared
                 let (cached, isFresh) = await provider.cachedSummaryAndFreshness()
 

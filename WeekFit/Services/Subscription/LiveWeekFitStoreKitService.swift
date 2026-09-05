@@ -11,6 +11,8 @@ protocol WeekFitStoreKitServicing: AnyObject {
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot?
     func purchase(productID: String) async -> WeekFitPurchaseOutcome
     func restorePurchases() async throws
+    /// Drops cached `Product` instances so the next load/purchase cannot use a prior storefront.
+    func invalidateCachedProducts()
     func startTransactionUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
     /// Observes StoreKit storefront changes so paywall prices can refresh with the catalog.
     func startStorefrontUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
@@ -70,7 +72,13 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 mapped[product.id] = product
             }
             productsByID = mapped
-            let snapshots = storeProducts.compactMap(Self.snapshot(from:))
+            var snapshots: [WeekFitProductSnapshot] = []
+            snapshots.reserveCapacity(storeProducts.count)
+            for product in storeProducts {
+                if let snapshot = await Self.snapshot(from: product) {
+                    snapshots.append(snapshot)
+                }
+            }
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadSuccess(
                 requestedIDs: requestedIDs,
@@ -84,6 +92,7 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 storefront: storefront
             )
         } catch {
+            productsByID = [:]
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadFailure(requestedIDs: requestedIDs, error: error)
             #endif
@@ -127,20 +136,22 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             ?? snapshots.first
     }
 
+    func invalidateCachedProducts() {
+        productsByID = [:]
+    }
+
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
-        let product: Product
-        if let cached = productsByID[productID] {
-            product = cached
-        } else {
+        // After storefront invalidation the cache is empty — reload before purchase so
+        // we never call purchase() on a Product retained from a prior storefront.
+        if productsByID[productID] == nil {
             do {
                 _ = try await loadProducts()
             } catch {
                 return .productsUnavailable
             }
-            guard let loaded = productsByID[productID] else {
-                return .productsUnavailable
-            }
-            product = loaded
+        }
+        guard let product = productsByID[productID] else {
+            return .productsUnavailable
         }
 
         do {
@@ -203,9 +214,10 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     func startStorefrontUpdates(
         _ onChange: @escaping @Sendable () async -> Void
     ) -> Task<Void, Never> {
-        Task.detached {
+        Task.detached { [weak self] in
             for await storefront in Storefront.updates {
                 await MainActor.run {
+                    self?.invalidateCachedProducts()
                     WeekFitStoreKitTimelineDiagnostics.shared.recordStorefrontUpdate(storefront)
                 }
                 await onChange()
@@ -296,8 +308,26 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         }
     }
 
-    private static func snapshot(from product: Product) -> WeekFitProductSnapshot? {
-        guard let period = product.subscription?.subscriptionPeriod else { return nil }
+    private static func snapshot(from product: Product) async -> WeekFitProductSnapshot? {
+        guard let subscription = product.subscription else { return nil }
+        let period = subscription.subscriptionPeriod
+
+        let introductoryOffer: WeekFitIntroductoryOfferSnapshot?
+        let eligibility: WeekFitIntroEligibility
+        if let offer = subscription.introductoryOffer {
+            introductoryOffer = WeekFitIntroductoryOfferSnapshot(
+                periodValue: offer.period.value,
+                periodUnit: mapPeriodUnit(offer.period.unit),
+                paymentMode: mapPaymentMode(offer.paymentMode)
+            )
+            let eligible = await subscription.isEligibleForIntroOffer
+            eligibility = eligible ? .eligible : .ineligible
+        } else {
+            introductoryOffer = nil
+            // Do not call isEligibleForIntroOffer when there is no offer to evaluate.
+            eligibility = .unknown
+        }
+
         return WeekFitProductSnapshot(
             id: product.id,
             displayName: product.displayName,
@@ -309,12 +339,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             monthlyEquivalentDisplay: period.unit == .year
                 ? product.priceFormatStyle.format(product.price / 12)
                 : nil,
-            introductoryOffer: product.subscription?.introductoryOffer.map { offer in
-                WeekFitIntroductoryOfferSnapshot(
-                    periodValue: offer.period.value,
-                    periodUnit: mapPeriodUnit(offer.period.unit)
-                )
-            }
+            introductoryOffer: introductoryOffer,
+            introductoryOfferEligibility: eligibility
         )
     }
 
@@ -325,6 +351,17 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         case .month: return .month
         case .year: return .year
         @unknown default: return .month
+        }
+    }
+
+    private static func mapPaymentMode(
+        _ mode: Product.SubscriptionOffer.PaymentMode
+    ) -> WeekFitIntroductoryPaymentMode {
+        switch mode {
+        case .freeTrial: return .free
+        case .payAsYouGo: return .payAsYouGo
+        case .payUpFront: return .payUpFront
+        default: return .payUpFront
         }
     }
 }

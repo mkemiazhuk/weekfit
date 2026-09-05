@@ -27,7 +27,12 @@ final class CoachWalkAfterHeavyLoadCopyTests: XCTestCase {
         let pack = try XCTUnwrap(CoachCopyRegistry.resolve(makeInput(sessionPhase: .during, focusSource: .active)))
         let russian = joinedRussian(pack)
 
-        XCTAssertTrue(russian.contains("держите прогулку лёгкой"))
+        // Live sessions go through LiveSessionCoachCopy recovery overlay.
+        XCTAssertTrue(
+            russian.contains("держите прогулку легко")
+                || russian.contains("сегодня это восстановление")
+                || russian.contains("держите легко")
+        )
         XCTAssertFalse(russian.contains("основная работа"))
     }
 

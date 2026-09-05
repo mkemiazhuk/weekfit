@@ -55,6 +55,7 @@ struct WeekFitRootView: View {
     @State private var acknowledgedHealthRefreshToken: UUID?
     @State private var cachedPlannedActivitiesSignature = ""
     @State private var showLegacyAccessThanks = false
+    @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
     /// Joins overlapping workout reconcile requests (appear + onChange can race).
     private static var reconcileInFlight: Task<Void, Never>?
@@ -218,6 +219,11 @@ struct WeekFitRootView: View {
                     .environmentObject(subscriptionManager)
                     .environment(\.weekFitPalette, palette)
             }
+            .fullScreenCover(isPresented: forcedDiagnosticPaywallPresented) {
+                WeekFitPaywallView(source: .settings, allowsDismiss: true)
+                    .environmentObject(subscriptionManager)
+                    .environment(\.weekFitPalette, palette)
+            }
             .sheet(isPresented: $showLegacyAccessThanks) {
                 LegacyAccessThanksSheet {
                     LegacyAccessThanksStore.hasShown = true
@@ -262,6 +268,30 @@ struct WeekFitRootView: View {
                     && !appSession.isPresentingOnboarding
             },
             set: { _ in }
+        )
+    }
+
+    /// DEBUG-only Force Paywall — present real paywall without changing entitlement.
+    /// Only when the normal gate is not already blocking. TestFlight/App Store: always false.
+    private var forcedDiagnosticPaywallPresented: Binding<Bool> {
+        Binding(
+            get: {
+                AppDistribution.current.allowsTemporaryForcePaywall
+                    && forcePaywall.isForcePaywallActive
+                    && forcePaywall.isManualPaywallPresented
+                    && !subscriptionManager.shouldBlockAccess
+            },
+            set: { presented in
+                guard AppDistribution.current.allowsTemporaryForcePaywall else {
+                    forcePaywall.dismissManualPaywall()
+                    return
+                }
+                if presented {
+                    forcePaywall.requestOpenPaywall()
+                } else {
+                    forcePaywall.dismissManualPaywall()
+                }
+            }
         )
     }
 

@@ -20,6 +20,11 @@ final class AppCalendarDayBoundaryTests: XCTestCase {
         return calendar.date(from: components)!
     }
 
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.removeObject(forKey: "weekfit_last_active_calendar_day_start")
+    }
+
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "weekfit_last_active_calendar_day_start")
         super.tearDown()

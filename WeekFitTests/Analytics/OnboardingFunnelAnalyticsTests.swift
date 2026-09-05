@@ -53,7 +53,7 @@ final class OnboardingFunnelAnalyticsTests: XCTestCase {
         )
         XCTAssertEqual(
             Set(values),
-            Set(["promise", "goal", "health", "understanding", "ready"])
+            Set(["promise", "goal", "units", "health", "understanding", "ready"])
         )
 
         // Back/forward must not re-fire the same step in one lifecycle.

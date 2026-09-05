@@ -1,18 +1,12 @@
 import SwiftUI
-import WeatherKit
 
 struct WeekFitWeatherDetailSheet: View {
     let summary: WeekFitWeatherSummary
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
-
-    @State private var attribution: WeatherAttribution?
-    @State private var attributionFetchFailed = false
-    @State private var didFetchAttribution = false
 
     private var period: WeekFitWeatherPeriod { summary.resolvedPeriod }
     private var tokens: WeekFitWeatherTokens {
@@ -46,9 +40,7 @@ struct WeekFitWeatherDetailSheet: View {
         }
         .presentationBackground(tokens.backgroundPrimary)
         .task {
-            guard !didFetchAttribution else { return }
-            didFetchAttribution = true
-            await fetchAttribution()
+            WeekFitWeatherAttributionStore.shared.ensureLoaded()
         }
     }
 
@@ -417,49 +409,14 @@ private extension WeekFitWeatherDetailSheet {
 // MARK: - Attribution
 
 private extension WeekFitWeatherDetailSheet {
-    func fetchAttribution() async {
-        do {
-            attribution = try await WeatherService.shared.attribution
-        } catch {
-            attributionFetchFailed = true
-        }
-    }
-
     var attributionSection: some View {
-        Group {
-            if let attribution {
-                HStack(spacing: 8) {
-                    AsyncImage(
-                        url: tokens.isNightAtmosphere
-                            ? attribution.combinedMarkDarkURL
-                            : (colorScheme == .dark
-                                ? attribution.combinedMarkDarkURL
-                                : attribution.combinedMarkLightURL)
-                    ) { image in
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 12)
-                    } placeholder: {
-                        Color.clear.frame(height: 12)
-                    }
-                    .accessibilityHidden(true)
-
-                    Link(
-                        WeekFitUsesRussianLanguage() ? "Источники погоды" : "Weather data sources",
-                        destination: attribution.legalPageURL
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(tokens.textSecondary.opacity(0.85))
-                }
-            } else if attributionFetchFailed {
-                Text(WeekFitUsesRussianLanguage() ? "Источник погодных данных недоступен." : "Weather data sources are unavailable.")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(tokens.textSecondary.opacity(0.55))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Color.clear.frame(height: 12)
-            }
-        }
+        WeekFitWeatherAttributionView(
+            style: .standard,
+            // Match the weather canvas, not only system colorScheme.
+            preferDarkMark: tokens.isNightAtmosphere || !palette.isLight,
+            secondaryForeground: tokens.textSecondary
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, 4)
     }
 }

@@ -81,9 +81,24 @@ final class SubscriptionManager: ObservableObject {
             await self?.refresh()
         }
         storefrontUpdatesTask = store.startStorefrontUpdates { [weak self] in
-            await self?.refresh()
+            await self?.handleStorefrontChange()
         }
         await refresh()
+    }
+
+    /// Storefront changed: drop prior catalog immediately, then reload.
+    /// Never leave previous-storefront prices on screen while / after a failed reload.
+    private func handleStorefrontChange() async {
+        markProductsUnavailableForReload(failed: false)
+        await refresh()
+    }
+
+    private func markProductsUnavailableForReload(failed: Bool) {
+        store.invalidateCachedProducts()
+        products = []
+        lastStoreProductsReturnedCount = 0
+        productsFailedToLoad = failed
+        // Keep selectedProductID so a successful reload can restore the same plan.
     }
 
     func refreshOnForeground() async {
@@ -226,7 +241,7 @@ final class SubscriptionManager: ObservableObject {
             #if DEBUG
             print("[WeekFit.StoreKit] paywall will hide prices — loadProducts threw \(error)")
             #endif
-            productsFailedToLoad = products.isEmpty
+            markProductsUnavailableForReload(failed: true)
         }
 
         let transactionStatus = await store.loadAppTransaction()

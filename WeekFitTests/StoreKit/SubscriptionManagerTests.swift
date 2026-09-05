@@ -12,12 +12,17 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var purchaseCalls: [String] = []
     var restoreCount = 0
     var loadProductsError: Error?
+    var loadProductsCallCount = 0
+    var invalidateCachedProductsCount = 0
+    var cachedProductIDs: Set<String> = []
     var storefrontUpdateHandler: (@Sendable () async -> Void)?
 
     func loadAppTransaction() async -> WeekFitAppTransactionStatus { appTransaction }
 
     func loadProducts() async throws -> WeekFitProductsLoadResult {
+        loadProductsCallCount += 1
         if let loadProductsError { throw loadProductsError }
+        cachedProductIDs = Set(products.map(\.id))
         return WeekFitProductsLoadResult(
             products: products,
             rawReturnedCount: products.count,
@@ -27,7 +32,22 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
 
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot? { subscription }
 
+    func invalidateCachedProducts() {
+        invalidateCachedProductsCount += 1
+        cachedProductIDs = []
+    }
+
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
+        if cachedProductIDs.contains(productID) == false {
+            do {
+                _ = try await loadProducts()
+            } catch {
+                return .productsUnavailable
+            }
+        }
+        guard cachedProductIDs.contains(productID) else {
+            return .productsUnavailable
+        }
         purchaseCalls.append(productID)
         if purchaseOutcome == .success {
             subscription = WeekFitSubscriptionSnapshot(
@@ -63,6 +83,13 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
         storefrontUpdateHandler = onChange
         return Task { }
     }
+
+    func emitStorefrontUpdate() async {
+        invalidateCachedProducts()
+        if let storefrontUpdateHandler {
+            await storefrontUpdateHandler()
+        }
+    }
 }
 
 @MainActor
@@ -91,7 +118,12 @@ final class SubscriptionManagerTests: XCTestCase {
                 periodValue: 1,
                 currencyCode: "EUR",
                 monthlyEquivalentDisplay: "€2.92",
-                introductoryOffer: WeekFitIntroductoryOfferSnapshot(periodValue: 1, periodUnit: .week)
+                introductoryOffer: WeekFitIntroductoryOfferSnapshot(
+                    periodValue: 1,
+                    periodUnit: .week,
+                    paymentMode: .free
+                ),
+                introductoryOfferEligibility: .eligible
             ),
             WeekFitProductSnapshot(
                 id: WeekFitSubscriptionProductID.monthly.rawValue,
@@ -102,7 +134,8 @@ final class SubscriptionManagerTests: XCTestCase {
                 periodValue: 1,
                 currencyCode: "EUR",
                 monthlyEquivalentDisplay: nil,
-                introductoryOffer: nil
+                introductoryOffer: nil,
+                introductoryOfferEligibility: .ineligible
             )
         ]
         manager = SubscriptionManager(
@@ -320,6 +353,133 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(manager.annualProduct?.displayPrice, "€34.99")
     }
 
+    func testMonthlyPurchaseUsesMonthlyProductID() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        await manager.start()
+        manager.selectProduct(WeekFitSubscriptionProductID.monthly.rawValue)
+        await manager.purchaseSelected()
+        XCTAssertEqual(store.purchaseCalls, [WeekFitSubscriptionProductID.monthly.rawValue])
+    }
+
+    func testStorefrontChangeReloadsProductsAndKeepsSelection() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.storefront = WeekFitStorefrontSnapshot(countryCode: "USA", id: "143441")
+        store.products = [
+            makeSnapshot(
+                id: .annual,
+                displayPrice: "$34.99",
+                price: "34.99",
+                currency: "USD"
+            ),
+            makeSnapshot(
+                id: .monthly,
+                displayPrice: "$4.99",
+                price: "4.99",
+                currency: "USD",
+                periodUnit: .month
+            )
+        ]
+        await manager.start()
+        manager.selectProduct(WeekFitSubscriptionProductID.monthly.rawValue)
+        XCTAssertEqual(manager.selectedProductID, WeekFitSubscriptionProductID.monthly.rawValue)
+        XCTAssertEqual(manager.annualProduct?.displayPrice, "$34.99")
+
+        store.storefront = WeekFitStorefrontSnapshot(countryCode: "POL", id: "143478")
+        store.products = [
+            makeSnapshot(
+                id: .annual,
+                displayPrice: "149,99 zł",
+                price: "149.99",
+                currency: "PLN"
+            ),
+            makeSnapshot(
+                id: .monthly,
+                displayPrice: "19,99 zł",
+                price: "19.99",
+                currency: "PLN",
+                periodUnit: .month
+            )
+        ]
+        await store.emitStorefrontUpdate()
+
+        XCTAssertEqual(manager.annualProduct?.displayPrice, "149,99 zł")
+        XCTAssertEqual(manager.monthlyProduct?.displayPrice, "19,99 zł")
+        XCTAssertEqual(manager.annualProduct?.currencyCode, "PLN")
+        XCTAssertEqual(manager.selectedProductID, WeekFitSubscriptionProductID.monthly.rawValue)
+        XCTAssertFalse(manager.productsFailedToLoad)
+        XCTAssertGreaterThanOrEqual(store.invalidateCachedProductsCount, 1)
+    }
+
+    func testFailedStorefrontReloadClearsStaleUSDPrices() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.storefront = WeekFitStorefrontSnapshot(countryCode: "USA", id: "143441")
+        store.products = [
+            makeSnapshot(
+                id: .annual,
+                displayPrice: "$34.99",
+                price: "34.99",
+                currency: "USD"
+            ),
+            makeSnapshot(
+                id: .monthly,
+                displayPrice: "$4.99",
+                price: "4.99",
+                currency: "USD",
+                periodUnit: .month
+            )
+        ]
+        await manager.start()
+        XCTAssertEqual(manager.annualProduct?.displayPrice, "$34.99")
+
+        store.loadProductsError = NSError(domain: "test", code: 42)
+        await store.emitStorefrontUpdate()
+
+        XCTAssertTrue(manager.products.isEmpty)
+        XCTAssertNil(manager.annualProduct)
+        XCTAssertNil(manager.monthlyProduct)
+        XCTAssertTrue(manager.productsFailedToLoad)
+        XCTAssertEqual(manager.lastStoreProductsReturnedCount, 0)
+        XCTAssertNil(manager.selectedProduct)
+    }
+
+    func testProductLoadingFailureDoesNotInventFallbackPrices() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.products = []
+        store.loadProductsError = NSError(domain: "test", code: 7)
+        await manager.start()
+
+        XCTAssertTrue(manager.products.isEmpty)
+        XCTAssertTrue(manager.productsFailedToLoad)
+        XCTAssertNil(manager.annualProduct?.displayPrice)
+        XCTAssertNil(manager.monthlyProduct?.displayPrice)
+    }
+
+    func testPurchaseAfterCacheInvalidationReloadsBeforePurchase() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        await manager.start()
+        let loadsAfterStart = store.loadProductsCallCount
+        store.invalidateCachedProducts()
+        manager.selectProduct(WeekFitSubscriptionProductID.annual.rawValue)
+        await manager.purchaseSelected()
+        XCTAssertEqual(store.purchaseCalls, [WeekFitSubscriptionProductID.annual.rawValue])
+        XCTAssertGreaterThan(store.loadProductsCallCount, loadsAfterStart)
+    }
+
     func testLoadingFailOpenGateStaysGatedOnLaterRefresh() async {
         store.appTransaction = .unavailable
         manager = SubscriptionManager(
@@ -336,5 +496,32 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(manager.accessState, .unsubscribed)
         XCTAssertFalse(manager.hasFullAccess)
         XCTAssertTrue(manager.shouldBlockAccess)
+    }
+
+    private func makeSnapshot(
+        id: WeekFitSubscriptionProductID,
+        displayPrice: String,
+        price: String,
+        currency: String,
+        periodUnit: WeekFitSubscriptionPeriodUnit = .year
+    ) -> WeekFitProductSnapshot {
+        WeekFitProductSnapshot(
+            id: id.rawValue,
+            displayName: id.rawValue,
+            displayPrice: displayPrice,
+            price: Decimal(string: price)!,
+            periodUnit: periodUnit,
+            periodValue: 1,
+            currencyCode: currency,
+            monthlyEquivalentDisplay: periodUnit == .year ? "eq" : nil,
+            introductoryOffer: periodUnit == .year
+                ? WeekFitIntroductoryOfferSnapshot(
+                    periodValue: 1,
+                    periodUnit: .week,
+                    paymentMode: .free
+                )
+                : nil,
+            introductoryOfferEligibility: periodUnit == .year ? .eligible : .ineligible
+        )
     }
 }

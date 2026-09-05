@@ -120,6 +120,9 @@ struct PremiumActivityStartSheet: View {
             Task {
                 let (summary, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
                 weatherRisk = ProposalWeatherRisk.resolve(from: summary)
+                if summary != nil {
+                    WeekFitWeatherAttributionStore.shared.ensureLoaded()
+                }
             }
         }
         .onChange(of: currentSubTab) { _, _ in
@@ -162,6 +165,14 @@ struct PremiumActivityStartSheet: View {
                         }
                         .padding(.horizontal, -18)
                         .padding(.leading, 18)
+
+                        if weatherRisk.isAdverse {
+                            WeekFitWeatherAttributionView(
+                                style: .compact,
+                                preferDarkMark: !palette.isLight,
+                                secondaryForeground: WeekFitTheme.secondaryText
+                            )
+                        }
                     }
                 }
 

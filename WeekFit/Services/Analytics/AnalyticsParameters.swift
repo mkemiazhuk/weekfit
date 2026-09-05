@@ -29,6 +29,7 @@ enum AnalyticsParameterKey {
 enum OnboardingAnalyticsStep: String, Sendable, CaseIterable {
     case promise
     case goal
+    case units
     case health
     case understanding
     case ready

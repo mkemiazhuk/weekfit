@@ -31,6 +31,7 @@ struct ProfileView: View {
     @State private var showWeekFitAccessPaywall = false
     @State private var shareProductAnalytics = ProductAnalyticsConsent.isSharingEnabled()
     @StateObject private var appleSignInPresenter = AppleSignInPresenter()
+    @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
     private var background: Color { WeekFitTheme.backgroundColor }
 
@@ -44,6 +45,29 @@ struct ProfileView: View {
 
     private var isShowingDialog: Bool {
         showResetConfirmation || showResetFailure || showAppleReplaceLocalConfirmation
+    }
+
+    /// DEBUG-only Force Paywall — opens real paywall over Profile / Access Status.
+    /// TestFlight/App Store: always false (distribution fail-closed).
+    private var forcedDiagnosticPaywallPresented: Binding<Bool> {
+        Binding(
+            get: {
+                AppDistribution.current.allowsTemporaryForcePaywall
+                    && forcePaywall.isForcePaywallActive
+                    && forcePaywall.isManualPaywallPresented
+            },
+            set: { presented in
+                guard AppDistribution.current.allowsTemporaryForcePaywall else {
+                    forcePaywall.dismissManualPaywall()
+                    return
+                }
+                if presented {
+                    forcePaywall.requestOpenPaywall()
+                } else {
+                    forcePaywall.dismissManualPaywall()
+                }
+            }
+        )
     }
 
     var body: some View {
@@ -75,6 +99,11 @@ struct ProfileView: View {
             }
             .environmentObject(subscriptionManager)
             .environment(\.weekFitPalette, palette)
+        }
+        .fullScreenCover(isPresented: forcedDiagnosticPaywallPresented) {
+            WeekFitPaywallView(source: .settings, allowsDismiss: true)
+                .environmentObject(subscriptionManager)
+                .environment(\.weekFitPalette, palette)
         }
         .task {
             await refreshHealthPermissionState()

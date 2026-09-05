@@ -43,7 +43,7 @@
             "displayPrice" : "0",
             "internalID" : "21451823",
             "paymentMode" : "free",
-            "subscriptionPeriod" : "P1W"
+            "subscriptionPeriod" : "P3D"
           },
           "localizations" : [
             {

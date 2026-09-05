@@ -15,13 +15,26 @@ enum AppDistribution: String, Sendable {
 
     /// Temporary: StoreKit price diagnostics on the paywall.
     ///
-    /// Visible in TestFlight (and DEBUG for local verification). **Never** App Store.
-    /// Remove once the Poland/USD pricing investigation is done.
+    /// Visible only in DEBUG / Xcode. **Never** TestFlight or App Store.
+    /// Missing/unknown receipt resolves to `.appStore` → fail closed.
     var showsTemporaryStoreKitPaywallDiagnostics: Bool {
         switch self {
-        case .testFlight, .debug:
+        case .debug:
             return true
-        case .appStore:
+        case .testFlight, .appStore:
+            return false
+        }
+    }
+
+    /// Temporary: Force Paywall diagnostic override.
+    ///
+    /// Same gate as StoreKit paywall diagnostics: DEBUG only.
+    /// **Never** TestFlight or App Store. Missing/unknown receipt → `.appStore` → fail closed.
+    var allowsTemporaryForcePaywall: Bool {
+        switch self {
+        case .debug:
+            return true
+        case .testFlight, .appStore:
             return false
         }
     }

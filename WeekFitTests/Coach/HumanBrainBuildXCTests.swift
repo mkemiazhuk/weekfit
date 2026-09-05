@@ -48,9 +48,13 @@ final class HumanBrainBuildXCTests: XCTestCase {
 
     func testPast_completedWorkoutsIncreaseStrain() {
         let now = Date()
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        let priorDay = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+        // PastContext counts prior-day completed work only.
         let activities = [
-            PlannedActivityBuilder.completedWorkout(completedHoursAgo: 2, now: now),
-            PlannedActivityBuilder.completedWorkout(title: "Lift", completedHoursAgo: 4, now: now)
+            PlannedActivityBuilder.workout(title: "Morning Ride", at: priorDay.addingTimeInterval(10 * 3600), completed: true),
+            PlannedActivityBuilder.workout(title: "Lift", at: priorDay.addingTimeInterval(16 * 3600), completed: true)
         ]
         let metrics = CoachMetricsBuilder.metrics(activeCalories: 300)
         let brain = HumanBrainIntegrationBuilder.build(metrics: metrics, activities: activities)

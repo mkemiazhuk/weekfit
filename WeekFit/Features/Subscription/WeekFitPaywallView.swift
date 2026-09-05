@@ -31,7 +31,9 @@ struct WeekFitPaywallView: View {
             SubscriptionAnalytics.paywallViewed(source: source)
         }
         .onChange(of: subscriptionManager.hasFullAccess) { _, hasAccess in
-            if hasAccess, allowsDismiss {
+            // Force Paywall diagnostics must keep the real paywall open for
+            // legacy/subscribed testers; only auto-dismiss when override is off.
+            if hasAccess, allowsDismiss, WeekFitForcePaywallStore.shared.isForcePaywallActive == false {
                 dismiss()
             }
         }
@@ -191,7 +193,7 @@ struct WeekFitPaywallView: View {
         kind: WeekFitSubscriptionProductID
     ) -> some View {
         let selected = subscriptionManager.selectedProductID == product.id
-        let trialDays = WeekFitPaywallCopy.introductoryDayCount(from: product.introductoryOffer)
+        let trialDays = WeekFitPaywallCopy.verifiedFreeTrialDayCount(for: product)
         let savings = savingsPercent
 
         return Button {
@@ -239,7 +241,7 @@ struct WeekFitPaywallView: View {
                         .foregroundStyle(palette.textSecondary)
                 }
 
-                if kind == .annual, let trialDays, let savings {
+                if kind == .annual, let savings {
                     Text(String(format: WeekFitLocalizedString("paywall.plan.saveFormat"), savings))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.textSecondary)
@@ -338,8 +340,8 @@ struct WeekFitPaywallView: View {
     }
 
     private var purchaseCTATitle: String {
-        if let days = WeekFitPaywallCopy.introductoryDayCount(
-            from: subscriptionManager.selectedProduct?.introductoryOffer
+        if let days = WeekFitPaywallCopy.verifiedFreeTrialDayCount(
+            for: subscriptionManager.selectedProduct
         ) {
             return String(format: WeekFitLocalizedString("paywall.cta.startTrialFormat"), days)
         }
@@ -354,8 +356,7 @@ struct WeekFitPaywallView: View {
 
     private var savingsPercent: Int? {
         guard let monthly = subscriptionManager.monthlyProduct,
-              let annual = subscriptionManager.annualProduct,
-              annual.introductoryOffer != nil
+              let annual = subscriptionManager.annualProduct
         else { return nil }
         return WeekFitPaywallCopy.savingsPercent(
             monthlyPrice: monthly.price,

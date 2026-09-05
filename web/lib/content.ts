@@ -482,16 +482,19 @@ export const changelog: Record<
     releases: [
       {
         version: "1.3",
-        date: "Aug 18, 2026 at 8:35 PM",
+        date: "Sep 5, 2026",
         tag: "Update",
         added: [
           "Home Screen widgets for Today — Move, Fuel, Ready, and what's next",
           "Morning plan proposals that adapt to recovery and weather",
+          "WeekFit Premium subscriptions with a StoreKit paywall and free trial when eligible",
+          "Official Apple Weather attribution wherever WeatherKit data is shown",
         ],
         improved: [
           "Apple Health and Fitness workouts update the matching Plan slot, even when you go longer than planned",
           "Clearer Coach guidance during a live session",
           "Meals, drinks, Light theme, and onboarding polish",
+          "Subscription prices, savings, and trial copy stay in sync with the App Store storefront",
         ],
         fixed: [
           "A longer Watch or Fitness workout no longer leaves the planned Plan card unfinished",
@@ -536,16 +539,19 @@ export const changelog: Record<
     releases: [
       {
         version: "1.3",
-        date: "18 августа 2026 в 20:35",
+        date: "5 сентября 2026",
         tag: "Обновление",
         added: [
           "Виджеты на экране «Домой» — нагрузка, еда, форма и что дальше",
           "Утренние предложения по плану с учётом восстановления и погоды",
+          "Подписка WeekFit Premium с paywall StoreKit и пробным периодом при eligibility",
+          "Официальная атрибуция Apple Weather там, где показываются данные WeatherKit",
         ],
         improved: [
           "Тренировки из Apple Health и «Фитнес» обновляют слот в Плане, даже если вышли длиннее плана",
           "Понятнее подсказки Коуча во время сессии",
           "Питание, напитки, светлая тема и онбординг",
+          "Цены, экономия и текст trial синхронизируются с витриной App Store",
         ],
         fixed: [
           "Длинная тренировка из Watch или «Фитнес» больше не оставляет карточку в Плане незакрытой",

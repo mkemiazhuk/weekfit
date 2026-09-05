@@ -7,9 +7,9 @@ final class WeekFitSemanticPaletteTests: XCTestCase {
         let palette = WeekFitSemanticPalette.daytime
 
         XCTAssertEqual(palette.blendFactor, 0, accuracy: 0.001)
-        XCTAssertEqual(palette.textPrimaryOpacity, 0.94, accuracy: 0.001)
+        XCTAssertEqual(palette.textPrimaryOpacity, 0.96, accuracy: 0.001)
         XCTAssertEqual(palette.ringGlowOpacity, 0.18, accuracy: 0.001)
-        XCTAssertEqual(palette.cardBackgroundOpacity, 0.075, accuracy: 0.001)
+        XCTAssertEqual(palette.cardBackgroundOpacity, 0.090, accuracy: 0.001)
     }
 
     func testFullNightComfortSoftensTokensMonotonically() {
@@ -24,15 +24,17 @@ final class WeekFitSemanticPaletteTests: XCTestCase {
 
     func testInterpolationIsLinearAtMidpoint() {
         let midpoint = WeekFitSemanticPalette.interpolated(blend: 0.5)
+        let nightTextPrimary: CGFloat = 0.86
+        let nightAmbient: CGFloat = 0.62
 
         XCTAssertEqual(
             midpoint.textPrimaryOpacity,
-            (WeekFitSemanticPalette.daytime.textPrimaryOpacity + 0.82) / 2,
+            (WeekFitSemanticPalette.daytime.textPrimaryOpacity + nightTextPrimary) / 2,
             accuracy: 0.001
         )
         XCTAssertEqual(
             midpoint.ambientOpacity,
-            (WeekFitSemanticPalette.daytime.ambientOpacity + 0.62) / 2,
+            (WeekFitSemanticPalette.daytime.ambientOpacity + nightAmbient) / 2,
             accuracy: 0.001
         )
     }

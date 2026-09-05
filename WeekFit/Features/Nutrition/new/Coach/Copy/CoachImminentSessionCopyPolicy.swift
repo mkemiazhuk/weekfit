@@ -208,7 +208,7 @@ enum CoachImminentSessionCopyPolicy {
             if protective {
                 return .en(
                     "Don't force every interval to max when recovery is still behind.",
-                    "Не делайте каждый интервал на максимум, пока восстановление отстаёт."
+                    "Не делайте каждый интервал на максимум, пока тело ещё не восстановилось."
                 )
             }
             return .en(

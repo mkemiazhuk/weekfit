@@ -53,6 +53,7 @@ struct ProposalReviewView: View {
         .onAppear {
             proposal = MorningProposalStore.proposal(for: dayKey)
             Task { @MainActor in
+                WeekFitWeatherAttributionStore.shared.ensureLoaded()
                 let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
                 weatherSummary = cached
             }
@@ -261,6 +262,15 @@ struct ProposalReviewView: View {
                     .foregroundStyle(palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            if showsWeatherAttribution {
+                WeekFitWeatherAttributionView(
+                    style: .standard,
+                    preferDarkMark: !palette.isLight,
+                    secondaryForeground: palette.textTertiary
+                )
+                .padding(.top, 2)
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -289,7 +299,19 @@ struct ProposalReviewView: View {
                 )
                 .allowsHitTesting(false)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Only when weather-derived copy or weather-backed recommendations are on screen.
+    private var showsWeatherAttribution: Bool {
+        if MorningProposalBriefComposer.weatherMetaLine(from: weatherSummary) != nil {
+            return true
+        }
+        guard let proposal else { return false }
+        return proposal.changes.contains { change in
+            change.reasonCode == .weatherHeatLoad
+                || change.reasonCode == .weatherOutdoorConflict
+        }
     }
 
     private func orderedChanges(_ changes: [CoachProposedChange]) -> [CoachProposedChange] {

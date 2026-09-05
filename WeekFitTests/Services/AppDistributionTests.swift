@@ -39,10 +39,16 @@ final class AppDistributionTests: XCTestCase {
         XCTAssertEqual(distribution, .appStore)
     }
 
-    func testTemporaryStoreKitPaywallDiagnosticsHiddenOnAppStore() {
+    func testTemporaryStoreKitPaywallDiagnosticsHiddenOutsideDebug() {
         XCTAssertFalse(AppDistribution.appStore.showsTemporaryStoreKitPaywallDiagnostics)
-        XCTAssertTrue(AppDistribution.testFlight.showsTemporaryStoreKitPaywallDiagnostics)
+        XCTAssertFalse(AppDistribution.testFlight.showsTemporaryStoreKitPaywallDiagnostics)
         XCTAssertTrue(AppDistribution.debug.showsTemporaryStoreKitPaywallDiagnostics)
+    }
+
+    func testForcePaywallAllowedOnlyOnDebug() {
+        XCTAssertFalse(AppDistribution.testFlight.allowsTemporaryForcePaywall)
+        XCTAssertTrue(AppDistribution.debug.allowsTemporaryForcePaywall)
+        XCTAssertFalse(AppDistribution.appStore.allowsTemporaryForcePaywall)
     }
 
     func testDiagnosticsFormatterUsesPaywallSnapshotsNotFallbackPrices() {
@@ -55,7 +61,8 @@ final class AppDistributionTests: XCTestCase {
             periodValue: 1,
             currencyCode: "PLN",
             monthlyEquivalentDisplay: "12,50 zł",
-            introductoryOffer: nil
+            introductoryOffer: nil,
+            introductoryOfferEligibility: .unknown
         )
         let text = WeekFitStoreKitPaywallDiagnosticsFormatter.text(
             distribution: .testFlight,
@@ -73,9 +80,18 @@ final class AppDistributionTests: XCTestCase {
         XCTAssertTrue(text.contains("Currency: PLN"))
         XCTAssertTrue(text.contains("Numeric price: 149.99"))
         XCTAssertTrue(text.contains("Period: 1 year"))
+        XCTAssertTrue(text.contains("Intro eligibility: not evaluated"))
+        XCTAssertTrue(text.contains("Intro offer: none"))
         XCTAssertTrue(text.contains("Price source: StoreKit Product snapshots"))
         XCTAssertFalse(text.contains("$34.99"))
         XCTAssertFalse(text.contains("4.99"))
+    }
+
+    func testMissingReceiptFailsClosedForDiagnostics() {
+        let distribution = AppDistribution.resolve(isDebugBuild: false, receiptURL: nil)
+        XCTAssertEqual(distribution, .appStore)
+        XCTAssertFalse(distribution.showsTemporaryStoreKitPaywallDiagnostics)
+        XCTAssertFalse(distribution.allowsTemporaryForcePaywall)
     }
 
     func testCurrentMatchesCompileConfiguration() {

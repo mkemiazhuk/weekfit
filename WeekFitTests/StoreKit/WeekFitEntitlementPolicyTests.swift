@@ -365,20 +365,118 @@ final class WeekFitUITestSupportTests: XCTestCase {
 #endif
 
 final class WeekFitPaywallCopyTests: XCTestCase {
-    func testIntroductoryWeekMapsToSevenDays() {
+    func testIntroductoryDayAndWeekMapping() {
         XCTAssertEqual(
             WeekFitPaywallCopy.introductoryDayCount(
-                from: WeekFitIntroductoryOfferSnapshot(periodValue: 1, periodUnit: .week)
+                from: WeekFitIntroductoryOfferSnapshot(
+                    periodValue: 3,
+                    periodUnit: .day,
+                    paymentMode: .free
+                )
             ),
-            7
+            3
         )
         XCTAssertEqual(
             WeekFitPaywallCopy.introductoryDayCount(
-                from: WeekFitIntroductoryOfferSnapshot(periodValue: 7, periodUnit: .day)
+                from: WeekFitIntroductoryOfferSnapshot(
+                    periodValue: 1,
+                    periodUnit: .week,
+                    paymentMode: .free
+                )
             ),
             7
         )
         XCTAssertNil(WeekFitPaywallCopy.introductoryDayCount(from: nil))
+    }
+
+    func testEligibleAnnualThreeDayFreeTrial() {
+        let offer = WeekFitIntroductoryOfferSnapshot(
+            periodValue: 3,
+            periodUnit: .day,
+            paymentMode: .free
+        )
+        XCTAssertEqual(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: offer, eligibility: .eligible),
+            3
+        )
+        let annual = makeProduct(
+            id: WeekFitSubscriptionProductID.annual.rawValue,
+            price: "79.99",
+            displayPrice: "79,99 zł",
+            periodUnit: .year,
+            offer: offer,
+            eligibility: .eligible
+        )
+        XCTAssertEqual(WeekFitPaywallCopy.verifiedFreeTrialDayCount(for: annual), 3)
+    }
+
+    func testVerifiedFreeTrialRequiresEligibleFreeOffer() {
+        let freeThreeDays = WeekFitIntroductoryOfferSnapshot(
+            periodValue: 3,
+            periodUnit: .day,
+            paymentMode: .free
+        )
+        XCTAssertEqual(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: freeThreeDays, eligibility: .eligible),
+            3
+        )
+        XCTAssertNil(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: freeThreeDays, eligibility: .ineligible)
+        )
+        XCTAssertNil(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: freeThreeDays, eligibility: .unknown)
+        )
+    }
+
+    func testVerifiedFreeTrialRejectsNonFreePaymentMode() {
+        let paid = WeekFitIntroductoryOfferSnapshot(
+            periodValue: 3,
+            periodUnit: .day,
+            paymentMode: .payAsYouGo
+        )
+        XCTAssertNil(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: paid, eligibility: .eligible)
+        )
+    }
+
+    func testVerifiedFreeTrialNilWithoutIntroOffer() {
+        XCTAssertNil(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: nil, eligibility: .eligible)
+        )
+        XCTAssertNil(
+            WeekFitPaywallCopy.verifiedFreeTrialDayCount(offer: nil, eligibility: .unknown)
+        )
+    }
+
+    func testMonthlySelectedUsesSelectedProductForTrialCTA() {
+        let annual = makeProduct(
+            id: WeekFitSubscriptionProductID.annual.rawValue,
+            price: "79.99",
+            displayPrice: "79,99 zł",
+            periodUnit: .year,
+            offer: .init(periodValue: 3, periodUnit: .day, paymentMode: .free),
+            eligibility: .eligible
+        )
+        let monthly = makeProduct(
+            id: WeekFitSubscriptionProductID.monthly.rawValue,
+            price: "19.99",
+            displayPrice: "19,99 zł",
+            periodUnit: .month,
+            offer: nil,
+            eligibility: .unknown
+        )
+
+        XCTAssertEqual(WeekFitPaywallCopy.verifiedFreeTrialDayCount(for: annual), 3)
+        XCTAssertNil(WeekFitPaywallCopy.verifiedFreeTrialDayCount(for: monthly))
+    }
+
+    func testPolandSavingsMatchesObservedStorefront() {
+        let percent = WeekFitPaywallCopy.savingsPercent(
+            monthlyPrice: Decimal(string: "19.99")!,
+            yearlyPrice: Decimal(string: "79.99")!
+        )
+        // 1 - 79.99 / (19.99 * 12) ≈ 66.65% → 67
+        XCTAssertEqual(percent, 67)
     }
 
     func testSavingsPercentMatchesCommercialExample() {
@@ -389,10 +487,50 @@ final class WeekFitPaywallCopyTests: XCTestCase {
         XCTAssertEqual(percent, 42)
     }
 
+    func testRegionalSavingsDiffersFromUSExample() {
+        let percent = WeekFitPaywallCopy.savingsPercent(
+            monthlyPrice: Decimal(string: "19.99")!,
+            yearlyPrice: Decimal(string: "149.99")!
+        )
+        // 1 - 149.99 / (19.99 * 12) ≈ 37.47% → 37
+        XCTAssertEqual(percent, 37)
+        XCTAssertNotEqual(percent, 42)
+    }
+
+    func testSavingsDoesNotRequireIntroductoryOffer() {
+        let percent = WeekFitPaywallCopy.savingsPercent(
+            monthlyPrice: Decimal(string: "19.99")!,
+            yearlyPrice: Decimal(string: "79.99")!
+        )
+        XCTAssertEqual(percent, 67)
+    }
+
     func testMonthlyEquivalentDividesYearlyByTwelve() {
         XCTAssertEqual(
-            WeekFitPaywallCopy.monthlyEquivalent(yearlyPrice: Decimal(string: "34.99")!),
-            Decimal(string: "34.99")! / 12
+            WeekFitPaywallCopy.monthlyEquivalent(yearlyPrice: Decimal(string: "79.99")!),
+            Decimal(string: "79.99")! / 12
+        )
+    }
+
+    private func makeProduct(
+        id: String,
+        price: String,
+        displayPrice: String,
+        periodUnit: WeekFitSubscriptionPeriodUnit,
+        offer: WeekFitIntroductoryOfferSnapshot?,
+        eligibility: WeekFitIntroEligibility
+    ) -> WeekFitProductSnapshot {
+        WeekFitProductSnapshot(
+            id: id,
+            displayName: id,
+            displayPrice: displayPrice,
+            price: Decimal(string: price)!,
+            periodUnit: periodUnit,
+            periodValue: 1,
+            currencyCode: "PLN",
+            monthlyEquivalentDisplay: nil,
+            introductoryOffer: offer,
+            introductoryOfferEligibility: eligibility
         )
     }
 }

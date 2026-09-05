@@ -77,6 +77,11 @@ final class WeekFitWeatherProvider {
                 placeName: placeName
             )
         }
+        if result != nil {
+            await MainActor.run {
+                WeekFitWeatherAttributionStore.shared.ensureLoaded()
+            }
+        }
         if Task.isCancelled {
             StartupDiagnostics.taskCancelled(taskName, detail: "run=\(run.uuidString.prefix(8))")
         } else {

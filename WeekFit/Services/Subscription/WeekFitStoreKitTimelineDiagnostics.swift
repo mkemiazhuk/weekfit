@@ -2,7 +2,7 @@ import Foundation
 import StoreKit
 internal import Combine
 
-/// Temporary TestFlight timeline for StoreKit storefront / product / purchase ordering.
+/// Temporary DEBUG-only timeline for StoreKit storefront / product / purchase ordering.
 ///
 /// Diagnostics only — does not alter StoreKit calls, purchase handling, or entitlements.
 /// Remove after the Poland/USD storefront investigation.

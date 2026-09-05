@@ -1,23 +1,35 @@
 import SwiftUI
 
-/// Temporary TestFlight (and DEBUG) StoreKit price diagnostics for the paywall.
+/// Temporary DEBUG-only StoreKit price diagnostics for the paywall.
 ///
 /// Uses the same `WeekFitProductSnapshot` instances as plan cards — no separate
 /// product fetch. Remove after the Poland/USD storefront investigation.
 struct WeekFitStoreKitPaywallDiagnosticsView: View {
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @ObservedObject private var timelineDiagnostics = WeekFitStoreKitTimelineDiagnostics.shared
+    @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
     @Environment(\.weekFitPalette) private var palette
     @State private var isExpanded = true
 
+    /// When true, "Open Paywall" is useful (e.g. Access Status). On the root
+    /// blocking paywall the button still re-signals manual presentation.
+    var showsOpenPaywallButton: Bool = true
+
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            Text(diagnosticsText)
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
-                .foregroundStyle(palette.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
-                .padding(.top, 8)
+            VStack(alignment: .leading, spacing: 12) {
+                // Always show controls when this diagnostics surface is visible
+                // (DEBUG only embeds this view). Status text alone
+                // previously looked like a dead "Force Paywall: OFF" with no toggle.
+                forcePaywallControls
+
+                Text(diagnosticsText)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(palette.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .padding(.top, 8)
         } label: {
             Text("StoreKit Diagnostics")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -35,6 +47,69 @@ struct WeekFitStoreKitPaywallDiagnosticsView: View {
         .accessibilityIdentifier("paywall.storekitDiagnostics")
     }
 
+    @ViewBuilder
+    private var forcePaywallControls: some View {
+        if forcePaywall.isAvailable {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: forcePaywallEnabledBinding) {
+                    Text("Force Paywall")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.textPrimary)
+                }
+                .tint(WeekFitTheme.brandGold)
+                .accessibilityIdentifier("paywall.diagnostics.forcePaywall")
+
+                Text(forcePaywallStatusText)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("paywall.diagnostics.forcePaywallStatus")
+
+                if showsOpenPaywallButton {
+                    Button {
+                        if !forcePaywall.isForcePaywallActive {
+                            forcePaywall.setEnabled(true)
+                        }
+                        forcePaywall.requestOpenPaywall()
+                    } label: {
+                        Text(forcePaywall.isForcePaywallActive ? "Open Paywall" : "Enable & Open Paywall")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.brandGold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(WeekFitTheme.brandGold.opacity(0.55), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("paywall.diagnostics.openPaywall")
+                }
+            }
+            .padding(.bottom, 4)
+        }
+    }
+
+    private var forcePaywallEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { forcePaywall.isEnabled },
+            set: { forcePaywall.setEnabled($0) }
+        )
+    }
+
+    private var forcePaywallStatusText: String {
+        let access = WeekFitStoreKitPaywallDiagnosticsFormatter.accessStateLabel(
+            subscriptionManager.accessState
+        )
+        let force = forcePaywall.isForcePaywallActive ? "ON" : "OFF"
+        let presented = forcePaywall.isManualPaywallPresented ? "yes" : "no"
+        return """
+        Real access state: \(access)
+        Force Paywall: \(force)
+        Forced presentation: \(presented)
+        """
+    }
+
     private var diagnosticsText: String {
         WeekFitStoreKitPaywallDiagnosticsFormatter.text(
             distribution: AppDistribution.current,
@@ -45,6 +120,8 @@ struct WeekFitStoreKitPaywallDiagnosticsView: View {
             rawReturnedCount: subscriptionManager.lastStoreProductsReturnedCount,
             products: subscriptionManager.products,
             productsFailedToLoad: subscriptionManager.productsFailedToLoad,
+            accessState: subscriptionManager.accessState,
+            forcePaywallActive: forcePaywall.isForcePaywallActive,
             timelineEvents: timelineDiagnostics.events
         )
     }
@@ -60,12 +137,18 @@ enum WeekFitStoreKitPaywallDiagnosticsFormatter {
         rawReturnedCount: Int,
         products: [WeekFitProductSnapshot],
         productsFailedToLoad: Bool,
+        accessState: WeekFitAccessState? = nil,
+        forcePaywallActive: Bool = false,
         timelineEvents: [WeekFitStoreKitTimelineDiagnostics.Event] = []
     ) -> String {
         var lines: [String] = []
         lines.append("Build")
         lines.append("Distribution: \(distribution.analyticsValue)")
         lines.append("Version: \(appVersion ?? "—") (\(appBuild ?? "—"))")
+        if let accessState {
+            lines.append("Real access state: \(accessStateLabel(accessState))")
+            lines.append("Force Paywall: \(forcePaywallActive ? "ON" : "OFF")")
+        }
         lines.append("")
         lines.append("Storefront")
         lines.append("Country: \(storefrontCountryCode ?? "—")")
@@ -93,6 +176,21 @@ enum WeekFitStoreKitPaywallDiagnosticsFormatter {
                 if let monthly = product.monthlyEquivalentDisplay {
                     lines.append("Monthly equivalent: \(monthly)")
                 }
+                if let offer = product.introductoryOffer {
+                    lines.append("Intro paymentMode: \(diagnosticsPaymentMode(offer.paymentMode))")
+                    if let days = WeekFitPaywallCopy.introductoryDayCount(from: offer) {
+                        lines.append("Intro period days: \(days)")
+                    }
+                    lines.append("Intro eligibility: \(diagnosticsEligibility(product.introductoryOfferEligibility))")
+                    if let verified = WeekFitPaywallCopy.verifiedFreeTrialDayCount(for: product) {
+                        lines.append("Verified free trial days: \(verified)")
+                    } else {
+                        lines.append("Verified free trial days: none")
+                    }
+                } else {
+                    lines.append("Intro offer: none")
+                    lines.append("Intro eligibility: \(diagnosticsEligibility(product.introductoryOfferEligibility))")
+                }
             }
         }
 
@@ -100,6 +198,17 @@ enum WeekFitStoreKitPaywallDiagnosticsFormatter {
         lines.append(WeekFitStoreKitTimelineDiagnostics.timelineText(events: timelineEvents))
 
         return lines.joined(separator: "\n")
+    }
+
+    static func accessStateLabel(_ state: WeekFitAccessState) -> String {
+        switch state {
+        case .loading: return "loading"
+        case .legacy: return "legacy"
+        case .trial: return "trial"
+        case .subscribed: return "subscribed"
+        case .expired: return "expired"
+        case .unsubscribed: return "unsubscribed"
+        }
     }
 
     private static func orderedDiagnosticsProducts(
@@ -120,6 +229,22 @@ enum WeekFitStoreKitPaywallDiagnosticsFormatter {
         case .annual: return "Annual"
         case .monthly: return "Monthly"
         case .none: return productID
+        }
+    }
+
+    private static func diagnosticsEligibility(_ eligibility: WeekFitIntroEligibility) -> String {
+        switch eligibility {
+        case .unknown: return "not evaluated"
+        case .eligible: return "eligible"
+        case .ineligible: return "ineligible"
+        }
+    }
+
+    private static func diagnosticsPaymentMode(_ mode: WeekFitIntroductoryPaymentMode) -> String {
+        switch mode {
+        case .free: return "free"
+        case .payAsYouGo: return "payAsYouGo"
+        case .payUpFront: return "payUpFront"
         }
     }
 }

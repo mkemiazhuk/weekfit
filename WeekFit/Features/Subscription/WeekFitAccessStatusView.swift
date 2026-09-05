@@ -20,16 +20,24 @@ struct WeekFitAccessStatusView: View {
             VStack(spacing: 0) {
                 navBar
 
-                VStack(alignment: .leading, spacing: 0) {
-                    OnboardingTitle(text: statusTitle)
-                    OnboardingSubtitle(text: statusBody)
-                        .padding(.top, 10)
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        OnboardingTitle(text: statusTitle)
+                        OnboardingSubtitle(text: statusBody)
+                            .padding(.top, 10)
 
-                    statusCard
-                        .padding(.top, 22)
+                        statusCard
+                            .padding(.top, 22)
+
+                        if AppDistribution.current.showsTemporaryStoreKitPaywallDiagnostics {
+                            WeekFitStoreKitPaywallDiagnosticsView()
+                                .padding(.top, 16)
+                        }
+                    }
+                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                    .padding(.top, 2)
+                    .padding(.bottom, 16)
                 }
-                .padding(.horizontal, OnboardingLayout.horizontalPadding)
-                .padding(.top, 2)
 
                 Spacer(minLength: 16)
 

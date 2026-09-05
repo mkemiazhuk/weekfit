@@ -114,6 +114,8 @@ WeekFit 1.3
 
 • Home Screen widgets for Today — Move, Fuel, Ready, and what's next
 • Morning plan proposals that adapt to recovery and weather
+• WeekFit Premium subscriptions with StoreKit paywall and free trial when eligible
+• Official Apple Weather attribution wherever WeatherKit data is shown
 • Apple Health workouts now update the matching Plan slot, even when you go longer than planned
 • Clearer Coach guidance during a session
 • Meals, drinks, Light theme, and onboarding polish
@@ -125,6 +127,8 @@ WeekFit 1.3
 
 • Виджеты на экране «Домой» — нагрузка, еда, форма и что дальше
 • Утренние предложения по плану с учётом восстановления и погоды
+• Подписка WeekFit Premium с paywall StoreKit и пробным периодом при eligibility
+• Официальная атрибуция Apple Weather там, где показываются данные WeatherKit
 • Тренировки из Apple Health обновляют слот в Плане, даже если вышли длиннее, чем планировали
 • Понятнее подсказки Коуча во время сессии
 • Питание, напитки, светлая тема и онбординг
@@ -214,7 +218,7 @@ PRIMARY TEST PATH (no account required — use this to review subscriptions):
 2. Complete first-run onboarding (or skip where offered).
 3. The subscription paywall is presented. It is not bypassed for App Review.
 4. Confirm Monthly and Annual products are visible with StoreKit localized prices.
-5. Annual shows the introductory free trial when StoreKit returns one (7-day trial configured in App Store Connect).
+5. Annual shows the introductory free trial when StoreKit returns one (duration comes from App Store Connect — currently a 3-day free trial).
 6. Purchase can be tested with the sandbox Apple ID.
 7. Restore Purchases is on the paywall and also in Settings.
 8. After subscribe (or Restore), Today / Coach / Meals / Plan are available.
@@ -241,7 +245,7 @@ NOT INCLUDED IN 1.3:
 
 SUBSCRIPTIONS:
 • Product IDs: com.weekfit.subscription.monthly and com.weekfit.subscription.annual.
-• Yearly includes a 7-day introductory free trial in App Store Connect; the app displays the trial only when StoreKit returns it.
+• Yearly includes an introductory free trial configured in App Store Connect (currently 3 days free). The app displays the trial only when StoreKit returns a free introductory offer and the customer is eligible.
 • Anyone whose original App Store download is before paid 1.3 in-app purchases go live remains a legacy user with lifetime access. That cutoff is confirmed in code immediately before this version is submitted; do not treat a calendar placeholder as the launch instant.
 
 WeekFit does not provide medical advice.

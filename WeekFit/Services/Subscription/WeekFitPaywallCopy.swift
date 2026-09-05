@@ -7,9 +7,25 @@ enum WeekFitSubscriptionPeriodUnit: Equatable, Sendable {
     case year
 }
 
+/// Maps `Product.SubscriptionOffer.PaymentMode` for paywall trial copy.
+enum WeekFitIntroductoryPaymentMode: Equatable, Sendable {
+    case free
+    case payAsYouGo
+    case payUpFront
+}
+
+/// StoreKit intro eligibility for the current Apple ID / subscription group.
+enum WeekFitIntroEligibility: Equatable, Sendable {
+    /// Offer missing or eligibility not queried — never promise a free trial.
+    case unknown
+    case eligible
+    case ineligible
+}
+
 struct WeekFitIntroductoryOfferSnapshot: Equatable, Sendable {
     var periodValue: Int
     var periodUnit: WeekFitSubscriptionPeriodUnit
+    var paymentMode: WeekFitIntroductoryPaymentMode
 }
 
 struct WeekFitProductSnapshot: Equatable, Identifiable, Sendable {
@@ -24,6 +40,8 @@ struct WeekFitProductSnapshot: Equatable, Identifiable, Sendable {
     var currencyCode: String?
     var monthlyEquivalentDisplay: String?
     var introductoryOffer: WeekFitIntroductoryOfferSnapshot?
+    /// From StoreKit `Product.SubscriptionInfo.isEligibleForIntroOffer` when an intro exists.
+    var introductoryOfferEligibility: WeekFitIntroEligibility
 
     /// Human period for temporary StoreKit diagnostics screenshots.
     var diagnosticsPeriodDescription: String {
@@ -60,8 +78,7 @@ struct WeekFitProductsLoadResult: Equatable, Sendable {
 }
 
 enum WeekFitPaywallCopy {
-    /// Days covered by an introductory offer, for CTA copy. Returns nil when
-    /// StoreKit did not attach an introductory offer.
+    /// Days covered by an introductory offer period. Does not imply free or eligible.
     static func introductoryDayCount(from offer: WeekFitIntroductoryOfferSnapshot?) -> Int? {
         guard let offer, offer.periodValue > 0 else { return nil }
         switch offer.periodUnit {
@@ -72,6 +89,25 @@ enum WeekFitPaywallCopy {
         case .month, .year:
             return nil
         }
+    }
+
+    /// Free-trial day count only when StoreKit confirms a free intro and eligibility.
+    /// Returns nil for unknown eligibility, ineligible, paid intro, or missing offer.
+    static func verifiedFreeTrialDayCount(
+        offer: WeekFitIntroductoryOfferSnapshot?,
+        eligibility: WeekFitIntroEligibility
+    ) -> Int? {
+        guard eligibility == .eligible else { return nil }
+        guard let offer, offer.paymentMode == .free else { return nil }
+        return introductoryDayCount(from: offer)
+    }
+
+    static func verifiedFreeTrialDayCount(for product: WeekFitProductSnapshot?) -> Int? {
+        guard let product else { return nil }
+        return verifiedFreeTrialDayCount(
+            offer: product.introductoryOffer,
+            eligibility: product.introductoryOfferEligibility
+        )
     }
 
     static func savingsPercent(monthlyPrice: Decimal, yearlyPrice: Decimal) -> Int? {
