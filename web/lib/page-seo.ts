@@ -73,13 +73,13 @@ export const PAGE_SEO = {
     en: {
       title: "Apple Health fitness app",
       description:
-        "An Apple Health fitness app that stays private. WeekFit turns Apple Health signals into daily guidance — no accounts, on-device first.",
+        "An Apple Health fitness app that stays private. WeekFit turns Apple Health signals into daily guidance — Sign in with Apple, on-device first.",
       socialTitle: "WeekFit — Apple Health fitness app",
     },
     ru: {
       title: "Фитнес на Apple Health",
       description:
-        "Фитнес‑приложение на Apple Health с приватностью по умолчанию. WeekFit превращает сигналы здоровья в ежедневный вывод — без аккаунта, всё на устройстве.",
+        "Фитнес‑приложение на Apple Health с приватностью по умолчанию. WeekFit превращает сигналы здоровья в ежедневный вывод — вход через Apple, данные на устройстве.",
       socialTitle: "WeekFit — фитнес на Apple Health",
     },
   },

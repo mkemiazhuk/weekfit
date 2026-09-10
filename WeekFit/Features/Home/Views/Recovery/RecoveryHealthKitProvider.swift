@@ -109,7 +109,7 @@ final class RecoveryHealthKitProvider {
         for dayOffset in 1...RecoveryPhysiologyBaseline.preferredWindowDays {
             guard let pastDate = calendar.date(byAdding: .day, value: -dayOffset, to: date) else { continue }
             let sleepSamples = await loadSleepSamples(for: pastDate)
-            if let bedStart = primaryBedStart(from: sleepSamples) {
+            if let bedStart = primaryBedStart(from: sleepSamples, for: pastDate) {
                 historicalBedStarts.append(bedStart)
             }
         }
@@ -186,7 +186,7 @@ final class RecoveryHealthKitProvider {
         )
     }
 
-    private func primaryBedStart(from sleepSamples: [HKCategorySample]) -> Date? {
+    private func primaryBedStart(from sleepSamples: [HKCategorySample], for date: Date) -> Date? {
         let appleSamples = sleepSamples.filter {
             $0.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple")
         }
@@ -203,7 +203,8 @@ final class RecoveryHealthKitProvider {
 
         return makePrimarySleepSession(
             inBedSamples: inBedSamples,
-            asleepSamples: asleepSamples
+            asleepSamples: asleepSamples,
+            night: sleepWindow(for: date)
         )?.start
     }
 
@@ -334,21 +335,7 @@ final class RecoveryHealthKitProvider {
     }
 
     private func sleepWindow(for date: Date) -> DateInterval {
-        let dayStart = calendar.startOfDay(for: date)
-
-        let start = calendar.date(
-            byAdding: .hour,
-            value: -12,
-            to: dayStart
-        ) ?? dayStart
-
-        let end = calendar.date(
-            byAdding: .hour,
-            value: 14,
-            to: dayStart
-        ) ?? date
-
-        return DateInterval(start: start, end: end)
+        WeekFitNightSleepSession.nightWindow(for: date, calendar: calendar)
     }
 
     private func buildSnapshot(
@@ -390,7 +377,8 @@ final class RecoveryHealthKitProvider {
 
         guard let session = makePrimarySleepSession(
             inBedSamples: inBedSamples,
-            asleepSamples: asleepSamples
+            asleepSamples: asleepSamples,
+            night: sleepWindow(for: date)
         ) else {
             return RecoveryDaySnapshot(
                 date: date,
@@ -546,51 +534,14 @@ final class RecoveryHealthKitProvider {
 
     private func makePrimarySleepSession(
         inBedSamples: [HKCategorySample],
-        asleepSamples: [HKCategorySample]
+        asleepSamples: [HKCategorySample],
+        night: DateInterval
     ) -> DateInterval? {
-
-        let source = !inBedSamples.isEmpty ? inBedSamples : asleepSamples
-
-        guard !source.isEmpty else {
-            return nil
-        }
-
-        let sorted = source.sorted {
-            $0.startDate < $1.startDate
-        }
-
-        var sessions: [DateInterval] = []
-
-        for sample in sorted {
-            let current = DateInterval(
-                start: sample.startDate,
-                end: sample.endDate
-            )
-
-            guard let last = sessions.last else {
-                sessions.append(current)
-                continue
-            }
-
-            let gap = current.start.timeIntervalSince(last.end)
-
-            if gap <= 90 * 60 {
-                sessions.removeLast()
-
-                sessions.append(
-                    DateInterval(
-                        start: min(last.start, current.start),
-                        end: max(last.end, current.end)
-                    )
-                )
-            } else {
-                sessions.append(current)
-            }
-        }
-
-        return sessions.max {
-            $0.duration < $1.duration
-        }
+        WeekFitNightSleepSession.primarySession(
+            inBedSpans: inBedSamples.map { ($0.startDate, $0.endDate) },
+            asleepSpans: asleepSamples.map { ($0.startDate, $0.endDate) },
+            night: night
+        )
     }
 
     private func overlappingSamples(

@@ -308,6 +308,35 @@ struct QuickActionCoachRecommendationSlot: View {
     }
 }
 
+/// Horizontal recommended/frequent row for Food / Drinks / Activity sheets.
+/// Centers when cards fit the sheet width (Pro Max + 1–2 picks); scrolls when they don't.
+struct QuickSheetHorizontalCarousel<Content: View>: View {
+    var spacing: CGFloat = 12
+    var horizontalPadding: CGFloat = 18
+    var verticalPadding: CGFloat = 14
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: spacing) {
+                content()
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: spacing) {
+                    content()
+                }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, verticalPadding)
+            }
+        }
+    }
+}
+
 struct QuickActionSheetSegment: Identifiable, Hashable {
     let id: String
     let title: String

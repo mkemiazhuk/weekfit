@@ -179,36 +179,31 @@ struct QuickFoodLogSheet: View {
             if !frequentMealRows.isEmpty {
                 sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Array(frequentMealRows.enumerated()), id: \.element.id) { index, frequent in
-                            let profile = QuickLogNutritionProfile.from(meal: frequent.row.meal)
-                            let selection = session.selection(for: frequent.id)
-                            QuickFoodFrequentCard(
-                                title: frequent.row.meal.isFoodProduct
-                                    ? frequent.row.meal.title
-                                    : frequent.row.meal.localizedShortTitle,
-                                subtitle: frequentMealSubtitle(frequent.row),
-                                calories: frequent.row.meal.calories,
-                                badgeText: WeekFitLocalizedString(frequent.badgeKey),
-                                accent: QuickFoodAccent.frequentColor(at: index, isLight: palette.isLight),
-                                metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
-                                selection: selection,
-                                displayQuantity: selection.effectivePortions(for: profile),
-                                onPlusTap: { onMealPlus(frequent.row.meal) },
-                                onIncrement: { onMealIncrement(frequent.row.meal) },
-                                onDecrement: { onMealDecrement(frequent.row.meal) }
-                            ) {
-                                QuickFoodCircularMealThumb(row: frequent.row, size: 108)
-                            }
-                            .zIndex(selection.isExpanded ? 1 : 0)
+                QuickSheetHorizontalCarousel {
+                    ForEach(Array(frequentMealRows.enumerated()), id: \.element.id) { index, frequent in
+                        let profile = QuickLogNutritionProfile.from(meal: frequent.row.meal)
+                        let selection = session.selection(for: frequent.id)
+                        QuickFoodFrequentCard(
+                            title: frequent.row.meal.isFoodProduct
+                                ? frequent.row.meal.title
+                                : frequent.row.meal.localizedShortTitle,
+                            subtitle: frequentMealSubtitle(frequent.row),
+                            calories: frequent.row.meal.calories,
+                            badgeText: WeekFitLocalizedString(frequent.badgeKey),
+                            accent: QuickFoodAccent.frequentColor(at: index, isLight: palette.isLight),
+                            metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
+                            selection: selection,
+                            displayQuantity: selection.effectivePortions(for: profile),
+                            onPlusTap: { onMealPlus(frequent.row.meal) },
+                            onIncrement: { onMealIncrement(frequent.row.meal) },
+                            onDecrement: { onMealDecrement(frequent.row.meal) }
+                        ) {
+                            QuickFoodCircularMealThumb(row: frequent.row, size: 108)
                         }
+                        .zIndex(selection.isExpanded ? 1 : 0)
                     }
-                    .padding(.vertical, 14)
-                    .padding(.trailing, 18)
                 }
                 .padding(.horizontal, -18)
-                .padding(.leading, 18)
             }
 
             allHeader(
@@ -233,34 +228,29 @@ struct QuickFoodLogSheet: View {
             if !frequentSnackRows.isEmpty {
                 sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Array(frequentSnackRows.enumerated()), id: \.element.id) { index, frequent in
-                            let profile = QuickLogNutritionProfile.from(item: frequent.item)
-                            let selection = session.selection(for: frequent.id)
-                            QuickFoodFrequentCard(
-                                title: frequent.item.localizedTitle,
-                                subtitle: frequent.item.localizedServingSizeDescription,
-                                calories: frequent.item.calories,
-                                badgeText: WeekFitLocalizedString(frequent.badgeKey),
-                                accent: QuickFoodAccent.frequentColor(at: index, isLight: palette.isLight),
-                                metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
-                                selection: selection,
-                                displayQuantity: selection.effectivePortions(for: profile),
-                                onPlusTap: { onSnackPlus(frequent.item) },
-                                onIncrement: { onSnackIncrement(frequent.item) },
-                                onDecrement: { onSnackDecrement(frequent.item) }
-                            ) {
-                                QuickFoodCircularSnackThumb(row: frequent.row, size: 108)
-                            }
-                            .zIndex(selection.isExpanded ? 1 : 0)
+                QuickSheetHorizontalCarousel {
+                    ForEach(Array(frequentSnackRows.enumerated()), id: \.element.id) { index, frequent in
+                        let profile = QuickLogNutritionProfile.from(item: frequent.item)
+                        let selection = session.selection(for: frequent.id)
+                        QuickFoodFrequentCard(
+                            title: frequent.item.localizedTitle,
+                            subtitle: frequent.item.localizedServingSizeDescription,
+                            calories: frequent.item.calories,
+                            badgeText: WeekFitLocalizedString(frequent.badgeKey),
+                            accent: QuickFoodAccent.frequentColor(at: index, isLight: palette.isLight),
+                            metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
+                            selection: selection,
+                            displayQuantity: selection.effectivePortions(for: profile),
+                            onPlusTap: { onSnackPlus(frequent.item) },
+                            onIncrement: { onSnackIncrement(frequent.item) },
+                            onDecrement: { onSnackDecrement(frequent.item) }
+                        ) {
+                            QuickFoodCircularSnackThumb(row: frequent.row, size: 108)
                         }
+                        .zIndex(selection.isExpanded ? 1 : 0)
                     }
-                    .padding(.vertical, 14)
-                    .padding(.trailing, 18)
                 }
                 .padding(.horizontal, -18)
-                .padding(.leading, 18)
             }
 
             allHeader(
@@ -482,7 +472,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             thumb()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
 
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))

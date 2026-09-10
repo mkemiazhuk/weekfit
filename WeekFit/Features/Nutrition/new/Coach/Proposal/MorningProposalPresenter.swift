@@ -59,6 +59,17 @@ enum MorningProposalPresenter {
         return hasActionableGuidance
     }
 
+    /// Review sheet only when there is something concrete to review — never an empty screen.
+    static func shouldPresentReview(_ proposal: MorningPlanProposal?) -> Bool {
+        guard let proposal else { return false }
+        switch proposal.status {
+        case .proposalReady, .reviewing:
+            return hasConfidentProposal(proposal)
+        default:
+            return false
+        }
+    }
+
     static var acknowledgmentShownKeyPrefix: String { "coach.appliedAckShown." }
 
     static func shouldShowAppliedAcknowledgment(dayKey: String) -> Bool {

@@ -9,6 +9,18 @@ enum WeekFitTab: Hashable, CaseIterable {
     case meals
     case calendar
 
+    /// Free core is Today only. Premium tabs stay visible but gated.
+    var requiresPremium: Bool {
+        switch self {
+        case .today:
+            return false
+        case .coach, .meals, .calendar:
+            return true
+//        case .highlights, .insights:
+//            return true
+        }
+    }
+
     var icon: String {
         switch self {
         case .today: return "figure.mind.and.body"

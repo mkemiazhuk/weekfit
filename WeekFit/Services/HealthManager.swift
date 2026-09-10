@@ -407,9 +407,9 @@ final class HealthManager: ObservableObject {
         async let vo2 = readLatestQuantity(.vo2Max, unit: HKUnit(from: "ml/kg*min"))
 
         let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: date)
-        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
-        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
+        let night = WeekFitNightSleepSession.nightWindow(for: date, calendar: calendar)
+        let sleepStart = night.start
+        let sleepEnd = night.end
 
         async let hrv = readLatestQuantity(
             .heartRateVariabilitySDNN,
@@ -2038,9 +2038,9 @@ final class HealthManager: ObservableObject {
         }
 
         let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: date)
-        let sleepStart = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
-        let sleepEnd = calendar.date(byAdding: .hour, value: 14, to: dayStart) ?? dayStart
+        let night = WeekFitNightSleepSession.nightWindow(for: date, calendar: calendar)
+        let sleepStart = night.start
+        let sleepEnd = night.end
 
         let predicate = HKQuery.predicateForSamples(
             withStart: sleepStart,
@@ -2108,7 +2108,8 @@ final class HealthManager: ObservableObject {
 
                 guard let session = Self.primarySleepSession(
                     inBedSamples: inBedSamples,
-                    asleepSamples: asleepSamples
+                    asleepSamples: asleepSamples,
+                    night: night
                 ) else {
                     continuation.resume(returning: .empty)
                     return
@@ -2183,38 +2184,14 @@ final class HealthManager: ObservableObject {
 
     private static func primarySleepSession(
         inBedSamples: [HKCategorySample],
-        asleepSamples: [HKCategorySample]
+        asleepSamples: [HKCategorySample],
+        night: DateInterval
     ) -> DateInterval? {
-        let source = !inBedSamples.isEmpty ? inBedSamples : asleepSamples
-        guard !source.isEmpty else { return nil }
-
-        let sorted = source.sorted { $0.startDate < $1.startDate }
-        var sessions: [DateInterval] = []
-
-        for sample in sorted {
-            let interval = DateInterval(start: sample.startDate, end: sample.endDate)
-
-            guard let last = sessions.last else {
-                sessions.append(interval)
-                continue
-            }
-
-            let gap = interval.start.timeIntervalSince(last.end)
-
-            if gap <= 90 * 60 {
-                sessions.removeLast()
-                sessions.append(
-                    DateInterval(
-                        start: min(last.start, interval.start),
-                        end: max(last.end, interval.end)
-                    )
-                )
-            } else {
-                sessions.append(interval)
-            }
-        }
-
-        return sessions.max { $0.duration < $1.duration }
+        WeekFitNightSleepSession.primarySession(
+            inBedSpans: inBedSamples.map { ($0.startDate, $0.endDate) },
+            asleepSpans: asleepSamples.map { ($0.startDate, $0.endDate) },
+            night: night
+        )
     }
 
     private static func firstAsleepStart(

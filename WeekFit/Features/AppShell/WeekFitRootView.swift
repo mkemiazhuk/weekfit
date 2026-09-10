@@ -55,6 +55,9 @@ struct WeekFitRootView: View {
     @State private var acknowledgedHealthRefreshToken: UUID?
     @State private var cachedPlannedActivitiesSignature = ""
     @State private var showLegacyAccessThanks = false
+    /// Premium tab the user tried to open; opened after purchase/restore.
+    @State private var pendingPremiumTab: WeekFitTab?
+    @State private var isPresentingFeaturePaywall = false
     @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
     /// Joins overlapping workout reconcile requests (appear + onChange can race).
@@ -214,8 +217,13 @@ struct WeekFitRootView: View {
                 }
                 .environmentObject(healthManager)
             }
-            .fullScreenCover(isPresented: paywallPresented) {
-                WeekFitPaywallView(source: .root, allowsDismiss: false)
+            .fullScreenCover(isPresented: featurePaywallPresented) {
+                WeekFitPaywallView(
+                    source: .tab,
+                    requestedTab: pendingPremiumTab?.paywallRequestedTabID
+                        ?? subscriptionManager.paywallRequestedTabID,
+                    allowsDismiss: true
+                )
                     .environmentObject(subscriptionManager)
                     .environment(\.weekFitPalette, palette)
             }
@@ -233,6 +241,10 @@ struct WeekFitRootView: View {
             }
             .onChange(of: subscriptionManager.accessState) { _, _ in
                 presentLegacyThanksIfNeeded()
+                reconcilePremiumTabGate()
+            }
+            .onChange(of: subscriptionManager.hasFullAccess) { _, _ in
+                reconcilePremiumTabGate()
             }
             .onAppear(perform: handleRootAppear)
             .onChange(of: appSession.pendingRootTab) { _, tab in
@@ -260,14 +272,21 @@ struct WeekFitRootView: View {
             }
     }
 
-    private var paywallPresented: Binding<Bool> {
+    /// Dismissible paywall for Coach / Meals / Plan. Today stays free.
+    private var featurePaywallPresented: Binding<Bool> {
         Binding(
-            get: {
-                subscriptionManager.shouldBlockAccess
-                    && OnboardingStore.hasCompletedOnboarding
-                    && !appSession.isPresentingOnboarding
-            },
-            set: { _ in }
+            get: { isPresentingFeaturePaywall },
+            set: { presented in
+                isPresentingFeaturePaywall = presented
+                if !presented {
+                    if subscriptionManager.hasFullAccess {
+                        // Unlock path handled by reconcilePremiumTabGate.
+                    } else {
+                        pendingPremiumTab = nil
+                        subscriptionManager.clearFeaturePaywallRequest()
+                    }
+                }
+            }
         )
     }
 
@@ -279,7 +298,7 @@ struct WeekFitRootView: View {
                 AppDistribution.current.allowsTemporaryForcePaywall
                     && forcePaywall.isForcePaywallActive
                     && forcePaywall.isManualPaywallPresented
-                    && !subscriptionManager.shouldBlockAccess
+                    && !isPresentingFeaturePaywall
             },
             set: { presented in
                 guard AppDistribution.current.allowsTemporaryForcePaywall else {
@@ -313,7 +332,7 @@ struct WeekFitRootView: View {
             selectedContent
                 .animation(nil, value: selectedTab)
 
-            WeekFitBottomBar(selectedTab: $selectedTab)
+            WeekFitBottomBar(selectedTab: gatedSelectedTab)
                 .padding(.horizontal, 1)
                 .background(alignment: .top) {
                     Rectangle()
@@ -459,9 +478,36 @@ struct WeekFitRootView: View {
         .animation(nil, value: selectedTab)
     }
 
+    private var gatedSelectedTab: Binding<WeekFitTab> {
+        Binding(
+            get: { selectedTab },
+            set: { selectTab($0) }
+        )
+    }
+
     private func selectTab(_ tab: WeekFitTab) {
         guard selectedTab != tab else { return }
 
+        switch WeekFitPremiumTabGate.decision(
+            for: tab,
+            hasResolved: subscriptionManager.hasResolved,
+            hasFullAccess: subscriptionManager.hasFullAccess
+        ) {
+        case .allow:
+            pendingPremiumTab = nil
+            commitTabSelection(tab)
+        case .deferUntilResolved:
+            // Keep Today selected; open or paywall after entitlement resolves.
+            pendingPremiumTab = tab
+            isPresentingFeaturePaywall = false
+        case .presentPaywall:
+            pendingPremiumTab = tab
+            subscriptionManager.noteFeaturePaywall(for: tab)
+            isPresentingFeaturePaywall = true
+        }
+    }
+
+    private func commitTabSelection(_ tab: WeekFitTab) {
         if tab == .calendar {
             resetPlanDateToToday()
         }
@@ -474,6 +520,29 @@ struct WeekFitRootView: View {
             )
         ) {
             selectedTab = tab
+        }
+    }
+
+    private func reconcilePremiumTabGate() {
+        let result = WeekFitPremiumTabGate.reconcile(
+            selectedTab: selectedTab,
+            pendingTab: pendingPremiumTab,
+            hasResolved: subscriptionManager.hasResolved,
+            hasFullAccess: subscriptionManager.hasFullAccess,
+            isPaywallPresented: isPresentingFeaturePaywall
+        )
+
+        if result.presentPaywall, let pending = result.pendingTab {
+            subscriptionManager.noteFeaturePaywall(for: pending)
+        } else if !result.presentPaywall, result.pendingTab == nil {
+            subscriptionManager.clearFeaturePaywallRequest()
+        }
+
+        pendingPremiumTab = result.pendingTab
+        isPresentingFeaturePaywall = result.presentPaywall
+
+        if result.selectedTab != selectedTab {
+            commitTabSelection(result.selectedTab)
         }
     }
 

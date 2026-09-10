@@ -167,6 +167,10 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(manager.accessState, .unsubscribed)
         XCTAssertFalse(manager.hasFullAccess)
         XCTAssertTrue(manager.shouldBlockAccess)
+        XCTAssertTrue(manager.canAccess(.today))
+        XCTAssertFalse(manager.canAccess(.coach))
+        XCTAssertFalse(manager.canAccess(.meals))
+        XCTAssertFalse(manager.canAccess(.calendar))
     }
 
     func testLegacyUserIsNeverBlocked() async {
@@ -178,6 +182,41 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(manager.accessState, .legacy)
         XCTAssertTrue(manager.hasFullAccess)
         XCTAssertFalse(manager.shouldBlockAccess)
+        XCTAssertTrue(manager.canAccess(.today))
+        XCTAssertTrue(manager.canAccess(.coach))
+        XCTAssertTrue(manager.canAccess(.meals))
+        XCTAssertTrue(manager.canAccess(.calendar))
+    }
+
+    func testUnresolvedEntitlementDoesNotOpenPremiumTabs() {
+        XCTAssertEqual(manager.accessState, .loading)
+        XCTAssertTrue(manager.hasFullAccess)
+        XCTAssertTrue(manager.canAccess(.today))
+        XCTAssertFalse(manager.canAccess(.coach))
+        XCTAssertFalse(manager.canAccess(.meals))
+        XCTAssertFalse(manager.canAccess(.calendar))
+    }
+
+    func testActiveSubscriberCanAccessPremiumTabs() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.subscription = WeekFitSubscriptionSnapshot(
+            productID: WeekFitSubscriptionProductID.monthly.rawValue,
+            isIntroductoryTrial: false,
+            expirationDate: Date().addingTimeInterval(86_400),
+            isExpired: false,
+            isRevoked: false,
+            inGraceOrRetry: false
+        )
+        await manager.start()
+        XCTAssertEqual(manager.accessState, .subscribed)
+        XCTAssertTrue(manager.hasFullAccess)
+        XCTAssertTrue(manager.canAccess(.today))
+        XCTAssertTrue(manager.canAccess(.coach))
+        XCTAssertTrue(manager.canAccess(.meals))
+        XCTAssertTrue(manager.canAccess(.calendar))
     }
 
     func testAnnualTrialPurchaseUnlocksOnlyAfterVerifiedEntitlement() async {

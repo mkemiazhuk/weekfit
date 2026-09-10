@@ -5,7 +5,6 @@ struct ReviewPromptHostModifier: ViewModifier {
     @ObservedObject var reviewManager: ReviewPromptManager
     @EnvironmentObject private var appSession: AppSessionState
     @ObservedObject private var accountSession = AccountSessionController.shared
-    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
@@ -31,7 +30,6 @@ struct ReviewPromptHostModifier: ViewModifier {
             }
             .onChange(of: appSession.isPresentingOnboarding) { _, _ in syncUIBlocking() }
             .onChange(of: appSession.isPresentingHealthAccess) { _, _ in syncUIBlocking() }
-            .onChange(of: subscriptionManager.shouldBlockAccess) { _, _ in syncUIBlocking() }
             .onChange(of: accountSession.isTransitioning) { _, _ in syncUIBlocking() }
             .onChange(of: isUIBlocked) { _, blocked in
                 reviewManager.updateUIBlocking(blocked)
@@ -44,7 +42,6 @@ struct ReviewPromptHostModifier: ViewModifier {
     private var isUIBlocked: Bool {
         appSession.isPresentingOnboarding
             || appSession.isPresentingHealthAccess
-            || subscriptionManager.shouldBlockAccess
             || accountSession.isTransitioning
     }
 

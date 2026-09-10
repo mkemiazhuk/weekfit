@@ -213,24 +213,27 @@ Welcome to WeekFit 1.0.
 ```
 WeekFit is a local-first fitness planner with a daily Coach powered by Apple Health.
 
-PRIMARY TEST PATH (no account required — use this to review subscriptions):
+PRIMARY TEST PATH (Sign in with Apple — freemium Today + Premium tabs):
 1. Launch WeekFit.
-2. Complete first-run onboarding (or skip where offered).
-3. The subscription paywall is presented. It is not bypassed for App Review.
-4. Confirm Monthly and Annual products are visible with StoreKit localized prices.
-5. Annual shows the introductory free trial when StoreKit returns one (duration comes from App Store Connect — currently a 3-day free trial).
-6. Purchase can be tested with the sandbox Apple ID.
-7. Restore Purchases is on the paywall and also in Settings.
-8. After subscribe (or Restore), Today / Coach / Meals / Plan are available.
-9. Data is kept if a subscription later expires; the paywall returns, content is not wiped.
+2. Tap Sign in with Apple (sandbox Apple ID is fine).
+3. Complete first-run onboarding (or skip where offered). Grant or decline Health as offered.
+4. Today is available without purchasing. Confirm recovery/readiness and the main daily recommendation are usable.
+5. Tap Coach, Meals, or Plan — the subscription paywall is presented (dismissible). It is not bypassed for App Review.
+6. Confirm Monthly and Annual products are visible with StoreKit localized prices.
+7. Annual shows the introductory free trial when StoreKit returns one (duration comes from App Store Connect — currently a 3-day free trial).
+8. Purchase can be tested with the sandbox Apple ID.
+9. Restore Purchases is on the paywall and also in Settings.
+10. After subscribe (or Restore), the requested tab opens immediately; all tabs stay available.
+11. If the paywall is closed without purchase, the app stays on Today.
+12. Data is kept if a subscription later expires; Today remains usable and Premium tabs show the paywall again.
 
 OPTIONAL SAMPLE DATASET (after the paywall has been reviewed):
-1. From the welcome screen, long-press “Open WeekFit”.
+1. From the welcome screen, long-press “Sign in with Apple”.
 2. Choose Sign In.
 3. Email: review@weekfit.app
 4. Password: review_passw0rd
-5. If this sandbox Apple ID is not subscribed, the real paywall is shown first (same Monthly / Annual / trial / Restore flow). Subscribe or Restore to continue.
-6. After entitlement, sample Today / Coach / Meals / Plan data loads.
+5. If this sandbox Apple ID is not subscribed, Today still works; tap Coach / Meals / Plan for the real paywall (same Monthly / Annual / trial / Restore flow). Subscribe or Restore to continue.
+6. After entitlement, sample Coach / Meals / Plan data loads.
 7. To reopen the real subscription screen from the demo: Settings → WeekFit Access.
    Restore Purchases is the row directly below WeekFit Access.
 
@@ -240,7 +243,7 @@ PERMISSIONS:
 • Location (When In Use) — optional; Night Comfort theme at local sunset.
 
 NOT INCLUDED IN 1.3:
-• No cloud account (Sign in with Apple is not required).
+• No cloud sync account beyond Sign in with Apple for local workspace identity.
 • No Apple Watch companion app (completed workouts sync via HealthKit).
 
 SUBSCRIPTIONS:
@@ -250,7 +253,7 @@ SUBSCRIPTIONS:
 
 WeekFit does not provide medical advice.
 
-Demo account is optional (sample dataset only). The paywall is available without it.
+Demo account is optional (sample dataset only). Today is free after Sign in with Apple; Premium tabs present the paywall.
 Support: support@weekfit.app
 ```
 

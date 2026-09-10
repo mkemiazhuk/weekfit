@@ -150,21 +150,16 @@ struct PremiumActivityStartSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
 
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(Array(frequent.enumerated()), id: \.element.option.imageName) { _, pick in
-                                    activityFrequentCard(
-                                        option: pick.option,
-                                        badge: pick.badge,
-                                        isBlocked: isBlocked
-                                    )
-                                }
+                        QuickSheetHorizontalCarousel(verticalPadding: 8) {
+                            ForEach(Array(frequent.enumerated()), id: \.element.option.imageName) { _, pick in
+                                activityFrequentCard(
+                                    option: pick.option,
+                                    badge: pick.badge,
+                                    isBlocked: isBlocked
+                                )
                             }
-                            .padding(.vertical, 8)
-                            .padding(.trailing, 18)
                         }
                         .padding(.horizontal, -18)
-                        .padding(.leading, 18)
 
                         if weatherRisk.isAdverse {
                             WeekFitWeatherAttributionView(

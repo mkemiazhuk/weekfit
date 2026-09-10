@@ -2755,6 +2755,10 @@ struct TodayView: View {
 
         return morningProposalDismissibleChrome(accent: accent) {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            guard MorningProposalPresenter.shouldPresentReview(morningProposal) else {
+                morningProposalChromeHidden = true
+                return
+            }
             morningProposalChromeHidden = true
             showProposalReview = true
         } onClose: {
@@ -3046,7 +3050,7 @@ struct TodayView: View {
         morningProposal = MorningProposalStore.proposal(
             for: ProposalInputFingerprintBuilder.dayKey(for: Date())
         ) ?? morningProposal
-        guard morningProposal != nil else { return }
+        guard MorningProposalPresenter.shouldPresentReview(morningProposal) else { return }
         morningProposalChromeHidden = false
         showProposalReview = true
     }

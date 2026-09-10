@@ -2,12 +2,13 @@
 
 > **Purpose:** Gate for promoting a TestFlight build to App Store production.  
 > **App:** WeekFit · `com.weekfit.app` · Team `7R6347XPK2`  
-> **Target:** iOS 18+ (deployment) · v1.3  
+> **Target:** iOS 18+ (deployment) · v1.3.2  
 > **Owner:** Engineering + QA + Product
 
-**Release:** 1.3 (build 20)  
+**Release:** 1.3.2 (build 26)  
 **Build:** archive with `Scripts/archive_for_app_store.sh`  
-**Sign-off:** Engineering [ ] · QA [ ] · Product [ ]
+**Sign-off:** Engineering [ ] · QA [ ] · Product [ ]  
+**Note:** Build **26** was already uploaded to ASC on 2026-09-04. A new upload needs a higher `CURRENT_PROJECT_VERSION` (do not reuse 26).
 
 ---
 
@@ -30,7 +31,7 @@
 
 | # | Check | How | Pass |
 |---|-------|-----|------|
-| 1.1 | Versioning | `MARKETING_VERSION` = `1.3`; `CURRENT_PROJECT_VERSION` = **20** | [x] 2026-08-18 |
+| 1.1 | Versioning | `MARKETING_VERSION` = `1.3.2`; `CURRENT_PROJECT_VERSION` = **26** (app + widget aligned). **ASC already has build 26** — bump before next upload. | [x] 2026-09-10 |
 | 1.2 | Privacy manifest | `WeekFit/PrivacyInfo.xcprivacy` declares Product Interaction; Crashlytics via SDK | [x] |
 | 1.3 | Export compliance | `ITSAppUsesNonExemptEncryption = NO` in Release build settings | [x] |
 | 1.4 | Entitlements | HealthKit, HealthKit background delivery, Sign in with Apple | [x] |
@@ -106,7 +107,7 @@ xcodebuild test -scheme WeekFit \
 
 | Scenario | Pass |
 |----------|------|
-| Fresh install → Open WeekFit → Health prompt | [ ] |
+| Fresh install → Sign in with Apple → Health prompt | [ ] |
 | Settings → Help WeekFit → feedback mailto opens | [ ] |
 | Meaningful actions → review prompt eligibility (DEBUG tooling OK) | [ ] |
 | Firebase: events visible in DebugView / Crashlytics console after TestFlight | [ ] |
@@ -148,7 +149,7 @@ xcodebuild test -scheme WeekFit \
 | Subscriptions | Monthly + annual auto-renewable. Legacy = original App Store download before paid 1.3 IAP goes live (cutoff unconfirmed until 1.12). |
 | No Apple Watch app | Phone + HealthKit sync only |
 | Insights / Highlights | Not in navigation |
-| Sign in with Apple | Wired but not required |
+| Sign in with Apple | Required on welcome; local-first workspace identity |
 | App download size ~170 MB | Assets deferred; not a Review blocker |
 
 ---

@@ -24,7 +24,7 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
       highlights: [
         "Designed for training days and recovery days — not “same target every day”.",
         "Nutrition is shown next to recovery and activity signals, so choices feel obvious.",
-        "Private by design: no account required, on-device first.",
+        "Private by design: Sign in with Apple, on-device first.",
       ],
       whoTitle: "Good fit if you…",
       who: [
@@ -52,7 +52,7 @@ export const SEO_LANDINGS: Record<LandingKey, Record<Locale, LandingCopy>> = {
       highlights: [
         "Под тренировки и восстановление — а не «одна цель на каждый день».",
         "Питание рядом с сигналами восстановления и активности — решения становятся проще.",
-        "Приватно: без аккаунта, всё в первую очередь на устройстве.",
+        "Приватно: вход через Apple, данные в первую очередь на устройстве.",
       ],
       whoTitle: "Подойдёт, если вы…",
       who: [

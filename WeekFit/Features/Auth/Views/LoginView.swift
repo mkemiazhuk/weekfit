@@ -19,7 +19,6 @@ struct LoginView: View {
     @State private var ambientMotion = false
     @State private var showEmailSignIn = false
     @State private var showAppleReplaceLocalConfirmation = false
-    @State private var showLocalReplaceAppleConfirmation = false
     @StateObject private var appleSignInPresenter = AppleSignInPresenter()
 
     @ScaledMetric(relativeTo: .title3) private var brandFontSize: CGFloat = 22
@@ -99,7 +98,7 @@ struct LoginView: View {
     }
 
     private var isShowingWorkspaceReplaceDialog: Bool {
-        showAppleReplaceLocalConfirmation || showLocalReplaceAppleConfirmation
+        showAppleReplaceLocalConfirmation
     }
 
     @ViewBuilder
@@ -120,25 +119,6 @@ struct LoginView: View {
                 onPrimary: {
                     showAppleReplaceLocalConfirmation = false
                     startConfirmedAppleSignIn()
-                }
-            )
-        } else if showLocalReplaceAppleConfirmation {
-            ConfirmationDialogView(
-                icon: "exclamationmark.triangle.fill",
-                iconTint: destructiveRed,
-                title: WeekFitLocalizedString("login.localReplaceApple.title"),
-                message: WeekFitLocalizedString("login.localReplaceApple.message"),
-                secondaryTitle: WeekFitLocalizedString("common.action.cancel"),
-                primaryTitle: WeekFitLocalizedString("login.localReplaceApple.primary"),
-                isPrimaryDestructive: true,
-                onSecondary: {
-                    showLocalReplaceAppleConfirmation = false
-                },
-                onPrimary: {
-                    showLocalReplaceAppleConfirmation = false
-                    Task {
-                        await authViewModel.continueWithoutAccount()
-                    }
                 }
             )
         }
@@ -251,132 +231,78 @@ struct LoginView: View {
 
     private var bottomAuthPanel: some View {
         VStack(spacing: LoginMetrics.authStack) {
-            if WorkspaceIsolationPolicy.signingInWithAppleWouldReplaceLocalWorkspace() {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showAppleReplaceLocalConfirmation = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "apple.logo")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text(WeekFitLocalizedString("settings.account.signInWithApple"))
-                            .font(.system(size: subtitleFontSize, weight: .semibold))
-                    }
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: authButtonHeight)
-                    .background(.white, in: RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
-                }
-                .buttonStyle(LoginSecondaryButtonStyle())
-                .accessibilityIdentifier("login.appleSignIn")
-                .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
-                .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
-            } else {
-                SignInWithAppleButton(
-                    ProfileService.resolvedFullName().isEmpty ? .signUp : .signIn
-                ) { request in
-                    request.requestedScopes = [.fullName, .email]
-                    #if DEBUG
-                    AppleNameDiagnostics.logRequestedScopes(request.requestedScopes ?? [])
-                    #endif
-                } onCompletion: { result in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    #if DEBUG
-                    if case .failure(let error) = result {
-                        let ns = error as NSError
-                        if ns.code != ASAuthorizationError.canceled.rawValue {
-                            AppleNameDiagnostics.logError(
-                                error.localizedDescription,
-                                checkpoint: "1_login_onCompletion_failure"
-                            )
-                        }
-                    }
-                    #endif
-                    Task {
-                        await authViewModel.handleAppleSignIn(result)
-                    }
-                }
-                .signInWithAppleButtonStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: authButtonHeight)
-                .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
-                .accessibilityIdentifier("login.appleSignIn")
-                .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
-                .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
-            }
-
-            authDivider
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if WorkspaceIsolationPolicy.openingLocalWouldReplaceAppleWorkspace() {
-                    showLocalReplaceAppleConfirmation = true
-                } else {
-                    Task {
-                        await authViewModel.continueWithoutAccount()
-                    }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Text(WeekFitLocalizedString("login.action.openWeekFit"))
-                        .font(.system(size: subtitleFontSize, weight: .semibold))
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: authButtonHeight)
-                .background {
-                    let shape = RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous)
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.38, green: 0.66, blue: 0.48),
-                                    brandGreen,
-                                    Color(red: 0.26, green: 0.50, blue: 0.36)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+            signInWithAppleControl
+                .contextMenu {
+                    // App Review / DEBUG: keep email credentials path without a second primary CTA.
+                    Button {
+                        showEmailSignIn = true
+                    } label: {
+                        Label(
+                            WeekFitLocalizedString("login.action.signIn"),
+                            systemImage: "envelope"
                         )
-                        .overlay {
-                            shape.strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(prefersIncreasedContrast ? 0.28 : 0.22),
-                                        .white.opacity(0.04)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 0.8
-                            )
-                        }
-                        .shadow(color: brandGreen.opacity(0.42), radius: 14, x: 0, y: 8)
-                        .shadow(color: .black.opacity(0.22), radius: 6, x: 0, y: 3)
+                    }
+                    .accessibilityIdentifier("login.signIn")
                 }
-            }
-            .buttonStyle(LoginSecondaryButtonStyle())
-            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
-            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
-            .accessibilityIdentifier("login.openWeekFit")
-            .accessibilityHint(WeekFitLocalizedString("login.action.openWeekFit.hint"))
-            .contextMenu {
-                // App Review / DEBUG: keep email credentials path without showing it as a primary CTA.
-                Button {
-                    showEmailSignIn = true
-                } label: {
-                    Label(
-                        WeekFitLocalizedString("login.action.signIn"),
-                        systemImage: "envelope"
-                    )
-                }
-                .accessibilityIdentifier("login.signIn")
-            }
 
             appleHealthFooter
+        }
+    }
+
+    @ViewBuilder
+    private var signInWithAppleControl: some View {
+        if WorkspaceIsolationPolicy.signingInWithAppleWouldReplaceLocalWorkspace() {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showAppleReplaceLocalConfirmation = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "apple.logo")
+                        .font(.system(size: 17, weight: .semibold))
+                    Text(WeekFitLocalizedString("settings.account.signInWithApple"))
+                        .font(.system(size: subtitleFontSize, weight: .semibold))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: authButtonHeight)
+                .background(.white, in: RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
+            }
+            .buttonStyle(LoginSecondaryButtonStyle())
+            .accessibilityIdentifier("login.appleSignIn")
+            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
+        } else {
+            SignInWithAppleButton(
+                ProfileService.resolvedFullName().isEmpty ? .signUp : .signIn
+            ) { request in
+                request.requestedScopes = [.fullName, .email]
+                #if DEBUG
+                AppleNameDiagnostics.logRequestedScopes(request.requestedScopes ?? [])
+                #endif
+            } onCompletion: { result in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                #if DEBUG
+                if case .failure(let error) = result {
+                    let ns = error as NSError
+                    if ns.code != ASAuthorizationError.canceled.rawValue {
+                        AppleNameDiagnostics.logError(
+                            error.localizedDescription,
+                            checkpoint: "1_login_onCompletion_failure"
+                        )
+                    }
+                }
+                #endif
+                Task {
+                    await authViewModel.handleAppleSignIn(result)
+                }
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: authButtonHeight)
+            .clipShape(RoundedRectangle(cornerRadius: LoginMetrics.authCornerRadius, style: .continuous))
+            .accessibilityIdentifier("login.appleSignIn")
+            .disabled(!authViewModel.hasResolvedInitialSession || authViewModel.isLoading)
+            .opacity(authViewModel.hasResolvedInitialSession ? 1 : 0.72)
         }
     }
 
@@ -416,23 +342,6 @@ struct LoginView: View {
         .accessibilityLabel(
             "\(WeekFitLocalizedString("login.note.appleHealth.line1")) \(WeekFitLocalizedString("login.note.appleHealth.line2"))"
         )
-    }
-
-    private var authDivider: some View {
-        HStack(spacing: 10) {
-            dividerLine
-            Text(WeekFitLocalizedString("login.or"))
-                .font(.system(size: 11, weight: .regular))
-                .foregroundStyle(WeekFitTheme.whiteOpacity(0.34))
-            dividerLine
-        }
-        .padding(.vertical, LoginMetrics.dividerSpacing)
-    }
-
-    private var dividerLine: some View {
-        Rectangle()
-            .fill(.white.opacity(0.07))
-            .frame(height: 0.5)
     }
 
     // MARK: - Motion

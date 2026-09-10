@@ -26,9 +26,9 @@ final class AppReviewDemoUITests: XCTestCase {
 
     @MainActor
     private func openEmailSignInFromContextMenu(in app: XCUIApplication) {
-        let openWeekFit = app.buttons["login.openWeekFit"]
-        XCTAssertTrue(openWeekFit.waitForExistence(timeout: 8))
-        openWeekFit.press(forDuration: 1.2)
+        let appleSignIn = app.buttons["login.appleSignIn"]
+        XCTAssertTrue(appleSignIn.waitForExistence(timeout: 8))
+        appleSignIn.press(forDuration: 1.2)
 
         let emailSignIn = app.buttons["login.signIn"]
         XCTAssertTrue(emailSignIn.waitForExistence(timeout: 5))
@@ -56,7 +56,7 @@ final class AppReviewDemoUITests: XCTestCase {
     func testReviewerCredentialLoginPopulatesApp() throws {
         let app = launchDemoDatasetApp()
 
-        XCTAssertTrue(app.buttons["login.openWeekFit"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["login.appleSignIn"].waitForExistence(timeout: 8))
         signInAsReviewer(in: app)
 
         XCTAssertTrue(app.otherElements["screen.today"].waitForExistence(timeout: 12))

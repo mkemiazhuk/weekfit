@@ -28,15 +28,10 @@ struct ProposalReviewView: View {
             sheetHeader
 
             Group {
-                if let proposal {
+                if let proposal, MorningProposalPresenter.shouldPresentReview(proposal) {
                     reviewContent(proposal)
                 } else {
-                    ContentUnavailableView(
-                        WeekFitLocalizedString("coach.proposal.review.emptyTitle"),
-                        systemImage: "calendar.badge.exclamationmark",
-                        description: Text(WeekFitLocalizedString("coach.proposal.review.emptyBody"))
-                    )
-                    .foregroundStyle(WeekFitTheme.primaryText)
+                    Color.clear
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -44,14 +39,21 @@ struct ProposalReviewView: View {
         .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
         .interactiveDismissDisabled(isApplying)
         .safeAreaInset(edge: .bottom) {
-            if let proposal, proposal.status != .applied {
+            if let proposal,
+               MorningProposalPresenter.shouldPresentReview(proposal),
+               proposal.status != .applied {
                 stickyFooter(proposal)
             }
         }
         .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         .accessibilityIdentifier("morning.proposal.review")
         .onAppear {
-            proposal = MorningProposalStore.proposal(for: dayKey)
+            let loaded = MorningProposalStore.proposal(for: dayKey)
+            proposal = loaded
+            guard MorningProposalPresenter.shouldPresentReview(loaded) else {
+                dismiss()
+                return
+            }
             Task { @MainActor in
                 WeekFitWeatherAttributionStore.shared.ensureLoaded()
                 let (cached, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()

@@ -288,24 +288,22 @@ struct QuickDrinkLogSheet: View {
             sectionTitle(WeekFitLocalizedString("today.quickLog.section.recommendedForYou"))
                 .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(frequentRows) { frequent in
-                        let profile = QuickLogNutritionProfile.from(item: frequent.item)
-                        let selection = session.selection(for: frequent.id)
-                        QuickDrinkRecommendedCard(
-                            row: frequent.row,
-                            badge: WeekFitLocalizedString(frequent.badge.localizationKey),
-                            selection: selection,
-                            displayQuantity: selection.effectivePortions(for: profile),
-                            onPlusTap: { onPlusTap(frequent.item) },
-                            onIncrement: { onIncrement(frequent.item) },
-                            onDecrement: { onDecrement(frequent.item) }
-                        )
-                    }
+            QuickSheetHorizontalCarousel(
+                horizontalPadding: QuickDrinkLogDesign.Layout.horizontalPadding
+            ) {
+                ForEach(frequentRows) { frequent in
+                    let profile = QuickLogNutritionProfile.from(item: frequent.item)
+                    let selection = session.selection(for: frequent.id)
+                    QuickDrinkRecommendedCard(
+                        row: frequent.row,
+                        badge: WeekFitLocalizedString(frequent.badge.localizationKey),
+                        selection: selection,
+                        displayQuantity: selection.effectivePortions(for: profile),
+                        onPlusTap: { onPlusTap(frequent.item) },
+                        onIncrement: { onIncrement(frequent.item) },
+                        onDecrement: { onDecrement(frequent.item) }
+                    )
                 }
-                .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
-                .padding(.vertical, 14)
             }
         }
     }
@@ -317,24 +315,24 @@ struct QuickDrinkLogSheet: View {
             sectionTitle(WeekFitLocalizedString("today.quickLog.section.recent"))
                 .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 14) {
-                    ForEach(recentRows) { row in
-                        let selection = session.selection(for: row.id)
-                        QuickDrinkRecentCircleItem(
-                            row: row,
-                            selection: selection
-                        ) {
-                            if selection.isSelected {
-                                onIncrement(row.item)
-                            } else {
-                                onPlusTap(row.item)
-                            }
+            QuickSheetHorizontalCarousel(
+                spacing: 14,
+                horizontalPadding: QuickDrinkLogDesign.Layout.horizontalPadding,
+                verticalPadding: 4
+            ) {
+                ForEach(recentRows) { row in
+                    let selection = session.selection(for: row.id)
+                    QuickDrinkRecentCircleItem(
+                        row: row,
+                        selection: selection
+                    ) {
+                        if selection.isSelected {
+                            onIncrement(row.item)
+                        } else {
+                            onPlusTap(row.item)
                         }
                     }
                 }
-                .padding(.horizontal, QuickDrinkLogDesign.Layout.horizontalPadding)
-                .padding(.vertical, 4)
             }
         }
     }
@@ -600,7 +598,7 @@ private struct QuickDrinkRecommendedCard: View {
                 role: .recommended,
                 accent: tint
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
 
             Text(row.item.localizedTitle)
                 .font(QuickDrinkLogDesign.Typography.recommendedTitle)

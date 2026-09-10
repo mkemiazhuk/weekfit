@@ -38,9 +38,32 @@ final class SubscriptionManager: ObservableObject {
         WeekFitEntitlementPolicy.hasFullAccess(for: accessState)
     }
 
-    /// Root paywall gate. Does not inspect workspaces, Apple sign-in, or guest mode.
+    /// True when Premium features (Coach / Meals / Plan) are gated.
+    /// Does **not** block Today or app launch — see `WeekFitRootView` tab gating.
     var shouldBlockAccess: Bool {
         hasResolved && !hasFullAccess
+    }
+
+    /// Whether the given root tab may be opened without presenting the paywall.
+    /// Premium tabs stay closed until entitlement is resolved (no flash of premium UI).
+    func canAccess(_ tab: WeekFitTab) -> Bool {
+        WeekFitPremiumTabGate.decision(
+            for: tab,
+            hasResolved: hasResolved,
+            hasFullAccess: hasFullAccess
+        ) == .allow
+    }
+
+    /// Last premium tab that presented the feature paywall — for purchase attribution.
+    /// Cleared on dismiss without entitlement or after a successful unlock.
+    @Published private(set) var paywallRequestedTabID: String?
+
+    func noteFeaturePaywall(for tab: WeekFitTab) {
+        paywallRequestedTabID = tab.paywallRequestedTabID
+    }
+
+    func clearFeaturePaywallRequest() {
+        paywallRequestedTabID = nil
     }
 
     var selectedProduct: WeekFitProductSnapshot? {
@@ -116,7 +139,10 @@ final class SubscriptionManager: ObservableObject {
 
     func selectProduct(_ id: String) {
         selectedProductID = id
-        SubscriptionAnalytics.optionSelected(productID: id)
+        SubscriptionAnalytics.optionSelected(
+            productID: id,
+            requestedTab: paywallRequestedTabID
+        )
     }
 
     func purchaseSelected() async {
@@ -128,7 +154,11 @@ final class SubscriptionManager: ObservableObject {
 
         isPurchaseInFlight = true
         lastOutcome = nil
-        SubscriptionAnalytics.purchaseStarted(productID: productID)
+        let requestedTab = paywallRequestedTabID
+        SubscriptionAnalytics.purchaseStarted(
+            productID: productID,
+            requestedTab: requestedTab
+        )
         let outcome = await store.purchase(productID: productID)
         if outcome == .success {
             await refresh()
@@ -145,11 +175,17 @@ final class SubscriptionManager: ObservableObject {
         case .success:
             lastOutcome = hasFullAccess ? .success : .failedVerification
             if hasFullAccess {
-                SubscriptionAnalytics.purchaseSuccess(productID: productID)
+                SubscriptionAnalytics.purchaseSuccess(
+                    productID: productID,
+                    requestedTab: requestedTab
+                )
             }
         case .cancelled:
             lastOutcome = .cancelled
-            SubscriptionAnalytics.purchaseCancelled(productID: productID)
+            SubscriptionAnalytics.purchaseCancelled(
+                productID: productID,
+                requestedTab: requestedTab
+            )
         case .pending:
             lastOutcome = .pending
         case .failedVerification, .productsUnavailable, .failed:
@@ -163,7 +199,8 @@ final class SubscriptionManager: ObservableObject {
         guard !isRestoreInFlight else { return }
         isRestoreInFlight = true
         lastOutcome = nil
-        SubscriptionAnalytics.restoreStarted()
+        let requestedTab = paywallRequestedTabID
+        SubscriptionAnalytics.restoreStarted(requestedTab: requestedTab)
         do {
             try await store.restorePurchases()
             await refresh()
@@ -172,7 +209,7 @@ final class SubscriptionManager: ObservableObject {
             }
             if hasFullAccess {
                 lastOutcome = .success
-                SubscriptionAnalytics.restoreSuccess()
+                SubscriptionAnalytics.restoreSuccess(requestedTab: requestedTab)
             } else {
                 lastOutcome = .failed
             }

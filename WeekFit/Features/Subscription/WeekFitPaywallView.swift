@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WeekFitPaywallView: View {
     var source: SubscriptionAnalyticsSource = .root
+    var requestedTab: String? = nil
     var allowsDismiss: Bool = false
 
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
@@ -28,7 +29,10 @@ struct WeekFitPaywallView: View {
         .id(palette.appearanceInvalidationToken)
         .interactiveDismissDisabled(!allowsDismiss)
         .onAppear {
-            SubscriptionAnalytics.paywallViewed(source: source)
+            SubscriptionAnalytics.paywallViewed(
+                source: source,
+                requestedTab: requestedTab ?? subscriptionManager.paywallRequestedTabID
+            )
         }
         .onChange(of: subscriptionManager.hasFullAccess) { _, hasAccess in
             // Force Paywall diagnostics must keep the real paywall open for
