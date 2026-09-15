@@ -17,6 +17,7 @@ enum AnalyticsScreen: String, Sendable, CaseIterable {
     case helpWeekFit = "help_weekfit"
     case feedbackForm = "feedback_form"
     case paywall = "paywall"
+    case recoveryChallenge = "recovery_challenge"
 
     /// Legacy alias kept for any older references.
     static var profile: AnalyticsScreen { .settings }

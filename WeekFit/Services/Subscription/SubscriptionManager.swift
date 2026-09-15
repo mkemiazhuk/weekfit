@@ -148,6 +148,11 @@ final class SubscriptionManager: ObservableObject {
     func purchaseSelected() async {
         guard let productID = selectedProduct?.id else {
             lastOutcome = .productsUnavailable
+            SubscriptionAnalytics.purchaseFailed(
+                productID: selectedProductID,
+                requestedTab: paywallRequestedTabID,
+                failureReason: .productsUnavailable
+            )
             return
         }
         guard !isPurchaseInFlight else { return }
@@ -179,6 +184,12 @@ final class SubscriptionManager: ObservableObject {
                     productID: productID,
                     requestedTab: requestedTab
                 )
+            } else {
+                SubscriptionAnalytics.purchaseFailed(
+                    productID: productID,
+                    requestedTab: requestedTab,
+                    failureReason: .verificationFailed
+                )
             }
         case .cancelled:
             lastOutcome = .cancelled
@@ -188,19 +199,47 @@ final class SubscriptionManager: ObservableObject {
             )
         case .pending:
             lastOutcome = .pending
-        case .failedVerification, .productsUnavailable, .failed:
+            // Ask to Buy / deferred is terminal for *this* purchase attempt funnel.
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .pending
+            )
+        case .failedVerification:
             lastOutcome = outcome
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .verificationFailed
+            )
+        case .productsUnavailable:
+            lastOutcome = outcome
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .productsUnavailable
+            )
+        case .failed:
+            lastOutcome = outcome
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .storekitError
+            )
         }
 
         isPurchaseInFlight = false
     }
 
-    func restorePurchases() async {
+    /// User-initiated Restore Purchases only (paywall / Settings).
+    /// Does not run during `start()`, `refresh()`, or StoreKit transaction sync.
+    func restorePurchases(source: SubscriptionAnalyticsSource = .other) async {
         guard !isRestoreInFlight else { return }
         isRestoreInFlight = true
         lastOutcome = nil
         let requestedTab = paywallRequestedTabID
-        SubscriptionAnalytics.restoreStarted(requestedTab: requestedTab)
+        let hadEntitlementBefore = hasFullAccess
+        SubscriptionAnalytics.restoreStarted(source: source, requestedTab: requestedTab)
         do {
             try await store.restorePurchases()
             await refresh()
@@ -209,16 +248,40 @@ final class SubscriptionManager: ObservableObject {
             }
             if hasFullAccess {
                 lastOutcome = .success
-                SubscriptionAnalytics.restoreSuccess(requestedTab: requestedTab)
+                SubscriptionAnalytics.restoreSuccess(
+                    source: source,
+                    requestedTab: requestedTab,
+                    hasEntitlementBefore: hadEntitlementBefore,
+                    hasEntitlementAfter: true,
+                    restoredProductID: activeSubscription?.productID
+                )
             } else {
                 lastOutcome = .failed
+                SubscriptionAnalytics.restoreFailed(
+                    source: source,
+                    requestedTab: requestedTab,
+                    failureReason: .noPurchases,
+                    hasEntitlementAfter: false
+                )
             }
         } catch is CancellationError {
             await refresh()
             lastOutcome = .cancelled
+            SubscriptionAnalytics.restoreFailed(
+                source: source,
+                requestedTab: requestedTab,
+                failureReason: .cancelled,
+                hasEntitlementAfter: hasFullAccess
+            )
         } catch {
             await refresh()
             lastOutcome = .failed
+            SubscriptionAnalytics.restoreFailed(
+                source: source,
+                requestedTab: requestedTab,
+                failureReason: .storekitError,
+                hasEntitlementAfter: hasFullAccess
+            )
         }
         isRestoreInFlight = false
     }

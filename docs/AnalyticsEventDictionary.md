@@ -7,8 +7,8 @@ Product analytics go through `AppAnalytics` / `ProductAnalytics` / `OnboardingFu
 It must not receive HealthKit values, derived health/recovery/sleep/readiness state,
 nutrition quantities, workout metrics, or free-form health content.
 
-**Consent:** `ProductAnalyticsConsent` — Analytics collection is **OFF** until the user
-enables Share Product Analytics in Settings. Crashlytics is independent (see
+**Consent:** `ProductAnalyticsConsent` — Analytics collection defaults **ON**. Users can
+disable Share Usage Data in Settings. Crashlytics is independent (see
 `FirebaseEnvironment`). DEBUG builds keep Analytics and Crashlytics OFF.
 
 **Ownership:** Every new event must answer a concrete product question, use a typed
@@ -324,15 +324,31 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 
 | Event | Trigger | Parameters |
 |-------|---------|------------|
-| `paywall_viewed` | Paywall appear | `source` = `onboarding` \| `root` \| `settings` \| `other` |
-| `subscription_option_selected` | Monthly / annual selected | `product_id` |
-| `subscription_purchase_started` | Purchase CTA | `product_id` |
-| `subscription_purchase_success` | Verified entitlement after purchase | `product_id` |
-| `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id` |
-| `subscription_restore_started` | Restore Purchases | — |
-| `subscription_restore_success` | Restore found an active entitlement | — |
+| `paywall_viewed` | Once per paywall presentation (deduped by `paywall_instance_id`) | `source` = `onboarding` \| `root` \| `settings` \| `tab` \| `other`; `requested_tab`; `current_tab`; `has_full_access`; `paywall_instance_id` |
+| `subscription_option_selected` | Monthly / annual selected | `product_id`; `requested_tab` |
+| `subscription_purchase_started` | Purchase CTA | `product_id`; `requested_tab` |
+| `subscription_purchase_success` | Verified entitlement after purchase | `product_id`; `requested_tab` |
+| `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
+| `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `products_unavailable` \| `pending` |
+| `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab` |
+| `subscription_restore_success` | Restore found an active entitlement | `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id` |
+| `subscription_restore_failed` | Restore finished without entitlement or StoreKit error | `source`; `requested_tab`; `failure_reason` = `no_purchases` \| `storekit_error` \| `cancelled`; `has_entitlement_after` |
+
+**Restore is never fired** from automatic entitlement refresh, app launch, or StoreKit transaction sync — only paywall / Settings Restore buttons.
+
+`paywall_instance_id` is a short-lived correlation token for dedupe only. **Do not** register it as a GA4 custom dimension (high cardinality).
 
 Screen: `paywall` via `ProductScreenTracker` on paywall appear.
+
+### Observable funnels
+
+Purchase:
+`paywall_viewed` → `subscription_option_selected` → `subscription_purchase_started` → `subscription_purchase_success` \| `subscription_purchase_cancelled` \| `subscription_purchase_failed`
+
+Restore:
+`paywall_viewed` → `subscription_restore_started` → `subscription_restore_success` \| `subscription_restore_failed`
+
+(Settings restore may omit `paywall_viewed` when Restore is tapped from the Settings list without opening the paywall.)
 
 ---
 

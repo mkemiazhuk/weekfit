@@ -70,8 +70,6 @@ struct TodayView: View {
         static let gapAfterOverview: CGFloat = gapBetweenCards
         static let gapAfterUpNext: CGFloat = gapBetweenCards
         static let gapBeforeQuickActions: CGFloat = gapBetweenCards
-        /// Align with shared tab clearance.
-        static let tabBarContentInset: CGFloat = WeekFitScreenLayout.tabBarClearance
         static let ringGroupSpacing: CGFloat = 4
         static let cardTitleBottomGap: CGFloat = 8
         static let overviewContentTopPadding: CGFloat = 10
@@ -81,10 +79,6 @@ struct TodayView: View {
         static let cardInteriorVerticalPadding: CGFloat = 14
         static let quickTileRadius: CGFloat = 18
         static let quickTileSpacing: CGFloat = 10
-    }
-
-    private var shouldScrollSummary: Bool {
-        dynamicTypeSize >= .large
     }
 
     private var shouldStackRings: Bool {
@@ -355,10 +349,11 @@ struct TodayView: View {
         let _ = TodayStartupDiagnostics.child("todayActiveBody begin")
         let _ = languageManager.selectedLanguage
 
-        ZStack(alignment: .bottom) {
-            todayBackground
-
+        // Match Coach / Meals / Plan: header chrome stays in safe area; root paints
+        // the shared canvas. Atmosphere is a background, not a layout sibling.
+        ZStack(alignment: .top) {
             todayScreen
+                .background { todayBackground }
                 .onAppear {
                    TodayStartupDiagnostics.step(
                        8,
@@ -1287,21 +1282,17 @@ struct TodayView: View {
 
         } content: {
 
-            Group {
-                if shouldScrollSummary {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        summaryContent()
-                            .padding(.top, TodayLayout.contentTopInset)
-                            .padding(.bottom, 8)
-                    }
-                    .weekFitTransparentScrollBackground()
-                } else {
-                    summaryContent()
-                        .padding(.top, TodayLayout.contentTopInset)
-                }
+            ScrollView(.vertical, showsIndicators: false) {
+                summaryContent()
+                    .padding(.top, TodayLayout.contentTopInset)
+                    .padding(.bottom, 8)
             }
+            // Transparent — same atmosphere plane as the weather header.
+            // Opaque canvas fill here painted a black/white slab over the glows.
+            .weekFitTransparentScrollBackground(fillsCanvas: false)
         }
-        .padding(.bottom, TodayLayout.tabBarContentInset)
+        // Same tab-bar clearance as Plan / Coach content.
+        .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
     }
 
     @ViewBuilder
@@ -1534,6 +1525,72 @@ struct TodayView: View {
                 Capsule()
                     .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
             )
+    }
+
+    /// Compact secondary cue for Recovery Challenge inside the Today Coach card.
+    private struct TodayRecoveryChallengeCue: Equatable {
+        var label: String
+        var showsCheckmark: Bool
+    }
+
+    private var todayRecoveryChallengeCue: TodayRecoveryChallengeCue? {
+        guard RecoveryChallengeConfig.isFeatureAvailable else { return nil }
+        switch RecoveryChallengeStore.headerEntry() {
+        case .hidden:
+            return nil
+        case .invite:
+            return TodayRecoveryChallengeCue(
+                label: WeekFitLocalizedString("today.coach.challenge.invite"),
+                showsCheckmark: false
+            )
+        case .participating(let active):
+            return TodayRecoveryChallengeCue(
+                label: String(
+                    format: WeekFitLocalizedString("today.coach.challenge.dayOf"),
+                    active.dayIndex,
+                    RecoveryChallengeConfig.dayCount
+                ),
+                showsCheckmark: active.todayCompleted
+            )
+        case .summary(let summary):
+            return TodayRecoveryChallengeCue(
+                label: String(
+                    format: WeekFitLocalizedString("today.coach.challenge.finishedCount"),
+                    summary.completedCount,
+                    RecoveryChallengeConfig.dayCount
+                ),
+                showsCheckmark: true
+            )
+        }
+    }
+
+    private func todayRecoveryChallengeStatusRow(_ cue: TodayRecoveryChallengeCue) -> some View {
+        // Status-only cue — no chevron / no direct sheet open. Whole Coach card
+        // navigates to the Coach tab; challenge opens from there.
+        HStack(spacing: 8) {
+            Image(systemName: "moon.stars.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(textSecondary.opacity(0.78))
+                .frame(width: 40, alignment: .center)
+                .accessibilityHidden(true)
+
+            Text(cue.label)
+                .font(.caption.weight(.semibold))
+                .fontDesign(.rounded)
+                .foregroundStyle(textSecondary.opacity(0.92))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .allowsTightening(true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if cue.showsCheckmark {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(textTertiary.opacity(0.90))
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     private var coachSettlingGlyph: some View {
@@ -2424,88 +2481,112 @@ struct TodayView: View {
         let insightTitle = display.title
         let insightIcon = presentation.icon
         let insightMessage = display.message
+        let challengeCue = todayRecoveryChallengeCue
 
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            ProductAnalytics.todayPrimaryActionTapped(.coach)
-            onSelectTab(.coach)
-        } label: {
-            todayPremiumCard(accent: insightColor, featured: true) {
-                HStack(alignment: .top, spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(insightColor.opacity(0.11))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Circle()
-                                    .stroke(insightColor.opacity(0.18), lineWidth: 1)
-                            }
+        // Card chrome stays neutral (Overview / Up Next / Meals language).
+        // Semantic color lives only on the Coach glyph + eyebrow — not a gold slab border
+        // that made the nested Recovery Challenge row look "premium".
+        return todayPremiumCard(accent: nil, featured: false) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                ProductAnalytics.todayPrimaryActionTapped(.coach)
+                onSelectTab(.coach)
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(insightColor.opacity(0.11))
+                                .frame(width: 40, height: 40)
+                                .overlay {
+                                    Circle()
+                                        .stroke(insightColor.opacity(0.18), lineWidth: 1)
+                                }
 
-                        Image(systemName: insightIcon)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(insightColor.opacity(0.92))
-                            .offset(y: coachIconOpticalYOffset(insightIcon))
-                    }
-                    .padding(.top, 2)
+                            Image(systemName: insightIcon)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(insightColor.opacity(0.92))
+                                .offset(y: coachIconOpticalYOffset(insightIcon))
+                        }
+                        .padding(.top, 2)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(AppText.Today.coachInsightLabel)
-                            .font(.caption2.weight(.bold))
-                            .fontDesign(.rounded)
-                            .tracking(1.45)
-                            .foregroundStyle(insightColor.opacity(0.78))
-
-                        Text(insightTitle)
-                            .font(.callout.weight(.bold))
-                            .fontDesign(.rounded)
-                            .foregroundStyle(textPrimary)
-                            .padding(.top, 2)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(3)
-                            .lineSpacing(1)
-                            .minimumScaleFactor(0.92)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(1)
-
-                        if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text(insightMessage)
-                                .font(.footnote)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(AppText.Today.coachInsightLabel)
+                                .font(.caption2.weight(.bold))
                                 .fontDesign(.rounded)
-                                .foregroundStyle(textSecondary.opacity(0.68))
-                                .lineSpacing(2)
+                                .tracking(1.45)
+                                .foregroundStyle(textSecondary.opacity(0.78))
+
+                            Text(insightTitle)
+                                .font(.callout.weight(.bold))
+                                .fontDesign(.rounded)
+                                .foregroundStyle(textPrimary)
+                                .padding(.top, 2)
                                 .multilineTextAlignment(.leading)
                                 .lineLimit(3)
+                                .lineSpacing(1)
+                                .minimumScaleFactor(0.92)
                                 .fixedSize(horizontal: false, vertical: true)
-                        }
+                                .layoutPriority(1)
 
-                        if presentation.showsLimitedConfidenceBadge {
-                            todayLimitedRecoveryChip
-                                .padding(.top, 4)
+                            if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(insightMessage)
+                                    .font(.footnote)
+                                    .fontDesign(.rounded)
+                                    .foregroundStyle(textSecondary.opacity(0.68))
+                                    .lineSpacing(2)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            if presentation.showsLimitedConfidenceBadge {
+                                todayLimitedRecoveryChip
+                                    .padding(.top, 4)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(textTertiary.opacity(0.75))
+                            .padding(.top, 10)
+                            .accessibilityHidden(true)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
+                    .padding(.horizontal, 16)
+                    .padding(.top, TodayLayout.coachCardVerticalPadding)
+                    .padding(.bottom, challengeCue == nil ? TodayLayout.coachCardVerticalPadding : 10)
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(textTertiary.opacity(0.75))
-                        .padding(.top, 10)
-                        .accessibilityHidden(true)
+                    if let challengeCue {
+                        Rectangle()
+                            .fill(WeekFitTheme.divider.opacity(0.55))
+                            .frame(height: 1)
+                            .padding(.horizontal, 16)
+
+                        todayRecoveryChallengeStatusRow(challengeCue)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, TodayLayout.coachCardVerticalPadding)
+                            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+                .contentShape(Rectangle())
             }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            String(
-                format: "%@: %@. %@",
-                String(localized: AppText.Today.coachInsightLabel),
-                insightTitle,
-                insightMessage
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                [
+                    String(localized: AppText.Today.coachInsightLabel),
+                    insightTitle,
+                    insightMessage,
+                    challengeCue?.label ?? ""
+                ]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: ". ")
             )
-        )
-        .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+            .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+        }
         .transition(.identity)
         .onAppear {
             guard presentation.planAdjustmentMode == .appliedExecuting else { return }
@@ -2641,23 +2722,42 @@ struct TodayView: View {
 
     @ViewBuilder
     private var coachInsightWithOptionalProposalOverlay: some View {
-        // Compact proposal teaser floats above the usual Coach card.
-        // Underlay is nudged down and slightly inset so the familiar card peeks out.
-        let showProposal = !morningProposalChromeHidden && morningProposalCard() != nil
+        // Compact teaser floats above the usual Coach card when Morning Adjustments
+        // chrome is available; otherwise show the Coach insight phase content.
+        let showMorningProposal = !morningProposalChromeHidden && hasMorningProposalChrome
+
+        if showMorningProposal {
+            morningAdjustmentsOverlayStack
+        } else {
+            coachInsightPhaseContent
+        }
+    }
+
+    /// Whether Morning Adjustments chrome exists — without building the card view.
+    private var hasMorningProposalChrome: Bool {
+        switch MorningProposalPresenter.chromeState(for: morningProposal) {
+        case .proposalReady:
+            return true
+        case .applied:
+            guard let dayKey = morningProposal?.dayKey else { return false }
+            return MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey)
+                && CoachAppliedAcknowledgmentCopy.planAdjustmentMode(forDayKey: dayKey) == .appliedExecuting
+        case .gathering, .noChangesNeeded, .stale, .failed, .hidden, .unavailable:
+            return false
+        }
+    }
+
+    @ViewBuilder
+    private var morningAdjustmentsOverlayStack: some View {
         let peek: CGFloat = 16
         let underlayInset: CGFloat = 10
-
         ZStack(alignment: .top) {
-            if showProposal {
-                morningProposalStackUnderlay
-                    .padding(.top, peek)
-                    .padding(.horizontal, underlayInset)
-                    .allowsHitTesting(false)
-            } else {
-                coachInsightPhaseContent
-            }
+            morningProposalStackUnderlay
+                .padding(.top, peek)
+                .padding(.horizontal, underlayInset)
+                .allowsHitTesting(false)
 
-            if showProposal, let proposalCard = morningProposalCard() {
+            if let proposalCard = morningProposalCard() {
                 proposalCard
                     .onAppear {
                         if let dayKey = morningProposal?.dayKey {
@@ -2675,8 +2775,8 @@ struct TodayView: View {
                     )
             }
         }
-        .padding(.bottom, showProposal ? peek : 0)
-        .animation(.easeOut(duration: 0.22), value: showProposal)
+        .padding(.bottom, peek)
+        .animation(.easeOut(duration: 0.22), value: true)
     }
 
     /// Real Coach card when ready; quiet plate while Coach is still settling —
@@ -3557,6 +3657,10 @@ struct TodayView: View {
     }
     
     private func upNextSubtitle(for activity: PlannedActivity) -> String {
+        if let startsIn = upNextStartsInText(for: activity) {
+            return startsIn
+        }
+
         let subtitle = activitySubtitle(activity)
         let context = activityContext(activity)
 
@@ -3569,6 +3673,19 @@ struct TodayView: View {
         }
 
         return "\(subtitle) · \(context)"
+    }
+
+    /// Prefer compact “Starts in N min” when the activity is upcoming later today.
+    private func upNextStartsInText(for activity: PlannedActivity) -> String? {
+        guard Calendar.current.isDateInToday(activity.date) else { return nil }
+        let seconds = activity.date.timeIntervalSinceNow
+        guard seconds > 0 else { return nil }
+        let minutes = Int(ceil(seconds / 60.0))
+        guard minutes > 0, minutes < 24 * 60 else { return nil }
+        return String(
+            format: WeekFitLocalizedString("today.upNext.startsInMinutesFormat"),
+            minutes
+        )
     }
 
     private func coachProvenanceKind(for activity: PlannedActivity) -> CoachChangeKind? {

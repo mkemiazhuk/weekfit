@@ -59,7 +59,7 @@ struct WeekFitTodayWeatherHeader: View {
                     .accessibilityIdentifier("settings.open")
                 }
             }
-            .frame(minHeight: 48)
+            .frame(minHeight: 52)
         }
         .onAppear {
             guard !didStart else { return }

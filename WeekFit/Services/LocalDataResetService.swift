@@ -125,6 +125,8 @@ final class LocalDataResetService {
                 CustomMealStore.storageKey,
                 DefaultMealLibrarySeeder.seededKey,
                 CustomIngredientStore.storageKey,
+                RecoveryChallengeStore.storageKey,
+                RecoveryChallengeStore.introShownEventIDKey,
                 AppLanguage.storageKey,
                 "coach_log_level",
                 "weekfit_quick_item_usage_v1",

@@ -45,14 +45,26 @@ final class AnalyticsPrivacyHardeningTests: XCTestCase {
 
     // MARK: - Consent
 
-    func testFreshInstallAnalyticsConsentDefaultsOff() {
+    func testFreshInstallAnalyticsConsentDefaultsOn() {
         XCTAssertFalse(ProductAnalyticsConsent.hasExplicitChoice())
-        XCTAssertFalse(ProductAnalyticsConsent.isSharingEnabled())
+        XCTAssertTrue(ProductAnalyticsConsent.isSharingEnabled())
     }
 
-    func testMissingStoredChoiceTreatedAsOff() {
+    func testMissingStoredChoiceTreatedAsOn() {
         // Explicitly no key — migration / existing install without choice.
         defaults.removeObject(forKey: ProductAnalyticsConsent.storageKey)
+        XCTAssertTrue(ProductAnalyticsConsent.isSharingEnabled())
+    }
+
+    func testMigrateToDefaultOnEnablesPreviouslyDisabledConsentOnce() {
+        ProductAnalyticsConsent.setSharingEnabled(false)
+        XCTAssertFalse(ProductAnalyticsConsent.isSharingEnabled())
+
+        ProductAnalyticsConsent.migrateToDefaultOnIfNeeded()
+        XCTAssertTrue(ProductAnalyticsConsent.isSharingEnabled())
+
+        ProductAnalyticsConsent.setSharingEnabled(false)
+        ProductAnalyticsConsent.migrateToDefaultOnIfNeeded()
         XCTAssertFalse(ProductAnalyticsConsent.isSharingEnabled())
     }
 

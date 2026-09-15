@@ -2,7 +2,7 @@
 
 ## Verification notes (2026-08-25 privacy hardening)
 
-- Product Analytics is **opt-in** (`ProductAnalyticsConsent`); missing choice → OFF.
+- Product Analytics defaults **ON** (`ProductAnalyticsConsent`); missing choice → ON; user can disable in Settings.
 - Crashlytics remains ON for TestFlight/App Store; custom logs use bounded diagnostic codes only.
 - No health-derived Analytics parameters (`recovery_band`, sleep presence, strategy, reason categories, coach health topics).
 - No `Analytics.setUserID` / Crashlytics user ID APIs in WeekFit sources.

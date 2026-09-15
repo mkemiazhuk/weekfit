@@ -53,6 +53,8 @@ final class WeekFitWidgetSnapshotTests: XCTestCase {
         XCTAssertTrue(WeekFitWidgetDeepLink.isTodayURL(WeekFitWidgetDeepLink.todayURL))
         XCTAssertTrue(WeekFitWidgetDeepLink.isTodayURL(WeekFitWidgetDeepLink.todayNextActionURL))
         XCTAssertFalse(WeekFitWidgetDeepLink.isTodayURL(URL(string: "https://example.com")!))
+        XCTAssertTrue(WeekFitWidgetDeepLink.isRecoveryChallengeURL(WeekFitWidgetDeepLink.recoveryChallengeURL))
+        XCTAssertEqual(WeekFitWidgetDeepLink.recoveryChallengeURL.absoluteString, "weekfit://challenge/recovery7")
     }
 
     func testCompactNextTitleKeepsWidgetReadable() {

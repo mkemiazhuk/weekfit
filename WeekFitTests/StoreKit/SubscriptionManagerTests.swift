@@ -9,6 +9,7 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var subscription: WeekFitSubscriptionSnapshot?
     var purchaseOutcome: WeekFitPurchaseOutcome = .success
     var restoreError: Error?
+    var restoreGrantsSubscription = true
     var purchaseCalls: [String] = []
     var restoreCount = 0
     var loadProductsError: Error?
@@ -65,6 +66,7 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     func restorePurchases() async throws {
         restoreCount += 1
         if let restoreError { throw restoreError }
+        guard restoreGrantsSubscription else { return }
         subscription = WeekFitSubscriptionSnapshot(
             productID: WeekFitSubscriptionProductID.annual.rawValue,
             isIntroductoryTrial: false,
@@ -104,6 +106,7 @@ final class SubscriptionManagerTests: XCTestCase {
         super.setUp()
         recording = RecordingAnalyticsService()
         AppAnalytics.setSharedForTests(recording)
+        SubscriptionAnalytics.resetPaywallViewDedupForTests()
         fallbackSuite = "weekfit.tests.entitlement.\(UUID().uuidString)"
         fallbackDefaults = UserDefaults(suiteName: fallbackSuite)
         fallbackDefaults.removePersistentDomain(forName: fallbackSuite)
@@ -146,6 +149,7 @@ final class SubscriptionManagerTests: XCTestCase {
     }
 
     override func tearDown() {
+        SubscriptionAnalytics.resetPaywallViewDedupForTests()
         AppAnalytics.resetSharedForTests()
         if let fallbackSuite {
             fallbackDefaults?.removePersistentDomain(forName: fallbackSuite)
@@ -270,12 +274,98 @@ final class SubscriptionManagerTests: XCTestCase {
             environment: "test"
         )
         await manager.start()
-        await manager.restorePurchases()
+        await manager.restorePurchases(source: .tab)
         XCTAssertEqual(store.restoreCount, 1)
         XCTAssertEqual(manager.accessState, .subscribed)
         XCTAssertTrue(manager.hasFullAccess)
         XCTAssertEqual(recording.events(named: .subscriptionRestoreStarted).count, 1)
         XCTAssertEqual(recording.events(named: .subscriptionRestoreSuccess).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        let success = try! XCTUnwrap(recording.events(named: .subscriptionRestoreSuccess).first)
+        XCTAssertEqual(success.parameters[AnalyticsParameterKey.source], "tab")
+        XCTAssertEqual(success.parameters[AnalyticsParameterKey.hasEntitlementBefore], "false")
+        XCTAssertEqual(success.parameters[AnalyticsParameterKey.hasEntitlementAfter], "true")
+        XCTAssertEqual(
+            success.parameters[AnalyticsParameterKey.restoredProductID],
+            WeekFitSubscriptionProductID.annual.rawValue
+        )
+    }
+
+    func testRestoreWithNoPurchasesEmitsFailedNoPurchases() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.restoreGrantsSubscription = false
+        await manager.start()
+        XCTAssertFalse(manager.hasFullAccess)
+        await manager.restorePurchases(source: .settings)
+        XCTAssertEqual(store.restoreCount, 1)
+        XCTAssertFalse(manager.hasFullAccess)
+        XCTAssertEqual(recording.events(named: .subscriptionRestoreStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.source], "settings")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "no_purchases")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
+    }
+
+    func testRestoreStoreKitErrorEmitsFailedStorekitError() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.restoreError = NSError(domain: "test.restore", code: 42)
+        await manager.start()
+        await manager.restorePurchases(source: .settings)
+        XCTAssertEqual(recording.events(named: .subscriptionRestoreStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "storekit_error")
+    }
+
+    func testStartAndRefreshDoNotEmitRestoreAnalytics() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        await manager.start()
+        await manager.refresh()
+        XCTAssertEqual(store.restoreCount, 0)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreStarted).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+    }
+
+    func testPurchaseFailureEmitsPurchaseFailed() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseOutcome = .failed
+        await manager.start()
+        await manager.purchaseSelected()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+        let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "storekit_error")
+    }
+
+    func testPendingPurchaseEmitsTerminalPurchaseFailedPending() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseOutcome = .pending
+        await manager.start()
+        await manager.purchaseSelected()
+        XCTAssertEqual(manager.lastOutcome, .pending)
+        XCTAssertTrue(manager.shouldBlockAccess)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseCancelled).isEmpty)
+        let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "pending")
     }
 
     func testExpiredSubscriptionStaysGatedAfterRefresh() async {

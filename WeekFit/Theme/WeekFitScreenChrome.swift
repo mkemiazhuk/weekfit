@@ -82,10 +82,12 @@ extension View {
         modifier(WeekFitScreenCanvasModifier(ambient: ambient))
     }
 
-    /// Kill UIKit List/ScrollView chrome and paint the shared root canvas
-    /// through the full scroll viewport (not only the laid-out content size).
-    func weekFitTransparentScrollBackground() -> some View {
-        modifier(WeekFitTransparentScrollBackgroundModifier())
+    /// Kill UIKit List/ScrollView chrome.
+    /// - `fillsCanvas: true` (default) — paint shared ivory/OLED under the scroll (Coach / Meals / Plan).
+    /// - `fillsCanvas: false` — leave transparent so a parent atmosphere (Today) shows through.
+    /// Never walk the UIKit hierarchy from `UIViewRepresentable` — that hung launch.
+    func weekFitTransparentScrollBackground(fillsCanvas: Bool = true) -> some View {
+        modifier(WeekFitTransparentScrollBackgroundModifier(fillsCanvas: fillsCanvas))
     }
 
     /// Today-class primary card.
@@ -180,14 +182,24 @@ private struct WeekFitScreenCanvasModifier: ViewModifier {
 }
 
 private struct WeekFitTransparentScrollBackgroundModifier: ViewModifier {
+    var fillsCanvas: Bool = true
     @Environment(\.weekFitPalette) private var palette
 
     func body(content: Content) -> some View {
-        content
-            .scrollContentBackground(.hidden)
-            .background {
-                palette.appScreenBackground
-                    .ignoresSafeArea(edges: .bottom)
+        // SwiftUI only. Never attach UIViewRepresentable that walks UIScrollView
+        // ancestors/siblings from updateUIView — that hung launch on device.
+        Group {
+            if fillsCanvas {
+                content
+                    .scrollContentBackground(.hidden)
+                    .background {
+                        palette.appScreenBackground
+                            .ignoresSafeArea(edges: .bottom)
+                    }
+            } else {
+                content
+                    .scrollContentBackground(.hidden)
             }
+        }
     }
 }

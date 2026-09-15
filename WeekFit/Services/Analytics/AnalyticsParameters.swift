@@ -22,6 +22,13 @@ enum AnalyticsParameterKey {
     static let surface = "surface"
     static let productID = "product_id"
     static let requestedTab = "requested_tab"
+    static let currentTab = "current_tab"
+    static let hasFullAccess = "has_full_access"
+    static let paywallInstanceID = "paywall_instance_id"
+    static let hasEntitlementBefore = "has_entitlement_before"
+    static let hasEntitlementAfter = "has_entitlement_after"
+    static let restoredProductID = "restored_product_id"
+    static let failureReason = "failure_reason"
     /// Release channel: `testflight` | `appstore` (set as default event parameter).
     static let distribution = "distribution"
 }

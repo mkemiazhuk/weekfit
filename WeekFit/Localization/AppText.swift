@@ -1,6 +1,16 @@
 import Foundation
 
 enum AppText {
+    enum Challenge {
+        enum Recovery7 {
+            static let title: LocalizedStringResource = "challenge.recovery7.title"
+            static let viewCTA: LocalizedStringResource = "challenge.recovery7.card.viewCTA"
+            static let joinCTA: LocalizedStringResource = "challenge.recovery7.intro.startCTA"
+            static let markCompleteCTA: LocalizedStringResource = "challenge.recovery7.markCompleteCTA"
+            static let introHeadline: LocalizedStringResource = "challenge.recovery7.intro.headline"
+        }
+    }
+
     enum Common {
         enum Action {
             static let cancel: LocalizedStringResource = "common.action.cancel"

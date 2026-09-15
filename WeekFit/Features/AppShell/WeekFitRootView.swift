@@ -58,6 +58,9 @@ struct WeekFitRootView: View {
     /// Premium tab the user tried to open; opened after purchase/restore.
     @State private var pendingPremiumTab: WeekFitTab?
     @State private var isPresentingFeaturePaywall = false
+    /// Minted when the feature paywall opens — stable across SwiftUI remounts.
+    @State private var featurePaywallInstanceID = UUID().uuidString
+    @State private var forcedPaywallInstanceID = UUID().uuidString
     @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
     /// Joins overlapping workout reconcile requests (appear + onChange can race).
@@ -222,13 +225,20 @@ struct WeekFitRootView: View {
                     source: .tab,
                     requestedTab: pendingPremiumTab?.paywallRequestedTabID
                         ?? subscriptionManager.paywallRequestedTabID,
+                    currentTab: selectedTab.paywallRequestedTabID ?? "today",
+                    paywallInstanceID: featurePaywallInstanceID,
                     allowsDismiss: true
                 )
                     .environmentObject(subscriptionManager)
                     .environment(\.weekFitPalette, palette)
             }
             .fullScreenCover(isPresented: forcedDiagnosticPaywallPresented) {
-                WeekFitPaywallView(source: .settings, allowsDismiss: true)
+                WeekFitPaywallView(
+                    source: .settings,
+                    currentTab: selectedTab.paywallRequestedTabID ?? "today",
+                    paywallInstanceID: forcedPaywallInstanceID,
+                    allowsDismiss: true
+                )
                     .environmentObject(subscriptionManager)
                     .environment(\.weekFitPalette, palette)
             }
@@ -270,6 +280,10 @@ struct WeekFitRootView: View {
                 guard shouldOpen else { return }
                 returnToToday()
             }
+            .onChange(of: PendingRecoveryChallengeOpen.shared.shouldOpen) { _, shouldOpen in
+                guard shouldOpen else { return }
+                selectTab(.coach)
+            }
     }
 
     /// Dismissible paywall for Coach / Meals / Plan. Today stays free.
@@ -306,6 +320,7 @@ struct WeekFitRootView: View {
                     return
                 }
                 if presented {
+                    forcedPaywallInstanceID = UUID().uuidString
                     forcePaywall.requestOpenPaywall()
                 } else {
                     forcePaywall.dismissManualPaywall()
@@ -359,6 +374,7 @@ struct WeekFitRootView: View {
                 .id(palette.appearanceInvalidationToken)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 120)
+                .allowsHitTesting(showContent)
         }
     }
 
@@ -503,6 +519,7 @@ struct WeekFitRootView: View {
         case .presentPaywall:
             pendingPremiumTab = tab
             subscriptionManager.noteFeaturePaywall(for: tab)
+            featurePaywallInstanceID = UUID().uuidString
             isPresentingFeaturePaywall = true
         }
     }
@@ -524,6 +541,7 @@ struct WeekFitRootView: View {
     }
 
     private func reconcilePremiumTabGate() {
+        let wasPresenting = isPresentingFeaturePaywall
         let result = WeekFitPremiumTabGate.reconcile(
             selectedTab: selectedTab,
             pendingTab: pendingPremiumTab,
@@ -534,6 +552,9 @@ struct WeekFitRootView: View {
 
         if result.presentPaywall, let pending = result.pendingTab {
             subscriptionManager.noteFeaturePaywall(for: pending)
+            if !wasPresenting {
+                featurePaywallInstanceID = UUID().uuidString
+            }
         } else if !result.presentPaywall, result.pendingTab == nil {
             subscriptionManager.clearFeaturePaywallRequest()
         }

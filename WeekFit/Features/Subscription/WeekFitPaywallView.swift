@@ -3,6 +3,10 @@ import SwiftUI
 struct WeekFitPaywallView: View {
     var source: SubscriptionAnalyticsSource = .root
     var requestedTab: String? = nil
+    /// Tab the user was on when the paywall was presented (analytics only).
+    var currentTab: String? = nil
+    /// Stable for one presentation — must be minted by the presenter, not here.
+    var paywallInstanceID: String
     var allowsDismiss: Bool = false
 
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
@@ -31,7 +35,10 @@ struct WeekFitPaywallView: View {
         .onAppear {
             SubscriptionAnalytics.paywallViewed(
                 source: source,
-                requestedTab: requestedTab ?? subscriptionManager.paywallRequestedTabID
+                requestedTab: requestedTab ?? subscriptionManager.paywallRequestedTabID,
+                currentTab: currentTab,
+                hasFullAccess: subscriptionManager.hasFullAccess,
+                paywallInstanceID: paywallInstanceID
             )
         }
         .onChange(of: subscriptionManager.hasFullAccess) { _, hasAccess in
@@ -298,7 +305,7 @@ struct WeekFitPaywallView: View {
             #endif
 
             Button {
-                Task { await subscriptionManager.restorePurchases() }
+                Task { await subscriptionManager.restorePurchases(source: source) }
             } label: {
                 Text(restoreTitle)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))

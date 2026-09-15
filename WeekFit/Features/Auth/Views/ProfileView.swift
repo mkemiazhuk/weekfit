@@ -29,7 +29,10 @@ struct ProfileView: View {
     @State private var isResettingLocalData = false
     @State private var showVersionCopiedToast = false
     @State private var showWeekFitAccessPaywall = false
+    @State private var settingsPaywallInstanceID = UUID().uuidString
+    @State private var forcedPaywallInstanceID = UUID().uuidString
     @State private var shareProductAnalytics = ProductAnalyticsConsent.isSharingEnabled()
+    @State private var showRecoveryChallengeSummary = false
     @StateObject private var appleSignInPresenter = AppleSignInPresenter()
     @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
@@ -62,6 +65,7 @@ struct ProfileView: View {
                     return
                 }
                 if presented {
+                    forcedPaywallInstanceID = UUID().uuidString
                     forcePaywall.requestOpenPaywall()
                 } else {
                     forcePaywall.dismissManualPaywall()
@@ -94,16 +98,32 @@ struct ProfileView: View {
                 if subscriptionManager.hasResolved && subscriptionManager.hasFullAccess {
                     WeekFitAccessStatusView()
                 } else {
-                    WeekFitPaywallView(source: .settings, allowsDismiss: true)
+                    WeekFitPaywallView(
+                        source: .settings,
+                        currentTab: "settings",
+                        paywallInstanceID: settingsPaywallInstanceID,
+                        allowsDismiss: true
+                    )
                 }
             }
             .environmentObject(subscriptionManager)
             .environment(\.weekFitPalette, palette)
         }
         .fullScreenCover(isPresented: forcedDiagnosticPaywallPresented) {
-            WeekFitPaywallView(source: .settings, allowsDismiss: true)
+            WeekFitPaywallView(
+                source: .settings,
+                currentTab: "settings",
+                paywallInstanceID: forcedPaywallInstanceID,
+                allowsDismiss: true
+            )
                 .environmentObject(subscriptionManager)
                 .environment(\.weekFitPalette, palette)
+        }
+        .sheet(isPresented: $showRecoveryChallengeSummary) {
+            RecoveryChallengeView(source: "settings") {}
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .interactiveDismissDisabled(false)
         }
         .task {
             await refreshHealthPermissionState()
@@ -427,6 +447,24 @@ private extension ProfileView {
         return SettingsGroupedSection(title: AppText.Settings.Profile.privacyDataSection) {
             shareProductAnalyticsRow
 
+            if showsRecoveryChallengeSummaryEntry {
+                SettingsGroupDivider()
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showRecoveryChallengeSummary = true
+                } label: {
+                    profileActionRow(
+                        icon: "moon.stars.fill",
+                        iconColor: WeekFitTheme.recovery,
+                        iconBackground: WeekFitTheme.recoverySoftSurface,
+                        title: LocalizedStringResource("challenge.recovery7.settings.summaryTitle"),
+                        titleColor: textPrimary
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.recoveryChallengeSummary")
+            }
+
             if showSignInWithApple || showReset || !legalItems.isEmpty {
                 SettingsGroupDivider()
             }
@@ -510,6 +548,7 @@ private extension ProfileView {
             }
 
             Button {
+                settingsPaywallInstanceID = UUID().uuidString
                 showWeekFitAccessPaywall = true
             } label: {
                 profileActionRow(
@@ -530,7 +569,7 @@ private extension ProfileView {
             SettingsGroupDivider()
 
             Button {
-                Task { await subscriptionManager.restorePurchases() }
+                Task { await subscriptionManager.restorePurchases(source: .settings) }
             } label: {
                 profileActionRow(
                     icon: "arrow.clockwise",
@@ -548,6 +587,16 @@ private extension ProfileView {
             .accessibilityIdentifier("settings.restorePurchases")
             .accessibilityLabel(WeekFitLocalizedString("paywall.restore"))
         }
+    }
+
+    private var showsRecoveryChallengeSummaryEntry: Bool {
+        guard let participation = RecoveryChallengeStore.load(),
+              participation.eventID == RecoveryChallengeConfig.eventID
+        else { return false }
+        return RecoveryChallengeEngine.isPersonalChallengeFinished(
+            now: Date(),
+            participation: participation
+        )
     }
 
     private var shareProductAnalyticsRow: some View {
@@ -577,7 +626,6 @@ private extension ProfileView {
                     .font(.system(size: 13.2, weight: .medium))
                     .foregroundStyle(textSecondary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -605,6 +653,10 @@ private extension ProfileView {
         .padding(.horizontal, 17)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
+        .onAppear {
+            ProductAnalyticsConsent.migrateToDefaultOnIfNeeded()
+            shareProductAnalytics = ProductAnalyticsConsent.isSharingEnabled()
+        }
     }
 
     private func profileActionRow(

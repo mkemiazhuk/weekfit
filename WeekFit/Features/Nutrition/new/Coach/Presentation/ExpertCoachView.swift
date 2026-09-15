@@ -12,11 +12,16 @@ struct ExpertCoachView: View {
     @Environment(\.weekFitPalette) private var palette
 
     @ObservedObject private var userSettings = WeekFitUserSettings.shared
+    @ObservedObject private var pendingRecoveryChallengeOpen = PendingRecoveryChallengeOpen.shared
 
     @State private var showProfile = false
     @State private var keepCoachMounted = false
     @State private var didRecordCoachRecommendationOpen = false
     @State private var discoverySpotlightDismissedLocally = false
+    @State private var showRecoveryChallenge = false
+    @State private var recoveryChallengeOpenSource = "coach"
+    @State private var recoveryChallengeHeaderEntry: RecoveryChallengePresenter.HeaderEntry = .hidden
+    @State private var didHandleDebugOpenRecoveryChallenge = false
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -48,11 +53,34 @@ struct ExpertCoachView: View {
         .onAppear {
             keepCoachMounted = true
             refreshLiveCoachSession()
+            refreshRecoveryChallengeEntry()
+            openPendingRecoveryChallengeIfNeeded()
         }
         .onChange(of: tabIsActive) { _, active in
             if active {
                 refreshLiveCoachSession()
+                refreshRecoveryChallengeEntry()
+                openPendingRecoveryChallengeIfNeeded()
             }
+        }
+        .onChange(of: pendingRecoveryChallengeOpen.shouldOpen) { _, shouldOpen in
+            guard shouldOpen else { return }
+            openPendingRecoveryChallengeIfNeeded()
+        }
+        .onChange(of: showProfile) { _, isPresented in
+            if !isPresented {
+                openPendingRecoveryChallengeIfNeeded()
+            }
+        }
+        .sheet(isPresented: $showRecoveryChallenge, onDismiss: {
+            refreshRecoveryChallengeEntry()
+        }) {
+            RecoveryChallengeView(source: recoveryChallengeOpenSource) {
+                refreshRecoveryChallengeEntry()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .interactiveDismissDisabled(false)
         }
         .onChange(of: activityCoordinator.liveHeartRateZone) { previous, zone in
             guard tabIsActive, previous != zone else { return }
@@ -246,6 +274,15 @@ struct ExpertCoachView: View {
                     .padding(.top, 4)
                 }
 
+                if recoveryChallengeHeaderEntry != .hidden {
+                    RecoveryChallengeHeaderEntryChip(
+                        entry: recoveryChallengeHeaderEntry,
+                        onTap: {
+                            openRecoveryChallenge(source: "coach")
+                        }
+                    )
+                }
+
                 if shouldSurfaceCoach {
                     coachCard
                     discoverySpotlightSection
@@ -263,6 +300,56 @@ struct ExpertCoachView: View {
             .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
         .weekFitTransparentScrollBackground()
+    }
+
+    // MARK: - Recovery Challenge
+
+    private func refreshRecoveryChallengeEntry() {
+        #if DEBUG
+        _ = RecoveryChallengeConfig.prepareDebugPreviewSessionIfNeeded()
+        #endif
+        recoveryChallengeHeaderEntry = RecoveryChallengeStore.headerEntry()
+
+        #if DEBUG
+        if !didHandleDebugOpenRecoveryChallenge,
+           RecoveryChallengeConfig.launchArgumentsContain(
+            RecoveryChallengeConfig.debugOpenLaunchArgument
+           ) {
+            didHandleDebugOpenRecoveryChallenge = true
+            openRecoveryChallenge(source: "debug")
+        }
+        #endif
+    }
+
+    private func openRecoveryChallenge(source: String) {
+        guard RecoveryChallengeConfig.isFeatureAvailable else { return }
+        guard !showRecoveryChallenge else { return }
+        guard !showProfile else {
+            PendingRecoveryChallengeOpen.shared.requestOpen()
+            return
+        }
+
+        recoveryChallengeOpenSource = source
+        DispatchQueue.main.async {
+            guard !self.showRecoveryChallenge else { return }
+            self.showRecoveryChallenge = true
+        }
+    }
+
+    private func openPendingRecoveryChallengeIfNeeded() {
+        guard PendingRecoveryChallengeOpen.shared.shouldOpen else { return }
+        guard RecoveryChallengeConfig.isFeatureAvailable else {
+            _ = PendingRecoveryChallengeOpen.shared.consume()
+            return
+        }
+        guard tabIsActive else { return }
+        guard !showProfile,
+              !appSession.isPresentingOnboarding,
+              !appSession.isPresentingHealthAccess
+        else { return }
+
+        _ = PendingRecoveryChallengeOpen.shared.consume()
+        openRecoveryChallenge(source: "deeplink")
     }
 
     // MARK: - Coach Card

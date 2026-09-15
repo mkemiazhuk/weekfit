@@ -47,6 +47,7 @@ enum FirebaseBootstrap {
         didConfigureFirebase = true
 
         // Collection policy must run immediately after configure — single source of truth.
+        ProductAnalyticsConsent.migrateToDefaultOnIfNeeded()
         FirebaseEnvironment.configureTelemetry()
         return true
     }

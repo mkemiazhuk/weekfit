@@ -114,12 +114,22 @@ enum AnalyticsEvent: String, Sendable {
     case stressIndexViewed = "stress_index_viewed"
     case stressIndexDetailsOpened = "stress_index_details_opened"
 
+    // 7-Day Recovery Challenge — product interaction only (no health / recovery scores).
+    case recoveryChallengeCardViewed = "recovery_challenge_card_viewed"
+    case recoveryChallengeOverviewOpened = "recovery_challenge_overview_opened"
+    case recoveryChallengeEnrolled = "recovery_challenge_enrolled"
+    case recoveryChallengeDayCompleted = "recovery_challenge_day_completed"
+    case recoveryChallengeSummaryViewed = "recovery_challenge_summary_viewed"
+    case recoveryChallengeHabitChosen = "recovery_challenge_habit_chosen"
+
     // Subscription / paywall — product ids only; never prices, HealthKit, or identity.
     case paywallViewed = "paywall_viewed"
     case subscriptionOptionSelected = "subscription_option_selected"
     case subscriptionPurchaseStarted = "subscription_purchase_started"
     case subscriptionPurchaseSuccess = "subscription_purchase_success"
     case subscriptionPurchaseCancelled = "subscription_purchase_cancelled"
+    case subscriptionPurchaseFailed = "subscription_purchase_failed"
     case subscriptionRestoreStarted = "subscription_restore_started"
     case subscriptionRestoreSuccess = "subscription_restore_success"
+    case subscriptionRestoreFailed = "subscription_restore_failed"
 }

@@ -41,6 +41,11 @@ struct WeekFitApp: App {
             "Firebase configured",
             detail: "WeekFitApp.init configureIfNeeded ready=\(firebaseReady)"
         )
+        #if canImport(UIKit)
+        // One-shot appearance proxy only — never walk the view tree from updateUIView.
+        // Lets Today atmosphere (and other SwiftUI scroll backgrounds) show through.
+        UIScrollView.appearance().backgroundColor = .clear
+        #endif
         WeekFitWarmLocalizationCache()
         UNUserNotificationCenter.current().delegate =
             NotificationActionHandler.shared
@@ -146,6 +151,11 @@ struct WeekFitApp: App {
     }
 
     private func handleOpenURL(_ url: URL) {
+        if WeekFitWidgetDeepLink.isRecoveryChallengeURL(url) {
+            PendingRecoveryChallengeOpen.shared.requestOpen()
+            appSession.requestRootTab(.coach)
+            return
+        }
         guard WeekFitWidgetDeepLink.isTodayURL(url) else { return }
         appSession.requestRootTab(.today)
         appSession.triggerReturnToToday()

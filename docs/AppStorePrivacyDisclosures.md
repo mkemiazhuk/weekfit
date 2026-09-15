@@ -9,7 +9,7 @@ Related:
 - FirebaseCrashlytics bundled `PrivacyInfo.xcprivacy`
 - `docs/privacy-report/` (archive + inspection notes)
 - `docs/AnalyticsEventDictionary.md`
-- `ProductAnalyticsConsent` / `FirebaseEnvironment` (opt-in Analytics; Crashlytics separate)
+- `ProductAnalyticsConsent` / `FirebaseEnvironment` (Analytics on by default; Crashlytics separate)
 
 ---
 
@@ -28,7 +28,7 @@ Do **not** declare tracking unless product behavior changes to meet Apple’s tr
 | Channel | Firebase Analytics | Firebase Crashlytics |
 |---------|--------------------|----------------------|
 | DEBUG | OFF | OFF |
-| TestFlight / App Store | OFF until user enables **Share Product Analytics** in Settings | ON (crash diagnostics; no health payloads) |
+| TestFlight / App Store | ON by default (**Share Usage Data**; user can turn off) | ON (crash diagnostics; no health payloads) |
 | Missing stored choice (fresh + existing upgrades) | Treated as OFF | — |
 
 ---
@@ -48,7 +48,7 @@ Apple: the app’s `PrivacyInfo.xcprivacy` does **not** need to repeat data type
 ## Data types to declare (Nutrition Label)
 
 ### Product Interaction (Usage Data)
-- **Collected:** Yes (opt-in product analytics)
+- **Collected:** Yes (product analytics on by default; can be disabled in Settings)
 - **Linked to identity:** **No**
 - **Used for tracking:** No
 - **Purposes:** Analytics

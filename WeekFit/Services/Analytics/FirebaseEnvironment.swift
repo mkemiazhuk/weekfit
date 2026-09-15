@@ -8,9 +8,10 @@ import OSLog
 ///
 /// Distribution + consent policy:
 /// - DEBUG / Xcode → Analytics OFF, Crashlytics OFF
-/// - TestFlight / App Store → Analytics ON **only if** `ProductAnalyticsConsent` is enabled;
-///   Crashlytics ON (crash diagnostics; no health payloads — see `StartupDiagnostics`)
-/// - Missing / never-set consent → Analytics OFF (existing installs do not inherit prior auto-on)
+/// - TestFlight / App Store → Analytics ON when `ProductAnalyticsConsent` allows it
+///   (default ON; user can disable in Settings); Crashlytics ON (crash diagnostics;
+///   no health payloads — see `StartupDiagnostics`)
+/// - Missing / never-set consent → Analytics ON
 ///
 /// Production product dashboards must filter `distribution = appstore` unless TestFlight
 /// traffic is intentionally included.
