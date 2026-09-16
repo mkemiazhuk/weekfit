@@ -15,20 +15,23 @@ struct WeekFitPaywallView: View {
     @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
-        ZStack {
-            palette.appScreenBackground
-                .ignoresSafeArea()
-            ProfilePremiumBackground(accent: WeekFitTheme.brandGold.opacity(0.55))
-                .ignoresSafeArea()
-
-            ViewThatFits(in: .vertical) {
-                paywallColumn(flexibleFooterGap: true)
-                ScrollView(showsIndicators: false) {
-                    paywallColumn(flexibleFooterGap: false)
-                }
-                .scrollBounceBehavior(.basedOnSize)
+        // Content must layout inside the safe area first. Putting
+        // `.ignoresSafeArea()` backgrounds as ZStack siblings expands the
+        // whole stack under the status bar and clips the title (see TF reports).
+        ViewThatFits(in: .vertical) {
+            paywallColumn(flexibleFooterGap: true)
+            ScrollView(showsIndicators: false) {
+                paywallColumn(flexibleFooterGap: false)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background {
+            ZStack {
+                palette.appScreenBackground
+                ProfilePremiumBackground(accent: WeekFitTheme.brandGold.opacity(0.55))
+            }
+            .ignoresSafeArea()
         }
         .id(palette.appearanceInvalidationToken)
         .interactiveDismissDisabled(!allowsDismiss)
@@ -51,8 +54,8 @@ struct WeekFitPaywallView: View {
     }
 
     private enum Layout {
-        static let navTopPadding: CGFloat = 6
-        static let navBottomPadding: CGFloat = 2
+        static let navTopPadding: CGFloat = 8
+        static let navBottomPadding: CGFloat = 6
         static let heroTitleToSubtitle: CGFloat = 10
         static let heroToBenefits: CGFloat = 18
         static let benefitsToPlans: CGFloat = 18
@@ -65,7 +68,7 @@ struct WeekFitPaywallView: View {
         static let planCardVertical: CGFloat = 14
         static let planCardLineSpacing: CGFloat = 5
         static let footerTop: CGFloat = 16
-        static let footerBottom: CGFloat = 6
+        static let footerBottom: CGFloat = 8
         static let footerStackSpacing: CGFloat = 10
         static let flexibleFooterGapMin: CGFloat = 14
         static let restoreMinHeight: CGFloat = 40
@@ -126,13 +129,18 @@ struct WeekFitPaywallView: View {
                 .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
                 .accessibilityIdentifier("paywall.close")
             } else {
-                Color.clear.frame(height: 0)
+                // Keep a consistent top inset even when dismiss is disabled.
+                Color.clear
+                    .frame(
+                        width: OnboardingLayout.navControlSize,
+                        height: OnboardingLayout.navControlSize
+                    )
             }
             Spacer()
         }
         .padding(.horizontal, OnboardingLayout.horizontalPadding)
         .padding(.top, Layout.navTopPadding)
-        .padding(.bottom, allowsDismiss ? Layout.navBottomPadding : 0)
+        .padding(.bottom, Layout.navBottomPadding)
     }
 
     private var valueList: some View {
@@ -324,7 +332,7 @@ struct WeekFitPaywallView: View {
         .padding(.horizontal, OnboardingLayout.horizontalPadding)
         .padding(.top, Layout.footerTop)
         .padding(.bottom, Layout.footerBottom)
-        .safeAreaPadding(.bottom, 2)
+        .safeAreaPadding(.bottom, 8)
     }
 
     private var legalRow: some View {

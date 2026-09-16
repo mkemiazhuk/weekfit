@@ -483,6 +483,8 @@ struct ExpertCoachView: View {
         let isLimitedRecovery = coachUIPresentation?.showsLimitedConfidenceBadge == true
         let zone = activityCoordinator.liveHeartRateZone
         let isLiveChrome = coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+        // Larger outdoor-readable chip while a live workout zone is active (bike / outdoor).
+        let isLiveZoneBadge = !isLimitedRecovery && isLiveChrome && zone != nil
         // Drive accent from live zone immediately (Fitness-style), not from last coach recompute.
         let accent: Color = {
             if isLimitedRecovery { return textSecondary.opacity(0.72) }
@@ -497,29 +499,41 @@ struct ExpertCoachView: View {
             return HeartRateZones.badgeLabel(zone: zone)
         }()
 
-        return HStack(spacing: isLimitedRecovery ? 5 : 8) {
+        let iconSize: CGFloat = isLimitedRecovery ? 9 : (isLiveZoneBadge ? 17 : 11.5)
+        let textSize: CGFloat = isLimitedRecovery ? 9 : (isLiveZoneBadge ? 16 : 10)
+        let badgeHeight: CGFloat = isLimitedRecovery ? 20 : (isLiveZoneBadge ? 40 : 24)
+        let horizontalPadding: CGFloat = isLimitedRecovery ? 8 : (isLiveZoneBadge ? 16 : 11)
+        let stackSpacing: CGFloat = isLimitedRecovery ? 5 : (isLiveZoneBadge ? 10 : 8)
+
+        return HStack(spacing: stackSpacing) {
             Image(systemName: isLimitedRecovery ? "moon.zzz.fill" : (coachUIPresentation?.icon ?? "sparkles"))
-                .font(.system(size: isLimitedRecovery ? 9 : 11.5, weight: .semibold))
+                .font(.system(size: iconSize, weight: .semibold))
 
             Text(isLimitedRecovery ? label : label.uppercased())
                 .font(.system(
-                    size: isLimitedRecovery ? 9 : 10,
+                    size: textSize,
                     weight: isLimitedRecovery ? .semibold : .black,
                     design: .rounded
                 ))
-                .tracking(isLimitedRecovery ? 0.2 : 1.4)
+                .tracking(isLimitedRecovery ? 0.2 : (isLiveZoneBadge ? 1.1 : 1.4))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .foregroundStyle(accent)
-        .padding(.horizontal, isLimitedRecovery ? 8 : 11)
-        .frame(height: isLimitedRecovery ? 20 : 24)
+        .padding(.horizontal, horizontalPadding)
+        .frame(height: badgeHeight)
         .background(
             Capsule()
-                .fill(accent.opacity(isLimitedRecovery ? 0.08 : 0.09))
+                .fill(accent.opacity(isLimitedRecovery ? 0.08 : (isLiveZoneBadge ? 0.16 : 0.09)))
                 .overlay(
                     Capsule()
-                        .stroke(accent.opacity(isLimitedRecovery ? 0.14 : 0.22), lineWidth: 1)
+                        .stroke(
+                            accent.opacity(isLimitedRecovery ? 0.14 : (isLiveZoneBadge ? 0.38 : 0.22)),
+                            lineWidth: isLiveZoneBadge ? 1.5 : 1
+                        )
                 )
         )
+        .accessibilityLabel(Text(label))
     }
 
     private func coachWarningBanner(_ message: String) -> some View {

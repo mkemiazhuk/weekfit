@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Recovery Challenge entry card — same neutral chrome language as Coach / Meals.
+/// Recovery Challenge entry card — recovery accent language matching Coach “Recovering”.
 struct RecoveryChallengeHeaderEntryChip: View {
     let entry: RecoveryChallengePresenter.HeaderEntry
     let onTap: () -> Void
@@ -9,8 +9,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Quiet secondary ink — no recovery/premium tint competing with Coach.
-    private var accent: Color { WeekFitTheme.secondaryText }
+    private var accent: Color { WeekFitTheme.recovery }
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private var textSecondary: Color { WeekFitTheme.secondaryText }
 
@@ -26,7 +25,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "moon.stars.fill")
                         .font(.system(size: 52, weight: .regular))
-                        .foregroundStyle(textSecondary.opacity(palette.isLight ? 0.08 : 0.12))
+                        .foregroundStyle(accent.opacity(palette.isLight ? 0.10 : 0.16))
                         // Keep the full moon + stars inside the card (was clipping on the trailing edge).
                         .padding(.trailing, 18)
                         .padding(.top, 14)
@@ -44,11 +43,11 @@ struct RecoveryChallengeHeaderEntryChip: View {
             }
             .buttonStyle(RecoveryChallengeHeaderPressStyle(reduceMotion: reduceMotion))
             .weekFitPremiumCard(
-                emphasis: .standard,
-                accent: nil,
+                emphasis: summaryQuieter ? .standard : .elevated,
+                accent: accent,
                 cornerRadius: WeekFitSurface.primaryRadius
             )
-            .opacity(summaryQuieter ? 0.92 : 1)
+            .opacity(summaryQuieter ? 0.94 : 1)
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel(Text(accessibilityLabel))
@@ -92,7 +91,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
                     .font(.caption2.weight(.bold))
                     .fontDesign(.rounded)
                     .tracking(1.2)
-                    .foregroundStyle(textSecondary.opacity(0.78))
+                    .foregroundStyle(accent.opacity(palette.isLight ? 0.88 : 0.82))
 
                 Text(WeekFitLocalizedString("challenge.recovery7.title"))
                     .font(.system(size: titleSize, weight: .semibold, design: .rounded))
@@ -104,7 +103,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: chevronSize, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.85))
+                .foregroundStyle(accent.opacity(0.55))
                 .accessibilityHidden(true)
         }
     }
@@ -114,7 +113,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
             if showsCompletedCheck {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: statusSize, weight: .semibold))
-                    .foregroundStyle(textSecondary.opacity(0.90))
+                    .foregroundStyle(accent.opacity(0.95))
                     .accessibilityHidden(true)
             }
 
@@ -129,10 +128,10 @@ struct RecoveryChallengeHeaderEntryChip: View {
         .padding(.vertical, 5)
         .background {
             Capsule(style: .continuous)
-                .fill(WeekFitTheme.divider.opacity(palette.isLight ? 0.35 : 0.22))
+                .fill(WeekFitTheme.recoverySoftSurface)
                 .overlay {
                     Capsule(style: .continuous)
-                        .strokeBorder(WeekFitTheme.divider.opacity(palette.isLight ? 0.55 : 0.35), lineWidth: 1)
+                        .strokeBorder(accent.opacity(palette.isLight ? 0.22 : 0.30), lineWidth: 1)
                 }
         }
     }
@@ -156,10 +155,10 @@ struct RecoveryChallengeHeaderEntryChip: View {
             HStack(spacing: 3) {
                 Text(WeekFitLocalizedString("challenge.recovery7.header.doToday"))
                     .font(.system(size: metaSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.92))
+                    .foregroundStyle(accent.opacity(0.95))
                 Image(systemName: "chevron.right")
                     .font(.system(size: metaSize - 2, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.80))
+                    .foregroundStyle(accent.opacity(0.72))
             }
             .fixedSize()
             .accessibilityHidden(true)
@@ -173,7 +172,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
                 )
             )
             .font(.system(size: metaSize, weight: .semibold, design: .rounded))
-            .foregroundStyle(textSecondary.opacity(0.88))
+            .foregroundStyle(accent.opacity(0.88))
             .fixedSize()
             .accessibilityHidden(true)
 
@@ -186,7 +185,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
                 )
             )
             .font(.system(size: metaSize, weight: .semibold, design: .rounded))
-            .foregroundStyle(textSecondary.opacity(0.78))
+            .foregroundStyle(accent.opacity(0.78))
             .fixedSize()
             .accessibilityHidden(true)
 
@@ -194,10 +193,10 @@ struct RecoveryChallengeHeaderEntryChip: View {
             HStack(spacing: 3) {
                 Text(WeekFitLocalizedString("challenge.recovery7.header.viewCTA"))
                     .font(.system(size: metaSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(textSecondary.opacity(0.92))
+                    .foregroundStyle(accent.opacity(0.95))
                 Image(systemName: "chevron.right")
                     .font(.system(size: metaSize - 2, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.80))
+                    .foregroundStyle(accent.opacity(0.72))
             }
             .fixedSize()
             .accessibilityHidden(true)
@@ -232,7 +231,7 @@ struct RecoveryChallengeHeaderEntryChip: View {
     }
 
     private var statusColor: Color {
-        textSecondary.opacity(0.95)
+        accent.opacity(0.95)
     }
 
     private var statusLine: String {
@@ -348,7 +347,7 @@ private struct RecoveryChallengeHeaderProgressStrip: View {
         Rectangle()
             .fill(
                 (afterCompleted || state == .completed)
-                    ? accent.opacity(palette.isLight ? 0.35 : 0.40)
+                    ? accent.opacity(palette.isLight ? 0.40 : 0.45)
                     : WeekFitTheme.tertiaryText.opacity(0.22)
             )
             .frame(height: 1.5)
@@ -364,7 +363,7 @@ private struct RecoveryChallengeHeaderProgressStrip: View {
             Circle()
                 .fill(accent)
                 .frame(width: size, height: size)
-                .shadow(color: accent.opacity(palette.isLight ? 0.18 : 0.35), radius: 3, y: 1)
+                .shadow(color: accent.opacity(palette.isLight ? 0.22 : 0.40), radius: 3, y: 1)
         case .current, .awaitingMorningConfirm:
             ZStack {
                 Circle()
