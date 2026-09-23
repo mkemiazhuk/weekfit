@@ -7,8 +7,10 @@ enum CoachSessionPhaseStability {
     private static let watchSyncedGraceAfterPlannedEndMinutes = 5
 
     /// Activity should be treated as live for focus + session phase selection.
+    /// Meals / drinks / snacks (family `.none`) never own a live workout session or HR zones.
     static func isCoachLiveSession(_ activity: CoachPlannedActivitySnapshot, now: Date) -> Bool {
         guard !activity.isSkipped else { return false }
+        guard CoachActivityClassifier.family(for: activity) != .none else { return false }
         if activity.isActive(at: now) { return true }
         return treatsCompletedAsLive(activity: activity, now: now)
     }

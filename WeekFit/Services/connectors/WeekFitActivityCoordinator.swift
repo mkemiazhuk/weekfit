@@ -126,18 +126,12 @@ final class WeekFitActivityCoordinator: ObservableObject {
     }
 
     func syncHeartRateMonitoring(with activities: [PlannedActivity], now: Date = Date()) {
+        // HR zones belong to workout/recovery/heat sessions only — never meal windows.
         let active = activities.first { activity in
-            guard !activity.isSkipped else { return false }
-            if activity.isActive(at: now) { return true }
-            // Keep streaming through the planned window even if HK flips completed early.
-            guard activity.isCompleted || activity.isPartialCompletion else { return false }
-            let plannedEnd = Calendar.current.date(
-                byAdding: .minute,
-                value: max(activity.effectiveDurationMinutes, activity.durationMinutes, 1),
-                to: activity.date
-            ) ?? activity.date
-            let graceEnd = plannedEnd.addingTimeInterval(5 * 60)
-            return activity.date <= now && now <= graceEnd
+            CoachSessionPhaseStability.isCoachLiveSession(
+                CoachPlannedActivitySnapshot(from: activity),
+                now: now
+            )
         }
 
         if let active {

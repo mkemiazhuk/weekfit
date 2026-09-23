@@ -10,6 +10,36 @@ final class CoachSessionFocusEligibilityTests: XCTestCase {
         return calendar
     }
 
+    func testActiveLunchIsNotCoachLiveSessionAndDoesNotOwnFocus() {
+        let now = date(hour: 13, minute: 10)
+        let lunch = snapshot(type: "meal", title: "Lunch Bowl", hour: 13, duration: 30, on: now)
+
+        XCTAssertTrue(lunch.isActive(at: now))
+        XCTAssertFalse(CoachSessionPhaseStability.isCoachLiveSession(lunch, now: now))
+
+        let focus = CoachFocusResolver.resolve(input: makeInput(now: now, activities: [lunch]))
+        XCTAssertEqual(focus.source, .idle)
+        XCTAssertEqual(focus.phase, .idle)
+        XCTAssertNil(focus.activity)
+
+        let context = CoachEngine.evaluate(input: makeInput(now: now, activities: [lunch])).context
+        XCTAssertNotEqual(context.sessionPhase, .during)
+        XCTAssertNil(context.liveHeartRateZone)
+    }
+
+    func testActiveWorkoutRemainsCoachLiveSession() {
+        let now = date(hour: 13, minute: 10)
+        let ride = snapshot(type: "workout", title: "Noon Ride", hour: 13, duration: 60, on: now)
+
+        XCTAssertTrue(ride.isActive(at: now))
+        XCTAssertTrue(CoachSessionPhaseStability.isCoachLiveSession(ride, now: now))
+
+        let focus = CoachFocusResolver.resolve(input: makeInput(now: now, activities: [ride]))
+        XCTAssertEqual(focus.source, .active)
+        XCTAssertEqual(focus.phase, .during)
+        XCTAssertEqual(focus.activity?.title, "Noon Ride")
+    }
+
     func testMealIsNotSessionFocusCandidate() {
         let meal = snapshot(
             type: "meal",

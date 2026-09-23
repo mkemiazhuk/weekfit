@@ -117,6 +117,18 @@ final class LiveHeartRateCoachTests: XCTestCase {
         XCTAssertFalse(label.contains("162"))
     }
 
+    func testStableDayDoesNotGetLiveZoneSemanticColorEvenWithZone() {
+        // Meals / idle stories must never paint Zone chrome from a residual BPM sample.
+        XCTAssertEqual(
+            CoachPresentationResolver.semanticColor(for: .stableDay, liveHeartRateZone: 1),
+            .stable
+        )
+        XCTAssertFalse(
+            CoachPresentationResolver.semanticColor(for: .stableDay, liveHeartRateZone: 1)
+                .isLiveSessionChrome
+        )
+    }
+
     /// Zone boundaries must flip on the current BPM — same cutovers as Fitness labels.
     func testZoneTracksCurrentBPMAcrossBoundaries() {
         let profile = HeartRateZones.Profile.apple(age: 40, restingHeartRate: 60)

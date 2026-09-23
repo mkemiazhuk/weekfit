@@ -486,8 +486,8 @@ struct ExpertCoachView: View {
     }
 
     private var liveZoneScreenColor: Color? {
-        if let zone = activityCoordinator.liveHeartRateZone,
-           coachUIPresentation?.semanticColor.isLiveSessionChrome == true {
+        guard isLiveWorkoutZoneChrome else { return nil }
+        if let zone = activityCoordinator.liveHeartRateZone {
             return HeartRateZones.color(for: zone)
         }
         guard let semantic = coachUIPresentation?.semanticColor,
@@ -497,10 +497,15 @@ struct ExpertCoachView: View {
         return coachUIPresentation?.accentColor
     }
 
+    /// Zone chrome only while Coach is in a live workout session — never during meals.
+    private var isLiveWorkoutZoneChrome: Bool {
+        coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+    }
+
     private var stateBadge: some View {
         let isLimitedRecovery = coachUIPresentation?.showsLimitedConfidenceBadge == true
         let zone = activityCoordinator.liveHeartRateZone
-        let isLiveChrome = coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+        let isLiveChrome = isLiveWorkoutZoneChrome
         // Larger outdoor-readable chip while a live workout zone is active (bike / outdoor).
         let isLiveZoneBadge = !isLimitedRecovery && isLiveChrome && zone != nil
         // Drive accent from live zone immediately (Fitness-style), not from last coach recompute.

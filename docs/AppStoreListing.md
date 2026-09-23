@@ -106,7 +106,27 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.3)
+## What's New (1.3.3)
+
+**EN:**
+```
+• Weather-inspired sky background on Today and Coach
+• Clearer live Coach guidance, including a larger zone badge
+• Workout time and distance after pauses now match Apple Fitness
+• Stability and polish fixes across Today, Coach, and subscriptions
+```
+
+**RU:**
+```
+• Фон-небо в стиле погоды на экранах «Сегодня» и «Коуч»
+• Понятнее подсказки Коуча во время сессии, крупнее бейдж зоны
+• Время и дистанция тренировки после паузы совпадают с Apple Fitness
+• Исправления стабильности и полировка Today, Coach и подписки
+```
+
+---
+
+## What's New (1.3) — archive
 
 **EN:**
 ```
