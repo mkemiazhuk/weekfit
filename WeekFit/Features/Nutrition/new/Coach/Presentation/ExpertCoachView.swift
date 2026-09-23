@@ -10,6 +10,7 @@ struct ExpertCoachView: View {
     @ObservedObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @ObservedObject private var userSettings = WeekFitUserSettings.shared
     @ObservedObject private var pendingRecoveryChallengeOpen = PendingRecoveryChallengeOpen.shared
@@ -30,8 +31,22 @@ struct ExpertCoachView: View {
     private let coachContentHorizontalInset: CGFloat = 0
 
     private let cardBackground = WeekFitTheme.cardBackground
-    private let textPrimary = WeekFitTheme.primaryText
-    private let textSecondary = WeekFitTheme.secondaryText
+    private var textPrimary: Color { palette.textPrimary }
+    private var textSecondary: Color { palette.textSecondary }
+
+    private var coachSectionLabelColor: Color {
+        let opacity: CGFloat = colorSchemeContrast == .increased
+            ? (palette.isLight ? 0.72 : 0.78)
+            : (palette.isLight ? 0.58 : 0.68)
+        return textSecondary.opacity(opacity)
+    }
+
+    private var coachBodyTextColor: Color {
+        let opacity: CGFloat = colorSchemeContrast == .increased
+            ? (palette.isLight ? 0.92 : 0.90)
+            : (palette.isLight ? 0.82 : 0.84)
+        return textSecondary.opacity(opacity)
+    }
 
     init(authViewModel: AuthViewModel) {
         _ = authViewModel
@@ -138,11 +153,14 @@ struct ExpertCoachView: View {
                 coachContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .background {
-                        ZStack {
-                            WeekFitTheme.appScreenBackground
+                        // Transparent so Root's shared Weather-like sky shows through.
+                        // Keep only the live-zone wash when an active session color is present.
+                        Group {
                             if let liveZoneScreenColor {
                                 liveZoneScreenColor
                                     .opacity(palette.isLight ? 0.16 : 0.24)
+                            } else {
+                                Color.clear
                             }
                         }
                         .animation(
@@ -299,7 +317,7 @@ struct ExpertCoachView: View {
             .frame(maxWidth: .infinity)
             .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
-        .weekFitTransparentScrollBackground()
+        .weekFitTransparentScrollBackground(fillsCanvas: false)
     }
 
     // MARK: - Recovery Challenge
@@ -568,11 +586,11 @@ struct ExpertCoachView: View {
             Text(label.uppercased())
                 .font(.system(size: 9.5, weight: .black, design: .rounded))
                 .tracking(1.1)
-                .foregroundStyle(textSecondary.opacity(0.42))
+                .foregroundStyle(coachSectionLabelColor)
 
             Text(text)
                 .font(.system(size: 13.4, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.76))
+                .foregroundStyle(coachBodyTextColor)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }

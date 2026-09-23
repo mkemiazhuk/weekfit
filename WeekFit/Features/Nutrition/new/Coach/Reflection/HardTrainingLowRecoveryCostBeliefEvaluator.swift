@@ -20,7 +20,7 @@ enum HardTrainingLowRecoveryCostBeliefEvaluator: CoachBeliefEvaluator {
             beliefID: beliefID,
             currentMaturity: currentMaturity,
             effectSize: evaluation?.recoveryCost ?? 0,
-            evidence: evaluation.map(evidence(from:)),
+            evidence: evaluation.map { evidence(from: $0) },
             hasMinimumSamples: evaluation?.hasMinimumSamples ?? false,
             hasEstablishedSamples: evaluation?.hasEstablishedSamples ?? false,
             emergedThreshold: emergedRecoveryCost,

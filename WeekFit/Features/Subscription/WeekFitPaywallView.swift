@@ -89,14 +89,6 @@ struct WeekFitPaywallView: View {
                     WeekFitStoreKitPaywallDiagnosticsView()
                         .padding(.top, 12)
                 }
-                if let message = statusMessage {
-                    Text(message)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 8)
-                        .accessibilityIdentifier("paywall.status")
-                }
             }
             .padding(.horizontal, OnboardingLayout.horizontalPadding)
             .padding(.top, 2)
@@ -298,6 +290,16 @@ struct WeekFitPaywallView: View {
             }
             .accessibilityIdentifier("paywall.cta")
 
+            if let purchaseMessage = purchaseStatusMessage {
+                Text(purchaseMessage)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("paywall.purchaseStatus")
+            }
+
             #if DEBUG
             Text(
                 """
@@ -305,6 +307,7 @@ struct WeekFitPaywallView: View {
                 hasFullAccess=\(subscriptionManager.hasFullAccess)
                 productsFailedToLoad=\(subscriptionManager.productsFailedToLoad)
                 lastOutcome=\(String(describing: subscriptionManager.lastOutcome))
+                lastOutcomeSource=\(String(describing: subscriptionManager.lastOutcomeSource))
                 """
             )
             .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -315,17 +318,37 @@ struct WeekFitPaywallView: View {
             Button {
                 Task { await subscriptionManager.restorePurchases(source: source) }
             } label: {
-                Text(restoreTitle)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.textTertiary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: Layout.restoreMinHeight)
-                    .contentShape(Rectangle())
+                HStack(spacing: 8) {
+                    if subscriptionManager.isRestoreInFlight {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Text(restoreTitle)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(palette.textTertiary)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: Layout.restoreMinHeight)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(subscriptionManager.isRestoreInFlight || subscriptionManager.isPurchaseInFlight)
             .accessibilityIdentifier("paywall.restore")
-            .accessibilityLabel(WeekFitLocalizedString("paywall.restore"))
+            .accessibilityLabel(
+                subscriptionManager.isRestoreInFlight
+                    ? WeekFitLocalizedString("paywall.restore.inProgress")
+                    : WeekFitLocalizedString("paywall.restore")
+            )
+
+            if let restoreMessage = restoreStatusMessage {
+                Text(restoreMessage)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("paywall.restoreStatus")
+            }
 
             legalRow
         }
@@ -411,17 +434,18 @@ struct WeekFitPaywallView: View {
         return parts.joined(separator: ", ")
     }
 
-    private var statusMessage: String? {
-        switch subscriptionManager.lastOutcome {
-        case .pending:
-            return WeekFitLocalizedString("paywall.error.pending")
-        case .failedVerification:
-            return WeekFitLocalizedString("paywall.error.verification")
-        case .failed, .productsUnavailable:
-            return WeekFitLocalizedString("paywall.error.failed")
-        case .cancelled, .success, .none:
-            return nil
-        }
+    private var purchaseStatusMessage: String? {
+        WeekFitPaywallStatusCopy.purchaseMessage(
+            outcome: subscriptionManager.lastOutcome,
+            source: subscriptionManager.lastOutcomeSource
+        )
+    }
+
+    private var restoreStatusMessage: String? {
+        WeekFitPaywallStatusCopy.restoreMessage(
+            outcome: subscriptionManager.lastOutcome,
+            source: subscriptionManager.lastOutcomeSource
+        )
     }
 }
 

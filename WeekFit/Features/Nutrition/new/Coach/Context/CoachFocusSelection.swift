@@ -68,9 +68,11 @@ enum CoachFocusResolver {
 
         let upcoming = dayActivities
             .filter { !$0.isCompleted && !$0.isSkipped && $0.date >= input.now }
+            .filter(CoachCanonicalDayState.isSessionFocusCandidate)
             .sorted { $0.date < $1.date }
 
-        if let nextSerious = upcoming.first(where: CoachActivityClassifier.isSeriousTraining) {
+        if let nextSerious = upcoming.first(where: CoachActivityClassifier.isSeriousTraining),
+           isWithinBeforeSessionWindow(nextSerious, now: input.now) {
             return selection(for: nextSerious, source: .upcoming, now: input.now, timeOfDay: timeOfDay)
         }
 
@@ -98,10 +100,9 @@ enum CoachFocusResolver {
         }
 
         if let next = upcoming.first(where: { activity in
-            guard !CoachCanonicalDayState.isNutritionLog(activity) else { return false }
-            guard !CoachCanonicalDayState.isHydrationLog(activity) else { return false }
             return !completedWalkToday || CoachActivityClassifier.type(for: activity) != .walk
-        }) {
+        }),
+           isWithinBeforeSessionWindow(next, now: input.now) {
             return selection(for: next, source: .upcoming, now: input.now, timeOfDay: timeOfDay)
         }
 
@@ -149,7 +150,9 @@ enum CoachFocusResolver {
         let phase = resolveSessionPhase(
             activityState: state,
             timeOfDay: timeOfDay,
-            family: family
+            family: family,
+            activity: activity,
+            minutesUntilStart: timing.minutesUntilStart
         )
 
         return CoachFocusSelection(
@@ -204,10 +207,20 @@ enum CoachFocusResolver {
     private static func resolveSessionPhase(
         activityState: CoachActivityState,
         timeOfDay: CoachTimeOfDay,
-        family: CoachActivityFamily
+        family: CoachActivityFamily,
+        activity: CoachPlannedActivitySnapshot,
+        minutesUntilStart: Int?
     ) -> CoachSessionPhase {
         switch activityState {
         case .upcoming:
+            guard let minutesUntilStart,
+                  CoachActivityWindowPolicy.isWithinBeforeSessionWindow(
+                    activity: activity,
+                    minutesUntilStart: minutesUntilStart
+                  )
+            else {
+                return .idle
+            }
             return .pre
         case .active:
             return .during
@@ -221,6 +234,17 @@ enum CoachFocusResolver {
         case .none:
             return .idle
         }
+    }
+
+    private static func isWithinBeforeSessionWindow(
+        _ activity: CoachPlannedActivitySnapshot,
+        now: Date
+    ) -> Bool {
+        let minutes = CoachActivityWindowPolicy.minutesUntilStart(activity: activity, now: now)
+        return CoachActivityWindowPolicy.isWithinBeforeSessionWindow(
+            activity: activity,
+            minutesUntilStart: minutes
+        )
     }
 
     private static func minutesSinceActivityEnd(_ activity: CoachPlannedActivitySnapshot, now: Date) -> Int {

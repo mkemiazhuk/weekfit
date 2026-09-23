@@ -1,6 +1,6 @@
 import Foundation
 
-enum CoachActivityKind {
+nonisolated enum CoachActivityKind: Equatable, Sendable {
     case endurance
     case workout
     case heat
@@ -9,7 +9,7 @@ enum CoachActivityKind {
     case other
 }
 
-enum CoachActivityLoad {
+nonisolated enum CoachActivityLoad: Equatable, Sendable {
     case low
     case moderate
     case high
@@ -20,15 +20,15 @@ enum CoachActivityLoad {
 /// Prefer `CoachActivityClassifier.type` / `family` for scenario routing.
 enum CoachActivityContextResolver {
 
-    static func kind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
+    nonisolated static func kind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
         CoachActivityClassifier.coachKind(for: activity)
     }
 
-    static func load(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
+    nonisolated static func load(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
         CoachActivityClassifier.coachLoad(for: activity)
     }
 
-    static func activityCalories(_ activity: CoachPlannedActivitySnapshot) -> Int {
+    nonisolated static func activityCalories(_ activity: CoachPlannedActivitySnapshot) -> Int {
         CoachActivityClassifier.activityCalories(for: activity)
     }
 }

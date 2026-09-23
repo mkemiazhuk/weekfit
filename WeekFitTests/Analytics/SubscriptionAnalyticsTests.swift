@@ -108,4 +108,38 @@ final class SubscriptionAnalyticsTests: XCTestCase {
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "settings")
     }
+
+    func testRestoreFailedParametersDistinguishTimeout() {
+        SubscriptionAnalytics.restoreFailed(
+            source: .tab,
+            requestedTab: "meals",
+            failureReason: .timeout,
+            hasEntitlementAfter: false
+        )
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "timeout")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "tab")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.requestedTab], "meals")
+    }
+
+    func testPurchaseFailedParametersDistinguishEntitlementNotPropagated() {
+        SubscriptionAnalytics.purchaseFailed(
+            productID: WeekFitSubscriptionProductID.annual.rawValue,
+            requestedTab: "coach",
+            failureReason: .entitlementNotPropagated
+        )
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "entitlement_not_propagated")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.productID], WeekFitSubscriptionProductID.annual.rawValue)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.requestedTab], "coach")
+    }
+
+    func testPurchaseFailedParametersDistinguishVerificationFailed() {
+        SubscriptionAnalytics.purchaseFailed(
+            productID: WeekFitSubscriptionProductID.monthly.rawValue,
+            failureReason: .verificationFailed
+        )
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "verification_failed")
+    }
 }

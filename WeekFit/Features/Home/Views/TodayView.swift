@@ -36,6 +36,7 @@ struct TodayView: View {
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     @State private var showProfile = false
     @State private var livePulse = false
@@ -52,6 +53,26 @@ struct TodayView: View {
     private var textPrimary: Color { palette.textPrimary }
     private var textSecondary: Color { palette.textSecondary }
     private var textTertiary: Color { palette.textTertiary }
+
+    /// Dark secondary labels on the night sky — readable without competing with primary.
+    private var todaySecondaryReadable: Color {
+        guard !palette.isLight else { return textSecondary }
+        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.92 : 0.84
+        return textSecondary.opacity(opacity)
+    }
+
+    /// Section headings / meta (Goal, Left, Need Rest) on dark atmosphere.
+    private var todayMetaReadable: Color {
+        guard !palette.isLight else { return textSecondary }
+        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.86 : 0.76
+        return textSecondary.opacity(opacity)
+    }
+
+    private var todaySectionTitleColor: Color {
+        if palette.isLight { return WeekFitTheme.secondaryText }
+        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.88 : 0.78
+        return palette.textTertiary.opacity(opacity)
+    }
 
     private let todayRingSize: CGFloat = 72
     private let todayRingStroke: CGFloat = 3.5
@@ -1302,39 +1323,13 @@ struct TodayView: View {
             detail: "atmosphereEnabled=\(TodayAtmospherePolicy.isEnabled)"
         )
         if TodayAtmospherePolicy.isEnabled {
-            let _ = TodayStartupDiagnostics.child("TodayAtmosphereBackground resolving snapshot")
-            TodayAtmosphereBackground(
-                snapshot: todayAtmosphereSnapshot,
-                ambientOpacity: palette.ambientOpacity
-            )
-            .ignoresSafeArea()
+            // Root shell already paints `TodayAtmosphereBackground` for every tab.
+            Color.clear
         } else {
             WeekFitTheme.appBackground
                 .ignoresSafeArea()
             ambientBackground
         }
-    }
-
-    private var todayAtmosphereSnapshot: TodayAtmosphereSnapshot {
-        let _ = TodayStartupDiagnostics.child(
-            "todayAtmosphereSnapshot",
-            detail: "recovery=\(healthManager.recoveryPercent) sleepH=\(healthManager.sleepHours) kcal=\(healthManager.activeCalories)"
-        )
-        return TodayAtmosphereResolver.resolve(
-            recoveryPercent: healthManager.recoveryPercent,
-            hasRecoverySignals: hasTodayRecoverySignals,
-            sleepHours: healthManager.sleepHours,
-            activeCalories: healthManager.activeCalories,
-            activityGoal: automatedActivityGoal,
-            completedTrainingCount: completedTrainingCountToday,
-            hour: Calendar.current.component(.hour, from: todayViewModel.now)
-        )
-    }
-
-    private var completedTrainingCountToday: Int {
-        selectedDayActivities.filter { activity in
-            activity.isCompleted && CoachTomorrowDemandResolver.isTraining(CoachPlannedActivitySnapshot(from: activity))
-        }.count
     }
 
     private var ambientBackground: some View {
@@ -1385,7 +1380,7 @@ struct TodayView: View {
             .font(.caption2.weight(.bold))
             .fontDesign(.rounded)
             .tracking(palette.isLight ? 1.2 : 1.15)
-            .foregroundStyle(palette.isLight ? WeekFitTheme.secondaryText : palette.textTertiary.opacity(0.68))
+            .foregroundStyle(todaySectionTitleColor)
             .offset(y: 0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1492,7 +1487,7 @@ struct TodayView: View {
                     )
                         .font(.footnote)
                         .fontDesign(.rounded)
-                        .foregroundStyle(textSecondary.opacity(0.68))
+                        .foregroundStyle(todaySecondaryReadable)
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1514,7 +1509,7 @@ struct TodayView: View {
         Text(AppText.Today.coachChipLimitedRecovery)
             .font(.caption2.weight(.semibold))
             .fontDesign(.rounded)
-            .foregroundStyle(textSecondary.opacity(0.68))
+            .foregroundStyle(todaySecondaryReadable)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
@@ -1570,14 +1565,14 @@ struct TodayView: View {
         HStack(spacing: 8) {
             Image(systemName: "moon.stars.fill")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(textSecondary.opacity(0.78))
+                .foregroundStyle(todaySecondaryReadable)
                 .frame(width: 40, alignment: .center)
                 .accessibilityHidden(true)
 
             Text(cue.label)
                 .font(.caption.weight(.semibold))
                 .fontDesign(.rounded)
-                .foregroundStyle(textSecondary.opacity(0.92))
+                .foregroundStyle(todaySecondaryReadable)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .allowsTightening(true)
@@ -1702,7 +1697,7 @@ struct TodayView: View {
 
                     Text(AppText.Today.eveningReviewSubtitle)
                         .font(.system(size: 11.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(textSecondary.opacity(0.72))
+                        .foregroundStyle(todaySecondaryReadable)
                 }
 
                 Spacer()
@@ -2088,7 +2083,7 @@ struct TodayView: View {
                         .foregroundStyle(
                             palette.isLight
                                 ? WeekFitTheme.secondaryText
-                                : textSecondary.opacity(0.58)
+                                : todayMetaReadable
                         )
                         .lineLimit(ringCaptionLineLimit)
                         .minimumScaleFactor(0.82)
@@ -2515,7 +2510,7 @@ struct TodayView: View {
                                 .font(.caption2.weight(.bold))
                                 .fontDesign(.rounded)
                                 .tracking(1.45)
-                                .foregroundStyle(textSecondary.opacity(0.78))
+                                .foregroundStyle(todaySecondaryReadable)
 
                             Text(insightTitle)
                                 .font(.callout.weight(.bold))
@@ -2533,7 +2528,7 @@ struct TodayView: View {
                                 Text(insightMessage)
                                     .font(.footnote)
                                     .fontDesign(.rounded)
-                                    .foregroundStyle(textSecondary.opacity(0.68))
+                                    .foregroundStyle(todaySecondaryReadable)
                                     .lineSpacing(2)
                                     .multilineTextAlignment(.leading)
                                     .lineLimit(3)
@@ -2591,9 +2586,14 @@ struct TodayView: View {
         .onAppear {
             guard presentation.planAdjustmentMode == .appliedExecuting else { return }
             let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+            guard MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey) else { return }
             MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
             MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
-            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
+            // Defer recompute off the appear stack — sync forceRecompute during
+            // body/appear deepened the same main-thread overflow path.
+            Task { @MainActor in
+                coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
+            }
         }
     }
 
@@ -2779,42 +2779,41 @@ struct TodayView: View {
         .animation(.easeOut(duration: 0.22), value: true)
     }
 
-    /// Real Coach card when ready; quiet plate while Coach is still settling —
-    /// keeps the stacked “volume” look either way.
-    @ViewBuilder
+    /// Quiet plate under Morning Adjustments.
+    ///
+    /// Never nest `coachInsightCard` / `coachInsightPhaseContent` here. Combining
+    /// that heavy opaque SwiftUI type with the proposal card in one ZStack
+    /// overflows the main-thread stack while instantiating mangled metadata
+    /// (`EXC_BAD_ACCESS` / "Thread stack size exceeded" — see device IPS
+    /// 2026-09-14…17 morning crashes).
     private var morningProposalStackUnderlay: some View {
-        switch todayCoachInsightPhase {
-        case .insight, .awaitingHealthConnect, .awaitingMorningSync:
-            coachInsightPhaseContent
-                .opacity(0.90)
-        case .preparing:
-            RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                .fill(palette.cardSurfaceElevated.opacity(palette.isLight ? 0.92 : 0.88))
-                .overlay {
-                    RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
-                        .strokeBorder(
-                            palette.isLight
-                                ? WeekFitLightTokens.cardBorder.opacity(0.35)
-                                : Color.white.opacity(0.07),
-                            lineWidth: 1
-                        )
+        RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+            .fill(palette.cardSurfaceElevated.opacity(palette.isLight ? 0.92 : 0.88))
+            .overlay {
+                RoundedRectangle(cornerRadius: TodayLayout.cardRadius, style: .continuous)
+                    .strokeBorder(
+                        palette.isLight
+                            ? WeekFitLightTokens.cardBorder.opacity(0.35)
+                            : Color.white.opacity(0.07),
+                        lineWidth: 1
+                    )
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 96)
+            .overlay(alignment: .topLeading) {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(WeekFitTheme.coachAccent.opacity(0.12))
+                        .frame(width: 28, height: 28)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(textSecondary.opacity(0.18))
+                        .frame(width: 72, height: 8)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 96)
-                .overlay(alignment: .topLeading) {
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(WeekFitTheme.coachAccent.opacity(0.12))
-                            .frame(width: 28, height: 28)
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(textSecondary.opacity(0.18))
-                            .frame(width: 72, height: 8)
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 22)
-                    .opacity(0.55)
-                }
-        }
+                .padding(.horizontal, 18)
+                .padding(.top, 22)
+                .opacity(0.55)
+            }
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -2960,7 +2959,7 @@ struct TodayView: View {
                         .lineLimit(2)
                     Text(WeekFitLocalizedString("coach.proposal.chrome.appliedBody"))
                         .font(.footnote)
-                        .foregroundStyle(textSecondary.opacity(0.72))
+                        .foregroundStyle(todaySecondaryReadable)
                         .lineLimit(2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2970,7 +2969,9 @@ struct TodayView: View {
         .onAppear {
             MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
             MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
-            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.today")
+            Task { @MainActor in
+                coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.today")
+            }
         }
     }
 

@@ -291,7 +291,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2650;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					55E7BBE42FB2403E006A4D20 = {
 						CreatedOnToolsVersion = 26.4.1;
@@ -394,8 +394,8 @@
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST — required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST — check target membership.\"\n  exit 1\nfi\necho \"note: Crashlytics dSYM upload starting (DWARF_DSYM_FOLDER_PATH=${DWARF_DSYM_FOLDER_PATH}, DWARF_DSYM_FILE_NAME=${DWARF_DSYM_FILE_NAME})\"\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nstatus=$?\nif [ $status -eq 0 ]; then\n  echo \"note: Crashlytics dSYM upload finished successfully\"\nelse\n  echo \"error: Crashlytics dSYM upload failed with exit code $status\"\nfi\nexit $status\n";
+			shellPath = /bin/bash;
+			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nFIREBASE_ROOT=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics\"\nRUN_SCRIPT=\"${FIREBASE_ROOT}/run\"\nUPLOAD_SYMBOLS=\"${FIREBASE_ROOT}/upload-symbols\"\nDSYM_PATH=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST -- required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\n\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST -- check target membership.\"\n  exit 1\nfi\n\nif [ ! -x \"$UPLOAD_SYMBOLS\" ] || [ ! -x \"$RUN_SCRIPT\" ]; then\n  echo \"error: Firebase Crashlytics scripts missing under $FIREBASE_ROOT -- resolve SPM packages and retry.\"\n  exit 1\nfi\n\necho \"note: Crashlytics dSYM upload starting (CONFIGURATION=${CONFIGURATION}, DWARF_DSYM_FOLDER_PATH=${DWARF_DSYM_FOLDER_PATH}, DWARF_DSYM_FILE_NAME=${DWARF_DSYM_FILE_NAME})\"\n\n# Debug: keep Firebase fast background run (validation still fails the build).\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\n  \"$RUN_SCRIPT\"\n  status=$?\n  if [ $status -eq 0 ]; then\n    echo \"note: Crashlytics Debug validation passed (upload continues in background)\"\n  else\n    echo \"error: Crashlytics dSYM upload failed with exit code $status\"\n  fi\n  exit $status\nfi\n\n# Release / Archive: require dSYM, upload synchronously (Firebase run backgrounds and hides errors).\nif [ ! -d \"$DSYM_PATH\" ]; then\n  echo \"error: dSYM missing at $DSYM_PATH -- set Debug Information Format to DWARF with dSYM File for Release.\"\n  exit 1\nfi\n\necho \"note: Primary dSYM UUIDs:\"\ndwarfdump -u \"$DSYM_PATH\" || true\n\n\"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$DSYM_PATH\"\nstatus=$?\nif [ $status -ne 0 ]; then\n  echo \"error: Crashlytics upload-symbols failed for $DSYM_PATH (exit $status)\"\n  exit $status\nfi\n\n# Upload companion dSYMs in the same folder (e.g. WeekFitWidget).\nfor companion in \"${DWARF_DSYM_FOLDER_PATH}\"/*.dSYM; do\n  if [ ! -d \"$companion\" ]; then\n    continue\n  fi\n  if [ \"$companion\" = \"$DSYM_PATH\" ]; then\n    continue\n  fi\n  echo \"note: Companion dSYM UUIDs ($(basename \"$companion\")):\"\n  dwarfdump -u \"$companion\" || true\n  \"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$companion\"\n  cstatus=$?\n  if [ $cstatus -ne 0 ]; then\n    echo \"error: Crashlytics upload-symbols failed for $companion (exit $cstatus)\"\n    exit $cstatus\n  fi\ndone\n\necho \"note: Crashlytics dSYM upload finished successfully (synchronous Release/Archive)\"\nexit 0";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -454,6 +454,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -519,6 +520,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -552,7 +554,7 @@
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -631,6 +633,7 @@
 				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 27;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -763,7 +766,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeekFitWidget/Info.plist;
@@ -775,7 +778,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.2;
+				MARKETING_VERSION = 1.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -795,7 +798,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 7R6347XPK2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeekFitWidget/Info.plist;
@@ -807,7 +810,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.2;
+				MARKETING_VERSION = 1.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

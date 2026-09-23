@@ -21,7 +21,7 @@ enum SleepDurationBeliefEvaluator: CoachBeliefEvaluator {
             beliefID: beliefID,
             currentMaturity: currentMaturity,
             effectSize: evaluation?.recoveryDelta ?? 0,
-            evidence: evaluation.map(evidence(from:)),
+            evidence: evaluation.map { evidence(from: $0) },
             hasMinimumSamples: evaluation?.hasMinimumSamples ?? false,
             hasEstablishedSamples: evaluation?.hasEstablishedSamples ?? false,
             emergedThreshold: emergedRecoveryDelta,

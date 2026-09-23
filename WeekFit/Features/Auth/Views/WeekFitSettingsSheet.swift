@@ -58,6 +58,9 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
                 ProductAnalytics.trackScreen(.settings)
             }
         }
+        .onChange(of: isPresented) { _, presented in
+            appSession.setSettingsPresented(presented)
+        }
     }
 }
 

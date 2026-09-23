@@ -49,9 +49,9 @@ enum MorningProposalBriefComposer {
         let actionLines: [String]
         if actionSource.isEmpty, isColdStart(proposal) {
             // Guidance-only first morning: surface the curated tip(s) as the brief actions.
-            actionLines = tips.prefix(2).map(actionLine(for:))
+            actionLines = tips.prefix(2).map { actionLine(for: $0) }
         } else {
-            actionLines = actionSource.map(actionLine(for:))
+            actionLines = actionSource.map { actionLine(for: $0) }
         }
 
         // Weather only in meta — tip counts read as inventory, not coaching.

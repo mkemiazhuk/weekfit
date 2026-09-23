@@ -9,7 +9,11 @@ protocol WeekFitStoreKitServicing: AnyObject {
     func loadAppTransaction() async -> WeekFitAppTransactionStatus
     func loadProducts() async throws -> WeekFitProductsLoadResult
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot?
+    /// Runs StoreKit purchase. On `.success`, the verified transaction is held unfinished
+    /// until `finishVerifiedPurchaseIfNeeded()` so the caller can deliver entitlements first.
     func purchase(productID: String) async -> WeekFitPurchaseOutcome
+    /// Finishes the outstanding verified purchase transaction, if any (idempotent).
+    func finishVerifiedPurchaseIfNeeded() async
     func restorePurchases() async throws
     /// Drops cached `Product` instances so the next load/purchase cannot use a prior storefront.
     func invalidateCachedProducts()
@@ -23,6 +27,11 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     nonisolated deinit {}
 
     private var productsByID: [String: Product] = [:]
+    /// Verified purchase awaiting entitlement delivery + `finish()` (Apple: unlock → finish).
+    private var pendingVerifiedPurchase: Transaction?
+    /// Recently finished transaction ids — avoids double-finish with `Transaction.updates`.
+    private var recentlyFinishedTransactionIDs: [UInt64] = []
+    private let maxRecentlyFinishedTransactionIDs = 32
 
     func loadAppTransaction() async -> WeekFitAppTransactionStatus {
         do {
@@ -156,36 +165,55 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
 
         do {
             await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseBefore(product: product)
+            // StoreKit 2: `Product.purchase()` presents the system sheet and returns
+            // the transaction for this attempt. Do not call `AppStore.sync()` here.
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
                 switch verification {
                 case .verified(let transaction):
-                    await transaction.finish()
+                    // Hold finish until the caller refreshes entitlements (unlock → finish).
+                    pendingVerifiedPurchase = transaction
                     await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "success")
                     return .success
                 case .unverified:
+                    // Never finish or unlock unverified transactions.
+                    pendingVerifiedPurchase = nil
                     await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "failedVerification")
                     return .failedVerification
                 }
             case .userCancelled:
+                pendingVerifiedPurchase = nil
                 await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "userCancelled")
                 return .cancelled
             case .pending:
+                // Ask to Buy / SCA — keep unfinished; Transaction.updates delivers later.
+                pendingVerifiedPurchase = nil
                 await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "pending")
                 return .pending
             @unknown default:
+                pendingVerifiedPurchase = nil
                 await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "failed")
                 return .failed
             }
         } catch {
+            pendingVerifiedPurchase = nil
             await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "threw")
             return .failed
         }
     }
 
+    func finishVerifiedPurchaseIfNeeded() async {
+        guard let transaction = pendingVerifiedPurchase else { return }
+        pendingVerifiedPurchase = nil
+        await finishTransactionIfNeeded(transaction)
+    }
+
     func restorePurchases() async throws {
         do {
+            // Apple: call only from an explicit Restore action. Forces App Store
+            // re-auth and refreshes transaction / subscription status on device.
+            // Callers must race this against a timeout (Sandbox auth can hang).
             try await AppStore.sync()
         } catch StoreKitError.userCancelled {
             throw CancellationError()
@@ -195,12 +223,13 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     func startTransactionUpdates(
         _ onChange: @escaping @Sendable () async -> Void
     ) -> Task<Void, Never> {
-        Task.detached {
+        Task.detached { [weak self] in
             for await result in Transaction.updates {
                 switch result {
                 case .verified(let transaction):
-                    await transaction.finish()
+                    // Same strategy as direct purchase: deliver entitlements, then finish.
                     await onChange()
+                    await self?.completeVerifiedTransactionUpdate(transaction)
                 case .unverified:
                     #if DEBUG
                     // Local StoreKit may emit unverified updates; re-evaluate without granting access.
@@ -208,6 +237,29 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                     #endif
                 }
             }
+        }
+    }
+
+    private func completeVerifiedTransactionUpdate(_ transaction: Transaction) async {
+        await finishTransactionIfNeeded(transaction)
+        if pendingVerifiedPurchase?.id == transaction.id {
+            pendingVerifiedPurchase = nil
+        }
+    }
+
+    private func finishTransactionIfNeeded(_ transaction: Transaction) async {
+        if recentlyFinishedTransactionIDs.contains(transaction.id) { return }
+        await transaction.finish()
+        rememberFinishedTransactionID(transaction.id)
+    }
+
+    private func rememberFinishedTransactionID(_ id: UInt64) {
+        if recentlyFinishedTransactionIDs.contains(id) { return }
+        recentlyFinishedTransactionIDs.append(id)
+        if recentlyFinishedTransactionIDs.count > maxRecentlyFinishedTransactionIDs {
+            recentlyFinishedTransactionIDs.removeFirst(
+                recentlyFinishedTransactionIDs.count - maxRecentlyFinishedTransactionIDs
+            )
         }
     }
 

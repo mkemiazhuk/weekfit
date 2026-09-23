@@ -30,6 +30,7 @@ struct ReviewPromptHostModifier: ViewModifier {
             }
             .onChange(of: appSession.isPresentingOnboarding) { _, _ in syncUIBlocking() }
             .onChange(of: appSession.isPresentingHealthAccess) { _, _ in syncUIBlocking() }
+            .onChange(of: appSession.isPresentingSettings) { _, _ in syncUIBlocking() }
             .onChange(of: accountSession.isTransitioning) { _, _ in syncUIBlocking() }
             .onChange(of: isUIBlocked) { _, blocked in
                 reviewManager.updateUIBlocking(blocked)
@@ -42,6 +43,7 @@ struct ReviewPromptHostModifier: ViewModifier {
     private var isUIBlocked: Bool {
         appSession.isPresentingOnboarding
             || appSession.isPresentingHealthAccess
+            || appSession.isPresentingSettings
             || accountSession.isTransitioning
     }
 

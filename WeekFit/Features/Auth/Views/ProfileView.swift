@@ -58,6 +58,7 @@ struct ProfileView: View {
                 AppDistribution.current.allowsTemporaryForcePaywall
                     && forcePaywall.isForcePaywallActive
                     && forcePaywall.isManualPaywallPresented
+                    && !showWeekFitAccessPaywall
             },
             set: { presented in
                 guard AppDistribution.current.allowsTemporaryForcePaywall else {

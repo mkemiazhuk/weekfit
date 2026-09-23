@@ -670,6 +670,31 @@ final class ActivityReconcilerXCTests: XCTestCase {
         )
     }
 
+    func testSyncedPausedWorkoutStoresFitnessDurationNotElapsed() {
+        let start = time(hour: 9, minute: 39)
+        let end = time(hour: 12, minute: 59)
+        let moving = TimeInterval(1 * 3600 + 17 * 60 + 1)
+        let planned = cycling(at: time(hour: 10, minute: 0), durationMinutes: 60)
+        let synced = HKWorkout(
+            activityType: .cycling,
+            start: start,
+            end: end,
+            duration: moving,
+            totalEnergyBurned: nil,
+            totalDistance: HKQuantity(unit: .meter(), doubleValue: 17_010),
+            metadata: nil
+        )
+
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+
+        XCTAssertEqual(planned.durationMinutes, 77)
+        XCTAssertEqual(planned.actualDurationMinutes, 77)
+        XCTAssertEqual(
+            Int(synced.endDate.timeIntervalSince(synced.startDate) / 60),
+            200
+        )
+    }
+
     private func workout(
         from start: Date,
         to end: Date,

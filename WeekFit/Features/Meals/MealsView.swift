@@ -178,7 +178,7 @@ struct MealsView: View {
             } content: {
                 mealsContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .background(canvasBackground)
+                    // Transparent — Root paints the shared Weather-like sky.
             }
             .id(palette.appearanceInvalidationToken)
             .opacity(showContent ? 1 : 0)
@@ -523,7 +523,7 @@ struct MealsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.hidden)
-        .weekFitTransparentScrollBackground()
+        .weekFitTransparentScrollBackground(fillsCanvas: false)
     }
 
     private var emptyLibraryList: some View {
@@ -550,7 +550,7 @@ struct MealsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.hidden)
-        .weekFitTransparentScrollBackground()
+        .weekFitTransparentScrollBackground(fillsCanvas: false)
     }
 
     private var catalogErrorList: some View {
@@ -598,7 +598,7 @@ struct MealsView: View {
                 .frame(height: isQuickLogMode ? 52 : 56)
         }
         .scrollIndicators(.hidden)
-        .weekFitTransparentScrollBackground()
+        .weekFitTransparentScrollBackground(fillsCanvas: false)
     }
 
     private var populatedLibraryList: some View {
@@ -668,7 +668,7 @@ struct MealsView: View {
             )
         }
         .scrollIndicators(.hidden)
-        .weekFitTransparentScrollBackground()
+        .weekFitTransparentScrollBackground(fillsCanvas: false)
     }
 
     @ViewBuilder

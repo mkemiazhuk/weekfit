@@ -157,13 +157,13 @@ struct RecoveryScoreBreakdown: Equatable, Hashable {
 
     /// Converts 0–100 quality to a 0–10 display grade.
     /// Rule: `(quality / 10).rounded(.toNearestOrAwayFromZero)`, clamped to 0...10.
-    static func grade(fromQuality quality: Double) -> Int {
+    nonisolated static func grade(fromQuality quality: Double) -> Int {
         let scaled = (quality / 10.0).rounded(.toNearestOrAwayFromZero)
-        return Int(min(Double(maxQualityGrade), max(0, scaled)))
+        return Int(min(Double(10), max(0, scaled)))
     }
 
     /// - Important: Prefer `grade(fromQuality:)`. Kept for call-site compatibility.
-    static func grade(fromArchitectureQuality quality: Double) -> Int {
+    nonisolated static func grade(fromArchitectureQuality quality: Double) -> Int {
         grade(fromQuality: quality)
     }
 

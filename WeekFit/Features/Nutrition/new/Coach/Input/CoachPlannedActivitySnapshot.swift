@@ -92,29 +92,29 @@ struct CoachPlannedActivitySnapshot: Equatable, Hashable, Sendable, Identifiable
         self.actualDurationMinutes = actualDurationMinutes
     }
 
-    var effectiveDurationMinutes: Int {
+    nonisolated var effectiveDurationMinutes: Int {
         if isCompleted, let actualDurationMinutes, actualDurationMinutes > 0 {
             return actualDurationMinutes
         }
         return durationMinutes
     }
 
-    var completionRatio: Double {
+    nonisolated var completionRatio: Double {
         guard durationMinutes > 0 else { return isCompleted ? 1 : 0 }
         return Double(effectiveDurationMinutes) / Double(durationMinutes)
     }
 
-    var isPartialCompletion: Bool {
+    nonisolated var isPartialCompletion: Bool {
         guard isCompleted, !isSkipped else { return false }
         guard let actualDurationMinutes else { return false }
         return actualDurationMinutes > 0 && actualDurationMinutes < durationMinutes
     }
 
-    var isFullCompletion: Bool {
+    nonisolated var isFullCompletion: Bool {
         isCompleted && !isSkipped && !isPartialCompletion
     }
 
-    var isWatchSynced: Bool {
+    nonisolated var isWatchSynced: Bool {
         if healthKitWorkoutUUID?.isEmpty == false {
             return true
         }

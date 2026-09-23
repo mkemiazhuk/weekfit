@@ -65,19 +65,19 @@ enum CoachMorningBriefCopyPolicy {
             let sleep = formatSleepHours(facts.sleepHours, russian: false)
             let sleepRU = formatSleepHours(facts.sleepHours, russian: true)
             return .en(
-                "Morning — yesterday's load is still in the legs, sleep \(sleep), recovery \(facts.recoveryPercent)%.",
-                "Утро — вчера ещё в теле, сон \(sleepRU), энергия \(facts.recoveryPercent)%."
+                "Morning — yesterday logged real training load, sleep \(sleep), recovery \(facts.recoveryPercent)%.",
+                "Утро — вчера была заметная нагрузка, сон \(sleepRU), энергия \(facts.recoveryPercent)%."
             )
         }
         return .en(
-            "Morning — yesterday's load is still in the legs — today needs a softer line.",
-            "Утро — вчерашняя нагрузка ещё чувствуется — сегодня мягче."
+            "Morning — yesterday logged real training load — keep today's first block softer.",
+            "Утро — вчера была заметная нагрузка — первый блок сегодня мягче."
         )
     }
 
     static func recoveryAfterHeavyYesterdayNextAction(for facts: CoachMorningBriefFacts) -> CoachBilingualText {
-        if let activity = facts.nextActivity {
-            return nextActionForActivity(activity, facts: facts, prepLeadMinutes: 20)
+        if let activity = facts.nextActivity, facts.nextActivityIsImminent {
+            return nextActionForImminentActivity(activity, facts: facts)
         }
         return .en(
             "Walk 15 minutes, then stretch before anything demanding.",
@@ -105,13 +105,25 @@ enum CoachMorningBriefCopyPolicy {
     private static func morningAssessment(_ facts: CoachMorningBriefFacts) -> CoachBilingualText {
         let opener = recoveryOpener(facts, prefix: .morning)
 
-        if let activity = facts.nextActivity {
+        // Mention the next workout at most once here — recommendation/next action stay distinct.
+        if let activity = facts.nextActivity, facts.nextActivityIsImminent {
             let title = displayTitle(activity)
             return mergeOpener(
                 opener,
                 .en(
                     "Next up: \(title) at \(activity.formattedStartTime).",
                     "Дальше: \(title) в \(activity.formattedStartTime)."
+                )
+            )
+        }
+
+        if let activity = facts.nextActivity {
+            let title = displayTitle(activity)
+            return mergeOpener(
+                opener,
+                .en(
+                    "Later today: \(title) at \(activity.formattedStartTime).",
+                    "Позже сегодня: \(title) в \(activity.formattedStartTime)."
                 )
             )
         }
@@ -140,8 +152,8 @@ enum CoachMorningBriefCopyPolicy {
             switch prefix {
             case .morning:
                 return .en(
-                    "Morning — check legs and sleep before the day picks up speed.",
-                    "Утро — посмотрите, как ноги и как спалось, прежде чем день разгонится."
+                    "Morning — recovery data is still catching up.",
+                    "Утро — данные восстановления ещё подтягиваются."
                 )
             case .plain:
                 return .en("", "")
@@ -153,10 +165,11 @@ enum CoachMorningBriefCopyPolicy {
         let recovery = facts.recoveryPercent
         let recoveryLabelRU = "готовность"
 
-        if facts.hadHeavyYesterday && facts.recoveryBand == .good {
+        // Measured facts only — do not invent how legs/muscles feel from yesterday's load flag.
+        if facts.hadHeavyYesterday {
             return .en(
-                "Morning — legs still hold yesterday's load, recovery at \(recovery)%.",
-                "Утро — ноги помнят вчера, \(recoveryLabelRU) \(recovery)%."
+                "Morning — yesterday logged real training load, sleep \(sleepEN), recovery at \(recovery)%.",
+                "Утро — вчера была заметная нагрузка, сон \(sleepRU), \(recoveryLabelRU) \(recovery)%."
             )
         }
 
@@ -183,18 +196,37 @@ enum CoachMorningBriefCopyPolicy {
     // MARK: - Recommendation / avoid / next action
 
     private static func planRecommendation(_ facts: CoachMorningBriefFacts) -> CoachBilingualText {
-        if let activity = facts.nextActivity {
-            let title = displayTitle(activity)
-            let duration = activity.durationMinutes
-            if facts.seriousActivityCount > 1 {
+        // Imminent prep owns the next-action slot — keep recommendation about pacing, not the same event.
+        if facts.nextActivityIsImminent {
+            if facts.sleepIsLow || facts.recoveryBand == .low {
                 return .en(
-                    "Lead with \(title) at \(activity.formattedStartTime) — \(duration) min, then hold the rest steady.",
-                    "Начните с \(title) в \(activity.formattedStartTime) — \(duration) мин, а дальше держите ровный темп."
+                    "Keep the first minutes easy — recovery is still building.",
+                    "Первые минуты легче — тело ещё восстанавливается."
+                )
+            }
+            if facts.hadHeavyYesterday {
+                return .en(
+                    "Start steadier than yesterday's peak effort.",
+                    "Начните ровнее, чем вчерашний пик."
                 )
             }
             return .en(
-                "First block: \(title) at \(activity.formattedStartTime) — \(duration) min on the plan.",
-                "Первый блок: \(title) в \(activity.formattedStartTime) — \(duration) мин по плану."
+                "Warm up first, then settle into the planned effort.",
+                "Сначала разминка, потом плановый темп."
+            )
+        }
+
+        if facts.nextActivity != nil {
+            // Event already named in assessment — give a morning action, not a second echo.
+            if facts.hadHeavyYesterday || facts.recoveryBand == .low || facts.sleepIsLow {
+                return .en(
+                    "Keep the morning easy until that session is closer.",
+                    "Держите утро спокойным, пока сессия не станет ближе."
+                )
+            }
+            return .en(
+                "Use the morning for fuel, hydration, and an easy warmup walk.",
+                "Утро — для еды, воды и лёгкой разминочной прогулки."
             )
         }
 
@@ -240,21 +272,19 @@ enum CoachMorningBriefCopyPolicy {
                 "Не начинайте на полной — бак ещё не полный."
             )
         }
-        if facts.seriousActivityCount > 0 {
+        if facts.nextActivityIsImminent {
             return .en(
-                "Don't skip warmup or rush the first block.",
-                "Не пропускайте разминку и не торопите первый блок."
+                "Don't skip warmup or rush the opening minutes.",
+                "Не пропускайте разминку и не торопите первые минуты."
             )
         }
-        return .en(
-            "Don't turn the first hour into a race.",
-            "Не устраивайте гонку с самого утра."
-        )
+        // No useful caution — omit section via empty copy.
+        return .en("", "")
     }
 
     private static func morningNextAction(_ facts: CoachMorningBriefFacts) -> CoachBilingualText {
-        if let activity = facts.nextActivity {
-            return nextActionForActivity(activity, facts: facts, prepLeadMinutes: 45)
+        if let activity = facts.nextActivity, facts.nextActivityIsImminent {
+            return nextActionForImminentActivity(activity, facts: facts)
         }
         if facts.hadHeavyYesterday || facts.recoveryBand == .low {
             return .en(
@@ -268,18 +298,18 @@ enum CoachMorningBriefCopyPolicy {
         )
     }
 
-    private static func nextActionForActivity(
+    private static func nextActionForImminentActivity(
         _ activity: CoachPlannedActivitySummary,
-        facts: CoachMorningBriefFacts,
-        prepLeadMinutes: Int
+        facts: CoachMorningBriefFacts
     ) -> CoachBilingualText {
         let title = displayTitle(activity)
         let time = activity.formattedStartTime
         let minutesOut = facts.minutesUntilNextActivity
+        let farLead = CoachActivityWindowPolicy.beforeSessionCopyWindowMinutes
 
         switch activity.activityType {
         case .cycling, .running, .swimming, .hiit:
-            if let minutes = minutesOut, minutes > prepLeadMinutes {
+            if let minutes = minutesOut, minutes > 45 {
                 return .en(
                     "Eat a light breakfast now if you haven't — \(title) at \(time).",
                     "Лёгкий завтрак, если ещё не ели — \(title) в \(time)."
@@ -304,10 +334,22 @@ enum CoachMorningBriefCopyPolicy {
                 "Head out for \(title) at \(time) — easy pace, no target.",
                 "Выходите на \(title) в \(time) — лёгкий темп, без цели."
             )
-        default:
+        case .stretching, .yoga, .breathing, .sauna:
             return .en(
-                "Prep gear and arrive 10 minutes early — \(title) at \(time).",
-                "Соберите форму и приходите за 10 минут — \(title) в \(time)."
+                "Settle in a few minutes early — \(title) at \(time).",
+                "Приходите чуть раньше — \(title) в \(time)."
+            )
+        case .none:
+            // Neutral fallback — never invent gear/arrival language for unknown types.
+            if let minutes = minutesOut, minutes <= farLead {
+                return .en(
+                    "Be ready around \(time) for \(title).",
+                    "Будьте готовы около \(time) к \(title)."
+                )
+            }
+            return .en(
+                "Take a 10-minute walk or stretch before the day fills in.",
+                "10 минут прогулки или растяжки, пока день не заполнился."
             )
         }
     }
@@ -332,7 +374,7 @@ enum CoachMorningBriefCopyPolicy {
     }
 
     private static func teaserMessage(_ facts: CoachMorningBriefFacts, scenario: CoachScenarioKey) -> CoachBilingualText {
-        if let activity = facts.nextActivity {
+        if let activity = facts.nextActivity, facts.nextActivityIsImminent {
             let title = displayTitle(activity)
             return .en(
                 "\(title) at \(activity.formattedStartTime) — prep from \(prepStartTime(activity, leadMinutes: 15)).",
@@ -340,16 +382,24 @@ enum CoachMorningBriefCopyPolicy {
             )
         }
 
+        if let activity = facts.nextActivity {
+            let title = displayTitle(activity)
+            return .en(
+                "\(title) later at \(activity.formattedStartTime).",
+                "\(title) позже в \(activity.formattedStartTime)."
+            )
+        }
+
         switch scenario {
         case .recoveryAfterHeavyYesterday:
             return .en(
-                "Yesterday still counts — walk before anything hard.",
-                "Вчера ещё в теле — прогулка перед нагрузкой."
+                "Yesterday's training load is logged — keep the morning easy.",
+                "Вчерашняя нагрузка в логе — утро держите лёгким."
             )
         case .protectTomorrowFresh:
             return .en(
-                "Keep today easy — tomorrow needs fresh legs.",
-                "Сегодня легко — завтра нужны свежие ноги."
+                "Keep today easy — tomorrow needs capacity.",
+                "Сегодня легко — завтра нужен запас."
             )
         default:
             return .en(
@@ -360,7 +410,8 @@ enum CoachMorningBriefCopyPolicy {
     }
 
     private static func teaserHeadline(_ facts: CoachMorningBriefFacts, scenario: CoachScenarioKey) -> CoachBilingualText {
-        if let activity = facts.nextActivity {
+        // “Before session” only inside the prep window for a real classified workout.
+        if let activity = facts.nextActivity, facts.nextActivityIsImminent {
             switch activity.activityType {
             case .cycling:
                 return .en("Before the ride", "Перед заездом")
@@ -376,8 +427,10 @@ enum CoachMorningBriefCopyPolicy {
                 return .en("Before lifting", "Перед силовой")
             case .walk:
                 return .en("Before the walk", "Перед прогулкой")
-            default:
-                return .en("Before session", "Перед тренировкой")
+            case .stretching, .yoga, .breathing, .sauna:
+                return .en("Before recovery", "Перед восстановлением")
+            case .none:
+                return .en("Morning plan", "План на утро")
             }
         }
 
@@ -425,7 +478,7 @@ enum CoachMorningBriefCopyPolicy {
         case .walk:
             return russian ? "Прогулка" : "Walk"
         default:
-            return russian ? "Тренировка" : "Session"
+            return russian ? "Активность" : "Activity"
         }
     }
 

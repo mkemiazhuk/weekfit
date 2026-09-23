@@ -3,7 +3,7 @@ import WeekFitPlanner
 
 // MARK: - Activity taxonomy
 
-enum CoachActivityFamily: String, CaseIterable, Equatable, Sendable {
+nonisolated enum CoachActivityFamily: String, CaseIterable, Equatable, Sendable {
     case endurance
     case racket
     case strength
@@ -12,7 +12,7 @@ enum CoachActivityFamily: String, CaseIterable, Equatable, Sendable {
     case none
 }
 
-enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
+nonisolated enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
     case cycling
     case running
     case swimming
@@ -77,7 +77,7 @@ enum CoachDurationBand: String, Equatable, Sendable {
     }
 }
 
-enum CoachDayLoadBand: String, CaseIterable, Equatable, Sendable {
+nonisolated enum CoachDayLoadBand: String, CaseIterable, Equatable, Sendable {
     case fresh
     case moderate
     case heavy
@@ -280,7 +280,7 @@ struct CoachContext: Equatable, Sendable {
 
 enum CoachActivityClassifier {
 
-    static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
+    nonisolated static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
         switch type(for: activity) {
         case .cycling, .running, .swimming, .hiit:
             return .endurance
@@ -297,7 +297,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    static func type(for activity: CoachPlannedActivitySnapshot) -> CoachActivityType {
+    nonisolated static func type(for activity: CoachPlannedActivitySnapshot) -> CoachActivityType {
         let typeLabel = activity.type.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if typeLabel == "meal" || typeLabel == "drink" || typeLabel == "snack" {
             return .none
@@ -316,7 +316,7 @@ enum CoachActivityClassifier {
         return .none
     }
 
-    private static func classifyType(in text: String) -> CoachActivityType? {
+    nonisolated private static func classifyType(in text: String) -> CoachActivityType? {
         if containsAny(text, ["cycling", "cycle", "bike", "biking", "ride"]) {
             return .cycling
         }
@@ -422,7 +422,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    private static func inferredLoad(for activity: CoachPlannedActivitySnapshot) -> CoachDayLoadBand {
+    nonisolated private static func inferredLoad(for activity: CoachPlannedActivitySnapshot) -> CoachDayLoadBand {
         let minutes = activity.effectiveDurationMinutes
         let calories = activity.calories
 
@@ -438,31 +438,31 @@ enum CoachActivityClassifier {
         return .fresh
     }
 
-    private static func primaryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
+    nonisolated private static func primaryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [activity.type, activity.title]
             .joined(separator: " ")
             .lowercased()
     }
 
-    private static func accessoryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
+    nonisolated private static func accessoryTokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [activity.icon, activity.imageName]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: " ")
             .lowercased()
     }
 
-    private static func tokenText(for activity: CoachPlannedActivitySnapshot) -> String {
+    nonisolated private static func tokenText(for activity: CoachPlannedActivitySnapshot) -> String {
         [primaryTokenText(for: activity), accessoryTokenText(for: activity)]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
     }
 
-    private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
+    nonisolated private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
         needles.contains { text.contains($0) }
     }
 
     /// Whole-token match to avoid substring false positives (e.g. "heat" in "buckwheat").
-    private static func containsToken(_ text: String, _ needles: [String]) -> Bool {
+    nonisolated private static func containsToken(_ text: String, _ needles: [String]) -> Bool {
         let tokens = text
             .lowercased()
             .split { !$0.isLetter && !$0.isNumber }
@@ -477,7 +477,7 @@ enum CoachActivityClassifier {
     // `CoachActivityKind` / `CoachActivityLoad` remain for DayContext and DayPriorityModel.
     // Scenario routing uses `type` / `family` above.
 
-    static func coachKind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
+    nonisolated static func coachKind(for activity: CoachPlannedActivitySnapshot) -> CoachActivityKind {
         let title = activity.title.lowercased()
         let typeLabel = activity.type.lowercased()
 
@@ -520,7 +520,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    static func coachLoad(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
+    nonisolated static func coachLoad(for activity: CoachPlannedActivitySnapshot) -> CoachActivityLoad {
         let title = activity.title.lowercased()
         let typeLabel = activity.type.lowercased()
         let duration = activity.durationMinutes
@@ -588,11 +588,11 @@ enum CoachActivityClassifier {
         return .moderate
     }
 
-    static func activityCalories(for activity: CoachPlannedActivitySnapshot) -> Int {
+    nonisolated static func activityCalories(for activity: CoachPlannedActivitySnapshot) -> Int {
         max(activity.calories, 0)
     }
 
-    static func hasCompletedWalkToday(
+    nonisolated static func hasCompletedWalkToday(
         in activities: [CoachPlannedActivitySnapshot],
         on date: Date,
         calendar: Calendar = .current
@@ -605,7 +605,7 @@ enum CoachActivityClassifier {
         }
     }
 
-    static func hasCompletedHeatToday(
+    nonisolated static func hasCompletedHeatToday(
         in activities: [CoachPlannedActivitySnapshot],
         on date: Date,
         calendar: Calendar = .current

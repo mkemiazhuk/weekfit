@@ -8,6 +8,10 @@ enum CoachActivityWindowPolicy {
     static let immediatePostFocusWindowMinutes = 60
     static let defaultRecentCompletedFocusWindowMinutes = 180
 
+    /// Concrete “Before session” / gear-prep copy window (minutes until start).
+    /// Caps preparation lead so a dinner hours away never becomes workout prep.
+    static let beforeSessionCopyWindowMinutes = 90
+
     static var heatRecoveryWindowMinutes: Int {
         CoachHeatRecoveryPolicy.focusWindowMinutes
     }
@@ -35,8 +39,9 @@ enum CoachActivityWindowPolicy {
         return minutesSinceEnd <= heatRecoveryWindowMinutes
     }
 
-    // MARK: - Prep / UI hold windows (future Today phase chrome)
+    // MARK: - Prep / Before-session windows
 
+    /// Lead time before start when Coach may enter `.pre` / Before-session focus.
     static func preparationLeadMinutes(for activity: CoachPlannedActivitySnapshot) -> Int {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
@@ -59,6 +64,20 @@ enum CoachActivityWindowPolicy {
         case .moderate, .low:
             return 90
         }
+    }
+
+    /// True when an incomplete session-eligible activity is close enough for prep focus/copy.
+    static func isWithinBeforeSessionWindow(
+        activity: CoachPlannedActivitySnapshot,
+        minutesUntilStart: Int
+    ) -> Bool {
+        guard minutesUntilStart >= 0 else { return false }
+        let lead = min(preparationLeadMinutes(for: activity), beforeSessionCopyWindowMinutes)
+        return minutesUntilStart <= lead
+    }
+
+    static func minutesUntilStart(activity: CoachPlannedActivitySnapshot, now: Date) -> Int {
+        max(0, Int(activity.date.timeIntervalSince(now) / 60))
     }
 
     static func recoveryHoldMinutes(for activity: CoachPlannedActivitySnapshot) -> Int {

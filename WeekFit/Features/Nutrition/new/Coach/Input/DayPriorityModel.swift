@@ -14,7 +14,7 @@ enum CoachDayStressLevel: String {
     case overload
 }
 
-enum CoachTomorrowDemand: String, Codable, Equatable, Sendable {
+nonisolated enum CoachTomorrowDemand: String, Codable, Equatable, Sendable {
     case none
     case easy
     case moderate
@@ -151,7 +151,7 @@ struct DayPriorityModel {
         return base + loadBonus + durationBonus + calorieBonus + completionBonus
     }
 
-    private static func isSupportingActivity(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+    nonisolated private static func isSupportingActivity(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let kind = CoachActivityContextResolver.kind(for: activity)
         let load = CoachActivityContextResolver.load(for: activity)
         if kind == .recovery || kind == .heat { return true }

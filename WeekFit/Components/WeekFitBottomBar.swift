@@ -50,6 +50,7 @@ struct WeekFitBottomBar: View {
 
     @Namespace private var selectionNamespace
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     private let barHeight: CGFloat = 52
     private let itemHeight: CGFloat = 42
@@ -71,9 +72,11 @@ struct WeekFitBottomBar: View {
     }
 
     private var inactiveColor: Color {
-        palette.isLight
-            ? WeekFitLightTokens.tabInactive
-            : palette.textSecondary.opacity(0.52)
+        if palette.isLight {
+            return WeekFitLightTokens.tabInactive
+        }
+        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.82 : 0.70
+        return palette.textSecondary.opacity(opacity)
     }
 
     var body: some View {

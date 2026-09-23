@@ -201,6 +201,11 @@ enum RecoveryChallengePresenter {
                 if participation.todaySummaryCardDismissed {
                     return .hidden
                 }
+                // All seven steps done — don't keep Today/Coach chrome after the run ends.
+                // Partial finishes still get a dismissible summary entry.
+                if participation.completedCount >= RecoveryChallengeConfig.dayCount {
+                    return .hidden
+                }
                 return .summary(summaryEntry(now: now, participation: participation))
             }
             if let dayIndex = RecoveryChallengeEngine.challengeDayIndex(

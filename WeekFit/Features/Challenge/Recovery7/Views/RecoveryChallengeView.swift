@@ -86,6 +86,14 @@ struct RecoveryChallengeView: View {
                 RecoveryChallengeAnalytics.overviewOpened(source: source)
             }
         }
+        .onDisappear {
+            // Swipe / close while on summary must clear Today + Coach finished chrome —
+            // otherwise the challenge keeps appearing after the run is over.
+            if case .summary = phase {
+                RecoveryChallengeStore.dismissFinishedTodayCard()
+                onParticipationChanged()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             handleCalendarContextChange()
@@ -1194,21 +1202,33 @@ struct RecoveryChallengeView: View {
 
     @ViewBuilder
     private var summaryFooter: some View {
-        if participation?.chosenHabitID == nil,
-           !(participation?.completedDayIndices.filter { $0 <= 6 }.isEmpty ?? true) {
-            primaryButton(
-                WeekFitLocalizedString("challenge.recovery7.saveHabitCTA"),
-                disabled: selectedHabitDayIndex == nil
-            ) {
-                saveHabitFromSummary()
+        VStack(spacing: 10) {
+            if shouldOfferHabitSaveFromSummary {
+                primaryButton(
+                    WeekFitLocalizedString("challenge.recovery7.saveHabitCTA"),
+                    disabled: selectedHabitDayIndex == nil
+                ) {
+                    saveHabitFromSummary()
+                }
             }
-        } else {
+
+            // Always allow Done — habit save is optional and must never trap finished chrome.
             primaryButton(WeekFitLocalizedString("challenge.recovery7.doneCTA"), disabled: false) {
-                RecoveryChallengeStore.dismissFinishedTodayCard()
-                onParticipationChanged()
-                dismiss()
+                dismissFinishedChallengeSurfaces()
             }
         }
+    }
+
+    private var shouldOfferHabitSaveFromSummary: Bool {
+        guard participation?.chosenHabitID == nil else { return false }
+        let completedBeforeDay7 = participation?.completedDayIndices.contains { $0 <= 6 } ?? false
+        return completedBeforeDay7
+    }
+
+    private func dismissFinishedChallengeSurfaces() {
+        RecoveryChallengeStore.dismissFinishedTodayCard()
+        onParticipationChanged()
+        dismiss()
     }
 
     @ViewBuilder

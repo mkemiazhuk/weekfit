@@ -87,10 +87,19 @@ enum WeekFitPurchaseOutcome: Equatable, Sendable {
     case success
     case cancelled
     case pending
+    /// StoreKit JWS verification failed for the purchase transaction.
     case failedVerification
+    /// StoreKit returned a verified transaction, but WeekFit still has no entitlement after refresh.
+    case entitlementNotPropagated
     case productsUnavailable
     case failed
+    /// Restore finished successfully, but this Apple ID has no active WeekFit entitlement.
+    /// Not a StoreKit failure — do not show the purchase-error copy.
+    case nothingToRestore
 }
+
+/// Thrown when `AppStore.sync()` does not return within `SubscriptionManager`'s restore timeout.
+struct WeekFitStoreKitRestoreTimeoutError: Error, Equatable, Sendable {}
 
 struct WeekFitEntitlementDecision: Equatable, Sendable {
     var state: WeekFitAccessState

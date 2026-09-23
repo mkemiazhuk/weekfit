@@ -329,12 +329,17 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 | `subscription_purchase_started` | Purchase CTA | `product_id`; `requested_tab` |
 | `subscription_purchase_success` | Verified entitlement after purchase | `product_id`; `requested_tab` |
 | `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
-| `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `products_unavailable` \| `pending` |
+| `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` |
 | `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab` |
 | `subscription_restore_success` | Restore found an active entitlement | `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id` |
-| `subscription_restore_failed` | Restore finished without entitlement or StoreKit error | `source`; `requested_tab`; `failure_reason` = `no_purchases` \| `storekit_error` \| `cancelled`; `has_entitlement_after` |
+| `subscription_restore_failed` | Restore finished without entitlement or StoreKit error | `source`; `requested_tab`; `failure_reason` = `no_purchases` \| `storekit_error` \| `cancelled` \| `timeout`; `has_entitlement_after` |
 
 **Restore is never fired** from automatic entitlement refresh, app launch, or StoreKit transaction sync — only paywall / Settings Restore buttons.
+
+Apple StoreKit 2 restore model used by WeekFit:
+1. Launch / refresh reads `Transaction.currentEntitlements` (proactive restore — no Apple ID prompt).
+2. Restore button first re-reads entitlements; only if still empty calls `AppStore.sync()` (auth prompt), then re-reads again.
+3. `no_purchases` means sync/entitlement check completed with no active WeekFit subscription — UI shows an informational message, not the purchase-error copy.
 
 `paywall_instance_id` is a short-lived correlation token for dedupe only. **Do not** register it as a GA4 custom dimension (high cardinality).
 
@@ -344,6 +349,12 @@ Screen: `paywall` via `ProductScreenTracker` on paywall appear.
 
 Purchase:
 `paywall_viewed` → `subscription_option_selected` → `subscription_purchase_started` → `subscription_purchase_success` \| `subscription_purchase_cancelled` \| `subscription_purchase_failed`
+
+Purchase `failure_reason` distinctions:
+- `verification_failed` — StoreKit returned an **unverified** purchase transaction (JWS failed).
+- `entitlement_not_propagated` — StoreKit returned a **verified** transaction, but WeekFit still had no active entitlement after refresh/retries.
+- `pending` — Ask to Buy / deferred; later unlock may arrive via `Transaction.updates`.
+- `storekit_error` / `products_unavailable` — StoreKit/network or missing catalog.
 
 Restore:
 `paywall_viewed` → `subscription_restore_started` → `subscription_restore_success` \| `subscription_restore_failed`

@@ -13,6 +13,8 @@ struct CoachMorningBriefFacts: Equatable, Sendable {
     let seriousActivityCount: Int
     let tomorrowWorkout: CoachTomorrowWorkout?
     let minutesUntilNextActivity: Int?
+    /// True when `nextActivity` is inside the Before-session prep window.
+    let nextActivityIsImminent: Bool
 }
 
 enum CoachMorningBriefFactsBuilder {
@@ -23,7 +25,8 @@ enum CoachMorningBriefFactsBuilder {
             calendar.isDate($0.date, inSameDayAs: input.selectedDate) && !$0.isSkipped
         }
 
-        let nextActivity = resolveNextActivity(
+        let sessionActivities = todayActivities.filter(CoachCanonicalDayState.isCoachRelevantSnapshot)
+        let nextResolution = resolveNextActivity(
             input: input,
             context: context,
             todayActivities: todayActivities,
@@ -40,11 +43,12 @@ enum CoachMorningBriefFactsBuilder {
             recoveryBand: context.dayReadiness.recoveryBand,
             sleepIsLow: context.dayReadiness.sleepIsLow,
             hadHeavyYesterday: context.dayReadiness.hadHeavyYesterday,
-            nextActivity: nextActivity,
-            todayActivityCount: todayActivities.count,
+            nextActivity: nextResolution.summary,
+            todayActivityCount: sessionActivities.count,
             seriousActivityCount: seriousCount,
             tomorrowWorkout: context.tomorrowWorkout,
-            minutesUntilNextActivity: context.minutesUntilStart
+            minutesUntilNextActivity: nextResolution.minutesUntilStart,
+            nextActivityIsImminent: nextResolution.isImminent
         )
     }
 
@@ -56,9 +60,15 @@ enum CoachMorningBriefFactsBuilder {
         todayActivityCount: Int = 0,
         seriousActivityCount: Int = 0,
         minutesUntilNextActivity: Int? = nil,
-        recoveryDataAvailable: Bool = true
+        recoveryDataAvailable: Bool = true,
+        nextActivityIsImminent: Bool? = nil
     ) -> CoachMorningBriefFacts {
-        CoachMorningBriefFacts(
+        let imminent: Bool = {
+            if let nextActivityIsImminent { return nextActivityIsImminent }
+            guard nextActivity != nil, let minutes = minutesUntilNextActivity else { return false }
+            return minutes <= CoachActivityWindowPolicy.beforeSessionCopyWindowMinutes
+        }()
+        return CoachMorningBriefFacts(
             recoveryDataAvailable: recoveryDataAvailable,
             sleepHours: dayReadiness.sleepHours,
             recoveryPercent: dayReadiness.recoveryPercent,
@@ -69,8 +79,15 @@ enum CoachMorningBriefFactsBuilder {
             todayActivityCount: todayActivityCount,
             seriousActivityCount: seriousActivityCount,
             tomorrowWorkout: tomorrowWorkout,
-            minutesUntilNextActivity: minutesUntilNextActivity
+            minutesUntilNextActivity: minutesUntilNextActivity,
+            nextActivityIsImminent: imminent
         )
+    }
+
+    private struct NextActivityResolution {
+        let summary: CoachPlannedActivitySummary?
+        let minutesUntilStart: Int?
+        let isImminent: Bool
     }
 
     private static func resolveNextActivity(
@@ -78,18 +95,37 @@ enum CoachMorningBriefFactsBuilder {
         context: CoachContext,
         todayActivities: [CoachPlannedActivitySnapshot],
         calendar: Calendar
-    ) -> CoachPlannedActivitySummary? {
+    ) -> NextActivityResolution {
         if let focusID = context.focusActivityID,
            let focus = todayActivities.first(where: { $0.id == focusID }),
-           !focus.isCompleted {
-            return CoachPlannedActivitySummary.from(activity: focus, calendar: calendar)
+           CoachCanonicalDayState.isSessionFocusCandidate(focus) {
+            return resolution(for: focus, now: input.now, calendar: calendar)
         }
 
         let upcoming = todayActivities
-            .filter { !$0.isCompleted && $0.date >= input.now }
+            .filter { $0.date >= input.now }
+            .filter(CoachCanonicalDayState.isSessionFocusCandidate)
             .sorted { $0.date < $1.date }
 
-        guard let next = upcoming.first else { return nil }
-        return CoachPlannedActivitySummary.from(activity: next, calendar: calendar)
+        guard let next = upcoming.first else {
+            return NextActivityResolution(summary: nil, minutesUntilStart: nil, isImminent: false)
+        }
+        return resolution(for: next, now: input.now, calendar: calendar)
+    }
+
+    private static func resolution(
+        for activity: CoachPlannedActivitySnapshot,
+        now: Date,
+        calendar: Calendar
+    ) -> NextActivityResolution {
+        let minutes = CoachActivityWindowPolicy.minutesUntilStart(activity: activity, now: now)
+        return NextActivityResolution(
+            summary: CoachPlannedActivitySummary.from(activity: activity, calendar: calendar),
+            minutesUntilStart: minutes,
+            isImminent: CoachActivityWindowPolicy.isWithinBeforeSessionWindow(
+                activity: activity,
+                minutesUntilStart: minutes
+            )
+        )
     }
 }

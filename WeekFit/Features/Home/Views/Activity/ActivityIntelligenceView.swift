@@ -79,14 +79,23 @@ struct ActivitySessionDetailSnapshot: Hashable {
     }
 
     func merging(_ supplemental: WorkoutHealthDetailSnapshot) -> ActivitySessionDetailSnapshot {
-        ActivitySessionDetailSnapshot(
+        let resolvedWorkoutDuration = supplemental.workoutDurationSeconds ?? workoutDurationSeconds
+        let resolvedElapsedDuration = supplemental.elapsedDurationSeconds ?? elapsedDurationSeconds
+        let resolvedEndDate: Date = {
+            if let elapsed = supplemental.elapsedDurationSeconds, elapsed > 0 {
+                return startDate.addingTimeInterval(elapsed)
+            }
+            return endDate
+        }()
+
+        return ActivitySessionDetailSnapshot(
             title: title,
             activityType: activityType,
             startDate: startDate,
-            endDate: endDate,
-            durationMinutes: durationMinutes,
-            workoutDurationSeconds: workoutDurationSeconds,
-            elapsedDurationSeconds: elapsedDurationSeconds,
+            endDate: resolvedEndDate,
+            durationMinutes: max(1, Int((resolvedWorkoutDuration / 60.0).rounded())),
+            workoutDurationSeconds: resolvedWorkoutDuration,
+            elapsedDurationSeconds: resolvedElapsedDuration,
             source: supplemental.source ?? source,
             icon: icon,
             color: color,
@@ -2205,6 +2214,19 @@ struct ActivitySessionDetailView: View {
                 && !ActivitySessionDetailCache.routeIsResolved(workoutID)
             isRouteLoading = needsRoute
             routeLoadingSettled = !needsRoute
+
+            // Always re-read Fitness duration / distance so planner estimates and
+            // pause-unaware elapsed times do not stick in cache.
+            if let metrics = await healthManager.loadWorkoutSupplementalMetrics(
+                for: workoutID,
+                start: start,
+                end: end,
+                activityType: activityType
+            ) {
+                guard !Task.isCancelled else { return }
+                mergeSupplementalDetails(metrics)
+                cacheDetailIfReady(for: workoutID)
+            }
 
             if !needsHeartRate && !needsRoute {
                 return

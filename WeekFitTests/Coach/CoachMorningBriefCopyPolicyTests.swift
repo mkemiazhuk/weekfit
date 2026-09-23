@@ -41,12 +41,14 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
             todayActivityCount: 0,
             seriousActivityCount: 0,
             tomorrowWorkout: nil,
-            minutesUntilNextActivity: nil
+            minutesUntilNextActivity: nil,
+            nextActivityIsImminent: false
         )
         let text = CoachMorningBriefCopyPolicy.recoveryAfterHeavyYesterdayAssessment(for: facts)
         XCTAssertFalse(text.russian.contains("\\("), text.russian)
         XCTAssertTrue(text.russian.contains("58"), text.russian)
         XCTAssertTrue(text.russian.contains("сон"), text.russian)
+        XCTAssertFalse(text.english.lowercased().contains("legs"), text.english)
     }
 
     func testProtectTomorrowFreshLocalizesLongRunTitleInRussian() {
@@ -66,7 +68,8 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
                 startMinute: 0,
                 durationMinutes: 90
             ),
-            minutesUntilNextActivity: nil
+            minutesUntilNextActivity: nil,
+            nextActivityIsImminent: false
         )
         let text = CoachMorningBriefCopyPolicy.protectTomorrowFreshAssessment(
             facts: facts,
@@ -95,7 +98,8 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
             todayActivityCount: 1,
             seriousActivityCount: 1,
             tomorrowWorkout: nil,
-            minutesUntilNextActivity: 120
+            minutesUntilNextActivity: 40,
+            nextActivityIsImminent: true
         )
         let pack = CoachMorningBriefCopyPolicy.morningReadinessPack(for: facts)
 
@@ -105,6 +109,36 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
             pack.nextAction.english.lowercased().contains("breakfast") ||
                 pack.nextAction.english.lowercased().contains("warmup")
         )
+    }
+
+    func testFarAwayRideDoesNotUseBeforeSessionOrGearPrep() {
+        let facts = CoachMorningBriefFacts(
+            recoveryDataAvailable: true,
+            sleepHours: 7.5,
+            recoveryPercent: 82,
+            recoveryBand: .good,
+            sleepIsLow: false,
+            hadHeavyYesterday: false,
+            nextActivity: CoachPlannedActivitySummary(
+                title: "Evening Ride",
+                startHour: 19,
+                startMinute: 0,
+                durationMinutes: 90,
+                activityType: .cycling
+            ),
+            todayActivityCount: 1,
+            seriousActivityCount: 1,
+            tomorrowWorkout: nil,
+            minutesUntilNextActivity: 580,
+            nextActivityIsImminent: false
+        )
+        let pack = CoachMorningBriefCopyPolicy.morningReadinessPack(for: facts)
+        let teaser = CoachMorningBriefCopyPolicy.teaser(for: facts, scenario: .morningReadiness)
+
+        XCTAssertFalse(teaser.coachHeadline.english.lowercased().contains("before"))
+        XCTAssertFalse(pack.nextAction.english.lowercased().contains("gear"))
+        XCTAssertFalse(pack.recommendation.english.lowercased().contains("first block"))
+        XCTAssertTrue(pack.assessment.english.contains("Later today"))
     }
 
     func testEngineMorningIdleCopyIsInstructional() throws {

@@ -55,6 +55,8 @@ struct WeekFitRootView: View {
     @State private var acknowledgedHealthRefreshToken: UUID?
     @State private var cachedPlannedActivitiesSignature = ""
     @State private var showLegacyAccessThanks = false
+    /// Eligible for legacy thanks but blocked by an active modal (Settings / paywall).
+    @State private var pendingLegacyThanks = false
     /// Premium tab the user tried to open; opened after purchase/restore.
     @State private var pendingPremiumTab: WeekFitTab?
     @State private var isPresentingFeaturePaywall = false
@@ -256,6 +258,21 @@ struct WeekFitRootView: View {
             .onChange(of: subscriptionManager.hasFullAccess) { _, _ in
                 reconcilePremiumTabGate()
             }
+            .onChange(of: appSession.isPresentingSettings) { _, isPresented in
+                if !isPresented {
+                    flushDeferredSubscriptionPresentation()
+                } else {
+                    // Never leave a root sheet binding true under Settings —
+                    // SwiftUI re-attempts presentation on every refresh and
+                    // spam-logs the single-sheet warning.
+                    retractRootSubscriptionPresentationWhileSettingsOpen()
+                }
+            }
+            .onChange(of: showLegacyAccessThanks) { _, isPresented in
+                if !isPresented {
+                    flushDeferredSubscriptionPresentation()
+                }
+            }
             .onAppear(perform: handleRootAppear)
             .onChange(of: appSession.pendingRootTab) { _, tab in
                 guard tab != nil, let destination = appSession.consumePendingRootTab() else { return }
@@ -330,11 +347,59 @@ struct WeekFitRootView: View {
     }
 
     private func presentLegacyThanksIfNeeded() {
-        guard subscriptionManager.accessState == .legacy else { return }
-        guard OnboardingStore.hasCompletedOnboarding else { return }
-        guard !LegacyAccessThanksStore.hasShown else { return }
-        guard !WeekFitUITestSupport.isActive else { return }
-        showLegacyAccessThanks = true
+        let eligible = isLegacyThanksEligible
+        if !eligible {
+            pendingLegacyThanks = false
+        }
+
+        let canPresent = WeekFitSubscriptionPresentationCoordinator.canPresentRootSubscriptionUI(
+            isSettingsPresented: appSession.isPresentingSettings,
+            isOnboardingPresented: appSession.isPresentingOnboarding,
+            isHealthAccessPresented: appSession.isPresentingHealthAccess,
+            isFeaturePaywallPresented: isPresentingFeaturePaywall,
+            isLegacyThanksPresented: showLegacyAccessThanks
+        )
+
+        switch WeekFitSubscriptionPresentationCoordinator.legacyThanksAction(
+            isEligible: eligible,
+            isAlreadyPresented: showLegacyAccessThanks,
+            canPresent: canPresent
+        ) {
+        case .present:
+            pendingLegacyThanks = false
+            showLegacyAccessThanks = true
+        case .deferUntilClear:
+            pendingLegacyThanks = true
+        case .idle:
+            break
+        }
+    }
+
+    private var isLegacyThanksEligible: Bool {
+        subscriptionManager.accessState == .legacy
+            && OnboardingStore.hasCompletedOnboarding
+            && !LegacyAccessThanksStore.hasShown
+            && !WeekFitUITestSupport.isActive
+    }
+
+    /// Settings (or another modal) took the sheet slot — pull back any root
+    /// subscription presentation that would otherwise keep retrying.
+    private func retractRootSubscriptionPresentationWhileSettingsOpen() {
+        if showLegacyAccessThanks {
+            showLegacyAccessThanks = false
+            if isLegacyThanksEligible {
+                pendingLegacyThanks = true
+            }
+        }
+        if isPresentingFeaturePaywall {
+            isPresentingFeaturePaywall = false
+            // pendingPremiumTab retained — reconcile flushes after Settings closes.
+        }
+    }
+
+    private func flushDeferredSubscriptionPresentation() {
+        presentLegacyThanksIfNeeded()
+        reconcilePremiumTabGate()
     }
 
     private var rootShell: some View {
@@ -481,17 +546,38 @@ struct WeekFitRootView: View {
 
     @ViewBuilder
     private var ambientBackground: some View {
-        ZStack {
-            WeekFitTheme.todayAmbient
-                .opacity(selectedTab == .today && !TodayAtmospherePolicy.isEnabled ? palette.ambientOpacity : 0)
-            WeekFitTheme.coachAmbient
-                .opacity(selectedTab == .coach ? palette.ambientOpacity : 0)
-            WeekFitTheme.mealsAmbient
-                .opacity(selectedTab == .meals ? palette.ambientOpacity : 0)
-            WeekFitTheme.planAmbient
-                .opacity(selectedTab == .calendar ? palette.ambientOpacity : 0)
+        if TodayAtmospherePolicy.isEnabled {
+            TodayAtmosphereBackground(
+                snapshot: sharedAtmosphereSnapshot,
+                ambientOpacity: palette.ambientOpacity
+            )
+        } else {
+            ZStack {
+                WeekFitTheme.todayAmbient
+                    .opacity(selectedTab == .today ? palette.ambientOpacity : 0)
+                WeekFitTheme.coachAmbient
+                    .opacity(selectedTab == .coach ? palette.ambientOpacity : 0)
+                WeekFitTheme.mealsAmbient
+                    .opacity(selectedTab == .meals ? palette.ambientOpacity : 0)
+                WeekFitTheme.planAmbient
+                    .opacity(selectedTab == .calendar ? palette.ambientOpacity : 0)
+            }
+            .animation(nil, value: selectedTab)
         }
-        .animation(nil, value: selectedTab)
+    }
+
+    /// Shared Weather-like sky for every main tab (Today / Coach / Meals / Plan).
+    private var sharedAtmosphereSnapshot: TodayAtmosphereSnapshot {
+        TodayAtmosphereResolver.resolve(
+            recoveryPercent: healthManager.recoveryPercent,
+            hasRecoverySignals: healthManager.recoveryPercent > 0
+                || healthManager.sleepHours > 0,
+            sleepHours: healthManager.sleepHours,
+            activeCalories: healthManager.activeCalories,
+            activityGoal: 500,
+            completedTrainingCount: 0,
+            hour: Calendar.current.component(.hour, from: Date())
+        )
     }
 
     private var gatedSelectedTab: Binding<WeekFitTab> {
@@ -520,7 +606,11 @@ struct WeekFitRootView: View {
             pendingPremiumTab = tab
             subscriptionManager.noteFeaturePaywall(for: tab)
             featurePaywallInstanceID = UUID().uuidString
-            isPresentingFeaturePaywall = true
+            isPresentingFeaturePaywall = WeekFitSubscriptionPresentationCoordinator.shouldPresentFeaturePaywall(
+                desired: true,
+                isSettingsPresented: appSession.isPresentingSettings,
+                isLegacyThanksPresented: showLegacyAccessThanks
+            )
         }
     }
 
@@ -552,15 +642,20 @@ struct WeekFitRootView: View {
 
         if result.presentPaywall, let pending = result.pendingTab {
             subscriptionManager.noteFeaturePaywall(for: pending)
-            if !wasPresenting {
-                featurePaywallInstanceID = UUID().uuidString
-            }
         } else if !result.presentPaywall, result.pendingTab == nil {
             subscriptionManager.clearFeaturePaywallRequest()
         }
 
         pendingPremiumTab = result.pendingTab
-        isPresentingFeaturePaywall = result.presentPaywall
+        let gatedPaywall = WeekFitSubscriptionPresentationCoordinator.shouldPresentFeaturePaywall(
+            desired: result.presentPaywall,
+            isSettingsPresented: appSession.isPresentingSettings,
+            isLegacyThanksPresented: showLegacyAccessThanks
+        )
+        if gatedPaywall, !wasPresenting {
+            featurePaywallInstanceID = UUID().uuidString
+        }
+        isPresentingFeaturePaywall = gatedPaywall
 
         if result.selectedTab != selectedTab {
             commitTabSelection(result.selectedTab)

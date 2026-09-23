@@ -1,9 +1,9 @@
 import Foundation
 
-/// Concrete pre-session copy when the next activity starts within ~90 minutes.
+    /// Concrete pre-session copy when the next activity starts within the shared prep window.
 enum CoachImminentSessionCopyPolicy {
 
-    private static let imminentWindowMinutes = 90
+    private static let imminentWindowMinutes = CoachActivityWindowPolicy.beforeSessionCopyWindowMinutes
 
     struct BasePack {
         let assessment: CoachCopySection
@@ -22,7 +22,10 @@ enum CoachImminentSessionCopyPolicy {
         guard let minutes = input.minutesUntilStart, minutes >= 0, minutes <= imminentWindowMinutes else {
             return false
         }
-        return input.focusActivity != nil
+        guard let activity = input.focusActivity else { return false }
+        // Never treat unclassified / meal-like focus as a workout prep session.
+        guard activity.activityType != .none else { return false }
+        return true
     }
 
     static func basePack(for input: CoachCopyBuildInput, protective: Bool) -> BasePack? {

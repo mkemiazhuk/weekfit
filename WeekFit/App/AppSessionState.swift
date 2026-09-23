@@ -13,6 +13,10 @@ final class AppSessionState: ObservableObject {
     @Published private(set) var localDataResetEvent = AppRefreshEvent(kind: .localDataResetCompleted)
     @Published var isPresentingHealthAccess = false
     @Published var isPresentingOnboarding = false
+    /// Settings sheet occupancy — used by root subscription presentation so
+    /// legacy-thanks / feature paywall never queue a second sheet while Settings
+    /// (or Access status inside it) is already presented.
+    @Published private(set) var isPresentingSettings = false
     @Published private(set) var pendingRootTab: WeekFitTab?
 
     private var pendingHealthRefreshSources: [String] = []
@@ -50,6 +54,11 @@ final class AppSessionState: ObservableObject {
 
     func dismissOnboarding() {
         isPresentingOnboarding = false
+    }
+
+    func setSettingsPresented(_ presented: Bool) {
+        guard isPresentingSettings != presented else { return }
+        isPresentingSettings = presented
     }
 
     /// Finishes first-run onboarding and optionally opens a destination tab.

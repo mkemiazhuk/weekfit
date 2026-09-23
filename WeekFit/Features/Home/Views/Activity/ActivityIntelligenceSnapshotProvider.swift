@@ -119,7 +119,8 @@ final class ActivityIntelligenceSnapshotProvider {
 
     func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
-        let durationMinutes = max(1, Int(workout.duration / 60.0))
+        let durations = WorkoutFitnessMetrics.durations(from: workout)
+        let durationMinutes = max(1, Int((durations.workout / 60.0).rounded()))
         let icon = ActivityReconciler.icon(for: workout.workoutActivityType)
         let color = workoutColor(for: workout.workoutActivityType)
         let heartRate = WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout)
@@ -139,8 +140,8 @@ final class ActivityIntelligenceSnapshotProvider {
                 startDate: workout.startDate,
                 endDate: workout.endDate,
                 durationMinutes: durationMinutes,
-                workoutDurationSeconds: workout.duration,
-                elapsedDurationSeconds: workout.endDate.timeIntervalSince(workout.startDate),
+                workoutDurationSeconds: durations.workout,
+                elapsedDurationSeconds: durations.elapsed,
                 source: workout.sourceRevision.source.name,
                 icon: icon,
                 color: color,
@@ -229,6 +230,9 @@ final class ActivityIntelligenceSnapshotProvider {
             value: max(durationMinutes, 1),
             to: activity.date
         ) ?? activity.date
+        // Watch-synced sessions must not invent distance from planned pace — Fitness
+        // totalDistance (e.g. 17.01 km) arrives via supplemental HK load.
+        let hasHealthKitWorkout = activity.healthKitWorkoutUUID?.isEmpty == false
 
         return ActivitySessionSnapshot(
             workoutID: activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
@@ -253,7 +257,7 @@ final class ActivityIntelligenceSnapshotProvider {
                 icon: icon,
                 color: activity.color,
                 activeCalories: isFinishedSession && activity.calories > 0 ? Double(activity.calories) : nil,
-                distanceKm: isFinishedSession
+                distanceKm: isFinishedSession && !hasHealthKitWorkout
                     ? estimatedDistanceKm(for: activity, activityType: activityType)
                     : nil,
                 averageHeartRate: nil,

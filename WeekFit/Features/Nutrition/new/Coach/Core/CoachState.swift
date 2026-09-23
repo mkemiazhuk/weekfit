@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum CoachStateStatus: Equatable {
+enum CoachStateStatus: Equatable, Sendable {
     case ready
     case refreshingPrevious
     case unavailable(reason: String)
@@ -27,6 +27,28 @@ struct CoachState: Identifiable {
     let reflectionOffer: ReflectionOffer?
     /// Optional Discovery Tell moment at conversational pause. Wins over quiet reflection when present.
     let discoveryOffer: CoachDiscoveryOffer?
+
+    nonisolated init(
+        id: UUID,
+        createdAt: Date,
+        status: CoachStateStatus,
+        input: CoachInputSnapshot?,
+        fingerprint: CoachInputFingerprint?,
+        coachUIPresentation: CoachUIPresentation?,
+        coachIntegrationDebug: CoachIntegrationDebug?,
+        reflectionOffer: ReflectionOffer?,
+        discoveryOffer: CoachDiscoveryOffer?
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.status = status
+        self.input = input
+        self.fingerprint = fingerprint
+        self.coachUIPresentation = coachUIPresentation
+        self.coachIntegrationDebug = coachIntegrationDebug
+        self.reflectionOffer = reflectionOffer
+        self.discoveryOffer = discoveryOffer
+    }
 
     var hasValidGuidance: Bool {
         coachUIPresentation != nil
@@ -70,7 +92,7 @@ struct CoachState: Identifiable {
         }
     }
 
-    static func unavailable(reason: String, createdAt: Date = Date()) -> CoachState {
+    nonisolated static func unavailable(reason: String, createdAt: Date = Date()) -> CoachState {
         CoachState(
             id: UUID(),
             createdAt: createdAt,
@@ -84,7 +106,7 @@ struct CoachState: Identifiable {
         )
     }
 
-    static func settling(reason: String, createdAt: Date = Date()) -> CoachState {
+    nonisolated static func settling(reason: String, createdAt: Date = Date()) -> CoachState {
         CoachState(
             id: UUID(),
             createdAt: createdAt,

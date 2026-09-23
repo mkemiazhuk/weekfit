@@ -431,6 +431,48 @@ final class RecoveryChallengeEngineTests: XCTestCase {
         XCTAssertEqual(kind, .hidden)
     }
 
+    func testPerfectFinishHidesTodayCardWithoutManualDismiss() {
+        let enrolled = date(2026, 5, 1, timeZone: utc)
+        let participation = RecoveryChallengeParticipation(
+            eventID: RecoveryChallengeConfig.eventID,
+            enrolledAt: enrolled,
+            timeZoneIdentifier: utc.identifier,
+            startDayKey: RecoveryChallengeEngine.dayKey(for: enrolled, timeZone: utc),
+            completedDayIndices: [1, 2, 3, 4, 5, 6, 7],
+            todaySummaryCardDismissed: false
+        )
+        let after = date(2026, 5, 10, timeZone: utc)
+        let kind = RecoveryChallengeEngine.todayCardKind(
+            now: after,
+            participation: participation,
+            window: (enrolled, date(2026, 6, 1, timeZone: utc)),
+            timeZone: utc,
+            featureAvailable: true
+        )
+        XCTAssertEqual(kind, .hidden)
+    }
+
+    func testPartialFinishKeepsDismissibleTodayCard() {
+        let enrolled = date(2026, 5, 1, timeZone: utc)
+        let participation = RecoveryChallengeParticipation(
+            eventID: RecoveryChallengeConfig.eventID,
+            enrolledAt: enrolled,
+            timeZoneIdentifier: utc.identifier,
+            startDayKey: RecoveryChallengeEngine.dayKey(for: enrolled, timeZone: utc),
+            completedDayIndices: [1, 3, 5],
+            todaySummaryCardDismissed: false
+        )
+        let after = date(2026, 5, 10, timeZone: utc)
+        let kind = RecoveryChallengeEngine.todayCardKind(
+            now: after,
+            participation: participation,
+            window: (enrolled, date(2026, 6, 1, timeZone: utc)),
+            timeZone: utc,
+            featureAvailable: true
+        )
+        XCTAssertEqual(kind, .finished(completedCount: 3))
+    }
+
     func testMidnightBoundaryStartsNextChallengeDay() {
         let enrolled = date(2026, 5, 1, 23, 30, timeZone: utc)
         let p = participation(enrolled: enrolled)

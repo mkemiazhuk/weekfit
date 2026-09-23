@@ -21,10 +21,45 @@ enum WorkoutFitnessMetrics {
         )
     }
 
+    /// Fitness "Duration" (moving / workout time) vs wall-clock elapsed including pauses.
+    static func durations(from workout: HKWorkout) -> (workout: TimeInterval, elapsed: TimeInterval) {
+        let elapsed = max(0, workout.endDate.timeIntervalSince(workout.startDate))
+        let fitnessDuration = max(0, workout.duration)
+
+        // Prefer Apple's workout duration. If pause/resume events imply a shorter
+        // active total while `duration` still equals elapsed (some Watch exports),
+        // use the active-interval sum so UI can show Workout + Elapsed separately.
+        let activeSum = activeIntervals(from: workout).reduce(0.0) { $0 + $1.duration }
+        if fitnessDuration > 0, abs(fitnessDuration - elapsed) > 60 {
+            return (fitnessDuration, max(elapsed, fitnessDuration))
+        }
+        if activeSum > 0, activeSum + 60 < elapsed {
+            return (activeSum, elapsed)
+        }
+        let workoutSeconds = fitnessDuration > 0 ? fitnessDuration : elapsed
+        return (workoutSeconds, max(elapsed, workoutSeconds))
+    }
+
+    /// Quantity identifier Fitness uses for distance on this activity type.
+    static func distanceIdentifier(
+        for activityType: HKWorkoutActivityType
+    ) -> HKQuantityTypeIdentifier {
+        switch activityType {
+        case .cycling:
+            return .distanceCycling
+        case .swimming:
+            return .distanceSwimming
+        case .wheelchairRunPace, .wheelchairWalkPace:
+            return .distanceWheelchair
+        default:
+            return .distanceWalkingRunning
+        }
+    }
+
     /// Moving time only. Fitness zone totals follow workout time, not elapsed clock time.
     static func activeIntervals(from workout: HKWorkout) -> [DateInterval] {
         if let pauseIntervals = intervalsFromPauseEvents(workout), !pauseIntervals.isEmpty {
-            return pauseIntervals
+            return WorkoutHeartRateAnalytics.coalesce(pauseIntervals)
         }
 
         let activities = workout.workoutActivities.compactMap { activity -> DateInterval? in
@@ -33,8 +68,10 @@ enum WorkoutFitnessMetrics {
             return DateInterval(start: activity.startDate, end: end)
         }
 
+        // Multiple HKWorkoutActivity segments often overlap the primary workout window.
+        // Always coalesce before zone math so time-in-zone cannot exceed moving time.
         if activities.count > 1 {
-            return activities
+            return WorkoutHeartRateAnalytics.coalesce(activities)
         }
 
         if let single = activities.first, abs(single.duration - workout.duration) < 30 {

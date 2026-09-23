@@ -1,27 +1,27 @@
 import Foundation
 
-struct CoachTomorrowDemandAssessment: Hashable {
+struct CoachTomorrowDemandAssessment: Hashable, Sendable {
     let level: CoachTomorrowDemand
     let primaryTrainingActivity: CoachPlannedActivitySnapshot?
     let trainingMinutes: Int
     let trainingStressScore: Int
 
-    var hasDemand: Bool {
+    nonisolated var hasDemand: Bool {
         level != .none
     }
 
-    var isHard: Bool {
+    nonisolated var isHard: Bool {
         level == .hard
     }
 }
 
-struct CoachTomorrowPlanContext {
+struct CoachTomorrowPlanContext: Sendable {
     let dayContext: CoachDayContext
 }
 
 enum CoachTomorrowDemandResolver {
 
-    static func resolve(tomorrowContext: CoachTomorrowPlanContext?) -> CoachTomorrowDemandAssessment {
+    nonisolated static func resolve(tomorrowContext: CoachTomorrowPlanContext?) -> CoachTomorrowDemandAssessment {
         guard let tomorrowContext else {
             return CoachTomorrowDemandAssessment(
                 level: .none,
@@ -34,7 +34,7 @@ enum CoachTomorrowDemandResolver {
         return resolve(dayContext: tomorrowContext.dayContext)
     }
 
-    static func resolve(dayContext: CoachDayContext) -> CoachTomorrowDemandAssessment {
+    nonisolated static func resolve(dayContext: CoachDayContext) -> CoachTomorrowDemandAssessment {
         resolve(
             activities: dayContext.upcomingTrainingActivities,
             trainingMinutes: dayContext.upcomingTrainingMinutes,
@@ -42,7 +42,7 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    static func resolve(activities: [CoachPlannedActivitySnapshot]) -> CoachTomorrowDemandAssessment {
+    nonisolated static func resolve(activities: [CoachPlannedActivitySnapshot]) -> CoachTomorrowDemandAssessment {
         let trainingActivities = activities
             .filter { !$0.isSkipped }
             .filter(isTraining)
@@ -56,12 +56,12 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    static func isTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+    nonisolated static func isTraining(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         let kind = CoachActivityContextResolver.kind(for: activity)
         return kind == .workout || kind == .endurance
     }
 
-    private static func resolve(
+    nonisolated private static func resolve(
         activities: [CoachPlannedActivitySnapshot],
         trainingMinutes: Int,
         trainingStressScore: Int
@@ -92,13 +92,13 @@ enum CoachTomorrowDemandResolver {
         )
     }
 
-    private static func stressScore(_ activity: CoachPlannedActivitySnapshot) -> Int {
+    nonisolated private static func stressScore(_ activity: CoachPlannedActivitySnapshot) -> Int {
         CoachActivityContextResolver.load(for: activity).riskScore
     }
 }
 
 private extension CoachActivityLoad {
-    var riskScore: Int {
+    nonisolated var riskScore: Int {
         switch self {
         case .low: return 1
         case .moderate: return 2

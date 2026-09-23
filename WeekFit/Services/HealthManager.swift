@@ -23,6 +23,10 @@ struct WorkoutHealthDetailSnapshot: Hashable {
     let elevationGain: Double?
     let steps: Int?
     let cadence: Double?
+    /// Fitness "Duration" (excludes pauses). Nil when this snapshot only carries samples.
+    let workoutDurationSeconds: TimeInterval?
+    /// Wall-clock start→end including pauses.
+    let elapsedDurationSeconds: TimeInterval?
     let activeHeartRateIntervals: [DateInterval]
 
     init(
@@ -36,6 +40,8 @@ struct WorkoutHealthDetailSnapshot: Hashable {
         elevationGain: Double?,
         steps: Int?,
         cadence: Double?,
+        workoutDurationSeconds: TimeInterval? = nil,
+        elapsedDurationSeconds: TimeInterval? = nil,
         activeHeartRateIntervals: [DateInterval] = []
     ) {
         self.source = source
@@ -48,6 +54,8 @@ struct WorkoutHealthDetailSnapshot: Hashable {
         self.elevationGain = elevationGain
         self.steps = steps
         self.cadence = cadence
+        self.workoutDurationSeconds = workoutDurationSeconds
+        self.elapsedDurationSeconds = elapsedDurationSeconds
         self.activeHeartRateIntervals = activeHeartRateIntervals
     }
 }
@@ -2546,7 +2554,7 @@ final class HealthManager: ObservableObject {
             end: workout.endDate
         )
         async let distanceMeters = readQuantitySum(
-            .distanceWalkingRunning,
+            WorkoutFitnessMetrics.distanceIdentifier(for: workout.workoutActivityType),
             unit: .meter(),
             start: workout.startDate,
             end: workout.endDate
@@ -2564,6 +2572,7 @@ final class HealthManager: ObservableObject {
             statistics: WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout),
             intervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
         )
+        let durations = WorkoutFitnessMetrics.durations(from: workout)
 
         return WorkoutHealthDetailSnapshot(
             source: workout.sourceRevision.source.name,
@@ -2579,6 +2588,8 @@ final class HealthManager: ObservableObject {
             ),
             steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
             cadence: nil,
+            workoutDurationSeconds: durations.workout,
+            elapsedDurationSeconds: durations.elapsed,
             activeHeartRateIntervals: heartRateSnapshot.activeHeartRateIntervals
         )
     }
@@ -2621,7 +2632,10 @@ final class HealthManager: ObservableObject {
                 routePoints: loadedRoute.routePoints
             ),
             steps: loadedMetrics.steps,
-            cadence: loadedMetrics.cadence
+            cadence: loadedMetrics.cadence,
+            workoutDurationSeconds: loadedMetrics.workoutDurationSeconds,
+            elapsedDurationSeconds: loadedMetrics.elapsedDurationSeconds,
+            activeHeartRateIntervals: loadedHeartRate.activeHeartRateIntervals
         )
     }
 
@@ -2722,7 +2736,7 @@ final class HealthManager: ObservableObject {
             end: workout.endDate
         )
         async let distanceMeters = readQuantitySum(
-            .distanceWalkingRunning,
+            WorkoutFitnessMetrics.distanceIdentifier(for: activityType),
             unit: .meter(),
             start: workout.startDate,
             end: workout.endDate
@@ -2760,6 +2774,7 @@ final class HealthManager: ObservableObject {
         let loadedDistanceMeters = workout.totalDistance?.doubleValue(for: .meter()) ?? summedDistanceMeters
         let loadedSteps = await steps
         let loadedCadence = await cadence
+        let durations = WorkoutFitnessMetrics.durations(from: workout)
 
         return WorkoutHealthDetailSnapshot(
             source: workout.sourceRevision.source.name,
@@ -2771,7 +2786,9 @@ final class HealthManager: ObservableObject {
             routePoints: [],
             elevationGain: nil,
             steps: loadedSteps > 0 ? Int(loadedSteps.rounded()) : nil,
-            cadence: loadedCadence > 0 ? loadedCadence : nil
+            cadence: loadedCadence > 0 ? loadedCadence : nil,
+            workoutDurationSeconds: durations.workout,
+            elapsedDurationSeconds: durations.elapsed
         )
     }
 

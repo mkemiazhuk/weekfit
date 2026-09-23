@@ -171,11 +171,16 @@ enum SubscriptionRestoreFailureReason: String, Sendable {
     case storekitError = "storekit_error"
     /// User cancelled the system restore sheet.
     case cancelled
+    /// AppStore.sync did not return within the restore timeout (hung sign-in / network).
+    case timeout
 }
 
 enum SubscriptionPurchaseFailureReason: String, Sendable {
     case storekitError = "storekit_error"
+    /// Purchase transaction JWS was unverified.
     case verificationFailed = "verification_failed"
+    /// StoreKit returned a verified transaction, but entitlement refresh never unlocked access.
+    case entitlementNotPropagated = "entitlement_not_propagated"
     case productsUnavailable = "products_unavailable"
     /// Ask to Buy / deferred — closes the started→terminal funnel for this attempt.
     case pending

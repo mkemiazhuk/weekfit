@@ -99,7 +99,8 @@ final class CoachTeaserCopyAuditTests: XCTestCase {
             todayActivityCount: 1,
             seriousActivityCount: 1,
             tomorrowWorkout: nil,
-            minutesUntilNextActivity: 120
+            minutesUntilNextActivity: 40,
+            nextActivityIsImminent: true
         )
 
         return [

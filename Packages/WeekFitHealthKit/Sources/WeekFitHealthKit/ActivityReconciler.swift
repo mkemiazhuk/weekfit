@@ -94,12 +94,14 @@ public enum ActivityReconciler {
     }
 
     public static func importedActivity(for workout: HKWorkout) -> PlannedActivity {
+        // Fitness "Duration" excludes pauses — never wall-clock elapsed.
+        let workoutMinutes = max(1, Int((workout.duration / 60.0).rounded()))
         let imported = PlannedActivity(
             healthKitWorkoutUUID: workout.uuid.uuidString,
             date: workout.startDate,
             type: "workout",
             title: title(for: workout.workoutActivityType),
-            durationMinutes: max(1, Int(workout.duration / 60)),
+            durationMinutes: workoutMinutes,
             icon: icon(for: workout.workoutActivityType),
             colorRed: 0.46,
             colorGreen: 0.72,
@@ -108,7 +110,7 @@ public enum ActivityReconciler {
             isSkipped: false,
             source: "appleWorkout"
         )
-        imported.actualDurationMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
+        imported.actualDurationMinutes = workoutMinutes
         imported.id = workout.uuid.uuidString
         return imported
     }
@@ -130,11 +132,12 @@ public enum ActivityReconciler {
     }
 
     public static func applySyncedWorkout(_ workout: HKWorkout, to activity: PlannedActivity) {
-        let actualMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
+        // Match Fitness: store moving workout time, not start→end elapsed with pauses.
+        let workoutMinutes = max(1, Int((workout.duration / 60.0).rounded()))
 
         activity.date = workout.startDate
-        activity.durationMinutes = actualMinutes
-        activity.actualDurationMinutes = actualMinutes
+        activity.durationMinutes = workoutMinutes
+        activity.actualDurationMinutes = workoutMinutes
         activity.isCompleted = true
         activity.isSkipped = false
         activity.healthKitWorkoutUUID = workout.uuid.uuidString

@@ -11,15 +11,22 @@ enum WorkoutHeartRateAnalytics {
         activeIntervals: [DateInterval],
         contains: (Double) -> Bool
     ) -> TimeInterval {
-        guard !activeIntervals.isEmpty else { return 0 }
+        let active = coalesce(activeIntervals)
+        guard !active.isEmpty else { return 0 }
 
-        return activeIntervals.reduce(0) { total, interval in
-            total + secondsInZone(
-                samples: samples,
-                startDate: interval.start,
-                endDate: interval.end,
-                contains: contains
-            )
+        // Single pass over sample gaps against the coalesced active timeline.
+        // Summing per raw interval double-counts when HKWorkout activities overlap.
+        guard samples.count > 1 else { return 0 }
+
+        return zip(samples, samples.dropFirst()).reduce(0.0) { total, pair in
+            guard contains(pair.0.beatsPerMinute) else { return total }
+
+            let gapStart = pair.0.timestamp
+            let rawGap = pair.1.timestamp.timeIntervalSince(gapStart)
+            guard rawGap > 0 else { return total }
+
+            let gapEnd = gapStart.addingTimeInterval(min(rawGap, maximumSampleInterval))
+            return total + activeOverlapDuration(from: gapStart, to: gapEnd, in: active)
         }
     }
 
@@ -29,19 +36,48 @@ enum WorkoutHeartRateAnalytics {
         endDate: Date,
         contains: (Double) -> Bool
     ) -> TimeInterval {
-        let clipped = samples.filter {
-            $0.timestamp >= startDate && $0.timestamp <= endDate
+        secondsInZone(
+            samples: samples,
+            activeIntervals: [DateInterval(start: startDate, end: endDate)],
+            contains: contains
+        )
+    }
+
+    /// Merges overlapping / touching intervals so zone time cannot exceed wall-clock coverage.
+    static func coalesce(_ intervals: [DateInterval]) -> [DateInterval] {
+        let sorted = intervals
+            .filter { $0.end > $0.start }
+            .sorted { $0.start < $1.start }
+
+        guard var current = sorted.first else { return [] }
+
+        var result: [DateInterval] = []
+        for next in sorted.dropFirst() {
+            if next.start <= current.end {
+                current = DateInterval(
+                    start: current.start,
+                    end: max(current.end, next.end)
+                )
+            } else {
+                result.append(current)
+                current = next
+            }
         }
-        guard clipped.count > 1 else { return 0 }
+        result.append(current)
+        return result
+    }
 
-        return zip(clipped, clipped.dropFirst()).reduce(0.0) { total, pair in
-            guard contains(pair.0.beatsPerMinute) else { return total }
+    private static func activeOverlapDuration(
+        from start: Date,
+        to end: Date,
+        in intervals: [DateInterval]
+    ) -> TimeInterval {
+        guard end > start else { return 0 }
 
-            let intervalStart = max(pair.0.timestamp, startDate)
-            let intervalEnd = min(pair.1.timestamp, endDate)
-            let interval = intervalEnd.timeIntervalSince(intervalStart)
-
-            return total + max(0, min(interval, maximumSampleInterval))
+        return intervals.reduce(0) { total, interval in
+            let overlapStart = max(start, interval.start)
+            let overlapEnd = min(end, interval.end)
+            return total + max(0, overlapEnd.timeIntervalSince(overlapStart))
         }
     }
 
@@ -49,10 +85,11 @@ enum WorkoutHeartRateAnalytics {
         _ samples: [WorkoutHeartRateSample],
         in intervals: [DateInterval]
     ) -> [WorkoutHeartRateSample] {
-        guard !intervals.isEmpty else { return samples }
+        let active = coalesce(intervals)
+        guard !active.isEmpty else { return samples }
 
         return samples.filter { sample in
-            intervals.contains { interval in
+            active.contains { interval in
                 sample.timestamp >= interval.start && sample.timestamp <= interval.end
             }
         }

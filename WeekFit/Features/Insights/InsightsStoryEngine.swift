@@ -66,8 +66,8 @@ enum InsightsStoryEngine {
         dataQuality: InsightsDataQuality
     ) -> [InsightsStoryCandidate] {
         let ranked = storyCandidates(records: records, recoverySleepRecords: recoverySleepRecords)
-            .filter(isEligibleStory)
-            .filter(validateStory)
+            .filter { isEligibleStory($0) }
+            .filter { validateStory($0) }
             .filter { $0.impactScore >= 45 || $0.storyType == .maintenanceStory }
             .sorted { lhs, rhs in
                 if lhs.impactScore != rhs.impactScore {

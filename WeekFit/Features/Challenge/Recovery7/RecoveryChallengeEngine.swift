@@ -437,6 +437,9 @@ enum RecoveryChallengeEngine {
                 if participation.todaySummaryCardDismissed {
                     return .hidden
                 }
+                if participation.completedCount >= RecoveryChallengeConfig.dayCount {
+                    return .hidden
+                }
                 return .finished(completedCount: participation.completedCount)
             }
             if let dayIndex = challengeDayIndex(for: now, participation: participation) {

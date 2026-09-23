@@ -15,7 +15,7 @@ import Foundation
 // - `upcomingTrainingActivities/Minutes/StressScore` — CoachTomorrowDemandResolver
 // - `hasMeaningfulLoadCompleted` — MealsView meal recommendations
 
-struct CoachDayContext {
+struct CoachDayContext: Sendable {
 
     let date: Date
     let now: Date
@@ -36,6 +36,30 @@ struct CoachDayContext {
 
     /// True when meaningful training load is already banked today.
     let hasMeaningfulLoadCompleted: Bool
+
+    nonisolated init(
+        date: Date,
+        now: Date,
+        allActivities: [CoachPlannedActivitySnapshot],
+        lastCompletedActivity: CoachPlannedActivitySnapshot?,
+        upcomingActivities: [CoachPlannedActivitySnapshot],
+        completedActivityVolumeMinutes: Int,
+        upcomingTrainingActivities: [CoachPlannedActivitySnapshot],
+        upcomingTrainingMinutes: Int,
+        upcomingTrainingStressScore: Int,
+        hasMeaningfulLoadCompleted: Bool
+    ) {
+        self.date = date
+        self.now = now
+        self.allActivities = allActivities
+        self.lastCompletedActivity = lastCompletedActivity
+        self.upcomingActivities = upcomingActivities
+        self.completedActivityVolumeMinutes = completedActivityVolumeMinutes
+        self.upcomingTrainingActivities = upcomingTrainingActivities
+        self.upcomingTrainingMinutes = upcomingTrainingMinutes
+        self.upcomingTrainingStressScore = upcomingTrainingStressScore
+        self.hasMeaningfulLoadCompleted = hasMeaningfulLoadCompleted
+    }
 }
 
 enum CoachDayContextBuilder {

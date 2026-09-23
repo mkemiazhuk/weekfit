@@ -216,6 +216,56 @@ final class RecoveryChallengePresenterTests: XCTestCase {
         XCTAssertTrue(active.nodeStates.dropFirst().allSatisfy { $0 == .future })
     }
 
+    func testHeaderEntryHidesPerfectFinishAfterCalendarEnds() {
+        let enrolled = Date(timeIntervalSince1970: 1_777_600_000) // fixed instant
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utc
+        let start = calendar.startOfDay(for: enrolled)
+        let day8 = calendar.date(byAdding: .day, value: 7, to: start)!
+        let participation = RecoveryChallengeParticipation(
+            eventID: RecoveryChallengeConfig.eventID,
+            enrolledAt: enrolled,
+            timeZoneIdentifier: utc.identifier,
+            startDayKey: RecoveryChallengeEngine.dayKey(for: enrolled, timeZone: utc),
+            completedDayIndices: [1, 2, 3, 4, 5, 6, 7],
+            todaySummaryCardDismissed: false
+        )
+        let entry = RecoveryChallengePresenter.headerEntry(
+            now: day8,
+            participation: participation,
+            featureAvailable: true,
+            timeZone: utc
+        )
+        XCTAssertEqual(entry, .hidden)
+    }
+
+    func testHeaderEntryKeepsPartialSummaryUntilDismissed() {
+        let enrolled = Date(timeIntervalSince1970: 1_777_600_000)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utc
+        let start = calendar.startOfDay(for: enrolled)
+        let day8 = calendar.date(byAdding: .day, value: 7, to: start)!
+        let participation = RecoveryChallengeParticipation(
+            eventID: RecoveryChallengeConfig.eventID,
+            enrolledAt: enrolled,
+            timeZoneIdentifier: utc.identifier,
+            startDayKey: RecoveryChallengeEngine.dayKey(for: enrolled, timeZone: utc),
+            completedDayIndices: [1, 3, 5],
+            todaySummaryCardDismissed: false
+        )
+        let entry = RecoveryChallengePresenter.headerEntry(
+            now: day8,
+            participation: participation,
+            featureAvailable: true,
+            timeZone: utc
+        )
+        guard case .summary(let summary) = entry else {
+            return XCTFail("expected summary, got \(entry)")
+        }
+        XCTAssertEqual(summary.completedCount, 3)
+        XCTAssertFalse(summary.isPerfect)
+    }
+
     func testAutoIntroDecisionReportsSuppressionReasons() {
         let decision = RecoveryChallengePresenter.autoIntroDecision(
             participation: nil,

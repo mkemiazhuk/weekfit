@@ -897,7 +897,7 @@ private extension WeekPlannerLiveQueryView {
                         }
                     }
                     .listStyle(.plain)
-                    .weekFitTransparentScrollBackground()
+                    .weekFitTransparentScrollBackground(fillsCanvas: false)
                     .scrollBounceBehavior(.basedOnSize)
                     .environment(\.defaultMinListRowHeight, 1)
                     .contentMargins(.top, 2, for: .scrollContent)
