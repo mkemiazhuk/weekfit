@@ -106,7 +106,29 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.3.3)
+## What's New (1.3.4)
+
+**EN:**
+```
+• Clearer live Coach cues during workouts, including hydration timing
+• App stays responsive after finishing a Watch workout
+• Smoother Restore Purchases and paywall presentation
+• Rating prompt after completing Recovery Challenge
+• Stability and reliability polish
+```
+
+**RU:**
+```
+• Понятнее подсказки Коуча на тренировке, в том числе про гидратацию
+• Приложение не подвисает после остановки тренировки с Apple Watch
+• Надёжнее восстановление покупок и показ paywall
+• Запрос оценки после завершения Recovery Challenge
+• Полировка стабильности и надёжности
+```
+
+---
+
+## What's New (1.3.3) — archive
 
 **EN:**
 ```
