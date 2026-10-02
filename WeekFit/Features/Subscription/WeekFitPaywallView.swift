@@ -35,7 +35,9 @@ struct WeekFitPaywallView: View {
         }
         .id(palette.appearanceInvalidationToken)
         .interactiveDismissDisabled(!allowsDismiss)
-        .onAppear {
+        // Keyed on presentation identity — remounts from palette / ViewThatFits must not
+        // re-fire. Presenters mint a fresh `paywallInstanceID` only when opening.
+        .task(id: paywallInstanceID) {
             SubscriptionAnalytics.paywallViewed(
                 source: source,
                 requestedTab: requestedTab ?? subscriptionManager.paywallRequestedTabID,
@@ -316,7 +318,12 @@ struct WeekFitPaywallView: View {
             #endif
 
             Button {
-                Task { await subscriptionManager.restorePurchases(source: source) }
+                Task {
+                    await subscriptionManager.restorePurchases(
+                        source: source,
+                        paywallInstanceID: paywallInstanceID
+                    )
+                }
             } label: {
                 HStack(spacing: 8) {
                     if subscriptionManager.isRestoreInFlight {

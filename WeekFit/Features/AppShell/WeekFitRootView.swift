@@ -63,6 +63,9 @@ struct WeekFitRootView: View {
     /// Minted when the feature paywall opens — stable across SwiftUI remounts.
     @State private var featurePaywallInstanceID = UUID().uuidString
     @State private var forcedPaywallInstanceID = UUID().uuidString
+    /// Blocks re-present / remount while fullScreenCover is animating in or out.
+    @State private var isFeaturePaywallTransitioning = false
+    @State private var featurePaywallTransitionTask: Task<Void, Never>?
     @ObservedObject private var forcePaywall = WeekFitForcePaywallStore.shared
 
     /// Joins overlapping workout reconcile requests (appear + onChange can race).
@@ -308,14 +311,11 @@ struct WeekFitRootView: View {
         Binding(
             get: { isPresentingFeaturePaywall },
             set: { presented in
-                isPresentingFeaturePaywall = presented
-                if !presented {
-                    if subscriptionManager.hasFullAccess {
-                        // Unlock path handled by reconcilePremiumTabGate.
-                    } else {
-                        pendingPremiumTab = nil
-                        subscriptionManager.clearFeaturePaywallRequest()
-                    }
+                guard presented != isPresentingFeaturePaywall else { return }
+                if presented {
+                    beginFeaturePaywallPresentation()
+                } else {
+                    dismissFeaturePaywall(clearPending: !subscriptionManager.hasFullAccess)
                 }
             }
         )
@@ -392,14 +392,49 @@ struct WeekFitRootView: View {
             }
         }
         if isPresentingFeaturePaywall {
+            // Keep pending — reconcile flushes after Settings closes.
+            // Do not remount: pulling the cover down mid-presentation hangs SwiftUI.
+            beginFeaturePaywallTransitionCooldown(flushWhenSettled: true)
             isPresentingFeaturePaywall = false
-            // pendingPremiumTab retained — reconcile flushes after Settings closes.
         }
     }
 
     private func flushDeferredSubscriptionPresentation() {
         presentLegacyThanksIfNeeded()
         reconcilePremiumTabGate()
+    }
+
+    /// FullScreenCover transitions are not re-entrant. Rapid premium-tab taps
+    /// reminted the paywall identity and re-asserted `isPresented` while the
+    /// previous cover was still animating — UI then required a force-quit.
+    private func beginFeaturePaywallPresentation() {
+        featurePaywallInstanceID = UUID().uuidString
+        beginFeaturePaywallTransitionCooldown(flushWhenSettled: false)
+        isPresentingFeaturePaywall = true
+    }
+
+    private func dismissFeaturePaywall(clearPending: Bool) {
+        if clearPending {
+            pendingPremiumTab = nil
+            subscriptionManager.clearFeaturePaywallRequest()
+        }
+        guard isPresentingFeaturePaywall else { return }
+        beginFeaturePaywallTransitionCooldown(flushWhenSettled: true)
+        isPresentingFeaturePaywall = false
+    }
+
+    private func beginFeaturePaywallTransitionCooldown(flushWhenSettled: Bool) {
+        featurePaywallTransitionTask?.cancel()
+        isFeaturePaywallTransitioning = true
+        featurePaywallTransitionTask = Task { @MainActor in
+            // Match typical fullScreenCover spring (~0.35–0.45s) with margin.
+            try? await Task.sleep(for: .milliseconds(550))
+            guard !Task.isCancelled else { return }
+            isFeaturePaywallTransitioning = false
+            if flushWhenSettled {
+                reconcilePremiumTabGate()
+            }
+        }
     }
 
     private var rootShell: some View {
@@ -601,16 +636,24 @@ struct WeekFitRootView: View {
         case .deferUntilResolved:
             // Keep Today selected; open or paywall after entitlement resolves.
             pendingPremiumTab = tab
-            isPresentingFeaturePaywall = false
+            if isPresentingFeaturePaywall {
+                dismissFeaturePaywall(clearPending: false)
+            }
         case .presentPaywall:
             pendingPremiumTab = tab
             subscriptionManager.noteFeaturePaywall(for: tab)
-            featurePaywallInstanceID = UUID().uuidString
-            isPresentingFeaturePaywall = WeekFitSubscriptionPresentationCoordinator.shouldPresentFeaturePaywall(
+            switch WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
                 desired: true,
+                isAlreadyPresented: isPresentingFeaturePaywall,
+                isTransitioning: isFeaturePaywallTransitioning,
                 isSettingsPresented: appSession.isPresentingSettings,
                 isLegacyThanksPresented: showLegacyAccessThanks
-            )
+            ) {
+            case .beginPresentation:
+                beginFeaturePaywallPresentation()
+            case .updatePendingOnly, .suppress:
+                break
+            }
         }
     }
 
@@ -647,15 +690,34 @@ struct WeekFitRootView: View {
         }
 
         pendingPremiumTab = result.pendingTab
-        let gatedPaywall = WeekFitSubscriptionPresentationCoordinator.shouldPresentFeaturePaywall(
+        let desiredPaywall = WeekFitSubscriptionPresentationCoordinator.shouldPresentFeaturePaywall(
             desired: result.presentPaywall,
             isSettingsPresented: appSession.isPresentingSettings,
             isLegacyThanksPresented: showLegacyAccessThanks
         )
-        if gatedPaywall, !wasPresenting {
-            featurePaywallInstanceID = UUID().uuidString
+
+        switch WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+            desired: desiredPaywall,
+            isAlreadyPresented: wasPresenting,
+            isTransitioning: isFeaturePaywallTransitioning,
+            isSettingsPresented: appSession.isPresentingSettings,
+            isLegacyThanksPresented: showLegacyAccessThanks
+        ) {
+        case .beginPresentation:
+            beginFeaturePaywallPresentation()
+        case .updatePendingOnly:
+            // Keep the existing cover; identity stays stable.
+            break
+        case .suppress:
+            if wasPresenting {
+                // Purchase unlock or entitlement loss — drop cover without
+                // clearing a still-pending tab (Settings retract path).
+                let clearPending = result.pendingTab == nil && !subscriptionManager.hasFullAccess
+                dismissFeaturePaywall(clearPending: clearPending)
+            } else if !desiredPaywall {
+                isPresentingFeaturePaywall = false
+            }
         }
-        isPresentingFeaturePaywall = gatedPaywall
 
         if result.selectedTab != selectedTab {
             commitTabSelection(result.selectedTab)
@@ -779,22 +841,30 @@ struct WeekFitRootView: View {
         }
     }
 
-    /// Real data events (Watch sync, foreground, manual refresh) reload HealthKit immediately,
+    /// Real data events (Watch sync, foreground, manual refresh) reload HealthKit,
     /// even when Today/Coach tabs are inactive. Tab switching alone is not a data event.
+    ///
+    /// Debounced: weak mobile/Watch links often deliver the same workout stop as several
+    /// HealthKit observer pulses. Without coalescing, each pulse ran a full MainActor
+    /// health+coach reload and starved tab switching until connectivity recovered.
     private func handleHealthRefreshEvent() {
         healthRefreshEventTask?.cancel()
+        let capturedSources = appSession.latestHealthRefreshSources
         healthRefreshEventTask = Task {
-            let taskName = "root.handleHealthRefreshEvent"
-            let sources = CoachTabHealthRefreshPolicy.summarizeSources(
-                appSession.latestHealthRefreshSources
+            try? await Task.sleep(
+                nanoseconds: CoachTabHealthRefreshPolicy.healthRefreshEventDebounceNanoseconds
             )
+            guard !Task.isCancelled else { return }
+
+            let taskName = "root.handleHealthRefreshEvent"
+            let sources = CoachTabHealthRefreshPolicy.summarizeSources(capturedSources)
             StartupDiagnostics.taskBegin(taskName, detail: "sources=\(sources)")
             let decision = healthRefreshEventDecision()
             #if DEBUG
             HealthRefreshGuardLog.log(
                 event: "healthRefreshEvent",
                 decision: decision,
-                sources: appSession.latestHealthRefreshSources
+                sources: capturedSources
             )
             #endif
             guard decision.shouldReloadHealth else {
@@ -803,10 +873,15 @@ struct WeekFitRootView: View {
             }
 
             let sourceLabel = sources
+            let bootstrap = CoachTabHealthRefreshPolicy.shouldBootstrapWorkouts(from: capturedSources)
             await reconcileHealthWorkouts(
                 source: "healthRefreshEvent.\(sourceLabel)",
-                bootstrapFromHealth: true
+                bootstrapFromHealth: bootstrap
             )
+            guard !Task.isCancelled else {
+                StartupDiagnostics.taskCancelled(taskName, detail: "afterReconcile")
+                return
+            }
             await refreshCoachInput(
                 source: "healthRefreshEvent.\(sourceLabel)",
                 refreshHealth: true
@@ -815,7 +890,10 @@ struct WeekFitRootView: View {
             if Task.isCancelled {
                 StartupDiagnostics.taskCancelled(taskName)
             } else {
-                StartupDiagnostics.taskSuccess(taskName, detail: "reloaded")
+                StartupDiagnostics.taskSuccess(
+                    taskName,
+                    detail: "reloaded bootstrap=\(bootstrap)"
+                )
             }
         }
     }

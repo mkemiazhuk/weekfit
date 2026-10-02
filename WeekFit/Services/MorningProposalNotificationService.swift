@@ -135,7 +135,9 @@ final class MorningProposalNotificationService {
 
             self.center.add(request) { error in
                 if let error {
+                    #if DEBUG
                     print("Failed to schedule morning plan check:", error)
+                    #endif
                     return
                 }
                 DispatchQueue.main.async {

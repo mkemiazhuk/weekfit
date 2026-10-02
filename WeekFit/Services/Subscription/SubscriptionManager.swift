@@ -256,7 +256,10 @@ final class SubscriptionManager: ObservableObject {
     /// 2. `AppStore.sync()` is only for the rare case when the user still sees missing
     ///    purchases after a local entitlement refresh. It always shows Apple ID auth.
     /// 3. Call `sync()` only from an explicit Restore tap (never from `start()` / `refresh()`).
-    func restorePurchases(source: SubscriptionAnalyticsSource = .other) async {
+    func restorePurchases(
+        source: SubscriptionAnalyticsSource = .other,
+        paywallInstanceID: String? = nil
+    ) async {
         #if DEBUG
         WeekFitRestoreDiagnostics.log("RESTORE_TAPPED source=\(source.rawValue)")
         #endif
@@ -267,7 +270,11 @@ final class SubscriptionManager: ObservableObject {
         lastOutcomeSource = .restore
         let requestedTab = paywallRequestedTabID
         let hadEntitlementBefore = hasFullAccess
-        SubscriptionAnalytics.restoreStarted(source: source, requestedTab: requestedTab)
+        SubscriptionAnalytics.restoreStarted(
+            source: source,
+            requestedTab: requestedTab,
+            paywallInstanceID: paywallInstanceID
+        )
         #if DEBUG
         WeekFitRestoreDiagnostics.log(
             "RESTORE_STARTED hasFullAccess=\(hadEntitlementBefore)"
@@ -287,15 +294,19 @@ final class SubscriptionManager: ObservableObject {
 
         if hasFullAccess {
             lastOutcome = .success
-            SubscriptionAnalytics.restoreSuccess(
+            SubscriptionAnalytics.restoreFinished(
                 source: source,
                 requestedTab: requestedTab,
+                result: hadEntitlementBefore ? .alreadyEntitled : .restored,
                 hasEntitlementBefore: hadEntitlementBefore,
                 hasEntitlementAfter: true,
-                restoredProductID: activeSubscription?.productID
+                restoredProductID: activeSubscription?.productID,
+                paywallInstanceID: paywallInstanceID
             )
             #if DEBUG
-            WeekFitRestoreDiagnostics.log("RESTORE_RESULT=success")
+            WeekFitRestoreDiagnostics.log(
+                "RESTORE_RESULT=\(hadEntitlementBefore ? "already_entitled" : "restored")"
+            )
             #endif
             return
         }
@@ -315,49 +326,59 @@ final class SubscriptionManager: ObservableObject {
             }
             if hasFullAccess {
                 lastOutcome = .success
-                SubscriptionAnalytics.restoreSuccess(
+                SubscriptionAnalytics.restoreFinished(
                     source: source,
                     requestedTab: requestedTab,
+                    result: .restored,
                     hasEntitlementBefore: hadEntitlementBefore,
                     hasEntitlementAfter: true,
-                    restoredProductID: activeSubscription?.productID
+                    restoredProductID: activeSubscription?.productID,
+                    paywallInstanceID: paywallInstanceID
                 )
                 #if DEBUG
-                WeekFitRestoreDiagnostics.log("RESTORE_RESULT=success")
+                WeekFitRestoreDiagnostics.log("RESTORE_RESULT=restored")
                 #endif
             } else {
                 lastOutcome = .nothingToRestore
-                SubscriptionAnalytics.restoreFailed(
+                SubscriptionAnalytics.restoreFinished(
                     source: source,
                     requestedTab: requestedTab,
-                    failureReason: .noPurchases,
-                    hasEntitlementAfter: false
+                    result: .noPurchases,
+                    hasEntitlementBefore: hadEntitlementBefore,
+                    hasEntitlementAfter: false,
+                    paywallInstanceID: paywallInstanceID
                 )
                 #if DEBUG
-                WeekFitRestoreDiagnostics.log("RESTORE_RESULT=nothingToRestore")
+                WeekFitRestoreDiagnostics.log("RESTORE_RESULT=no_purchases")
                 #endif
             }
         } catch is CancellationError {
             await refresh()
             lastOutcome = .cancelled
-            SubscriptionAnalytics.restoreFailed(
+            SubscriptionAnalytics.restoreFinished(
                 source: source,
                 requestedTab: requestedTab,
-                failureReason: .cancelled,
-                hasEntitlementAfter: hasFullAccess
+                result: .cancelled,
+                hasEntitlementBefore: hadEntitlementBefore,
+                hasEntitlementAfter: hasFullAccess,
+                paywallInstanceID: paywallInstanceID,
+                error: CancellationError()
             )
             #if DEBUG
             WeekFitRestoreDiagnostics.log("RESTORE_SYNC_COMPLETED cancelled=true")
             WeekFitRestoreDiagnostics.log("RESTORE_RESULT=cancelled")
             #endif
-        } catch is WeekFitStoreKitRestoreTimeoutError {
+        } catch let timeout as WeekFitStoreKitRestoreTimeoutError {
             await refresh()
             lastOutcome = .failed
-            SubscriptionAnalytics.restoreFailed(
+            SubscriptionAnalytics.restoreFinished(
                 source: source,
                 requestedTab: requestedTab,
-                failureReason: .timeout,
-                hasEntitlementAfter: hasFullAccess
+                result: .timeout,
+                hasEntitlementBefore: hadEntitlementBefore,
+                hasEntitlementAfter: hasFullAccess,
+                paywallInstanceID: paywallInstanceID,
+                error: timeout
             )
             #if DEBUG
             WeekFitRestoreDiagnostics.log("RESTORE_SYNC_COMPLETED timedOut=true")
@@ -366,11 +387,14 @@ final class SubscriptionManager: ObservableObject {
         } catch {
             await refresh()
             lastOutcome = .failed
-            SubscriptionAnalytics.restoreFailed(
+            SubscriptionAnalytics.restoreFinished(
                 source: source,
                 requestedTab: requestedTab,
-                failureReason: .storekitError,
-                hasEntitlementAfter: hasFullAccess
+                result: .storekitError,
+                hasEntitlementBefore: hadEntitlementBefore,
+                hasEntitlementAfter: hasFullAccess,
+                paywallInstanceID: paywallInstanceID,
+                error: error
             )
             #if DEBUG
             WeekFitRestoreDiagnostics.log("RESTORE_SYNC_COMPLETED threw=true")

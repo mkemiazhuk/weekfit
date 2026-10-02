@@ -122,7 +122,9 @@ final class ActivityNotificationService {
             center.removeDeliveredNotifications(withIdentifiers: ids)
         }
 
+        #if DEBUG
         print("🔕 Activity notifications cancelled")
+        #endif
     }
 
     // MARK: - Main Sync API
@@ -173,7 +175,9 @@ final class ActivityNotificationService {
             guard let self else { return }
 
             guard isAuthorized else {
+                #if DEBUG
                 print("⚠️ Notifications not authorized. Skipping scheduling.")
+                #endif
                 return
             }
 
@@ -301,11 +305,13 @@ final class ActivityNotificationService {
                 return
             }
 
+            #if DEBUG
             if let error {
                 print("Failed to schedule later completion check:", error)
             } else {
                 print("Later completion check scheduled:", activity.title, laterDate)
             }
+            #endif
         }
     }
 
@@ -374,7 +380,9 @@ final class ActivityNotificationService {
         let activityId = activity.id
 
         guard isScheduleVersionCurrent(activityId: activityId, version: scheduleVersion) else {
+            #if DEBUG
             print("Skipping stale notification schedule for deleted/edited activity:", activityId)
+            #endif
             return
         }
 
@@ -550,11 +558,13 @@ final class ActivityNotificationService {
                 return
             }
 
+            #if DEBUG
             if let error {
                 print("Failed to schedule start reminder:", error)
             } else {
                 print("Start reminder scheduled:", activity.title, reminderDate)
             }
+            #endif
         }
     }
 
@@ -587,11 +597,13 @@ final class ActivityNotificationService {
                 return
             }
 
+            #if DEBUG
             if let error {
                 print("Failed to schedule completion check:", error)
             } else {
                 print("Completion check scheduled:", activity.title, confirmationDate)
             }
+            #endif
         }
     }
 

@@ -14,7 +14,7 @@ enum PlannedActivityPersistenceAudit {
         isSkipped: Bool,
         auditSource: String
     ) {
-        logger.info(
+        logger.debug(
             """
             liveObjectResolved id=\(id, privacy: .public) title=\(title, privacy: .public) \
             persistentModelID=\(persistentModelID, privacy: .public) \
@@ -42,27 +42,27 @@ enum PlannedActivityPersistenceAudit {
         source: String,
         auditSource: String
     ) {
-        logger.info(
+        logger.debug(
             "deleteRequested id=\(id, privacy: .public) title=\(title, privacy: .public) type=\(type, privacy: .public) source=\(source, privacy: .public) auditSource=\(auditSource, privacy: .public)"
         )
     }
 
     static func waterGroupDeleteRequested(count: Int, ids: [String], auditSource: String) {
-        logger.info(
+        logger.debug(
             "waterGroupDeleteRequested count=\(count, privacy: .public) ids=\(ids.joined(separator: ","), privacy: .public) auditSource=\(auditSource, privacy: .public)"
         )
     }
 
     static func contextDeleted(id: String) {
-        logger.info("contextDeleted id=\(id, privacy: .public)")
+        logger.debug("contextDeleted id=\(id, privacy: .public)")
     }
 
     static func saveAttempted(idCount: Int) {
-        logger.info("saveAttempted idCount=\(idCount, privacy: .public)")
+        logger.debug("saveAttempted idCount=\(idCount, privacy: .public)")
     }
 
     static func saveCompleted(idCount: Int) {
-        logger.info("saveCompleted idCount=\(idCount, privacy: .public)")
+        logger.debug("saveCompleted idCount=\(idCount, privacy: .public)")
     }
 
     static func saveFailed(idCount: Int, error: Error) {
@@ -72,17 +72,17 @@ enum PlannedActivityPersistenceAudit {
     }
 
     static func fetchAfterSave(id: String, remainingCount: Int) {
-        logger.info(
+        logger.debug(
             "fetchAfterSave id=\(id, privacy: .public) remainingCount=\(remainingCount, privacy: .public)"
         )
     }
 
     static func notificationCleanupStarted(id: String) {
-        logger.info("notificationCleanupStarted id=\(id, privacy: .public)")
+        logger.debug("notificationCleanupStarted id=\(id, privacy: .public)")
     }
 
     static func notificationCleanupCompleted(id: String) {
-        logger.info("notificationCleanupCompleted id=\(id, privacy: .public)")
+        logger.debug("notificationCleanupCompleted id=\(id, privacy: .public)")
     }
 
     static func notificationCleanupFailed(id: String, error: Error) {

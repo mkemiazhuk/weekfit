@@ -226,6 +226,10 @@ enum MorningProposalService {
             )
         case .noChangesNeeded:
             MorningProposalAnalytics.proposalNoChanges(dayKey: dayKey)
+        case .unavailable, .failed:
+            // Engine-terminal unavailability (e.g. generation mode closed). Deduped per day+reason.
+            let domainReason = proposal.lastErrorCode ?? "generation_failed"
+            MorningProposalAnalytics.proposalUnavailable(dayKey: dayKey, reason: domainReason)
         default:
             break
         }

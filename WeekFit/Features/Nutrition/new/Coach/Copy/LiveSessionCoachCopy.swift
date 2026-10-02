@@ -81,8 +81,8 @@ enum LiveSessionCoachCopy {
         if shouldExplainFuel(input: input, intent: intent, decision: decision) {
             if !input.mealWindowOpen {
                 lines.append(.en(
-                    "You haven't eaten yet today. No need to push the intensity before your first meal.",
-                    "Сегодня ещё не было еды — до первого приёма пищи незачем давить."
+                    "You haven't logged a meal today, so there's no need to push the intensity yet.",
+                    "Сегодня ещё не отмечен приём пищи — незачем поднимать интенсивность."
                 ))
             } else {
                 lines.append(.en(
@@ -193,11 +193,7 @@ enum LiveSessionCoachCopy {
                 ru: "Вы в рабочей зоне — держите, не уходите выше."
             )
         case (.enduranceAerobic, .onTrack):
-            return enduranceSubject(
-                input,
-                en: "You're right where you should be — keep going.",
-                ru: "Вы там, где нужно — продолжайте."
-            )
+            return enduranceSettleSupport(input)
         case (.enduranceHard, .easeOff):
             return .en(
                 "Max effort is fine in a burst — don't live there between intervals.",
@@ -279,13 +275,10 @@ enum LiveSessionCoachCopy {
                 "Держите так — если фразы становятся короткими, чуть сбавьте."
             )
         case (.enduranceAerobic, .onTrack):
-            if input.liveHeartRateZone != nil {
-                return .en(
-                    "Keep this conversational pace to the end.",
-                    "Держите разговорный темп до конца."
-                )
-            }
-            return fallback
+            return .en(
+                "Keep an easy, conversational pace.",
+                "Держите лёгкий, разговорный темп."
+            )
         case (.enduranceHard, .easeOff):
             return .en(
                 "Use the next recovery interval until breathing settles.",
@@ -530,6 +523,58 @@ enum LiveSessionCoachCopy {
             || input.scenario == .walkAfterHeavyLoad
             || input.scenario == .walkLightDay
             || input.scenario == .walkEveningWindDown
+    }
+
+    private static func enduranceSettleSupport(_ input: CoachCopyBuildInput) -> CoachBilingualText {
+        // Early ride: settle before building effort. Later: confirm on-track without repeating the action.
+        let earlyWindow = input.focusSessionElapsedMinutes < 20
+        switch input.activityType {
+        case .cycling:
+            if earlyWindow {
+                return .en(
+                    "Settle into the ride before increasing your effort.",
+                    "Сначала войдите в ритм заезда — потом уже можно добавлять усилие."
+                )
+            }
+            return .en(
+                "You're right where you should be — keep going.",
+                "Вы там, где нужно — продолжайте."
+            )
+        case .running:
+            if earlyWindow {
+                return .en(
+                    "Settle into the run before increasing your effort.",
+                    "Сначала войдите в ритм бега — потом уже можно добавлять усилие."
+                )
+            }
+            return .en(
+                "You're right where you should be — keep going.",
+                "Вы там, где нужно — продолжайте."
+            )
+        case .swimming:
+            if earlyWindow {
+                return .en(
+                    "Settle into the swim before increasing your effort.",
+                    "Сначала войдите в ритм плавания — потом уже можно добавлять усилие."
+                )
+            }
+            return .en(
+                "You're right where you should be — keep going.",
+                "Вы там, где нужно — продолжайте."
+            )
+        default:
+            if earlyWindow {
+                return .en(
+                    "Settle into the session before increasing your effort.",
+                    "Сначала войдите в ритм — потом уже можно добавлять усилие."
+                )
+            }
+            return enduranceSubject(
+                input,
+                en: "You're right where you should be — keep going.",
+                ru: "Вы там, где нужно — продолжайте."
+            )
+        }
     }
 
     private static func remainingSessionMinutes(for input: CoachCopyBuildInput) -> Int {

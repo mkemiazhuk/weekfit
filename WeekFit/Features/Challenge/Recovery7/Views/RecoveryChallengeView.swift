@@ -1560,6 +1560,10 @@ struct RecoveryChallengeView: View {
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         RecoveryChallengeAnalytics.dayCompleted(dayIndex: dayIndex)
+        if updated.completedCount >= RecoveryChallengeConfig.dayCount {
+            // Peak delight: all 7 days done — eligibility-gated StoreKit review prompt.
+            ReviewEngagement.record(.recoveryChallengeCompleted)
+        }
         onParticipationChanged()
         errorMessage = nil
         isPerformingCompletion = false

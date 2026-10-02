@@ -120,4 +120,27 @@ final class CoachTabHealthRefreshPolicyTests: XCTestCase {
         XCTAssertFalse(CoachTabHealthRefreshPolicy.isDataEventSource("tabChange.coach"))
         XCTAssertFalse(CoachTabHealthRefreshPolicy.isDataEventSource("rootTask"))
     }
+
+    func testCompletedWorkoutsBatchSkipsBootstrapQuery() {
+        XCTAssertFalse(
+            CoachTabHealthRefreshPolicy.shouldBootstrapWorkouts(
+                from: ["root.onChange.completedWorkoutsBatch"]
+            )
+        )
+        XCTAssertFalse(
+            CoachTabHealthRefreshPolicy.shouldBootstrapWorkouts(
+                from: ["appForeground", "healthRefreshEvent.root.onChange.completedWorkouts"]
+            )
+        )
+        XCTAssertTrue(
+            CoachTabHealthRefreshPolicy.shouldBootstrapWorkouts(
+                from: ["appForeground"]
+            )
+        )
+        XCTAssertTrue(
+            CoachTabHealthRefreshPolicy.shouldBootstrapWorkouts(
+                from: ["tabChange.coach"]
+            )
+        )
+    }
 }

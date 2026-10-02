@@ -43,48 +43,87 @@ enum SubscriptionAnalytics {
         ProductScreenTracker.shared.trackScreenIfChanged(.paywall)
     }
 
-    static func optionSelected(productID: String, requestedTab: String? = nil) {
+    static func optionSelected(
+        productID: String,
+        requestedTab: String? = nil,
+        paywallInstanceID: String? = nil
+    ) {
         analytics.track(
             .subscriptionOptionSelected,
-            parameters: productParameters(productID: productID, requestedTab: requestedTab)
+            parameters: productParameters(
+                productID: productID,
+                requestedTab: requestedTab,
+                paywallInstanceID: paywallInstanceID
+            )
         )
     }
 
-    static func purchaseStarted(productID: String, requestedTab: String? = nil) {
+    static func purchaseStarted(
+        productID: String,
+        requestedTab: String? = nil,
+        paywallInstanceID: String? = nil
+    ) {
         analytics.track(
             .subscriptionPurchaseStarted,
-            parameters: productParameters(productID: productID, requestedTab: requestedTab)
+            parameters: productParameters(
+                productID: productID,
+                requestedTab: requestedTab,
+                paywallInstanceID: paywallInstanceID
+            )
         )
     }
 
-    static func purchaseSuccess(productID: String, requestedTab: String? = nil) {
+    static func purchaseSuccess(
+        productID: String,
+        requestedTab: String? = nil,
+        paywallInstanceID: String? = nil
+    ) {
         analytics.track(
             .subscriptionPurchaseSuccess,
-            parameters: productParameters(productID: productID, requestedTab: requestedTab)
+            parameters: productParameters(
+                productID: productID,
+                requestedTab: requestedTab,
+                paywallInstanceID: paywallInstanceID
+            )
         )
     }
 
-    static func purchaseCancelled(productID: String, requestedTab: String? = nil) {
+    static func purchaseCancelled(
+        productID: String,
+        requestedTab: String? = nil,
+        paywallInstanceID: String? = nil
+    ) {
         analytics.track(
             .subscriptionPurchaseCancelled,
-            parameters: productParameters(productID: productID, requestedTab: requestedTab)
+            parameters: productParameters(
+                productID: productID,
+                requestedTab: requestedTab,
+                paywallInstanceID: paywallInstanceID
+            )
         )
     }
 
     static func purchaseFailed(
         productID: String,
         requestedTab: String? = nil,
-        failureReason: SubscriptionPurchaseFailureReason
+        failureReason: SubscriptionPurchaseFailureReason,
+        paywallInstanceID: String? = nil
     ) {
-        var parameters = productParameters(productID: productID, requestedTab: requestedTab)
+        var parameters = productParameters(
+            productID: productID,
+            requestedTab: requestedTab,
+            paywallInstanceID: paywallInstanceID
+        )
         parameters[AnalyticsParameterKey.failureReason] = failureReason.rawValue
+        parameters[AnalyticsParameterKey.result] = failureReason.rawValue
         analytics.track(.subscriptionPurchaseFailed, parameters: parameters)
     }
 
     /// Fires only from explicit Restore Purchases actions (paywall / settings).
     static func restoreStarted(
         source: SubscriptionAnalyticsSource,
-        requestedTab: String? = nil
+        requestedTab: String? = nil,
+        paywallInstanceID: String? = nil
     ) {
         var parameters: [String: String] = [
             AnalyticsParameterKey.source: source.rawValue
@@ -92,18 +131,29 @@ enum SubscriptionAnalytics {
         if let requestedTab {
             parameters[AnalyticsParameterKey.requestedTab] = requestedTab
         }
+        if let paywallInstanceID {
+            parameters[AnalyticsParameterKey.paywallInstanceID] = paywallInstanceID
+        }
         analytics.track(.subscriptionRestoreStarted, parameters: parameters)
     }
 
+    /// Access confirmed: `restored` or `already_entitled` only.
     static func restoreSuccess(
         source: SubscriptionAnalyticsSource,
         requestedTab: String? = nil,
+        result: SubscriptionRestoreResult,
         hasEntitlementBefore: Bool,
         hasEntitlementAfter: Bool,
-        restoredProductID: String?
+        restoredProductID: String? = nil,
+        paywallInstanceID: String? = nil
     ) {
+        precondition(
+            result == .restored || result == .alreadyEntitled,
+            "restore_success is only for access-confirmed results"
+        )
         var parameters: [String: String] = [
             AnalyticsParameterKey.source: source.rawValue,
+            AnalyticsParameterKey.result: result.rawValue,
             AnalyticsParameterKey.hasEntitlementBefore: Self.boolToken(hasEntitlementBefore),
             AnalyticsParameterKey.hasEntitlementAfter: Self.boolToken(hasEntitlementAfter)
         ]
@@ -113,24 +163,115 @@ enum SubscriptionAnalytics {
         if let restoredProductID {
             parameters[AnalyticsParameterKey.restoredProductID] = sanitizedProductID(restoredProductID)
         }
+        if let paywallInstanceID {
+            parameters[AnalyticsParameterKey.paywallInstanceID] = paywallInstanceID
+        }
         analytics.track(.subscriptionRestoreSuccess, parameters: parameters)
     }
 
-    static func restoreFailed(
+    /// Neutral terminal: request finished without confirming access and without a StoreKit fault.
+    /// Used for `no_purchases` and `cancelled` only.
+    static func restoreCompleted(
         source: SubscriptionAnalyticsSource,
         requestedTab: String? = nil,
-        failureReason: SubscriptionRestoreFailureReason,
-        hasEntitlementAfter: Bool
+        result: SubscriptionRestoreResult,
+        hasEntitlementBefore: Bool,
+        hasEntitlementAfter: Bool,
+        paywallInstanceID: String? = nil
     ) {
+        precondition(
+            result == .noPurchases || result == .cancelled,
+            "restore_completed is only for no_purchases / cancelled"
+        )
         var parameters: [String: String] = [
             AnalyticsParameterKey.source: source.rawValue,
-            AnalyticsParameterKey.failureReason: failureReason.rawValue,
+            AnalyticsParameterKey.result: result.rawValue,
+            AnalyticsParameterKey.hasEntitlementBefore: Self.boolToken(hasEntitlementBefore),
             AnalyticsParameterKey.hasEntitlementAfter: Self.boolToken(hasEntitlementAfter)
         ]
         if let requestedTab {
             parameters[AnalyticsParameterKey.requestedTab] = requestedTab
         }
+        if let paywallInstanceID {
+            parameters[AnalyticsParameterKey.paywallInstanceID] = paywallInstanceID
+        }
+        analytics.track(.subscriptionRestoreCompleted, parameters: parameters)
+    }
+
+    /// Technical restore failures only: `storekit_error` and `timeout`.
+    static func restoreFailed(
+        source: SubscriptionAnalyticsSource,
+        requestedTab: String? = nil,
+        result: SubscriptionRestoreResult,
+        hasEntitlementAfter: Bool,
+        paywallInstanceID: String? = nil,
+        error: Error? = nil
+    ) {
+        precondition(
+            result == .storekitError || result == .timeout,
+            "restore_failed is only for technical failures"
+        )
+        var parameters: [String: String] = [
+            AnalyticsParameterKey.source: source.rawValue,
+            AnalyticsParameterKey.result: result.rawValue,
+            AnalyticsParameterKey.failureReason: result.rawValue,
+            AnalyticsParameterKey.hasEntitlementAfter: Self.boolToken(hasEntitlementAfter)
+        ]
+        if let requestedTab {
+            parameters[AnalyticsParameterKey.requestedTab] = requestedTab
+        }
+        if let paywallInstanceID {
+            parameters[AnalyticsParameterKey.paywallInstanceID] = paywallInstanceID
+        }
+        if let error {
+            let fields = sanitizedErrorFields(from: error)
+            parameters[AnalyticsParameterKey.errorCode] = fields.code
+            parameters[AnalyticsParameterKey.errorDomain] = fields.domain
+        }
         analytics.track(.subscriptionRestoreFailed, parameters: parameters)
+    }
+
+    /// Routes a restore terminal outcome to the correct event by `result` class.
+    static func restoreFinished(
+        source: SubscriptionAnalyticsSource,
+        requestedTab: String? = nil,
+        result: SubscriptionRestoreResult,
+        hasEntitlementBefore: Bool,
+        hasEntitlementAfter: Bool,
+        restoredProductID: String? = nil,
+        paywallInstanceID: String? = nil,
+        error: Error? = nil
+    ) {
+        switch result {
+        case .restored, .alreadyEntitled:
+            restoreSuccess(
+                source: source,
+                requestedTab: requestedTab,
+                result: result,
+                hasEntitlementBefore: hasEntitlementBefore,
+                hasEntitlementAfter: hasEntitlementAfter,
+                restoredProductID: restoredProductID,
+                paywallInstanceID: paywallInstanceID
+            )
+        case .noPurchases, .cancelled:
+            restoreCompleted(
+                source: source,
+                requestedTab: requestedTab,
+                result: result,
+                hasEntitlementBefore: hasEntitlementBefore,
+                hasEntitlementAfter: hasEntitlementAfter,
+                paywallInstanceID: paywallInstanceID
+            )
+        case .storekitError, .timeout:
+            restoreFailed(
+                source: source,
+                requestedTab: requestedTab,
+                result: result,
+                hasEntitlementAfter: hasEntitlementAfter,
+                paywallInstanceID: paywallInstanceID,
+                error: error
+            )
+        }
     }
 
     /// Only the known WeekFit product ids — never StoreKit localized titles or prices.
@@ -140,7 +281,8 @@ enum SubscriptionAnalytics {
 
     private static func productParameters(
         productID: String,
-        requestedTab: String?
+        requestedTab: String?,
+        paywallInstanceID: String?
     ) -> [String: String] {
         var parameters: [String: String] = [
             AnalyticsParameterKey.productID: sanitizedProductID(productID)
@@ -148,7 +290,27 @@ enum SubscriptionAnalytics {
         if let requestedTab {
             parameters[AnalyticsParameterKey.requestedTab] = requestedTab
         }
+        if let paywallInstanceID {
+            parameters[AnalyticsParameterKey.paywallInstanceID] = paywallInstanceID
+        }
         return parameters
+    }
+
+    /// Safe StoreKit / system error markers — no localizedDescription / userInfo.
+    static func sanitizedErrorFields(from error: Error) -> (code: String, domain: String) {
+        if error is WeekFitStoreKitRestoreTimeoutError {
+            return ("timeout", "weekfit.storekit.restore")
+        }
+        if error is CancellationError {
+            return ("cancelled", "weekfit.storekit.restore")
+        }
+        let nsError = error as NSError
+        let rawDomain = nsError.domain
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+        let filtered = String(rawDomain.unicodeScalars.filter { allowed.contains($0) })
+        let domain = String((filtered.isEmpty ? "unknown" : filtered).prefix(64))
+        let code = String(nsError.code)
+        return (code, domain)
     }
 
     private static func boolToken(_ value: Bool) -> String {
@@ -164,14 +326,19 @@ enum SubscriptionAnalyticsSource: String, Sendable {
     case other
 }
 
-enum SubscriptionRestoreFailureReason: String, Sendable {
-    /// AppStore.sync completed but no active WeekFit entitlement.
+/// Terminal restore outcome for analytics `result` (and failed `failure_reason`).
+enum SubscriptionRestoreResult: String, Sendable {
+    /// Sync found an active WeekFit entitlement the session did not already have.
+    case restored
+    /// Entitlement was already present before AppStore.sync.
+    case alreadyEntitled = "already_entitled"
+    /// Sync completed; Apple account has no active WeekFit subscription.
     case noPurchases = "no_purchases"
-    /// StoreKit / network / sync threw (non-cancel).
-    case storekitError = "storekit_error"
-    /// User cancelled the system restore sheet.
+    /// User dismissed the system Apple ID / restore sheet.
     case cancelled
-    /// AppStore.sync did not return within the restore timeout (hung sign-in / network).
+    /// StoreKit / network threw (non-cancel).
+    case storekitError = "storekit_error"
+    /// AppStore.sync did not return within the restore timeout.
     case timeout
 }
 

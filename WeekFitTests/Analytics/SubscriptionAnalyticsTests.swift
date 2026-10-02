@@ -96,30 +96,78 @@ final class SubscriptionAnalyticsTests: XCTestCase {
         XCTAssertEqual(recording.events(named: .paywallViewed).count, 13)
     }
 
-    func testRestoreFailedParametersDistinguishNoPurchases() {
-        SubscriptionAnalytics.restoreFailed(
-            source: .settings,
-            requestedTab: nil,
-            failureReason: .noPurchases,
-            hasEntitlementAfter: false
-        )
-        let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
-        XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "no_purchases")
-        XCTAssertEqual(event.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
-        XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "settings")
-    }
-
     func testRestoreFailedParametersDistinguishTimeout() {
-        SubscriptionAnalytics.restoreFailed(
+        SubscriptionAnalytics.restoreFinished(
             source: .tab,
             requestedTab: "meals",
-            failureReason: .timeout,
-            hasEntitlementAfter: false
+            result: .timeout,
+            hasEntitlementBefore: false,
+            hasEntitlementAfter: false,
+            error: WeekFitStoreKitRestoreTimeoutError()
         )
         let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "timeout")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.result], "timeout")
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "tab")
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.requestedTab], "meals")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.errorCode], "timeout")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.errorDomain], "weekfit.storekit.restore")
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreCompleted).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+    }
+
+    func testRestoreSuccessNoPurchasesIsNotFailedOrSuccess() {
+        SubscriptionAnalytics.restoreFinished(
+            source: .settings,
+            result: .noPurchases,
+            hasEntitlementBefore: false,
+            hasEntitlementAfter: false
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionRestoreCompleted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreCompleted).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.result], "no_purchases")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
+    }
+
+    func testRestoreCancelledIsNeutralCompleted() {
+        SubscriptionAnalytics.restoreFinished(
+            source: .tab,
+            result: .cancelled,
+            hasEntitlementBefore: false,
+            hasEntitlementAfter: false,
+            error: CancellationError()
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionRestoreCompleted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreCompleted).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.result], "cancelled")
+    }
+
+    func testRestoreAccessConfirmedUsesSuccessEvent() {
+        SubscriptionAnalytics.restoreFinished(
+            source: .settings,
+            result: .alreadyEntitled,
+            hasEntitlementBefore: true,
+            hasEntitlementAfter: true,
+            restoredProductID: WeekFitSubscriptionProductID.annual.rawValue
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionRestoreSuccess).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreCompleted).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionRestoreSuccess).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.result], "already_entitled")
+    }
+
+    func testSanitizedErrorFieldsStripUnsafeCharacters() {
+        let error = NSError(domain: "StoreKit.Evil Domain!🎉", code: 7)
+        let fields = SubscriptionAnalytics.sanitizedErrorFields(from: error)
+        XCTAssertEqual(fields.code, "7")
+        XCTAssertEqual(fields.domain, "StoreKit.EvilDomain")
+        XCTAssertFalse(fields.domain.contains(" "))
+        XCTAssertFalse(fields.domain.contains("🎉"))
     }
 
     func testPurchaseFailedParametersDistinguishEntitlementNotPropagated() {

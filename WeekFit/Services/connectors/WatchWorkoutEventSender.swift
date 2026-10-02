@@ -80,7 +80,9 @@ final class WatchWorkoutEventSender: NSObject {
         do {
             try session.updateApplicationContext(message)
         } catch {
+            #if DEBUG
             print("Failed to update application context:", error)
+            #endif
         }
     }
 }

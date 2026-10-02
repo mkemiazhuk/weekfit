@@ -43,9 +43,9 @@ struct ExpertCoachView: View {
 
     private var coachBodyTextColor: Color {
         let opacity: CGFloat = colorSchemeContrast == .increased
-            ? (palette.isLight ? 0.92 : 0.90)
-            : (palette.isLight ? 0.82 : 0.84)
-        return textSecondary.opacity(opacity)
+            ? (palette.isLight ? 0.94 : 0.92)
+            : (palette.isLight ? 0.88 : 0.86)
+        return textPrimary.opacity(opacity)
     }
 
     init(authViewModel: AuthViewModel) {
@@ -154,19 +154,8 @@ struct ExpertCoachView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .background {
                         // Transparent so Root's shared Weather-like sky shows through.
-                        // Keep only the live-zone wash when an active session color is present.
-                        Group {
-                            if let liveZoneScreenColor {
-                                liveZoneScreenColor
-                                    .opacity(palette.isLight ? 0.16 : 0.24)
-                            } else {
-                                Color.clear
-                            }
-                        }
-                        .animation(
-                            .easeInOut(duration: 0.45),
-                            value: coachUIPresentation?.semanticColor
-                        )
+                        // Live HR zone color stays on the ZONE chip — not a full-screen wash.
+                        Color.clear
                     }
             }
         }
@@ -292,19 +281,32 @@ struct ExpertCoachView: View {
                     .padding(.top, 4)
                 }
 
-                if recoveryChallengeHeaderEntry != .hidden {
-                    RecoveryChallengeHeaderEntryChip(
-                        entry: recoveryChallengeHeaderEntry,
-                        onTap: {
-                            openRecoveryChallenge(source: "coach")
-                        }
-                    )
-                }
-
                 if shouldSurfaceCoach {
-                    coachCard
-                    discoverySpotlightSection
-                    storySupportSection
+                    if isLiveWorkoutZoneChrome {
+                        // Active session: guidance first, challenge stays reachable below.
+                        coachCard
+                        if recoveryChallengeHeaderEntry != .hidden {
+                            RecoveryChallengeHeaderEntryChip(
+                                entry: recoveryChallengeHeaderEntry,
+                                onTap: {
+                                    openRecoveryChallenge(source: "coach")
+                                }
+                            )
+                        }
+                        discoverySpotlightSection
+                    } else {
+                        if recoveryChallengeHeaderEntry != .hidden {
+                            RecoveryChallengeHeaderEntryChip(
+                                entry: recoveryChallengeHeaderEntry,
+                                onTap: {
+                                    openRecoveryChallenge(source: "coach")
+                                }
+                            )
+                        }
+                        coachCard
+                        discoverySpotlightSection
+                        storySupportSection
+                    }
                 } else if isRegistryGap || shouldShowCoachPreparingState {
                     registryGapSection
                         .padding(.top, 12)
@@ -374,12 +376,15 @@ struct ExpertCoachView: View {
 
     private var coachCard: some View {
         let ui = coachUIPresentation
-        let accent = ui?.accentColor ?? WeekFitTheme.coachAccent
+        let live = isLiveWorkoutZoneChrome
+        // Live HR zone color stays on the ZONE chip + outline — not a tinted card matte.
+        let cardAccent = live ? nil : (ui?.accentColor ?? WeekFitTheme.coachAccent)
+        let watermarkAccent = cardAccent ?? WeekFitTheme.coachAccent
 
         return ZStack(alignment: .topTrailing) {
             Image(systemName: ui?.icon ?? "sparkles")
                 .font(.system(size: 68, weight: .regular))
-                .foregroundStyle(accent.opacity(liveZoneScreenColor == nil ? 0.058 : 0.16))
+                .foregroundStyle(watermarkAccent.opacity(live ? 0.028 : 0.058))
                 .offset(x: -4, y: 22)
                 .allowsHitTesting(false)
 
@@ -393,81 +398,164 @@ struct ExpertCoachView: View {
                         .padding(.top, 12)
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(ui?.coachTitle ?? "")
-                        .font(WeekFitType.cardTitle)
-                        .foregroundStyle(textPrimary)
-                        .tracking(-0.8)
-                        .lineSpacing(1)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        if let read = ui?.assessment.trimmingCharacters(in: .whitespacesAndNewlines), !read.isEmpty {
-                            coachHeroTextBlock(
-                                label: WeekFitLocalizedString("coach.hero.myRead"),
-                                text: read
-                            )
-                        }
-
-                        if let recommendation = ui?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines),
-                           !recommendation.isEmpty {
-                            coachHeroTextBlock(
-                                label: WeekFitLocalizedString("coach.hero.myRecommendation"),
-                                text: recommendation
-                            )
-                            .onAppear {
-                                guard !didRecordCoachRecommendationOpen else { return }
-                                guard let ui else { return }
-                                didRecordCoachRecommendationOpen = true
-                                ReviewEngagement.record(.coachRecommendationOpened)
-                                ProductAnalytics.coachRecommendationViewed(
-                                    scenario: ui.scenario,
-                                    warningAlert: ui.warningAlert
-                                )
-                                if ui.planAdjustmentMode == .appliedExecuting {
-                                    let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
-                                    MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
-                                    MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
-                                    coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.coach")
-                                }
-                            }
-                        }
-
-                        if let risk = ui?.avoid.trimmingCharacters(in: .whitespacesAndNewlines), !risk.isEmpty {
-                            coachHeroTextBlock(
-                                label: WeekFitLocalizedString("coach.hero.beCarefulWith"),
-                                text: risk
-                            )
-                        }
-
-                        if let nextAction = ui?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines),
-                           !nextAction.isEmpty {
-                            coachHeroTextBlock(
-                                label: WeekFitLocalizedString("coach.hero.nextStep"),
-                                text: nextAction
-                            )
-                        }
-
-                        CoachReflectionContinuationView(offer: coachState.reflectionOffer)
-                    }
+                if live {
+                    liveSessionGuidanceBody(ui)
+                } else {
+                    standardGuidanceBody(ui)
                 }
-                .padding(.top, 14)
             }
             .padding(16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .weekFitPrimaryCard(
-            accent: accent,
+            accent: cardAccent,
             featured: true
         )
         .overlay {
-            if liveZoneScreenColor != nil {
+            if let zoneBorder = liveZoneBorderColor {
                 RoundedRectangle(cornerRadius: WeekFitSurface.primaryRadius, style: .continuous)
-                    .strokeBorder(accent.opacity(palette.isLight ? 0.42 : 0.55), lineWidth: 1.6)
+                    .strokeBorder(
+                        zoneBorder.opacity(palette.isLight ? 0.32 : 0.40),
+                        lineWidth: 1.25
+                    )
                     .allowsHitTesting(false)
             }
         }
+        .animation(.easeInOut(duration: 0.45), value: activityCoordinator.liveHeartRateZone)
         .animation(.easeInOut(duration: 0.45), value: coachUIPresentation?.semanticColor)
+    }
+
+    /// Glanceable live layout: one action, one support line, optional Why.
+    @ViewBuilder
+    private func liveSessionGuidanceBody(_ ui: CoachUIPresentation?) -> some View {
+        let recommendation = ui?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let support = ui?.assessment.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let whyRows = ui?.whyRows ?? []
+
+        VStack(alignment: .leading, spacing: 12) {
+            Text(ui?.coachTitle ?? "")
+                .font(WeekFitType.cardTitle)
+                .foregroundStyle(textPrimary)
+                .tracking(-0.8)
+                .lineSpacing(1)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !recommendation.isEmpty {
+                Text(recommendation)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.35)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onAppear {
+                        guard !didRecordCoachRecommendationOpen else { return }
+                        guard let ui else { return }
+                        didRecordCoachRecommendationOpen = true
+                        ReviewEngagement.record(.coachRecommendationOpened)
+                        ProductAnalytics.coachRecommendationViewed(
+                            scenario: ui.scenario,
+                            warningAlert: ui.warningAlert
+                        )
+                        if ui.planAdjustmentMode == .appliedExecuting {
+                            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+                            MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
+                            MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
+                            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.coach")
+                        }
+                    }
+            }
+
+            if !support.isEmpty {
+                Text(support)
+                    .font(.system(size: 14.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.72 : 0.78))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !whyRows.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(WeekFitLocalizedString("coach.why"))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .tracking(0.6)
+                        .foregroundStyle(textSecondary.opacity(0.72))
+                        .textCase(.uppercase)
+
+                    ForEach(Array(whyRows.prefix(2).enumerated()), id: \.offset) { _, row in
+                        coachDecisionRow(
+                            row.title,
+                            color: row.color,
+                            icon: row.icon
+                        )
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(.top, 14)
+    }
+
+    @ViewBuilder
+    private func standardGuidanceBody(_ ui: CoachUIPresentation?) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(ui?.coachTitle ?? "")
+                .font(WeekFitType.cardTitle)
+                .foregroundStyle(textPrimary)
+                .tracking(-0.8)
+                .lineSpacing(1)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                if let read = ui?.assessment.trimmingCharacters(in: .whitespacesAndNewlines), !read.isEmpty {
+                    coachHeroTextBlock(
+                        label: WeekFitLocalizedString("coach.hero.myRead"),
+                        text: read
+                    )
+                }
+
+                if let recommendation = ui?.recommendation.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !recommendation.isEmpty {
+                    coachHeroTextBlock(
+                        label: WeekFitLocalizedString("coach.hero.myRecommendation"),
+                        text: recommendation
+                    )
+                    .onAppear {
+                        guard !didRecordCoachRecommendationOpen else { return }
+                        guard let ui else { return }
+                        didRecordCoachRecommendationOpen = true
+                        ReviewEngagement.record(.coachRecommendationOpened)
+                        ProductAnalytics.coachRecommendationViewed(
+                            scenario: ui.scenario,
+                            warningAlert: ui.warningAlert
+                        )
+                        if ui.planAdjustmentMode == .appliedExecuting {
+                            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+                            MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
+                            MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
+                            coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.coach")
+                        }
+                    }
+                }
+
+                if let risk = ui?.avoid.trimmingCharacters(in: .whitespacesAndNewlines), !risk.isEmpty {
+                    coachHeroTextBlock(
+                        label: WeekFitLocalizedString("coach.hero.beCarefulWith"),
+                        text: risk
+                    )
+                }
+
+                if let nextAction = ui?.nextAction.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !nextAction.isEmpty {
+                    coachHeroTextBlock(
+                        label: WeekFitLocalizedString("coach.hero.nextStep"),
+                        text: nextAction
+                    )
+                }
+
+                CoachReflectionContinuationView(offer: coachState.reflectionOffer)
+            }
+        }
+        .padding(.top, 14)
     }
 
     @ViewBuilder
@@ -485,21 +573,18 @@ struct ExpertCoachView: View {
         }
     }
 
-    private var liveZoneScreenColor: Color? {
+    /// Zone chrome only while Coach is in a live workout session — never during meals.
+    private var isLiveWorkoutZoneChrome: Bool {
+        coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+    }
+
+    /// Same live zone color as the ZONE chip — drives the card outline only.
+    private var liveZoneBorderColor: Color? {
         guard isLiveWorkoutZoneChrome else { return nil }
         if let zone = activityCoordinator.liveHeartRateZone {
             return HeartRateZones.color(for: zone)
         }
-        guard let semantic = coachUIPresentation?.semanticColor,
-              HeartRateZones.isLiveZoneColor(semantic) else {
-            return nil
-        }
         return coachUIPresentation?.accentColor
-    }
-
-    /// Zone chrome only while Coach is in a live workout session — never during meals.
-    private var isLiveWorkoutZoneChrome: Bool {
-        coachUIPresentation?.semanticColor.isLiveSessionChrome == true
     }
 
     private var stateBadge: some View {
@@ -658,7 +743,7 @@ struct ExpertCoachView: View {
     private var storySupportSection: some View {
         let whyRows = coachUIPresentation?.whyRows ?? []
 
-        return VStack(alignment: .leading, spacing: 13) {
+        return Group {
             if !whyRows.isEmpty {
                 presentationWhySection(whyRows)
             }
@@ -667,12 +752,12 @@ struct ExpertCoachView: View {
     }
 
     private func presentationWhySection(_ rows: [CoachPresentationWhyRow]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(WeekFitLocalizedString("coach.why"))
                 .font(.system(size: 13.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(textSecondary.opacity(0.88))
 
-            VStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(rows.prefix(2).enumerated()), id: \.offset) { _, row in
                     coachDecisionRow(
                         row.title,
@@ -682,24 +767,20 @@ struct ExpertCoachView: View {
                 }
             }
         }
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func supportGroupHeader(
-        title: String,
-        subtitle: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.system(size: 15.5, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-
-            // Same eyebrow language as coachHeroTextBlock labels inside the hero card.
-            Text(subtitle.uppercased())
-                .font(.system(size: 9.5, weight: .black, design: .rounded))
-                .tracking(1.1)
-                .foregroundStyle(textSecondary.opacity(0.42))
+        .weekFitPrimaryCard(featured: true)
+        .overlay {
+            if let zoneBorder = liveZoneBorderColor {
+                RoundedRectangle(cornerRadius: WeekFitSurface.primaryRadius, style: .continuous)
+                    .strokeBorder(
+                        zoneBorder.opacity(palette.isLight ? 0.22 : 0.30),
+                        lineWidth: 1.1
+                    )
+                    .allowsHitTesting(false)
+            }
         }
+        .animation(.easeInOut(duration: 0.45), value: activityCoordinator.liveHeartRateZone)
     }
 
     private func coachDecisionRow(
@@ -707,21 +788,22 @@ struct ExpertCoachView: View {
         color: Color,
         icon: String
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(color.opacity(0.82))
-                .frame(width: 18)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(color.opacity(0.88))
+                .frame(width: 18, height: 18)
+                .padding(.top, 1)
 
             Text(text)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(textSecondary.opacity(0.92))
-                .lineLimit(2)
+                .font(.system(size: 13.2, weight: .medium, design: .rounded))
+                .foregroundStyle(textSecondary.opacity(0.94))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 2)
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
     }

@@ -150,4 +150,56 @@ final class WeekFitSubscriptionPresentationCoordinatorTests: XCTestCase {
             )
         )
     }
+
+    func testFeaturePaywallOpenDoesNotRemountWhileAlreadyPresented() {
+        XCTAssertEqual(
+            WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+                desired: true,
+                isAlreadyPresented: true,
+                isTransitioning: false,
+                isSettingsPresented: false,
+                isLegacyThanksPresented: false
+            ),
+            .updatePendingOnly
+        )
+    }
+
+    func testFeaturePaywallOpenDoesNotStartDuringTransitionCooldown() {
+        XCTAssertEqual(
+            WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+                desired: true,
+                isAlreadyPresented: false,
+                isTransitioning: true,
+                isSettingsPresented: false,
+                isLegacyThanksPresented: false
+            ),
+            .updatePendingOnly
+        )
+    }
+
+    func testFeaturePaywallOpenBeginsWhenSlotIsFree() {
+        XCTAssertEqual(
+            WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+                desired: true,
+                isAlreadyPresented: false,
+                isTransitioning: false,
+                isSettingsPresented: false,
+                isLegacyThanksPresented: false
+            ),
+            .beginPresentation
+        )
+    }
+
+    func testFeaturePaywallOpenSuppressesOverSettings() {
+        XCTAssertEqual(
+            WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+                desired: true,
+                isAlreadyPresented: false,
+                isTransitioning: false,
+                isSettingsPresented: true,
+                isLegacyThanksPresented: false
+            ),
+            .suppress
+        )
+    }
 }

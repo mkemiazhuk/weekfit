@@ -131,5 +131,7 @@ enum AnalyticsEvent: String, Sendable {
     case subscriptionPurchaseFailed = "subscription_purchase_failed"
     case subscriptionRestoreStarted = "subscription_restore_started"
     case subscriptionRestoreSuccess = "subscription_restore_success"
+    /// Neutral restore terminal: `no_purchases` or `cancelled` (not access success, not technical failure).
+    case subscriptionRestoreCompleted = "subscription_restore_completed"
     case subscriptionRestoreFailed = "subscription_restore_failed"
 }

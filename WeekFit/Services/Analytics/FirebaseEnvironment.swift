@@ -32,7 +32,9 @@ enum FirebaseEnvironment {
         case .debug:
             Analytics.setAnalyticsCollectionEnabled(false)
             Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
-            logger.info("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
+            #if DEBUG
+            logger.debug("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
+            #endif
 
         case .testFlight, .appStore:
             let analyticsOn = ProductAnalyticsConsent.isSharingEnabled()
@@ -49,9 +51,11 @@ enum FirebaseEnvironment {
                 distribution.analyticsValue,
                 forKey: AnalyticsParameterKey.distribution
             )
-            logger.info(
+            #if DEBUG
+            logger.debug(
                 "Firebase telemetry: \(distribution.analyticsValue, privacy: .public) — analytics \(analyticsOn ? "ON" : "OFF", privacy: .public) (consent), crashlytics ON"
             )
+            #endif
         }
 
         // Privacy: never set Analytics or Crashlytics user identifiers.
@@ -73,9 +77,11 @@ enum FirebaseEnvironment {
         case .testFlight, .appStore:
             let analyticsOn = ProductAnalyticsConsent.isSharingEnabled()
             Analytics.setAnalyticsCollectionEnabled(analyticsOn)
-            logger.info(
+            #if DEBUG
+            logger.debug(
                 "Firebase analytics collection \(analyticsOn ? "enabled" : "disabled", privacy: .public) via consent"
             )
+            #endif
         }
     }
 

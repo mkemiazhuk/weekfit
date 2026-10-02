@@ -330,16 +330,21 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 | `subscription_purchase_success` | Verified entitlement after purchase | `product_id`; `requested_tab` |
 | `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
 | `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` |
-| `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab` |
-| `subscription_restore_success` | Restore found an active entitlement | `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id` |
-| `subscription_restore_failed` | Restore finished without entitlement or StoreKit error | `source`; `requested_tab`; `failure_reason` = `no_purchases` \| `storekit_error` \| `cancelled` \| `timeout`; `has_entitlement_after` |
+| `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab`; optional `paywall_instance_id` |
+| `subscription_restore_success` | Access confirmed | `result` = `restored` \| `already_entitled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id`; optional `paywall_instance_id` |
+| `subscription_restore_completed` | Finished without access grant and without StoreKit fault | `result` = `no_purchases` \| `cancelled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; optional `paywall_instance_id` |
+| `subscription_restore_failed` | Technical restore failure | `result` / `failure_reason` = `storekit_error` \| `timeout`; `error_code`; `error_domain`; `has_entitlement_after`; optional `paywall_instance_id` |
 
 **Restore is never fired** from automatic entitlement refresh, app launch, or StoreKit transaction sync — only paywall / Settings Restore buttons.
 
 Apple StoreKit 2 restore model used by WeekFit:
 1. Launch / refresh reads `Transaction.currentEntitlements` (proactive restore — no Apple ID prompt).
 2. Restore button first re-reads entitlements; only if still empty calls `AppStore.sync()` (auth prompt), then re-reads again.
-3. `no_purchases` means sync/entitlement check completed with no active WeekFit subscription — UI shows an informational message, not the purchase-error copy.
+3. Classify by `result`:
+   - `restored` / `already_entitled` → access confirmed (`subscription_restore_success`)
+   - `no_purchases` → sync finished, no active WeekFit subscription (informational UI; not success, not technical error)
+   - `cancelled` → user dismissed Apple ID sheet (not a technical error)
+   - `storekit_error` / `timeout` → technical failure
 
 `paywall_instance_id` is a short-lived correlation token for dedupe only. **Do not** register it as a GA4 custom dimension (high cardinality).
 
@@ -357,7 +362,7 @@ Purchase `failure_reason` distinctions:
 - `storekit_error` / `products_unavailable` — StoreKit/network or missing catalog.
 
 Restore:
-`paywall_viewed` → `subscription_restore_started` → `subscription_restore_success` \| `subscription_restore_failed`
+`paywall_viewed` → `subscription_restore_started` → `subscription_restore_success` \| `subscription_restore_completed` \| `subscription_restore_failed`
 
 (Settings restore may omit `paywall_viewed` when Restore is tapped from the Settings list without opening the paywall.)
 

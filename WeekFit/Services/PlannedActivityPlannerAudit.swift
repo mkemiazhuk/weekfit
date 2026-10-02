@@ -17,7 +17,7 @@ enum PlannedActivityPlannerAudit {
         let contextID = ObjectIdentifier(modelContext)
         let persistentID = String(describing: activity.persistentModelID)
 
-        logger.info(
+        logger.debug(
             """
             plannerAction action=\(action, privacy: .public) \
             id=\(activity.id, privacy: .public) \
@@ -48,7 +48,7 @@ enum PlannedActivityPlannerAudit {
         let contextID = ObjectIdentifier(modelContext)
         let matchingBeforeDelete = (try? matchingCount(for: activityIDs, in: modelContext)) ?? -1
 
-        logger.info(
+        logger.debug(
             """
             deleteTapped kind=\(itemKind, privacy: .public) \
             ids=\(activityIDs.joined(separator: ","), privacy: .public) \
@@ -79,7 +79,7 @@ enum PlannedActivityPlannerAudit {
             "\($0.title)@\($0.date.timeIntervalSince1970):skipped=\($0.isSkipped)"
         }.joined(separator: ";")
 
-        logger.info(
+        logger.debug(
             """
             fetchVerification phase=\(phase, privacy: .public) \
             id=\(activityID, privacy: .public) \
@@ -106,7 +106,7 @@ enum PlannedActivityPlannerAudit {
         let matchingAfterSave = (try? matchingCount(for: activityIDs, in: modelContext)) ?? -1
         let queryStillContains = activityIDs.filter { queryActivityIDs.contains($0) }
 
-        logger.info(
+        logger.debug(
             """
             deleteCompleted ids=\(activityIDs.joined(separator: ","), privacy: .public) \
             modelContext=\(String(describing: contextID), privacy: .public) \

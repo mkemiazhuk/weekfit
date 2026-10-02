@@ -171,21 +171,22 @@ enum CoachCopyNutritionTiming {
         isActiveSession: Bool,
         timeOfDay: CoachTimeOfDay
     ) -> CoachBilingualText {
+        // WeekFit only sees drink logs / pace vs goal — never measured body hydration.
         if isActiveSession {
             return .en(
-                "Fluids are critically low — sip now, steadily.",
-                "Очень мало воды — начните пить прямо сейчас, но понемногу."
+                "No drinks logged today. Take a few sips when it's safe to stop.",
+                "Сегодня напитки не отмечены. Сделайте несколько глотков, когда можно безопасно остановиться."
             )
         }
         if isWindDown(timeOfDay) {
             return .en(
-                "Fluids are very low — small sips if thirsty, then wind down.",
-                "Воды мало — немного, если хочется, и отдых."
+                "No drinks logged yet today. Small sips if thirsty, then wind down.",
+                "Сегодня напитки ещё не отмечены. Немного, если хочется — и отдых."
             )
         }
         return .en(
-            "Fluids are critically low — sip now, steadily.",
-            "Очень мало воды — начните пить прямо сейчас, но понемногу."
+            "No drinks logged today. Take a few sips when you can.",
+            "Сегодня напитки не отмечены. Сделайте несколько глотков, когда сможете."
         )
     }
 }

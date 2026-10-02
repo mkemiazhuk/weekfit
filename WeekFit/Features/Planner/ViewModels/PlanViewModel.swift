@@ -523,7 +523,9 @@ final class PlanViewModel: ObservableObject {
     private func handleSaveFailure(_ error: Error) {
         saveFailureMessage = WeekFitLocalizedString("planner.saveFailure.message")
         showSaveFailureAlert = true
+        #if DEBUG
         print("Failed to save planned activity:", error)
+        #endif
     }
 
     /// Prefer the selected option icon (e.g. cycling) over the generic type icon (dumbbell).

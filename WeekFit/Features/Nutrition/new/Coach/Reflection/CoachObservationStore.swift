@@ -119,6 +119,12 @@ enum CoachObservationStore {
 
         let calendar = Calendar.current
         for offset in 0..<dayCount {
+            guard !Task.isCancelled else { return }
+            // Keep the main actor responsive for tab switches while filling history.
+            if offset > 0 {
+                await Task.yield()
+            }
+
             guard let date = calendar.date(byAdding: .day, value: -offset, to: calendar.startOfDay(for: endDate)) else {
                 continue
             }

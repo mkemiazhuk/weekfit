@@ -55,17 +55,27 @@ final class CoachCopyNutritionTimingTests: XCTestCase {
         let text = joined(warning)
 
         XCTAssertTrue(text.lowercased().contains("wind down") || text.contains("отдых"))
+        XCTAssertFalse(text.lowercased().contains("critically"))
         XCTAssertFalse(text.lowercased().contains("sip now, steadily"))
     }
 
-    func testActiveSessionHydrationCriticalStillUrgesSippingNow() {
+    func testActiveSessionHydrationWarningIsDrinkLogHonest() {
         let warning = CoachCopyNutritionTiming.hydrationCriticalWarning(
             isActiveSession: true,
-            timeOfDay: .lateEvening
+            timeOfDay: .afternoon
         )
         let text = joined(warning)
 
-        XCTAssertTrue(text.lowercased().contains("sip now") || text.contains("пейте сейчас"))
+        XCTAssertTrue(
+            text.lowercased().contains("no drinks logged")
+                || text.contains("напитки не отмечены")
+        )
+        XCTAssertTrue(
+            text.lowercased().contains("sips")
+                || text.contains("глотк")
+        )
+        XCTAssertFalse(text.lowercased().contains("critically low"))
+        XCTAssertFalse(text.lowercased().contains("fluids are"))
     }
 
     func testTomorrowProtectionLateEveningWithFuelUsesWindDownRecommendation() throws {

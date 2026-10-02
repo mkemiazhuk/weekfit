@@ -29,6 +29,12 @@ enum AnalyticsParameterKey {
     static let hasEntitlementAfter = "has_entitlement_after"
     static let restoredProductID = "restored_product_id"
     static let failureReason = "failure_reason"
+    /// Terminal outcome token for restore / purchase completion events.
+    static let result = "result"
+    /// Safe numeric / short StoreKit error code (never localized text).
+    static let errorCode = "error_code"
+    /// Safe error domain token (alphanumeric + `._-` only).
+    static let errorDomain = "error_domain"
     /// Release channel: `testflight` | `appstore` (set as default event parameter).
     static let distribution = "distribution"
 }

@@ -55,4 +55,36 @@ enum WeekFitSubscriptionPresentationCoordinator {
     ) -> Bool {
         desired && !isSettingsPresented && !isLegacyThanksPresented
     }
+
+    enum FeaturePaywallOpenAction: Equatable, Sendable {
+        /// Mint a new instance ID and set the fullScreenCover binding to `true`.
+        case beginPresentation
+        /// Cover is already up or mid-transition — update pending tab only.
+        /// Reminting the instance ID mid-presentation freezes SwiftUI.
+        case updatePendingOnly
+        /// Settings / legacy-thanks owns the slot, or not desired.
+        case suppress
+    }
+
+    /// Coalesce rapid premium-tab taps so we never re-request fullScreenCover
+    /// while one is presenting or animating away.
+    static func featurePaywallOpenAction(
+        desired: Bool,
+        isAlreadyPresented: Bool,
+        isTransitioning: Bool,
+        isSettingsPresented: Bool,
+        isLegacyThanksPresented: Bool
+    ) -> FeaturePaywallOpenAction {
+        guard shouldPresentFeaturePaywall(
+            desired: desired,
+            isSettingsPresented: isSettingsPresented,
+            isLegacyThanksPresented: isLegacyThanksPresented
+        ) else {
+            return .suppress
+        }
+        if isAlreadyPresented || isTransitioning {
+            return .updatePendingOnly
+        }
+        return .beginPresentation
+    }
 }

@@ -340,6 +340,7 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
         let success = try! XCTUnwrap(recording.events(named: .subscriptionRestoreSuccess).first)
         XCTAssertEqual(success.parameters[AnalyticsParameterKey.source], "tab")
+        XCTAssertEqual(success.parameters[AnalyticsParameterKey.result], "restored")
         XCTAssertEqual(success.parameters[AnalyticsParameterKey.hasEntitlementBefore], "false")
         XCTAssertEqual(success.parameters[AnalyticsParameterKey.hasEntitlementAfter], "true")
         XCTAssertEqual(
@@ -348,7 +349,7 @@ final class SubscriptionManagerTests: XCTestCase {
         )
     }
 
-    func testRestoreWithNoPurchasesEmitsFailedNoPurchases() async {
+    func testRestoreWithNoPurchasesEmitsCompletedNoPurchases() async {
         store.appTransaction = .verified(
             originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
             environment: "test"
@@ -375,11 +376,12 @@ final class SubscriptionManagerTests: XCTestCase {
             )
         )
         XCTAssertEqual(recording.events(named: .subscriptionRestoreStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
         XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
-        let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.source], "settings")
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "no_purchases")
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
+        let completed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreCompleted).first)
+        XCTAssertEqual(completed.parameters[AnalyticsParameterKey.source], "settings")
+        XCTAssertEqual(completed.parameters[AnalyticsParameterKey.result], "no_purchases")
+        XCTAssertEqual(completed.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
     }
 
     func testRestoreSkipsAppStoreSyncWhenEntitlementAlreadyPresent() async {
@@ -403,6 +405,8 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(recording.events(named: .subscriptionRestoreStarted).count, 1)
         XCTAssertEqual(recording.events(named: .subscriptionRestoreSuccess).count, 1)
         XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        let success = try! XCTUnwrap(recording.events(named: .subscriptionRestoreSuccess).first)
+        XCTAssertEqual(success.parameters[AnalyticsParameterKey.result], "already_entitled")
     }
 
     func testRestoreStoreKitErrorEmitsFailedStorekitError() async {
@@ -417,6 +421,9 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
         let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "storekit_error")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "storekit_error")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.errorCode], "42")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.errorDomain], "test.restore")
     }
 
     func testRestoreTimeoutEmitsFailedTimeoutAndClearsInFlight() async {
@@ -447,7 +454,9 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
         let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "timeout")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "timeout")
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.errorDomain], "weekfit.storekit.restore")
     }
 
     func testStartAndRefreshDoNotEmitRestoreAnalytics() async {
@@ -642,8 +651,10 @@ final class SubscriptionManagerTests: XCTestCase {
                 source: manager.lastOutcomeSource
             )
         )
-        let failed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreFailed).first)
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "cancelled")
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreFailed).isEmpty)
+        XCTAssertTrue(recording.events(named: .subscriptionRestoreSuccess).isEmpty)
+        let completed = try! XCTUnwrap(recording.events(named: .subscriptionRestoreCompleted).first)
+        XCTAssertEqual(completed.parameters[AnalyticsParameterKey.result], "cancelled")
     }
 
     func testPurchaseFailureKeepsMessageInPurchaseSlotOnly() async {

@@ -161,6 +161,17 @@ final class ReviewPromptManagerTests: XCTestCase {
         XCTAssertFalse(mirrorChildren.contains(where: { ($0 ?? "").lowercased().contains("health") }))
     }
 
+    func testRecoveryChallengeCompletedCountsAsMeaningfulAction() {
+        manager.recordAppOpen()
+        XCTAssertEqual(manager.eligibilityState.meaningfulActionCount, 0)
+
+        manager.recordMeaningfulAction(.recoveryChallengeCompleted, evaluatePrompt: false)
+
+        XCTAssertEqual(manager.eligibilityState.meaningfulActionCount, 1)
+        XCTAssertEqual(MeaningfulAction.recoveryChallengeCompleted.rawValue, "recoveryChallengeCompleted")
+        XCTAssertTrue(MeaningfulAction.allCases.contains(.recoveryChallengeCompleted))
+    }
+
     func testSensitiveHealthDataNotIncludedInFeedbackMetadataOrAnalytics() async throws {
         let metadata = FeedbackMetadata.current(category: .recovery)
         let keys = Set(metadata.dictionaryRepresentation.keys)

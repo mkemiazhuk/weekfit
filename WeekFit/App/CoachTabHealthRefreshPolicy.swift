@@ -117,6 +117,19 @@ enum CoachTabHealthRefreshPolicy {
         guard !sources.isEmpty else { return "unspecified" }
         return sources.prefix(3).joined(separator: ",")
     }
+
+    /// When Root already reconciled `completedWorkoutsBatch`, skip a second day-wide
+    /// HealthKit workout query — under weak cellular/Watch sync that re-query stalls UI.
+    static func shouldBootstrapWorkouts(from sources: [String]) -> Bool {
+        !sources.contains { source in
+            let normalized = source.lowercased()
+            return normalized.contains("completedworkoutsbatch")
+                || normalized.contains("completedworkouts")
+        }
+    }
+
+    /// Debounce window so fragmented Watch→HealthKit deliveries coalesce into one reload.
+    static let healthRefreshEventDebounceNanoseconds: UInt64 = 400_000_000
 }
 
 #if DEBUG

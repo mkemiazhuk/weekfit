@@ -63,7 +63,7 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
         XCTAssertEqual(
             Set(events.compactMap { $0.parameters[AnalyticsParameterKey.reason] }),
             Set([
-                MorningProposalUnavailableAnalyticsReason.missingInputs.rawValue,
+                MorningProposalUnavailableAnalyticsReason.missingData.rawValue,
                 MorningProposalUnavailableAnalyticsReason.outsideMorningWindow.rawValue
             ])
         )
@@ -94,9 +94,14 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
             ("day_started", .dayStarted),
             ("day_expired", .dayExpired),
             ("expired", .dayExpired),
-            ("health_access_denied", .other),
+            ("health_access_denied", .permissionsDenied),
+            ("permissions_denied", .permissionsDenied),
             ("timeout", .timeout),
-            ("missing_inputs", .missingInputs)
+            ("missing_inputs", .missingData),
+            ("missing_data", .missingData),
+            ("load_incomplete", .loadIncomplete),
+            ("closed", .generationFailed),
+            ("generation_failed", .generationFailed)
         ]
         for (domain, expected) in pairs {
             XCTAssertEqual(

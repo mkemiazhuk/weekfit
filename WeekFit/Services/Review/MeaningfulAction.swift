@@ -9,6 +9,8 @@ enum MeaningfulAction: String, Codable, CaseIterable, Sendable {
     case planCreatedOrUpdated
     case coachRecommendationOpened
     case recoveryDetailsViewed
+    /// Fired once the user completes all 7 Recovery Challenge days.
+    case recoveryChallengeCompleted
     case otherPositiveAction
 
     var analyticsName: String { rawValue }

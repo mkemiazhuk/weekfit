@@ -148,9 +148,11 @@ final class WellnessNotificationService {
         )
 
         center.add(request) { error in
+            #if DEBUG
             if let error {
                 print("Failed to schedule hydration reminder:", error)
             }
+            #endif
         }
     }
 
@@ -176,9 +178,11 @@ final class WellnessNotificationService {
         )
 
         center.add(request) { error in
+            #if DEBUG
             if let error {
                 print("Failed to schedule recovery suggestion:", error)
             }
+            #endif
         }
     }
 

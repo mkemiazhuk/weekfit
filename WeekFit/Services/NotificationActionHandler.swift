@@ -41,7 +41,9 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
             let title = userInfo[ActivityNotificationKey.activityTitle] as? String,
             let timestamp = userInfo[ActivityNotificationKey.activityDate] as? TimeInterval
         else {
+            #if DEBUG
             print("Notification action missing activity data:", userInfo)
+            #endif
             return
         }
 

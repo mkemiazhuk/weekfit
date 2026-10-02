@@ -424,7 +424,6 @@ private enum WeekFitStoreKitDebug {
 
     static func log(_ message: String) {
         logger.debug("\(message, privacy: .public)")
-        print("[WeekFit.StoreKit] \(message)")
     }
 
     static func logProductLoadStart(requestedIDs: [String]) async {

@@ -128,15 +128,15 @@ final class AnalyticsPrivacyHardeningTests: XCTestCase {
         }
     }
 
-    func testHealthAccessDeniedMapsToGenericOther() {
+    func testHealthAccessDeniedMapsToPermissionsDeniedWithoutRawHealthToken() {
         XCTAssertEqual(
             MorningProposalUnavailableAnalyticsReason.fromDomainReason("health_access_denied"),
-            .other
+            .permissionsDenied
         )
         MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-25", reason: "health_access_denied")
         let reason = recording.events(named: .morningProposalUnavailable).first?
             .parameters[AnalyticsParameterKey.reason]
-        XCTAssertEqual(reason, "other")
+        XCTAssertEqual(reason, "permissions_denied")
         XCTAssertNotEqual(reason, "health_access_denied")
     }
 
