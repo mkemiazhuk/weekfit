@@ -62,7 +62,7 @@ enum CoachPlanApplyService {
         if proposal.fingerprint.planStaleDifference(from: liveFingerprint) {
             proposal.status = .stale
             MorningProposalStore.upsert(proposal)
-            MorningProposalAnalytics.proposalStale()
+            MorningProposalAnalytics.proposalStale(proposalId: proposal.id)
             throw ApplyError.staleFingerprint
         }
 

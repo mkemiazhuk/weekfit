@@ -11,7 +11,7 @@
             buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
-            buildForArchiving = "YES"
+            buildForArchiving = "NO"
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
@@ -30,28 +30,6 @@
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "55E7BBF12FB24040006A4D20"
-               BuildableName = "WeekFitTests.xctest"
-               BlueprintName = "WeekFitTests"
-               ReferencedContainer = "container:WeekFit.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "55E7BBFB2FB24040006A4D20"
-               BuildableName = "WeekFitUITests.xctest"
-               BlueprintName = "WeekFitUITests"
-               ReferencedContainer = "container:WeekFit.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -77,10 +55,6 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-recovery-challenge-preview"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
             argument = "-weekfit-enable-debug-analytics"
             isEnabled = "YES">
          </CommandLineArgument>
@@ -88,7 +62,25 @@
             argument = "-FIRDebugEnabled"
             isEnabled = "YES">
          </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-FIRAnalyticsDebugEnabled"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-weekfit-force-non-legacy"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-recovery-challenge-preview"
+            isEnabled = "NO">
+         </CommandLineArgument>
       </CommandLineArguments>
+      <!--
+        No StoreKit Configuration file: on a physical device with a Sandbox
+        Apple ID, Product.products uses App Store Connect Poland (etc.) prices.
+        Local WeekFit.storekit (4.99 / 34.99 USD) is only for Simulator / Xcode
+        StoreKit Testing when that file is selected in the scheme.
+      -->
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

@@ -158,12 +158,19 @@ final class SubscriptionManagerTests: XCTestCase {
     private var recording: RecordingAnalyticsService!
     private var fallbackSuite: String!
     private var fallbackDefaults: UserDefaults!
+    private var deferredSuite: String!
+    private var deferredDefaults: UserDefaults!
 
     override func setUp() {
         super.setUp()
         recording = RecordingAnalyticsService()
         AppAnalytics.setSharedForTests(recording)
         SubscriptionAnalytics.resetPaywallViewDedupForTests()
+        deferredSuite = "weekfit.tests.deferred.\(UUID().uuidString)"
+        deferredDefaults = UserDefaults(suiteName: deferredSuite)!
+        deferredDefaults.removePersistentDomain(forName: deferredSuite)
+        WeekFitDeferredPurchaseStore.setDefaultsForTests(deferredDefaults)
+        WeekFitDeferredPurchaseStore.clearForTests()
         fallbackSuite = "weekfit.tests.entitlement.\(UUID().uuidString)"
         fallbackDefaults = UserDefaults(suiteName: fallbackSuite)
         fallbackDefaults.removePersistentDomain(forName: fallbackSuite)
@@ -207,10 +214,17 @@ final class SubscriptionManagerTests: XCTestCase {
 
     override func tearDown() {
         SubscriptionAnalytics.resetPaywallViewDedupForTests()
+        WeekFitDeferredPurchaseStore.clearForTests()
+        WeekFitDeferredPurchaseStore.resetForTests()
         AppAnalytics.resetSharedForTests()
+        if let deferredSuite {
+            deferredDefaults?.removePersistentDomain(forName: deferredSuite)
+        }
         if let fallbackSuite {
             fallbackDefaults?.removePersistentDomain(forName: fallbackSuite)
         }
+        deferredDefaults = nil
+        deferredSuite = nil
         fallbackDefaults = nil
         fallbackSuite = nil
         recording = nil
@@ -616,10 +630,51 @@ final class SubscriptionManagerTests: XCTestCase {
         await manager.purchaseSelected()
         XCTAssertEqual(manager.lastOutcome, .pending)
         XCTAssertFalse(manager.hasFullAccess)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseFailed).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+        XCTAssertEqual(
+            WeekFitDeferredPurchaseStore.pendingProductID(),
+            WeekFitSubscriptionProductID.annual.rawValue
+        )
 
         await store.emitVerifiedTransactionUpdate()
         XCTAssertTrue(manager.hasFullAccess)
         XCTAssertEqual(manager.accessState, .trial)
+        XCTAssertEqual(manager.lastOutcome, .success)
+        // Deferred Ask-to-Buy completion: one success after the terminal pending marker.
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertNil(WeekFitDeferredPurchaseStore.pendingProductID())
+
+        // Renewals / later updates without a new pending purchase must not re-emit success.
+        await store.emitVerifiedTransactionUpdate()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+    }
+
+    func testPendingPurchaseSurvivesRelaunchBeforeApproval() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseOutcome = .pending
+        await manager.start()
+        await manager.purchaseSelected()
+        XCTAssertEqual(manager.lastOutcome, .pending)
+
+        // Simulate process death: new manager, deferred intent still in UserDefaults.
+        let relaunched = SubscriptionManager(
+            store: store,
+            bypassProvider: { .none },
+            fallbackStore: WeekFitEntitlementFallbackStore(defaults: fallbackDefaults)
+        )
+        AppAnalytics.setSharedForTests(recording)
+        await relaunched.start()
+        XCTAssertFalse(relaunched.hasFullAccess)
+
+        await store.emitVerifiedTransactionUpdate()
+        XCTAssertTrue(relaunched.hasFullAccess)
+        XCTAssertEqual(relaunched.lastOutcome, .success)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertNil(WeekFitDeferredPurchaseStore.pendingProductID())
     }
 
     func testPurchaseInFlightFlagClearsOnStoreKitError() async {

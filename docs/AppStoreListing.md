@@ -106,7 +106,27 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.3.4)
+## What's New (1.3.6)
+
+**EN:**
+```
+• Clearer morning plan guidance when Health data is limited
+• More reliable subscription restore and purchase tracking
+• Premium access preserved correctly during billing grace
+• Stability and reliability polish
+```
+
+**RU:**
+```
+• Понятнее утренние подсказки по плану, даже при ограниченных данных Health
+• Надёжнее восстановление покупок и учёт подписки
+• Premium сохраняется корректно в период billing grace
+• Полировка стабильности и надёжности
+```
+
+---
+
+## What's New (1.3.4) — archive
 
 **EN:**
 ```

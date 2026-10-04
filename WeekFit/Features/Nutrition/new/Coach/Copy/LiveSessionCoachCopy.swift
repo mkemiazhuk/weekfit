@@ -33,7 +33,7 @@ enum LiveSessionCoachCopy {
         return CoachCopyRegistryScenarios.Draft(
             assessment: assessment(for: input, intent: intent, decision: decision, fallback: draft.assessment),
             recommendation: recommendation(for: input, intent: intent, decision: decision, fallback: draft.recommendation),
-            avoid: avoid(intent: intent, decision: decision, fallback: draft.avoid),
+            avoid: avoid(for: input, intent: intent, decision: decision, fallback: draft.avoid),
             nextAction: nextAction(for: input, intent: intent, decision: decision, fallback: draft.nextAction)
         )
     }
@@ -48,7 +48,7 @@ enum LiveSessionCoachCopy {
         case .onTrack:
             switch intent {
             case .recoveryEasy:
-                return .en("Keep this one easy.", "Держите легко.")
+                return recoveryEasyTeaser(for: input)
             case .enduranceHard:
                 return .en("Work the effort, then reset.", "Работайте, потом сбрасывайте.")
             case .strength:
@@ -243,10 +243,7 @@ enum LiveSessionCoachCopy {
                     "Вернитесь ниже \(cap) и идите комфортным шагом."
                 )
             }
-            return .en(
-                "Slow down until breathing is easy again.",
-                "Замедлитесь, пока дыхание снова не станет лёгким."
-            )
+            return mindfulRecoveryEaseOffRecommendation(for: input)
         case (.recoveryEasy, _):
             if isWalkLike(input), let cap {
                 return .en(
@@ -260,10 +257,7 @@ enum LiveSessionCoachCopy {
                     "Идите комфортным шагом — так, чтобы спокойно разговаривать."
                 )
             }
-            return .en(
-                "Stay in easy range — nothing to prove here.",
-                "Оставайтесь в лёгкой зоне — тут нечего доказывать."
-            )
+            return mindfulRecoveryOnTrackRecommendation(for: input)
         case (.enduranceAerobic, .easeOff):
             return .en(
                 "Ease back until breathing is conversational again.",
@@ -306,21 +300,28 @@ enum LiveSessionCoachCopy {
     }
 
     private static func avoid(
+        for input: CoachCopyBuildInput,
         intent: Intent,
         decision: Decision,
         fallback: CoachBilingualText
     ) -> CoachBilingualText {
         switch (intent, decision) {
         case (.recoveryEasy, .onTrack):
-            return .en(
-                "Don't turn it into a power walk or errands sprint.",
-                "Не превращайте это в спортивную ходьбу или бег по делам."
-            )
+            if isWalkLike(input) {
+                return .en(
+                    "Don't turn it into a power walk or errands sprint.",
+                    "Не превращайте это в спортивную ходьбу или бег по делам."
+                )
+            }
+            return mindfulRecoveryOnTrackAvoid(for: input)
         case (.recoveryEasy, .easeOff):
-            return .en(
-                "Don't chase pace just because the legs feel warm.",
-                "Не гонитесь за темпом только потому, что ноги разогрелись."
-            )
+            if isWalkLike(input) {
+                return .en(
+                    "Don't chase pace just because the legs feel warm.",
+                    "Не гонитесь за темпом только потому, что ноги разогрелись."
+                )
+            }
+            return mindfulRecoveryEaseOffAvoid(for: input)
         case (.enduranceAerobic, .onTrack), (.enduranceAerobic, .pushSustainable):
             return fallback
         case (.enduranceAerobic, .easeOff):
@@ -366,16 +367,7 @@ enum LiveSessionCoachCopy {
         let remaining = remainingSessionMinutes(for: input)
         switch (intent, decision) {
         case (.recoveryEasy, _):
-            if remaining > 0 {
-                return .en(
-                    "Another \(minutesPhrase(remaining)) easy minutes is enough.",
-                    "Ещё \(remaining) лёгких минут достаточно."
-                )
-            }
-            return .en(
-                "Stay easy until the planned time is done.",
-                "Держите легко до конца запланированного времени."
-            )
+            return mindfulRecoveryNextAction(for: input, remaining: remaining, fallback: fallback)
         case (.enduranceAerobic, .easeOff):
             return .en(
                 "One easier minute, then settle back into the planned pace.",
@@ -464,18 +456,18 @@ enum LiveSessionCoachCopy {
         switch input.activityType {
         case .yoga:
             return .en(
-                "Keep this yoga easy — today it counts as recovery.",
-                "Держите йогу мягко — сегодня это восстановление."
+                "Yoga is live — stay soft and present in each pose.",
+                "Йога идёт — мягко и внимательно в каждой позе."
             )
         case .stretching:
             return .en(
-                "Keep this stretch easy — today it counts as recovery.",
-                "Держите растяжку мягко — сегодня это восстановление."
+                "Stretch is live — ease into each hold without forcing.",
+                "Растяжка идёт — мягко в каждое положение, без силы."
             )
         case .breathing:
             return .en(
-                "Keep this breath work easy — today it counts as recovery.",
-                "Держите дыхание мягко — сегодня это восстановление."
+                "Breath work is live — quiet, soft, and unhurried.",
+                "Дыхание идёт — тихо, мягко и без спешки."
             )
         default:
             return .en(
@@ -495,23 +487,181 @@ enum LiveSessionCoachCopy {
         switch input.activityType {
         case .yoga:
             return .en(
-                "This yoga is running hotter than it needs to — today it still counts as recovery.",
-                "Йога идёт интенсивнее, чем нужно — сегодня это всё равно восстановление."
+                "This yoga is getting forced — soften until it feels calm again.",
+                "Йога становится слишком жёсткой — смягчите, пока снова не станет спокойно."
             )
         case .stretching:
             return .en(
-                "This stretch is running hotter than it needs to — today it still counts as recovery.",
-                "Растяжка идёт интенсивнее, чем нужно — сегодня это всё равно восстановление."
+                "This stretch is getting forced — ease out until it feels calm again.",
+                "Растяжка становится слишком жёсткой — ослабьте, пока снова не станет спокойно."
             )
         case .breathing:
             return .en(
-                "This breath work is running hotter than it needs to — today it still counts as recovery.",
-                "Дыхание идёт интенсивнее, чем нужно — сегодня это всё равно восстановление."
+                "This breath work is getting forced — slow it until it feels calm again.",
+                "Дыхание становится слишком напряжённым — замедлите, пока снова не станет спокойно."
             )
         default:
             return .en(
                 "This walk is running hotter than it needs to — today it still counts as recovery.",
                 "Прогулка идёт интенсивнее, чем нужно — сегодня это всё равно восстановление."
+            )
+        }
+    }
+
+    private static func recoveryEasyTeaser(for input: CoachCopyBuildInput) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            return .en("Keep the breath soft.", "Дышите мягко.")
+        case .yoga:
+            return .en("Stay soft in the poses.", "Оставайтесь мягкими в позах.")
+        case .stretching:
+            return .en("Ease into each hold.", "Мягко в каждое положение.")
+        default:
+            return .en("Keep this one easy.", "Держите легко.")
+        }
+    }
+
+    private static func mindfulRecoveryOnTrackRecommendation(
+        for input: CoachCopyBuildInput
+    ) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            return .en(
+                "Keep the breath soft and unforced.",
+                "Дышите мягко, без усилий."
+            )
+        case .yoga:
+            return .en(
+                "Stay soft through each pose — nothing to prove.",
+                "Оставайтесь мягкими в каждой позе — тут нечего доказывать."
+            )
+        case .stretching:
+            return .en(
+                "Ease into each hold — nothing to force.",
+                "Мягко в каждое положение — ничего не форсируйте."
+            )
+        default:
+            return .en(
+                "Stay easy — nothing to prove here.",
+                "Держите легко — тут нечего доказывать."
+            )
+        }
+    }
+
+    private static func mindfulRecoveryEaseOffRecommendation(
+        for input: CoachCopyBuildInput
+    ) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            return .en(
+                "Slow the breath until it feels calm again.",
+                "Замедлите дыхание, пока снова не станет спокойно."
+            )
+        case .yoga:
+            return .en(
+                "Soften the pose until breathing feels easy again.",
+                "Смягчите позу, пока дыхание снова не станет лёгким."
+            )
+        case .stretching:
+            return .en(
+                "Ease out of the hold until breathing feels easy again.",
+                "Ослабьте положение, пока дыхание снова не станет лёгким."
+            )
+        default:
+            return .en(
+                "Slow down until breathing is easy again.",
+                "Замедлитесь, пока дыхание снова не станет лёгким."
+            )
+        }
+    }
+
+    private static func mindfulRecoveryOnTrackAvoid(
+        for input: CoachCopyBuildInput
+    ) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            return .en(
+                "Don't force deep breaths or hold if it feels strained.",
+                "Не форсируйте глубокие вдохи и не задерживайте дыхание через силу."
+            )
+        case .yoga:
+            return .en(
+                "Don't chase deeper poses or compare to yesterday.",
+                "Не гонитесь за глубиной поз и не сравнивайте со вчера."
+            )
+        case .stretching:
+            return .en(
+                "Don't push into pain or bounce through the hold.",
+                "Не тянитесь через боль и не пружиньте в положении."
+            )
+        default:
+            return .en(
+                "Don't force intensity or chase a training feel.",
+                "Не форсируйте интенсивность и не превращайте это в тренировку."
+            )
+        }
+    }
+
+    private static func mindfulRecoveryEaseOffAvoid(
+        for input: CoachCopyBuildInput
+    ) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            return .en(
+                "Don't push the pattern — return to an easy natural breath.",
+                "Не давите на паттерн — вернитесь к лёгкому естественному дыханию."
+            )
+        case .yoga, .stretching:
+            return .en(
+                "Don't push through — ease until it feels calm again.",
+                "Не давите — сбавьте, пока снова не станет спокойно."
+            )
+        default:
+            return .en(
+                "Don't push through — ease until it feels calm again.",
+                "Не давите — сбавьте, пока снова не станет спокойно."
+            )
+        }
+    }
+
+    private static func mindfulRecoveryNextAction(
+        for input: CoachCopyBuildInput,
+        remaining: Int,
+        fallback: CoachBilingualText
+    ) -> CoachBilingualText {
+        switch input.activityType {
+        case .breathing:
+            if remaining > 0 {
+                return .en(
+                    "Stay with the breath for another \(minutesPhrase(remaining)) minutes.",
+                    "Останьтесь с дыханием ещё \(remaining) мин."
+                )
+            }
+            return .en(
+                "Stay with the breath until the planned time is done.",
+                "Останьтесь с дыханием до конца запланированного времени."
+            )
+        case .yoga, .stretching:
+            if remaining > 0 {
+                return .en(
+                    "Another \(minutesPhrase(remaining)) soft minutes is enough.",
+                    "Ещё \(remaining) мягких минут достаточно."
+                )
+            }
+            return .en(
+                "Stay soft until the planned time is done.",
+                "Оставайтесь мягкими до конца запланированного времени."
+            )
+        default:
+            if remaining > 0 {
+                return .en(
+                    "Another \(minutesPhrase(remaining)) easy minutes is enough.",
+                    "Ещё \(remaining) лёгких минут достаточно."
+                )
+            }
+            return .en(
+                "Stay easy until the planned time is done.",
+                "Держите легко до конца запланированного времени."
             )
         }
     }

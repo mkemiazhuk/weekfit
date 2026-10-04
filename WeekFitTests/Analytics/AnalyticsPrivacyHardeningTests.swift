@@ -133,11 +133,20 @@ final class AnalyticsPrivacyHardeningTests: XCTestCase {
             MorningProposalUnavailableAnalyticsReason.fromDomainReason("health_access_denied"),
             .permissionsDenied
         )
-        MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-25", reason: "health_access_denied")
-        let reason = recording.events(named: .morningProposalUnavailable).first?
-            .parameters[AnalyticsParameterKey.reason]
+        MorningProposalAnalytics.proposalUnavailable(
+            dayKey: "2026-08-25",
+            reason: "health_access_denied",
+            stage: .gate
+        )
+        let event = recording.events(named: .morningProposalUnavailable).first
+        let reason = event?.parameters[AnalyticsParameterKey.reason]
         XCTAssertEqual(reason, "permissions_denied")
         XCTAssertNotEqual(reason, "health_access_denied")
+        XCTAssertEqual(event?.parameters[AnalyticsParameterKey.stage], "gate")
+        XCTAssertEqual(
+            event?.parameters[AnalyticsParameterKey.outcomeClass],
+            MorningProposalUnavailableAnalyticsReason.OutcomeClass.insufficientInput.rawValue
+        )
     }
 
     // MARK: - Coach / activity / food

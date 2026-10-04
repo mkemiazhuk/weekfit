@@ -12,6 +12,7 @@ struct MealBuilderView: View {
     @Environment(\.weekFitPalette) private var palette
 
     @State private var selectedIngredients: [SelectedBuilderIngredient] = []
+    @State private var selectedLibraryPeriod: MealLibraryPeriod
     @State private var didPrefill = false
     @State private var focusedIngredientID: String?
     @State private var focusedCategory: MealIngredientCategory?
@@ -33,6 +34,9 @@ struct MealBuilderView: View {
         self.editingMeal = editingMeal
         self.onSave = onSave
         self.onCancel = onCancel
+        _selectedLibraryPeriod = State(
+            initialValue: editingMeal?.libraryPeriod ?? .current
+        )
     }
 
     private var isEditMode: Bool {
@@ -40,9 +44,10 @@ struct MealBuilderView: View {
     }
     
     private var hasUnsavedChanges: Bool {
+        let periodChanged = editingMeal.map { $0.libraryPeriod != selectedLibraryPeriod } ?? false
 
         guard let editingMeal else {
-            return !selectedIngredients.isEmpty
+            return !selectedIngredients.isEmpty || periodChanged
         }
 
         let current = selectedIngredients
@@ -53,7 +58,7 @@ struct MealBuilderView: View {
             .sorted { $0.id < $1.id }
             .map { "\($0.id):\($0.grams)" }
 
-        return current != original
+        return current != original || periodChanged
     }
 
     private let background = WeekFitTheme.appBackground
@@ -107,6 +112,9 @@ struct MealBuilderView: View {
                     .padding(.top, 12)
 
                 platePreview
+                    .padding(.horizontal, 16)
+
+                MealLibraryPeriodPicker(selection: $selectedLibraryPeriod)
                     .padding(.horizontal, 16)
 
                 buildProgress
@@ -878,10 +886,11 @@ struct MealBuilderView: View {
             fiber: totalFiber,
             benefits: editingMeal?.benefits ?? makeBenefits(),
             ingredients: mealIngredients,
-            suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
+            suggestedTime: selectedLibraryPeriod.defaultSuggestedTime,
             builderImageItems: builderImageItems,
             libraryKind: editingMeal?.libraryKind ?? .meal,
-            creationMode: editingMeal?.creationMode ?? .ingredients
+            creationMode: editingMeal?.creationMode ?? .ingredients,
+            libraryPeriodRaw: selectedLibraryPeriod.rawValue
         )
 
         onSave(meal)
@@ -973,17 +982,6 @@ struct MealBuilderView: View {
             WeekFitLocalizedString("meals.builder.benefit.profile"),
             WeekFitLocalizedString("meals.builder.benefit.balancedIngredients")
         ]
-    }
-
-    private var currentSuggestedTime: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 6...10:  return "08:30"
-        case 11...14: return "13:00"
-        case 15...17: return "16:30"
-        default:      return "19:00"
-        }
     }
 
     private func categoryHint(_ category: MealIngredientCategory) -> String {

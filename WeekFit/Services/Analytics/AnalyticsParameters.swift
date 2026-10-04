@@ -37,6 +37,10 @@ enum AnalyticsParameterKey {
     static let errorDomain = "error_domain"
     /// Release channel: `testflight` | `appstore` (set as default event parameter).
     static let distribution = "distribution"
+    /// Morning proposal diagnostic stage: `gate` | `engine`.
+    static let stage = "stage"
+    /// Coarse diagnostic class: `expected` | `insufficient_input` | `failed`.
+    static let outcomeClass = "outcome_class"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.

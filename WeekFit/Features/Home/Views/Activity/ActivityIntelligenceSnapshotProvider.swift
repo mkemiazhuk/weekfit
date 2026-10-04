@@ -74,7 +74,17 @@ final class ActivityIntelligenceSnapshotProvider {
                 plannedActivities: plannedActivities
             )
         } else {
-            sessions = workoutSamples.map { makeSnapshot(from: $0) }
+            // HK workouts stay canonical. Local Quick Start rows are additive only when
+            // still unlinked (healthKitWorkoutUUID == nil) so existing reconciler ownership
+            // is preserved — no sync/pipeline changes.
+            let healthKitSessions = workoutSamples.map { makeSnapshot(from: $0) }
+            let localQuickStartSessions = localQuickStartSessions(
+                for: date,
+                plannedActivities: plannedActivities,
+                now: Date()
+            )
+            sessions = (healthKitSessions + localQuickStartSessions)
+                .sorted { $0.startDate < $1.startDate }
         }
 
         let activeCalories = Int(dayMetrics.activeCalories.rounded())
@@ -331,6 +341,108 @@ final class ActivityIntelligenceSnapshotProvider {
                 steps: nil,
                 cadence: nil
             )
+        )
+    }
+
+    // MARK: - Local Quick Start (Activity Log composition only)
+
+    /// Eligible Today Quick Start sessions for Activity Log.
+    ///
+    /// Predicate (all must hold):
+    /// - `source == "today"` (Quick Start / Log quickly → Activity; excludes planner)
+    /// - `type` is `workout` or `recovery` (excludes meal quick-log which also uses `source == "today"`)
+    /// - not skipped
+    /// - `healthKitWorkoutUUID` is nil/empty (once reconciler links HK, HK snapshot is sole row)
+    /// - same calendar day as the Activity Log day
+    /// - already started (`date <= now`) — Quick Start stamps `date` at Start, so this
+    ///   excludes future/scheduled items
+    /// - either still in progress (`!isCompleted`) or completed locally (`isCompleted`)
+    private func localQuickStartSessions(
+        for date: Date,
+        plannedActivities: [PlannedActivity],
+        now: Date
+    ) -> [ActivitySessionSnapshot] {
+        let calendar = Calendar.current
+        return plannedActivities
+            .filter { isEligibleLocalQuickStart($0, day: date, now: now, calendar: calendar) }
+            .sorted { $0.date < $1.date }
+            .map { makeLocalQuickStartSnapshot($0, now: now) }
+    }
+
+    private func isEligibleLocalQuickStart(
+        _ activity: PlannedActivity,
+        day: Date,
+        now: Date,
+        calendar: Calendar
+    ) -> Bool {
+        let source = activity.source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard source == "today" else { return false }
+
+        switch activity.type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "workout", "recovery":
+            break
+        default:
+            return false
+        }
+
+        guard !activity.isSkipped else { return false }
+        guard activity.healthKitWorkoutUUID?.isEmpty != false else { return false }
+        guard calendar.isDate(activity.date, inSameDayAs: day) else { return false }
+        guard activity.date <= now else { return false }
+        return true
+    }
+
+    private func makeLocalQuickStartSnapshot(
+        _ activity: PlannedActivity,
+        now: Date
+    ) -> ActivitySessionSnapshot {
+        let isLive = !activity.isCompleted
+        let durationMinutes: Int = {
+            if activity.isCompleted {
+                return max(1, activity.effectiveDurationMinutes)
+            }
+            return max(1, Int(now.timeIntervalSince(activity.date) / 60.0))
+        }()
+        let endDate = Calendar.current.date(
+            byAdding: .minute,
+            value: durationMinutes,
+            to: activity.date
+        ) ?? activity.date
+        let activityType = inferredWorkoutType(for: activity)
+        let icon = activity.icon.isEmpty ? "figure.mixed.cardio" : activity.icon
+        // Keep unfinished source as "planned" so Activity Details hides HK metrics cards.
+        let source = isLive ? "planned" : "today"
+
+        return ActivitySessionSnapshot(
+            workoutID: nil,
+            title: activity.title,
+            startDate: activity.date,
+            durationMinutes: durationMinutes,
+            icon: icon,
+            color: activity.color,
+            detail: ActivitySessionDetailSnapshot(
+                title: activity.title,
+                activityType: activityType,
+                startDate: activity.date,
+                endDate: endDate,
+                durationMinutes: durationMinutes,
+                workoutDurationSeconds: TimeInterval(durationMinutes * 60),
+                elapsedDurationSeconds: isLive ? 0 : endDate.timeIntervalSince(activity.date),
+                source: source,
+                icon: icon,
+                color: activity.color,
+                activeCalories: nil,
+                distanceKm: nil,
+                averageHeartRate: nil,
+                maxHeartRate: nil,
+                heartRateSamples: [],
+                routePoints: [],
+                elevationGain: nil,
+                steps: nil,
+                cadence: nil
+            ),
+            isLiveLocalQuickStart: isLive,
+            plannedActivityId: activity.id
         )
     }
 

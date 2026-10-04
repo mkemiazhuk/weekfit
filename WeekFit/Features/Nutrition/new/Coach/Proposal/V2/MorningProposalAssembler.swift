@@ -69,14 +69,13 @@ enum MorningProposalAssembler {
         }
 
         // Guidance-only payloads are normally dropped (no Apply chrome). Exceptions:
-        // 1) empty meal library → morning fuel tips
+        // 1) empty meal library → morning fuel tips (also without Health / canMutate)
         // 2) adverse weather → outdoor caution tips
         // Soft cold-start body tips stay out of Review even when Walk/meals mutate.
         if mutating.isEmpty {
             var guidanceOnly: [CoachProposedChange] = []
-            // Fuel tips are optional chrome — never when the day cannot mutate
-            // (unavailable Recovery / locked mode).
-            if context.mealLibrary.isEmpty, context.canMutate {
+            // Fuel tips do not mutate the plan — useful when Recovery/Health is unavailable.
+            if context.mealLibrary.isEmpty {
                 guidanceOnly.append(contentsOf: fuelGuidance)
             }
             for tip in weatherGuidance where !guidanceOnly.contains(where: { $0.id == tip.id }) {

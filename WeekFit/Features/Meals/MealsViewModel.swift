@@ -141,10 +141,14 @@ final class MealsViewModel: ObservableObject {
                     "\(meal.protein)",
                     "\(meal.carbs)",
                     "\(meal.fats)",
-                    "\(meal.fiber)"
+                    "\(meal.fiber)",
+                    meal.libraryPeriodRaw ?? meal.libraryPeriod.rawValue
                 ].joined(separator: ":")
             }
             .joined(separator: "|")
+
+        let hour = Calendar.current.component(.hour, from: Date())
+        let mealPeriodBucket = MealLibraryPeriod.period(at: hour).rawValue
 
         return [
             languageCode,
@@ -155,6 +159,7 @@ final class MealsViewModel: ObservableObject {
             snapshot?.id.uuidString ?? "snapshot=nil",
             guidanceID,
             "\(Int(day / 86_400))",
+            "mealPeriod:\(mealPeriodBucket)",
             String(format: "%.1f", metrics?.calories ?? -1.0),
             String(format: "%.1f", metrics?.protein ?? -1.0),
             String(format: "%.1f", metrics?.carbs ?? -1.0),

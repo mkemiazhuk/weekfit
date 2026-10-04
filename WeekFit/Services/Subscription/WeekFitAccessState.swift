@@ -10,7 +10,8 @@ enum WeekFitAccessState: Equatable, Sendable {
     case legacy
     /// Active introductory free trial.
     case trial
-    /// Active paid subscription, billing retry, or grace period.
+    /// Active paid subscription or billing **grace** period (entitled).
+    /// Billing retry alone is **not** `.subscribed` — see `WeekFitSubscriptionBillingState`.
     case subscribed
     /// Had a WeekFit subscription that is no longer active.
     case expired
@@ -64,15 +65,61 @@ enum WeekFitAppTransactionStatus: Equatable, Sendable {
     case unavailable
 }
 
+/// Billing / renewal access state from `Product.SubscriptionInfo.Status`.
+/// Apple: entitled = `.subscribed` or `.inGracePeriod` only.
+/// `.inBillingRetryPeriod` without grace is **not** entitled.
+enum WeekFitSubscriptionBillingState: Equatable, Sendable {
+    case none
+    /// Failed renewal, ASC Billing Grace Period still active — keep Premium.
+    case inGracePeriod
+    /// Apple still retrying payment after grace ended (or grace never enabled) — no Premium.
+    case inBillingRetry
+}
+
 struct WeekFitSubscriptionSnapshot: Equatable, Sendable {
     var productID: String
     var isIntroductoryTrial: Bool
     var expirationDate: Date?
     var isExpired: Bool
     var isRevoked: Bool
+    /// Prefer `billingState`. Kept for call-site migration; true only for grace (not bare retry).
     var inGraceOrRetry: Bool
+    var billingState: WeekFitSubscriptionBillingState = .none
+    /// When billingState == .inGracePeriod, optional end of ASC grace window.
+    var gracePeriodExpirationDate: Date? = nil
     /// False when the user cancelled auto-renewal but the current period is still active.
     var willAutoRenew: Bool = true
+
+    init(
+        productID: String,
+        isIntroductoryTrial: Bool,
+        expirationDate: Date?,
+        isExpired: Bool,
+        isRevoked: Bool,
+        inGraceOrRetry: Bool = false,
+        billingState: WeekFitSubscriptionBillingState? = nil,
+        gracePeriodExpirationDate: Date? = nil,
+        willAutoRenew: Bool = true
+    ) {
+        self.productID = productID
+        self.isIntroductoryTrial = isIntroductoryTrial
+        self.expirationDate = expirationDate
+        self.isExpired = isExpired
+        self.isRevoked = isRevoked
+        self.gracePeriodExpirationDate = gracePeriodExpirationDate
+        self.willAutoRenew = willAutoRenew
+        if let billingState {
+            self.billingState = billingState
+            self.inGraceOrRetry = billingState == .inGracePeriod
+        } else if inGraceOrRetry {
+            // Legacy callers that only set the bool meant "keep access" → grace.
+            self.billingState = .inGracePeriod
+            self.inGraceOrRetry = true
+        } else {
+            self.billingState = .none
+            self.inGraceOrRetry = false
+        }
+    }
 }
 
 /// Injectable test bypass. Production must always use `.none`.

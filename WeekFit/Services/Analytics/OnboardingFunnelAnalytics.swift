@@ -5,6 +5,7 @@ import Foundation
 /// - `onboarding_started` once per onboarding lifecycle (until completion / reset)
 /// - `onboarding_step_viewed` once per unique step per lifecycle (back/forward does not re-fire)
 /// - `onboarding_completed` once after successful persistence of completion
+/// - `onboarding_skipped_existing` once when an existing install is migrated past first-run
 ///
 /// Feature code should call these helpers (or `AppAnalytics.shared`) — never Firebase.
 final class OnboardingFunnelAnalytics: @unchecked Sendable {
@@ -14,10 +15,11 @@ final class OnboardingFunnelAnalytics: @unchecked Sendable {
         static let started = "weekfit.onboarding.analytics.started"
         static let viewedSteps = "weekfit.onboarding.analytics.viewedSteps"
         static let completed = "weekfit.onboarding.analytics.completed"
+        static let skippedExisting = "weekfit.onboarding.analytics.skippedExisting"
     }
 
     static var allKnownKeys: [String] {
-        [Keys.started, Keys.viewedSteps, Keys.completed]
+        [Keys.started, Keys.viewedSteps, Keys.completed, Keys.skippedExisting]
     }
 
     private let defaults: UserDefaults
@@ -60,6 +62,21 @@ final class OnboardingFunnelAnalytics: @unchecked Sendable {
         guard !defaults.bool(forKey: Keys.completed) else { return }
         defaults.set(true, forKey: Keys.completed)
         analyticsProvider().track(.onboardingCompleted)
+    }
+
+    /// Existing installs that already configured goal/Health skip first-run UI.
+    /// Not a start and not a completion — keeps `first_open` vs `onboarding_started` interpretable.
+    func trackSkippedExistingIfNeeded() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !defaults.bool(forKey: Keys.skippedExisting) else { return }
+        guard !defaults.bool(forKey: Keys.started) else { return }
+        guard !defaults.bool(forKey: Keys.completed) else { return }
+        defaults.set(true, forKey: Keys.skippedExisting)
+        analyticsProvider().track(
+            .onboardingSkippedExisting,
+            parameters: [AnalyticsParameterKey.reason: "existing_install"]
+        )
     }
 
     func trackHealthConnectionStarted() {

@@ -150,7 +150,8 @@ struct ActivitySessionDetailSnapshot: Hashable {
 }
 
 struct ActivitySessionSnapshot: Identifiable, Hashable {
-    let id = UUID()
+    /// Stable across rebuilds: HK `workout.uuid`, or Quick Start `PlannedActivity.id`.
+    let id: UUID
     let workoutID: UUID?
     let title: String
     let startDate: Date
@@ -158,10 +159,13 @@ struct ActivitySessionSnapshot: Identifiable, Hashable {
     let icon: String
     let color: Color
     let detail: ActivitySessionDetailSnapshot?
-    /// Stable PlannedActivity.id when this session was opened from Plan / Up Next.
+    /// Active Today Quick Start row — timestamp-based LIVE chrome in Activity Log.
+    let isLiveLocalQuickStart: Bool
+    /// Stable PlannedActivity.id when this session was opened from Plan / Up Next / Quick Start.
     let plannedActivityId: String?
 
     init(
+        id: UUID? = nil,
         workoutID: UUID?,
         title: String,
         startDate: Date,
@@ -169,8 +173,18 @@ struct ActivitySessionSnapshot: Identifiable, Hashable {
         icon: String,
         color: Color,
         detail: ActivitySessionDetailSnapshot?,
+        isLiveLocalQuickStart: Bool = false,
         plannedActivityId: String? = nil
     ) {
+        if let id {
+            self.id = id
+        } else if let workoutID {
+            self.id = workoutID
+        } else if let plannedActivityId, let uuid = UUID(uuidString: plannedActivityId) {
+            self.id = uuid
+        } else {
+            self.id = UUID()
+        }
         self.workoutID = workoutID
         self.title = title
         self.startDate = startDate
@@ -178,6 +192,7 @@ struct ActivitySessionSnapshot: Identifiable, Hashable {
         self.icon = icon
         self.color = color
         self.detail = detail
+        self.isLiveLocalQuickStart = isLiveLocalQuickStart
         self.plannedActivityId = plannedActivityId
     }
 }
@@ -347,6 +362,33 @@ struct ActivityIntelligenceView: View {
                 )
             }
         }
+        .onChange(of: activityLogPlannedSignature) { _, _ in
+            Task {
+                await viewModel.load(
+                    selectedDate: viewModel.selectedDate,
+                    healthManager: healthManager,
+                    plannedActivities: plannedActivities
+                )
+            }
+        }
+    }
+
+    /// Triggers Activity Log rebuild when Quick Start starts/finishes or HK link appears.
+    private var activityLogPlannedSignature: String {
+        plannedActivities
+            .map { activity in
+                [
+                    activity.id,
+                    activity.source,
+                    activity.type,
+                    activity.isCompleted ? "1" : "0",
+                    activity.isSkipped ? "1" : "0",
+                    activity.healthKitWorkoutUUID ?? "",
+                    activity.actualDurationMinutes.map(String.init) ?? "",
+                    String(Int(activity.date.timeIntervalSince1970))
+                ].joined(separator: "|")
+            }
+            .joined(separator: ";")
     }
 
     private var header: some View {
@@ -1158,40 +1200,135 @@ private struct SessionRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onTap()
-        } label: {
-            HStack(spacing: 11) {
-                CircleIcon(systemName: session.icon, color: session.color, size: 34)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(session.title)
-                        .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-
-                    Text(session.timeRange)
-                        .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+        Group {
+            if session.isLiveLocalQuickStart {
+                liveRow
+            } else {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onTap()
+                } label: {
+                    completedRowLabel
                 }
-
-                Spacer()
-
-                HStack(spacing: 6) {
-                    Text(DurationFormatter.fullMinutes(session.durationMinutes))
-                        .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
-                        .monospacedDigit()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: ActivityTypography.helperText, weight: .bold))
-                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
-                }
+                .buttonStyle(.plain)
             }
         }
         .padding(12)
         .innerActivityCard(cornerRadius: 15)
-        .buttonStyle(.plain)
+    }
+
+    private var completedRowLabel: some View {
+        let showsAppleWatchBadge: Bool = {
+            if case .appleWatch = ActivitySessionSourcePresentation(source: session.detail?.source).kind {
+                return true
+            }
+            return false
+        }()
+
+        return HStack(spacing: 11) {
+            CircleIcon(systemName: session.icon, color: session.color, size: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(session.title)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+
+                Text(session.timeRange)
+                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+
+                if showsAppleWatchBadge {
+                    HStack(spacing: 4) {
+                        Image(systemName: "applewatch")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(WeekFitLocalizedString("activity.data.source.appleWatch"))
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.40))
+                }
+            }
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                Text(DurationFormatter.fullMinutes(session.durationMinutes))
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
+                    .monospacedDigit()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: ActivityTypography.helperText, weight: .bold))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.24))
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            showsAppleWatchBadge
+                ? "\(session.title). \(session.timeRange). \(WeekFitLocalizedString("activity.data.source.appleWatch"))"
+                : "\(session.title). \(session.timeRange)"
+        )
+    }
+
+    private var liveRow: some View {
+        HStack(spacing: 11) {
+            CircleIcon(systemName: session.icon, color: session.color, size: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(session.title)
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+
+                Text(liveStartedLabel)
+                    .font(.system(size: ActivityTypography.helperText, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.46))
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let elapsed = max(0, Int(context.date.timeIntervalSince(session.startDate)))
+                    let hours = elapsed / 3600
+                    let minutes = (elapsed % 3600) / 60
+                    let seconds = elapsed % 60
+                    let clock = hours > 0
+                        ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
+                        : String(format: "%02d:%02d", minutes, seconds)
+                    Text("\(clock) \(WeekFitLocalizedString("activity.session.elapsedLabel"))")
+                    .font(.system(size: ActivityTypography.metricValue, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.86))
+                    .monospacedDigit()
+                }
+
+                Text(WeekFitLocalizedString("activity.session.live"))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(CoachPalette.recovery)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(CoachPalette.recovery.opacity(0.12))
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(CoachPalette.recovery.opacity(0.28), lineWidth: 1)
+                            )
+                    )
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(liveAccessibilityLabel)
+    }
+
+    private var liveStartedLabel: String {
+        let time = session.startDate.formatted(
+            .dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)
+        )
+        return String(format: WeekFitLocalizedString("activity.session.startedFormat"), time)
+    }
+
+    private var liveAccessibilityLabel: String {
+        "\(session.title). \(liveStartedLabel). \(WeekFitLocalizedString("activity.session.live"))"
     }
 }
 

@@ -27,8 +27,14 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     nonisolated deinit {}
 
     private var productsByID: [String: Product] = [:]
+    /// Last successful `Product.products` mapping for the current storefront.
+    /// Avoids re-hitting the network on every `SubscriptionManager.refresh()` /
+    /// foreground while the catalog is unchanged.
+    private var cachedProductsResult: WeekFitProductsLoadResult?
     /// Verified purchase awaiting entitlement delivery + `finish()` (Apple: unlock → finish).
     private var pendingVerifiedPurchase: Transaction?
+    /// Product ids waiting for Ask to Buy / SCA to resolve via `Transaction.updates`.
+    private var awaitingPendingPurchaseProductIDs: Set<String> = []
     /// Recently finished transaction ids — avoids double-finish with `Transaction.updates`.
     private var recentlyFinishedTransactionIDs: [UInt64] = []
     private let maxRecentlyFinishedTransactionIDs = 32
@@ -65,12 +71,23 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
 
     func loadProducts() async throws -> WeekFitProductsLoadResult {
         let requestedIDs = WeekFitSubscriptionProductID.allRawValues
+        let storefront = await Self.currentStorefrontSnapshot()
+        if let cached = cachedProductsResult,
+           !productsByID.isEmpty,
+           cached.storefront.id == storefront.id,
+           cached.storefront.countryCode == storefront.countryCode {
+            #if DEBUG
+            WeekFitStoreKitDebug.log(
+                "Product.products cache hit storefront=\(storefront.countryCode ?? "?")/\(storefront.id ?? "?") count=\(cached.products.count)"
+            )
+            #endif
+            return cached
+        }
         #if DEBUG
         await WeekFitStoreKitDebug.logProductLoadStart(requestedIDs: requestedIDs)
         #endif
         do {
             await WeekFitStoreKitTimelineDiagnostics.shared.recordProductLoadBefore()
-            let storefront = await Self.currentStorefrontSnapshot()
             let storeProducts = try await Product.products(for: requestedIDs)
             await WeekFitStoreKitTimelineDiagnostics.shared.recordProductLoadAfter(
                 returnedCount: storeProducts.count
@@ -88,6 +105,12 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                     snapshots.append(snapshot)
                 }
             }
+            let result = WeekFitProductsLoadResult(
+                products: snapshots,
+                rawReturnedCount: storeProducts.count,
+                storefront: storefront
+            )
+            cachedProductsResult = result
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadSuccess(
                 requestedIDs: requestedIDs,
@@ -95,13 +118,10 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 snapshots: snapshots
             )
             #endif
-            return WeekFitProductsLoadResult(
-                products: snapshots,
-                rawReturnedCount: storeProducts.count,
-                storefront: storefront
-            )
+            return result
         } catch {
             productsByID = [:]
+            cachedProductsResult = nil
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadFailure(requestedIDs: requestedIDs, error: error)
             #endif
@@ -111,6 +131,9 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
 
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot? {
         var snapshots: [WeekFitSubscriptionSnapshot] = []
+        #if DEBUG
+        var entitlementDiagLines: [String] = []
+        #endif
 
         for await result in Transaction.currentEntitlements {
             let transaction: Transaction? = {
@@ -122,31 +145,61 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 }
             }()
 
-            guard let transaction else { continue }
+            guard let transaction else {
+                #if DEBUG
+                entitlementDiagLines.append("entitlements.unverified")
+                #endif
+                continue
+            }
             guard WeekFitSubscriptionProductID(rawValue: transaction.productID) != nil else { continue }
 
-            snapshots.append(
-                WeekFitSubscriptionSnapshot(
+            let now = Date()
+            let snapshot = WeekFitSubscriptionSnapshot(
+                productID: transaction.productID,
+                isIntroductoryTrial: transaction.offer?.type == .introductory,
+                expirationDate: transaction.expirationDate,
+                isExpired: transaction.expirationDate.map { $0 <= now } ?? false,
+                isRevoked: transaction.revocationDate != nil,
+                billingState: .none
+            )
+            snapshots.append(snapshot)
+            #if DEBUG
+            entitlementDiagLines.append(
+                WeekFitSubscriptionAccessDiagnostics.line(
+                    source: "currentEntitlements",
                     productID: transaction.productID,
-                    isIntroductoryTrial: transaction.offer?.type == .introductory,
+                    transactionID: transaction.id,
                     expirationDate: transaction.expirationDate,
-                    isExpired: transaction.expirationDate.map { $0 <= Date() } ?? false,
-                    isRevoked: transaction.revocationDate != nil,
-                    inGraceOrRetry: false
+                    revocationDate: transaction.revocationDate,
+                    environment: String(describing: transaction.environment),
+                    renewalState: "n/a",
+                    willAutoRenew: nil,
+                    billingState: snapshot.billingState,
+                    isExpiredFlag: snapshot.isExpired,
+                    isActive: WeekFitEntitlementPolicy.isActiveSubscription(snapshot, now: now)
                 )
             )
+            #endif
         }
 
         if let fromStatus = await subscriptionStatusSnapshot() {
             snapshots.append(fromStatus)
         }
 
-        return snapshots.first { WeekFitEntitlementPolicy.isActiveSubscription($0) }
+        let selected = snapshots.first { WeekFitEntitlementPolicy.isActiveSubscription($0) }
             ?? snapshots.first
+        #if DEBUG
+        WeekFitSubscriptionAccessDiagnostics.logLoad(
+            entitlementLines: entitlementDiagLines,
+            selected: selected
+        )
+        #endif
+        return selected
     }
 
     func invalidateCachedProducts() {
         productsByID = [:]
+        cachedProductsResult = nil
     }
 
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
@@ -172,8 +225,12 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             case .success(let verification):
                 switch verification {
                 case .verified(let transaction):
+                    // Firebase StoreKit 2: log before finish (finish happens after entitlement unlock).
+                    StoreKitTransactionAnalytics.logVerifiedPurchaseTransactionIfNeeded(transaction)
                     // Hold finish until the caller refreshes entitlements (unlock → finish).
                     pendingVerifiedPurchase = transaction
+                    awaitingPendingPurchaseProductIDs.remove(productID)
+                    WeekFitDeferredPurchaseStore.clear()
                     await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "success")
                     return .success
                 case .unverified:
@@ -184,11 +241,16 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 }
             case .userCancelled:
                 pendingVerifiedPurchase = nil
+                awaitingPendingPurchaseProductIDs.remove(productID)
+                WeekFitDeferredPurchaseStore.clear()
                 await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "userCancelled")
                 return .cancelled
             case .pending:
                 // Ask to Buy / SCA — keep unfinished; Transaction.updates delivers later.
+                // Persist so a process kill before approval still logs revenue + funnel success.
                 pendingVerifiedPurchase = nil
+                awaitingPendingPurchaseProductIDs.insert(productID)
+                WeekFitDeferredPurchaseStore.markPending(productID: productID, requestedTab: nil)
                 await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseAfter(result: "pending")
                 return .pending
             @unknown default:
@@ -241,6 +303,16 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     }
 
     private func completeVerifiedTransactionUpdate(_ transaction: Transaction) async {
+        // Revenue only for Ask-to-Buy / deferred completions we initiated — never restore,
+        // unverified, or ordinary renewals (Firebase SK1 observer / server-side renewals).
+        let isDeferred =
+            awaitingPendingPurchaseProductIDs.contains(transaction.productID)
+            || WeekFitDeferredPurchaseStore.pendingProductID() == transaction.productID
+        if isDeferred {
+            StoreKitTransactionAnalytics.logVerifiedPurchaseTransactionIfNeeded(transaction)
+            awaitingPendingPurchaseProductIDs.remove(transaction.productID)
+            // Funnel consume happens in SubscriptionManager after entitlement refresh.
+        }
         await finishTransactionIfNeeded(transaction)
         if pendingVerifiedPurchase?.id == transaction.id {
             pendingVerifiedPurchase = nil
@@ -288,6 +360,12 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     }
 
     private func subscriptionStatusSnapshot() async -> WeekFitSubscriptionSnapshot? {
+        // Grace / billing-retry state comes from Product.SubscriptionInfo.status.
+        // Ensure products are loaded — an empty cache would miss `.inGracePeriod` and
+        // incorrectly treat a still-entitled subscriber as expired.
+        if productsByID.isEmpty {
+            _ = try? await loadProducts()
+        }
         var candidates: [WeekFitSubscriptionSnapshot] = []
         for product in productsByID.values {
             guard let subscription = product.subscription else { continue }
@@ -307,57 +385,107 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                     }
                 }()
                 guard let transaction else { continue }
-                let willAutoRenew = renewalWillAutoRenew(from: status)
-                let inGraceOrRetry: Bool
+                let renewal = verifiedRenewalInfo(from: status)
+                let willAutoRenew = renewal?.willAutoRenew ?? true
+                let graceEnd = renewal?.gracePeriodExpirationDate
+                let renewalStateLabel = String(describing: status.state)
+                let billingState: WeekFitSubscriptionBillingState
+                let isExpired: Bool
+                let snapshot: WeekFitSubscriptionSnapshot
                 switch status.state {
                 case .subscribed:
-                    inGraceOrRetry = false
-                case .inGracePeriod, .inBillingRetryPeriod:
-                    inGraceOrRetry = true
-                case .expired, .revoked:
-                    candidates.append(
-                        WeekFitSubscriptionSnapshot(
-                            productID: transaction.productID,
-                            isIntroductoryTrial: transaction.offer?.type == .introductory,
-                            expirationDate: transaction.expirationDate,
-                            isExpired: true,
-                            isRevoked: status.state == .revoked,
-                            inGraceOrRetry: false,
-                            willAutoRenew: willAutoRenew
-                        )
+                    billingState = .none
+                    isExpired = false
+                    snapshot = WeekFitSubscriptionSnapshot(
+                        productID: transaction.productID,
+                        isIntroductoryTrial: transaction.offer?.type == .introductory,
+                        expirationDate: transaction.expirationDate,
+                        isExpired: isExpired,
+                        isRevoked: false,
+                        billingState: billingState,
+                        gracePeriodExpirationDate: graceEnd,
+                        willAutoRenew: willAutoRenew
                     )
-                    continue
+                case .inGracePeriod:
+                    billingState = .inGracePeriod
+                    // Period may look expired on the transaction; grace still entitles.
+                    isExpired = false
+                    snapshot = WeekFitSubscriptionSnapshot(
+                        productID: transaction.productID,
+                        isIntroductoryTrial: transaction.offer?.type == .introductory,
+                        expirationDate: transaction.expirationDate,
+                        isExpired: isExpired,
+                        isRevoked: false,
+                        billingState: billingState,
+                        gracePeriodExpirationDate: graceEnd,
+                        willAutoRenew: willAutoRenew
+                    )
+                case .inBillingRetryPeriod:
+                    billingState = .inBillingRetry
+                    isExpired = true
+                    snapshot = WeekFitSubscriptionSnapshot(
+                        productID: transaction.productID,
+                        isIntroductoryTrial: transaction.offer?.type == .introductory,
+                        expirationDate: transaction.expirationDate,
+                        isExpired: isExpired,
+                        isRevoked: false,
+                        billingState: billingState,
+                        gracePeriodExpirationDate: graceEnd,
+                        willAutoRenew: willAutoRenew
+                    )
+                case .expired, .revoked:
+                    snapshot = WeekFitSubscriptionSnapshot(
+                        productID: transaction.productID,
+                        isIntroductoryTrial: transaction.offer?.type == .introductory,
+                        expirationDate: transaction.expirationDate,
+                        isExpired: true,
+                        isRevoked: status.state == .revoked,
+                        billingState: .none,
+                        willAutoRenew: willAutoRenew
+                    )
                 default:
                     continue
                 }
-
-                candidates.append(
-                    WeekFitSubscriptionSnapshot(
-                    productID: transaction.productID,
-                    isIntroductoryTrial: transaction.offer?.type == .introductory,
-                    expirationDate: transaction.expirationDate,
-                    isExpired: false,
-                    isRevoked: false,
-                    inGraceOrRetry: inGraceOrRetry,
-                    willAutoRenew: willAutoRenew
+                candidates.append(snapshot)
+                #if DEBUG
+                WeekFitSubscriptionAccessDiagnostics.log(
+                    WeekFitSubscriptionAccessDiagnostics.line(
+                        source: "subscription.status",
+                        productID: transaction.productID,
+                        transactionID: transaction.id,
+                        expirationDate: transaction.expirationDate,
+                        revocationDate: transaction.revocationDate,
+                        environment: String(describing: transaction.environment),
+                        renewalState: renewalStateLabel,
+                        willAutoRenew: willAutoRenew,
+                        billingState: snapshot.billingState,
+                        isExpiredFlag: snapshot.isExpired,
+                        isActive: WeekFitEntitlementPolicy.isActiveSubscription(snapshot)
                     )
                 )
+                #endif
             }
         }
-        // Prefer active/grace subscriptions; otherwise fall back to any candidate.
+        // Prefer entitled (active / grace); never prefer bare billing-retry over an active peer.
         return candidates.first { WeekFitEntitlementPolicy.isActiveSubscription($0) }
             ?? candidates.first
     }
 
-    private func renewalWillAutoRenew(from status: Product.SubscriptionInfo.Status) -> Bool {
+    private func verifiedRenewalInfo(
+        from status: Product.SubscriptionInfo.Status
+    ) -> Product.SubscriptionInfo.RenewalInfo? {
         switch status.renewalInfo {
         case .verified(let renewalInfo):
-            return renewalInfo.willAutoRenew
+            return renewalInfo
         case .unverified:
-            return true
+            return nil
         @unknown default:
-            return true
+            return nil
         }
+    }
+
+    private func renewalWillAutoRenew(from status: Product.SubscriptionInfo.Status) -> Bool {
+        verifiedRenewalInfo(from: status)?.willAutoRenew ?? true
     }
 
     private static func snapshot(from product: Product) async -> WeekFitProductSnapshot? {

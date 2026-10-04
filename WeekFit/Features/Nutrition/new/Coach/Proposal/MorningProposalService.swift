@@ -111,7 +111,11 @@ enum MorningProposalService {
                 schemaVersion: MorningPlanProposal.currentSchemaVersion
             )
             MorningProposalStore.upsert(unavailable)
-            MorningProposalAnalytics.proposalUnavailable(dayKey: dayKey, reason: reason)
+            MorningProposalAnalytics.proposalUnavailable(
+                dayKey: dayKey,
+                reason: reason,
+                stage: .gate
+            )
             return unavailable
 
         case .keepExisting(let status):
@@ -229,7 +233,11 @@ enum MorningProposalService {
         case .unavailable, .failed:
             // Engine-terminal unavailability (e.g. generation mode closed). Deduped per day+reason.
             let domainReason = proposal.lastErrorCode ?? "generation_failed"
-            MorningProposalAnalytics.proposalUnavailable(dayKey: dayKey, reason: domainReason)
+            MorningProposalAnalytics.proposalUnavailable(
+                dayKey: dayKey,
+                reason: domainReason,
+                stage: .engine
+            )
         default:
             break
         }
@@ -248,7 +256,7 @@ enum MorningProposalService {
             || proposal.schemaVersion < MorningPlanProposal.currentSchemaVersion else { return }
         proposal.status = .stale
         MorningProposalStore.upsert(proposal)
-        MorningProposalAnalytics.proposalStale()
+        MorningProposalAnalytics.proposalStale(proposalId: proposal.id)
     }
 
     static func dismiss(dayKey: String) {

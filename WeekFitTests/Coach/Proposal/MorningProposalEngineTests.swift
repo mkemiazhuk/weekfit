@@ -131,7 +131,7 @@ final class MorningProposalEngineTests: XCTestCase {
         XCTAssertTrue(proposal.changes.isEmpty)
     }
 
-    func testUnavailableDataUsesNoChangesWhenCannotMutate() {
+    func testUnavailableHealthStillOffersFuelGuidanceWhenLibraryEmpty() {
         let now = date(2026, 7, 29, 7, 0)
 
         let proposal = MorningProposalEngine.generate(
@@ -142,6 +142,41 @@ final class MorningProposalEngineTests: XCTestCase {
                 scenarioKey: nil,
                 todayActivities: [],
                 canMutate: false
+            )
+        )
+
+        // Without Health, plan mutations stay off — but empty meal library still
+        // surfaces a non-mutating morning fuel tip (useful first-session path).
+        XCTAssertEqual(proposal.status, .proposalReady)
+        XCTAssertFalse(proposal.changes.isEmpty)
+        XCTAssertTrue(proposal.changes.allSatisfy { $0.kind == .guidanceOnly })
+        XCTAssertEqual(proposal.strategy, .continueExistingPlan)
+    }
+
+    func testUnavailableHealthWithMealLibraryUsesNoChangesWhenCannotMutate() {
+        let now = date(2026, 7, 29, 7, 0)
+        let meal = ProposalMealCandidate(
+            id: "meal-1",
+            title: "Oats",
+            imageName: "oats",
+            calories: 300,
+            protein: 10,
+            carbs: 40,
+            fats: 8,
+            fiber: 4,
+            mealsTypeRaw: "breakfast",
+            suggestedTime: nil
+        )
+
+        let proposal = MorningProposalEngine.generate(
+            input: engineInput(
+                now: now,
+                recoveryBand: .unavailable,
+                sleepPresence: .unavailable,
+                scenarioKey: nil,
+                todayActivities: [],
+                canMutate: false,
+                mealLibrary: [meal]
             )
         )
 

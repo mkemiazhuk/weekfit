@@ -69,6 +69,7 @@ Same-tab re-taps are ignored by bottom bar / `selectTab`.
 | `onboarding_started` | First genuine onboarding presentation | — | Once per lifecycle (`OnboardingFunnelAnalytics`) |
 | `onboarding_step_viewed` | Step becomes active | `step` | Once per step id per lifecycle |
 | `onboarding_completed` | After `OnboardingStore.markCompleted()` persists | — | Once after successful persistence |
+| `onboarding_skipped_existing` | Existing install migrated past first-run (goal/Health already set) | `reason=existing_install` | Once; **not** a start or completion |
 | `health_connection_*` | Onboarding Health connect / skip / fail | `reason` on fail (technical only) | See onboarding docs in code comments |
 | `notification_permission_responded` | System notification dialog result | `status` | Only when dialog was shown |
 | `today_first_view` | First Today tab exposure this workspace | `source=today` | Once per workspace lifecycle (`ActivationAnalytics`) |
@@ -114,29 +115,33 @@ Do **not** treat diagnostic counts as user-engagement metrics.
 |-------|------------|-------------|
 | `morning_proposal_unavailable` | `dayKey` + canonical `reason` | UserDefaults (`weekfit.analytics.mp.unavailable.emitted`) |
 | `morning_proposal_no_changes` | `dayKey` | UserDefaults (`weekfit.analytics.mp.noChanges.emitted`) |
+| `morning_proposal_stale` | proposal id | UserDefaults (`weekfit.analytics.mp.stale.emitted`) |
 | `morning_proposal_viewed` | proposal id (in-memory) | Process lifetime |
 
 Engine/gate re-evaluation is unchanged — only analytics emissions are deduped.
+Gathering / in-flight Health load never emits `morning_proposal_unavailable`.
 
 ### Unavailable reasons (canonical)
 
-Gate aliases are mapped before emit:
+Gate aliases are mapped before emit. Expected calendar states are **not emitted**
+(still persisted for UI): `outside_morning_window`, `day_started`, `day_expired`.
 
-| Domain / gate string | Analytics `reason` |
-|----------------------|--------------------|
-| `outside_window` | `outside_morning_window` |
-| `outside_morning_window` | `outside_morning_window` |
-| `day_started` | `day_started` |
-| `day_expired` / `expired` | `day_expired` |
-| `health_access_denied` | `other` (no health permission state in Firebase) |
-| `timeout` | `timeout` |
-| `missing_inputs` | `missing_inputs` |
-| anything else | `other` |
+| Domain / gate string | Analytics `reason` | `outcome_class` | Emitted? |
+|----------------------|--------------------|-----------------|----------|
+| `outside_window` / `outside_morning_window` | `outside_morning_window` | `expected` | No |
+| `day_started` | `day_started` | `expected` | No |
+| `day_expired` / `expired` | `day_expired` | `expected` | No |
+| `timeout` | `timeout` | `insufficient_input` | Yes |
+| `missing_inputs` / `missing_data` | `missing_data` | `insufficient_input` | Yes |
+| `health_access_denied` / `permissions_denied` | `permissions_denied` | `insufficient_input` | Yes |
+| `load_incomplete` / `gathering_data` | `load_incomplete` | `insufficient_input` | No (must stay gathering) |
+| `generation_failed` / `closed` / `failed` | `generation_failed` | `failed` | Yes |
+| anything else | `other` | `failed` | Yes |
 
 | Event | When | Params |
 |-------|------|--------|
 | `morning_proposal_generated` | Engine produces ready proposal | `selected_count_bucket`, `source`, optional `mode` (plan density) |
-| `morning_proposal_unavailable` | Gate unavailable (once / day+reason) | `reason`, `source` |
+| `morning_proposal_unavailable` | Terminal blocked/failed (once / day+reason) | `reason`, `stage`=`gate`\|`engine`, `outcome_class`, `source` |
 | `morning_proposal_no_changes` | No mutating/guidance changes (once / day) | `source` |
 | `morning_proposal_viewed` | Today ready card shown (once/proposal id) | `selected_count_bucket`, `surface` |
 | `morning_proposal_review_opened` | Review sheet appear | `selected_count_bucket`, `surface` |
@@ -148,7 +153,7 @@ Gate aliases are mapped before emit:
 | `morning_proposal_apply_partial` | Some applied, some failed | `applied_count_bucket`, `selected_count_bucket`, `result_type` |
 | `morning_proposal_apply_failed` | Apply failed / stale / none valid | `result_type` |
 | `morning_proposal_dismissed` | Keep original plan | `surface` |
-| `morning_proposal_stale` | Fingerprint drift | `source` |
+| `morning_proposal_stale` | Fingerprint drift (once / proposal id) | `source` |
 | `morning_proposal_adjusted_item_viewed` | Provenance detail opened | `change_kind?`, `surface` |
 | `morning_proposal_adjusted_item_manually_edited` | User edits after Apply | `change_kind?`, `surface` |
 | `morning_proposal_adjusted_item_completed` | Adjusted activity completed | `change_kind?` |
@@ -327,13 +332,28 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 | `paywall_viewed` | Once per paywall presentation (deduped by `paywall_instance_id`) | `source` = `onboarding` \| `root` \| `settings` \| `tab` \| `other`; `requested_tab`; `current_tab`; `has_full_access`; `paywall_instance_id` |
 | `subscription_option_selected` | Monthly / annual selected | `product_id`; `requested_tab` |
 | `subscription_purchase_started` | Purchase CTA | `product_id`; `requested_tab` |
-| `subscription_purchase_success` | Verified entitlement after purchase | `product_id`; `requested_tab` |
+| `subscription_purchase_success` | Verified entitlement after purchase (incl. deferred Ask-to-Buy unlock) | `product_id`; `requested_tab` |
 | `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
 | `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` |
 | `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab`; optional `paywall_instance_id` |
 | `subscription_restore_success` | Access confirmed | `result` = `restored` \| `already_entitled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id`; optional `paywall_instance_id` |
 | `subscription_restore_completed` | Finished without access grant and without StoreKit fault | `result` = `no_purchases` \| `cancelled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; optional `paywall_instance_id` |
 | `subscription_restore_failed` | Technical restore failure | `result` / `failure_reason` = `storekit_error` \| `timeout`; `error_code`; `error_domain`; `has_entitlement_after`; optional `paywall_instance_id` |
+
+### Product funnel vs Firebase revenue
+
+| Layer | Events | Purpose |
+|-------|--------|---------|
+| **Product funnel** | `subscription_purchase_*`, `subscription_restore_*` | CTA → outcome UX analytics (no money) |
+| **Financial** | Firebase auto `in_app_purchase` via `Analytics.logTransaction` | Revenue / ROAS |
+
+**StoreKit 2 + Firebase iOS SDK 12.16 (`FirebaseAnalyticsCore`):**
+- Initial verified purchase and Ask-to-Buy completion call `Analytics.logTransaction` once per `transaction.id` (`StoreKitTransactionAnalytics`) **before** `finish()`.
+- Do **not** add a manual `logEvent("in_app_purchase")` with product price on top of `logTransaction`.
+- **Renewals:** WeekFit does **not** call `logTransaction` on ordinary `Transaction.updates` renewals (avoids double-count with restore history). Paid renewals are expected from Firebase’s StoreKit 1 transaction observer / backend subscription lifecycle when available; validate in DebugView after a Sandbox accelerated renewal.
+- **Restore / `AppStore.sync`:** never calls `logTransaction` — historical entitlements must not recreate revenue.
+- Trial / free promo: `logTransaction` uses StoreKit’s transaction value (typically $0) — never invent list price as paid revenue.
+- Xcode StoreKit Testing: skipped. DEBUG builds: Analytics collection OFF.
 
 **Restore is never fired** from automatic entitlement refresh, app launch, or StoreKit transaction sync — only paywall / Settings Restore buttons.
 
@@ -354,6 +374,8 @@ Screen: `paywall` via `ProductScreenTracker` on paywall appear.
 
 Purchase:
 `paywall_viewed` → `subscription_option_selected` → `subscription_purchase_started` → `subscription_purchase_success` \| `subscription_purchase_cancelled` \| `subscription_purchase_failed`
+
+Ask to Buy / SCA: `purchase_failed` (`failure_reason=pending`) is terminal for the sheet attempt; when approval later unlocks via `Transaction.updates`, one deferred `subscription_purchase_success` is emitted (not for restore/renewals).
 
 Purchase `failure_reason` distinctions:
 - `verification_failed` — StoreKit returned an **unverified** purchase transaction (JWS failed).

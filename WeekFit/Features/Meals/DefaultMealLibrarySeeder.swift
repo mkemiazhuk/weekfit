@@ -654,8 +654,17 @@ enum DefaultMealLibrarySeeder {
             suggestedTime: recipe.suggestedTime,
             builderImageItems: builderImageItems,
             libraryKind: .meal,
-            creationMode: .ingredients
+            creationMode: .ingredients,
+            libraryPeriodRaw: libraryPeriod(for: recipe).rawValue
         )
+    }
+
+    private static func libraryPeriod(for recipe: Recipe) -> MealLibraryPeriod {
+        if breakfastIDs.contains(recipe.id) { return .breakfast }
+        if lunchIDs.contains(recipe.id) { return .lunch }
+        if dinnerIDs.contains(recipe.id) { return .dinner }
+        let hour = Int(recipe.suggestedTime.prefix(2)) ?? 12
+        return MealLibraryPeriod.period(at: hour)
     }
 
     /// Mirrors `MealBuilderView.mealTitle` (English stored titles).

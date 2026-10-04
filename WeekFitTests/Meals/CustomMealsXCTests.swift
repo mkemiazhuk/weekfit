@@ -492,6 +492,51 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(timedMeal(id: "custom-default", time: nil).libraryPeriod, .lunch)
     }
 
+    func testLibraryPeriodPrefersStoredRawOverSuggestedTime() {
+        let dinnerAtBreakfastHour = Meals(
+            id: "custom-explicit-dinner",
+            title: "Steak",
+            subtitle: "",
+            imageName: "",
+            type: .balanced,
+            calories: 500,
+            protein: 40,
+            carbs: 10,
+            fats: 20,
+            fiber: 2,
+            benefits: [],
+            ingredients: [],
+            suggestedTime: "08:30",
+            libraryPeriodRaw: MealLibraryPeriod.dinner.rawValue
+        )
+        XCTAssertEqual(dinnerAtBreakfastHour.libraryPeriod, .dinner)
+        XCTAssertEqual(dinnerAtBreakfastHour.slot, .dinner)
+    }
+
+    func testLibraryPeriodRawMissingKeepsLegacyInference() throws {
+        let json = """
+        {
+          "id": "legacy-custom",
+          "title": "Legacy Bowl",
+          "subtitle": "",
+          "imageName": "",
+          "type": "balanced",
+          "calories": 400,
+          "protein": 20,
+          "carbs": 40,
+          "fats": 10,
+          "fiber": 4,
+          "benefits": [],
+          "ingredients": [],
+          "suggestedTime": "19:00"
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(Meals.self, from: json)
+        XCTAssertNil(decoded.libraryPeriodRaw)
+        XCTAssertEqual(decoded.libraryPeriod, .dinner)
+    }
+
     func testLibraryPeriodGroupsViewAllMealsIntoBreakfastLunchDinner() {
         let meals = [
             timedMeal(id: "a", time: "19:00"),

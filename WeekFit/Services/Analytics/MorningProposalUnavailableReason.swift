@@ -20,6 +20,45 @@ enum MorningProposalUnavailableAnalyticsReason: String, Sendable, Equatable, Cas
     /// Generic product unavailability — catch-all for unmapped domain codes.
     case other = "other"
 
+    /// Gate vs engine — never conflates in-flight loading with a terminal failure.
+    enum Stage: String, Sendable {
+        case gate
+        case engine
+    }
+
+    /// Expected calendar/product state vs blocked inputs vs failed generation.
+    enum OutcomeClass: String, Sendable {
+        /// Normal product state (after noon, day already started) — not an error.
+        case expected
+        /// Inputs missing / denied / timed out — not a crash, but proposal blocked.
+        case insufficientInput = "insufficient_input"
+        /// Engine/generation terminal failure.
+        case failed
+    }
+
+    /// Expected calendar outcomes are persisted for UI but **not** emitted as
+    /// `morning_proposal_unavailable` — they flooded Firebase (afternoon opens).
+    var shouldEmitUnavailableEvent: Bool {
+        switch self {
+        case .outsideMorningWindow, .dayStarted, .dayExpired:
+            return false
+        case .timeout, .missingData, .permissionsDenied, .loadIncomplete,
+             .generationFailed, .other:
+            return true
+        }
+    }
+
+    var outcomeClass: OutcomeClass {
+        switch self {
+        case .outsideMorningWindow, .dayStarted, .dayExpired:
+            return .expected
+        case .timeout, .missingData, .permissionsDenied, .loadIncomplete:
+            return .insufficientInput
+        case .generationFailed, .other:
+            return .failed
+        }
+    }
+
     /// Maps a gate / store / engine reason code to a stable analytics value.
     static func fromDomainReason(_ reason: String) -> MorningProposalUnavailableAnalyticsReason {
         switch reason {
@@ -32,6 +71,8 @@ enum MorningProposalUnavailableAnalyticsReason: String, Sendable, Equatable, Cas
         case "missing_inputs", "missing_data":
             return .missingData
         case "load_incomplete", "gathering_data":
+            // Gathering itself must not emit unavailable; this maps only if a
+            // terminal path incorrectly surfaces the token.
             return .loadIncomplete
         case "generation_failed", "closed", "generation_mode_closed", "failed":
             return .generationFailed

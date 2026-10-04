@@ -75,6 +75,26 @@ final class OnboardingFunnelAnalyticsTests: XCTestCase {
         XCTAssertEqual(recording.events(named: .onboardingCompleted).count, 1)
     }
 
+    func testSkippedExistingIsNeitherStartNorCompleted() {
+        funnel.trackSkippedExistingIfNeeded()
+        funnel.trackSkippedExistingIfNeeded()
+
+        XCTAssertEqual(recording.events(named: .onboardingSkippedExisting).count, 1)
+        XCTAssertEqual(
+            recording.events(named: .onboardingSkippedExisting).first?
+                .parameters[AnalyticsParameterKey.reason],
+            "existing_install"
+        )
+        XCTAssertTrue(recording.events(named: .onboardingStarted).isEmpty)
+        XCTAssertTrue(recording.events(named: .onboardingCompleted).isEmpty)
+    }
+
+    func testSkippedExistingSuppressedAfterStarted() {
+        funnel.trackStartedIfNeeded()
+        funnel.trackSkippedExistingIfNeeded()
+        XCTAssertTrue(recording.events(named: .onboardingSkippedExisting).isEmpty)
+    }
+
     func testHealthConnectionSuccessEmitsExpectedEvent() {
         funnel.trackHealthConnectionStarted()
         funnel.trackHealthConnectionCompleted()

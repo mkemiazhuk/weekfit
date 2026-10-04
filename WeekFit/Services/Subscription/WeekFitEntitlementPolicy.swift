@@ -14,9 +14,10 @@ import Foundation
 ///
 /// In the **Sandbox** environment Apple always returns
 /// `AppTransaction.originalPurchaseDate` = 2013-08-01 (PDT sentinel). That date
-/// is before any realistic monetization cutoff, so Sandbox installs look
-/// `legacy` unless a DEBUG-only force-non-legacy override is used. Production
-/// and App Store builds never apply that override.
+/// is before any realistic monetization cutoff. WeekFit treats the Sandbox
+/// sentinel as **non-legacy** so paywall / purchase / expire / restore can be
+/// tested. **Production** App Store `environment` still uses the real download
+/// date against the cutoff — grandfathering is unchanged for App Store users.
 ///
 /// ## Unavailable StoreKit
 /// If a previous **verified** resolution exists on this install, keep it:
@@ -109,6 +110,10 @@ enum WeekFitEntitlementPolicy {
         }
     }
 
+    /// Entitled subscription periods per Apple StoreKit:
+    /// - active `.subscribed` period (not expired)
+    /// - `.inGracePeriod` until `gracePeriodExpirationDate` (if known)
+    /// - **not** bare `.inBillingRetryPeriod` (retry after grace ended / grace disabled)
     static func isActiveSubscription(
         _ subscription: WeekFitSubscriptionSnapshot,
         now: Date = Date()
@@ -117,7 +122,20 @@ enum WeekFitEntitlementPolicy {
             return false
         }
         if subscription.isRevoked { return false }
-        if subscription.inGraceOrRetry { return true }
+
+        switch subscription.billingState {
+        case .inGracePeriod:
+            if let graceEnd = subscription.gracePeriodExpirationDate, graceEnd <= now {
+                return false
+            }
+            return true
+        case .inBillingRetry:
+            // Apple: billing retry without grace is not entitled to service.
+            return false
+        case .none:
+            break
+        }
+
         if subscription.isExpired { return false }
         if let expiration = subscription.expirationDate, expiration <= now {
             return false
@@ -149,13 +167,11 @@ enum WeekFitEntitlementPolicy {
 
     /// Legacy eligibility from a verified AppTransaction.
     ///
-    /// Production / Sandbox / TestFlight environments use the real App Store date.
-    /// DEBUG Xcode StoreKit may return artificial dates such as 1970-01-01; those
-    /// must not grandfather local test installs.
-    ///
-    /// `forceNonLegacyAppTransaction` is DEBUG-only wiring from launch args; Release
-    /// callers always pass `false`, so Production / TestFlight / App Store cutoff
-    /// behavior is unchanged.
+    /// - **Production** App Store: real `originalPurchaseDate` vs monetization cutoff.
+    /// - **Sandbox**: Apple's 2013-08-01 sentinel must not grandfather (see
+    ///   `isSandboxSentinelOriginalPurchaseDate`).
+    /// - DEBUG Xcode StoreKit may return artificial dates (e.g. 1970-01-01).
+    /// - `forceNonLegacyAppTransaction` is an extra DEBUG launch-arg override.
     private static func isLegacyFromVerifiedAppTransaction(
         originalPurchaseDate: Date,
         environment: String,
@@ -172,6 +188,28 @@ enum WeekFitEntitlementPolicy {
         #else
         _ = forceNonLegacyAppTransaction
         #endif
+        if isSandboxSentinelOriginalPurchaseDate(originalPurchaseDate, environment: environment) {
+            return false
+        }
         return isLegacy(originalPurchaseDate: originalPurchaseDate, cutoff: cutoff)
     }
+
+    /// Apple Sandbox always reports `originalPurchaseDate` = 2013-08-01 PDT.
+    /// Only applies when StoreKit `environment` is Sandbox — never Production.
+    static func isSandboxSentinelOriginalPurchaseDate(
+        _ date: Date,
+        environment: String
+    ) -> Bool {
+        guard environment.compare("Sandbox", options: [.caseInsensitive]) == .orderedSame else {
+            return false
+        }
+        return abs(date.timeIntervalSince(Self.sandboxSentinelPurchaseDate)) < 86_400
+    }
+
+    /// 2013-08-01 00:00:00 America/Los_Angeles — Apple's documented Sandbox sentinel.
+    private static let sandboxSentinelPurchaseDate: Date = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .gmt
+        return calendar.date(from: DateComponents(year: 2013, month: 8, day: 1)) ?? Date.distantPast
+    }()
 }

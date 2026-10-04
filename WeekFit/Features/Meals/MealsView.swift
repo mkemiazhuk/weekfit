@@ -37,6 +37,7 @@ struct MealsView: View {
     @State private var creationStep: MealCreationStep = .builder
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
+    @State private var editingLibraryMeal: Meals?
     @State private var showContent = false
     @State private var highlightedMealID: String?
 
@@ -302,6 +303,10 @@ struct MealsView: View {
                         selectedMeal = meal
                     }
                 },
+                onEdit: { meal in
+                    expandedLibraryKind = nil
+                    beginEditingLibraryMeal(meal)
+                },
                 onLog: { meal in
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     executeDirectQuickLog(meal)
@@ -328,12 +333,46 @@ struct MealsView: View {
                 }
             )
         }
+        .fullScreenCover(item: $editingLibraryMeal) { meal in
+            if meal.isFoodProduct {
+                CustomMealBuilderView(
+                    editingMeal: meal,
+                    existingMeals: mealsViewModel.customMeals,
+                    onSave: { updated in
+                        saveMealToLibrary(updated)
+                        editingLibraryMeal = nil
+                    }
+                )
+            } else {
+                MealBuilderView(
+                    editingMeal: meal,
+                    onSave: { updated in
+                        saveMealToLibrary(updated)
+                        editingLibraryMeal = nil
+                    },
+                    onCancel: {
+                        editingLibraryMeal = nil
+                    }
+                )
+            }
+        }
         .onChange(of: showCreationSheet) { _, isPresented in
             guard !isPresented else { return }
             // Manual food path: cancel only if started and not already completed/failed.
             ProductAnalytics.foodLoggingCancelIfNeeded()
             creationStep = .builder
         }
+    }
+
+    private func beginEditingLibraryMeal(_ meal: Meals) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if meal.isFoodProduct {
+            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
+        } else {
+            ProductAnalytics.mealBuilderStarted(mode: .edit, source: .meals)
+            ProductAnalytics.trackScreen(.mealBuilder)
+        }
+        editingLibraryMeal = meal
     }
 
     private func openCreation(_ step: MealCreationStep) {
@@ -703,7 +742,8 @@ struct MealsView: View {
                         meal: meal,
                         kind: kind,
                         isHighlighted: highlightedMealID == meal.id,
-                        showsPeriodMark: kind == .meal,
+                        showsPeriodMark: true,
+                        onEdit: { beginEditingLibraryMeal(meal) },
                         onLog: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             executeDirectQuickLog(meal)
@@ -753,6 +793,15 @@ struct MealsView: View {
                 }
                 .contextMenu {
                     if !isQuickLogMode {
+                        Button {
+                            beginEditingLibraryMeal(meal)
+                        } label: {
+                            Label(
+                                WeekFitLocalizedString("common.action.edit"),
+                                systemImage: "square.and.pencil"
+                            )
+                        }
+
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             executeDirectQuickLog(meal)
@@ -1388,10 +1437,20 @@ enum MealRecommendationEngine {
         guard !meals.isEmpty else { return nil }
 
         let context = context(from: input, now: now)
+        let preferredPeriod = preferredLibraryPeriod(for: context, now: now)
         let proteinAdvice = WeeklyProteinAdvisor.advise(from: input)
         let rankedMeal = meals.max { lhs, rhs in
-            score(lhs, context: context, proteinAdvice: proteinAdvice)
-                < score(rhs, context: context, proteinAdvice: proteinAdvice)
+            score(
+                lhs,
+                context: context,
+                preferredPeriod: preferredPeriod,
+                proteinAdvice: proteinAdvice
+            ) < score(
+                rhs,
+                context: context,
+                preferredPeriod: preferredPeriod,
+                proteinAdvice: proteinAdvice
+            )
         }
 
         guard let meal = rankedMeal else { return nil }
@@ -1400,6 +1459,7 @@ enum MealRecommendationEngine {
         let factors = recommendationFactors(
             meal: meal,
             context: context,
+            preferredPeriod: preferredPeriod,
             meals: meals,
             input: input,
             proteinAdvice: proteinAdvice
@@ -1501,9 +1561,54 @@ enum MealRecommendationEngine {
         }
     }
 
+    /// Clock / context → breakfast, lunch, or dinner bucket the hero should prefer.
+    private static func preferredLibraryPeriod(
+        for context: RecommendationContext,
+        now: Date
+    ) -> MealLibraryPeriod {
+        switch context {
+        case .morningLight:
+            return .breakfast
+        case .middayBalanced, .balanced:
+            return .lunch
+        case .eveningLight:
+            return .dinner
+        case .beforeSessionLight, .afterSessionLater, .recoveryWindow,
+             .afterHeatLater, .heatRecovery, .recoveryProtection:
+            // Activity / recovery still follows the clock for category fit.
+            return MealLibraryPeriod.period(
+                at: Calendar.current.component(.hour, from: now)
+            )
+        }
+    }
+
+    /// Prefer meals tagged for the current meal period; nutrition can still override.
+    private static func libraryPeriodFitBonus(
+        meal: Meals,
+        preferred: MealLibraryPeriod,
+        proteinAdvice: WeeklyProteinAdvice
+    ) -> Double {
+        let matchWeight = proteinAdvice.prefersProteinCatchUp ? 32.0 : 52.0
+        let mismatchWeight = proteinAdvice.prefersProteinCatchUp ? 10.0 : 22.0
+
+        let mealPeriod = meal.libraryPeriod
+        if mealPeriod == preferred {
+            return matchWeight
+        }
+
+        switch (preferred, mealPeriod) {
+        case (.breakfast, .lunch), (.lunch, .breakfast),
+             (.lunch, .dinner), (.dinner, .lunch):
+            return -mismatchWeight * 0.45
+        default:
+            return -mismatchWeight
+        }
+    }
+
     private static func score(
         _ meal: Meals,
         context: RecommendationContext,
+        preferredPeriod: MealLibraryPeriod,
         proteinAdvice: WeeklyProteinAdvice
     ) -> Double {
         let calories = Double(meal.calories)
@@ -1574,10 +1679,16 @@ enum MealRecommendationEngine {
                 + calorieBandScore(calories, ideal: 530, width: 0.16)
         }
 
-        return base + WeeklyProteinAdvisor.proteinFitBonus(
-            mealProtein: meal.protein,
-            advice: proteinAdvice
-        )
+        return base
+            + WeeklyProteinAdvisor.proteinFitBonus(
+                mealProtein: meal.protein,
+                advice: proteinAdvice
+            )
+            + libraryPeriodFitBonus(
+                meal: meal,
+                preferred: preferredPeriod,
+                proteinAdvice: proteinAdvice
+            )
     }
 
     private static func calorieBandScore(
@@ -1761,6 +1872,7 @@ enum MealRecommendationEngine {
     private static func recommendationFactors(
         meal: Meals,
         context: RecommendationContext,
+        preferredPeriod: MealLibraryPeriod,
         meals: [Meals],
         input: CoachInputSnapshot,
         proteinAdvice: WeeklyProteinAdvice
@@ -1773,6 +1885,7 @@ enum MealRecommendationEngine {
         let hasRecoveryCarbs = meal.carbs >= 35
         let isLight = meal.calories <= lightThreshold || meal.calories <= 430
         let isLowFat = meal.fats <= 15
+        let matchesMealPeriod = meal.libraryPeriod == preferredPeriod
 
         var factors: [String] = []
 
@@ -1780,6 +1893,10 @@ enum MealRecommendationEngine {
             let text = WeekFitLocalizedString(key)
             guard factors.count < 3, !factors.contains(text) else { return }
             factors.append(text)
+        }
+
+        if matchesMealPeriod {
+            appendUnique("meals.library.recommendation.factor.fitsCurrentMealTime")
         }
 
         if proteinAdvice.prefersProteinCatchUp {
@@ -2030,6 +2147,7 @@ private struct MealLibraryExpandSheet: View {
     let items: [Meals]
     var highlightedMealID: String?
     let onSelect: (Meals) -> Void
+    let onEdit: (Meals) -> Void
     let onLog: (Meals) -> Void
     let onDelete: (Meals) -> Void
 
@@ -2169,7 +2287,8 @@ private struct MealLibraryExpandSheet: View {
                     meal: meal,
                     kind: kind,
                     isHighlighted: highlightedMealID == meal.id,
-                    showsPeriodMark: kind == .meal,
+                    showsPeriodMark: true,
+                    onEdit: { onEdit(meal) },
                     onLog: { onLog(meal) },
                     onDelete: { onDelete(meal) }
                 )
@@ -2216,23 +2335,18 @@ private struct MealLibraryExpandSheet: View {
                 } else {
                     ScrollView(showsIndicators: false) {
                         Group {
-                            if kind == .meal {
-                                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                                    ForEach(groupedMealSections, id: \.period) { section in
-                                        Section {
-                                            if isSectionExpanded(section.period) {
-                                                mealGrid(section.meals)
-                                                    .padding(.top, MealLibraryCardMetrics.ExpandSheet.headerToCards)
-                                                    .padding(.bottom, MealLibraryCardMetrics.ExpandSheet.sectionBottom)
-                                            }
-                                        } header: {
-                                            periodHeader(section.period, count: section.meals.count)
+                            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                ForEach(groupedMealSections, id: \.period) { section in
+                                    Section {
+                                        if isSectionExpanded(section.period) {
+                                            mealGrid(section.meals)
+                                                .padding(.top, MealLibraryCardMetrics.ExpandSheet.headerToCards)
+                                                .padding(.bottom, MealLibraryCardMetrics.ExpandSheet.sectionBottom)
                                         }
+                                    } header: {
+                                        periodHeader(section.period, count: section.meals.count)
                                     }
                                 }
-                            } else {
-                                mealGrid(filteredItems)
-                                    .padding(.top, MealLibraryCardMetrics.ExpandSheet.headerToCards)
                             }
                         }
                         .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)

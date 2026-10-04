@@ -54,6 +54,9 @@ struct Meals: Identifiable, Codable, Equatable {
     var localPhotoThumbnailFilename: String?
     var barcode: String?
     var nutritionDataSource: NutritionDataSource?
+    /// Explicit breakfast / lunch / dinner for library grouping.
+    /// `nil` = legacy meals — keep inferring from starter IDs / suggestedTime.
+    var libraryPeriodRaw: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -77,6 +80,7 @@ struct Meals: Identifiable, Codable, Equatable {
         case localPhotoThumbnailFilename
         case barcode
         case nutritionDataSource
+        case libraryPeriodRaw
     }
 
     init(
@@ -100,7 +104,8 @@ struct Meals: Identifiable, Codable, Equatable {
         localPhotoFilename: String? = nil,
         localPhotoThumbnailFilename: String? = nil,
         barcode: String? = nil,
-        nutritionDataSource: NutritionDataSource? = nil
+        nutritionDataSource: NutritionDataSource? = nil,
+        libraryPeriodRaw: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -123,6 +128,7 @@ struct Meals: Identifiable, Codable, Equatable {
         self.localPhotoThumbnailFilename = localPhotoThumbnailFilename
         self.barcode = barcode
         self.nutritionDataSource = nutritionDataSource
+        self.libraryPeriodRaw = libraryPeriodRaw
     }
 
     init(from decoder: Decoder) throws {
@@ -226,6 +232,12 @@ struct Meals: Identifiable, Codable, Equatable {
         nutritionDataSource = try container.decodeIfPresent(
             NutritionDataSource.self,
             forKey: .nutritionDataSource
+        )
+
+        // Backward compatible: older catalogs omit this key.
+        libraryPeriodRaw = try container.decodeIfPresent(
+            String.self,
+            forKey: .libraryPeriodRaw
         )
     }
 }
@@ -388,6 +400,9 @@ extension Meals {
     }
 
     var slot: WeekFitMealSlot {
+        if let storedLibraryPeriod {
+            return storedLibraryPeriod.weekFitMealSlot
+        }
 
         let time = displayTime
 
@@ -412,8 +427,24 @@ extension Meals {
         }
     }
 
+    /// Explicit period when the user (or a newer catalog) set one.
+    var storedLibraryPeriod: MealLibraryPeriod? {
+        guard let raw = libraryPeriodRaw?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(),
+            !raw.isEmpty else {
+            return nil
+        }
+        return MealLibraryPeriod(rawValue: raw)
+    }
+
     /// Breakfast / lunch / dinner bucket for the View All Meals sheet.
+    /// Prefer stored period → starter IDs → suggestedTime hour (legacy).
     var libraryPeriod: MealLibraryPeriod {
+        if let storedLibraryPeriod {
+            return storedLibraryPeriod
+        }
+
         if DefaultMealLibrarySeeder.breakfastIDs.contains(id) { return .breakfast }
         if DefaultMealLibrarySeeder.lunchIDs.contains(id) { return .lunch }
         if DefaultMealLibrarySeeder.dinnerIDs.contains(id) { return .dinner }

@@ -117,7 +117,39 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
         XCTAssertFalse(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
     }
 
-    func testBillingRetryKeepsAccess() {
+    func testBillingGracePeriodKeepsAccessUntilGraceEnds() {
+        let original = cutoff.addingTimeInterval(86_400)
+        let graceEnd = Date().addingTimeInterval(86_400)
+        let decision = WeekFitEntitlementPolicy.resolve(
+            appTransaction: .verified(originalPurchaseDate: original, environment: "test"),
+            subscription: WeekFitSubscriptionSnapshot(
+                productID: WeekFitSubscriptionProductID.annual.rawValue,
+                isIntroductoryTrial: false,
+                expirationDate: Date().addingTimeInterval(-60),
+                isExpired: false,
+                isRevoked: false,
+                billingState: .inGracePeriod,
+                gracePeriodExpirationDate: graceEnd
+            )
+        )
+        XCTAssertEqual(decision.state, .subscribed)
+        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
+
+        let afterGrace = WeekFitEntitlementPolicy.isActiveSubscription(
+            WeekFitSubscriptionSnapshot(
+                productID: WeekFitSubscriptionProductID.annual.rawValue,
+                isIntroductoryTrial: false,
+                expirationDate: Date().addingTimeInterval(-60),
+                isExpired: true,
+                isRevoked: false,
+                billingState: .inGracePeriod,
+                gracePeriodExpirationDate: Date().addingTimeInterval(-1)
+            )
+        )
+        XCTAssertFalse(afterGrace)
+    }
+
+    func testBillingRetryAloneDoesNotGrantAccess() {
         let original = cutoff.addingTimeInterval(86_400)
         let decision = WeekFitEntitlementPolicy.resolve(
             appTransaction: .verified(originalPurchaseDate: original, environment: "test"),
@@ -127,11 +159,28 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
                 expirationDate: Date().addingTimeInterval(-60),
                 isExpired: true,
                 isRevoked: false,
-                inGraceOrRetry: true
+                billingState: .inBillingRetry
             )
         )
-        XCTAssertEqual(decision.state, .subscribed)
-        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
+        XCTAssertEqual(decision.state, .expired)
+        XCTAssertFalse(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
+    }
+
+    func testPaymentRecoveryAfterRetryGrantsAccessAgain() {
+        let original = cutoff.addingTimeInterval(86_400)
+        let recovered = WeekFitEntitlementPolicy.resolve(
+            appTransaction: .verified(originalPurchaseDate: original, environment: "test"),
+            subscription: WeekFitSubscriptionSnapshot(
+                productID: WeekFitSubscriptionProductID.annual.rawValue,
+                isIntroductoryTrial: false,
+                expirationDate: Date().addingTimeInterval(86_400),
+                isExpired: false,
+                isRevoked: false,
+                billingState: .none
+            )
+        )
+        XCTAssertEqual(recovered.state, .subscribed)
+        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: recovered.state))
     }
 
     func testNeverResolvedStoreKitOutageFailsOpen() {
@@ -272,29 +321,55 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
         XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
     }
 
-    #if DEBUG
-    func testForceNonLegacyIgnoresSandboxSentinelWithoutSkippingSubscription() {
-        // Apple Sandbox sentinel date that otherwise grandfathered as legacy.
+    func testSandboxSentinelDoesNotGrandfatherEvenWithoutDebugForceFlag() {
+        // Apple Sandbox always reports 2013-08-01 PDT — must not unlock Premium as legacy.
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
         let sandboxSentinel = calendar.date(from: DateComponents(year: 2013, month: 8, day: 1))!
 
-        let withoutForce = WeekFitEntitlementPolicy.resolve(
+        XCTAssertTrue(
+            WeekFitEntitlementPolicy.isSandboxSentinelOriginalPurchaseDate(
+                sandboxSentinel,
+                environment: "Sandbox"
+            )
+        )
+        XCTAssertFalse(
+            WeekFitEntitlementPolicy.isSandboxSentinelOriginalPurchaseDate(
+                sandboxSentinel,
+                environment: "Production"
+            )
+        )
+
+        let sandboxNoSub = WeekFitEntitlementPolicy.resolve(
             appTransaction: .verified(originalPurchaseDate: sandboxSentinel, environment: "Sandbox"),
             subscription: nil
         )
-        XCTAssertEqual(withoutForce.state, .legacy)
+        XCTAssertEqual(sandboxNoSub.state, .unsubscribed)
+        XCTAssertFalse(WeekFitEntitlementPolicy.hasFullAccess(for: sandboxNoSub.state))
 
-        let forced = WeekFitEntitlementPolicy.resolve(
+        let sandboxExpired = WeekFitEntitlementPolicy.resolve(
             appTransaction: .verified(originalPurchaseDate: sandboxSentinel, environment: "Sandbox"),
-            subscription: nil,
-            forceNonLegacyAppTransaction: true
+            subscription: WeekFitSubscriptionSnapshot(
+                productID: WeekFitSubscriptionProductID.monthly.rawValue,
+                isIntroductoryTrial: false,
+                expirationDate: Date().addingTimeInterval(-60),
+                isExpired: true,
+                isRevoked: false,
+                billingState: .none
+            )
         )
-        XCTAssertEqual(forced.state, .unsubscribed)
-        XCTAssertTrue(forced.shouldPersistVerifiedEntitlement)
-        XCTAssertFalse(WeekFitEntitlementPolicy.hasFullAccess(for: forced.state))
+        XCTAssertEqual(sandboxExpired.state, .expired)
+        XCTAssertFalse(WeekFitEntitlementPolicy.hasFullAccess(for: sandboxExpired.state))
 
-        let withActiveSub = WeekFitEntitlementPolicy.resolve(
+        // Production App Store with a real pre-cutoff date still grandfathers.
+        let productionLegacy = WeekFitEntitlementPolicy.resolve(
+            appTransaction: .verified(originalPurchaseDate: sandboxSentinel, environment: "Production"),
+            subscription: nil
+        )
+        XCTAssertEqual(productionLegacy.state, .legacy)
+        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: productionLegacy.state))
+
+        let sandboxActive = WeekFitEntitlementPolicy.resolve(
             appTransaction: .verified(originalPurchaseDate: sandboxSentinel, environment: "Sandbox"),
             subscription: WeekFitSubscriptionSnapshot(
                 productID: WeekFitSubscriptionProductID.monthly.rawValue,
@@ -302,14 +377,12 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
                 expirationDate: Date().addingTimeInterval(86_400),
                 isExpired: false,
                 isRevoked: false,
-                inGraceOrRetry: false
-            ),
-            forceNonLegacyAppTransaction: true
+                billingState: .none
+            )
         )
-        XCTAssertEqual(withActiveSub.state, .subscribed)
-        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: withActiveSub.state))
+        XCTAssertEqual(sandboxActive.state, .subscribed)
+        XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: sandboxActive.state))
     }
-    #endif
 
     func testUnknownProductIsNotAnActiveSubscription() {
         XCTAssertFalse(

@@ -8,6 +8,8 @@ import OSLog
 ///
 /// Distribution + consent policy:
 /// - DEBUG / Xcode → Analytics OFF, Crashlytics OFF
+///   (opt-in: launch arg `-weekfit-enable-debug-analytics` → Analytics ON with
+///   `distribution=debug` for Sandbox QA / DebugView; still never `appstore`)
 /// - TestFlight / App Store → Analytics ON when `ProductAnalyticsConsent` allows it
 ///   (default ON; user can disable in Settings); Crashlytics ON (crash diagnostics;
 ///   no health payloads — see `StartupDiagnostics`)
@@ -30,30 +32,33 @@ enum FirebaseEnvironment {
         let distribution = AppDistribution.current
         switch distribution {
         case .debug:
+            #if DEBUG
+            if WeekFitUITestSupport.shouldEnableDebugAnalytics {
+                applyCollection(
+                    analyticsOn: ProductAnalyticsConsent.isSharingEnabled(),
+                    crashlyticsOn: true,
+                    distribution: distribution
+                )
+                logger.debug("Firebase telemetry: debug — analytics ON (Sandbox QA launch arg), crashlytics ON")
+            } else {
+                Analytics.setAnalyticsCollectionEnabled(false)
+                Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+                logger.debug("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
+            }
+            #else
             Analytics.setAnalyticsCollectionEnabled(false)
             Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
-            #if DEBUG
-            logger.debug("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
             #endif
 
         case .testFlight, .appStore:
-            let analyticsOn = ProductAnalyticsConsent.isSharingEnabled()
-            Analytics.setAnalyticsCollectionEnabled(analyticsOn)
-            Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
-            Analytics.setUserProperty(
-                distribution.analyticsValue,
-                forName: AnalyticsParameterKey.distribution
-            )
-            Analytics.setDefaultEventParameters([
-                AnalyticsParameterKey.distribution: distribution.analyticsValue
-            ])
-            Crashlytics.crashlytics().setCustomValue(
-                distribution.analyticsValue,
-                forKey: AnalyticsParameterKey.distribution
+            applyCollection(
+                analyticsOn: ProductAnalyticsConsent.isSharingEnabled(),
+                crashlyticsOn: true,
+                distribution: distribution
             )
             #if DEBUG
             logger.debug(
-                "Firebase telemetry: \(distribution.analyticsValue, privacy: .public) — analytics \(analyticsOn ? "ON" : "OFF", privacy: .public) (consent), crashlytics ON"
+                "Firebase telemetry: \(distribution.analyticsValue, privacy: .public) — analytics collection applied (consent), crashlytics ON"
             )
             #endif
         }
@@ -73,7 +78,15 @@ enum FirebaseEnvironment {
         let distribution = AppDistribution.current
         switch distribution {
         case .debug:
+            #if DEBUG
+            if WeekFitUITestSupport.shouldEnableDebugAnalytics {
+                Analytics.setAnalyticsCollectionEnabled(ProductAnalyticsConsent.isSharingEnabled())
+            } else {
+                Analytics.setAnalyticsCollectionEnabled(false)
+            }
+            #else
             Analytics.setAnalyticsCollectionEnabled(false)
+            #endif
         case .testFlight, .appStore:
             let analyticsOn = ProductAnalyticsConsent.isSharingEnabled()
             Analytics.setAnalyticsCollectionEnabled(analyticsOn)
@@ -83,6 +96,26 @@ enum FirebaseEnvironment {
             )
             #endif
         }
+    }
+
+    private static func applyCollection(
+        analyticsOn: Bool,
+        crashlyticsOn: Bool,
+        distribution: AppDistribution
+    ) {
+        Analytics.setAnalyticsCollectionEnabled(analyticsOn)
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(crashlyticsOn)
+        Analytics.setUserProperty(
+            distribution.analyticsValue,
+            forName: AnalyticsParameterKey.distribution
+        )
+        Analytics.setDefaultEventParameters([
+            AnalyticsParameterKey.distribution: distribution.analyticsValue
+        ])
+        Crashlytics.crashlytics().setCustomValue(
+            distribution.analyticsValue,
+            forKey: AnalyticsParameterKey.distribution
+        )
     }
 
     /// Test seam.

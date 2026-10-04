@@ -12,6 +12,8 @@ enum AnalyticsEvent: String, Sendable {
     case onboardingStarted = "onboarding_started"
     case onboardingStepViewed = "onboarding_step_viewed"
     case onboardingCompleted = "onboarding_completed"
+    /// Existing install migrated past first-run (goal/Health already set) — not a funnel start.
+    case onboardingSkippedExisting = "onboarding_skipped_existing"
 
     case healthConnectionStarted = "health_connection_started"
     case healthConnectionCompleted = "health_connection_completed"

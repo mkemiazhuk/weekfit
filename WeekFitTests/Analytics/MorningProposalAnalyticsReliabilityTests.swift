@@ -39,24 +39,39 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
 
     // MARK: - Unavailable dedupe
 
+    func testExpectedCalendarReasonsDoNotEmitUnavailable() {
+        let day = "2026-08-24"
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "outside_window", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "day_started", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "expired", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "gathering_data", stage: .gate)
+
+        XCTAssertEqual(recording.events(named: .morningProposalUnavailable).count, 0)
+    }
+
     func testUnavailableSameDaySameReasonEmitsOnce() {
         let day = "2026-08-24"
-        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "outside_window")
-        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "outside_window")
-        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "outside_morning_window")
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "missing_inputs", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "missing_data", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "missing_inputs", stage: .engine)
 
         let events = recording.events(named: .morningProposalUnavailable)
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(
             events.first?.parameters[AnalyticsParameterKey.reason],
-            MorningProposalUnavailableAnalyticsReason.outsideMorningWindow.rawValue
+            MorningProposalUnavailableAnalyticsReason.missingData.rawValue
+        )
+        XCTAssertEqual(events.first?.parameters[AnalyticsParameterKey.stage], "gate")
+        XCTAssertEqual(
+            events.first?.parameters[AnalyticsParameterKey.outcomeClass],
+            MorningProposalUnavailableAnalyticsReason.OutcomeClass.insufficientInput.rawValue
         )
     }
 
     func testUnavailableSameDayDifferentReasonsEmitTwice() {
         let day = "2026-08-24"
-        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "missing_inputs")
-        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "outside_window")
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "missing_inputs", stage: .gate)
+        MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "generation_failed", stage: .engine)
 
         let events = recording.events(named: .morningProposalUnavailable)
         XCTAssertEqual(events.count, 2)
@@ -64,14 +79,22 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
             Set(events.compactMap { $0.parameters[AnalyticsParameterKey.reason] }),
             Set([
                 MorningProposalUnavailableAnalyticsReason.missingData.rawValue,
-                MorningProposalUnavailableAnalyticsReason.outsideMorningWindow.rawValue
+                MorningProposalUnavailableAnalyticsReason.generationFailed.rawValue
             ])
         )
     }
 
     func testUnavailableNextDayReEmits() {
-        MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-24", reason: "outside_window")
-        MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-25", reason: "outside_window")
+        MorningProposalAnalytics.proposalUnavailable(
+            dayKey: "2026-08-24",
+            reason: "timeout",
+            stage: .gate
+        )
+        MorningProposalAnalytics.proposalUnavailable(
+            dayKey: "2026-08-25",
+            reason: "timeout",
+            stage: .gate
+        )
 
         XCTAssertEqual(recording.events(named: .morningProposalUnavailable).count, 2)
     }
@@ -80,9 +103,20 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
         let day = "2026-08-24"
         // Simulate Today appear + settled metrics + scene active + coordinator refresh.
         for _ in 0..<8 {
-            MorningProposalAnalytics.proposalUnavailable(dayKey: day, reason: "day_started")
+            MorningProposalAnalytics.proposalUnavailable(
+                dayKey: day,
+                reason: "generation_failed",
+                stage: .engine
+            )
         }
         XCTAssertEqual(recording.events(named: .morningProposalUnavailable).count, 1)
+    }
+
+    func testStaleEmitsOncePerProposalId() {
+        MorningProposalAnalytics.proposalStale(proposalId: "proposal-a")
+        MorningProposalAnalytics.proposalStale(proposalId: "proposal-a")
+        MorningProposalAnalytics.proposalStale(proposalId: "proposal-b")
+        XCTAssertEqual(recording.events(named: .morningProposalStale).count, 2)
     }
 
     // MARK: - Reason mapping
@@ -117,8 +151,16 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
     }
 
     func testUnavailableEmitsCanonicalReasonStrings() {
-        MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-24", reason: "outside_window")
-        MorningProposalAnalytics.proposalUnavailable(dayKey: "2026-08-24", reason: "day_started")
+        MorningProposalAnalytics.proposalUnavailable(
+            dayKey: "2026-08-24",
+            reason: "missing_inputs",
+            stage: .gate
+        )
+        MorningProposalAnalytics.proposalUnavailable(
+            dayKey: "2026-08-24",
+            reason: "timeout",
+            stage: .gate
+        )
 
         let reasons = recording.parameterValues(
             for: .morningProposalUnavailable,
@@ -127,12 +169,12 @@ final class MorningProposalAnalyticsReliabilityTests: XCTestCase {
         XCTAssertEqual(
             Set(reasons),
             Set([
-                MorningProposalUnavailableAnalyticsReason.outsideMorningWindow.rawValue,
-                MorningProposalUnavailableAnalyticsReason.dayStarted.rawValue
+                MorningProposalUnavailableAnalyticsReason.missingData.rawValue,
+                MorningProposalUnavailableAnalyticsReason.timeout.rawValue
             ])
         )
         XCTAssertFalse(reasons.contains("other"))
-        XCTAssertFalse(reasons.contains("outside_window"))
+        XCTAssertFalse(reasons.contains("missing_inputs"))
     }
 
     // MARK: - No-change dedupe

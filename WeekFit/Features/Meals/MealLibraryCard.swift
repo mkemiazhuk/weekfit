@@ -244,6 +244,7 @@ struct MealLibraryGridCard: View {
     var kind: MealLibraryRowKind = .meal
     var isHighlighted: Bool = false
     var showsPeriodMark: Bool = false
+    var onEdit: (() -> Void)? = nil
     var onLog: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
 
@@ -258,7 +259,7 @@ struct MealLibraryGridCard: View {
     private var kcalColor: Color { textSecondary }
 
     private var showsOverflowMenu: Bool {
-        onLog != nil || onDelete != nil
+        onEdit != nil || onLog != nil || onDelete != nil
     }
 
     var body: some View {
@@ -280,6 +281,15 @@ struct MealLibraryGridCard: View {
 
                 if showsOverflowMenu {
                     Menu {
+                        if let onEdit {
+                            Button(action: onEdit) {
+                                Label(
+                                    WeekFitLocalizedString("common.action.edit"),
+                                    systemImage: "square.and.pencil"
+                                )
+                            }
+                        }
+
                         if let onLog {
                             Button(action: onLog) {
                                 Label(

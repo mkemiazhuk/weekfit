@@ -69,6 +69,7 @@ enum OnboardingStore {
             hasCompletedOnboarding = true
             persistedStepRawValue = nil
             dismissAllTabIntros()
+            OnboardingFunnelAnalytics.shared.trackSkippedExistingIfNeeded()
         }
     }
 

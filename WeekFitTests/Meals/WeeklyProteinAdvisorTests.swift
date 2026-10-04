@@ -194,6 +194,48 @@ final class WeeklyProteinAdvisorTests: XCTestCase {
         )
     }
 
+    func testMealRecommendationEnginePrefersMatchingMealPeriodByTimeOfDay() throws {
+        let now = date(year: 2026, month: 8, day: 11, hour: 8, minute: 30)
+        let input = CoachInputSnapshot(
+            selectedDate: now,
+            now: now,
+            brain: {
+                var config = HumanBrainStateBuilder.Configuration()
+                config.currentHour = 8
+                return HumanBrainStateBuilder.make(config)
+            }(),
+            plannedActivities: [],
+            recoveryContext: CoachRecoveryContext(recoveryPercent: 78, sleepHours: 7.5),
+            nutritionContext: nutrition(current: 40, goal: 120),
+            source: "WeeklyProteinAdvisorTests"
+        )
+
+        let breakfast = meal(
+            id: "breakfast",
+            title: "Oats",
+            protein: 28,
+            calories: 420,
+            carbs: 40,
+            fats: 12,
+            libraryPeriod: .breakfast
+        )
+        let dinner = meal(
+            id: "dinner",
+            title: "Steak plate",
+            protein: 30,
+            calories: 440,
+            carbs: 36,
+            fats: 14,
+            libraryPeriod: .dinner
+        )
+
+        let recommendation = try XCTUnwrap(
+            MealRecommendationEngine.make(input: input, meals: [dinner, breakfast], now: now)
+        )
+
+        XCTAssertEqual(recommendation.meal.id, "breakfast")
+    }
+
     // MARK: - Helpers
 
     private func nutrition(current: Double, goal: Double) -> CoachNutritionContext {
@@ -213,7 +255,8 @@ final class WeeklyProteinAdvisorTests: XCTestCase {
         protein: Int,
         calories: Int,
         carbs: Int,
-        fats: Int
+        fats: Int,
+        libraryPeriod: MealLibraryPeriod? = nil
     ) -> Meals {
         Meals(
             id: id,
@@ -227,7 +270,8 @@ final class WeeklyProteinAdvisorTests: XCTestCase {
             fats: fats,
             fiber: 5,
             benefits: [],
-            ingredients: []
+            ingredients: [],
+            libraryPeriodRaw: libraryPeriod?.rawValue
         )
     }
 

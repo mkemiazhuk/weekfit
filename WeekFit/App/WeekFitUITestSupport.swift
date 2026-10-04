@@ -11,11 +11,16 @@ enum WeekFitUITestSupport {
     static let forceLegacyUserLaunchArgument = "-weekfit-force-legacy-user"
     /// Debug-only: ignore AppTransaction legacy grandfathering only.
     ///
-    /// Use for Sandbox / local paywall + StoreKit purchase testing when Apple
-    /// returns the Sandbox sentinel `originalPurchaseDate` (2013-08-01).
+    /// Prefer for Xcode StoreKit Testing. Sandbox Apple IDs already treat the
+    /// 2013-08-01 sentinel as non-legacy in all builds (see
+    /// `WeekFitEntitlementPolicy.isSandboxSentinelOriginalPurchaseDate`).
     /// Does **not** require `-ui-testing`, does **not** skip active subscriptions,
     /// and is compiled out of Release.
     static let forceNonLegacyLaunchArgument = "-weekfit-force-non-legacy"
+    /// DEBUG-only: allow Firebase Analytics (and Crashlytics) while running a
+    /// Debug build — for Sandbox QA + DebugView. Production Release policy is
+    /// unchanged: DEBUG without this flag still keeps analytics OFF.
+    static let enableDebugAnalyticsLaunchArgument = "-weekfit-enable-debug-analytics"
     /// Debug-only: entitlement state override for UI tests.
     ///
     /// Allowed values:
@@ -39,6 +44,15 @@ enum WeekFitUITestSupport {
     static var shouldForceNonLegacyAppTransaction: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains(forceNonLegacyLaunchArgument)
+        #else
+        false
+        #endif
+    }
+
+    /// DEBUG-only: opt into Firebase Analytics collection for Sandbox QA.
+    static var shouldEnableDebugAnalytics: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains(enableDebugAnalyticsLaunchArgument)
         #else
         false
         #endif

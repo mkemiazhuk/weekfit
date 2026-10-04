@@ -58,6 +58,7 @@ struct CustomMealBuilderView: View {
     @State private var carbs: String
     @State private var fats: String
     @State private var fiber: String
+    @State private var selectedLibraryPeriod: MealLibraryPeriod
     @State private var validationMessage: String?
     @State private var didRequestExistingPreviewImage = false
     @State private var isAnalyzingPhoto = false
@@ -110,6 +111,9 @@ struct CustomMealBuilderView: View {
         _carbs = State(initialValue: Self.fieldText(editingMeal?.carbs))
         _fats = State(initialValue: Self.fieldText(editingMeal?.fats))
         _fiber = State(initialValue: Self.fieldText(editingMeal?.fiber))
+        _selectedLibraryPeriod = State(
+            initialValue: editingMeal?.libraryPeriod ?? .current
+        )
         _existingPreviewImage = State(initialValue: nil)
         if let editingMeal {
             _nutritionDensity = State(
@@ -233,6 +237,7 @@ struct CustomMealBuilderView: View {
                     barcodeLookupBanner
                     foodNameSection
                         .id("foodName")
+                    MealLibraryPeriodPicker(selection: $selectedLibraryPeriod)
                     nutritionSection
 
                     if let validationMessage {
@@ -1269,7 +1274,7 @@ struct CustomMealBuilderView: View {
                             amount: String(format: labels.gramValueFormat, input.servingGrams)
                         )
                     ],
-                    suggestedTime: editingMeal?.suggestedTime ?? currentSuggestedTime,
+                    suggestedTime: selectedLibraryPeriod.defaultSuggestedTime,
                     builderImageItems: nil,
                     libraryKind: editingMeal?.libraryKind ?? .product,
                     creationMode: .manual,
@@ -1277,7 +1282,8 @@ struct CustomMealBuilderView: View {
                     localPhotoFilename: persistedPhotos.originalFilename,
                     localPhotoThumbnailFilename: persistedPhotos.thumbnailFilename,
                     barcode: scannedBarcode ?? editingMeal?.barcode,
-                    nutritionDataSource: scannedNutritionDataSource ?? editingMeal?.nutritionDataSource
+                    nutritionDataSource: scannedNutritionDataSource ?? editingMeal?.nutritionDataSource,
+                    libraryPeriodRaw: selectedLibraryPeriod.rawValue
                 )
 
                 validationMessage = nil
@@ -1291,17 +1297,6 @@ struct CustomMealBuilderView: View {
                 Self.debugEnd("save.success", start: saveStart)
                 dismiss()
             }
-        }
-    }
-
-    private var currentSuggestedTime: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 6...10:  return "08:30"
-        case 11...14: return "13:00"
-        case 15...17: return "16:30"
-        default:      return "19:00"
         }
     }
 

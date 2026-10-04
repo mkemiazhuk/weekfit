@@ -247,14 +247,8 @@ enum CoachTabPresentationBridge {
                 dayLoad: context.dayLoadBand
             )
         )
-        let base = localized(english: labels.english, russian: labels.russian)
-        // Zones only during a real live workout chrome — not meal / idle day stories.
-        guard let zone = context.liveHeartRateZone,
-              context.sessionPhase == .during,
-              insight.semanticColor.isLiveSessionChrome else {
-            return base
-        }
-        return HeartRateZones.badgeLabel(zone: zone)
+        // Zone stays secondary chrome in the Coach card (Easy · Zone N), not the status badge.
+        return localized(english: labels.english, russian: labels.russian)
     }
 
     private static func localized(english: String, russian: String) -> String {

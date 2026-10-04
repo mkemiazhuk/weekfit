@@ -408,6 +408,16 @@ struct WeekFitRootView: View {
     /// reminted the paywall identity and re-asserted `isPresented` while the
     /// previous cover was still animating — UI then required a force-quit.
     private func beginFeaturePaywallPresentation() {
+        #if DEBUG
+        WeekFitSubscriptionAccessDiagnostics.logPaywallPresentation(
+            reason: subscriptionManager.hasResolved
+                ? (subscriptionManager.hasFullAccess ? "unexpectedWithAccess" : "premiumTabGated")
+                : "unresolvedShouldNotPresent",
+            requestedTab: pendingPremiumTab?.paywallRequestedTabID
+                ?? subscriptionManager.paywallRequestedTabID,
+            accessState: subscriptionManager.accessState
+        )
+        #endif
         featurePaywallInstanceID = UUID().uuidString
         beginFeaturePaywallTransitionCooldown(flushWhenSettled: false)
         isPresentingFeaturePaywall = true

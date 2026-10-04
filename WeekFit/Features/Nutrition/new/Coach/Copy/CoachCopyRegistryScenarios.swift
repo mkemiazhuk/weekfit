@@ -892,43 +892,86 @@ enum CoachCopyRegistryScenarios {
 
     private static func activeRecovery(input: CoachCopyBuildInput) -> Draft {
         let assessment: CoachBilingualText
+        let recommendation: CoachBilingualText
+        let avoid: CoachBilingualText
+        let nextAction: CoachBilingualText
+
         switch input.activityType {
         case .yoga:
             assessment = .en(
                 "Yoga is next — arrive soft, not already tight.",
                 "Йога впереди — приходите мягко, не зажатыми."
             )
+            recommendation = .en(
+                "Keep effort low — this is repair, not training.",
+                "Минимум усилий — сейчас не тренировка, а восстановление."
+            )
+            avoid = .en(
+                "Don't push depth or hold through pain.",
+                "Не тянитесь через силу и не терпите боль."
+            )
+            nextAction = .en(
+                "Arrive on the mat and take one soft breath before the first pose.",
+                "Встаньте на коврик и сделайте один мягкий вдох перед первой позой."
+            )
         case .stretching:
             assessment = .en(
                 "Stretch block is next — ease in from the first minute.",
                 "Растяжка впереди — мягко с первой минуты."
+            )
+            recommendation = .en(
+                "Keep effort low — this is repair, not training.",
+                "Минимум усилий — сейчас не тренировка, а восстановление."
+            )
+            avoid = .en(
+                "Don't push depth or hold through pain.",
+                "Не тянитесь через силу и не терпите боль."
+            )
+            nextAction = .en(
+                "Start with an easy neck or hip opener — no forcing.",
+                "Начните с мягкой шеи или таза — без силы."
             )
         case .breathing:
             assessment = .en(
                 "Breath work is ahead — quiet room, open chest.",
                 "Дыхание впереди — тихое место, открытая грудь."
             )
+            recommendation = .en(
+                "Keep the breath soft — this is calm, not a drill.",
+                "Дышите мягко — это спокойствие, не упражнение на силу."
+            )
+            avoid = .en(
+                "Don't force deep breaths or hold if it feels strained.",
+                "Не форсируйте глубокие вдохи и не задерживайте дыхание через силу."
+            )
+            nextAction = .en(
+                "Find a quiet spot and start with five easy breaths.",
+                "Найдите тихое место и сделайте пять спокойных вдохов."
+            )
         default:
             assessment = .en(
                 "Recovery block is next — gentle from the first minute.",
                 "Блок восстановления впереди — мягко с первой минуты."
             )
+            recommendation = .en(
+                "Keep effort low — this is repair, not training.",
+                "Минимум усилий — сейчас не тренировка, а восстановление."
+            )
+            avoid = .en(
+                "Don't push depth or hold through pain.",
+                "Не тянитесь через силу и не терпите боль."
+            )
+            nextAction = .en(
+                "Find a quiet spot and start with five easy breaths.",
+                "Найдите тихое место и сделайте пять спокойных вдохов."
+            )
         }
 
         return Draft(
             assessment: assessment,
-            recommendation: .en(
-                "Keep effort low — this is repair, not training.",
-                "Минимум усилий — сейчас не тренировка, а восстановление."
-            ),
-            avoid: .en(
-                "Don't push depth or hold through pain.",
-                "Не тянитесь через силу и не терпите боль."
-            ),
-            nextAction: .en(
-                "Find a quiet spot and start with five easy breaths.",
-                "Найдите тихое место и сделайте пять спокойных вдохов."
-            )
+            recommendation: recommendation,
+            avoid: avoid,
+            nextAction: nextAction
         )
     }
 
@@ -938,19 +981,91 @@ enum CoachCopyRegistryScenarios {
                 phase: .during,
                 activityType: input.activityType
             ),
-            recommendation: .en(
-                "Stay in easy range — nothing to prove here.",
-                "Оставайтесь в лёгкой зоне — тут нечего доказывать."
-            ),
-            avoid: .en(
+            recommendation: mindfulRecoveryDuringRecommendation(activityType: input.activityType),
+            avoid: mindfulRecoveryDuringAvoid(activityType: input.activityType),
+            nextAction: mindfulRecoveryDuringNextAction(activityType: input.activityType)
+        )
+    }
+
+    private static func mindfulRecoveryDuringRecommendation(
+        activityType: CoachActivityType
+    ) -> CoachBilingualText {
+        switch activityType {
+        case .breathing:
+            return .en(
+                "Keep the breath soft and unforced.",
+                "Дышите мягко, без усилий."
+            )
+        case .yoga:
+            return .en(
+                "Stay soft through each pose — nothing to prove.",
+                "Оставайтесь мягкими в каждой позе — тут нечего доказывать."
+            )
+        case .stretching:
+            return .en(
+                "Ease into each hold — nothing to force.",
+                "Мягко в каждое положение — ничего не форсируйте."
+            )
+        default:
+            return .en(
+                "Stay easy — nothing to prove here.",
+                "Держите легко — тут нечего доказывать."
+            )
+        }
+    }
+
+    private static func mindfulRecoveryDuringAvoid(
+        activityType: CoachActivityType
+    ) -> CoachBilingualText {
+        switch activityType {
+        case .breathing:
+            return .en(
+                "Don't force deep breaths or hold if it feels strained.",
+                "Не форсируйте глубокие вдохи и не задерживайте дыхание через силу."
+            )
+        case .yoga:
+            return .en(
+                "Don't chase deeper poses or compare to yesterday.",
+                "Не гонитесь за глубиной поз и не сравнивайте со вчера."
+            )
+        case .stretching:
+            return .en(
+                "Don't push into pain or bounce through the hold.",
+                "Не тянитесь через боль и не пружиньте в положении."
+            )
+        default:
+            return .en(
                 "Don't chase depth or compare to yesterday.",
                 "Не гонитесь за глубиной и не сравнивайте со вчера."
-            ),
-            nextAction: .en(
+            )
+        }
+    }
+
+    private static func mindfulRecoveryDuringNextAction(
+        activityType: CoachActivityType
+    ) -> CoachBilingualText {
+        switch activityType {
+        case .breathing:
+            return .en(
+                "Follow one slow exhale a little longer than the inhale.",
+                "Сделайте выдох чуть длиннее вдоха."
+            )
+        case .yoga:
+            return .en(
                 "Notice where you hold tension — breathe into it.",
                 "Заметьте, где зажим — выдыхайте туда."
             )
-        )
+        case .stretching:
+            return .en(
+                "Hold where it feels gentle — then ease a little deeper on the exhale.",
+                "Держите там, где мягко — на выдохе чуть углубите."
+            )
+        default:
+            return .en(
+                "Notice where you hold tension — breathe into it.",
+                "Заметьте, где зажим — выдыхайте туда."
+            )
+        }
     }
 
     private static func postRecoveryImmediate(input: CoachCopyBuildInput) -> Draft {

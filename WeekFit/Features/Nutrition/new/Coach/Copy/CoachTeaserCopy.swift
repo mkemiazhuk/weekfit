@@ -136,7 +136,16 @@ enum CoachTeaserCopy {
         case .duringStrength:
             return bi("Lifting now", "Силовая идёт")
         case .duringRecovery:
-            return bi("Recovery time", "Восстановление")
+            return bi(
+                CoachMindfulRecoveryPresentation.todayTitle(
+                    activityType: result.modifiers.activityType,
+                    russian: false
+                ),
+                CoachMindfulRecoveryPresentation.todayTitle(
+                    activityType: result.modifiers.activityType,
+                    russian: true
+                )
+            )
         case .postEnduranceImmediate:
             return postEnduranceImmediateTitle(activityType: result.modifiers.activityType)
         case .postRacketImmediate:
@@ -172,7 +181,16 @@ enum CoachTeaserCopy {
         case .activeStrength:
             return bi("Strength next", "Силовая впереди")
         case .activeRecovery:
-            return bi("Recovery ahead", "Впереди восстановление")
+            switch result.modifiers.activityType {
+            case .breathing:
+                return bi("Breath work ahead", "Впереди дыхание")
+            case .yoga:
+                return bi("Yoga ahead", "Впереди йога")
+            case .stretching:
+                return bi("Stretch ahead", "Впереди растяжка")
+            default:
+                return bi("Recovery ahead", "Впереди восстановление")
+            }
         case .saunaPreparation:
             return bi("Before sauna", "Перед баней")
         case .saunaActive:
@@ -329,10 +347,28 @@ enum CoachTeaserCopy {
                 "Первые подходы легко — форма важнее."
             )
         case .activeRecovery:
-            return bi(
-                "Soft from minute one — no pressure.",
-                "Мягко с первой минуты — без давления."
-            )
+            switch result.modifiers.activityType {
+            case .breathing:
+                return bi(
+                    "Quiet room — soft breaths from the start.",
+                    "Тихое место — мягкое дыхание с первой минуты."
+                )
+            case .yoga:
+                return bi(
+                    "Arrive soft — no pressure in the first poses.",
+                    "Приходите мягко — без давления в первых позах."
+                )
+            case .stretching:
+                return bi(
+                    "Ease in from the first minute — no forcing.",
+                    "Мягко с первой минуты — без силы."
+                )
+            default:
+                return bi(
+                    "Soft from minute one — no pressure.",
+                    "Мягко с первой минуты — без давления."
+                )
+            }
         case .duringRacket:
             return bi("Reset between points.", "Между очками делайте сброс.")
         case .duringStrength:
@@ -341,10 +377,19 @@ enum CoachTeaserCopy {
                 "Форма важнее торопливых повторов."
             )
         case .duringRecovery:
-            return bi(
-                "Stay soft — nothing to push.",
-                "Мягко — тут нечего выжимать."
-            )
+            switch result.modifiers.activityType {
+            case .breathing:
+                return bi("Keep the breath soft.", "Дышите мягко.")
+            case .yoga:
+                return bi("Stay soft in the poses.", "Оставайтесь мягкими в позах.")
+            case .stretching:
+                return bi("Ease into each hold.", "Мягко в каждое положение.")
+            default:
+                return bi(
+                    "Stay soft — nothing to push.",
+                    "Мягко — тут нечего выжимать."
+                )
+            }
         case .postEnduranceImmediate:
             return bi(
                 "Cooldown first, then refuel.",
@@ -512,7 +557,16 @@ enum CoachTeaserCopy {
         case .duringStrength:
             return bi("Under load", "Под нагрузкой")
         case .duringRecovery:
-            return bi("Recovery session", "Восстановительная тренировка")
+            return bi(
+                CoachMindfulRecoveryPresentation.coachHeadline(
+                    activityType: activityType,
+                    russian: false
+                ),
+                CoachMindfulRecoveryPresentation.coachHeadline(
+                    activityType: activityType,
+                    russian: true
+                )
+            )
         case .postEnduranceImmediate:
             return postEnduranceImmediateHeadline(activityType: activityType)
         case .postRacketImmediate:
@@ -548,7 +602,16 @@ enum CoachTeaserCopy {
         case .activeStrength:
             return bi("Before lifting", "Перед силовой")
         case .activeRecovery:
-            return bi("Before recovery", "Перед восстановлением")
+            switch activityType {
+            case .breathing:
+                return bi("Before breath work", "Перед дыханием")
+            case .yoga:
+                return bi("Before yoga", "Перед йогой")
+            case .stretching:
+                return bi("Before stretching", "Перед растяжкой")
+            default:
+                return bi("Before recovery", "Перед восстановлением")
+            }
         case .saunaPreparation:
             return bi("Before sauna", "Перед баней")
         case .saunaActive:

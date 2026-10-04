@@ -102,24 +102,24 @@ final class SubscriptionManager: ObservableObject {
 
     func start() async {
         guard !hasStarted else {
-            await refresh()
+            await refresh(source: "start.reentry")
             return
         }
         hasStarted = true
         updatesTask = store.startTransactionUpdates { [weak self] in
-            await self?.refresh()
+            await self?.handleVerifiedTransactionUpdate()
         }
         storefrontUpdatesTask = store.startStorefrontUpdates { [weak self] in
             await self?.handleStorefrontChange()
         }
-        await refresh()
+        await refresh(source: "start")
     }
 
     /// Storefront changed: drop prior catalog immediately, then reload.
     /// Never leave previous-storefront prices on screen while / after a failed reload.
     private func handleStorefrontChange() async {
         markProductsUnavailableForReload(failed: false)
-        await refresh()
+        await refresh(source: "storefront.updates")
     }
 
     private func markProductsUnavailableForReload(failed: Bool) {
@@ -132,14 +132,14 @@ final class SubscriptionManager: ObservableObject {
 
     func refreshOnForeground() async {
         guard hasStarted else { return }
-        await refresh()
+        await refresh(source: "foreground")
     }
 
     func refreshAfterExternalSubscriptionChange() async {
-        await refresh()
+        await refresh(source: "externalSubscriptionChange.0")
         for attempt in 0..<3 {
             try? await Task.sleep(for: .milliseconds(350 * (attempt + 1)))
-            await refresh()
+            await refresh(source: "externalSubscriptionChange.\(attempt + 1)")
         }
     }
 
@@ -177,20 +177,21 @@ final class SubscriptionManager: ObservableObject {
         switch outcome {
         case .success:
             // StoreKit verified the transaction. Deliver entitlements before finish().
-            await refresh()
+            await refresh(source: "purchase.success")
             if !hasFullAccess {
-                await retryRefreshUntilFullAccess(maxAttempts: 4)
+                await retryRefreshUntilFullAccess(maxAttempts: 4, source: "purchase.successRetry")
             }
             await store.finishVerifiedPurchaseIfNeeded()
             // Confirm after finish — auto-renewables remain in currentEntitlements.
             if !hasFullAccess {
-                await refresh()
+                await refresh(source: "purchase.afterFinish")
                 if !hasFullAccess {
-                    await retryRefreshUntilFullAccess(maxAttempts: 2)
+                    await retryRefreshUntilFullAccess(maxAttempts: 2, source: "purchase.afterFinishRetry")
                 }
             }
             if hasFullAccess {
                 lastOutcome = .success
+                WeekFitDeferredPurchaseStore.clear()
                 SubscriptionAnalytics.purchaseSuccess(
                     productID: productID,
                     requestedTab: requestedTab
@@ -204,24 +205,29 @@ final class SubscriptionManager: ObservableObject {
                 )
             }
         case .cancelled:
-            await refresh()
+            await refresh(source: "purchase.cancelled")
             lastOutcome = .cancelled
+            WeekFitDeferredPurchaseStore.clear()
             SubscriptionAnalytics.purchaseCancelled(
                 productID: productID,
                 requestedTab: requestedTab
             )
         case .pending:
-            await refresh()
+            await refresh(source: "purchase.pending")
             lastOutcome = .pending
-            // Ask to Buy / deferred is terminal for *this* purchase attempt funnel.
-            // Approval arrives later via Transaction.updates.
+            // Terminal for *this* attempt sheet; success may follow via Transaction.updates
+            // (persisted so app relaunch before approval still completes the funnel once).
+            WeekFitDeferredPurchaseStore.markPending(
+                productID: productID,
+                requestedTab: requestedTab
+            )
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
                 requestedTab: requestedTab,
                 failureReason: .pending
             )
         case .failedVerification:
-            await refresh()
+            await refresh(source: "purchase.failedVerification")
             lastOutcome = .failedVerification
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
@@ -229,7 +235,7 @@ final class SubscriptionManager: ObservableObject {
                 failureReason: .verificationFailed
             )
         case .productsUnavailable:
-            await refresh()
+            await refresh(source: "purchase.productsUnavailable")
             lastOutcome = .productsUnavailable
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
@@ -238,7 +244,7 @@ final class SubscriptionManager: ObservableObject {
             )
         case .failed, .nothingToRestore, .entitlementNotPropagated:
             // entitlementNotPropagated / nothingToRestore are not store.purchase() results.
-            await refresh()
+            await refresh(source: "purchase.failed")
             lastOutcome = .failed
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
@@ -282,9 +288,9 @@ final class SubscriptionManager: ObservableObject {
         #endif
 
         // Proactive path: re-read current entitlements without prompting for Apple ID.
-        await refresh()
+        await refresh(source: "restore.localEntitlements")
         if !hasFullAccess {
-            await retryRefreshUntilFullAccess(maxAttempts: 2)
+            await retryRefreshUntilFullAccess(maxAttempts: 2, source: "restore.localRetry")
         }
         #if DEBUG
         WeekFitRestoreDiagnostics.log(
@@ -320,9 +326,9 @@ final class SubscriptionManager: ObservableObject {
             #if DEBUG
             WeekFitRestoreDiagnostics.log("RESTORE_SYNC_COMPLETED")
             #endif
-            await refresh()
+            await refresh(source: "restore.afterAppStoreSync")
             if !hasFullAccess {
-                await retryRefreshUntilFullAccess(maxAttempts: 4)
+                await retryRefreshUntilFullAccess(maxAttempts: 4, source: "restore.afterSyncRetry")
             }
             if hasFullAccess {
                 lastOutcome = .success
@@ -353,7 +359,7 @@ final class SubscriptionManager: ObservableObject {
                 #endif
             }
         } catch is CancellationError {
-            await refresh()
+            await refresh(source: "restore.cancelled")
             lastOutcome = .cancelled
             SubscriptionAnalytics.restoreFinished(
                 source: source,
@@ -369,7 +375,7 @@ final class SubscriptionManager: ObservableObject {
             WeekFitRestoreDiagnostics.log("RESTORE_RESULT=cancelled")
             #endif
         } catch let timeout as WeekFitStoreKitRestoreTimeoutError {
-            await refresh()
+            await refresh(source: "restore.timeout")
             lastOutcome = .failed
             SubscriptionAnalytics.restoreFinished(
                 source: source,
@@ -385,7 +391,7 @@ final class SubscriptionManager: ObservableObject {
             WeekFitRestoreDiagnostics.log("RESTORE_RESULT=failed_timeout")
             #endif
         } catch {
-            await refresh()
+            await refresh(source: "restore.storekitError")
             lastOutcome = .failed
             SubscriptionAnalytics.restoreFinished(
                 source: source,
@@ -423,18 +429,43 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
-    private func retryRefreshUntilFullAccess(maxAttempts: Int) async {
+    private func retryRefreshUntilFullAccess(
+        maxAttempts: Int,
+        source: String = "retry"
+    ) async {
         guard maxAttempts > 0 else { return }
         // Small increasing delays; total wait ~3-4 seconds.
         for attempt in 0..<maxAttempts {
             if hasFullAccess { return }
             let delayMs = 450 * (attempt + 1)
             try? await Task.sleep(for: .milliseconds(delayMs))
-            await refresh()
+            await refresh(source: "\(source).\(attempt)")
         }
     }
 
+    /// `Transaction.updates` after Ask to Buy / SCA — unlock + one deferred purchase success.
+    /// Does not treat restore / background renewals as a new purchase (no deferred store record).
+    private func handleVerifiedTransactionUpdate() async {
+        let deferredProductID = WeekFitDeferredPurchaseStore.pendingProductID()
+        await refresh(source: "transaction.updates")
+        guard let deferredProductID else { return }
+        guard hasFullAccess else { return }
+        // Consume only after unlock — matches product id so renewals of other products ignore.
+        guard let consumed = WeekFitDeferredPurchaseStore.consumeIfMatching(productID: deferredProductID)
+        else { return }
+        lastOutcome = .success
+        lastOutcomeSource = .purchase
+        SubscriptionAnalytics.purchaseSuccess(
+            productID: consumed.productID,
+            requestedTab: consumed.requestedTab
+        )
+    }
+
     func refresh() async {
+        await refresh(source: "refresh")
+    }
+
+    func refresh(source: String) async {
         let bypass = currentBypass()
         #if DEBUG
         // UI-test force new/legacy still require `-ui-testing`.
@@ -526,6 +557,18 @@ final class SubscriptionManager: ObservableObject {
         scheduleFailOpenTimeoutIfNeeded()
 
         #if DEBUG
+        let entitlementReason = makeEntitlementReason(
+            bypass: bypass,
+            forceNewUser: forceNew,
+            forceLegacyUser: forceLegacy,
+            forceNonLegacyAppTransaction: forceNonLegacy,
+            transactionStatus: transactionStatus,
+            subscription: currentSubscription,
+            legacyResult: legacyResult(
+                from: transactionStatus,
+                forceNonLegacyAppTransaction: forceNonLegacy
+            )
+        )
         let trace = makeEntitlementTrace(
             bypass: bypass,
             forceNewUser: forceNew,
@@ -538,9 +581,18 @@ final class SubscriptionManager: ObservableObject {
                 forceNonLegacyAppTransaction: forceNonLegacy
             ),
             resolvedAccessState: accessState,
-            hasFullAccess: hasFullAccess
+            hasFullAccess: hasFullAccess,
+            reason: entitlementReason
         )
         print(trace)
+        WeekFitSubscriptionAccessDiagnostics.logRefreshResult(
+            source: source,
+            resolvedAccessState: accessState,
+            hasFullAccess: hasFullAccess,
+            reason: entitlementReason,
+            subscription: currentSubscription,
+            paywallWouldBlockPremiumTabs: shouldBlockAccess
+        )
         #endif
     }
 
@@ -620,6 +672,46 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
+    private func makeEntitlementReason(
+        bypass: WeekFitEntitlementBypass,
+        forceNewUser: Bool,
+        forceLegacyUser: Bool,
+        forceNonLegacyAppTransaction: Bool,
+        transactionStatus: WeekFitAppTransactionStatus,
+        subscription: WeekFitSubscriptionSnapshot?,
+        legacyResult: String?
+    ) -> String {
+        if bypass.grantsAccess || forceLegacyUser {
+            return "bypassOrForceLegacy"
+        }
+        if forceNewUser {
+            return "forceNewUser"
+        }
+        if let sub = subscription, WeekFitEntitlementPolicy.isActiveSubscription(sub) {
+            return "activeSubscription"
+        }
+        switch transactionStatus {
+        case .loading:
+            return "appTransactionLoading"
+        case .verified:
+            if forceNonLegacyAppTransaction {
+                return "forceNonLegacyAppTransaction"
+            }
+            if legacyResult == "legacy" { return "legacyOriginalPurchaseDate" }
+            if let subscription, subscription.isExpired || subscription.isRevoked {
+                return "subscriptionExpiredOrRevoked"
+            }
+            if let subscription, subscription.billingState == .inBillingRetry {
+                return "subscriptionBillingRetryNoAccess"
+            }
+            return "verifiedAppTransactionNoActiveSubscription"
+        case .unverified(_), .unavailable:
+            if fallbackStore.lastVerified == nil { return "failOpenNoLastVerified" }
+            if subscription != nil { return "unverifiedButSubscriptionSnapshotGates" }
+            return "unverifiedButUsingLastVerified"
+        }
+    }
+
     private func makeEntitlementTrace(
         bypass: WeekFitEntitlementBypass,
         forceNewUser: Bool,
@@ -629,7 +721,8 @@ final class SubscriptionManager: ObservableObject {
         subscription: WeekFitSubscriptionSnapshot?,
         legacyResult: String?,
         resolvedAccessState: WeekFitAccessState,
-        hasFullAccess: Bool
+        hasFullAccess: Bool,
+        reason: String
     ) -> String {
         let env: String
         let appTransactionVerification: String
@@ -656,46 +749,35 @@ final class SubscriptionManager: ObservableObject {
 
         let subscriptionProductID = subscription?.productID ?? "none"
         let subscriptionState: String
+        let expirationUTC: String
         if let subscription {
-            if subscription.isExpired { subscriptionState = "expired" }
-            else if subscription.isRevoked { subscriptionState = "revoked" }
-            else if subscription.inGraceOrRetry { subscriptionState = "graceOrRetry" }
+            if subscription.isRevoked { subscriptionState = "revoked" }
+            else if subscription.billingState == .inGracePeriod { subscriptionState = "grace" }
+            else if subscription.billingState == .inBillingRetry { subscriptionState = "billingRetry" }
+            else if subscription.isExpired { subscriptionState = "expired" }
             else if !subscription.willAutoRenew { subscriptionState = "cancelledButActive" }
             else if subscription.isIntroductoryTrial { subscriptionState = "trial" }
             else { subscriptionState = "active" }
+            if let expiration = subscription.expirationDate {
+                let formatter = ISO8601DateFormatter()
+                formatter.timeZone = TimeZone(secondsFromGMT: 0)
+                expirationUTC = formatter.string(from: expiration)
+            } else {
+                expirationUTC = "nil"
+            }
         } else {
             subscriptionState = "none"
+            expirationUTC = "nil"
         }
 
-        let reason: String = {
-            if bypass.grantsAccess || forceLegacyUser {
-                return "bypassOrForceLegacy"
-            }
-            if forceNewUser {
-                return "forceNewUser"
-            }
-            if let sub = subscription, WeekFitEntitlementPolicy.isActiveSubscription(sub) {
-                return "activeSubscription"
-            }
-            switch transactionStatus {
-            case .loading:
-                return "appTransactionLoading"
-            case .verified:
-                if forceNonLegacyAppTransaction {
-                    return "forceNonLegacyAppTransaction"
-                }
-                if legacyResult == "legacy" { return "legacyOriginalPurchaseDate" }
-                return "verifiedAppTransaction"
-            case .unverified(_), .unavailable:
-                if fallbackStore.lastVerified == nil { return "failOpenNoLastVerified" }
-                if subscription != nil { return "unverifiedButSubscriptionSnapshotGates" }
-                return "unverifiedButUsingLastVerified"
-            }
-        }()
+        _ = forceNewUser
+        _ = forceLegacyUser
+        _ = forceNonLegacyAppTransaction
+        _ = bypass
 
         return
             """
-            [WeekFit.Entitlements] { env="\(env)", originalPurchaseDate=\(originalPurchaseDate.map { "\"\($0)\"" } ?? "null"), legacyResult=\(legacyResult.map { "\"\($0)\"" } ?? "null"), subscriptionProductID="\(subscriptionProductID)", subscriptionState="\(subscriptionState)", appTransactionVerification="\(appTransactionVerification)", resolvedAccessState="\(resolvedAccessState)", hasFullAccess=\(hasFullAccess), reason="\(reason)" }
+            [WeekFit.Entitlements] { env="\(env)", originalPurchaseDate=\(originalPurchaseDate.map { "\"\($0)\"" } ?? "null"), legacyResult=\(legacyResult.map { "\"\($0)\"" } ?? "null"), subscriptionProductID="\(subscriptionProductID)", subscriptionState="\(subscriptionState)", expirationUTC="\(expirationUTC)", willAutoRenew=\(subscription.map { String($0.willAutoRenew) } ?? "null"), appTransactionVerification="\(appTransactionVerification)", resolvedAccessState="\(resolvedAccessState)", hasFullAccess=\(hasFullAccess), reason="\(reason)" }
             """
     }
     #endif

@@ -11,10 +11,11 @@ enum MorningProposalAnalytics {
     enum Keys {
         static let unavailableEmitted = "weekfit.analytics.mp.unavailable.emitted"
         static let noChangesEmitted = "weekfit.analytics.mp.noChanges.emitted"
+        static let staleEmitted = "weekfit.analytics.mp.stale.emitted"
     }
 
     static var allKnownKeys: [String] {
-        [Keys.unavailableEmitted, Keys.noChangesEmitted]
+        [Keys.unavailableEmitted, Keys.noChangesEmitted, Keys.staleEmitted]
     }
 
     private static var analytics: AnalyticsTracking { analyticsProvider() }
@@ -43,9 +44,20 @@ enum MorningProposalAnalytics {
     }
 
     /// Emits at most once per local `dayKey` + canonical unavailable reason.
+    /// Expected calendar states (`outside_morning_window`, `day_started`, `day_expired`)
+    /// are not emitted — product still persists those statuses for UI.
+    /// Gathering / in-flight load must never call this (gate returns `.gatheringData`).
     /// Engine re-evaluation is unchanged — only analytics are deduped.
-    static func proposalUnavailable(dayKey: String, reason: String) {
+    static func proposalUnavailable(
+        dayKey: String,
+        reason: String,
+        stage: MorningProposalUnavailableAnalyticsReason.Stage
+    ) {
         let mapped = MorningProposalUnavailableAnalyticsReason.fromDomainReason(reason)
+        guard mapped.shouldEmitUnavailableEvent else { return }
+        // Never treat in-flight load as a terminal unavailable diagnostic.
+        guard mapped != .loadIncomplete else { return }
+
         let dedupeKey = "\(dayKey)|\(mapped.rawValue)"
 
         lock.lock()
@@ -62,6 +74,8 @@ enum MorningProposalAnalytics {
             .morningProposalUnavailable,
             parameters: [
                 AnalyticsParameterKey.reason: mapped.rawValue,
+                AnalyticsParameterKey.stage: stage.rawValue,
+                AnalyticsParameterKey.outcomeClass: mapped.outcomeClass.rawValue,
                 AnalyticsParameterKey.source: AnalyticsSource.today.rawValue
             ]
         )
@@ -204,7 +218,22 @@ enum MorningProposalAnalytics {
         _ = dayKey
     }
 
-    static func proposalStale() {
+    /// Emits at most once per proposal id (fingerprint drift / apply stale).
+    /// Prevents SwiftUI refresh / re-evaluate spam (historically ~6+ events / user / day).
+    static func proposalStale(proposalId: String) {
+        let trimmedID = String(proposalId.prefix(64))
+        guard !trimmedID.isEmpty else { return }
+
+        lock.lock()
+        var emitted = Set(defaults.stringArray(forKey: Keys.staleEmitted) ?? [])
+        let inserted = emitted.insert(trimmedID).inserted
+        if inserted {
+            let trimmed = Array(emitted).sorted().suffix(maxStoredKeys)
+            defaults.set(Array(trimmed), forKey: Keys.staleEmitted)
+        }
+        lock.unlock()
+        guard inserted else { return }
+
         analytics.track(
             .morningProposalStale,
             parameters: [AnalyticsParameterKey.source: AnalyticsSource.today.rawValue]
