@@ -436,12 +436,13 @@ struct WeekFitRootView: View {
     private func beginFeaturePaywallTransitionCooldown(flushWhenSettled: Bool) {
         featurePaywallTransitionTask?.cancel()
         isFeaturePaywallTransitioning = true
+        let shouldFlush = flushWhenSettled
         featurePaywallTransitionTask = Task { @MainActor in
             // Match typical fullScreenCover spring (~0.35–0.45s) with margin.
             try? await Task.sleep(for: .milliseconds(550))
             guard !Task.isCancelled else { return }
             isFeaturePaywallTransitioning = false
-            if flushWhenSettled {
+            if shouldFlush {
                 reconcilePremiumTabGate()
             }
         }
@@ -594,7 +595,8 @@ struct WeekFitRootView: View {
         if TodayAtmospherePolicy.isEnabled {
             TodayAtmosphereBackground(
                 snapshot: sharedAtmosphereSnapshot,
-                ambientOpacity: palette.ambientOpacity
+                ambientOpacity: palette.ambientOpacity,
+                showsStarField: selectedTab != .meals
             )
         } else {
             ZStack {
@@ -644,18 +646,78 @@ struct WeekFitRootView: View {
             pendingPremiumTab = nil
             commitTabSelection(tab)
         case .deferUntilResolved:
-            // Keep Today selected; open or paywall after entitlement resolves.
+            // Keep Today selected until StoreKit resolves. Sandbox / cold start can
+            // sit in `.loading` long enough that Coach/Plan taps feel dead unless we
+            // refresh and fall through to paywall when still unresolved.
             pendingPremiumTab = tab
+            subscriptionManager.noteFeaturePaywall(for: tab)
             if isPresentingFeaturePaywall {
                 dismissFeaturePaywall(clearPending: false)
             }
+            resolvePendingPremiumTabAfterEntitlementCheck()
         case .presentPaywall:
             pendingPremiumTab = tab
             subscriptionManager.noteFeaturePaywall(for: tab)
+            presentFeaturePaywallForPendingPremiumTab()
+        }
+    }
+
+    /// Explicit premium-tab intent while entitlements are still loading.
+    private func resolvePendingPremiumTabAfterEntitlementCheck() {
+        let expectedTab = pendingPremiumTab
+        Task { @MainActor in
+            await subscriptionManager.refreshOnForeground()
+            guard pendingPremiumTab == expectedTab else { return }
+            reconcilePremiumTabGate()
+            guard pendingPremiumTab == expectedTab else { return }
+            guard !subscriptionManager.hasResolved else { return }
+            // Still loading after refresh (common in Sandbox) — show paywall so
+            // the tap is never a silent no-op. Restore / purchase can unlock.
+            presentFeaturePaywallForPendingPremiumTab()
+        }
+    }
+
+    private func presentFeaturePaywallForPendingPremiumTab() {
+        switch WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
+            desired: true,
+            isAlreadyPresented: isPresentingFeaturePaywall,
+            isTransitioning: isFeaturePaywallTransitioning,
+            isSettingsPresented: appSession.isPresentingSettings,
+            isLegacyThanksPresented: showLegacyAccessThanks
+        ) {
+        case .beginPresentation:
+            beginFeaturePaywallPresentation()
+        case .updatePendingOnly:
+            // Transition cooldown after dismiss can leave the cover down while
+            // `isTransitioning` is still true — recover once the slot is free.
+            if !isPresentingFeaturePaywall && !isFeaturePaywallTransitioning {
+                beginFeaturePaywallPresentation()
+            } else if !isPresentingFeaturePaywall && isFeaturePaywallTransitioning {
+                scheduleFeaturePaywallPresentationWhenTransitionSettles()
+            }
+        case .suppress:
+            break
+        }
+    }
+
+    private func scheduleFeaturePaywallPresentationWhenTransitionSettles() {
+        let expectedTab = pendingPremiumTab
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard pendingPremiumTab == expectedTab else { return }
+            guard !isPresentingFeaturePaywall else { return }
+            guard !subscriptionManager.hasFullAccess else {
+                reconcilePremiumTabGate()
+                return
+            }
+            // One-shot recovery: don't stay stuck if the cooldown task was cancelled.
+            if isFeaturePaywallTransitioning {
+                isFeaturePaywallTransitioning = false
+            }
             switch WeekFitSubscriptionPresentationCoordinator.featurePaywallOpenAction(
                 desired: true,
-                isAlreadyPresented: isPresentingFeaturePaywall,
-                isTransitioning: isFeaturePaywallTransitioning,
+                isAlreadyPresented: false,
+                isTransitioning: false,
                 isSettingsPresented: appSession.isPresentingSettings,
                 isLegacyThanksPresented: showLegacyAccessThanks
             ) {

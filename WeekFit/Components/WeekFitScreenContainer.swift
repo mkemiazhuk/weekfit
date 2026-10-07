@@ -4,11 +4,14 @@ struct WeekFitScreenContainer<Header: View, Content: View>: View {
 
     let header: Header
     let content: Content
+    var headerBottomSpacing: CGFloat = WeekFitScreenLayout.headerBottomSpacing
 
     init(
+        headerBottomSpacing: CGFloat = WeekFitScreenLayout.headerBottomSpacing,
         @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content
     ) {
+        self.headerBottomSpacing = headerBottomSpacing
         self.header = header()
         self.content = content()
     }
@@ -18,7 +21,7 @@ struct WeekFitScreenContainer<Header: View, Content: View>: View {
             header
                 .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
                 .padding(.top, WeekFitScreenLayout.topPadding)
-                .padding(.bottom, WeekFitScreenLayout.headerBottomSpacing)
+                .padding(.bottom, headerBottomSpacing)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             content

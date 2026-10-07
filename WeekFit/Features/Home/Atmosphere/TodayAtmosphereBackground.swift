@@ -3,6 +3,8 @@ import SwiftUI
 struct TodayAtmosphereBackground: View {
     let snapshot: TodayAtmosphereSnapshot
     let ambientOpacity: CGFloat
+    /// Meals keeps a clean navy canvas — hide decorative star field there.
+    var showsStarField: Bool = true
 
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -91,10 +93,12 @@ struct TodayAtmosphereBackground: View {
             skyGradient
             lunarGlow
             // Stars stay static so they never fight text or thrash during scroll.
-            TodayAtmosphereStarField(
-                intensity: skyIntensity,
-                ambientOpacity: ambientOpacity
-            )
+            if showsStarField {
+                TodayAtmosphereStarField(
+                    intensity: skyIntensity,
+                    ambientOpacity: ambientOpacity
+                )
+            }
             TodayAtmosphereCloudVeil(
                 intensity: skyIntensity,
                 ambientOpacity: ambientOpacity,

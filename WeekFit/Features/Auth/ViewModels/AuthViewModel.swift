@@ -250,6 +250,9 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
         errorMessage = nil
         OnboardingStore.markCompleted()
+        // Completing onboarding would otherwise auto-present Health Access and
+        // block tab navigation in UI tests / screenshot capture.
+        UserDefaults.standard.set(true, forKey: "weekfit.healthAccessRequested")
     }
 
     /// Test helper: sync published flags from AuthSessionStore without Apple UI.

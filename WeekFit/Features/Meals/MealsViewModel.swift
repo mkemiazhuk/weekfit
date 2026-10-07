@@ -76,7 +76,9 @@ final class MealsViewModel: ObservableObject {
         guard signature != lastRecommendationSignature else { return }
 
         let nextRecommendation: MealRecommendation?
-        if let input = coachCoordinator.state.input {
+        // Prefer live Coach input. When Coach is still settling without a snapshot,
+        // leave recommendation nil — do not invent one.
+        if mealItems.count > 1, let input = coachCoordinator.state.input {
             nextRecommendation = MealRecommendationEngine.make(
                 input: input,
                 meals: mealItems,
@@ -158,6 +160,7 @@ final class MealsViewModel: ObservableObject {
             ),
             snapshot?.id.uuidString ?? "snapshot=nil",
             guidanceID,
+            "hasInput:\(coachCoordinator.state.input != nil)",
             "\(Int(day / 86_400))",
             "mealPeriod:\(mealPeriodBucket)",
             String(format: "%.1f", metrics?.calories ?? -1.0),
